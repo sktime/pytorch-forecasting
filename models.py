@@ -315,8 +315,8 @@ class VariableSelectionNetwork(nn.Module):
             #print('embedding')
             #print(embedding.shape)
             
-            batch_size = embedding.shape[0]
-            flatten = embedding.view(batch_size, -1)
+            flatten = torch.flatten(embedding, start_dim=1)
+            #flatten = embedding.view(batch_size, -1)
             #print('flatten')
             #print(flatten.shape)
             
@@ -327,23 +327,25 @@ class VariableSelectionNetwork(nn.Module):
             
             sparse_weights = F.softmax(mlp_outputs, dim = -1)
             sparse_weights = sparse_weights.unsqueeze(-1)
-            #print('sparse_weights')
-            #print(sparse_weights.shape)
+#             print('sparse_weights')
+#             print(sparse_weights.shape)
             
             trans_emb_list = []
             for i in range(self.output_size):
+                #print('embedding for the per feature static grn')
+                #print(embedding[:, i:i + 1, :].shape)
                 e = self.per_feature_grn[i](embedding[:, i:i + 1, :])
                 trans_emb_list.append(e)
             transformed_embedding = torch.cat(trans_emb_list, axis=1)
-            #print('transformed_embedding')
-            #print(transformed_embedding.shape)
+#             print('transformed_embedding')
+#             print(transformed_embedding.shape)
     
             combined = sparse_weights * transformed_embedding
-            #print('combined')
-            #print(combined.shape)
+#             print('combined')
+#             print(combined.shape)
             
             temporal_ctx = torch.sum(combined, dim = 1)
-            #print('temporal_ctx')
-            #print(temporal_ctx.shape)
+#             print('temporal_ctx')
+#             print(temporal_ctx.shape)
         
         return temporal_ctx, sparse_weights
