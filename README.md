@@ -8,7 +8,7 @@ This repository contains the source code for the Temporal Fusion Transformer rep
 
 - **data_formatters**: Stores the main dataset-specific column definitions, along with functions for data transformation and normalization. For compatibility with the TFT, new experiments should implement a unique GenericDataFormatter (see base.py), with examples for the default experiments shown in the other python files.
 
-- **data**: Stores the main dataset-specific download procedure, along with the pytorch dataset class ready to use as input to the dataloader and then the model.
+- **data**: Stores the main dataset-specific download procedure, along with the pytorch dataset class ready to use as input to the dataloader and the model.
 
 # Training
 To run the training procedure, open up **training_tft.ipynb** and execute all cells to start training.
