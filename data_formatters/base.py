@@ -1,7 +1,7 @@
 import abc
 import enum
-from utils import get_single_col_by_input_type
-from utils import extract_cols_from_data_type
+from utils.utils import get_single_col_by_input_type
+from utils.utils import extract_cols_from_data_type
 
 # Type defintions
 class DataTypes(enum.IntEnum):

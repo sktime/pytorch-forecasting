@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from electricity import ElectricityFormatter
-from utils import get_single_col_by_input_type
-from utils import extract_cols_from_data_type
-from base import DataTypes, InputTypes
+from utils.utils import get_single_col_by_input_type
+from utils.utils import extract_cols_from_data_type
+from data_formatters.electricity import ElectricityFormatter
+from data_formatters.base import DataTypes, InputTypes
 
 class TFTDataset(Dataset, ElectricityFormatter):
     """Dataset Basic Structure for Temporal Fusion Transformer"""

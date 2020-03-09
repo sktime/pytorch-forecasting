@@ -1,8 +1,8 @@
 import pandas as pd
-from utils import get_single_col_by_input_type
-from utils import extract_cols_from_data_type
-from base import GenericDataFormatter
-from base import DataTypes, InputTypes
+from utils.utils import get_single_col_by_input_type
+from utils.utils import extract_cols_from_data_type
+from .base import GenericDataFormatter
+from .base import DataTypes, InputTypes
 import sklearn.preprocessing
 
 class ElectricityFormatter(GenericDataFormatter):
