@@ -47,7 +47,7 @@ class QuantileLossCalculator():
 #         return loss
            
 #         return torch.sum(q_loss, dim = -1)
-        return q_loss
+        return q_loss.unsqueeze(1)
 
     def apply(self, b, a):
         """Returns quantile loss for specified quantiles.
@@ -82,7 +82,7 @@ class QuantileLossCalculator():
 #         loss_computed = torch.sum(loss_computed, axis = -1)
 #         loss_computed = torch.sum(loss_computed, axis = 0)
 
-        loss_computed = torch.mean(torch.sum(torch.cat(loss, axis = 1), axis = -1))
+        loss_computed = torch.mean(torch.sum(torch.cat(loss, axis = 1), axis = 1))
         
         return loss_computed
 #         return loss
