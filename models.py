@@ -39,6 +39,8 @@ class GatedLinearUnit(nn.Module):
         for n, p in self.named_parameters():
             if 'bias' not in n:
                 torch.nn.init.xavier_normal_(p)
+            elif 'bias' in n:
+                torch.nn.init.zeros_(p)
             
     def forward(self, x):
         
