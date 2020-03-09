@@ -33,10 +33,21 @@ class QuantileLossCalculator():
                 'Illegal quantile value={}! Values should be between 0 and 1.'.format(quantile))
 
         prediction_underflow = y - y_pred
+#         print('prediction_underflow')
+#         print(prediction_underflow.shape)
         q_loss = quantile * torch.max(prediction_underflow, torch.zeros_like(prediction_underflow)) + \
                 (1. - quantile) * torch.max(-prediction_underflow, torch.zeros_like(prediction_underflow))
-
-        return torch.mean(q_loss, dim = 1)
+        
+#         print('q_loss')
+#         print(q_loss.shape)
+        
+#         loss = torch.mean(q_loss, dim = 1)
+#         print('loss')
+#         print(loss.shape)
+#         return loss
+           
+#         return torch.sum(q_loss, dim = -1)
+        return q_loss
 
     def apply(self, b, a):
         """Returns quantile loss for specified quantiles.
@@ -47,6 +58,7 @@ class QuantileLossCalculator():
         quantiles_used = set(self.quantiles)
 
         loss = []
+#         loss = 0.
         for i, quantile in enumerate(self.quantiles):
             if quantile in quantiles_used:
                 #print(a[Ellipsis, self.output_size * i:self.output_size * (i + 1)].shape)
@@ -57,12 +69,20 @@ class QuantileLossCalculator():
                 #loss += self.quantile_loss(a[Ellipsis, self.output_size * i],
                 #                           b[Ellipsis, self.output_size * i], 
                 #                           quantile)
-                loss.append(self.quantile_loss(a[Ellipsis, self.output_size * i:self.output_size * (i + 1)],
-                           b[Ellipsis, self.output_size * i:self.output_size * (i + 1)], 
-                           quantile))
                 
-        loss_computed = torch.cat(loss, axis = -1)
-        loss_computed = torch.sum(loss_computed, axis = -1)
-        loss_computed = torch.sum(loss_computed, axis = 0)
+#                 loss.append(self.quantile_loss(a[Ellipsis, self.output_size * i:self.output_size * (i + 1)],
+#                                                b[Ellipsis, self.output_size * i:self.output_size * (i + 1)], 
+#                                                quantile))
+
+                loss.append(self.quantile_loss(a[Ellipsis, i],
+                                               b[Ellipsis, i], 
+                                               quantile))
+                
+#         loss_computed = torch.cat(loss, axis = -1)
+#         loss_computed = torch.sum(loss_computed, axis = -1)
+#         loss_computed = torch.sum(loss_computed, axis = 0)
+
+        loss_computed = torch.mean(torch.sum(torch.cat(loss, axis = 1), axis = -1))
         
         return loss_computed
+#         return loss
