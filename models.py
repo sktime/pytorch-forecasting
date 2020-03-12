@@ -35,10 +35,10 @@ class GatedLinearUnit(nn.Module):
         self.init_weights()
             
     def init_weights(self):
-        #torch.nn.init.kaiming_normal_(p.weight, a=0, mode='fan_in', nonlinearity='sigmoid')
         for n, p in self.named_parameters():
             if 'bias' not in n:
-                torch.nn.init.xavier_normal_(p)
+                torch.nn.init.xavier_uniform_(p)
+#                 torch.nn.init.kaiming_normal_(p, a=0, mode='fan_in', nonlinearity='sigmoid')
             elif 'bias' in n:
                 torch.nn.init.zeros_(p)
             
@@ -122,7 +122,8 @@ class GatedResidualNetwork(nn.Module):
             if ('W2' in name or 'W3' in name) and 'bias' not in name:
                 torch.nn.init.kaiming_normal_(p, a=0, mode='fan_in', nonlinearity='leaky_relu')
             elif ('skip_linear' in name or 'W1' in name) and 'bias' not in name:
-                torch.nn.init.xavier_normal_(p)
+                torch.nn.init.xavier_uniform_(p)
+#                 torch.nn.init.kaiming_normal_(p, a=0, mode='fan_in', nonlinearity='sigmoid')
             elif 'bias' in name:
                 torch.nn.init.zeros_(p)
             
@@ -210,7 +211,8 @@ class InterpretableMultiHeadAttention(nn.Module):
     def init_weights(self):
         for name, p in self.named_parameters():
             if 'bias' not in name:
-                torch.nn.init.xavier_normal_(p)
+                torch.nn.init.xavier_uniform_(p)
+#                 torch.nn.init.kaiming_normal_(p, a=0, mode='fan_in', nonlinearity='sigmoid')
             else:
                 torch.nn.init.zeros_(p)
         
