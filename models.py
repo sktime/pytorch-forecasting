@@ -14,7 +14,7 @@ class GatedLinearUnit(nn.Module):
     def __init__(self, input_size,
                  hidden_layer_size,
                  dropout_rate,
-                 activation = 'Sigmoid'):
+                 activation = None):
         
         super(GatedLinearUnit, self).__init__()
         
@@ -48,9 +48,9 @@ class GatedLinearUnit(nn.Module):
             x = self.dropout(x)
             
         if self.activation_name:
-            output = self.activation(self.W4(x)) * self.W5(x)
+            output = nn.Sigmoid(self.W4(x)) * self.activation(self.W5(x))
         else:
-            output = self.W4(x) * self.W5(x)
+            output = nn.Sigmoid(self.W4(x)) * self.W5(x)
             
         return output
     
@@ -58,7 +58,7 @@ class GateAddNormNetwork(nn.Module):
     def __init__(self, input_size,
                  hidden_layer_size,
                  dropout_rate,
-                 activation = 'Sigmoid'):
+                 activation = None):
         
         super(GateAddNormNetwork, self).__init__()
         
