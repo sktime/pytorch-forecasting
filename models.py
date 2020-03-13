@@ -32,6 +32,8 @@ class GatedLinearUnit(nn.Module):
         if self.activation_name:
             self.activation = getattr(nn, self.activation_name)()
             
+        self.sigmoid = nn.Sigmoid()
+            
         self.init_weights()
             
     def init_weights(self):
@@ -48,9 +50,9 @@ class GatedLinearUnit(nn.Module):
             x = self.dropout(x)
             
         if self.activation_name:
-            output = nn.Sigmoid(self.W4(x)) * self.activation(self.W5(x))
+            output = self.sigmoid(self.W4(x)) * self.activation(self.W5(x))
         else:
-            output = nn.Sigmoid(self.W4(x)) * self.W5(x)
+            output = self.sigmoid(self.W4(x)) * self.W5(x)
             
         return output
     
