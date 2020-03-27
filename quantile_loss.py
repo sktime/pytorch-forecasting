@@ -86,3 +86,45 @@ class QuantileLossCalculator():
         
         return loss_computed
 #         return loss
+
+class NormalizedQuantileLossCalculator():
+    """Computes the combined quantile loss for prespecified quantiles.
+    Attributes:
+      quantiles: Quantiles to compute losses
+    """
+
+    def __init__(self, quantiles, output_size):
+        """Initializes computer with quantiles for loss calculations.
+            Args:
+            quantiles: Quantiles to use for computations.
+        """
+        self.quantiles = quantiles
+        self.output_size = output_size
+        
+    # Loss functions.
+    def apply(self, y, y_pred, quantile):
+        """ Computes quantile loss for pytorch.
+            Standard quantile loss as defined in the "Training Procedure" section of
+            the main TFT paper
+            Args:
+            y: Targets
+            y_pred: Predictions
+            quantile: Quantile to use for loss calculations (between 0 & 1)
+            Returns:
+            Tensor for quantile loss.
+        """
+
+        # Checks quantile
+        if quantile < 0 or quantile > 1:
+            raise ValueError(
+                'Illegal quantile value={}! Values should be between 0 and 1.'.format(quantile))
+
+        prediction_underflow = y - y_pred
+#         print('prediction_underflow')
+#         print(prediction_underflow.shape)
+        weighted_errors = quantile * torch.max(prediction_underflow, torch.zeros_like(prediction_underflow)) + \
+                (1. - quantile) * torch.max(-prediction_underflow, torch.zeros_like(prediction_underflow))
+        
+        quantile_loss = torch.mean(weighted_errors)
+        normaliser = torch.mean(torch.abs(quantile_loss))
+        return 2 * quantile_loss / normaliser
