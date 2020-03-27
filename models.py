@@ -169,6 +169,8 @@ class ScaledDotProductAttention(nn.Module):
         #print('v: {}'.format(v[0]))
         
         attn = torch.bmm(q, k.permute(0,2,1))
+        #print('first bmm')
+        #print(attn.shape)
         #print('attn: {}'.format(attn[0]))
         
         if self.scale:
