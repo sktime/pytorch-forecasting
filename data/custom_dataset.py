@@ -37,7 +37,8 @@ class TFTDataset(Dataset, ElectricityFormatter):
         self.num_encoder_steps = self.get_num_encoder_steps()
         
         self.data_index = self.get_index_filtering()
-        self.data_index = self.data_index[self.data_index.end_rel < self.data_index.group_count].reset_index()
+        self.group_size = self.data.groupby([self.id_col]).apply(lambda x: x.shape[0]).mean()
+        self.data_index = self.data_index[self.data_index.end_rel < self.group_size].reset_index()
         
     def get_index_filtering(self):
         
