@@ -1,0 +1,50 @@
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | docs/build/
+  | node_modules/
+  | venve/
+  | .venv/
+)
+'''
+
+[tool.poetry]
+name = "temporal_fusion_transformer_pytorch"
+readme = 'README.md'  # Markdown files are supported
+version = "1.0.0"
+
+authors = ["Jan Beitner"]
+classifiers = ["Intended Audience :: Developers", "Programming Language :: Python :: 3"]
+description = "Temporal fusion transformer for timeseries forecasting"
+repository = "https://github.com/jdb78/temporal_fusion_transformer_pytorch"
+
+[tool.poetry.dependencies]
+python= "^3.7"
+
+torch = "~1.5"
+pytorch_lightning = "~0.8"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+dirty = true
+style = "semver"  # semantic versioning
+
+[build-system]  # make the package pip installable
+requires = ["poetry^1.0.5", "poetry-dynamic-versioning"]
+build-backend = "poetry.masonry.api"
+
