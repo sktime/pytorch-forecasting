@@ -1,4 +1,6 @@
 from typing import List, Union, Dict
+
+import math
 import torch
 from torch import nn
 import pytorch_lightning as pl
@@ -9,6 +11,7 @@ from temporal_fusion_transformer_pytorch.model.sub_modules import (
     VariableSelectionNetwork,
     InterpretableMultiHeadAttention,
 )
+from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
 
 
 class TemporalFusionTransformer(pl.LightningModule):
@@ -29,22 +32,22 @@ class TemporalFusionTransformer(pl.LightningModule):
         num_quantiles: int = 3,
         attn_heads: int = 2,
         seq_length: int = 100,
-        static_categorical_variables: List[int] = [],
-        static_real_variables: List[int] = [],
-        time_varying_categorical_variables_encoder: List[int] = [],
-        time_varying_categorical_variables_decoder: List[int] = [],
-        time_varying_real_variables_encoder: List[int] = [],
-        time_varying_real_variables_decoder: List[int] = [],
+        static_categoricals: List[int] = [],
+        static_reals: List[int] = [],
+        time_varying_categoricals_encoder: List[int] = [],
+        time_varying_categoricals_decoder: List[int] = [],
+        time_varying_reals_encoder: List[int] = [],
+        time_varying_reals_decoder: List[int] = [],
         embedding_size: Dict[str, Union[int, List[int]]] = {},
     ):
         super().__init__()
-        self.static_categorical_variables = static_categorical_variables
-        self.static_real_variables = static_real_variables
+        self.static_categoricals = static_categoricals
+        self.static_reals = static_reals
         self.encode_length = encode_length
-        self.time_varying_categorical_variables_encoder = time_varying_categorical_variables_encoder
-        self.time_varying_categorical_variables_decoder = time_varying_categorical_variables_decoder
-        self.time_varying_real_variables_encoder = time_varying_real_variables_encoder
-        self.time_varying_real_variables_decoder = time_varying_real_variables_decoder
+        self.time_varying_categoricals_encoder = time_varying_categoricals_encoder
+        self.time_varying_categoricals_decoder = time_varying_categoricals_decoder
+        self.time_varying_reals_encoder = time_varying_reals_encoder
+        self.time_varying_reals_decoder = time_varying_reals_decoder
         self.embedding_size = embedding_size
         self.hidden_size = lstm_hidden_dimension
         self.lstm_layers = lstm_layers
@@ -59,26 +62,20 @@ class TemporalFusionTransformer(pl.LightningModule):
         # embeddings
         self.input_embeddings = nn.ModuleDict()
         for i in set(
-            self.static_categorical_variables
-            + self.time_varying_categorical_variables_encoder
-            + self.time_varying_categorical_variables_decoder
+            self.static_categoricals + self.time_varying_categoricals_encoder + self.time_varying_categoricals_decoder
         ):
             self.input_embeddings[str(i)] = nn.Embedding(embedding_size[i], self.embedding_dim)
 
         # linear layers
         self.input_linear = nn.ModuleDict()
-        for i in set(
-            self.time_varying_real_variables_encoder
-            + self.time_varying_real_variables_encoder
-            + self.static_real_variables
-        ):
+        for i in set(self.time_varying_reals_encoder + self.time_varying_reals_encoder + self.static_reals):
             self.input_linear[str(i)] = nn.Linear(1, self.embedding_dim)
 
         # variable selection
         # variable selection for static variables
         self.static_variable_selection = VariableSelectionNetwork(
             input_size=self.embedding_dim,
-            num_inputs=len(self.static_categorical_variables) + len(self.static_real_variables),
+            num_inputs=len(self.static_categoricals) + len(self.static_reals),
             hidden_size=self.hidden_size,
             dropout=self.dropout,
         )
@@ -86,8 +83,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         # variable selection for encoder
         self.encoder_variable_selection = VariableSelectionNetwork(
             input_size=self.embedding_dim,
-            num_inputs=len(self.time_varying_real_variables_encoder)
-            + len(self.time_varying_categorical_variables_encoder),
+            num_inputs=len(self.time_varying_reals_encoder) + len(self.time_varying_categoricals_encoder),
             hidden_size=self.hidden_size,
             dropout=self.dropout,
             context=self.hidden_size,
@@ -96,8 +92,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         # variable selection for decoder
         self.decoder_variable_selection = VariableSelectionNetwork(
             input_size=self.embedding_dim,
-            num_inputs=len(self.time_varying_real_variables_decoder)
-            + len(self.time_varying_categorical_variables_decoder),
+            num_inputs=len(self.time_varying_reals_decoder) + len(self.time_varying_categoricals_decoder),
             hidden_size=self.hidden_size,
             dropout=self.dropout,
             context=self.hidden_size,
@@ -170,6 +165,47 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         self.output_layer = nn.Linear(self.hidden_size, self.num_quantiles)
 
+    @classmethod
+    def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
+
+        # categoricals
+        length = len(dataset.static_categoricals)
+        start = 0
+        static_categoricals = list(range(start, length))
+        length = len(dataset.time_varying_known_categoricals)
+        time_varying_known_categoricals = list(range(start, start + length))
+        start += length
+        length = len(dataset.time_varying_unknown_categoricals)
+        time_varying_unknown_categoricals = list(range(start, start + length))
+        kwargs.setdefault(
+            "embedding_size",
+            {
+                idx: round(math.sqrt(len(dataset.categoricals_encoders[name].classes_)) * 0.6)
+                for idx, name in enumerate(dataset.categoricals)
+            },
+        )
+        # reals
+        length = len(dataset.static_reals)
+        start = 0
+        static_reals = list(range(start, length))
+        length = len(dataset.time_varying_known_reals)
+        time_varying_known_reals = list(range(start, start + length))
+        start += length
+        length = len(dataset.time_varying_unknown_reals)
+        time_varying_unknown_reals = list(range(start, start + length))
+
+        return cls(
+            encode_length=dataset.max_encode_length,
+            seq_length=dataset.max_encode_length + dataset.max_prediction_length,
+            static_categoricals=static_categoricals,
+            time_varying_categoricals_encoder=time_varying_known_categoricals + time_varying_unknown_categoricals,
+            time_varying_categoricals_decoder=time_varying_unknown_categoricals,
+            static_reals=static_reals,
+            time_varying_reals_encoder=time_varying_known_reals + time_varying_unknown_reals,
+            time_varying_reals_decoder=time_varying_unknown_reals,
+            **kwargs,
+        )
+
     def expand_static_context(self, context):
         return context[:, None].expand(-1, self._timesteps, -1).transpose(0, 1)
 
@@ -204,8 +240,8 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # Embedding and variable selection
         static_embedding = torch.cat(
-            [embedding_vectors[i][:, 0] for i in self.static_categorical_variables]
-            + [continuous_vectors[i][:, 0] for i in self.static_real_variables],
+            [embedding_vectors[i][:, 0] for i in self.static_categoricals]
+            + [continuous_vectors[i][:, 0] for i in self.static_reals],
             dim=1,
         )
         static_embedding, static_sparse_weights = self.static_variable_selection(static_embedding)
@@ -215,13 +251,13 @@ class TemporalFusionTransformer(pl.LightningModule):
         )
 
         embeddings_varying_encoder = torch.cat(
-            [embedding_vectors[i] for i in self.time_varying_categorical_variables_encoder]
-            + [continuous_vectors[i] for i in self.time_varying_real_variables_encoder],
+            [embedding_vectors[i] for i in self.time_varying_categoricals_encoder]
+            + [continuous_vectors[i] for i in self.time_varying_reals_encoder],
             dim=2,
         ).transpose(0, 1)[: self.encode_length]
         embeddings_varying_decoder = torch.cat(
-            [embedding_vectors[i] for i in self.time_varying_categorical_variables_decoder]
-            + [continuous_vectors[i] for i in self.time_varying_real_variables_decoder],
+            [embedding_vectors[i] for i in self.time_varying_categoricals_decoder]
+            + [continuous_vectors[i] for i in self.time_varying_reals_decoder],
             dim=2,
         ).transpose(0, 1)[self.encode_length :]
         (embeddings_varying_encoder, encoder_sparse_weights,) = self.encoder_variable_selection(

@@ -34,7 +34,7 @@ class GLU(nn.Module):
 
 
 class GateAddNorm(nn.Module):
-    def __init__(self, input_size, hidden_size=None, dropout_rate: float = 0.1):
+    def __init__(self, input_size, hidden_size=None, dropout: float = 0.1):
         super().__init__()
 
         self.input_size = input_size
@@ -42,9 +42,9 @@ class GateAddNorm(nn.Module):
             self.hidden_size = input_size
         else:
             self.hidden_size = hidden_size
-        self.dropout_rate = dropout_rate
+        self.dropout = dropout
 
-        self.glu = GLU(self.input_size, hidden_size=self.hidden_size, dropout=self.dropout_rate)
+        self.glu = GLU(self.input_size, hidden_size=self.hidden_size, dropout=self.dropout)
 
         self.norm = nn.LayerNorm(self.hidden_size)
 
