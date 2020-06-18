@@ -30,10 +30,10 @@ class TemporalFusionTransformer(pl.LightningModule):
         lstm_hidden_dimension: int = 8,
         lstm_layers: int = 2,
         dropout: float = 0.1,
-        embedding_dim: int = 7,
+        embedding_dim: int = 16,
         num_quantiles: int = 3,
         loss=QuantileLoss([0.1, 0.5, 0.9]),
-        attn_heads: int = 2,
+        attn_heads: int = 4,
         seq_length: int = 100,
         static_categoricals: List[int] = [],
         static_reals: List[int] = [],
@@ -42,6 +42,8 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_reals_encoder: List[int] = [],
         time_varying_reals_decoder: List[int] = [],
         embedding_size: Dict[str, Union[int, List[int]]] = {},
+        learning_rate=1e-3,
+        **kwargs,
     ):
         super().__init__()
         self.static_categoricals = static_categoricals
@@ -60,6 +62,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         self.num_quantiles = num_quantiles
         self.seq_length = seq_length
         self.loss = loss
+        self.learning_rate = learning_rate
 
         # consolidate variables
 
@@ -306,14 +309,26 @@ class TemporalFusionTransformer(pl.LightningModule):
         return output
 
     def configure_optimizers(self,):
-        return [torch.optim.Adam(self.parameters(), lr=0.001)]
+        return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.forward(**x)
         loss = self.loss(y_hat, y)
         tensorboard_logs = {"train_loss": loss}
+        # todo: log some predictions
+        # todo: log gradient flow
         return {"loss": loss, "log": tensorboard_logs}
 
-    def validation_step(self, *args, **kwargs):
-        pass
+    def validation_step(self, batch, batch_idx):
+        # todo: log predictions
+        # todo: test tensorboard
+        x, y = batch
+        y_hat = self.forward(**x)
+        loss = self.loss(y_hat, y)
+        return {"val_loss": loss}
+
+    def validation_end(self, outputs):
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        tensorboard_logs = {"avg_val_loss": avg_loss}
+        return {"avg_val_loss": avg_loss, "log": tensorboard_logs}

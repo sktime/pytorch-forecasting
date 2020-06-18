@@ -54,18 +54,20 @@ class TimeSeriesDataSet(Dataset):
         for name in self.categoricals:
             if name not in self.categoricals_encoders:
                 self.categoricals_encoders[name] = LabelEncoder().fit(self.data[name])
-            self.data[name] = self.categoricals_encoders[name].transform(self.data[name])
+            if self.categoricals_encoders[name] is not None:
+                self.data[name] = self.categoricals_encoders[name].transform(self.data[name])
 
         # scale continuous variables
         self.scalers = scalers
-        self.data["__time_idx__"] = self.data[self.time_idx]
+        self.data["__time_idx__"] = self.data[self.time_idx]  # save unscaled
         for name in self.reals:
             if name not in self.scalers:
                 if name == self.time_idx:
                     self.scalers[name] = MinMaxScaler().fit(self.data[[name]])
                 else:
                     self.scalers[name] = StandardScaler().fit(self.data[[name]])
-            self.data[name] = self.scalers[name].transform(self.data[[name]]).reshape(-1)
+            if self.scalers[name] is not None:
+                self.data[name] = self.scalers[name].transform(self.data[[name]]).reshape(-1)
 
         # create index
         self.data_index = self.construct_index()

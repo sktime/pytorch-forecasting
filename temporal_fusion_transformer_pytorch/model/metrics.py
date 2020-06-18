@@ -14,5 +14,7 @@ class QuantileLoss(nn.Module):
         for i, q in enumerate(self.quantiles):
             errors = target - preds[..., i]
             losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1))
-        loss = torch.mean(torch.sum(torch.cat(losses, dim=1), dim=1))
+
+        quantile_losses = torch.sum(torch.cat(losses, dim=1), dim=1)
+        loss = torch.mean(quantile_losses)
         return loss

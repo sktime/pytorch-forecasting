@@ -6,6 +6,7 @@ from leapfrog.etl import clean_column_names, optimize_memory
 import pandas as pd
 from torch.utils.data import DataLoader
 import numpy as np
+from pytorch_lightning.loggers import TensorBoardLogger
 
 
 def parse_yearmonth(df):
@@ -47,8 +48,8 @@ data["volume"] = np.log1p(data.volume)
 data["time_idx"] = data.date.dt.year * 12 + data.date.dt.month
 data["time_idx"] = data["time_idx"] - data["time_idx"].min()
 
-training_cutoff = "2015-04-01"
-validation_cutoff = "2015-01-01"
+training_cutoff = "2016-08-01"
+validation_cutoff = "2016-04-01"
 
 
 features = data.drop(["volume"], axis=1).dropna()
@@ -98,14 +99,14 @@ batch_size = 64
 train_loader = DataLoader(training, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True)
 val_loader = DataLoader(validation, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True)
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
-
+early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
+logger = TensorBoardLogger(save_dir="tb_logs", name="my_model")
 trainer = pl.Trainer(
-    max_epochs=2,
+    max_epochs=30,
     gpus=0,
     track_grad_norm=2,
-    gradient_clip_val=10,
-    # early_stop_callback=early_stop_callback,
+    gradient_clip_val=0.5,
+    early_stop_callback=early_stop_callback,
     # train_percent_check = 0.01,
     # val_percent_check = 0.01,
     # test_percent_check = 0.01,
@@ -113,8 +114,13 @@ trainer = pl.Trainer(
     # profiler=True,
     # print_nan_grads = True,
     # distributed_backend='dp',
-    fast_dev_run=True,
+    logger=logger,
+    # fast_dev_run=True,
 )
 
-tft = TemporalFusionTransformer.from_dataset(training)
+tft = TemporalFusionTransformer.from_dataset(training, learning_rate=2e-3)
 trainer.fit(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
+
+# res = trainer.lr_find(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
+
+# fig = res.plot(show=True, suggest=True)
