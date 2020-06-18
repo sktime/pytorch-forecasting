@@ -11,6 +11,8 @@ from temporal_fusion_transformer_pytorch.model.sub_modules import (
     VariableSelectionNetwork,
     InterpretableMultiHeadAttention,
 )
+
+from temporal_fusion_transformer_pytorch.model.metrics import QuantileLoss
 from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
 
 
@@ -30,6 +32,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         dropout: float = 0.1,
         embedding_dim: int = 7,
         num_quantiles: int = 3,
+        loss=QuantileLoss([0.1, 0.5, 0.9]),
         attn_heads: int = 2,
         seq_length: int = 100,
         static_categoricals: List[int] = [],
@@ -56,6 +59,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         self.attn_heads = attn_heads
         self.num_quantiles = num_quantiles
         self.seq_length = seq_length
+        self.loss = loss
 
         # consolidate variables
 
@@ -179,10 +183,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_unknown_categoricals = list(range(start, start + length))
         kwargs.setdefault(
             "embedding_size",
-            {
-                idx: round(math.sqrt(len(dataset.categoricals_encoders[name].classes_)) * 0.6)
-                for idx, name in enumerate(dataset.categoricals)
-            },
+            {idx: len(dataset.categoricals_encoders[name].classes_) for idx, name in enumerate(dataset.categoricals)},
         )
         # reals
         length = len(dataset.static_reals)
@@ -303,3 +304,16 @@ class TemporalFusionTransformer(pl.LightningModule):
         output = self.output_layer(output.transpose(0, 1))
 
         return output
+
+    def configure_optimizers(self,):
+        return [torch.optim.Adam(self.parameters(), lr=0.001)]
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self.forward(**x)
+        loss = self.loss(y_hat, y)
+        tensorboard_logs = {"train_loss": loss}
+        return {"loss": loss, "log": tensorboard_logs}
+
+    def validation_step(self, *args, **kwargs):
+        pass

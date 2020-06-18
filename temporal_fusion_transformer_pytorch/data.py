@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset
 
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 
 
 class TimeSeriesDataSet(Dataset):
@@ -25,7 +25,8 @@ class TimeSeriesDataSet(Dataset):
         time_varying_unknown_categoricals: List[str] = [],
         time_varying_unknown_reals: List[str] = [],
         fill_stragegy={},
-        categoricals_encoders=None,
+        categoricals_encoders={},
+        scalers={},
     ):
         super().__init__()
         """
@@ -45,13 +46,29 @@ class TimeSeriesDataSet(Dataset):
         self.time_varying_unknown_reals = time_varying_unknown_reals
         self.fill_stragegy = fill_stragegy
 
+        # set data
         self.data = data.sort_values(self.group_ids + [self.time_idx])
-        self.data_index = self.get_index_filtering()
 
-        if categoricals_encoders is None:
-            self.categoricals_encoders = {name: LabelEncoder().fit(self.data[name]) for name in self.categoricals}
-        else:
-            self.categoricals_encoders = categoricals_encoders
+        # encode categoricals
+        self.categoricals_encoders = categoricals_encoders
+        for name in self.categoricals:
+            if name not in self.categoricals_encoders:
+                self.categoricals_encoders[name] = LabelEncoder().fit(self.data[name])
+            self.data[name] = self.categoricals_encoders[name].transform(self.data[name])
+
+        # scale continuous variables
+        self.scalers = scalers
+        self.data["__time_idx__"] = self.data[self.time_idx]
+        for name in self.reals:
+            if name not in self.scalers:
+                if name == self.time_idx:
+                    self.scalers[name] = MinMaxScaler().fit(self.data[[name]])
+                else:
+                    self.scalers[name] = StandardScaler().fit(self.data[[name]])
+            self.data[name] = self.scalers[name].transform(self.data[[name]]).reshape(-1)
+
+        # create index
+        self.data_index = self.construct_index()
 
     @property
     def categoricals(self):
@@ -69,35 +86,38 @@ class TimeSeriesDataSet(Dataset):
             if name != "data"
         }
         kwargs["categoricals_encoders"] = dataset.categoricals_encoders
+        kwargs["scalers"] = dataset.scalers
 
         new = TimeSeriesDataSet(data, **kwargs)
         return new
 
-    def get_index_filtering(self):
+    def construct_index(self):
 
         g = self.data.groupby(self.group_ids)
 
-        df_index_first = g[self.time_idx].transform("nth", 0).to_frame("time_first")
-        df_index_last = g[self.time_idx].transform("nth", -1).to_frame("time_last")
-        df_index_diff_to_next = -g[self.time_idx].diff(-1).fillna(-1).astype(int).to_frame("time_diff_to_next")
+        df_index_first = g["__time_idx__"].transform("nth", 0).to_frame("time_first")
+        df_index_last = g["__time_idx__"].transform("nth", -1).to_frame("time_last")
+        df_index_diff_to_next = -g["__time_idx__"].diff(-1).fillna(-1).astype(int).to_frame("time_diff_to_next")
         df_index = pd.concat([df_index_first, df_index_last, df_index_diff_to_next], axis=1)
         df_index["index_start"] = np.arange(len(df_index))
-        df_index["time"] = self.data[self.time_idx]
+        df_index["time"] = self.data["__time_idx__"]
         df_index["count"] = (df_index["time_last"] - df_index["time_first"]).astype(int) + 1
 
         # calculate maxium index to include from current index_start
         df_index["index_end"] = df_index["index_start"]
         max_time = (df_index["time"] + self.max_encode_length + self.max_prediction_length).clip(
-            upper=df_index["count"]
+            upper=df_index["count"] + df_index.time_first
         )
 
         for _ in range(df_index["count"].max()):
             new_end_time = df_index[["time", "time_diff_to_next"]].iloc[df_index["index_end"]].sum(axis=1).to_numpy()
-            df_index["index_end"] = df_index["index_end"].where(new_end_time + 1 > max_time, df_index["index_end"] + 1,)
+            df_index["index_end"] = df_index["index_end"].where(new_end_time + 1 > max_time, df_index["index_end"] + 1)
 
         # filter out where encode and decode length are not satisfied
         encoded = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
-        df_index = df_index[encoded == self.max_encode_length + self.max_prediction_length]  # todo: do not filter
+        filter = encoded == self.max_encode_length + self.max_prediction_length
+        assert filter.sum() > 0, "no samples are remaining after applying the filter"
+        df_index = df_index[filter]  # todo: do not filter
         return df_index
 
     def __len__(self):
@@ -105,14 +125,11 @@ class TimeSeriesDataSet(Dataset):
         return self.data_index.shape[0]
 
     def __getitem__(self, idx):
-
         data = self.data.iloc[self.data_index.index_start.iloc[idx] : self.data_index.index_end.iloc[idx] + 1]
 
         # todo: handle missings
         # todo: add indicator about how many encodes
-        categoricals = np.stack(
-            [self.categoricals_encoders[name].transform(data[name]) for name in self.categoricals], axis=1
-        )
-        reals = data[self.reals].to_numpy(dtype=np.float)
-        target = data[self.target].to_numpy(dtype=np.float)
+        categoricals = data[self.categoricals].to_numpy(np.long)
+        reals = data[self.reals].to_numpy(dtype=np.float32)
+        target = data[self.target].to_numpy(dtype=np.float32)[-self.max_prediction_length :]
         return dict(x_cat=categoricals, x_cont=reals), target

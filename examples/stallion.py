@@ -5,6 +5,7 @@ from pathlib import Path
 from leapfrog.etl import clean_column_names, optimize_memory
 import pandas as pd
 from torch.utils.data import DataLoader
+import numpy as np
 
 
 def parse_yearmonth(df):
@@ -41,12 +42,13 @@ data = (
 # minor feature engineering: add 12 month rolling mean volume
 data = data.assign(discount_in_percent=lambda x: (x.discount / x.price_regular).fillna(0) * 100)
 data["month"] = data.date.dt.month
+data["volume"] = np.log1p(data.volume)
 
 data["time_idx"] = data.date.dt.year * 12 + data.date.dt.month
 data["time_idx"] = data["time_idx"] - data["time_idx"].min()
 
-training_cutoff = "2017-01-01"
-validation_cutoff = "2016-01-01"
+training_cutoff = "2015-04-01"
+validation_cutoff = "2015-01-01"
 
 
 features = data.drop(["volume"], axis=1).dropna()
@@ -58,7 +60,7 @@ training = TimeSeriesDataSet(
     target="volume",
     group_ids=["agency", "sku"],
     max_encode_length=12,
-    max_prediction_length=12,
+    max_prediction_length=4,
     static_categoricals=["agency", "sku"],
     static_reals=[],
     time_varying_known_categoricals=[
@@ -99,21 +101,20 @@ val_loader = DataLoader(validation, batch_size=batch_size, shuffle=False, num_wo
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
 trainer = pl.Trainer(
-    max_nb_epochs=2,
+    max_epochs=2,
     gpus=0,
     track_grad_norm=2,
     gradient_clip_val=10,
-    early_stop_callback=early_stop_callback,
+    # early_stop_callback=early_stop_callback,
     # train_percent_check = 0.01,
     # val_percent_check = 0.01,
     # test_percent_check = 0.01,
-    overfit_pct=0.01,
     # fast_dev_run=True,
-    profiler=True,
+    # profiler=True,
     # print_nan_grads = True,
     # distributed_backend='dp',
     fast_dev_run=True,
 )
 
 tft = TemporalFusionTransformer.from_dataset(training)
-trainer.fit(tft)
+trainer.fit(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
