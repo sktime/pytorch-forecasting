@@ -25,7 +25,6 @@ class TemporalFusionTransformer(pl.LightningModule):
     # TODO: docstrings and comments
     # TODO: asserts
     # TODO: different sequence lengths
-    # TODO: add tensorboard logging -> metrics, examples x 20, partial dependence plots
     def __init__(
         self,
         encode_length: int = 10,
@@ -46,6 +45,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         embedding_size: Dict[str, Union[int, List[int]]] = {},
         learning_rate: float = 1e-3,
         log_interval: int = 25,
+        cummulative=False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -223,6 +223,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         bs = self_attn_inputs.shape[0]
         mask = torch.cumsum(torch.eye(len_s), 0)
         mask = mask.repeat(bs, 1, 1).float()
+        return mask
 
     def forward(self, x_cat, x_cont=None):
         """
@@ -315,14 +316,21 @@ class TemporalFusionTransformer(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.forward(**x)
+        y_all = x["x_cont"][..., self.hparams.target_idx]
+
+        # prediction is supposed to be cummulative
         loss = self.loss(y_hat, y)
         tensorboard_logs = {"train_loss": loss}
         # log prediction figure
         if batch_idx % self.hparams.log_interval == 0:
-            self._log_prediction(x, y_hat, batch_idx, item_idx=0, label="training")
+            fig = self.plot_prediction(y_all[0], y_hat[0].detach().cpu())  # first in batch
+            self.logger.experiment.add_figure(
+                "Training prediction", fig, global_step=self.global_step,
+            )
         return {"loss": loss, "log": tensorboard_logs}
 
     def training_epoch_end(self, outputs):
+        # log loss
         avg_loss = torch.stack([x["train_loss"] for x in outputs]).mean()
         tensorboard_logs = {"avg_train_loss": avg_loss}
         return {"train_loss": avg_loss, "log": tensorboard_logs}
@@ -330,11 +338,17 @@ class TemporalFusionTransformer(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.forward(**x)
-        loss = self.loss(y_hat, y)
+        y_all = x["x_cont"][..., self.hparams.target_idx]
+
+        loss = self.loss(y_hat, y, cummulative=self.hparams.cummulative)
+
         log = {"val_loss": loss}
         # log prediction figure
         if batch_idx % self.hparams.log_interval == 0:
-            self._log_prediction(x, y_hat, batch_idx, item_idx=0, label="validation")
+            fig = self.plot_prediction(y_all[0], y_hat[0].detach().cpu())  # first in batch
+            self.logger.experiment.add_figure(
+                f"Validation prediction of item 0 in batch {batch_idx}", fig, global_step=self.global_step,
+            )
         return log
 
     def validation_epoch_end(self, outputs):
@@ -343,22 +357,28 @@ class TemporalFusionTransformer(pl.LightningModule):
         tensorboard_logs = {"avg_val_loss": avg_loss}
         return {"val_loss": avg_loss, "log": tensorboard_logs}
 
-    def _log_prediction(self, x, y_hat, batch_idx, item_idx=0, label="training"):
-        """
-        log prediction plot
-        """
+    def plot_prediction(self, y, y_hat):
         fig, ax = plt.subplots()
-        y_all = x["x_cont"][item_idx, :, self.hparams.target_idx]  # first in batch
-        y_pred = y_hat[item_idx].detach().cpu()
-        ax.plot(np.arange(y_all.shape[0]), y_all, label="observed")
+        y_pred = y_hat
+        n_pred = y_pred.shape[0]
+        x_obs = np.arange(y.shape[0] - n_pred)
+        x_pred = np.arange(y.shape[0] - n_pred, y.shape[0])
+        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
+        obs_color = next(prop_cycle)["color"]
+        ax.plot(x_obs, y[:-n_pred], label="observed", c=obs_color)
+        ax.plot(x_pred, y[-n_pred:], label=None, c=obs_color)
         for i in range(y_pred.shape[-1]):
-            ax.plot(np.arange(y_all.shape[0] - y_pred.shape[0], y_all.shape[0]), y_pred[:, i], label=f"predicted {i}")
-        loss = self.loss(y_all.unsqueeze(0), y_pred.unsqueeze(0))
-        ax.set_title(f"First of batch {batch_idx} of epoch {self.current_epoch} with loss {loss:.3g}")
+            ax.plot(x_pred, y_pred[:, i], label=f"predicted {i}", c=next(prop_cycle)["color"])
+        loss = self.loss(y.unsqueeze(0), y_pred.unsqueeze(0), cummulative=self.hparams.cummulative)
+        ax.set_title(f"Loss {loss:.3g}")
         fig.legend()
-        self.logger.experiment.add_figure(
-            f"{label.capitalize()} prediction at epoch/batch {self.current_epoch}/{batch_idx}", fig
-        )
+        return fig
+
+    def plot_attention(self):
+        pass
+
+    def plot_importance(self):
+        pass
 
     def on_after_backward(self):
         if self.global_step % self.hparams.log_interval == 0:
@@ -382,4 +402,4 @@ class TemporalFusionTransformer(pl.LightningModule):
         ax.set_ylabel("Average gradient")
         ax.set_yscale("log")
         ax.set_title("Gradient flow")
-        self.logger.experiment.add_figure(f"Gradient flow at step {self.global_step}", fig)
+        self.logger.experiment.add_figure(f"Gradient flow", fig, global_step=self.global_step)

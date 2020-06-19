@@ -100,7 +100,7 @@ val_loader = DataLoader(validation, batch_size=batch_size, shuffle=False, num_wo
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
 trainer = pl.Trainer(
-    max_epochs=2,
+    max_epochs=30,
     gpus=0,
     weights_summary="full",
     # track_grad_norm=2,
@@ -109,20 +109,18 @@ trainer = pl.Trainer(
     # train_percent_check = 0.01,
     # val_percent_check = 0.01,
     # test_percent_check = 0.01,
-    # fast_dev_run=True,
+    fast_dev_run=True,
     # profiler=True,
     # print_nan_grads = True,
     # distributed_backend='dp',
     # logger=logger,
-    fast_dev_run=True,
 )
 
 tft = TemporalFusionTransformer.from_dataset(training, learning_rate=2e-3)
 trainer.fit(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
 # log hparams
 trainer.logger.experiment.add_hparams(
-    {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
-    trainer.callback_metrics.items(),
+    {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))}, trainer.callback_metrics,
 )
 
 # res = trainer.lr_find(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
