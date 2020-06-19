@@ -118,7 +118,7 @@ class VariableSelectionNetwork(nn.Module):
         self.single_variable_grns = nn.ModuleList()
         for _ in range(self.num_inputs):
             self.single_variable_grns.append(
-                GatedResidualNetwork(self.input_size, self.hidden_size, self.hidden_size, self.dropout,)
+                GatedResidualNetwork(self.input_size, self.hidden_size, self.hidden_size, self.dropout)
             )
 
         self.softmax = nn.Softmax(dim=-1)
@@ -169,11 +169,11 @@ class ScaledDotProductAttention(nn.Module):
         self.scale = scale
 
     def forward(self, q, k, v, mask=None):
-        attn = torch.bmm(q, k.permute(0, 2, 1))
+        attn = torch.bmm(q, k.permute(0, 2, 1))  # query-key overlap
 
         if self.scale:
-            dimention = torch.sqrt(torch.tensor(k.shape[-1]).to(torch.float32))
-            attn = attn / dimention
+            dimension = torch.sqrt(torch.tensor(k.shape[-1]).to(torch.float32))
+            attn = attn / dimension
 
         if mask is not None:
             attn = attn.masked_fill(mask == 0, -1e9)

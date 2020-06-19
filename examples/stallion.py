@@ -117,10 +117,12 @@ trainer = pl.Trainer(
 )
 
 tft = TemporalFusionTransformer.from_dataset(training, learning_rate=2e-3)
+
 trainer.fit(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
 # log hparams
 trainer.logger.experiment.add_hparams(
-    {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))}, trainer.callback_metrics,
+    {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
+    {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
 )
 
 # res = trainer.lr_find(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
