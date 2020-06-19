@@ -4,6 +4,8 @@ import math
 import torch
 from torch import nn
 import pytorch_lightning as pl
+import matplotlib.pyplot as plt
+import numpy as np
 
 from temporal_fusion_transformer_pytorch.model.sub_modules import (
     GateAddNorm,
@@ -26,15 +28,15 @@ class TemporalFusionTransformer(pl.LightningModule):
     # TODO: add tensorboard logging -> metrics, examples x 20, partial dependence plots
     def __init__(
         self,
-        encode_length: int,
-        lstm_hidden_dimension: int = 8,
+        encode_length: int = 10,
+        target_idx: int = 0,
+        hidden_size: int = 8,
         lstm_layers: int = 2,
         dropout: float = 0.1,
         embedding_dim: int = 16,
-        num_quantiles: int = 3,
+        output_size: int = 3,
         loss=QuantileLoss([0.1, 0.5, 0.9]),
         attn_heads: int = 4,
-        seq_length: int = 100,
         static_categoricals: List[int] = [],
         static_reals: List[int] = [],
         time_varying_categoricals_encoder: List[int] = [],
@@ -42,135 +44,130 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_reals_encoder: List[int] = [],
         time_varying_reals_decoder: List[int] = [],
         embedding_size: Dict[str, Union[int, List[int]]] = {},
-        learning_rate=1e-3,
-        **kwargs,
+        learning_rate: float = 1e-3,
+        log_interval: int = 25,
     ):
         super().__init__()
-        self.static_categoricals = static_categoricals
-        self.static_reals = static_reals
-        self.encode_length = encode_length
-        self.time_varying_categoricals_encoder = time_varying_categoricals_encoder
-        self.time_varying_categoricals_decoder = time_varying_categoricals_decoder
-        self.time_varying_reals_encoder = time_varying_reals_encoder
-        self.time_varying_reals_decoder = time_varying_reals_decoder
-        self.embedding_size = embedding_size
-        self.hidden_size = lstm_hidden_dimension
-        self.lstm_layers = lstm_layers
-        self.dropout = dropout
-        self.embedding_dim = embedding_dim
-        self.attn_heads = attn_heads
-        self.num_quantiles = num_quantiles
-        self.seq_length = seq_length
+        self.save_hyperparameters()
         self.loss = loss
-        self.learning_rate = learning_rate
-
-        # consolidate variables
 
         # embeddings
         self.input_embeddings = nn.ModuleDict()
         for i in set(
-            self.static_categoricals + self.time_varying_categoricals_encoder + self.time_varying_categoricals_decoder
+            self.hparams.static_categoricals
+            + self.hparams.time_varying_categoricals_encoder
+            + self.hparams.time_varying_categoricals_decoder
         ):
-            self.input_embeddings[str(i)] = nn.Embedding(embedding_size[i], self.embedding_dim)
+            self.input_embeddings[str(i)] = nn.Embedding(
+                self.hparams.embedding_size[str(i)], self.hparams.embedding_dim
+            )
 
         # linear layers
         self.input_linear = nn.ModuleDict()
-        for i in set(self.time_varying_reals_encoder + self.time_varying_reals_encoder + self.static_reals):
-            self.input_linear[str(i)] = nn.Linear(1, self.embedding_dim)
+        for i in set(
+            self.hparams.time_varying_reals_encoder
+            + self.hparams.time_varying_reals_encoder
+            + self.hparams.static_reals
+        ):
+            self.input_linear[str(i)] = nn.Linear(1, self.hparams.embedding_dim)
 
         # variable selection
         # variable selection for static variables
         self.static_variable_selection = VariableSelectionNetwork(
-            input_size=self.embedding_dim,
-            num_inputs=len(self.static_categoricals) + len(self.static_reals),
-            hidden_size=self.hidden_size,
-            dropout=self.dropout,
+            input_size=self.hparams.embedding_dim,
+            num_inputs=len(self.hparams.static_categoricals) + len(self.hparams.static_reals),
+            hidden_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
         )
 
         # variable selection for encoder
         self.encoder_variable_selection = VariableSelectionNetwork(
-            input_size=self.embedding_dim,
-            num_inputs=len(self.time_varying_reals_encoder) + len(self.time_varying_categoricals_encoder),
-            hidden_size=self.hidden_size,
-            dropout=self.dropout,
-            context=self.hidden_size,
+            input_size=self.hparams.embedding_dim,
+            num_inputs=len(self.hparams.time_varying_reals_encoder)
+            + len(self.hparams.time_varying_categoricals_encoder),
+            hidden_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
+            context=self.hparams.hidden_size,
         )
 
         # variable selection for decoder
         self.decoder_variable_selection = VariableSelectionNetwork(
-            input_size=self.embedding_dim,
-            num_inputs=len(self.time_varying_reals_decoder) + len(self.time_varying_categoricals_decoder),
-            hidden_size=self.hidden_size,
-            dropout=self.dropout,
-            context=self.hidden_size,
+            input_size=self.hparams.embedding_dim,
+            num_inputs=len(self.hparams.time_varying_reals_decoder)
+            + len(self.hparams.time_varying_categoricals_decoder),
+            hidden_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
+            context=self.hparams.hidden_size,
         )
 
         # static encoders
         # for variable selection
         self.static_context_variable_selection = GatedResidualNetwork(
-            input_size=self.hidden_size,
-            hidden_size=self.hidden_size,
-            output_size=self.hidden_size,
-            dropout=self.dropout,
+            input_size=self.hparams.hidden_size,
+            hidden_size=self.hparams.hidden_size,
+            output_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
         )
 
         # for hidden state of the lstm
         self.static_context_initial_hidden_lstm = GatedResidualNetwork(
-            input_size=self.hidden_size,
-            hidden_size=self.hidden_size,
-            output_size=self.hidden_size,
-            dropout=self.dropout,
+            input_size=self.hparams.hidden_size,
+            hidden_size=self.hparams.hidden_size,
+            output_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
         )
 
         # for cell state of the lstm
         self.static_context_initial_cell_lstm = GatedResidualNetwork(
-            input_size=self.hidden_size,
-            hidden_size=self.hidden_size,
-            output_size=self.hidden_size,
-            dropout=self.dropout,
+            input_size=self.hparams.hidden_size,
+            hidden_size=self.hparams.hidden_size,
+            output_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
         )
 
         # for post lstm static enrichment
         self.static_context_enrichment = GatedResidualNetwork(
-            self.hidden_size, self.hidden_size, self.hidden_size, self.dropout
+            self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.dropout
         )
         self.static_enrichment = GatedResidualNetwork(
-            input_size=self.hidden_size,
-            hidden_size=self.hidden_size,
-            output_size=self.hidden_size,
-            dropout=self.dropout,
-            context=self.hidden_size,
+            input_size=self.hparams.hidden_size,
+            hidden_size=self.hparams.hidden_size,
+            output_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
+            context=self.hparams.hidden_size,
         )
 
         # lstm encoder (history) and decoder (future)
         self.lstm_encoder = nn.LSTM(
-            input_size=self.hidden_size,
-            hidden_size=self.hidden_size,
-            num_layers=self.lstm_layers,
-            dropout=self.dropout,
+            input_size=self.hparams.hidden_size,
+            hidden_size=self.hparams.hidden_size,
+            num_layers=self.hparams.lstm_layers,
+            dropout=self.hparams.dropout,
         )
 
         self.lstm_decoder = nn.LSTM(
-            input_size=self.hidden_size,
-            hidden_size=self.hidden_size,
-            num_layers=self.lstm_layers,
-            dropout=self.dropout,
+            input_size=self.hparams.hidden_size,
+            hidden_size=self.hparams.hidden_size,
+            num_layers=self.hparams.lstm_layers,
+            dropout=self.hparams.dropout,
         )
 
         # skip connection for lstm
-        self.post_lstm_gate_norm = GateAddNorm(self.hidden_size, dropout=self.dropout)
+        self.post_lstm_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
 
         # attention
         self.multihead_attn = InterpretableMultiHeadAttention(
-            d_model=self.hidden_size, n_head=self.attn_heads, dropout=dropout
+            d_model=self.hparams.hidden_size, n_head=self.hparams.attn_heads, dropout=self.hparams.dropout
         )
-        self.post_attn_gate_norm = GateAddNorm(self.hidden_size, dropout=self.dropout)
-        self.pos_wise_ff = GatedResidualNetwork(self.hidden_size, self.hidden_size, self.hidden_size, self.dropout)
+        self.post_attn_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
+        self.pos_wise_ff = GatedResidualNetwork(
+            self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.dropout
+        )
 
         # output processing
-        self.pre_output_gate_norm = GateAddNorm(self.hidden_size, dropout=self.dropout)
+        self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
 
-        self.output_layer = nn.Linear(self.hidden_size, self.num_quantiles)
+        self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
@@ -186,7 +183,10 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_unknown_categoricals = list(range(start, start + length))
         kwargs.setdefault(
             "embedding_size",
-            {idx: len(dataset.categoricals_encoders[name].classes_) for idx, name in enumerate(dataset.categoricals)},
+            {
+                str(idx): len(dataset.categoricals_encoders[name].classes_)
+                for idx, name in enumerate(dataset.categoricals)
+            },
         )
         # reals
         length = len(dataset.static_reals)
@@ -197,16 +197,17 @@ class TemporalFusionTransformer(pl.LightningModule):
         start += length
         length = len(dataset.time_varying_unknown_reals)
         time_varying_unknown_reals = list(range(start, start + length))
+        target_idx = start + dataset.time_varying_unknown_reals.index(dataset.target)
 
         return cls(
             encode_length=dataset.max_encode_length,
-            seq_length=dataset.max_encode_length + dataset.max_prediction_length,
             static_categoricals=static_categoricals,
             time_varying_categoricals_encoder=time_varying_known_categoricals + time_varying_unknown_categoricals,
-            time_varying_categoricals_decoder=time_varying_unknown_categoricals,
+            time_varying_categoricals_decoder=time_varying_known_categoricals,
             static_reals=static_reals,
             time_varying_reals_encoder=time_varying_known_reals + time_varying_unknown_reals,
-            time_varying_reals_decoder=time_varying_unknown_reals,
+            time_varying_reals_decoder=time_varying_known_reals,
+            target_idx=target_idx,
             **kwargs,
         )
 
@@ -244,8 +245,8 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # Embedding and variable selection
         static_embedding = torch.cat(
-            [embedding_vectors[i][:, 0] for i in self.static_categoricals]
-            + [continuous_vectors[i][:, 0] for i in self.static_reals],
+            [embedding_vectors[i][:, 0] for i in self.hparams.static_categoricals]
+            + [continuous_vectors[i][:, 0] for i in self.hparams.static_reals],
             dim=1,
         )
         static_embedding, static_sparse_weights = self.static_variable_selection(static_embedding)
@@ -255,28 +256,28 @@ class TemporalFusionTransformer(pl.LightningModule):
         )
 
         embeddings_varying_encoder = torch.cat(
-            [embedding_vectors[i] for i in self.time_varying_categoricals_encoder]
-            + [continuous_vectors[i] for i in self.time_varying_reals_encoder],
+            [embedding_vectors[i] for i in self.hparams.time_varying_categoricals_encoder]
+            + [continuous_vectors[i] for i in self.hparams.time_varying_reals_encoder],
             dim=2,
-        ).transpose(0, 1)[: self.encode_length]
+        ).transpose(0, 1)[: self.hparams.encode_length]
         embeddings_varying_decoder = torch.cat(
-            [embedding_vectors[i] for i in self.time_varying_categoricals_decoder]
-            + [continuous_vectors[i] for i in self.time_varying_reals_decoder],
+            [embedding_vectors[i] for i in self.hparams.time_varying_categoricals_decoder]
+            + [continuous_vectors[i] for i in self.hparams.time_varying_reals_decoder],
             dim=2,
-        ).transpose(0, 1)[self.encode_length :]
+        ).transpose(0, 1)[self.hparams.encode_length :]
         (embeddings_varying_encoder, encoder_sparse_weights,) = self.encoder_variable_selection(
-            embeddings_varying_encoder, static_context_variable_selection[: self.encode_length],
+            embeddings_varying_encoder, static_context_variable_selection[: self.hparams.encode_length],
         )
 
         (embeddings_varying_decoder, decoder_sparse_weights,) = self.decoder_variable_selection(
-            embeddings_varying_decoder, static_context_variable_selection[self.encode_length :],
+            embeddings_varying_decoder, static_context_variable_selection[self.hparams.encode_length :],
         )
         # LSTM
         encoder_output, (hidden, cell) = self.lstm_encoder(
             embeddings_varying_encoder,
             (
-                self.static_context_initial_hidden_lstm(static_embedding).expand(self.lstm_layers, -1, -1),
-                self.static_context_initial_cell_lstm(static_embedding).expand(self.lstm_layers, -1, -1),
+                self.static_context_initial_hidden_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1),
+                self.static_context_initial_cell_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1),
             ),
         )
         decoder_output, _ = self.lstm_decoder(embeddings_varying_decoder, (hidden, cell))
@@ -299,36 +300,86 @@ class TemporalFusionTransformer(pl.LightningModule):
         # skip connection over attention
         attn_output = self.post_attn_gate_norm(attn_output, attn_input)
 
-        output = self.pos_wise_ff(attn_output[self.encode_length :])
+        output = self.pos_wise_ff(attn_output[self.hparams.encode_length :])
 
         # skip connection over temporal fusion decoder (not LSTM decoder despite the LSTM output contains
         # a skip from the variable selection network)
-        output = self.pre_output_gate_norm(output, lstm_output[self.encode_length :])
+        output = self.pre_output_gate_norm(output, lstm_output[self.hparams.encode_length :])
         output = self.output_layer(output.transpose(0, 1))
 
         return output
 
-    def configure_optimizers(self,):
-        return torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.forward(**x)
         loss = self.loss(y_hat, y)
         tensorboard_logs = {"train_loss": loss}
-        # todo: log some predictions
-        # todo: log gradient flow
+        # log prediction figure
+        if batch_idx % self.hparams.log_interval == 0:
+            self._log_prediction(x, y_hat, batch_idx, item_idx=0, label="training")
         return {"loss": loss, "log": tensorboard_logs}
 
+    def training_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["train_loss"] for x in outputs]).mean()
+        tensorboard_logs = {"avg_train_loss": avg_loss}
+        return {"train_loss": avg_loss, "log": tensorboard_logs}
+
     def validation_step(self, batch, batch_idx):
-        # todo: log predictions
-        # todo: test tensorboard
         x, y = batch
         y_hat = self.forward(**x)
         loss = self.loss(y_hat, y)
-        return {"val_loss": loss}
+        log = {"val_loss": loss}
+        # log prediction figure
+        if batch_idx % self.hparams.log_interval == 0:
+            self._log_prediction(x, y_hat, batch_idx, item_idx=0, label="validation")
+        return log
 
-    def validation_end(self, outputs):
+    def validation_epoch_end(self, outputs):
+        # loss logging
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         tensorboard_logs = {"avg_val_loss": avg_loss}
-        return {"avg_val_loss": avg_loss, "log": tensorboard_logs}
+        return {"val_loss": avg_loss, "log": tensorboard_logs}
+
+    def _log_prediction(self, x, y_hat, batch_idx, item_idx=0, label="training"):
+        """
+        log prediction plot
+        """
+        fig, ax = plt.subplots()
+        y_all = x["x_cont"][item_idx, :, self.hparams.target_idx]  # first in batch
+        y_pred = y_hat[item_idx].detach().cpu()
+        ax.plot(np.arange(y_all.shape[0]), y_all, label="observed")
+        for i in range(y_pred.shape[-1]):
+            ax.plot(np.arange(y_all.shape[0] - y_pred.shape[0], y_all.shape[0]), y_pred[:, i], label=f"predicted {i}")
+        loss = self.loss(y_all.unsqueeze(0), y_pred.unsqueeze(0))
+        ax.set_title(f"First of batch {batch_idx} of epoch {self.current_epoch} with loss {loss:.3g}")
+        fig.legend()
+        self.logger.experiment.add_figure(
+            f"{label.capitalize()} prediction at epoch/batch {self.current_epoch}/{batch_idx}", fig
+        )
+
+    def on_after_backward(self):
+        if self.global_step % self.hparams.log_interval == 0:
+            self._log_grad_flow(self.named_parameters())
+
+    def _log_grad_flow(self, named_parameters):
+        """
+        log distribution of gradients to identify exploding / vanishing gradients
+        """
+        ave_grads = []
+        layers = []
+        for name, p in named_parameters:
+            if p.grad is not None:
+                if p.requires_grad and "bias" not in name:
+                    layers.append(name)
+                    ave_grads.append(p.grad.abs().mean())
+                    self.logger.experiment.add_histogram(tag=name, values=p.grad, global_step=self.global_step)
+        fig, ax = plt.subplots()
+        ax.plot(ave_grads)
+        ax.set_xlabel("Layers")
+        ax.set_ylabel("Average gradient")
+        ax.set_yscale("log")
+        ax.set_title("Gradient flow")
+        self.logger.experiment.add_figure(f"Gradient flow at step {self.global_step}", fig)

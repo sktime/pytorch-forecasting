@@ -44,6 +44,9 @@ class TimeSeriesDataSet(Dataset):
         self.time_varying_known_reals = time_varying_known_reals
         self.time_varying_unknown_categoricals = time_varying_unknown_categoricals
         self.time_varying_unknown_reals = time_varying_unknown_reals
+        assert (
+            self.target in self.time_varying_unknown_reals
+        ), "target should be an unknown continuous variable in the future"
         self.fill_stragegy = fill_stragegy
 
         # set data

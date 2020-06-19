@@ -80,7 +80,6 @@ training = TimeSeriesDataSet(
     ],
     time_varying_known_reals=[
         "time_idx",
-        "volume",
         "price_regular",
         "price_actual",
         "discount",
@@ -89,7 +88,7 @@ training = TimeSeriesDataSet(
         "discount_in_percent",
     ],
     time_varying_unknown_categoricals=[],
-    time_varying_unknown_reals=["industry_volume", "soda_volume", "avg_max_temp"],
+    time_varying_unknown_reals=["volume", "industry_volume", "soda_volume", "avg_max_temp"],
     fill_stragegy={"volume": 0},
 )
 
@@ -100,11 +99,11 @@ train_loader = DataLoader(training, batch_size=batch_size, shuffle=True, num_wor
 val_loader = DataLoader(validation, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True)
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
-logger = TensorBoardLogger(save_dir="tb_logs", name="my_model")
 trainer = pl.Trainer(
-    max_epochs=30,
+    max_epochs=2,
     gpus=0,
-    track_grad_norm=2,
+    weights_summary="full",
+    # track_grad_norm=2,
     gradient_clip_val=0.5,
     early_stop_callback=early_stop_callback,
     # train_percent_check = 0.01,
@@ -114,13 +113,19 @@ trainer = pl.Trainer(
     # profiler=True,
     # print_nan_grads = True,
     # distributed_backend='dp',
-    logger=logger,
-    # fast_dev_run=True,
+    # logger=logger,
+    fast_dev_run=True,
 )
 
 tft = TemporalFusionTransformer.from_dataset(training, learning_rate=2e-3)
 trainer.fit(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
+# log hparams
+trainer.logger.experiment.add_hparams(
+    {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
+    trainer.callback_metrics.items(),
+)
 
 # res = trainer.lr_find(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
 
 # fig = res.plot(show=True, suggest=True)
+#
