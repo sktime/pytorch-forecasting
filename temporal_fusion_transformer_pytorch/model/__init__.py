@@ -35,7 +35,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         dropout: float = 0.1,
         hidden_continuous_size: int = 16,
         output_size: int = 3,
-        loss=QuantileLoss([0.1, 0.5, 0.9]),
+        loss=QuantileLoss([0.1, 0.5, 0.9], cummulative=True),
         attn_heads: int = 4,
         static_categoricals: List[int] = [],
         static_reals: List[int] = [],
