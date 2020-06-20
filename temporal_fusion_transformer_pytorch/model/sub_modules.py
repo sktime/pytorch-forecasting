@@ -118,7 +118,7 @@ class VariableSelectionNetwork(nn.Module):
         self.single_variable_grns = nn.ModuleList()
         for input_size in self.input_sizes:
             self.single_variable_grns.append(
-                GatedResidualNetwork(input_size, self.hidden_size, self.hidden_size, self.dropout)
+                GatedResidualNetwork(input_size, min(input_size, self.hidden_size), self.hidden_size, self.dropout)
             )
 
         self.softmax = nn.Softmax(dim=-1)
