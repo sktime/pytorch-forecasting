@@ -1,4 +1,4 @@
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 
 import math
 import torch
@@ -33,7 +33,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         hidden_size: int = 8,
         lstm_layers: int = 2,
         dropout: float = 0.1,
-        embedding_dim: int = 16,
+        hidden_continuous_size: int = 16,
         output_size: int = 3,
         loss=QuantileLoss([0.1, 0.5, 0.9]),
         attn_heads: int = 4,
@@ -43,6 +43,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_categoricals_decoder: List[int] = [],
         time_varying_reals_encoder: List[int] = [],
         time_varying_reals_decoder: List[int] = [],
+        embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_labels: Dict[str, np.ndarray] = {},
         real_labels: Dict[str, str] = {},
         categorical_labels: Dict[str, str] = {},
@@ -60,9 +61,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             + self.hparams.time_varying_categoricals_encoder
             + self.hparams.time_varying_categoricals_decoder
         ):
-            self.input_embeddings[str(i)] = nn.Embedding(
-                len(self.hparams.embedding_labels[str(i)]), self.hparams.embedding_dim
-            )
+            self.input_embeddings[str(i)] = nn.Embedding(*self.hparams.embedding_sizes[str(i)])
 
         # linear layers
         self.input_linear = nn.ModuleDict()
@@ -71,22 +70,23 @@ class TemporalFusionTransformer(pl.LightningModule):
             + self.hparams.time_varying_reals_encoder
             + self.hparams.static_reals
         ):
-            self.input_linear[str(i)] = nn.Linear(1, self.hparams.embedding_dim)
+            self.input_linear[str(i)] = nn.Linear(1, self.hparams.hidden_continuous_size)
 
         # variable selection
         # variable selection for static variables
         self.static_variable_selection = VariableSelectionNetwork(
-            input_size=self.hparams.embedding_dim,
-            num_inputs=len(self.hparams.static_categoricals) + len(self.hparams.static_reals),
+            input_sizes=[self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.static_categoricals]
+            + [self.hparams.hidden_continuous_size for _ in self.hparams.static_reals],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
         )
 
         # variable selection for encoder
         self.encoder_variable_selection = VariableSelectionNetwork(
-            input_size=self.hparams.embedding_dim,
-            num_inputs=len(self.hparams.time_varying_reals_encoder)
-            + len(self.hparams.time_varying_categoricals_encoder),
+            input_sizes=[
+                self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_encoder
+            ]
+            + [self.hparams.hidden_continuous_size for _ in self.hparams.time_varying_reals_encoder],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
             context=self.hparams.hidden_size,
@@ -94,9 +94,10 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # variable selection for decoder
         self.decoder_variable_selection = VariableSelectionNetwork(
-            input_size=self.hparams.embedding_dim,
-            num_inputs=len(self.hparams.time_varying_reals_decoder)
-            + len(self.hparams.time_varying_categoricals_decoder),
+            input_sizes=[
+                self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_decoder
+            ]
+            + [self.hparams.hidden_continuous_size for _ in self.hparams.time_varying_reals_decoder],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
             context=self.hparams.hidden_size,
@@ -191,7 +192,6 @@ class TemporalFusionTransformer(pl.LightningModule):
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
-
         # categoricals
         start = 0
         length = len(dataset.static_categoricals)
@@ -216,6 +216,11 @@ class TemporalFusionTransformer(pl.LightningModule):
         embedding_labels = {
             str(idx): dataset.categoricals_encoders[name].classes_ for idx, name in enumerate(dataset.categoricals)
         }
+        # determine embedding sizes based on heuristic
+        kwargs.setdefault(
+            "embedding_sizes",
+            {idx: (len(labels), round(1.6 * len(labels) ** 0.56)) for idx, labels in embedding_labels.items()},
+        )
         # reals
         start = 0
         length = len(dataset.static_reals)
