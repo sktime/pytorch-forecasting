@@ -25,7 +25,7 @@ class TemporalFusionTransformer(pl.LightningModule):
     # TODO: docstrings and comments
     # TODO: asserts
     # TODO: different sequence lengths
-    # TODO: add projections for embeddings to log
+    # TODO: dependence plot logging
     def __init__(
         self,
         encode_length: int = 10,
@@ -43,7 +43,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_categoricals_decoder: List[int] = [],
         time_varying_reals_encoder: List[int] = [],
         time_varying_reals_decoder: List[int] = [],
-        embedding_size: Dict[str, Union[int, List[int]]] = {},
+        embedding_labels: Dict[str, np.ndarray] = {},
         real_labels: Dict[str, str] = {},
         categorical_labels: Dict[str, str] = {},
         learning_rate: float = 1e-3,
@@ -61,7 +61,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             + self.hparams.time_varying_categoricals_decoder
         ):
             self.input_embeddings[str(i)] = nn.Embedding(
-                self.hparams.embedding_size[str(i)], self.hparams.embedding_dim
+                len(self.hparams.embedding_labels[str(i)]), self.hparams.embedding_dim
             )
 
         # linear layers
@@ -205,13 +205,6 @@ class TemporalFusionTransformer(pl.LightningModule):
         length = len(dataset.time_varying_unknown_categoricals)
         time_varying_unknown_categoricals = list(range(start, start + length))
 
-        kwargs.setdefault(
-            "embedding_size",
-            {
-                str(idx): len(dataset.categoricals_encoders[name].classes_)
-                for idx, name in enumerate(dataset.categoricals)
-            },
-        )
         categorical_labels = {
             str(idx): name
             for idx, name in enumerate(
@@ -219,6 +212,9 @@ class TemporalFusionTransformer(pl.LightningModule):
                 + dataset.time_varying_known_categoricals
                 + dataset.time_varying_unknown_categoricals
             )
+        }
+        embedding_labels = {
+            str(idx): dataset.categoricals_encoders[name].classes_ for idx, name in enumerate(dataset.categoricals)
         }
         # reals
         start = 0
@@ -241,6 +237,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         }
         target_idx = start + dataset.time_varying_unknown_reals.index(dataset.target)
 
+        # create class and return
         return cls(
             encode_length=dataset.max_encode_length,
             static_categoricals=static_categoricals,
@@ -252,6 +249,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             target_idx=target_idx,
             real_labels=real_labels,
             categorical_labels=categorical_labels,
+            embedding_labels=embedding_labels,
             **kwargs,
         )
 
@@ -370,6 +368,63 @@ class TemporalFusionTransformer(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
 
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, label="train", log_batch_idx=False)
+
+    def on_after_backward(self):
+        if self.global_step % self.hparams.log_interval == 0 and self.hparams.log_interval > 0:
+            self._log_grad_flow(self.named_parameters())
+
+    def training_epoch_end(self, outputs):
+        return self._epoch_end(outputs, label="train")
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, label="val", log_batch_idx=True)
+
+    def validation_epoch_end(self, outputs):
+        return self._epoch_end(outputs, label="val")
+
+    def _step(self, batch, batch_idx, label="train", log_batch_idx=False):
+        x, y = batch
+        out = self(**x)
+        y_hat = out["prediction"]
+        y_all = x["x_cont"][..., self.hparams.target_idx]
+        loss = self.loss(y_hat, y)
+        tensorboard_logs = {f"{label}_loss": loss}
+        if label == "train":
+            loss_label = "loss"
+        else:
+            loss_label = f"{label}_loss"
+        log = {
+            loss_label: loss,
+            "log": tensorboard_logs,
+        }
+        if self.hparams.log_interval > 0:
+            interpretation = self.interpret_output(
+                {name: tensor.detach().cpu() for name, tensor in out.items()}, average_batches=True
+            )
+            log["interpretation"] = interpretation
+
+        # log prediction figure
+        if batch_idx % self.hparams.log_interval == 0 and self.hparams.log_interval > 0:
+            fig = self.plot_prediction(y_all[0], y_hat[0].detach().cpu())  # first in batch
+            tag = f"{label.capitalize()} prediction"
+            if log_batch_idx:
+                tag += f" of item 0 in batch {batch_idx}"
+            self.logger.experiment.add_figure(
+                tag, fig, global_step=self.global_step,
+            )
+        return log
+
+    def _epoch_end(self, outputs, label="train"):
+        # log loss
+        avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
+        if self.hparams.log_interval > 0:
+            self._log_interpretation(outputs)
+            self._log_embeddings()
+        tensorboard_logs = {f"avg_{label}_loss": avg_loss}
+        return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
+
     def interpret_output(self, out: Dict[str, torch.Tensor], average_batches: bool = False) -> Dict[str, torch.Tensor]:
         if average_batches:
             average_dims = [0]
@@ -390,80 +445,6 @@ class TemporalFusionTransformer(pl.LightningModule):
             decoder_variables=out["decoder_variables"].mean(dim=average_dims + [1, 2]),
         )
         return interpretation
-
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-        out = self(**x)
-        y_hat = out["prediction"]
-        y_all = x["x_cont"][..., self.hparams.target_idx]
-        loss = self.loss(y_hat, y)
-        tensorboard_logs = {"train_loss": loss}
-        interpretation = self.interpret_output(
-            {name: tensor.detach().cpu() for name, tensor in out.items()}, average_batches=True
-        )
-
-        # log prediction figure
-        if batch_idx % self.hparams.log_interval == 0:
-            fig = self.plot_prediction(y_all[0], y_hat[0].detach().cpu())  # first in batch
-            self.logger.experiment.add_figure(
-                "Training prediction", fig, global_step=self.global_step,
-            )
-        return {
-            "loss": loss,
-            "log": tensorboard_logs,
-            "interpretation": interpretation,
-        }
-
-    def training_epoch_end(self, outputs):
-        # log loss
-        avg_loss = torch.stack([x["train_loss"] for x in outputs]).mean()
-        interpretation = {
-            name: torch.stack([x["interpretation"][name] for x in outputs]).mean(0)
-            for name in outputs[0]["interpretation"].keys()
-        }
-        figs = self.plot_interpretation(interpretation)
-        for name, fig in figs.items():
-            self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
-        tensorboard_logs = {"avg_train_loss": avg_loss}
-        return {"train_loss": avg_loss, "log": tensorboard_logs}
-
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        out = self(**x)
-        y_hat = out["prediction"]
-        y_all = x["x_cont"][..., self.hparams.target_idx]
-        loss = self.loss(y_hat, y)
-        log = {"val_loss": loss}
-        # log prediction figure
-        if batch_idx % self.hparams.log_interval == 0:
-            fig = self.plot_prediction(y_all[0], y_hat[0].detach().cpu())  # first in batch
-            self.logger.experiment.add_figure(
-                f"Validation prediction of item 0 in batch {batch_idx}", fig, global_step=self.global_step,
-            )
-        return log
-
-    def validation_epoch_end(self, outputs):
-        # loss logging
-        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        tensorboard_logs = {"avg_val_loss": avg_loss}
-        return {"val_loss": avg_loss, "log": tensorboard_logs}
-
-    def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor) -> plt.Figure:
-        fig, ax = plt.subplots()
-        y_pred = y_hat
-        n_pred = y_pred.shape[0]
-        x_obs = np.arange(y.shape[0] - n_pred)
-        x_pred = np.arange(y.shape[0] - n_pred, y.shape[0])
-        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
-        obs_color = next(prop_cycle)["color"]
-        ax.plot(x_obs, y[:-n_pred], label="observed", c=obs_color)
-        ax.plot(x_pred, y[-n_pred:], label=None, c=obs_color)
-        for i in range(y_pred.shape[-1]):
-            ax.plot(x_pred, y_pred[:, i], label=f"predicted {i}", c=next(prop_cycle)["color"])
-        loss = self.loss(y.unsqueeze(0), y_pred.unsqueeze(0))
-        ax.set_title(f"Loss {loss:.3g}")
-        fig.legend()
-        return fig
 
     def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]) -> Dict[str, plt.Figure]:
         figs = {}
@@ -498,9 +479,33 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         return figs
 
-    def on_after_backward(self):
-        if self.global_step % self.hparams.log_interval == 0:
-            self._log_grad_flow(self.named_parameters())
+    def _log_interpretation(self, outputs, label="training"):
+        interpretation = {
+            name: torch.stack([x["interpretation"][name] for x in outputs]).mean(0)
+            for name in outputs[0]["interpretation"].keys()
+        }
+        figs = self.plot_interpretation(interpretation)
+        for name, fig in figs.items():
+            self.logger.experiment.add_figure(
+                f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
+            )
+
+    def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor) -> plt.Figure:
+        fig, ax = plt.subplots()
+        y_pred = y_hat
+        n_pred = y_pred.shape[0]
+        x_obs = np.arange(y.shape[0] - n_pred)
+        x_pred = np.arange(y.shape[0] - n_pred, y.shape[0])
+        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
+        obs_color = next(prop_cycle)["color"]
+        ax.plot(x_obs, y[:-n_pred], label="observed", c=obs_color)
+        ax.plot(x_pred, y[-n_pred:], label=None, c=obs_color)
+        for i in range(y_pred.shape[-1]):
+            ax.plot(x_pred, y_pred[:, i], label=f"predicted {i}", c=next(prop_cycle)["color"])
+        loss = self.loss(y.unsqueeze(0), y_pred.unsqueeze(0))
+        ax.set_title(f"Loss {loss:.3g}")
+        fig.legend()
+        return fig
 
     def _log_grad_flow(self, named_parameters):
         """
@@ -520,3 +525,10 @@ class TemporalFusionTransformer(pl.LightningModule):
         ax.set_yscale("log")
         ax.set_title("Gradient flow")
         self.logger.experiment.add_figure(f"Gradient flow", fig, global_step=self.global_step)
+
+    def _log_embeddings(self):
+        for idx, emb in self.input_embeddings.items():
+            name = self.hparams.categorical_labels[idx]
+            labels = self.hparams.embedding_labels[idx]
+            data = emb.weight.data
+            self.logger.experiment.add_embedding(data, metadata=labels, tag=name, global_step=self.global_step)
