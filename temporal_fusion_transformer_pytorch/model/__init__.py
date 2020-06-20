@@ -20,7 +20,6 @@ from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
 
 class TemporalFusionTransformer(pl.LightningModule):
     # TODO: support omissions of variables
-    # TODO: variable embedding size -> requires rethink of architecture as variables are currently summed up
     # TODO: refactor
     # TODO: docstrings and comments
     # TODO: asserts
@@ -389,6 +388,10 @@ class TemporalFusionTransformer(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         return self._epoch_end(outputs, label="val")
 
+    def on_train_end(self):
+        if self.hparams.log_interval > 0:
+            self._log_embeddings()
+
     def _step(self, batch, batch_idx, label="train", log_batch_idx=False):
         x, y = batch
         out = self(**x)
@@ -406,7 +409,9 @@ class TemporalFusionTransformer(pl.LightningModule):
         }
         if self.hparams.log_interval > 0:
             interpretation = self.interpret_output(
-                {name: tensor.detach().cpu() for name, tensor in out.items()}, average_batches=True
+                {name: tensor.detach().cpu() for name, tensor in out.items()},
+                average_batches=True,
+                attention_prediction_horizon=1,
             )
             log["interpretation"] = interpretation
 
@@ -426,22 +431,32 @@ class TemporalFusionTransformer(pl.LightningModule):
         avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
         if self.hparams.log_interval > 0:
             self._log_interpretation(outputs)
-            self._log_embeddings()
         tensorboard_logs = {f"avg_{label}_loss": avg_loss}
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
 
-    def interpret_output(self, out: Dict[str, torch.Tensor], average_batches: bool = False) -> Dict[str, torch.Tensor]:
+    def interpret_output(
+        self,
+        out: Dict[str, torch.Tensor],
+        average_batches: bool = False,
+        attention_prediction_horizon: Union[int, None] = None,
+    ) -> Dict[str, torch.Tensor]:
         if average_batches:
             average_dims = [0]
         else:
             average_dims = []
         # attention is batch x time x heads x time_to_attend
         # average over batches, heads + only keep prediction attention and attention on observed timesteps
-        attention = out["attention"][:, self.hparams.encode_length :, :, : self.hparams.encode_length].mean(
-            dim=average_dims + [2]
-        )
-        attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
-        attention = attention.mean(0)  # average attention over all predictions
+        if attention_prediction_horizon is None:  # average over all horizons
+            attention = out["attention"][:, self.hparams.encode_length :, :, : self.hparams.encode_length].mean(
+                dim=average_dims + [2]
+            )
+            attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
+            attention = attention.mean(0)  # average attention over all predictions
+        else:
+            attention = out["attention"][
+                :, self.hparams.encode_length + attention_prediction_horizon - 1, :, : self.hparams.encode_length
+            ].mean(dim=average_dims + [1])
+            attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
 
         interpretation = dict(
             attention=attention,

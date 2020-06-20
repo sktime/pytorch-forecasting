@@ -98,7 +98,6 @@ class VariableSelectionNetwork(nn.Module):
         """
         Calcualte weights for ``num_inputs`` variables  which are each of size ``input_size``
         """
-        # todo: refactor to take
         super().__init__()
 
         self.hidden_size = hidden_size
