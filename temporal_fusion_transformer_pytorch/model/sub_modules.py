@@ -55,12 +55,12 @@ class GateAddNorm(nn.Module):
 
 class GatedResidualNetwork(nn.Module):
     def __init__(
-        self, input_size, hidden_size, output_size, dropout=0.1, context=None,
+        self, input_size, hidden_size, output_size, dropout=0.1, context_size=None,
     ):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
-        self.context = context
+        self.context_size = context_size
         self.hidden_size = hidden_size
         self.dropout = dropout
 
@@ -70,8 +70,8 @@ class GatedResidualNetwork(nn.Module):
         self.fc1 = nn.Linear(self.input_size, self.hidden_size)
         self.elu1 = nn.ELU()
 
-        if self.context is not None:
-            self.context = nn.Linear(self.context, self.hidden_size)
+        if self.context_size is not None:
+            self.context = nn.Linear(self.context_size, self.hidden_size)
 
         self.fc2 = nn.Linear(self.hidden_size, self.output_size)
         self.elu2 = nn.ELU()
@@ -94,7 +94,7 @@ class GatedResidualNetwork(nn.Module):
 
 
 class VariableSelectionNetwork(nn.Module):
-    def __init__(self, input_sizes, hidden_size, dropout=0.1, context=None):
+    def __init__(self, input_sizes, hidden_size, dropout=0.1, context_size=None):
         """
         Calcualte weights for ``num_inputs`` variables  which are each of size ``input_size``
         """
@@ -104,11 +104,11 @@ class VariableSelectionNetwork(nn.Module):
         self.hidden_size = hidden_size
         self.input_sizes = input_sizes
         self.dropout = dropout
-        self.context = context
+        self.context_size = context_size
 
-        if self.context is not None:
+        if self.context_size is not None:
             self.flattened_grn = GatedResidualNetwork(
-                sum(self.input_sizes), self.hidden_size, self.num_inputs, self.dropout, self.context,
+                sum(self.input_sizes), self.hidden_size, self.num_inputs, self.dropout, self.context_size,
             )
         else:
             self.flattened_grn = GatedResidualNetwork(

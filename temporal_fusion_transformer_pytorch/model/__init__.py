@@ -89,7 +89,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             + [self.hparams.hidden_continuous_size for _ in self.hparams.time_varying_reals_encoder],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
-            context=self.hparams.hidden_size,
+            context_size=self.hparams.hidden_size,
         )
 
         # variable selection for decoder
@@ -100,7 +100,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             + [self.hparams.hidden_continuous_size for _ in self.hparams.time_varying_reals_decoder],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
-            context=self.hparams.hidden_size,
+            context_size=self.hparams.hidden_size,
         )
 
         # static encoders
@@ -137,7 +137,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             hidden_size=self.hparams.hidden_size,
             output_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
-            context=self.hparams.hidden_size,
+            context_size=self.hparams.hidden_size,
         )
 
         # lstm encoder (history) and decoder (future)
