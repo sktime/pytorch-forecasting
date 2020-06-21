@@ -94,15 +94,11 @@ training = TimeSeriesDataSet(
 
 validation = TimeSeriesDataSet.from_dataset(training, data[lambda x: x.date >= validation_cutoff])
 
-batch_size = 64
-train_loader = DataLoader(training, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True)
-val_loader = DataLoader(validation, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True)
-
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
 trainer = pl.Trainer(
     max_epochs=30,
     gpus=0,
-    weights_summary="full",
+    weights_summary="top",
     # track_grad_norm=2,
     gradient_clip_val=0.5,
     early_stop_callback=early_stop_callback,
@@ -117,8 +113,13 @@ trainer = pl.Trainer(
 )
 
 tft = TemporalFusionTransformer.from_dataset(training, learning_rate=2e-3)
+tft.size()
+trainer.fit(
+    tft,
+    train_dataloader=training.to_dataloader(train=True, batch_size=64, num_workers=1),
+    val_dataloaders=validation.to_dataloader(train=False, batch_size=64, num_workers=1),
+)
 
-trainer.fit(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
 # log hparams
 trainer.logger.experiment.add_hparams(
     {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},

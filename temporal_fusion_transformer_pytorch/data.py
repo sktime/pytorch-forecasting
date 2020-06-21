@@ -2,7 +2,9 @@ import inspect
 from typing import Union, Dict, List, Tuple
 import pandas as pd
 import numpy as np
-from torch.utils.data import Dataset
+import torch
+from torch.nn.utils import rnn
+from torch.utils.data import Dataset, DataLoader
 
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 
@@ -24,6 +26,7 @@ class TimeSeriesDataSet(Dataset):
         time_varying_known_reals: List[str] = [],
         time_varying_unknown_categoricals: List[str] = [],
         time_varying_unknown_reals: List[str] = [],
+        add_relative_time_idx: bool = True,
         fill_stragegy={},
         categoricals_encoders={},
         scalers={},
@@ -44,6 +47,7 @@ class TimeSeriesDataSet(Dataset):
         self.time_varying_known_reals = time_varying_known_reals
         self.time_varying_unknown_categoricals = time_varying_unknown_categoricals
         self.time_varying_unknown_reals = time_varying_unknown_reals
+        self.add_relative_time_idx = add_relative_time_idx
         assert (
             self.target in self.time_varying_unknown_reals
         ), "target should be an unknown continuous variable in the future"
@@ -63,6 +67,15 @@ class TimeSeriesDataSet(Dataset):
         # scale continuous variables
         self.scalers = scalers
         self.data["__time_idx__"] = self.data[self.time_idx]  # save unscaled
+        self.data["__target__"] = self.data[self.target]
+
+        # add time index relative to prediction position
+        if self.add_relative_time_idx:
+            if "relative_time_idx" not in self.time_varying_known_reals:
+                self.time_varying_known_reals.append("relative_time_idx")
+            self.data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __get_item__()
+
+        # rescale continuous variables
         for name in self.reals:
             if name not in self.scalers:
                 if name == self.time_idx:
@@ -120,7 +133,7 @@ class TimeSeriesDataSet(Dataset):
 
         # filter out where encode and decode length are not satisfied
         encoded = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
-        filter = encoded == self.max_encode_length + self.max_prediction_length
+        filter = encoded > self.max_prediction_length
         assert filter.sum() > 0, "no samples are remaining after applying the filter"
         df_index = df_index[filter]  # todo: do not filter
         return df_index
@@ -130,11 +143,49 @@ class TimeSeriesDataSet(Dataset):
         return self.data_index.shape[0]
 
     def __getitem__(self, idx):
-        data = self.data.iloc[self.data_index.index_start.iloc[idx] : self.data_index.index_end.iloc[idx] + 1]
+        data = self.data.iloc[self.data_index.index_start.iloc[idx] : self.data_index.index_end.iloc[idx] + 1].copy()
 
         # todo: handle missings
-        # todo: add indicator about how many encodes
+        # todo: randomize for augmentation
+        target = data["__target__"].to_numpy(dtype=np.float32)
+        encode_length = min(len(target) - self.max_prediction_length, self.max_encode_length)
+        decode_length = len(target) - encode_length
+
+        if self.add_relative_time_idx:
+            data["relative_time_idx"] = np.arange(-encode_length, decode_length, dtype=float) / self.max_encode_length
         categoricals = data[self.categoricals].to_numpy(np.long)
-        reals = data[self.reals].to_numpy(dtype=np.float32)
-        target = data[self.target].to_numpy(dtype=np.float32)[-self.max_prediction_length :]
-        return dict(x_cat=categoricals, x_cont=reals), target
+        reals = data[self.reals + ["__target__"]].to_numpy(dtype=np.float32)
+
+        return dict(x_cat=categoricals, x_cont=reals, encode_length=encode_length), target[encode_length:]
+
+    def _collate_fn(self, batches):
+        encode_lengths = torch.LongTensor([batch[0]["encode_length"] for batch in batches])
+        decode_lengths = torch.LongTensor([len(batch[1]) for batch in batches])
+
+        encoder_cont = rnn.pad_sequence(
+            [torch.Tensor(batch[0]["x_cont"][:length]) for length, batch in zip(encode_lengths, batches)],
+            batch_first=True,
+        )
+        encoder_cat = rnn.pad_sequence(
+            [torch.LongTensor(batch[0]["x_cat"][:length]) for length, batch in zip(encode_lengths, batches)],
+            batch_first=True,
+        )
+        decoder_cont = rnn.pad_sequence(
+            [torch.Tensor(batch[0]["x_cont"][length:]) for length, batch in zip(encode_lengths, batches)],
+            batch_first=True,
+        )
+        decoder_cat = rnn.pad_sequence(
+            [torch.LongTensor(batch[0]["x_cat"][length:]) for length, batch in zip(encode_lengths, batches)],
+            batch_first=True,
+        )
+
+        target = rnn.pack_sequence([torch.Tensor(batch[1]) for batch in batches], enforce_sorted=False)
+        x_cat = torch.cat((encoder_cat, decoder_cat), dim=1)
+        x_cont = torch.cat((encoder_cont, decoder_cont), dim=1)
+        return (
+            dict(x_cat=x_cat, x_cont=x_cont, encode_lengths=encode_lengths, decode_lengths=decode_lengths),
+            target,
+        )
+
+    def to_dataloader(self, train=True, **kwargs):
+        return DataLoader(self, shuffle=train, drop_last=train, collate_fn=self._collate_fn, **kwargs)

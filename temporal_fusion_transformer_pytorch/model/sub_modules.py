@@ -65,13 +65,13 @@ class GatedResidualNetwork(nn.Module):
         self.dropout = dropout
 
         if self.input_size != self.output_size:
-            self.skip_layer = nn.Linear(self.input_size, self.output_size)
+            self.skip_layer = nn.Linear(self.input_size, self.output_size, bias=False)
 
         self.fc1 = nn.Linear(self.input_size, self.hidden_size)
         self.elu1 = nn.ELU()
 
         if self.context_size is not None:
-            self.context = nn.Linear(self.context_size, self.hidden_size)
+            self.context = nn.Linear(self.context_size, self.hidden_size, bias=False)
 
         self.fc2 = nn.Linear(self.hidden_size, self.output_size)
         self.elu2 = nn.ELU()
@@ -177,15 +177,11 @@ class ScaledDotProductAttention(nn.Module):
         if self.scale:
             dimension = torch.sqrt(torch.tensor(k.shape[-1]).to(torch.float32))
             attn = attn / dimension
-
         if mask is not None:
-            attn = attn.masked_fill(mask == 0, -1e9)
-
+            attn = attn.masked_fill(mask, -1e9)
         attn = self.softmax(attn)
         attn = self.dropout(attn)
-
         output = torch.bmm(attn, v)
-
         return output, attn
 
 
