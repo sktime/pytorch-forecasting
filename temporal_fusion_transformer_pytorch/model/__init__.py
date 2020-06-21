@@ -26,6 +26,9 @@ class TemporalFusionTransformer(pl.LightningModule):
     # TODO: asserts
     # TODO: different sequence lengths
     # TODO: dependence plot logging
+    # todo: weights
+    # todo: poisson/negative binomial
+    # prediction with df
     def __init__(
         self,
         encode_length: int = 10,
@@ -334,17 +337,28 @@ class TemporalFusionTransformer(pl.LightningModule):
             embeddings_varying_decoder, static_context_variable_selection[:, self.hparams.encode_length :],
         )
         # LSTM
+        # run lstm at least once, i.e. encode length has to be > 0
+        lstm_encode_lengths = encode_lengths.where(encode_lengths > 0, torch.ones_like(encode_lengths))
+        # calculate initial state
+        input_hidden = self.static_context_initial_hidden_lstm(static_embedding).expand(
+            self.hparams.lstm_layers, -1, -1
+        )
+        input_cell = self.static_context_initial_cell_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1)
+
+        # run local encoder
         encoder_output, (hidden, cell) = self.lstm_encoder(
             rnn.pack_padded_sequence(
-                embeddings_varying_encoder, encode_lengths, enforce_sorted=False, batch_first=True
+                embeddings_varying_encoder, lstm_encode_lengths, enforce_sorted=False, batch_first=True
             ),
-            (
-                self.static_context_initial_hidden_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1),
-                self.static_context_initial_cell_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1),
-            ),
+            (input_hidden, input_cell),
         )
         encoder_output, _ = rnn.pad_packed_sequence(encoder_output, batch_first=True)
+        # replace hidden cell with initial input if encode_length is zero to determine correct initial state
+        no_encoding = (encode_lengths > 0)[None, :, None]
+        hidden = hidden.masked_scatter(no_encoding, input_hidden)
+        cell = cell.masked_scatter(no_encoding, input_cell)
 
+        # run local decoder
         decoder_output, _ = self.lstm_decoder(
             rnn.pack_padded_sequence(
                 embeddings_varying_decoder, decode_lengths, enforce_sorted=False, batch_first=True
@@ -478,15 +492,15 @@ class TemporalFusionTransformer(pl.LightningModule):
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze()
         encode_mask = torch.arange(encoder_variables.size(1)).unsqueeze(0) >= out["encode_lengths"].unsqueeze(-1)
-        encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(
-            dim=1
-        ) / encode_mask.logical_not().sum(dim=1).unsqueeze(-1)
+        encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
+        encoder_variables /= (
+            out["encode_lengths"].where(out["encode_lengths"] > 0, torch.ones_like(out["encode_lengths"])).unsqueeze(-1)
+        )
 
         decoder_variables = out["decoder_variables"].squeeze()
         decode_mask = torch.arange(decoder_variables.size(1)).unsqueeze(0) >= out["decode_lengths"].unsqueeze(-1)
-        decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(
-            dim=1
-        ) / decode_mask.logical_not().sum(dim=1).unsqueeze(-1)
+        decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
+        decoder_variables /= out["decode_lengths"].unsqueeze(-1)
 
         # static variables need no masking
         static_variables = out["static_variables"].squeeze()

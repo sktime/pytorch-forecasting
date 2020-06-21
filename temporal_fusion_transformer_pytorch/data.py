@@ -12,6 +12,8 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
 class TimeSeriesDataSet(Dataset):
     """Dataset Basic Structure for Temporal Fusion Transformer"""
 
+    # todo: automatic skew
+    # todo: augmentation
     def __init__(
         self,
         data,
@@ -97,7 +99,7 @@ class TimeSeriesDataSet(Dataset):
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
     @staticmethod
-    def from_dataset(dataset, data):
+    def from_dataset(dataset, data: pd.DataFrame, randomize_sequence_length: bool = False):
         kwargs = {
             name: getattr(dataset, name)
             for name in inspect.signature(TimeSeriesDataSet).parameters.keys()
@@ -130,12 +132,6 @@ class TimeSeriesDataSet(Dataset):
         for _ in range(df_index["count"].max()):
             new_end_time = df_index[["time", "time_diff_to_next"]].iloc[df_index["index_end"]].sum(axis=1).to_numpy()
             df_index["index_end"] = df_index["index_end"].where(new_end_time + 1 > max_time, df_index["index_end"] + 1)
-
-        # filter out where encode and decode length are not satisfied
-        encoded = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
-        filter = encoded > self.max_prediction_length
-        assert filter.sum() > 0, "no samples are remaining after applying the filter"
-        df_index = df_index[filter]  # todo: do not filter
         return df_index
 
     def __len__(self):
@@ -148,7 +144,7 @@ class TimeSeriesDataSet(Dataset):
         # todo: handle missings
         # todo: randomize for augmentation
         target = data["__target__"].to_numpy(dtype=np.float32)
-        encode_length = min(len(target) - self.max_prediction_length, self.max_encode_length)
+        encode_length = min(max(0, len(target) - self.max_prediction_length), self.max_encode_length)
         decode_length = len(target) - encode_length
 
         if self.add_relative_time_idx:
