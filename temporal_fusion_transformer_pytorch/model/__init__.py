@@ -21,26 +21,22 @@ from temporal_fusion_transformer_pytorch.utils import integer_histogram
 
 
 class TemporalFusionTransformer(pl.LightningModule):
-    # TODO: support omissions of variables
-    # TODO: refactor
-    # TODO: docstrings and comments
-    # TODO: asserts
-    # TODO: different sequence lengths
     # TODO: dependence plot logging
     # todo: weights
     # todo: poisson/negative binomial
-    # prediction with df
+    # todo: learning rate scheduler
+    # todo: prediction with df
     def __init__(
         self,
-        encode_length: int = 10,
-        target_idx: int = 0,
         hidden_size: int = 16,
         lstm_layers: int = 2,
         dropout: float = 0.1,
         hidden_continuous_size: int = 16,
-        output_size: int = 3,
-        loss=QuantileLoss([0.1, 0.5, 0.9]),
+        output_size: int = 5,
+        loss=QuantileLoss([0.1, 0.25, 0.5, 0.75, 0.9]),
         attn_heads: int = 4,
+        encode_length: int = 10,
+        target_idx: int = 0,
         static_categoricals: List[int] = [],
         static_reals: List[int] = [],
         time_varying_categoricals_encoder: List[int] = [],
@@ -52,8 +48,39 @@ class TemporalFusionTransformer(pl.LightningModule):
         real_labels: Dict[str, str] = {},
         categorical_labels: Dict[str, str] = {},
         learning_rate: float = 1e-3,
-        log_interval: int = 25,
+        log_interval: int = 10,
+        log_gradient_flow: bool = False,
     ):
+        """
+        Temporal Fusion Transformer for forecasting timeseries
+
+        Args:
+
+            hidden_size: hidden size of network which is its main hyperparameter and can range from 8 to 512
+            lstm_layers: number of LSTM layers (2 is mostly optimal)
+            dropout: dropout rate
+            hidden_continuous_size: hidden size for processing continous variables (similar to categorical
+                embedding size)
+            output_size: output size (e.g. for multiple quantiles as outputs)
+            loss: loss function taking prediction and targets
+            attn_heads: number of attention heads (4 is a good default)
+            encode_length: length to encode
+            target_idx: index of continuous target variable
+            static_categoricals: integer of positions of static categorical variables
+            static_reals: integer of positions of static continuous variables
+            time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
+            time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
+            time_varying_reals_encoder: integer of positions of continuous variables for encoder
+            time_varying_reals_decoder: integer of positions of continuous variables for decoder
+            embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
+                embedding size
+            embedding_labels: dictionary mapping (string) indices to list of categorical labels
+            real_labels: dictionary mapping (string) indices to continuous variable names
+            categorical_labels: dictionary mapping (string) indices to categorical variable names
+            learning_rate: learning rate
+            log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0
+            log_gradient_flow: if to log gradient flow
+        """
         super().__init__()
         self.save_hyperparameters()  # store all arguments
         # store loss function separately as it is a module
@@ -428,17 +455,21 @@ class TemporalFusionTransformer(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
 
     def training_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, label="train", log_batch_idx=False)
+        return self._step(batch, batch_idx, label="train")
 
     def on_after_backward(self):
-        if self.global_step % self.hparams.log_interval == 0 and self.hparams.log_interval > 0:
-            self._log_grad_flow(self.named_parameters())
+        if (
+            self.global_step % self.hparams.log_interval == 0
+            and self.hparams.log_interval > 0
+            and self.hparams.log_gradient_flow
+        ):
+            self._log_gradient_flow(self.named_parameters())
 
     def training_epoch_end(self, outputs):
         return self._epoch_end(outputs, label="train")
 
     def validation_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, label="val", log_batch_idx=True)
+        return self._step(batch, batch_idx, label="val")
 
     def validation_epoch_end(self, outputs):
         return self._epoch_end(outputs, label="val")
@@ -447,7 +478,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         if self.hparams.log_interval > 0:
             self._log_embeddings()
 
-    def _step(self, batch, batch_idx, label="train", log_batch_idx=False):
+    def _step(self, batch, batch_idx, label="train"):
         """
         run at each step for training or validation
         """
@@ -485,7 +516,7 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # log single prediction figure
         if batch_idx % self.hparams.log_interval == 0 and self.hparams.log_interval > 0:
-            y_all = x["x_cont"][0, ..., self.hparams.target_idx]
+            y_all = x["x_cont"][0, ..., self.hparams.target_idx]  # all true values for y of the first sample in batch
             fig = self.plot_prediction(
                 torch.cat(
                     (
@@ -493,10 +524,12 @@ class TemporalFusionTransformer(pl.LightningModule):
                         y_all[self.hparams.encode_length : (self.hparams.encode_length + x["decode_lengths"][0])],
                     ),
                 ),
-                y_hat[: x["decode_lengths"][0]].detach().cpu(),
+                y_hat[0, : x["decode_lengths"][0]].detach().cpu(),
             )  # first in batch
             tag = f"{label.capitalize()} prediction"
-            if log_batch_idx:
+            if label == "train":
+                tag += f" of item 0 in global batch {self.global_step}"
+            else:
                 tag += f" of item 0 in batch {batch_idx}"
             self.logger.experiment.add_figure(
                 tag, fig, global_step=self.global_step,
@@ -674,17 +707,26 @@ class TemporalFusionTransformer(pl.LightningModule):
         x_pred = np.arange(y.shape[0] - n_pred, y.shape[0])
         prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
         obs_color = next(prop_cycle)["color"]
-        ax.plot(x_obs, y[:-n_pred], label="observed", c=obs_color)
+        if len(x_obs) > 0:
+            if len(x_obs) > 1:
+                plotter = ax.plot
+            else:
+                plotter = ax.scatter
+            plotter(x_obs, y[:-n_pred], label="observed", c=obs_color)
+        if len(x_pred) > 1:
+            plotter = ax.plot
+        else:
+            plotter = ax.scatter
         ax.plot(x_pred, y[-n_pred:], label=None, c=obs_color)
         for i in range(y_hat.shape[-1]):
-            ax.plot(x_pred, y_hat[:, i], label=f"predicted {i}", c=next(prop_cycle)["color"])
+            plotter(x_pred, y_hat[:, i], label=f"predicted {i}", c=next(prop_cycle)["color"])
         loss = self.loss(y_hat.unsqueeze(0), y[-n_pred:].unsqueeze(0))
         ax.set_title(f"Loss {loss:.3g}")
         ax.set_xlabel("Time index")
         fig.legend()
         return fig
 
-    def _log_grad_flow(self, named_parameters):
+    def _log_gradient_flow(self, named_parameters):
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """

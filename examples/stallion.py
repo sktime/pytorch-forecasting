@@ -96,24 +96,21 @@ validation = TimeSeriesDataSet.from_dataset(training, data[lambda x: x.date >= v
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
 trainer = pl.Trainer(
-    max_epochs=30,
+    max_epochs=1,
     gpus=0,
     weights_summary="top",
-    # track_grad_norm=2,
     gradient_clip_val=0.5,
     early_stop_callback=early_stop_callback,
     # train_percent_check = 0.01,
     # val_percent_check = 0.01,
     # test_percent_check = 0.01,
-    fast_dev_run=True,
+    # fast_dev_run=True,
     # profiler=True,
-    # print_nan_grads = True,
-    # distributed_backend='dp',
     # logger=logger,
 )
 
-tft = TemporalFusionTransformer.from_dataset(training, learning_rate=2e-3)
-tft.size()
+tft = TemporalFusionTransformer.from_dataset(training, learning_rate=2e-2)
+print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 trainer.fit(
     tft,
     train_dataloader=training.to_dataloader(train=True, batch_size=64, num_workers=1),
@@ -126,7 +123,11 @@ trainer.logger.experiment.add_hparams(
     {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
 )
 
-# res = trainer.lr_find(tft, train_dataloader=train_loader, val_dataloaders=val_loader)
-
-# fig = res.plot(show=True, suggest=True)
+# res = trainer.lr_find(
+#     tft,
+#     train_dataloader=training.to_dataloader(train=True, batch_size=64, num_workers=1),
+#     val_dataloaders=validation.to_dataloader(train=False, batch_size=64, num_workers=1),
+# )
 #
+# fig = res.plot(show=True, suggest=True)
+# res.suggestion()

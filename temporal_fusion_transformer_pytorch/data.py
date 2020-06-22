@@ -14,7 +14,8 @@ class TimeSeriesDataSet(Dataset):
     """Dataset Basic Structure for Temporal Fusion Transformer"""
 
     # todo: automatic skew
-    # todo: augmentation
+    # todo: handle missings
+    # TODO: support omissions of variables, e.g. SKU empty
     def __init__(
         self,
         data,
@@ -148,7 +149,6 @@ class TimeSeriesDataSet(Dataset):
         data = self.data.iloc[self.data_index.index_start.iloc[idx] : self.data_index.index_end.iloc[idx] + 1].copy()
 
         # todo: handle missings -> fill them up with strategy
-        # todo: randomize for augmentation
         # determine data window
         sequence_length = len(data)
         max_prediction_length = self.max_prediction_length
