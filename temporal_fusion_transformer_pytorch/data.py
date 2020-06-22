@@ -18,11 +18,13 @@ class TimeSeriesDataSet(Dataset):
     # TODO: support omissions of variables, e.g. SKU empty
     def __init__(
         self,
-        data,
+        data: pd.DataFrame,
         time_idx: str,
         target: str,
         group_ids: List[str],
         max_encode_length: int,
+        min_prediction_idx: int = None,
+        min_prediction_length: int = 1,
         max_prediction_length: int = 1,
         static_categoricals: List[str] = [],
         static_reals: List[str] = [],
@@ -36,13 +38,34 @@ class TimeSeriesDataSet(Dataset):
         scalers={},
         randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
     ):
-        super().__init__()
         """
+
         Args:
-            csv_file (string): Path to the csv file with annotations.
+            data:
+            time_idx:
+            target:
+            group_ids:
+            max_encode_length:
+            min_prediction_idx:
+            min_prediction_length:
+            max_prediction_length:
+            static_categoricals:
+            static_reals:
+            time_varying_known_categoricals:
+            time_varying_known_reals:
+            time_varying_unknown_categoricals:
+            time_varying_unknown_reals:
+            add_relative_time_idx:
+            fill_stragegy:
+            categoricals_encoders:
+            scalers:
+            randomize_length:
         """
+        super().__init__()
         self.max_encode_length = max_encode_length
         self.max_prediction_length = max_prediction_length
+        self.min_prediction_length = min_prediction_length
+        assert self.min_prediction_length > 0, "prediction length must be larger than 0"
         self.target = target
         self.time_idx = time_idx
         self.group_ids = group_ids
@@ -54,13 +77,17 @@ class TimeSeriesDataSet(Dataset):
         self.time_varying_unknown_reals = time_varying_unknown_reals
         self.add_relative_time_idx = add_relative_time_idx
         self.randomize_length = randomize_length
+        self.min_prediction_idx = min_prediction_idx or data[self.time_idx].min()
+
         assert (
             self.target in self.time_varying_unknown_reals
         ), "target should be an unknown continuous variable in the future"
         self.fill_stragegy = fill_stragegy
 
         # set data
-        self.data = data.sort_values(self.group_ids + [self.time_idx])
+        self.data = data[
+            lambda x: (x[self.time_idx] >= self.min_prediction_idx - self.max_encode_length)  # limit data
+        ].sort_values(self.group_ids + [self.time_idx])
 
         # encode categoricals
         self.categoricals_encoders = categoricals_encoders
@@ -103,7 +130,7 @@ class TimeSeriesDataSet(Dataset):
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
     @staticmethod
-    def from_dataset(dataset, data: pd.DataFrame, stop_randomization: bool = True):
+    def from_dataset(dataset, data: pd.DataFrame, stop_randomization: bool = True, **update_kwargs):
         kwargs = {
             name: getattr(dataset, name)
             for name in inspect.signature(TimeSeriesDataSet).parameters.keys()
@@ -113,6 +140,7 @@ class TimeSeriesDataSet(Dataset):
         kwargs["scalers"] = dataset.scalers
         if stop_randomization:
             kwargs["randomize_length"] = None
+        kwargs.update(update_kwargs)
 
         new = TimeSeriesDataSet(data, **kwargs)
         return new
@@ -138,6 +166,16 @@ class TimeSeriesDataSet(Dataset):
         for _ in range(df_index["count"].max()):
             new_end_time = df_index[["time", "time_diff_to_next"]].iloc[df_index["index_end"]].sum(axis=1).to_numpy()
             df_index["index_end"] = df_index["index_end"].where(new_end_time + 1 > max_time, df_index["index_end"] + 1)
+
+        # filter out where encode and decode length are not satisfied
+        df_index["sequence_length"] = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
+        df_index = df_index[
+            # sequence must be at least of minimal prediction length
+            lambda x: (x.sequence_length > self.min_prediction_length)
+            &
+            # prediction must be for after minimal prediction index + length of prediction
+            (new_end_time >= self.min_prediction_idx - 1 + self.min_prediction_length)
+        ]
         return df_index
 
     def __len__(self):
@@ -145,23 +183,41 @@ class TimeSeriesDataSet(Dataset):
         return self.data_index.shape[0]
 
     def __getitem__(self, idx):
+        index = self.data_index.iloc[idx]
         # get index data
-        data = self.data.iloc[self.data_index.index_start.iloc[idx] : self.data_index.index_end.iloc[idx] + 1].copy()
+        data = self.data.iloc[index.index_start : index.index_end + 1].copy()
 
         # todo: handle missings -> fill them up with strategy
         # determine data window
         sequence_length = len(data)
-        max_prediction_length = self.max_prediction_length
-        if self.randomize_length is not None:
-            # modify sequence length
-            sequence_length_prob, encode_length_probability = Beta(*self.randomize_length).sample(torch.Size([2]))
-            sequence_length = int(max(1, Binomial(sequence_length, sequence_length_prob).sample()))
-            max_prediction_length = int(max(1, Binomial(max_prediction_length, encode_length_probability).sample()))
-            if sequence_length < len(data):
-                data = data.iloc[-sequence_length:]  # select subset of sequence
+        assert sequence_length >= self.min_prediction_length
+        # determine prediction/decode length and encode length
+        decode_length = min(
+            data.iloc[-1]["__time_idx__"] - (self.min_prediction_idx - 1), self.max_prediction_length, sequence_length
+        )
+        encode_length = sequence_length - decode_length
+        assert decode_length >= self.min_prediction_length
 
-        encode_length = min(max(0, sequence_length - max_prediction_length), self.max_encode_length)
-        decode_length = sequence_length - encode_length
+        if self.randomize_length is not None:  # randomization improves generalization
+            # modify encode and decode lengths
+            encode_length_probability, decode_length_probability = Beta(*self.randomize_length).sample(torch.Size([2]))
+
+            # subsample a new/smaller encode length
+            new_encode_length = int(Binomial(encode_length, encode_length_probability).sample())
+
+            # sample a new/smaller decode length
+            new_decode_length = int(
+                max(self.min_prediction_length, Binomial(decode_length, encode_length_probability).sample()),
+            )
+            # select subset of sequence of new sequence
+            if new_encode_length + new_decode_length < len(data):
+                data = data.iloc[encode_length - new_encode_length : encode_length + new_decode_length]
+                encode_length = new_encode_length
+                decode_length = new_decode_length
+
+        assert decode_length > 0
+        assert encode_length >= 0
+        assert data.iloc[-1]["__time_idx__"] - self.min_prediction_idx + 1 >= decode_length
 
         # extract data
         target = data["__target__"].to_numpy(dtype=np.float32)
