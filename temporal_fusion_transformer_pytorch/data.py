@@ -3,6 +3,7 @@ from typing import Union, Dict, List, Tuple
 import pandas as pd
 import numpy as np
 import torch
+from torch.distributions import Binomial, Beta
 from torch.nn.utils import rnn
 from torch.utils.data import Dataset, DataLoader
 
@@ -32,6 +33,7 @@ class TimeSeriesDataSet(Dataset):
         fill_stragegy={},
         categoricals_encoders={},
         scalers={},
+        randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
     ):
         super().__init__()
         """
@@ -50,6 +52,7 @@ class TimeSeriesDataSet(Dataset):
         self.time_varying_unknown_categoricals = time_varying_unknown_categoricals
         self.time_varying_unknown_reals = time_varying_unknown_reals
         self.add_relative_time_idx = add_relative_time_idx
+        self.randomize_length = randomize_length
         assert (
             self.target in self.time_varying_unknown_reals
         ), "target should be an unknown continuous variable in the future"
@@ -99,7 +102,7 @@ class TimeSeriesDataSet(Dataset):
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
     @staticmethod
-    def from_dataset(dataset, data: pd.DataFrame, randomize_sequence_length: bool = False):
+    def from_dataset(dataset, data: pd.DataFrame, stop_randomization: bool = True):
         kwargs = {
             name: getattr(dataset, name)
             for name in inspect.signature(TimeSeriesDataSet).parameters.keys()
@@ -107,6 +110,8 @@ class TimeSeriesDataSet(Dataset):
         }
         kwargs["categoricals_encoders"] = dataset.categoricals_encoders
         kwargs["scalers"] = dataset.scalers
+        if stop_randomization:
+            kwargs["randomize_length"] = None
 
         new = TimeSeriesDataSet(data, **kwargs)
         return new
@@ -139,14 +144,27 @@ class TimeSeriesDataSet(Dataset):
         return self.data_index.shape[0]
 
     def __getitem__(self, idx):
+        # get index data
         data = self.data.iloc[self.data_index.index_start.iloc[idx] : self.data_index.index_end.iloc[idx] + 1].copy()
 
-        # todo: handle missings
+        # todo: handle missings -> fill them up with strategy
         # todo: randomize for augmentation
-        target = data["__target__"].to_numpy(dtype=np.float32)
-        encode_length = min(max(0, len(target) - self.max_prediction_length), self.max_encode_length)
-        decode_length = len(target) - encode_length
+        # determine data window
+        sequence_length = len(data)
+        max_prediction_length = self.max_prediction_length
+        if self.randomize_length is not None:
+            # modify sequence length
+            sequence_length_prob, encode_length_probability = Beta(*self.randomize_length).sample(torch.Size([2]))
+            sequence_length = int(max(1, Binomial(sequence_length, sequence_length_prob).sample()))
+            max_prediction_length = int(max(1, Binomial(max_prediction_length, encode_length_probability).sample()))
+            if sequence_length < len(data):
+                data = data.iloc[-sequence_length:]  # select subset of sequence
 
+        encode_length = min(max(0, sequence_length - max_prediction_length), self.max_encode_length)
+        decode_length = sequence_length - encode_length
+
+        # extract data
+        target = data["__target__"].to_numpy(dtype=np.float32)
         if self.add_relative_time_idx:
             data["relative_time_idx"] = np.arange(-encode_length, decode_length, dtype=float) / self.max_encode_length
         categoricals = data[self.categoricals].to_numpy(np.long)
@@ -183,5 +201,5 @@ class TimeSeriesDataSet(Dataset):
             target,
         )
 
-    def to_dataloader(self, train=True, **kwargs):
+    def to_dataloader(self, train: bool = True, **kwargs):
         return DataLoader(self, shuffle=train, drop_last=train, collate_fn=self._collate_fn, **kwargs)

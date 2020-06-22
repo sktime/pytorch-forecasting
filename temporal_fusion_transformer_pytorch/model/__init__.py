@@ -17,6 +17,7 @@ from temporal_fusion_transformer_pytorch.model.sub_modules import (
 
 from temporal_fusion_transformer_pytorch.model.metrics import QuantileLoss
 from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
+from temporal_fusion_transformer_pytorch.utils import integer_histogram
 
 
 class TemporalFusionTransformer(pl.LightningModule):
@@ -54,7 +55,8 @@ class TemporalFusionTransformer(pl.LightningModule):
         log_interval: int = 25,
     ):
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters()  # store all arguments
+        # store loss function separately as it is a module
         self.loss = loss
 
         # embeddings
@@ -197,7 +199,16 @@ class TemporalFusionTransformer(pl.LightningModule):
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
-        # categoricals
+        """
+        create model from dataset
+
+        Args:
+            dataset:
+            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+
+        Returns:
+            TemporalFusionTransformer
+        """
         start = 0
         length = len(dataset.static_categoricals)
         static_categoricals = list(range(start, length))
@@ -264,6 +275,9 @@ class TemporalFusionTransformer(pl.LightningModule):
         )
 
     def expand_static_context(self, context, timesteps):
+        """
+        add time dimension to static context
+        """
         return context[:, None].expand(-1, timesteps, -1)
 
     def get_attention_mask(self, encode_lengths: torch.LongTensor, decode_length: int):
@@ -434,12 +448,17 @@ class TemporalFusionTransformer(pl.LightningModule):
             self._log_embeddings()
 
     def _step(self, batch, batch_idx, label="train", log_batch_idx=False):
+        """
+        run at each step for training or validation
+        """
+        # extract data and run model
         x, y = batch
         out = self(**x)
         y_hat = out["prediction"]
-        y_all = x["x_cont"][..., self.hparams.target_idx]
+        # calculate loss and log it
         loss = self.loss(y_hat, y)
         tensorboard_logs = {f"{label}_loss": loss}
+
         if label == "train":
             loss_label = "loss"
         else:
@@ -448,24 +467,33 @@ class TemporalFusionTransformer(pl.LightningModule):
             loss_label: loss,
             "log": tensorboard_logs,
         }
+
+        # calculate interpretations etc for latter logging
         if self.hparams.log_interval > 0:
+            detached_output = {name: tensor.detach().cpu() for name, tensor in out.items()}
             interpretation = self.interpret_output(
-                {name: tensor.detach().cpu() for name, tensor in out.items()},
+                detached_output,
                 average_batches=True,
                 attention_prediction_horizon=0,  # attention only for first prediction horizon
             )
             log["interpretation"] = interpretation
+            # histogram of decode and encode lengths
+            log["encode_length_histogram"] = integer_histogram(
+                x["encode_lengths"], min=0, max=self.hparams.encode_length
+            )
+            log["decode_length_histogram"] = integer_histogram(x["decode_lengths"], min=1, max=y_hat.size(1))
 
-        # log prediction figure
+        # log single prediction figure
         if batch_idx % self.hparams.log_interval == 0 and self.hparams.log_interval > 0:
+            y_all = x["x_cont"][0, ..., self.hparams.target_idx]
             fig = self.plot_prediction(
                 torch.cat(
                     (
-                        y_all[0, : x["encode_lengths"][0]],
-                        y_all[0, self.hparams.encode_length : (self.hparams.encode_length + x["decode_lengths"][0])],
+                        y_all[: x["encode_lengths"][0]],
+                        y_all[self.hparams.encode_length : (self.hparams.encode_length + x["decode_lengths"][0])],
                     ),
                 ),
-                y_hat[0, : x["decode_lengths"][0]].detach().cpu(),
+                y_hat[: x["decode_lengths"][0]].detach().cpu(),
             )  # first in batch
             tag = f"{label.capitalize()} prediction"
             if log_batch_idx:
@@ -476,10 +504,14 @@ class TemporalFusionTransformer(pl.LightningModule):
         return log
 
     def _epoch_end(self, outputs, label="train"):
+        """
+        run at epoch end for training or validation
+        """
         # log loss
         avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
         if self.hparams.log_interval > 0:
-            self._log_interpretation(outputs)
+            self._log_interpretation(outputs, label=label)
+            self._log_encode_decode_lengths(outputs, label=label)
         tensorboard_logs = {f"avg_{label}_loss": avg_loss}
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
 
@@ -489,6 +521,18 @@ class TemporalFusionTransformer(pl.LightningModule):
         average_batches: bool = False,
         attention_prediction_horizon: Union[int, None] = None,
     ) -> Dict[str, torch.Tensor]:
+        """
+        interpret output of model
+
+        Args:
+            out: output as produced by ``forward()``
+            average_batches: if to average over all batches
+            attention_prediction_horizon: if to average over all prediction horizons for attention or which one to
+                focus on
+
+        Returns:
+            interpretations that can be plotted with ``plot_interpretation()``
+        """
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze()
         encode_mask = torch.arange(encoder_variables.size(1)).unsqueeze(0) >= out["encode_lengths"].unsqueeze(-1)
@@ -534,6 +578,18 @@ class TemporalFusionTransformer(pl.LightningModule):
         return interpretation
 
     def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]) -> Dict[str, plt.Figure]:
+        """
+        make figures that interpret model:
+
+        * Attention
+        * Variable selection weights / importances
+
+        Args:
+            interpretation: as obtained from ``interpret_output()``
+
+        Returns:
+            dictionary of matplotlib figures
+        """
         figs = {}
 
         # attention
@@ -566,18 +622,52 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         return figs
 
-    def _log_interpretation(self, outputs, label="training"):
+    def _log_interpretation(self, outputs, label="train"):
+        """
+        log interpretation metrics to tensorboard
+        """
+        # extract interpretations
         interpretation = {
             name: torch.stack([x["interpretation"][name] for x in outputs]).mean(0)
             for name in outputs[0]["interpretation"].keys()
         }
-        figs = self.plot_interpretation(interpretation)
+        figs = self.plot_interpretation(interpretation)  # make interpretation figures
+        # log to tensorboard
         for name, fig in figs.items():
             self.logger.experiment.add_figure(
                 f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
             )
 
+    def _log_encode_decode_lengths(self, outputs, label="train"):
+        """
+        log decode and encode lengths in histograms on tensorboard
+        """
+        for type in ["encode", "decode"]:
+            fig, ax = plt.subplots()
+            lengths = torch.stack([out[f"{type}_length_histogram"] for out in outputs]).sum(0)
+            if type == "decode":
+                start = 1
+            else:
+                start = 0
+            ax.plot(torch.arange(start, start + len(lengths)), lengths)
+            ax.set_xlabel(f"{type.capitalize()} length")
+            ax.set_ylabel("Number of samples")
+            ax.set_title(f"{type.capitalize()} length distribution in {label} epoch")
+            self.logger.experiment.add_figure(
+                f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
+            )
+
     def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor) -> plt.Figure:
+        """
+        plot prediction of prediction vs actuals
+
+        Args:
+            y: all actual values
+            y_hat: predictions
+
+        Returns:
+            matplotlib figure
+        """
         fig, ax = plt.subplots()
         n_pred = y_hat.shape[0]
         x_obs = np.arange(y.shape[0] - n_pred)
@@ -614,6 +704,9 @@ class TemporalFusionTransformer(pl.LightningModule):
         self.logger.experiment.add_figure(f"Gradient flow", fig, global_step=self.global_step)
 
     def _log_embeddings(self):
+        """
+        log embeddings to tensorboard
+        """
         for idx, emb in self.input_embeddings.items():
             name = self.hparams.categorical_labels[idx]
             labels = self.hparams.embedding_labels[idx]
@@ -621,4 +714,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             self.logger.experiment.add_embedding(data, metadata=labels, tag=name, global_step=self.global_step)
 
     def size(self) -> int:
+        """
+        get number of parameters in model
+        """
         return sum(p.numel() for p in self.parameters())
