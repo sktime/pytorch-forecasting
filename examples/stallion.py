@@ -1,6 +1,5 @@
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.profiler import AdvancedProfiler
 
 from temporal_fusion_transformer_pytorch import TimeSeriesDataSet, TemporalFusionTransformer
 from pathlib import Path
@@ -43,7 +42,7 @@ data = (
 # minor feature engineering: add 12 month rolling mean volume
 data = data.assign(discount_in_percent=lambda x: (x.discount / x.price_regular).fillna(0) * 100)
 data["month"] = data.date.dt.month
-data["volume"] = np.log1p(data.volume)
+data["log_volume"] = np.log1p(data.volume)
 
 data["time_idx"] = data.date.dt.year * 12 + data.date.dt.month
 data["time_idx"] = data["time_idx"] - data["time_idx"].min()
@@ -88,7 +87,7 @@ training = TimeSeriesDataSet(
         "discount_in_percent",
     ],
     time_varying_unknown_categoricals=[],
-    time_varying_unknown_reals=["volume", "industry_volume", "soda_volume", "avg_max_temp"],
+    time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
     constant_fill_strategy={"volume": 0},
 )
 

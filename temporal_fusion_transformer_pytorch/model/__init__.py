@@ -179,7 +179,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             input_size=self.hparams.hidden_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.lstm_layers,
-            dropout=self.hparams.dropout,
+            dropout=self.hparams.dropout if self.hparams.lstm_layers > 1 else 0,
             batch_first=True,
         )
 
@@ -187,7 +187,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             input_size=self.hparams.hidden_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.lstm_layers,
-            dropout=self.hparams.dropout,
+            dropout=self.hparams.dropout if self.hparams.lstm_layers > 1 else 0,
             batch_first=True,
         )
 
