@@ -61,6 +61,7 @@ training = TimeSeriesDataSet(
     data[lambda x: x.date < training_cutoff],
     time_idx="time_idx",
     target="volume",
+    weight="volume",
     group_ids=["agency", "sku"],
     max_encode_length=max_encode_length,
     max_prediction_length=max_prediction_length,
@@ -111,7 +112,9 @@ trainer = pl.Trainer(
 )
 
 
-tft = TemporalFusionTransformer.from_dataset(training, learning_rate=0.02, hidden_size=32, loss=QuantileLoss(log_space=True))
+tft = TemporalFusionTransformer.from_dataset(
+    training, learning_rate=0.02, hidden_size=32, loss=QuantileLoss(log_space=True)
+)
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # find optimal learning rate

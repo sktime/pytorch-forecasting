@@ -74,6 +74,8 @@ class PoissonLoss(MultiHorizonMetric):
         return super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        if target.ndim == 3:
+            raise NotImplementedError("Weights are not supported for Poisson loss")
         return F.poisson_nll_loss(y_pred, target, log_input=True, full=False, eps=1e-6, reduction="none")
 
     @property
@@ -109,6 +111,13 @@ class QuantileLoss(MultiHorizonMetric):
         self.cummulative = cummulative
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        if target.ndim == 3:
+            weight = target[..., 1]
+            target = target[..., 0]
+        else:
+            weight = None
+
+        # prepare for cummulative
         if self.cummulative:
             if self.log_target:
                 y_pred = y_pred.exp().cumsum(dim=-2).log()
@@ -116,13 +125,19 @@ class QuantileLoss(MultiHorizonMetric):
             else:
                 y_pred = y_pred.cumsum(dim=-2)
                 target = target.cumsum(dim=-1)
+
+        # transform target into logspace
         if self.log_space:
             target = torch.log(target + 1e-6)  # todo: maybe it is better to transform the target?
+
+        # calculate quantile loss
         losses = []
         for i, q in enumerate(self.quantiles):
             errors = target - y_pred[..., i]
             losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(-1))
         losses = torch.cat(losses, dim=2)
+        if weight is not None:
+            losses = losses * weight.unsqueeze(-1)
         return losses
 
     @property

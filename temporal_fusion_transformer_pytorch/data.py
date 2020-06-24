@@ -22,7 +22,8 @@ class TimeSeriesDataSet(Dataset):
         time_idx: str,
         target: str,
         group_ids: List[str],
-        max_encode_length: int,
+        weight: Union[str, None] = None,
+        max_encode_length: int = 30,
         min_prediction_idx: int = None,
         min_prediction_length: int = 1,
         max_prediction_length: int = 1,
@@ -46,6 +47,7 @@ class TimeSeriesDataSet(Dataset):
             time_idx: integer column denoting the time index
             target: float column denoting the target
             group_ids: list of column names identifying a timeseries
+            weight: column name for weights
             max_encode_length: maximum length to encode
             min_prediction_idx: minimum time index from where to start predictions
             min_prediction_length: minimum prediction length
@@ -75,6 +77,7 @@ class TimeSeriesDataSet(Dataset):
         self.min_prediction_length = min_prediction_length
         assert self.min_prediction_length > 0, "prediction length must be larger than 0"
         self.target = target
+        self.weight = weight
         self.time_idx = time_idx
         self.group_ids = group_ids
         self.static_categoricals = static_categoricals
@@ -109,6 +112,8 @@ class TimeSeriesDataSet(Dataset):
         self.scalers = scalers
         self.data["__time_idx__"] = self.data[self.time_idx]  # save unscaled
         self.data["__target__"] = self.data[self.target]
+        if self.weight is not None:
+            self.data["__weight__"] = self.data[self.weight]
 
         # add time index relative to prediction position
         if self.add_relative_time_idx:
@@ -228,7 +233,10 @@ class TimeSeriesDataSet(Dataset):
         assert data.iloc[-1]["__time_idx__"] - self.min_prediction_idx + 1 >= decode_length
 
         # extract data
-        target = data["__target__"].to_numpy(dtype=np.float32)
+        if self.weight is None:
+            target = data["__target__"].to_numpy(dtype=np.float32)
+        else:
+            target = data[["__target__", "__weight__"]].to_numpy(dtype=np.float32)
         if self.add_relative_time_idx:
             data["relative_time_idx"] = np.arange(-encode_length, decode_length, dtype=float) / self.max_encode_length
         categoricals = data[self.categoricals].to_numpy(np.long)

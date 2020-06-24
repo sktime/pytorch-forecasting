@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Callable
+from typing import List, Dict, Tuple, Callable, Union
 
 import torch
 from torch import nn
@@ -22,8 +22,6 @@ from pytorch_ranger import Ranger
 
 class TemporalFusionTransformer(pl.LightningModule):
     # TODO: dependence plot logging
-    # todo: weights
-    # todo: poisson/negative binomial
     # todo: prediction with df
     def __init__(
         self,
@@ -31,10 +29,11 @@ class TemporalFusionTransformer(pl.LightningModule):
         lstm_layers: int = 1,
         dropout: float = 0.1,
         hidden_continuous_size: int = 8,
-        loss: MultiHorizonMetric = QuantileLoss([0.1, 0.25, 0.5, 0.75, 0.9]),
+        loss: MultiHorizonMetric = QuantileLoss(),
         attention_head_size: int = 4,
         max_encode_length: int = 10,
         target_idx: int = 0,
+        weight_idx: Union[None, int] = None,
         static_categoricals: List[int] = [],
         static_reals: List[int] = [],
         time_varying_categoricals_encoder: List[int] = [],
@@ -579,6 +578,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         static_variables = out["static_variables"].squeeze()
         # attention is batch x time x heads x time_to_attend
         # average over heads + only keep prediction attention and attention on observed timesteps
+        # todo: ensure interpretation is in line with paper
         attention = out["attention"][:, attention_prediction_horizon, :, : out["encode_lengths"].max()].mean(1)
         # reoder attention
         for i in range(len(attention)):  # very inefficient but does the trick
