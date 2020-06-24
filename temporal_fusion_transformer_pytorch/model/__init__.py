@@ -29,12 +29,12 @@ class TemporalFusionTransformer(pl.LightningModule):
     def __init__(
         self,
         hidden_size: int = 16,
-        lstm_layers: int = 2,
+        lstm_layers: int = 1,
         dropout: float = 0.1,
-        hidden_continuous_size: int = 16,
+        hidden_continuous_size: int = 8,
         output_size: int = 5,
         loss=QuantileLoss([0.1, 0.25, 0.5, 0.75, 0.9]),
-        attn_heads: int = 4,
+        attention_head_size: int = 4,
         max_encode_length: int = 10,
         target_idx: int = 0,
         static_categoricals: List[int] = [],
@@ -52,7 +52,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         log_gradient_flow: bool = False,
     ):
         """
-        Temporal Fusion Transformer for forecasting timeseries
+        Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to 
 
         Args:
 
@@ -63,7 +63,7 @@ class TemporalFusionTransformer(pl.LightningModule):
                 embedding size)
             output_size: output size (e.g. for multiple quantiles as outputs)
             loss: loss function taking prediction and targets
-            attn_heads: number of attention heads (4 is a good default)
+            attention_head_size: number of attention heads (4 is a good default)
             max_encode_length: length to encode
             target_idx: index of continuous target variable
             static_categoricals: integer of positions of static categorical variables
@@ -87,6 +87,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         # store loss function separately as it is a module
         self.loss = loss
 
+        # proessing inputs
         # embeddings
         self.input_embeddings = nn.ModuleDict()
         for i in set(
@@ -173,7 +174,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             context_size=self.hparams.hidden_size,
         )
 
-        # lstm encoder (history) and decoder (future)
+        # lstm encoder (history) and decoder (future) for local processing
         self.lstm_encoder = nn.LSTM(
             input_size=self.hparams.hidden_size,
             hidden_size=self.hparams.hidden_size,
@@ -193,9 +194,9 @@ class TemporalFusionTransformer(pl.LightningModule):
         # skip connection for lstm
         self.post_lstm_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
 
-        # attention
+        # attention for long-range processing
         self.multihead_attn = InterpretableMultiHeadAttention(
-            d_model=self.hparams.hidden_size, n_head=self.hparams.attn_heads, dropout=self.hparams.dropout
+            d_model=self.hparams.hidden_size, n_head=self.hparams.attention_head_size, dropout=self.hparams.dropout
         )
         self.post_attn_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
         self.pos_wise_ff = GatedResidualNetwork(
@@ -314,13 +315,13 @@ class TemporalFusionTransformer(pl.LightningModule):
         self_attn_inputs: Inputs to self attention layer to determine mask shape
         """
         # indices to which is attended
-        attend_step = torch.arange(decode_length)
+        attend_step = torch.arange(decode_length, device=self.device)
         # indices for which is predicted
-        predict_step = torch.arange(decode_length, 0, step=-1)[:, None]
+        predict_step = torch.arange(decode_length, 0, step=-1, device=self.device)[:, None]
         # do not attend to steps after to prediction
         decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
-        encoder_mask = torch.arange(encode_lengths.max())[None, :] >= encode_lengths[:, None]
+        encoder_mask = torch.arange(encode_lengths.max(), device=self.device)[None, :] >= encode_lengths[:, None]
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
@@ -330,7 +331,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             dim=2,
         )
 
-        return mask.to(self.device)
+        return mask
 
     def forward(
         self,

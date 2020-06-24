@@ -16,11 +16,7 @@ class GLU(nn.Module):
             self.dropout = nn.Dropout(dropout)
         else:
             self.dropout = dropout
-
-        if hidden_size is None:
-            self.hidden_size = input_size
-        else:
-            self.hidden_size = hidden_size
+        self.hidden_size = hidden_size or input_size
         self.fc1 = nn.Linear(input_size, self.hidden_size)
         self.fc2 = nn.Linear(input_size, self.hidden_size)
         self.sigmoid = nn.Sigmoid()
@@ -38,10 +34,7 @@ class GateAddNorm(nn.Module):
         super().__init__()
 
         self.input_size = input_size
-        if hidden_size is None:
-            self.hidden_size = input_size
-        else:
-            self.hidden_size = hidden_size
+        self.hidden_size = hidden_size or input_size
         self.dropout = dropout
 
         self.glu = GLU(self.input_size, hidden_size=self.hidden_size, dropout=self.dropout)
@@ -73,9 +66,9 @@ class GatedResidualNetwork(nn.Module):
         if self.context_size is not None:
             self.context = nn.Linear(self.context_size, self.hidden_size, bias=False)
 
-        self.fc2 = nn.Linear(self.hidden_size, self.output_size)
+        self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
         self.elu2 = nn.ELU()
-        self.gate_norm = GateAddNorm(self.output_size, dropout=self.dropout)
+        self.gate_norm = GateAddNorm(input_size=self.hidden_size, hidden_size=self.output_size, dropout=self.dropout)
 
     def forward(self, x, context=None):
         if self.input_size != self.output_size:

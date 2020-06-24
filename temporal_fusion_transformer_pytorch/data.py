@@ -33,33 +33,41 @@ class TimeSeriesDataSet(Dataset):
         time_varying_unknown_categoricals: List[str] = [],
         time_varying_unknown_reals: List[str] = [],
         add_relative_time_idx: bool = True,
-        fill_stragegy={},
+        constant_fill_strategy={},
         categoricals_encoders={},
         scalers={},
         randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
     ):
         """
+        Timeseries dataset
 
         Args:
-            data:
-            time_idx:
-            target:
-            group_ids:
-            max_encode_length:
-            min_prediction_idx:
-            min_prediction_length:
-            max_prediction_length:
-            static_categoricals:
-            static_reals:
-            time_varying_known_categoricals:
-            time_varying_known_reals:
-            time_varying_unknown_categoricals:
-            time_varying_unknown_reals:
-            add_relative_time_idx:
-            fill_stragegy:
-            categoricals_encoders:
-            scalers:
-            randomize_length:
+            data: dataframe with sequence data - each row can be identified with ``time_idx`` and the ``group_ids``
+            time_idx: integer column denoting the time index
+            target: float column denoting the target
+            group_ids: list of column names identifying a timeseries
+            max_encode_length: maximum length to encode
+            min_prediction_idx: minimum time index from where to start predictions
+            min_prediction_length: minimum prediction length
+            max_prediction_length: maximum prediction length (choose this not too short as it can help convergence)
+            static_categoricals: list of categorical variables that do not change over time
+            static_reals: list of continuous variables that do not change over time
+            time_varying_known_categoricals: list of categorical variables that change over
+                time and are know in the future
+            time_varying_known_reals: list of continuous variables that change over
+                time and are know in the future
+            time_varying_unknown_categoricals: list of categorical variables that change over
+                time and are not know in the future
+            time_varying_unknown_reals: list of continuous variables that change over
+                time and are not know in the future
+            add_relative_time_idx: if to add a relative time index as feature
+            constant_fill_strategy: dictionary of column names with constants to fill in missing values if there are
+                gaps in the sequence
+                (otherwise forward fill strategy is used)
+            categoricals_encoders: dictionary of scikit learn label transformers or None
+            scalers: dictionary of scikit learn scalers or None
+            randomize_length: None if not to randomize lengths. Tuple of beta distribution concentrations from which
+                probabilities are sampled that are used to sample new sequence lengths with a binomial distribution
         """
         super().__init__()
         self.max_encode_length = max_encode_length
@@ -82,7 +90,7 @@ class TimeSeriesDataSet(Dataset):
         assert (
             self.target in self.time_varying_unknown_reals
         ), "target should be an unknown continuous variable in the future"
-        self.fill_stragegy = fill_stragegy
+        self.constant_fill_strategy = constant_fill_strategy
 
         # set data
         self.data = data[

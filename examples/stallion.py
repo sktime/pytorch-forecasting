@@ -1,12 +1,12 @@
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.profiler import AdvancedProfiler
+
 from temporal_fusion_transformer_pytorch import TimeSeriesDataSet, TemporalFusionTransformer
 from pathlib import Path
 from leapfrog.etl import clean_column_names, optimize_memory
 import pandas as pd
-from torch.utils.data import DataLoader
 import numpy as np
-from pytorch_lightning.loggers import TensorBoardLogger
 
 
 def parse_yearmonth(df):
@@ -89,14 +89,14 @@ training = TimeSeriesDataSet(
     ],
     time_varying_unknown_categoricals=[],
     time_varying_unknown_reals=["volume", "industry_volume", "soda_volume", "avg_max_temp"],
-    fill_stragegy={"volume": 0},
+    constant_fill_strategy={"volume": 0},
 )
 
 validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data.__time_idx__.max() + 1)
 batch_size = 64
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
 trainer = pl.Trainer(
-    max_epochs=100,
+    max_epochs=30,
     gpus=0,
     weights_summary="top",
     gradient_clip_val=0.1,
@@ -105,12 +105,23 @@ trainer = pl.Trainer(
     # limit_val_batches=1,
     # test_percent_check = 0.01,
     # fast_dev_run=True,
-    # profiler=True,
     # logger=logger,
 )
 
-tft = TemporalFusionTransformer.from_dataset(training, learning_rate=0.2, hidden_size=32, dropout=0.1)
+tft = TemporalFusionTransformer.from_dataset(training, learning_rate=0.05, hidden_size=64)
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
+
+# find optimal learning rate
+# res = trainer.lr_find(
+#     tft,
+#     train_dataloader=training.to_dataloader(train=True, batch_size=batch_size, num_workers=1),
+#     val_dataloaders=validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1),
+# )
+#
+# print(f"suggested learning rate: {res.suggestion()}")
+# fig = res.plot(show=True, suggest=True)
+# fig.show()
+
 trainer.fit(
     tft,
     train_dataloader=training.to_dataloader(train=True, batch_size=batch_size, num_workers=1),
@@ -122,13 +133,3 @@ trainer.logger.experiment.add_hparams(
     {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
     {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
 )
-
-# res = trainer.lr_find(
-#     tft,
-#     train_dataloader=training.to_dataloader(train=True, batch_size=batch_size, num_workers=1),
-#     val_dataloaders=validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1),
-# )
-#
-# print(f"suggested learning rate: {res.suggestion()}")
-# fig = res.plot(show=True, suggest=True)
-# fig.show()
