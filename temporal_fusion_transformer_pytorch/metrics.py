@@ -66,8 +66,12 @@ class MultiHorizonMetric(TensorMetric, metaclass=abc.ABCMeta):
 
 
 class PoissonLoss(MultiHorizonMetric):
-    def __init__(self, *args, **kwargs):
-        return super().__init__(name="poisson_loss", *args, **kwargs)
+    """
+    Poisson loss for count data
+    """
+
+    def __init__(self, name: str = "poisson_loss", *args, **kwargs):
+        return super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         return F.poisson_nll_loss(y_pred, target, log_input=True, full=False, eps=1e-6, reduction="none")
@@ -87,31 +91,33 @@ class PoissonLoss(MultiHorizonMetric):
 
 
 class QuantileLoss(MultiHorizonMetric):
-    def __init__(self, log_space: bool = None, *args, **kwargs):
+    def __init__(self, name: str = "quantile_loss", log_space: bool = None, cummulative=False, *args, **kwargs):
         """
         Quantile loss
 
         Args:
+            name: name of metric
             log_space: if model should be estimated in log
-            cummulative (bool): if loss should be calculated cummulatively, i.e.
+            cummulative: if loss should be calculated cummulatively, i.e.
                 if false, the quantiles hold true for individual predictions but
                 if true, the quantiles hold true if the predictions are cummulatively
                 summed. This is useful if total quantities over the prediction horizon
                 are supposed to be predicted.
         """
-        super().__init__(name="quantile_loss", *args, **kwargs)
+        super().__init__(name, *args, **kwargs)
         self.log_space = log_space
+        self.cummulative = cummulative
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        # if self.cummulative:
-        #     if self.log_target:
-        #         preds = preds.exp().cumsum(dim=-2).log()
-        #         target = target.exp().cumsum(dim=-1).log()
-        #     else:
-        #         preds = preds.cumsum(dim=-2)
-        #         target = target.cumsum(dim=-1)
+        if self.cummulative:
+            if self.log_target:
+                y_pred = y_pred.exp().cumsum(dim=-2).log()
+                target = target.exp().cumsum(dim=-1).log()
+            else:
+                y_pred = y_pred.cumsum(dim=-2)
+                target = target.cumsum(dim=-1)
         if self.log_space:
-            target = torch.log(target + 1e-6)
+            target = torch.log(target + 1e-6)  # todo: maybe it is better to transform the target?
         losses = []
         for i, q in enumerate(self.quantiles):
             errors = target - y_pred[..., i]

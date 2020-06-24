@@ -111,7 +111,7 @@ trainer = pl.Trainer(
 )
 
 
-tft = TemporalFusionTransformer.from_dataset(training, learning_rate=0.02, hidden_size=32, loss=QuantileLoss())
+tft = TemporalFusionTransformer.from_dataset(training, learning_rate=0.02, hidden_size=32, loss=QuantileLoss(log_space=True))
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # find optimal learning rate
