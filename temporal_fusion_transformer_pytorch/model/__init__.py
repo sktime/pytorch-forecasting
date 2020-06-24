@@ -1,6 +1,5 @@
-from typing import List, Union, Dict, Tuple
+from typing import List, Dict, Tuple, Callable
 
-import math
 import torch
 from torch import nn
 import pytorch_lightning as pl
@@ -15,7 +14,7 @@ from temporal_fusion_transformer_pytorch.model.sub_modules import (
     InterpretableMultiHeadAttention,
 )
 
-from temporal_fusion_transformer_pytorch.model.metrics import QuantileLoss
+from temporal_fusion_transformer_pytorch.metrics import QuantileLoss, MultiHorizonMetric
 from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
 from temporal_fusion_transformer_pytorch.utils import integer_histogram
 from pytorch_ranger import Ranger
@@ -32,8 +31,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         lstm_layers: int = 1,
         dropout: float = 0.1,
         hidden_continuous_size: int = 8,
-        output_size: int = 5,
-        loss=QuantileLoss([0.1, 0.25, 0.5, 0.75, 0.9]),
+        loss: MultiHorizonMetric = QuantileLoss([0.1, 0.25, 0.5, 0.75, 0.9]),
         attention_head_size: int = 4,
         max_encode_length: int = 10,
         target_idx: int = 0,
@@ -206,7 +204,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         # output processing
         self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
 
-        self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
+        self.output_layer = nn.Linear(self.hparams.hidden_size, self.loss.input_size)
 
     @property
     def static_variables(self) -> List[str]:
@@ -716,6 +714,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
         obs_color = next(prop_cycle)["color"]
         pred_color = next(prop_cycle)["color"]
+        # plot observed history
         if len(x_obs) > 0:
             if len(x_obs) > 1:
                 plotter = ax.plot
@@ -726,20 +725,23 @@ class TemporalFusionTransformer(pl.LightningModule):
             plotter = ax.plot
         else:
             plotter = ax.scatter
+        # plot observed prediction
         plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
-        if isinstance(self.loss, QuantileLoss):
-            plotter(x_pred, y_hat[:, y_hat.size(1) // 2], label=f"predicted", c=pred_color)
-            for i in range(y_hat.size(1) // 2):
-                if len(x_pred) > 1:
-                    ax.fill_between(x_pred, y_hat[:, i], y_hat[:, -i - 1], alpha=0.15, fc=pred_color)
-                else:
-                    ax.errorbar(
-                        x_pred, torch.tensor([[y_hat[0, i]], [y_hat[0, -i - 1]]]), c=pred_color, capsize=1.0,
-                    )
-        else:
-            for i in range(y_hat.shape[-1]):
-                plotter(x_pred, y_hat[:, i], label=f"predicted {i}", c=next(prop_cycle)["color"])
-        loss = self.loss(y_hat.unsqueeze(0), y[-n_pred:].unsqueeze(0))
+
+        # plot prediction
+        plotter(x_pred, self.loss.to_prediction(y_hat), label=f"predicted", c=pred_color)
+
+        # plot predicted quantiles
+        y_quantiles = self.loss.to_quantiles(y_hat)
+        plotter(x_pred, y_quantiles[:, y_quantiles.shape[1] // 2], c=pred_color, alpha=0.15)
+        for i in range(y_quantiles.shape[1] // 2):
+            if len(x_pred) > 1:
+                ax.fill_between(x_pred, y_quantiles[:, i], y_quantiles[:, -i - 1], alpha=0.15, fc=pred_color)
+            else:
+                ax.errorbar(
+                    x_pred, torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]]), c=pred_color, capsize=1.0,
+                )
+        loss = self.loss(y_hat[None], y[-n_pred:][None])
         ax.set_title(f"Loss {loss:.3g}")
         ax.set_xlabel("Time index")
         fig.legend()

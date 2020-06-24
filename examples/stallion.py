@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.callbacks import EarlyStopping
 
 from temporal_fusion_transformer_pytorch import TimeSeriesDataSet, TemporalFusionTransformer
@@ -6,6 +7,8 @@ from pathlib import Path
 from leapfrog.etl import clean_column_names, optimize_memory
 import pandas as pd
 import numpy as np
+
+from temporal_fusion_transformer_pytorch.metrics import PoissonLoss, QuantileLoss
 
 
 def parse_yearmonth(df):
@@ -98,7 +101,7 @@ trainer = pl.Trainer(
     max_epochs=30,
     gpus=0,
     weights_summary="top",
-    gradient_clip_val=0.1,
+    gradient_clip_val=0.01,
     early_stop_callback=early_stop_callback,
     # limit_train_batches=1,
     # limit_val_batches=1,
@@ -107,7 +110,8 @@ trainer = pl.Trainer(
     # logger=logger,
 )
 
-tft = TemporalFusionTransformer.from_dataset(training, learning_rate=0.05, hidden_size=64)
+
+tft = TemporalFusionTransformer.from_dataset(training, learning_rate=0.02, hidden_size=32, loss=QuantileLoss())
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # find optimal learning rate
@@ -115,6 +119,8 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 #     tft,
 #     train_dataloader=training.to_dataloader(train=True, batch_size=batch_size, num_workers=1),
 #     val_dataloaders=validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1),
+#     early_stop_threshold=1000.0,
+#     max_lr=0.1,
 # )
 #
 # print(f"suggested learning rate: {res.suggestion()}")
