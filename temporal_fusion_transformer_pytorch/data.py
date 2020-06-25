@@ -1,3 +1,6 @@
+"""
+Timeseries data is special and has to be processed
+"""
 import inspect
 from typing import Union, Dict, List, Tuple
 import pandas as pd
@@ -14,8 +17,6 @@ class TimeSeriesDataSet(Dataset):
     """Dataset Basic Structure for Temporal Fusion Transformer"""
 
     # todo: automatic skew
-    # todo: handle missings
-    # TODO: support omissions of variables, e.g. SKU empty
     def __init__(
         self,
         data: pd.DataFrame,
@@ -89,11 +90,11 @@ class TimeSeriesDataSet(Dataset):
         self.add_relative_time_idx = add_relative_time_idx
         self.randomize_length = randomize_length
         self.min_prediction_idx = min_prediction_idx or data[self.time_idx].min()
+        self.constant_fill_strategy = constant_fill_strategy
 
         assert (
             self.target in self.time_varying_unknown_reals
         ), "target should be an unknown continuous variable in the future"
-        self.constant_fill_strategy = constant_fill_strategy
 
         # set data
         assert data.index.is_unique, "data index has to be unique"
@@ -131,6 +132,16 @@ class TimeSeriesDataSet(Dataset):
                     self.scalers[name] = StandardScaler().fit(self.data[[name]])
             if self.scalers[name] is not None:
                 self.data[name] = self.scalers[name].transform(self.data[[name]]).reshape(-1)
+
+        # encode constant values
+        self.encoded_constant_fill_strategy = {}
+        for name, value in self.constant_fill_strategy.items():
+            if name in self.scalers:
+                self.encoded_constant_fill_strategy[name] = self.scalers[name].transform(np.array([[value]]))[0, 0]
+            elif name in self.categoricals_encoders:
+                self.encoded_constant_fill_strategy[name] = self.categoricals_encoders[name].transform([value])[0]
+            else:
+                self.encoded_constant_fill_strategy[name] = value
 
         # create index
         self.data_index = self.construct_index()
@@ -201,9 +212,20 @@ class TimeSeriesDataSet(Dataset):
         # get index data
         data = self.data.iloc[index.index_start : index.index_end + 1].copy()
 
-        # todo: handle missings -> fill them up with strategy
-        # determine data window
         sequence_length = len(data)
+
+        # fill in missing values (if not all time indices are specified
+        if sequence_length < index.sequence_length:
+            repetitions = -data.__time_idx__.diff(-1).fillna(-1)
+            indices = np.repeat(np.arange(len(data)), repetitions)
+            repetition_indices = np.where(np.diff(indices, prepend=[-1]) == 0)[0]
+            data = data.iloc[indices]
+            # make replacements
+            for name, value in self.encoded_constant_fill_strategy.items():
+                col_idx = data.columns.get_loc(name)
+                data.iloc[repetition_indices, col_idx] = value
+
+        # determine data window
         assert sequence_length >= self.min_prediction_length
         # determine prediction/decode length and encode length
         decode_length = min(

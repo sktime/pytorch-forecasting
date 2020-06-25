@@ -35,8 +35,12 @@ repository = "https://github.com/jdb78/temporal_fusion_transformer_pytorch"
 [tool.poetry.dependencies]
 python= "^3.7"
 
-torch = "~1.5"
-pytorch_lightning = "~0.8"
+torch = "^1.5"
+pytorch_lightning = "^0.8"
+optuna = "*"
+scipy = "*"
+pandas = "^1.0.3"
+scikit-learn = "^0.23"
 
 [tool.poetry-dynamic-versioning]
 enable = true

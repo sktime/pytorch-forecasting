@@ -128,7 +128,7 @@ class QuantileLoss(MultiHorizonMetric):
 
         # transform target into logspace
         if self.log_space:
-            target = torch.log(target + 1e-6)  # todo: maybe it is better to transform the target?
+            target = torch.log(target + 1e-6)
 
         # calculate quantile loss
         losses = []

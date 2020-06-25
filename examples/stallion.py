@@ -1,3 +1,5 @@
+import pickle
+
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import EarlyStopping
@@ -9,6 +11,7 @@ import pandas as pd
 import numpy as np
 
 from temporal_fusion_transformer_pytorch.metrics import PoissonLoss, QuantileLoss
+from temporal_fusion_transformer_pytorch.tuning import optimize_hyperparameters
 
 
 def parse_yearmonth(df):
@@ -98,6 +101,10 @@ training = TimeSeriesDataSet(
 
 validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data.__time_idx__.max() + 1)
 batch_size = 64
+train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=12)
+val_dataloader = validation.to_dataloader(train=True, batch_size=batch_size, num_workers=12)
+
+
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
 trainer = pl.Trainer(
     max_epochs=30,
@@ -121,8 +128,8 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # find optimal learning rate
 # res = trainer.lr_find(
 #     tft,
-#     train_dataloader=training.to_dataloader(train=True, batch_size=batch_size, num_workers=1),
-#     val_dataloaders=validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1),
+#     train_dataloader=train_dataloader,
+#     val_dataloaders=val_dataloader,
 #     early_stop_threshold=1000.0,
 #     max_lr=0.1,
 # )
@@ -132,9 +139,7 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # fig.show()
 
 trainer.fit(
-    tft,
-    train_dataloader=training.to_dataloader(train=True, batch_size=batch_size, num_workers=1),
-    val_dataloaders=validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1),
+    tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
 )
 
 # log hparams
@@ -142,10 +147,25 @@ trainer.logger.experiment.add_hparams(
     {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
     {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
 )
+#
+#
+# # make a prediction on entire validation set
+# preds, index = tft.predict(val_dataloader, return_index=True, fast_dev_run=True)
 
 
-# make a prediction on entire validation set
-dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1)
-preds, index = tft.predict(dataloader, return_index=True, fast_dev_run=True)
+# tune
+study = optimize_hyperparameters(
+    train_dataloader,
+    val_dataloader,
+    model_path="optuna_test",
+    n_trials=15,
+    gradient_clip_val_range=(0.01, 1.0),
+    hidden_size_range=(16, 64),
+    hidden_continuous_size_range=(8, 64),
+    attention_head_size_range=(1, 4),
+    dropout_range=(0.1, 0.3),
+    learning_rate_range=(0.001, 0.1),
+)
 
-print(preds)
+with open("test_study.pickle", "wb") as fout:
+    pickle.dump(study, fout)

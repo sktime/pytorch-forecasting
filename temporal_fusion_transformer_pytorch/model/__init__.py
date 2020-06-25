@@ -25,7 +25,7 @@ from pytorch_ranger import Ranger
 
 class TemporalFusionTransformer(pl.LightningModule):
     # TODO: dependence plot logging
-    # todo: prediction with df
+    # TODO: add embedding dropout if required
     def __init__(
         self,
         hidden_size: int = 16,
@@ -42,7 +42,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_categoricals_decoder: List[int] = [],
         time_varying_reals_encoder: List[int] = [],
         time_varying_reals_decoder: List[int] = [],
-        hidden_continuous_size_default: int = 16,
+        hidden_continuous_size: int = 16,
         hidden_continuous_sizes: Dict[str, int] = {},
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_labels: Dict[str, np.ndarray] = {},
@@ -70,10 +70,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
             time_varying_reals_encoder: integer of positions of continuous variables for encoder
             time_varying_reals_decoder: integer of positions of continuous variables for decoder
-            hidden_continuous_size_default: hidden size for processing continous variables (similar to categorical
+            hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical
                 embedding size)
             hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
-                (fallback to hidden_continuous_size_default if index is not in dictionary)
+                (fallback to hidden_continuous_size if index is not in dictionary)
             embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
                 embedding size
             embedding_labels: dictionary mapping (string) indices to list of categorical labels
@@ -107,7 +107,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             + self.hparams.static_reals
         ):
             self.input_linear[str(i)] = nn.Linear(
-                1, self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+                1, self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
             )
 
         # variable selection
@@ -115,7 +115,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         self.static_variable_selection = VariableSelectionNetwork(
             input_sizes=[self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.static_categoricals]
             + [
-                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
                 for i in self.hparams.static_reals
             ],
             hidden_size=self.hparams.hidden_size,
@@ -128,7 +128,7 @@ class TemporalFusionTransformer(pl.LightningModule):
                 self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_encoder
             ]
             + [
-                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
                 for i in self.hparams.time_varying_reals_encoder
             ],
             hidden_size=self.hparams.hidden_size,
@@ -142,7 +142,7 @@ class TemporalFusionTransformer(pl.LightningModule):
                 self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_decoder
             ]
             + [
-                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
                 for i in self.hparams.time_varying_reals_decoder
             ],
             hidden_size=self.hparams.hidden_size,
@@ -824,8 +824,9 @@ class TemporalFusionTransformer(pl.LightningModule):
         self.eval()  # no dropout, etc. no gradients
         output = []
         decode_lenghts = []
+        progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader))
         with torch.no_grad():
-            for x, _ in tqdm(dataloader, desc="Predict", unit=" batches", total=len(dataloader)):
+            for x, _ in dataloader:
                 out = self(**x)  # raw output is dictionary
                 lengths = out["decode_lengths"]
                 if return_decode_lengths:
@@ -852,6 +853,7 @@ class TemporalFusionTransformer(pl.LightningModule):
                     raise ValueError(f"Unknown mode {mode} - see docs for valid arguments")
 
                 output.append(out)
+                progress_bar.update()
                 if fast_dev_run:
                     break
 
