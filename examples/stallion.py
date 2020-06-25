@@ -46,6 +46,7 @@ data = (
 data = data.assign(discount_in_percent=lambda x: (x.discount / x.price_regular).fillna(0) * 100)
 data["month"] = data.date.dt.month
 data["log_volume"] = np.log1p(data.volume)
+data["weight"] = 1 + np.sqrt(data.volume)
 
 data["time_idx"] = data.date.dt.year * 12 + data.date.dt.month
 data["time_idx"] = data["time_idx"] - data["time_idx"].min()
@@ -61,7 +62,7 @@ training = TimeSeriesDataSet(
     data[lambda x: x.date < training_cutoff],
     time_idx="time_idx",
     target="volume",
-    weight="volume",
+    weight="weight",
     group_ids=["agency", "sku"],
     max_encode_length=max_encode_length,
     max_prediction_length=max_prediction_length,
@@ -107,7 +108,7 @@ trainer = pl.Trainer(
     # limit_train_batches=1,
     # limit_val_batches=1,
     # test_percent_check = 0.01,
-    # fast_dev_run=True,
+    fast_dev_run=True,
     # logger=logger,
 )
 
@@ -141,3 +142,10 @@ trainer.logger.experiment.add_hparams(
     {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
     {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
 )
+
+
+# make a prediction on entire validation set
+dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1)
+preds, index = tft.predict(dataloader, return_index=True, fast_dev_run=True)
+
+print(preds)

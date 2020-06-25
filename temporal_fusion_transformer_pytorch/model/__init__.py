@@ -5,7 +5,10 @@ from torch import nn
 import pytorch_lightning as pl
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from torch.nn.utils import rnn
+from torch.utils.data import DataLoader
+from tqdm.autonotebook import tqdm
 
 from temporal_fusion_transformer_pytorch.model.sub_modules import (
     GateAddNorm,
@@ -781,3 +784,82 @@ class TemporalFusionTransformer(pl.LightningModule):
         get number of parameters in model
         """
         return sum(p.numel() for p in self.parameters())
+
+    def predict(
+        self,
+        dataloader: DataLoader,
+        mode: Union[str, Tuple[str, str]] = "prediction",
+        return_index: bool = False,
+        return_decode_lengths: bool = False,
+        fast_dev_run=False,
+    ):
+        """
+        predict da
+
+        Args:
+            dataloader: dataloader for
+            mode: one of "prediction", "quantiles" or "raw", or tuple ``("raw", output_name)`` where output_name is
+                a name in the dictionary returned by ``forward()``
+            return_index: if to return the prediction index
+            return_decode_lengths: if to return decode_lengths
+            fast_dev_run: if to only return results of first batch
+
+        Returns:
+            tensor
+        """
+        assert isinstance(dataloader.dataset, TimeSeriesDataSet), "dataset behind dataloader mut be TimeSeriesDataSet"
+        self.eval()  # no dropout, etc. no gradients
+        output = []
+        decode_lenghts = []
+        with torch.no_grad():
+            for x, _ in tqdm(dataloader, desc="Predict", unit=" batches", total=len(dataloader)):
+                out = self(**x)  # raw output is dictionary
+                lengths = out["decode_lengths"]
+                if return_decode_lengths:
+                    decode_lenghts.append(decode_lenghts)
+                nan_mask = torch.arange(out["prediction"].size(1)).unsqueeze(0) > lengths.unsqueeze(-1)
+                if isinstance(mode, (tuple, list)):
+                    if mode[0] == "raw":
+                        out = out[mode[1]]
+                    else:
+                        raise ValueError(
+                            f"If a tuple is specified, the first element must be 'raw' - got {mode[0]} instead"
+                        )
+                elif mode == "prediction":
+                    out = self.loss.to_prediction(out["prediction"])
+                    # mask non-predictions
+                    out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
+                elif mode == "quantiles":
+                    out = self.loss.to_quantiles(out["prediction"])
+                    # mask non-predictions
+                    out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
+                elif mode == "raw":
+                    pass
+                else:
+                    raise ValueError(f"Unknown mode {mode} - see docs for valid arguments")
+
+                output.append(out)
+                if fast_dev_run:
+                    break
+
+        # concatenate
+        if isinstance(mode, (tuple, list)) or mode != "raw":
+            output = torch.cat(output, dim=0)
+        elif mode == "raw":
+            output = {name: torch.cat(values, dim=0) for name, values in output.items()}
+
+        if return_decode_lengths:
+            decode_lengths = torch.cat(decode_lenghts, dim=0)
+
+        # get index
+        if return_index:
+            index = dataloader.dataset.get_index()
+
+        if return_index and return_decode_lengths:
+            return output, index, decode_lengths
+        elif return_index:
+            return output, index
+        elif return_decode_lengths:
+            return output, decode_lengths
+        else:
+            return output

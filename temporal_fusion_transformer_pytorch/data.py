@@ -96,6 +96,7 @@ class TimeSeriesDataSet(Dataset):
         self.constant_fill_strategy = constant_fill_strategy
 
         # set data
+        assert data.index.is_unique, "data index has to be unique"
         self.data = data[
             lambda x: (x[self.time_idx] >= self.min_prediction_idx - self.max_encode_length)  # limit data
         ].sort_values(self.group_ids + [self.time_idx])
@@ -238,7 +239,9 @@ class TimeSeriesDataSet(Dataset):
         else:
             target = data[["__target__", "__weight__"]].to_numpy(dtype=np.float32)
         if self.add_relative_time_idx:
-            data["relative_time_idx"] = np.arange(-encode_length, decode_length, dtype=float) / self.max_encode_length
+            data.loc[:, "relative_time_idx"] = (
+                np.arange(-encode_length, decode_length, dtype=float) / self.max_encode_length
+            )
         categoricals = data[self.categoricals].to_numpy(np.long)
         reals = data[self.reals + ["__target__"]].to_numpy(dtype=np.float32)
 
@@ -275,3 +278,28 @@ class TimeSeriesDataSet(Dataset):
 
     def to_dataloader(self, train: bool = True, **kwargs):
         return DataLoader(self, shuffle=train, drop_last=train, collate_fn=self._collate_fn, **kwargs)
+
+    def get_index(self) -> pd.DataFrame:
+        """
+        calculate index
+
+        Returns:
+            dataframe with time index column for first prediction and group ids
+        """
+        decode_length = pd.DataFrame(
+            dict(
+                prediction_idx=self.data["__time_idx__"].iloc[self.data_index.index_end].to_numpy()
+                - (self.min_prediction_idx - 1),
+                sequence_length=self.data_index.sequence_length,
+                max_prediction_length=self.max_prediction_length,
+            )
+        ).min(axis=1)
+        encode_lengths = self.data_index.sequence_length - decode_length
+        index_data = {self.time_idx: self.data_index.time + encode_lengths}
+        for id in self.group_ids:
+            index_data[id] = self.data[id].iloc[self.data_index.index_start]
+            # decode if possible
+            if id in self.categoricals_encoders:
+                index_data[id] = self.categoricals_encoders[id].inverse_transform(index_data[id])
+        index = pd.DataFrame(index_data, index=self.data_index.index)
+        return index
