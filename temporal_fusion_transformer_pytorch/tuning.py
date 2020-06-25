@@ -72,10 +72,8 @@ def optimize_hyperparameters(
         model = TemporalFusionTransformer.from_dataset(
             train_dataloader.dataset,
             dropout=trial.suggest_uniform("dropout", *dropout_range),
-            hidden_size=int(trial.suggest_loguniform("hidden_size", *hidden_size_range)),
-            hidden_continuous_size=int(
-                trial.suggest_loguniform("hidden_continuous_size", *hidden_continuous_size_range)
-            ),
+            hidden_size=trial.suggest_int("hidden_size", *hidden_size_range, log=True),
+            hidden_continuous_size=trial.suggest_int("hidden_continuous_size", *hidden_continuous_size_range, log=True),
             attention_head_size=trial.suggest_int("attention_head_size", *attention_head_size_range),
             learning_rate=trial.suggest_loguniform("learning_rate", *learning_rate_range),
             log_interval=-1,

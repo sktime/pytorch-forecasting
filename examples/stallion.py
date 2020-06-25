@@ -12,6 +12,7 @@ import numpy as np
 
 from temporal_fusion_transformer_pytorch.metrics import PoissonLoss, QuantileLoss
 from temporal_fusion_transformer_pytorch.tuning import optimize_hyperparameters
+from temporal_fusion_transformer_pytorch.utils import profile
 
 
 def parse_yearmonth(df):
@@ -55,7 +56,7 @@ data["time_idx"] = data.date.dt.year * 12 + data.date.dt.month
 data["time_idx"] = data["time_idx"] - data["time_idx"].min()
 
 training_cutoff = "2016-09-01"
-max_encode_length = 36
+max_encode_length = 12
 max_prediction_length = 6
 
 features = data.drop(["volume"], axis=1).dropna()
@@ -65,7 +66,7 @@ training = TimeSeriesDataSet(
     data[lambda x: x.date < training_cutoff],
     time_idx="time_idx",
     target="volume",
-    weight="weight",
+    # weight="weight",
     group_ids=["agency", "sku"],
     max_encode_length=max_encode_length,
     max_prediction_length=max_prediction_length,
@@ -101,27 +102,33 @@ training = TimeSeriesDataSet(
 
 validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data.__time_idx__.max() + 1)
 batch_size = 64
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=12)
-val_dataloader = validation.to_dataloader(train=True, batch_size=batch_size, num_workers=12)
+train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=1)
+val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1)
 
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
 trainer = pl.Trainer(
-    max_epochs=30,
+    max_epochs=1,
     gpus=0,
     weights_summary="top",
-    gradient_clip_val=0.01,
+    gradient_clip_val=0.1,
     early_stop_callback=early_stop_callback,
-    # limit_train_batches=1,
-    # limit_val_batches=1,
-    # test_percent_check = 0.01,
-    fast_dev_run=True,
+    limit_train_batches=100,
+    limit_val_batches=1,
+    # fast_dev_run=True,
     # logger=logger,
 )
 
 
 tft = TemporalFusionTransformer.from_dataset(
-    training, learning_rate=0.02, hidden_size=32, loss=QuantileLoss(log_space=True)
+    training,
+    learning_rate=0.04,
+    hidden_size=24,
+    attention_head_size=2,
+    dropout=0.15,
+    hidden_continuous_size=24,
+    loss=QuantileLoss(log_space=True),
+    log_interval=-1,
 )
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
@@ -138,15 +145,27 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # fig = res.plot(show=True, suggest=True)
 # fig.show()
 
-trainer.fit(
-    tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
-)
 
-# log hparams
-trainer.logger.experiment.add_hparams(
-    {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
-    {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
-)
+# profile speed
+# profile(
+#     trainer.fit,
+#     profile_fname="profile.prof",
+#     model=tft,
+#     period=0.001,
+#     filter="temporal_fusion_transformer_pytorch",
+#     train_dataloader=train_dataloader,
+#     val_dataloaders=val_dataloader,
+# )
+
+# trainer.fit(
+#     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+# )
+#
+# # log hparams
+# trainer.logger.experiment.add_hparams(
+#     {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
+#     {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
+# )
 #
 #
 # # make a prediction on entire validation set
@@ -154,18 +173,18 @@ trainer.logger.experiment.add_hparams(
 
 
 # tune
-study = optimize_hyperparameters(
-    train_dataloader,
-    val_dataloader,
-    model_path="optuna_test",
-    n_trials=15,
-    gradient_clip_val_range=(0.01, 1.0),
-    hidden_size_range=(16, 64),
-    hidden_continuous_size_range=(8, 64),
-    attention_head_size_range=(1, 4),
-    dropout_range=(0.1, 0.3),
-    learning_rate_range=(0.001, 0.1),
-)
-
-with open("test_study.pickle", "wb") as fout:
-    pickle.dump(study, fout)
+# study = optimize_hyperparameters(
+#     train_dataloader,
+#     val_dataloader,
+#     model_path="optuna_test",
+#     n_trials=15,
+#     max_epochs=10,
+#     gradient_clip_val_range=(0.01, 1.0),
+#     hidden_size_range=(16, 64),
+#     hidden_continuous_size_range=(8, 64),
+#     attention_head_size_range=(1, 4),
+#     dropout_range=(0.1, 0.3),
+#     learning_rate_range=(0.001, 0.1),
+# )
+# with open("test_study.pickle", "wb") as fout:
+#     pickle.dump(study, fout)

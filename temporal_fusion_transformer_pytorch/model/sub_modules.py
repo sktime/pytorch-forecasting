@@ -98,14 +98,19 @@ class VariableSelectionNetwork(nn.Module):
         self.dropout = dropout
         self.context_size = context_size
 
-        if self.context_size is not None:
-            self.flattened_grn = GatedResidualNetwork(
-                sum(self.input_sizes), self.hidden_size, self.num_inputs, self.dropout, self.context_size,
-            )
-        else:
-            self.flattened_grn = GatedResidualNetwork(
-                sum(self.input_sizes), self.hidden_size, self.num_inputs, self.dropout,
-            )
+        if self.num_inputs > 1:
+            if self.context_size is not None:
+                self.flattened_grn = GatedResidualNetwork(
+                    sum(self.input_sizes),
+                    min(self.hidden_size, self.num_inputs),
+                    self.num_inputs,
+                    self.dropout,
+                    self.context_size,
+                )
+            else:
+                self.flattened_grn = GatedResidualNetwork(
+                    sum(self.input_sizes), min(self.hidden_size, self.num_inputs), self.num_inputs, self.dropout,
+                )
 
         self.single_variable_grns = nn.ModuleList()
         for input_size in self.input_sizes:
@@ -120,18 +125,22 @@ class VariableSelectionNetwork(nn.Module):
         return len(self.input_sizes)
 
     def forward(self, embedding: torch.Tensor, context: torch.Tensor = None):
-        sparse_weights = self.flattened_grn(embedding, context)
-        sparse_weights = self.softmax(sparse_weights).unsqueeze(-2)
+        if self.num_inputs > 1:
+            sparse_weights = self.flattened_grn(embedding, context)
+            sparse_weights = self.softmax(sparse_weights).unsqueeze(-2)
 
-        var_outputs = []
-        start = 0
-        for i, input_size in enumerate(self.input_sizes):
-            # select slice of embedding belonging to a single input
-            var_outputs.append(self.single_variable_grns[i](embedding[..., start : (start + input_size)]))
-            start += input_size
-        var_outputs = torch.stack(var_outputs, axis=-1)
-        outputs = var_outputs * sparse_weights
-        outputs = outputs.sum(axis=-1)
+            var_outputs = []
+            start = 0
+            for i, input_size in enumerate(self.input_sizes):
+                # select slice of embedding belonging to a single input
+                var_outputs.append(self.single_variable_grns[i](embedding[..., start : (start + input_size)]))
+                start += input_size
+            var_outputs = torch.stack(var_outputs, axis=-1)
+            outputs = var_outputs * sparse_weights
+            outputs = outputs.sum(axis=-1)
+        else:
+            outputs = self.single_variable_grns[0](embedding)  # fast forward if only one variable
+            sparse_weights = torch.ones_like(outputs).unsqueeze(-1)
         return outputs, sparse_weights
 
 

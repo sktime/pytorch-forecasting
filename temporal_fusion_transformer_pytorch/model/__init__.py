@@ -42,7 +42,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_categoricals_decoder: List[int] = [],
         time_varying_reals_encoder: List[int] = [],
         time_varying_reals_decoder: List[int] = [],
-        hidden_continuous_size: int = 16,
+        hidden_continuous_size: int = 8,
         hidden_continuous_sizes: Dict[str, int] = {},
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_labels: Dict[str, np.ndarray] = {},
