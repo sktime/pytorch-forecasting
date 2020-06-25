@@ -31,7 +31,6 @@ class TemporalFusionTransformer(pl.LightningModule):
         hidden_size: int = 16,
         lstm_layers: int = 1,
         dropout: float = 0.1,
-        hidden_continuous_size: int = 8,
         loss: MultiHorizonMetric = QuantileLoss(),
         attention_head_size: int = 4,
         max_encode_length: int = 10,
@@ -43,6 +42,8 @@ class TemporalFusionTransformer(pl.LightningModule):
         time_varying_categoricals_decoder: List[int] = [],
         time_varying_reals_encoder: List[int] = [],
         time_varying_reals_decoder: List[int] = [],
+        hidden_continuous_size_default: int = 16,
+        hidden_continuous_sizes: Dict[str, int] = {},
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_labels: Dict[str, np.ndarray] = {},
         real_labels: Dict[str, str] = {},
@@ -59,9 +60,6 @@ class TemporalFusionTransformer(pl.LightningModule):
             hidden_size: hidden size of network which is its main hyperparameter and can range from 8 to 512
             lstm_layers: number of LSTM layers (2 is mostly optimal)
             dropout: dropout rate
-            hidden_continuous_size: hidden size for processing continous variables (similar to categorical
-                embedding size)
-            output_size: output size (e.g. for multiple quantiles as outputs)
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
             max_encode_length: length to encode
@@ -72,6 +70,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
             time_varying_reals_encoder: integer of positions of continuous variables for encoder
             time_varying_reals_decoder: integer of positions of continuous variables for decoder
+            hidden_continuous_size_default: hidden size for processing continous variables (similar to categorical
+                embedding size)
+            hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
+                (fallback to hidden_continuous_size_default if index is not in dictionary)
             embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
                 embedding size
             embedding_labels: dictionary mapping (string) indices to list of categorical labels
@@ -104,13 +106,18 @@ class TemporalFusionTransformer(pl.LightningModule):
             + self.hparams.time_varying_reals_encoder
             + self.hparams.static_reals
         ):
-            self.input_linear[str(i)] = nn.Linear(1, self.hparams.hidden_continuous_size)
+            self.input_linear[str(i)] = nn.Linear(
+                1, self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+            )
 
         # variable selection
         # variable selection for static variables
         self.static_variable_selection = VariableSelectionNetwork(
             input_sizes=[self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.static_categoricals]
-            + [self.hparams.hidden_continuous_size for _ in self.hparams.static_reals],
+            + [
+                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+                for i in self.hparams.static_reals
+            ],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
         )
@@ -120,7 +127,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             input_sizes=[
                 self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_encoder
             ]
-            + [self.hparams.hidden_continuous_size for _ in self.hparams.time_varying_reals_encoder],
+            + [
+                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+                for i in self.hparams.time_varying_reals_encoder
+            ],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
@@ -131,7 +141,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             input_sizes=[
                 self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_decoder
             ]
-            + [self.hparams.hidden_continuous_size for _ in self.hparams.time_varying_reals_decoder],
+            + [
+                self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size_default)
+                for i in self.hparams.time_varying_reals_decoder
+            ],
             hidden_size=self.hparams.hidden_size,
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
