@@ -19,7 +19,7 @@ from temporal_fusion_transformer_pytorch.model.sub_modules import (
 
 from temporal_fusion_transformer_pytorch.metrics import QuantileLoss, MultiHorizonMetric
 from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
-from temporal_fusion_transformer_pytorch.utils import integer_histogram
+from temporal_fusion_transformer_pytorch.utils import integer_histogram, groupby_apply
 from pytorch_ranger import Ranger
 
 
@@ -334,7 +334,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         # do not attend to steps after to prediction
         decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
-        encoder_mask = torch.arange(encode_lengths.max(), device=self.device)[None, :] >= encode_lengths[:, None]
+        encoder_mask = self._get_mask(encode_lengths.max(), encode_lengths)
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
@@ -515,7 +515,7 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # calculate interpretations etc for latter logging
         if self.hparams.log_interval > 0:
-            detached_output = {name: tensor.detach().cpu() for name, tensor in out.items()}
+            detached_output = {name: tensor.detach() for name, tensor in out.items()}
             interpretation = self.interpret_output(
                 detached_output,
                 average_batches=True,
@@ -528,6 +528,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             )
             log["decode_length_histogram"] = integer_histogram(x["decode_lengths"], min=1, max=y_hat.size(1))
 
+            log["partial_dependence"] = self.calculate_partial_dependency(
+                x, self.loss.to_prediction(y_hat.detach()), normalize=False
+            )
+
         # log single prediction figure
         if batch_idx % self.hparams.log_interval == 0 and self.hparams.log_interval > 0:
             y_all = x["x_cont"][0, ..., self.hparams.target_idx]  # all true values for y of the first sample in batch
@@ -539,7 +543,7 @@ class TemporalFusionTransformer(pl.LightningModule):
                         y_all[max_encode_length : (max_encode_length + x["decode_lengths"][0])],
                     ),
                 ),
-                y_hat[0, : x["decode_lengths"][0]].detach().cpu(),
+                y_hat[0, : x["decode_lengths"][0]].detach(),
             )  # first in batch
             tag = f"{label.capitalize()} prediction"
             if label == "train":
@@ -560,8 +564,70 @@ class TemporalFusionTransformer(pl.LightningModule):
         if self.hparams.log_interval > 0:
             self._log_interpretation(outputs, label=label)
             self._log_encode_decode_lengths(outputs, label=label)
+            self._log_partial_dependence(outputs, label=label)
         tensorboard_logs = {f"avg_{label}_loss": avg_loss}
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
+
+    def calculate_partial_dependency(
+        self, x: Dict[str, torch.Tensor], y: torch.Tensor, normalize: bool = True, bins: int = 95, std: float = 2.0
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
+        """
+        Calculate partial dependence
+
+        Args:
+            x: input as in ``forward()``
+            y: predictions
+            normalize: if to return normalized dependencies, i.e. mean or sum of ``y``
+            bins: number of bins to calculate
+            std: number of standard deviations for standard scaled continuous variables
+
+        Returns:
+            dictionary that can be used to plot dependencies with ``plot_partial_dependence()``
+        """
+        support = {}  # histogram
+        dependency = {}  # dependencies
+        max_encode_length = x["decode_lengths"].max()
+        mask = self._get_mask(max_encode_length, x["encode_lengths"], inverse=True)
+        # select valid y values
+        y_flat = y[mask]
+
+        # real bins
+        positive_bins = (bins - 1) // 2
+
+        # if to normalize
+        if normalize:
+            reduction = "mean"
+        else:
+            reduction = "sum"
+        # continuous variables
+        reals = x["x_cont"][:, -max_encode_length:]
+        for idx, name in self.hparams.real_labels.items():
+            dependency[name], support[name] = groupby_apply(
+                (reals[..., int(idx)][mask] * positive_bins / std).round().clamp(-positive_bins, positive_bins).long()
+                + positive_bins,
+                y_flat,
+                bins=bins,
+                reduction=reduction,
+                return_histogram=True,
+            )
+
+        # categorical_variables
+        cats = x["x_cat"][:, -max_encode_length:]
+        for idx, name in self.hparams.categorical_labels.items():
+            dependency[name], support[name] = groupby_apply(
+                cats[..., int(idx)][mask],
+                y_flat,
+                bins=self.hparams.embedding_sizes[idx][0],
+                reduction=reduction,
+                return_histogram=True,
+            )
+        return {"support": support, "dependency": dependency}
+
+    def _get_mask(self, size, lengths, inverse=False):
+        if inverse:  # return where values are
+            return torch.arange(size, device=self.device).unsqueeze(0) < lengths.unsqueeze(-1)
+        else:  # return where no values are
+            return torch.arange(size, device=self.device).unsqueeze(0) >= lengths.unsqueeze(-1)
 
     def interpret_output(
         self, out: Dict[str, torch.Tensor], average_batches: bool = False, attention_prediction_horizon: int = 0,
@@ -579,14 +645,14 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze()
-        encode_mask = torch.arange(encoder_variables.size(1)).unsqueeze(0) >= out["encode_lengths"].unsqueeze(-1)
+        encode_mask = self._get_mask(encoder_variables.size(1), out["encode_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
             out["encode_lengths"].where(out["encode_lengths"] > 0, torch.ones_like(out["encode_lengths"])).unsqueeze(-1)
         )
 
         decoder_variables = out["decoder_variables"].squeeze()
-        decode_mask = torch.arange(decoder_variables.size(1)).unsqueeze(0) >= out["decode_lengths"].unsqueeze(-1)
+        decode_mask = self._get_mask(decoder_variables.size(1), out["decode_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         decoder_variables /= out["decode_lengths"].unsqueeze(-1)
 
@@ -611,7 +677,11 @@ class TemporalFusionTransformer(pl.LightningModule):
 
             attention = torch.zeros(self.hparams.max_encode_length).scatter(
                 dim=0,
-                index=torch.arange(self.hparams.max_encode_length - attention.size(0), self.hparams.max_encode_length),
+                index=torch.arange(
+                    self.hparams.max_encode_length - attention.size(0),
+                    self.hparams.max_encode_length,
+                    device=self.device,
+                ),
                 src=attention,
             )
         else:
@@ -619,7 +689,9 @@ class TemporalFusionTransformer(pl.LightningModule):
             attention = torch.zeros(attention.size(0), self.hparams.max_encode_length).scatter(
                 dim=1,
                 index=torch.arange(
-                    self.hparams.max_encode_length - attention.size(0), self.hparams.max_encode_length
+                    self.hparams.max_encode_length - attention.size(0),
+                    self.hparams.max_encode_length,
+                    device=self.device,
                 ).unsqueeze(0),
                 src=attention,
             )
@@ -708,9 +780,73 @@ class TemporalFusionTransformer(pl.LightningModule):
             ax.set_xlabel(f"{type.capitalize()} length")
             ax.set_ylabel("Number of samples")
             ax.set_title(f"{type.capitalize()} length distribution in {label} epoch")
+
             self.logger.experiment.add_figure(
                 f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
             )
+
+    def _log_partial_dependence(self, outputs, label="train"):
+        """
+        log partial dependence plots to tensorboard
+        """
+        # extract all histograms
+        dependencies = {
+            type: {
+                name: torch.stack([x["partial_dependence"][type][name] for x in outputs]).sum(0)
+                for name in outputs[0]["partial_dependence"][type]
+            }
+            for type in outputs[0]["partial_dependence"].keys()
+        }
+        # normalize dependencies
+        for name, support in dependencies["support"].items():
+            dependencies["dependency"][name] /= support.clamp(1)
+
+        figs = self.plot_partial_dependence(dependencies)
+        # log to tensorboard
+        for name, fig in figs.items():
+            self.logger.experiment.add_figure(
+                f"{label.capitalize()} {name} dependence", fig, global_step=self.global_step
+            )
+
+    def plot_partial_dependence(
+        self, dependencies: Dict[str, Dict[str, torch.Tensor]], name: str = None
+    ) -> Union[Dict[str, plt.Figure], plt.Figure]:
+        if name is None:  # run recursion for figures
+            figs = {name: self.plot_partial_dependence(dependencies, name) for name in dependencies["support"].keys()}
+            return figs
+        else:
+            # create figure
+            # todo: need to pass normalization stats to denormalize reals
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.set_title(f"{name} partial dependence")
+            ax.set_xlabel(name)
+            ax.set_ylabel("Prediction")
+            ax2 = ax.twinx()  # second axis for histogram
+            ax2.set_ylabel("Frequency")
+
+            # get values for dependency plot and histogram
+            values = dependencies["dependency"][name]
+            x = torch.arange(values.size(0))
+            support = dependencies["support"][name]
+
+            # plot support
+            ax2.hist(x, bins=x.size(0), weights=support, alpha=0.2, color="k")
+
+            # plot dependence
+            if name in self.hparams.real_labels.values():
+                ax.plot(x, values)
+                ax2.hist(x, bins=x.size(0), weights=support, alpha=0.2, color="k")
+            elif name in self.hparams.categorical_labels.values():
+                for idx, label_name in self.hparams.categorical_labels.items():
+                    if label_name == name:
+                        break
+                labels = self.hparams.embedding_labels[str(idx)]
+                ax.bar(labels, values)
+                ax.set_xticklabels(labels, rotation=90)
+            else:
+                raise ValueError(f"Unknown name {name}")
+            fig.tight_layout()
+            return fig
 
     def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor) -> plt.Figure:
         """
@@ -831,7 +967,7 @@ class TemporalFusionTransformer(pl.LightningModule):
                 lengths = out["decode_lengths"]
                 if return_decode_lengths:
                     decode_lenghts.append(decode_lenghts)
-                nan_mask = torch.arange(out["prediction"].size(1)).unsqueeze(0) > lengths.unsqueeze(-1)
+                nan_mask = self._get_mask(out["prediction"].size(1), lengths)
                 if isinstance(mode, (tuple, list)):
                     if mode[0] == "raw":
                         out = out[mode[1]]

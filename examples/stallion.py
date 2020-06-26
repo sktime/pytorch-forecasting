@@ -56,7 +56,7 @@ data["time_idx"] = data.date.dt.year * 12 + data.date.dt.month
 data["time_idx"] = data["time_idx"] - data["time_idx"].min()
 
 training_cutoff = "2016-09-01"
-max_encode_length = 12
+max_encode_length = 36
 max_prediction_length = 6
 
 features = data.drop(["volume"], axis=1).dropna()
@@ -115,14 +115,14 @@ trainer = pl.Trainer(
     early_stop_callback=early_stop_callback,
     # limit_train_batches=100,
     # limit_val_batches=1,
-    # fast_dev_run=True,
+    fast_dev_run=True,
     # logger=logger,
 )
 
 
 tft = TemporalFusionTransformer.from_dataset(
     training,
-    learning_rate=0.01,
+    learning_rate=0.15,
     hidden_size=48,
     attention_head_size=2,
     dropout=0.2,
@@ -131,7 +131,7 @@ tft = TemporalFusionTransformer.from_dataset(
 )
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
-# # find optimal learning rate
+# find optimal learning rate
 # res = trainer.lr_find(
 #     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 # )
