@@ -106,15 +106,15 @@ train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num
 val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1)
 
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=3, verbose=False, mode="min")
+early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 trainer = pl.Trainer(
-    max_epochs=1,
+    max_epochs=15,
     gpus=0,
     weights_summary="top",
     gradient_clip_val=0.1,
     early_stop_callback=early_stop_callback,
-    limit_train_batches=100,
-    limit_val_batches=1,
+    # limit_train_batches=100,
+    # limit_val_batches=1,
     # fast_dev_run=True,
     # logger=logger,
 )
@@ -122,23 +122,18 @@ trainer = pl.Trainer(
 
 tft = TemporalFusionTransformer.from_dataset(
     training,
-    learning_rate=0.04,
-    hidden_size=24,
+    learning_rate=0.01,
+    hidden_size=48,
     attention_head_size=2,
-    dropout=0.15,
-    hidden_continuous_size=24,
+    dropout=0.2,
+    hidden_continuous_size=16,
     loss=QuantileLoss(log_space=True),
-    log_interval=-1,
 )
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
-# find optimal learning rate
+# # find optimal learning rate
 # res = trainer.lr_find(
-#     tft,
-#     train_dataloader=train_dataloader,
-#     val_dataloaders=val_dataloader,
-#     early_stop_threshold=1000.0,
-#     max_lr=0.1,
+#     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 # )
 #
 # print(f"suggested learning rate: {res.suggestion()}")
@@ -146,29 +141,11 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # fig.show()
 
 
-# profile speed
-# profile(
-#     trainer.fit,
-#     profile_fname="profile.prof",
-#     model=tft,
-#     period=0.001,
-#     filter="temporal_fusion_transformer_pytorch",
-#     train_dataloader=train_dataloader,
-#     val_dataloaders=val_dataloader,
-# )
+trainer.fit(
+    tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+)
 
-# trainer.fit(
-#     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
-# )
-#
-# # log hparams
-# trainer.logger.experiment.add_hparams(
-#     {name: value for name, value in tft.hparams.items() if isinstance(value, (float, int))},
-#     {name: value for name, value in trainer.callback_metrics.items() if isinstance(value, (float, int))},
-# )
-#
-#
-# # make a prediction on entire validation set
+# make a prediction on entire validation set
 # preds, index = tft.predict(val_dataloader, return_index=True, fast_dev_run=True)
 
 
@@ -188,3 +165,15 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # )
 # with open("test_study.pickle", "wb") as fout:
 #     pickle.dump(study, fout)
+
+
+# profile speed
+# profile(
+#     trainer.fit,
+#     profile_fname="profile.prof",
+#     model=tft,
+#     period=0.001,
+#     filter="temporal_fusion_transformer_pytorch",
+#     train_dataloader=train_dataloader,
+#     val_dataloaders=val_dataloader,
+# )
