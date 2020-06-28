@@ -26,7 +26,6 @@ from pytorch_ranger import Ranger
 class TemporalFusionTransformer(pl.LightningModule):
     # TODO: improve scalability (many categories for dependence plots, lots of data accumulating over large epochs)
     # TODO: better manage GPU vs CPU tasks -> when to transfer to cpu
-    # TODO: add embedding dropout if required
     def __init__(
         self,
         hidden_size: int = 16,
@@ -46,6 +45,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         hidden_continuous_size: int = 8,
         hidden_continuous_sizes: Dict[str, int] = {},
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
+        embedding_paddings: List[str] = [],
         embedding_labels: Dict[str, np.ndarray] = {},
         real_labels: Dict[str, str] = {},
         categorical_labels: Dict[str, str] = {},
@@ -53,6 +53,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         learning_rate: float = 1e-3,
         log_interval: int = 10,
         log_gradient_flow: bool = False,
+        dependency_scale: float = 2.0,
     ):
         """
         Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to 
@@ -78,20 +79,26 @@ class TemporalFusionTransformer(pl.LightningModule):
                 (fallback to hidden_continuous_size if index is not in dictionary)
             embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
                 embedding size
+            embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
             embedding_labels: dictionary mapping (string) indices to list of categorical labels
             real_labels: dictionary mapping (string) indices to continuous variable names
+            real_scales: dictionary of tuples with mean and scale for each continuous variable that can be used to
+                transform them into their original shape
             categorical_labels: dictionary mapping (string) indices to categorical variable names
             learning_rate: learning rate
             log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
+            dependency_scale: standard deviation until which dependency plots are created (positive float), e.g. a
+                value of 2 means that dependency plots are created from -2 to 2 standard deviations for continuous
+                variables
         """
         super().__init__()
         self.save_hyperparameters()  # store all arguments
         # store loss function separately as it is a module
         self.loss = loss
 
-        # proessing inputs
+        # processing inputs
         # embeddings
         self.input_embeddings = nn.ModuleDict()
         for i in set(
@@ -99,7 +106,11 @@ class TemporalFusionTransformer(pl.LightningModule):
             + self.hparams.time_varying_categoricals_encoder
             + self.hparams.time_varying_categoricals_decoder
         ):
-            self.input_embeddings[str(i)] = nn.Embedding(*self.hparams.embedding_sizes[str(i)])
+            if i in self.hparams.embedding_paddings:
+                padding_idx = 0
+            else:
+                padding_idx = None
+            self.input_embeddings[str(i)] = nn.Embedding(*self.hparams.embedding_sizes[str(i)], padding_idx=padding_idx)
 
         # linear layers
         self.input_linear = nn.ModuleDict()
@@ -276,6 +287,9 @@ class TemporalFusionTransformer(pl.LightningModule):
         embedding_labels = {
             str(idx): dataset.categoricals_encoders[name].classes_ for idx, name in enumerate(dataset.categoricals)
         }
+        embedding_paddings = [
+            int(idx) for idx, name in categorical_labels.items() if name in dataset.dropout_categoricals
+        ]
         # determine embedding sizes based on heuristic
         kwargs.setdefault(
             "embedding_sizes",
@@ -319,6 +333,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             categorical_labels=categorical_labels,
             embedding_labels=embedding_labels,
             real_scales=real_scales,
+            embedding_paddings=embedding_paddings,
             **kwargs,
         )
 
@@ -575,7 +590,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
 
     def calculate_partial_dependency(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, normalize: bool = True, bins: int = 95, std: float = 2.0
+        self, x: Dict[str, torch.Tensor], y: torch.Tensor, normalize: bool = True, bins: int = 95
     ) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Calculate partial dependence
@@ -609,7 +624,10 @@ class TemporalFusionTransformer(pl.LightningModule):
         reals = x["x_cont"][:, -max_encode_length:]
         for idx, name in self.hparams.real_labels.items():
             dependency[name], support[name] = groupby_apply(
-                (reals[..., int(idx)][mask] * positive_bins / std).round().clamp(-positive_bins, positive_bins).long()
+                (reals[..., int(idx)][mask] * positive_bins / self.hparams.dependency_scale)
+                .round()
+                .clamp(-positive_bins, positive_bins)
+                .long()
                 + positive_bins,
                 y_flat,
                 bins=bins,
@@ -845,7 +863,7 @@ class TemporalFusionTransformer(pl.LightningModule):
                     if label_name == name:
                         break
                 mean, scale = self.hparams.real_scales[idx]
-                x = np.linspace(-2, 2, bins) * scale + mean  # todo: do not hardcode scale for dependence plots
+                x = np.linspace(-self.hparams.dependency_scale, self.hparams.dependency_scale, bins) * scale + mean
                 if len(x) > 0:
                     x_step = x[1] - x[0]
                 else:
