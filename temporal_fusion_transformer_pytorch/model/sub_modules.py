@@ -173,7 +173,7 @@ class VariableSelectionNetwork(nn.Module):
             for i, input_size in enumerate(self.input_sizes):
                 # select slice of embedding belonging to a single input
                 variable_embedding = embedding[..., start : (start + input_size)]
-                variable_embedding_mean.append(variable_embedding.mean(-1))
+                variable_embedding_mean.append(variable_embedding.abs().mean(-1))
                 var_outputs.append(self.single_variable_grns[i](variable_embedding))
                 start += input_size
             var_outputs = torch.stack(var_outputs, axis=-1)

@@ -24,7 +24,8 @@ from pytorch_ranger import Ranger
 
 
 class TemporalFusionTransformer(pl.LightningModule):
-    # TODO: dependence plot logging
+    # TODO: improve scalability (many categories for dependence plots, lots of data accumulating over large epochs)
+    # TODO: better manage GPU vs CPU tasks -> when to transfer to cpu
     # TODO: add embedding dropout if required
     def __init__(
         self,
@@ -48,6 +49,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         embedding_labels: Dict[str, np.ndarray] = {},
         real_labels: Dict[str, str] = {},
         categorical_labels: Dict[str, str] = {},
+        real_scales: Dict[str, Tuple[float, float]] = {},
         learning_rate: float = 1e-3,
         log_interval: int = 10,
         log_gradient_flow: bool = False,
@@ -298,6 +300,9 @@ class TemporalFusionTransformer(pl.LightningModule):
                 dataset.static_reals + dataset.time_varying_known_reals + dataset.time_varying_unknown_reals
             )
         }
+
+        scales = dataset.scales
+        real_scales = {idx: scales[name] for idx, name in real_labels.items()}
         target_idx = len(dataset.reals)
 
         # create class and return
@@ -313,6 +318,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             real_labels=real_labels,
             categorical_labels=categorical_labels,
             embedding_labels=embedding_labels,
+            real_scales=real_scales,
             **kwargs,
         )
 
@@ -801,11 +807,11 @@ class TemporalFusionTransformer(pl.LightningModule):
         for name, support in dependencies["support"].items():
             dependencies["dependency"][name] /= support.clamp(1)
 
-        figs = self.plot_partial_dependence(dependencies)
         # log to tensorboard
-        for name, fig in figs.items():
+        for name in dependencies["support"].keys():
+            fig = self.plot_partial_dependence(dependencies, name=name)
             self.logger.experiment.add_figure(
-                f"{label.capitalize()} {name} dependence", fig, global_step=self.global_step
+                f"{label.capitalize()} {name} decoder dependence", fig, global_step=self.global_step
             )
 
     def plot_partial_dependence(
@@ -816,7 +822,6 @@ class TemporalFusionTransformer(pl.LightningModule):
             return figs
         else:
             # create figure
-            # todo: need to pass normalization stats to denormalize reals
             fig, ax = plt.subplots(figsize=(10, 5))
             ax.set_title(f"{name} partial dependence")
             ax.set_xlabel(name)
@@ -825,26 +830,47 @@ class TemporalFusionTransformer(pl.LightningModule):
             ax2.set_ylabel("Frequency")
 
             # get values for dependency plot and histogram
-            values = dependencies["dependency"][name]
-            x = torch.arange(values.size(0))
-            support = dependencies["support"][name]
+            values = dependencies["dependency"][name].numpy()
+            bins = values.size
+            support = dependencies["support"][name].numpy()
 
-            # plot support
-            ax2.hist(x, bins=x.size(0), weights=support, alpha=0.2, color="k")
+            # only display values where samples were observed
+            support_non_zero = support > 0
+            support = support[support_non_zero]
+            values = values[support_non_zero]
 
             # plot dependence
             if name in self.hparams.real_labels.values():
+                for idx, label_name in self.hparams.real_labels.items():
+                    if label_name == name:
+                        break
+                mean, scale = self.hparams.real_scales[idx]
+                x = np.linspace(-2, 2, bins) * scale + mean  # todo: do not hardcode scale for dependence plots
+                if len(x) > 0:
+                    x_step = x[1] - x[0]
+                else:
+                    x_step = 1
+                x = x[support_non_zero]
                 ax.plot(x, values)
-                ax2.hist(x, bins=x.size(0), weights=support, alpha=0.2, color="k")
+
             elif name in self.hparams.categorical_labels.values():
                 for idx, label_name in self.hparams.categorical_labels.items():
                     if label_name == name:
                         break
-                labels = self.hparams.embedding_labels[str(idx)]
-                ax.bar(labels, values)
+                # sort values from lowest to highest
+                sorting = values.argsort()
+                labels = np.asarray(self.hparams.embedding_labels[str(idx)])[support_non_zero][sorting]
+                # plot for each category
+                x = np.arange(values.size)
+                x_step = 1
+                ax.scatter(x, values[sorting])
+                # set labels at x axis
+                ax.set_xticks(x)
                 ax.set_xticklabels(labels, rotation=90)
             else:
                 raise ValueError(f"Unknown name {name}")
+            # plot support histogram
+            ax2.bar(x, support, width=x_step, linewidth=0, alpha=0.2, color="k")
             fig.tight_layout()
             return fig
 

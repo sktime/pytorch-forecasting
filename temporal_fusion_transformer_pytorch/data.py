@@ -127,7 +127,7 @@ class TimeSeriesDataSet(Dataset):
         for name in self.reals:
             if name not in self.scalers:
                 if name == self.time_idx:
-                    self.scalers[name] = MinMaxScaler().fit(self.data[[name]])
+                    self.scalers[name] = MinMaxScaler(feature_range=(-1, 1)).fit(self.data[[name]])
                 else:
                     self.scalers[name] = StandardScaler().fit(self.data[[name]])
             if self.scalers[name] is not None:
@@ -325,3 +325,21 @@ class TimeSeriesDataSet(Dataset):
                 index_data[id] = self.categoricals_encoders[id].inverse_transform(index_data[id])
         index = pd.DataFrame(index_data, index=self.data_index.index)
         return index
+
+    @property
+    def scales(self) -> Dict[str, Tuple[float, float]]:
+        """
+        returns mean and scale for each real type column
+        """
+        scales = {}
+        for name, scaler in self.scalers.items():
+            if isinstance(scaler, MinMaxScaler):
+                mean = scaler.data_min_[0] + scaler.data_max_[0] / 2
+                scale = scaler.scale_[0]
+            elif isinstance(scaler, StandardScaler):
+                mean = scaler.mean_[0]
+                scale = scaler.scale_[0]
+            else:
+                raise ValueError(f"Scales extraction for scaler of type {type(scaler)} not implemented")
+            scales[name] = (mean, scale)
+        return scales
