@@ -345,7 +345,7 @@ class TimeSeriesDataSet(Dataset):
             batch_first=True,
         )
 
-        target = rnn.pack_sequence([torch.Tensor(batch[1]) for batch in batches], enforce_sorted=False)
+        target = rnn.pad_sequence([torch.Tensor(batch[1]) for batch in batches], batch_first=True)
         x_cat = torch.cat((encoder_cat, decoder_cat), dim=1)
         x_cont = torch.cat((encoder_cont, decoder_cont), dim=1)
         return (

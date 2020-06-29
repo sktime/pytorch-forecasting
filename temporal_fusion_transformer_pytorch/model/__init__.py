@@ -519,6 +519,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         # extract data and run model
         x, y = batch
+        y = rnn.pack_padded_sequence(y, lengths=x["decode_lengths"], batch_first=True, enforce_sorted=False)
         out = self(**x)
         y_hat = out["prediction"]
         # calculate loss and log it
@@ -580,13 +581,16 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         run at epoch end for training or validation
         """
+        if "callback_metrics" in outputs[0]:  # workaround for pytorch-lightning bug
+            outputs = [out["callback_metrics"] for out in outputs]
         # log loss
         avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
+        tensorboard_logs = {f"avg_{label}_loss": avg_loss}
+
         if self.hparams.log_interval > 0:
             self._log_interpretation(outputs, label=label)
             self._log_encode_decode_lengths(outputs, label=label)
             self._log_partial_dependence(outputs, label=label)
-        tensorboard_logs = {f"avg_{label}_loss": avg_loss}
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
 
     def calculate_partial_dependency(
@@ -699,7 +703,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             attention = attention.mean(dim=0)
             attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
 
-            attention = torch.zeros(self.hparams.max_encode_length).scatter(
+            attention = torch.zeros(self.hparams.max_encode_length, device=self.device).scatter(
                 dim=0,
                 index=torch.arange(
                     self.hparams.max_encode_length - attention.size(0),
@@ -710,7 +714,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             )
         else:
             attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
-            attention = torch.zeros(attention.size(0), self.hparams.max_encode_length).scatter(
+            attention = torch.zeros(attention.size(0), self.hparams.max_encode_length, device=self.device).scatter(
                 dim=1,
                 index=torch.arange(
                     self.hparams.max_encode_length - attention.size(0),
@@ -745,7 +749,7 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # attention
         fig, ax = plt.subplots()
-        ax.plot(np.arange(-self.hparams.max_encode_length, 0), interpretation["attention"])
+        ax.plot(np.arange(-self.hparams.max_encode_length, 0), interpretation["attention"].cpu())
         ax.set_xlabel("Time index")
         ax.set_ylabel("Attention")
         ax.set_title("Attention")
@@ -762,13 +766,13 @@ class TemporalFusionTransformer(pl.LightningModule):
             return fig
 
         figs["static_variables"] = make_selection_plot(
-            "Static variables importance", interpretation["static_variables"], self.static_variables
+            "Static variables importance", interpretation["static_variables"].cpu(), self.static_variables
         )
         figs["encoder_variables"] = make_selection_plot(
-            "Encoder variables importance", interpretation["encoder_variables"], self.encoder_variables
+            "Encoder variables importance", interpretation["encoder_variables"].cpu(), self.encoder_variables
         )
         figs["decoder_variables"] = make_selection_plot(
-            "Decoder variables importance", interpretation["decoder_variables"], self.decoder_variables
+            "Decoder variables importance", interpretation["decoder_variables"].cpu(), self.decoder_variables
         )
 
         return figs
@@ -795,7 +799,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         for type in ["encode", "decode"]:
             fig, ax = plt.subplots()
-            lengths = torch.stack([out[f"{type}_length_histogram"] for out in outputs]).sum(0)
+            lengths = torch.stack([out[f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
             if type == "decode":
                 start = 1
             else:
@@ -848,9 +852,9 @@ class TemporalFusionTransformer(pl.LightningModule):
             ax2.set_ylabel("Frequency")
 
             # get values for dependency plot and histogram
-            values = dependencies["dependency"][name].numpy()
+            values = dependencies["dependency"][name].cpu().numpy()
             bins = values.size
-            support = dependencies["support"][name].numpy()
+            support = dependencies["support"][name].cpu().numpy()
 
             # only display values where samples were observed
             support_non_zero = support > 0
@@ -903,6 +907,10 @@ class TemporalFusionTransformer(pl.LightningModule):
         Returns:
             matplotlib figure
         """
+        # move to cpu
+        y = y.cpu()
+        y_hat = y_hat.cpu()
+        # create figure
         fig, ax = plt.subplots()
         n_pred = y_hat.shape[0]
         x_obs = np.arange(y.shape[0] - n_pred)
@@ -970,7 +978,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             name = self.hparams.categorical_labels[idx]
             labels = self.hparams.embedding_labels[idx]
             data = emb.weight.data
-            self.logger.experiment.add_embedding(data, metadata=labels, tag=name, global_step=self.global_step)
+            self.logger.experiment.add_embedding(data.cpu(), metadata=labels, tag=name, global_step=self.global_step)
 
     def size(self) -> int:
         """

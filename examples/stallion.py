@@ -6,7 +6,6 @@ from pytorch_lightning.callbacks import EarlyStopping
 
 from temporal_fusion_transformer_pytorch import TimeSeriesDataSet, TemporalFusionTransformer
 from pathlib import Path
-from leapfrog.etl import clean_column_names, optimize_memory
 import pandas as pd
 import numpy as np
 
@@ -17,6 +16,11 @@ from temporal_fusion_transformer_pytorch.utils import profile
 
 def parse_yearmonth(df):
     return df.assign(date=lambda x: pd.to_datetime(x.yearmonth, format="%Y%m")).drop("yearmonth", axis=1)
+
+
+def clean_column_names(df):
+    df.columns = [c.strip(" ").replace(" ", "_").replace("-", "_").lower() for c in df.columns]
+    return df
 
 
 data_path = Path("examples/data/stallion")
@@ -42,9 +46,10 @@ data = (
     .join(price_sales_promotion, on=["date", "sku", "agency"])
     .join(demographics, on="agency")
     .join(event_calendar, on="date")
-    .pipe(lambda x: optimize_memory(x, unique_value_ratio=1))
     .sort_values("date")
 )
+for c in data.select_dtypes(object).columns:
+    data[c] = data[c].astype("category")
 
 # minor feature engineering: add 12 month rolling mean volume
 data = data.assign(discount_in_percent=lambda x: (x.discount / x.price_regular).fillna(0) * 100)
@@ -102,21 +107,21 @@ training = TimeSeriesDataSet(
 )
 
 validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data.__time_idx__.max() + 1)
-batch_size = 64
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=1)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=1)
+batch_size = 128
+train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=4)
+val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=4)
 
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 trainer = pl.Trainer(
     max_epochs=15,
-    gpus=0,
+    gpus=1,
     weights_summary="top",
     gradient_clip_val=0.1,
     early_stop_callback=early_stop_callback,
     # limit_train_batches=100,
     # limit_val_batches=1,
-    fast_dev_run=True,
+    # fast_dev_run=True,
     # logger=logger,
 )
 

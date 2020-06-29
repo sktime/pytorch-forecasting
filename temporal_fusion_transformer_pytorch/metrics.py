@@ -30,8 +30,10 @@ class MultiHorizonMetric(TensorMetric, metaclass=abc.ABCMeta):
         # unpack
         if isinstance(target, rnn.PackedSequence):
             target, lengths = rnn.pad_packed_sequence(target, batch_first=True)
+            # batch sizes reside on the CPU by default -> we need to bring them to GPU
+            lengths = lengths.to(target.device)
         else:
-            lengths = torch.LongTensor([target.size(1)]).expand(target.size(0))
+            lengths = torch.LongTensor([target.size(1)], device=target.device).expand(target.size(0))
         assert not target.requires_grad
         assert y_pred.size(0) == target.size(0)
 
@@ -39,7 +41,7 @@ class MultiHorizonMetric(TensorMetric, metaclass=abc.ABCMeta):
         losses = self.loss(y_pred.squeeze(), target)
 
         # mask loss
-        mask = torch.arange(target.size(1)).unsqueeze(0) >= lengths.unsqueeze(-1)
+        mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
         if self.input_size > 1:
             mask = mask.unsqueeze(-1)
         losses = losses.masked_fill(mask, 0.0)
