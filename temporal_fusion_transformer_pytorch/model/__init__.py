@@ -53,7 +53,8 @@ class TemporalFusionTransformer(pl.LightningModule):
         learning_rate: float = 1e-3,
         log_interval: int = 10,
         log_gradient_flow: bool = False,
-        dependency_scale: float = 2.0,
+        partial_dependence_range: float = 2.0,
+        partial_dependence_scale: str = "linear",
     ):
         """
         Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to 
@@ -89,9 +90,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
-            dependency_scale: standard deviation until which dependency plots are created (positive float), e.g. a
+            partial_dependence_range: standard deviation until which dependency plots are created (positive float), e.g. a
                 value of 2 means that dependency plots are created from -2 to 2 standard deviations for continuous
                 variables
+            partial_dependence_scale: on which scale to average the target. One of "linear" or "log"
         """
         super().__init__()
         self.save_hyperparameters()  # store all arguments
@@ -609,6 +611,12 @@ class TemporalFusionTransformer(pl.LightningModule):
         mask = self._get_mask(max_encode_length, x["encode_lengths"], inverse=True)
         # select valid y values
         y_flat = y[mask]
+        if self.hparams.partial_dependence_scale == "linear":
+            pass
+        elif self.hparams.partial_dependence_scale == "log":
+            y_flat = torch.log(y_flat + 1e-8)
+        else:
+            raise ValueError(f"Unknown partial_dependence_scale {self.hparams.partial_dependence_scale}")
 
         # real bins
         positive_bins = (bins - 1) // 2
@@ -622,7 +630,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         reals = x["x_cont"][:, -max_encode_length:]
         for idx, name in self.hparams.real_labels.items():
             dependency[name], support[name] = groupby_apply(
-                (reals[..., int(idx)][mask] * positive_bins / self.hparams.dependency_scale)
+                (reals[..., int(idx)][mask] * positive_bins / self.hparams.partial_dependence_range)
                 .round()
                 .clamp(-positive_bins, positive_bins)
                 .long()
@@ -866,7 +874,12 @@ class TemporalFusionTransformer(pl.LightningModule):
             fig, ax = plt.subplots(**kwargs)
             ax.set_title(f"{name} partial dependence")
             ax.set_xlabel(name)
-            ax.set_ylabel("Prediction")
+            if self.hparams.partial_dependence_scale == "linear":
+                ax.set_ylabel("Prediction")
+            elif self.hparams.partial_dependence_scale == "log":
+                ax.set_ylabel("Log prediction")
+            else:
+                raise ValueError(f"Unkown partial_dependence_scale {self.hparams.partial_dependence_scale}")
             ax2 = ax.twinx()  # second axis for histogram
             ax2.set_ylabel("Frequency")
 
@@ -886,7 +899,11 @@ class TemporalFusionTransformer(pl.LightningModule):
                     if label_name == name:
                         break
                 mean, scale = self.hparams.real_scales[idx]
-                x = np.linspace(-self.hparams.dependency_scale, self.hparams.dependency_scale, bins) * scale + mean
+                x = (
+                    np.linspace(-self.hparams.partial_dependence_range, self.hparams.partial_dependence_range, bins)
+                    * scale
+                    + mean
+                )
                 if len(x) > 0:
                     x_step = x[1] - x[0]
                 else:

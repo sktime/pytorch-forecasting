@@ -197,7 +197,7 @@ class TimeSeriesDataSet(Dataset):
         # create index
         self.data_index = self.construct_index(self.data)
 
-        # convert to torch tensor
+        # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensor(self.data)
 
     def _data_to_tensor(self, data) -> Tuple[torch.Tensor, torch.LongTensor]:

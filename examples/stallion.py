@@ -142,6 +142,7 @@ tft = TemporalFusionTransformer.from_dataset(
     dropout=0.2,
     hidden_continuous_size=16,
     loss=QuantileLoss(log_space=True),
+    partial_dependence_scale="log",
 )
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
