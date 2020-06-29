@@ -188,7 +188,7 @@ class VariableSelectionNetwork(nn.Module):
             outputs = outputs.sum(axis=-1)
         else:  # for one input, do not perform variable selection but just encoding
             outputs = self.single_variable_grns[0](embedding)  # fast forward if only one variable
-            sparse_weights = torch.ones_like(outputs).unsqueeze(-1)
+            sparse_weights = torch.ones(outputs.size(0), outputs.size(1), 1, 1, device=outputs.device)
         return outputs, sparse_weights
 
 

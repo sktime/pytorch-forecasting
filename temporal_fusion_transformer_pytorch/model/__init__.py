@@ -680,20 +680,20 @@ class TemporalFusionTransformer(pl.LightningModule):
         decode_length_histogram = integer_histogram(out["decode_lengths"], min=1, max=out["decoder_variables"].size(1))
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
-        encoder_variables = out["encoder_variables"].squeeze()
+        encoder_variables = out["encoder_variables"].squeeze(-2)
         encode_mask = self._get_mask(encoder_variables.size(1), out["encode_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
             out["encode_lengths"].where(out["encode_lengths"] > 0, torch.ones_like(out["encode_lengths"])).unsqueeze(-1)
         )
 
-        decoder_variables = out["decoder_variables"].squeeze()
+        decoder_variables = out["decoder_variables"].squeeze(-2)
         decode_mask = self._get_mask(decoder_variables.size(1), out["decode_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         decoder_variables /= out["decode_lengths"].unsqueeze(-1)
 
         # static variables need no masking
-        static_variables = out["static_variables"].squeeze()
+        static_variables = out["static_variables"].squeeze(1)
         # attention is batch x time x heads x time_to_attend
         # average over heads + only keep prediction attention and attention on observed timesteps
         attention = out["attention"][:, attention_prediction_horizon, :, : out["encode_lengths"].max()].mean(1)
@@ -709,7 +709,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             decoder_variables = decoder_variables.sum(dim=0)
             attention = attention.sum(dim=0)
             if reduction == "mean":
-                attention = attention / encode_length_histogram[1:].cumsum(0).flip(0).clamp(1)
+                attention = attention / encode_length_histogram[1:].flip(0).cumsum(0).clamp(1)
                 attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
             elif reduction == "sum":
                 pass
@@ -804,9 +804,9 @@ class TemporalFusionTransformer(pl.LightningModule):
             name: torch.stack([x["interpretation"][name] for x in outputs]).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
-        interpretation["attention"] = interpretation["attention"] / interpretation["encode_length_histogram"][
-            1:
-        ].cumsum(0).flip(0).clamp(1)
+        interpretation["attention"] = interpretation["attention"] / interpretation["encode_length_histogram"][1:].flip(
+            0
+        ).cumsum(0).clamp(1)
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
         # log to tensorboard
