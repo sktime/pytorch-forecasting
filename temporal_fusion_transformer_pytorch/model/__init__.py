@@ -844,7 +844,15 @@ class TemporalFusionTransformer(pl.LightningModule):
             return figs
         else:
             # create figure
-            fig, ax = plt.subplots(figsize=(10, 5))
+            kwargs = {}
+            # adjust figure size for figures with many labels
+            if name in self.hparams.categorical_labels.values():
+                for idx, label_name in self.hparams.categorical_labels.items():
+                    if label_name == name:
+                        break
+                if self.hparams.embedding_sizes[str(idx)][0] > 10:
+                    kwargs = dict(figsize=(10, 5))
+            fig, ax = plt.subplots(**kwargs)
             ax.set_title(f"{name} partial dependence")
             ax.set_xlabel(name)
             ax.set_ylabel("Prediction")
@@ -882,10 +890,18 @@ class TemporalFusionTransformer(pl.LightningModule):
                 # sort values from lowest to highest
                 sorting = values.argsort()
                 labels = np.asarray(self.hparams.embedding_labels[str(idx)])[support_non_zero][sorting]
+                values = values[sorting]
+                support = support[sorting]
+                # cut entries if there are too many categories to fit nicely on the plot
+                maxsize = 50
+                if values.size > maxsize:
+                    values = np.concatenate([values[: maxsize // 2], values[-maxsize // 2 :]])
+                    labels = np.concatenate([labels[: maxsize // 2], labels[-maxsize // 2 :]])
+                    support = np.concatenate([support[: maxsize // 2], support[-maxsize // 2 :]])
                 # plot for each category
                 x = np.arange(values.size)
                 x_step = 1
-                ax.scatter(x, values[sorting])
+                ax.scatter(x, values)
                 # set labels at x axis
                 ax.set_xticks(x)
                 ax.set_xticklabels(labels, rotation=90)

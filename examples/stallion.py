@@ -1,5 +1,8 @@
 import pickle
 
+import warnings
+
+
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import EarlyStopping
@@ -12,6 +15,10 @@ import numpy as np
 from temporal_fusion_transformer_pytorch.metrics import PoissonLoss, QuantileLoss
 from temporal_fusion_transformer_pytorch.tuning import optimize_hyperparameters
 from temporal_fusion_transformer_pytorch.utils import profile
+
+from pandas.core.common import SettingWithCopyWarning
+
+warnings.simplefilter("error", category=SettingWithCopyWarning)
 
 
 def parse_yearmonth(df):
@@ -106,20 +113,20 @@ training = TimeSeriesDataSet(
     dropout_categoricals=["sku"],
 )
 
-validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data.__time_idx__.max() + 1)
+validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data_index.time.max() + 1)
 batch_size = 128
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=4)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=4)
+train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
+val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 trainer = pl.Trainer(
-    max_epochs=15,
-    gpus=1,
+    max_epochs=1,
+    gpus=0,
     weights_summary="top",
     gradient_clip_val=0.1,
     early_stop_callback=early_stop_callback,
-    # limit_train_batches=100,
+    # limit_train_batches=15,
     # limit_val_batches=1,
     # fast_dev_run=True,
     # logger=logger,
@@ -174,12 +181,12 @@ trainer.fit(
 
 
 # profile speed
-# profile(
-#     trainer.fit,
-#     profile_fname="profile.prof",
-#     model=tft,
-#     period=0.001,
-#     filter="temporal_fusion_transformer_pytorch",
-#     train_dataloader=train_dataloader,
-#     val_dataloaders=val_dataloader,
-# )
+profile(
+    trainer.fit,
+    profile_fname="profile.prof",
+    model=tft,
+    period=0.001,
+    filter="temporal_fusion_transformer_pytorch",
+    train_dataloader=train_dataloader,
+    val_dataloaders=val_dataloader,
+)

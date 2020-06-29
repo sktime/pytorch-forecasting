@@ -195,7 +195,21 @@ class TimeSeriesDataSet(Dataset):
                 self.encoded_constant_fill_strategy[name] = value
 
         # create index
-        self.data_index = self.construct_index()
+        self.data_index = self.construct_index(self.data)
+
+        # convert to torch tensor
+        self.data = self._data_to_tensor(self.data)
+
+    def _data_to_tensor(self, data) -> Tuple[torch.Tensor, torch.LongTensor]:
+
+        categorical = torch.LongTensor(data[self.categoricals + ["__time_idx__"]].to_numpy(np.long))
+
+        cont_cols = self.reals + ["__target__"]
+        if self.weight is not None:
+            cont_cols.append("__weight__")
+        continuous = torch.Tensor(data[cont_cols].to_numpy(dtype=np.float32))
+
+        return continuous, categorical
 
     @property
     def categoricals(self):
@@ -221,9 +235,9 @@ class TimeSeriesDataSet(Dataset):
         new = TimeSeriesDataSet(data, **kwargs)
         return new
 
-    def construct_index(self):
+    def construct_index(self, data):
 
-        g = self.data.groupby(self.group_ids)
+        g = data.groupby(self.group_ids)
 
         df_index_first = g["__time_idx__"].transform("nth", 0).to_frame("time_first")
         df_index_last = g["__time_idx__"].transform("nth", -1).to_frame("time_last")
@@ -261,26 +275,31 @@ class TimeSeriesDataSet(Dataset):
     def __getitem__(self, idx):
         index = self.data_index.iloc[idx]
         # get index data
-        data = self.data.iloc[index.index_start : index.index_end + 1].copy()
+        data_cont = self.data[0][index.index_start : index.index_end + 1]
+        data_cat = self.data[1][index.index_start : index.index_end + 1]
 
-        sequence_length = len(data)
+        sequence_length = len(data_cat)
 
         # fill in missing values (if not all time indices are specified
         if sequence_length < index.sequence_length:
-            repetitions = -data.__time_idx__.diff(-1).fillna(-1)
-            indices = np.repeat(np.arange(len(data)), repetitions)
+            # todo: fix
+            repetitions = -data_cat[:, -1].diff(-1).fillna(-1)
+            indices = np.repeat(np.arange(len(data_cat)), repetitions)
             repetition_indices = np.where(np.diff(indices, prepend=[-1]) == 0)[0]
-            data = data.iloc[indices]
+            data_cat = data_cat[indices]
+            data_cont = data_cont[indices]
             # make replacements
             for name, value in self.encoded_constant_fill_strategy.items():
-                col_idx = data.columns.get_loc(name)
-                data.iloc[repetition_indices, col_idx] = value
+                col_idx = self.reals.index(name)
+                data_cont[repetition_indices, col_idx] = value
+
+            sequence_length = len(data_cat)
 
         # determine data window
         assert sequence_length >= self.min_prediction_length
-        # determine prediction/decode length and encode length
+        # determine prediction/decode length and encode length (data_cat[:, -1] is time index)
         decode_length = min(
-            data.iloc[-1]["__time_idx__"] - (self.min_prediction_idx - 1), self.max_prediction_length, sequence_length
+            data_cat[-1, -1] - (self.min_prediction_idx - 1), self.max_prediction_length, sequence_length
         )
         encode_length = sequence_length - decode_length
         assert decode_length >= self.min_prediction_length
@@ -297,32 +316,31 @@ class TimeSeriesDataSet(Dataset):
                 max(self.min_prediction_length, Binomial(decode_length, encode_length_probability).sample()),
             )
             # select subset of sequence of new sequence
-            if new_encode_length + new_decode_length < len(data):
-                data = data.iloc[encode_length - new_encode_length : encode_length + new_decode_length]
+            if new_encode_length + new_decode_length < len(data_cat):
+                data_cat = data_cat[encode_length - new_encode_length : encode_length + new_decode_length]
+                data_cont = data_cont[encode_length - new_encode_length : encode_length + new_decode_length]
                 encode_length = new_encode_length
                 decode_length = new_decode_length
 
             # switch some variables to nan if encode length is 0
             if encode_length == 0 and len(self.dropout_categoricals) > 0:
-                data[self.dropout_categoricals] = 0  # zero is encoded nan
+                data_cat[:, [self.categoricals.index(c) for c in self.dropout_categoricals]] = 0  # zero is encoded nan
 
         assert decode_length > 0
         assert encode_length >= 0
-        assert data.iloc[-1]["__time_idx__"] - self.min_prediction_idx + 1 >= decode_length
+        assert data_cat[-1, -1] - self.min_prediction_idx + 1 >= decode_length
 
         if self.weight is None:
-            target = data["__target__"].to_numpy(dtype=np.float32)
+            target = data_cont[:, -1]
         else:
-            target = data[["__target__", "__weight__"]].to_numpy(dtype=np.float32)
+            target = data_cont[:, -2:]
+            data_cont = data_cont[:, -1:]
         if self.add_relative_time_idx:
-            data.loc[:, "relative_time_idx"] = (
-                np.arange(-encode_length, decode_length, dtype=float) / self.max_encode_length
+            data_cont[:, self.reals.index("relative_time_idx")] = (
+                torch.arange(-encode_length, decode_length, dtype=data_cont.dtype) / self.max_encode_length
             )
 
-        categoricals = data[self.categoricals].to_numpy(np.long)
-        reals = data[self.reals + ["__target__"]].to_numpy(dtype=np.float32)
-
-        return dict(x_cat=categoricals, x_cont=reals, encode_length=encode_length), target[encode_length:]
+        return dict(x_cat=data_cat[:, :-1], x_cont=data_cont, encode_length=encode_length), target[encode_length:]
 
     def _collate_fn(self, batches):
         encode_lengths = torch.LongTensor([batch[0]["encode_length"] for batch in batches])
