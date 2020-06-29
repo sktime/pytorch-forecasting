@@ -540,15 +540,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             detached_output = {name: tensor.detach() for name, tensor in out.items()}
             interpretation = self.interpret_output(
                 detached_output,
-                average_batches=True,
+                reduction="sum",
                 attention_prediction_horizon=0,  # attention only for first prediction horizon
             )
             log["interpretation"] = interpretation
-            # histogram of decode and encode lengths
-            log["encode_length_histogram"] = integer_histogram(
-                x["encode_lengths"], min=0, max=self.hparams.max_encode_length
-            )
-            log["decode_length_histogram"] = integer_histogram(x["decode_lengths"], min=1, max=y_hat.size(1))
 
             log["partial_dependence"] = self.calculate_partial_dependency(
                 x, self.loss.to_prediction(y_hat.detach()), normalize=False
@@ -589,7 +584,6 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         if self.hparams.log_interval > 0:
             self._log_interpretation(outputs, label=label)
-            self._log_encode_decode_lengths(outputs, label=label)
             self._log_partial_dependence(outputs, label=label)
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
 
@@ -658,19 +652,25 @@ class TemporalFusionTransformer(pl.LightningModule):
             return torch.arange(size, device=self.device).unsqueeze(0) >= lengths.unsqueeze(-1)
 
     def interpret_output(
-        self, out: Dict[str, torch.Tensor], average_batches: bool = False, attention_prediction_horizon: int = 0,
+        self, out: Dict[str, torch.Tensor], reduction: str = "none", attention_prediction_horizon: int = 0,
     ) -> Dict[str, torch.Tensor]:
         """
         interpret output of model
 
         Args:
             out: output as produced by ``forward()``
-            average_batches: if to average over all batches
+            reduction: "none" for no averaging over batches, "sum" for summing attentions, "mean" for
+                normalizing by encode lengths
             attention_prediction_horizon: which prediction horizon to use for attention
 
         Returns:
             interpretations that can be plotted with ``plot_interpretation()``
         """
+
+        # histogram of decode and encode lengths
+        encode_length_histogram = integer_histogram(out["encode_lengths"], min=0, max=self.hparams.max_encode_length)
+        decode_length_histogram = integer_histogram(out["decode_lengths"], min=1, max=out["decoder_variables"].size(1))
+
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze()
         encode_mask = self._get_mask(encoder_variables.size(1), out["encode_lengths"])
@@ -688,20 +688,25 @@ class TemporalFusionTransformer(pl.LightningModule):
         static_variables = out["static_variables"].squeeze()
         # attention is batch x time x heads x time_to_attend
         # average over heads + only keep prediction attention and attention on observed timesteps
-        # todo: ensure interpretation is in line with paper
         attention = out["attention"][:, attention_prediction_horizon, :, : out["encode_lengths"].max()].mean(1)
-        # reoder attention
+        # reorder attention
         for i in range(len(attention)):  # very inefficient but does the trick
             if 0 < out["encode_lengths"][i] < attention.size(1):
                 attention[i, -out["encode_lengths"][i] :] = attention[i, : out["encode_lengths"][i]].clone()
                 attention[i, : attention.size(1) - out["encode_lengths"][i]] = 0.0
 
-        if average_batches:  # if to average over batches
-            static_variables = static_variables.mean(dim=0)
-            encoder_variables = encoder_variables.mean(dim=0)
-            decoder_variables = decoder_variables.mean(dim=0)
-            attention = attention.mean(dim=0)
-            attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
+        if reduction != "none":  # if to average over batches
+            static_variables = static_variables.sum(dim=0)
+            encoder_variables = encoder_variables.sum(dim=0)
+            decoder_variables = decoder_variables.sum(dim=0)
+            attention = attention.sum(dim=0)
+            if reduction == "mean":
+                attention = attention / encode_length_histogram[1:].cumsum(0).flip(0).clamp(1)
+                attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
+            elif reduction == "sum":
+                pass
+            else:
+                raise ValueError(f"Unknown reduction {reduction}")
 
             attention = torch.zeros(self.hparams.max_encode_length, device=self.device).scatter(
                 dim=0,
@@ -729,6 +734,8 @@ class TemporalFusionTransformer(pl.LightningModule):
             static_variables=static_variables,
             encoder_variables=encoder_variables,
             decoder_variables=decoder_variables,
+            encode_length_histogram=encode_length_histogram,
+            decode_length_histogram=decode_length_histogram,
         )
         return interpretation
 
@@ -749,7 +756,9 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # attention
         fig, ax = plt.subplots()
-        ax.plot(np.arange(-self.hparams.max_encode_length, 0), interpretation["attention"].cpu())
+        attention = interpretation["attention"].cpu()
+        attention = attention / attention.sum(-1).unsqueeze(-1)
+        ax.plot(np.arange(-self.hparams.max_encode_length, 0), attention)
         ax.set_xlabel("Time index")
         ax.set_ylabel("Attention")
         ax.set_title("Attention")
@@ -759,6 +768,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         def make_selection_plot(title, values, labels):
             fig, ax = plt.subplots(figsize=(7, len(values) * 0.25 + 2))
             order = np.argsort(values)
+            values = values / values.sum(-1).unsqueeze(-1)
             ax.barh(np.arange(len(values)), values[order] * 100, tick_label=np.asarray(labels)[order])
             ax.set_title(title)
             ax.set_xlabel("Importance in %")
@@ -783,9 +793,13 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         # extract interpretations
         interpretation = {
-            name: torch.stack([x["interpretation"][name] for x in outputs]).mean(0)
+            name: torch.stack([x["interpretation"][name] for x in outputs]).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
+        interpretation["attention"] = interpretation["attention"] / interpretation["encode_length_histogram"][
+            1:
+        ].cumsum(0).flip(0).clamp(1)
+
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
         # log to tensorboard
         for name, fig in figs.items():
@@ -793,13 +807,10 @@ class TemporalFusionTransformer(pl.LightningModule):
                 f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
             )
 
-    def _log_encode_decode_lengths(self, outputs, label="train"):
-        """
-        log decode and encode lengths in histograms on tensorboard
-        """
+        # log lengths of encoder/decoder
         for type in ["encode", "decode"]:
             fig, ax = plt.subplots()
-            lengths = torch.stack([out[f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
+            lengths = torch.stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
             if type == "decode":
                 start = 1
             else:

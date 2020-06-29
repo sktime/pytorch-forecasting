@@ -115,13 +115,13 @@ training = TimeSeriesDataSet(
 
 validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data_index.time.max() + 1)
 batch_size = 128
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
+val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
 
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 trainer = pl.Trainer(
-    max_epochs=1,
+    max_epochs=3,
     gpus=0,
     weights_summary="top",
     gradient_clip_val=0.1,
@@ -130,6 +130,7 @@ trainer = pl.Trainer(
     # limit_val_batches=1,
     # fast_dev_run=True,
     # logger=logger,
+    # profiler=True,
 )
 
 
@@ -181,12 +182,12 @@ trainer.fit(
 
 
 # profile speed
-profile(
-    trainer.fit,
-    profile_fname="profile.prof",
-    model=tft,
-    period=0.001,
-    filter="temporal_fusion_transformer_pytorch",
-    train_dataloader=train_dataloader,
-    val_dataloaders=val_dataloader,
-)
+# profile(
+#     trainer.fit,
+#     profile_fname="profile.prof",
+#     model=tft,
+#     period=0.001,
+#     filter="temporal_fusion_transformer_pytorch",
+#     train_dataloader=train_dataloader,
+#     val_dataloaders=val_dataloader,
+# )

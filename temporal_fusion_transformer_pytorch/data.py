@@ -282,10 +282,9 @@ class TimeSeriesDataSet(Dataset):
 
         # fill in missing values (if not all time indices are specified
         if sequence_length < index.sequence_length:
-            # todo: fix
-            repetitions = -data_cat[:, -1].diff(-1).fillna(-1)
-            indices = np.repeat(np.arange(len(data_cat)), repetitions)
-            repetition_indices = np.where(np.diff(indices, prepend=[-1]) == 0)[0]
+            repetitions = torch.cat([data_cat[1:, -1] - data_cat[:-1, -1], torch.ones(1, dtype=data_cat.dtype)])
+            indices = torch.repeat_interleave(torch.arange(len(data_cat)), repetitions)
+            repetition_indices = torch.cat([torch.BoolTensor([False]), indices[1:] == indices[:-1]])
             data_cat = data_cat[indices]
             data_cont = data_cont[indices]
             # make replacements
