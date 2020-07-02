@@ -237,7 +237,7 @@ class TimeSeriesDataSet(Dataset):
 
     def construct_index(self, data):
 
-        g = data.groupby(self.group_ids)
+        g = data.groupby(self.group_ids, observed=True)
 
         df_index_first = g["__time_idx__"].transform("nth", 0).to_frame("time_first")
         df_index_last = g["__time_idx__"].transform("nth", -1).to_frame("time_last")

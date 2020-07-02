@@ -23,7 +23,7 @@ exclude = '''
 '''
 
 [tool.poetry]
-name = "temporal_fusion_transformer_pytorch"
+name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
 version = "1.0.0"
 
@@ -41,6 +41,7 @@ optuna = "^1.5.0"
 scipy = "*"
 pandas = "^1.0.3"
 scikit-learn = "^0.23"
+pytorch_ranger = "*"
 
 [tool.poetry-dynamic-versioning]
 enable = true

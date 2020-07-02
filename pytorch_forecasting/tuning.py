@@ -9,8 +9,8 @@ import torch
 from pytorch_lightning import Callback
 from torch.utils.data import DataLoader
 
-from temporal_fusion_transformer_pytorch.model import TemporalFusionTransformer
-from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
+from pytorch_forecasting import TemporalFusionTransformer
+from pytorch_forecasting.data import TimeSeriesDataSet
 import pytorch_lightning as pl
 from optuna.integration import PyTorchLightningPruningCallback
 

@@ -1,31 +1,28 @@
-from typing import List, Dict, Tuple, Callable, Union
+from typing import Union, List, Dict, Tuple
 
-import torch
-from torch import nn
-import pytorch_lightning as pl
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import pytorch_lightning as pl
+import torch
+from matplotlib import pyplot as plt
+from pytorch_ranger import Ranger
+from torch import nn
 from torch.nn.utils import rnn
 from torch.utils.data import DataLoader
-from tqdm.autonotebook import tqdm
+from tqdm.notebook import tqdm
 
-from temporal_fusion_transformer_pytorch.model.sub_modules import (
-    GateAddNorm,
-    GatedResidualNetwork,
+from pytorch_forecasting import TimeSeriesDataSet
+from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
+    GatedResidualNetwork,
+    GateAddNorm,
     InterpretableMultiHeadAttention,
 )
-
-from temporal_fusion_transformer_pytorch.metrics import QuantileLoss, MultiHorizonMetric
-from temporal_fusion_transformer_pytorch.data import TimeSeriesDataSet
-from temporal_fusion_transformer_pytorch.utils import integer_histogram, groupby_apply
-from pytorch_ranger import Ranger
+from pytorch_forecasting.utils import groupby_apply, integer_histogram
 
 
 class TemporalFusionTransformer(pl.LightningModule):
     # TODO: improve scalability (many categories for dependence plots, lots of data accumulating over large epochs)
-    # TODO: better manage GPU vs CPU tasks -> when to transfer to cpu
     def __init__(
         self,
         hidden_size: int = 16,
@@ -57,7 +54,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         partial_dependence_scale: str = "linear",
     ):
         """
-        Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to 
+        Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to
 
         Args:
 
@@ -293,10 +290,11 @@ class TemporalFusionTransformer(pl.LightningModule):
             int(idx) for idx, name in categorical_labels.items() if name in dataset.dropout_categoricals
         ]
         # determine embedding sizes based on heuristic
-        kwargs.setdefault(
-            "embedding_sizes",
-            {idx: (len(labels), round(1.6 * len(labels) ** 0.56)) for idx, labels in embedding_labels.items()},
-        )
+        embedding_sizes = {
+            idx: (len(labels), round(1.6 * len(labels) ** 0.56)) for idx, labels in embedding_labels.items()
+        }
+        embedding_sizes.update(kwargs.get("embedding_sizes", {}))
+        kwargs.setdefault("embedding_sizes", embedding_sizes)
         # reals
         start = 0
         length = len(dataset.static_reals)
