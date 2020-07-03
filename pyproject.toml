@@ -25,12 +25,12 @@ exclude = '''
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
-version = "1.0.0"
+version = "0.1.0"
 
 authors = ["Jan Beitner"]
 classifiers = ["Intended Audience :: Developers", "Programming Language :: Python :: 3"]
 description = "Temporal fusion transformer for timeseries forecasting"
-repository = "https://github.com/jdb78/temporal_fusion_transformer_pytorch"
+repository = "https://github.com/jdb78/pytorch_forecasting"
 
 [tool.poetry.dependencies]
 python= "^3.7"
