@@ -7,14 +7,14 @@ import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import EarlyStopping
 
-from temporal_fusion_transformer_pytorch import TimeSeriesDataSet, TemporalFusionTransformer
+from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from temporal_fusion_transformer_pytorch.metrics import PoissonLoss, QuantileLoss
-from temporal_fusion_transformer_pytorch.tuning import optimize_hyperparameters
-from temporal_fusion_transformer_pytorch.utils import profile
+from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
+from pytorch_forecasting.tuning import optimize_hyperparameters
+from pytorch_forecasting.utils import profile
 
 from pandas.core.common import SettingWithCopyWarning
 
@@ -64,8 +64,7 @@ data["month"] = data.date.dt.month
 data["log_volume"] = np.log1p(data.volume)
 data["weight"] = 1 + np.sqrt(data.volume)
 
-data["time_idx"] = data.date.dt.year * 12 + data.date.dt.month
-data["time_idx"] = data["time_idx"] - data["time_idx"].min()
+data["time_idx"] = (data["date"] - data["date"].min()).dt.days
 
 training_cutoff = "2016-09-01"
 max_encode_length = 36
@@ -188,7 +187,7 @@ trainer.fit(
 #     profile_fname="profile.prof",
 #     model=tft,
 #     period=0.001,
-#     filter="temporal_fusion_transformer_pytorch",
+#     filter="pytorch_forecasting",
 #     train_dataloader=train_dataloader,
 #     val_dataloaders=val_dataloader,
 # )

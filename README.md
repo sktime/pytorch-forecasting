@@ -2,7 +2,7 @@
 
 Install with 
 
-`pip install pytorch_forecasting`
+`pip install pytorch-forecasting`
 
 ## Available models
 
@@ -34,21 +34,11 @@ training = TimeSeriesDataSet(
     max_encode_length=max_encode_length,
     max_prediction_length=max_prediction_length,
     static_categoricals=[ ... ],
-    static_reals=[],
+    static_reals=[ ... ],
     time_varying_known_categoricals=[ ... ],
-    time_varying_known_reals=[
-        "time_idx",
-        "price_regular",
-        "price_actual",
-        "discount",
-        "avg_population_2017",
-        "avg_yearly_household_income_2017",
-        "discount_in_percent",
-    ],
-    time_varying_unknown_categoricals=[],
-    time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
-    constant_fill_strategy={"volume": 0},
-    dropout_categoricals=["sku"],
+    time_varying_known_reals=[ ... ],
+    time_varying_unknown_categoricals=[ ... ],
+    time_varying_unknown_reals=[ ... ],
 )
 
 

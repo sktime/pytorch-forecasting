@@ -28,7 +28,10 @@ readme = 'README.md'  # Markdown files are supported
 version = "0.1.0"
 
 authors = ["Jan Beitner"]
-classifiers = ["Intended Audience :: Developers", "Programming Language :: Python :: 3"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License"]
 description = "Temporal fusion transformer for timeseries forecasting"
 repository = "https://github.com/jdb78/pytorch_forecasting"
 
@@ -46,7 +49,7 @@ pytorch_ranger = "*"
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
-dirty = true
+dirty = false
 style = "semver"  # semantic versioning
 
 [build-system]  # make the package pip installable

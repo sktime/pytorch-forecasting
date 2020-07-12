@@ -85,6 +85,7 @@ class TimeSeriesDataSet(Dataset):
         categoricals_encoders={},
         scalers={},
         randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
+        predict_mode: bool = False,
     ):
         """
         Timeseries dataset
@@ -119,6 +120,7 @@ class TimeSeriesDataSet(Dataset):
             scalers: dictionary of scikit learn scalers or None
             randomize_length: None if not to randomize lengths. Tuple of beta distribution concentrations from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial distribution
+            predict_mode: if to only iterate over each timeseries once
         """
         super().__init__()
         self.max_encode_length = max_encode_length
@@ -140,6 +142,7 @@ class TimeSeriesDataSet(Dataset):
         self.randomize_length = randomize_length
         self.min_prediction_idx = min_prediction_idx or data[self.time_idx].min()
         self.constant_fill_strategy = constant_fill_strategy
+        self.predict_mode = predict_mode
 
         assert (
             self.target in self.time_varying_unknown_reals
@@ -195,7 +198,7 @@ class TimeSeriesDataSet(Dataset):
                 self.encoded_constant_fill_strategy[name] = value
 
         # create index
-        self.data_index = self.construct_index(self.data)
+        self.data_index = self.construct_index(self.data, predict_mode=predict_mode)
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensor(self.data)
@@ -220,7 +223,9 @@ class TimeSeriesDataSet(Dataset):
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
     @staticmethod
-    def from_dataset(dataset, data: pd.DataFrame, stop_randomization: bool = True, **update_kwargs):
+    def from_dataset(
+        dataset, data: pd.DataFrame, stop_randomization: bool = True, predict: bool = True, **update_kwargs
+    ):
         kwargs = {
             name: getattr(dataset, name)
             for name in inspect.signature(TimeSeriesDataSet).parameters.keys()
@@ -228,6 +233,10 @@ class TimeSeriesDataSet(Dataset):
         }
         kwargs["categoricals_encoders"] = dataset.categoricals_encoders
         kwargs["scalers"] = dataset.scalers
+        if predict:
+            assert stop_randomization, "if predicting, no randomization should be possible"
+            kwargs["min_prediction_length"] = kwargs["max_prediction_length"]
+            kwargs["predict"]
         if stop_randomization:
             kwargs["randomize_length"] = None
         kwargs.update(update_kwargs)
@@ -235,7 +244,7 @@ class TimeSeriesDataSet(Dataset):
         new = TimeSeriesDataSet(data, **kwargs)
         return new
 
-    def construct_index(self, data):
+    def construct_index(self, data: pd.DataFrame, predict_mode: bool) -> pd.DataFrame:
 
         g = data.groupby(self.group_ids, observed=True)
 
@@ -246,16 +255,36 @@ class TimeSeriesDataSet(Dataset):
         df_index["index_start"] = np.arange(len(df_index))
         df_index["time"] = self.data["__time_idx__"]
         df_index["count"] = (df_index["time_last"] - df_index["time_first"]).astype(int) + 1
+        df_index["group_id"] = g.ngroup()
+
+        if predict_mode:
+            # set end index
+            df_index["index_end"] = df_index["index_start"] + (df_index["time_last"] - df_index["time"])
+            df_index["sequence_length"] = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
+            # filter all elements that are longer than the allowed maximum sequence length
+            df_index = df_index[lambda x: x.sequence_length <= self.max_encode_length + self.max_prediction_length]
+            # choose longest sequence
+            df_index = df_index.groupby("group_id").sequence_length.argmax()
+            return df_index
 
         # calculate maxium index to include from current index_start
-        df_index["index_end"] = df_index["index_start"]
         max_time = (df_index["time"] + self.max_encode_length + self.max_prediction_length).clip(
             upper=df_index["count"] + df_index.time_first
         )
 
-        for _ in range(df_index["count"].max()):
-            new_end_time = df_index[["time", "time_diff_to_next"]].iloc[df_index["index_end"]].sum(axis=1).to_numpy()
-            df_index["index_end"] = df_index["index_end"].where(new_end_time + 1 > max_time, df_index["index_end"] + 1)
+        # if there are missing timesteps, we cannot say directly what is the last timestep to include - therefore we iterate until it is found
+        if (df_index_diff_to_next != 1).any():
+            df_index["index_end"] = df_index["index_start"]
+            for _ in range(df_index["count"].max()):
+                new_end_time = (
+                    df_index[["time", "time_diff_to_next"]].iloc[df_index["index_end"]].sum(axis=1).to_numpy()
+                )
+                df_index["index_end"] = df_index["index_end"].where(
+                    new_end_time + 1 > max_time, df_index["index_end"] + 1
+                )
+        else:
+            # direct calculation of end index if there are no missing timesteps in the data
+            df_index["index_end"] = df_index["index_start"] + (max_time - df_index["time"])
 
         # filter out where encode and decode length are not satisfied
         df_index["sequence_length"] = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
@@ -264,12 +293,12 @@ class TimeSeriesDataSet(Dataset):
             lambda x: (x.sequence_length > self.min_prediction_length)
             &
             # prediction must be for after minimal prediction index + length of prediction
-            (new_end_time >= self.min_prediction_idx - 1 + self.min_prediction_length)
+            (df_index["sequence_length"] + df_index["time"] >= self.min_prediction_idx - 1 + self.min_prediction_length)
         ]
+
         return df_index
 
     def __len__(self):
-        # todo: set to number of potential existing sequences - also last datapoints are not useable
         return self.data_index.shape[0]
 
     def __getitem__(self, idx):

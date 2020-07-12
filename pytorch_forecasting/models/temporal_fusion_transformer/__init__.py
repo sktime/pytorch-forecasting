@@ -10,7 +10,7 @@ from torch.nn.utils import rnn
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
-from pytorch_forecasting import TimeSeriesDataSet
+from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
@@ -319,8 +319,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         real_scales = {idx: scales[name] for idx, name in real_labels.items()}
         target_idx = len(dataset.reals)
 
-        # create class and return
-        return cls(
+        new_kwargs = dict(
             max_encode_length=dataset.max_encode_length,
             static_categoricals=static_categoricals,
             time_varying_categoricals_encoder=time_varying_known_categoricals + time_varying_unknown_categoricals,
@@ -334,8 +333,11 @@ class TemporalFusionTransformer(pl.LightningModule):
             embedding_labels=embedding_labels,
             real_scales=real_scales,
             embedding_paddings=embedding_paddings,
-            **kwargs,
         )
+        new_kwargs.update(kwargs)
+
+        # create class and return
+        return cls(**new_kwargs)
 
     def expand_static_context(self, context, timesteps):
         """
@@ -463,7 +465,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             q=attn_input[:, max_encode_length:],  # query only for predictions
             k=attn_input,
             v=attn_input,
-            mask=self.get_attention_mask(encode_lengths=encode_lengths, decode_length=timesteps - max_encode_length,),
+            mask=self.get_attention_mask(encode_lengths=encode_lengths, decode_length=timesteps - max_encode_length),
         )
 
         # skip connection over attention
