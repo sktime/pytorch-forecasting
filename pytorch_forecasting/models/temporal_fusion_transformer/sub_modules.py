@@ -35,6 +35,26 @@ class TimeDistributedInterpolation(nn.Module):
         return y
 
 
+class Upsample(nn.Module):
+    """Upsample in 1D with ``ouput_size`` parameters instead of using a FC layer."""
+
+    def __init__(self, output_size):
+        self.output_size = output_size
+        self.weights = nn.Parameter(torch.zeros(self.output_size))
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        input_size = x.shape[-1]
+
+        weights = self.softmax(self.weights).cumsum()
+
+        # to 2D
+        weights = (weights.unsqueeze(-1) * input_size - torch.arange(input_size).unsqueeze(0)).clamp(0)
+
+        out = x @ weights
+        return out
+
+
 class GLU(nn.Module):
     """Gated Linear Unit"""
 

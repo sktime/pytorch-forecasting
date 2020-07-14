@@ -10,7 +10,15 @@ from pytorch_lightning.metrics import TensorMetric
 import scipy.stats
 
 
-class MultiHorizonMetric(TensorMetric, metaclass=abc.ABCMeta):
+class Metric(TensorMetric, metaclass=abc.ABCMeta):
+    def to_prediction(self, out: torch.Tensor) -> torch.Tensor:
+        return out
+
+    def to_quantiles(self, out: torch.Tensor) -> torch.Tensor:
+        return out.unsqueeze(1)
+
+
+class MultiHorizonMetric(Metric, metaclass=abc.ABCMeta):
     """
     Abstract class for defining metric
     """
@@ -57,14 +65,6 @@ class MultiHorizonMetric(TensorMetric, metaclass=abc.ABCMeta):
         number of dimensions of prediction (e.g. 5 for 5 different quantiles)
         """
         return 1
-
-    @abc.abstractmethod
-    def to_prediction(self, out: torch.Tensor) -> torch.Tensor:
-        return out
-
-    @abc.abstractmethod
-    def to_quantiles(self, out: torch.Tensor):
-        return out
 
 
 class PoissonLoss(MultiHorizonMetric):
@@ -156,3 +156,12 @@ class QuantileLoss(MultiHorizonMetric):
         if self.log_space:
             pred = pred.exp()
         return pred
+
+
+class SMAPE(Metric):
+    def __init__(self, name: str = "sMAPE"):
+        super().__init__(name=name)
+
+    def forward(self, y_pred, target):
+        loss = (y_pred - target).abs() / (y_pred.abs() + target.abs())
+        return loss.mean()

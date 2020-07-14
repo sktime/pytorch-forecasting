@@ -1,7 +1,6 @@
 from typing import Union, List, Dict, Tuple
 
 import numpy as np
-import pytorch_lightning as pl
 import torch
 from matplotlib import pyplot as plt
 from pytorch_ranger import Ranger
@@ -10,6 +9,7 @@ from torch.nn.utils import rnn
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
+from pytorch_forecasting.models import BaseModel
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
@@ -21,7 +21,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
 from pytorch_forecasting.utils import groupby_apply, integer_histogram
 
 
-class TemporalFusionTransformer(pl.LightningModule):
+class TemporalFusionTransformer(BaseModel):
     # TODO: improve scalability (many categories for dependence plots, lots of data accumulating over large epochs)
     def __init__(
         self,
@@ -30,8 +30,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         dropout: float = 0.1,
         loss: MultiHorizonMetric = QuantileLoss(),
         attention_head_size: int = 4,
-        max_encode_length: int = 10,
-        target_idx: int = 0,
+        max_encoder_length: int = 10,
         weight_idx: Union[None, int] = None,
         static_categoricals: List[int] = [],
         static_reals: List[int] = [],
@@ -49,6 +48,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         real_scales: Dict[str, Tuple[float, float]] = {},
         learning_rate: float = 1e-3,
         log_interval: int = 10,
+        log_val_interval: int = None,
         log_gradient_flow: bool = False,
         partial_dependence_range: float = 2.0,
         partial_dependence_scale: str = "linear",
@@ -63,8 +63,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             dropout: dropout rate
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
-            max_encode_length: length to encode
-            target_idx: index of continuous target variable
+            max_encoder_length: length to encode
             static_categoricals: integer of positions of static categorical variables
             static_reals: integer of positions of static continuous variables
             time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
@@ -85,6 +84,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             categorical_labels: dictionary mapping (string) indices to categorical variable names
             learning_rate: learning rate
             log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0
+            log_val_interval: frequency with which to log validation set metrics, defaults to log_interval
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             partial_dependence_range: standard deviation until which dependency plots are created (positive float), e.g. a
@@ -92,8 +92,8 @@ class TemporalFusionTransformer(pl.LightningModule):
                 variables
             partial_dependence_scale: on which scale to average the target. One of "linear" or "log"
         """
+        self.save_hyperparameters()
         super().__init__()
-        self.save_hyperparameters()  # store all arguments
         # store loss function separately as it is a module
         self.loss = loss
 
@@ -252,28 +252,38 @@ class TemporalFusionTransformer(pl.LightningModule):
         ]
 
     @classmethod
-    def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
+    def from_dataset(cls, dataset: TimeSeriesDataSet, allowed_encoder_variable_names=None, **kwargs):
         """
         create model from dataset
 
         Args:
-            dataset:
+            dataset: timeseries dataset
+            allowed_encoder_variable_names: List of names that are allowed in encoder, defaults to all
             **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
 
         Returns:
             TemporalFusionTransformer
         """
-        start = 0
-        length = len(dataset.static_categoricals)
-        static_categoricals = list(range(start, length))
+        if allowed_encoder_variable_names is None:
+            allowed_encoder_variable_names = (
+                dataset.time_varying_known_categoricals
+                + dataset.time_varying_known_reals
+                + dataset.time_varying_unknown_categoricals
+                + dataset.time_varying_unknown_reals
+            )
 
-        start += length
-        length = len(dataset.time_varying_known_categoricals)
-        time_varying_known_categoricals = list(range(start, start + length))
-
-        start += length
-        length = len(dataset.time_varying_unknown_categoricals)
-        time_varying_unknown_categoricals = list(range(start, start + length))
+        # categoricals
+        static_categoricals = [dataset.categoricals.index(name) for name in dataset.static_categoricals]
+        time_varying_known_categoricals = [
+            dataset.categoricals.index(name)
+            for name in dataset.time_varying_known_categoricals
+            if name in allowed_encoder_variable_names
+        ]
+        time_varying_unknown_categoricals = [
+            dataset.categoricals.index(name)
+            for name in dataset.time_varying_unknown_categoricals
+            if name in allowed_encoder_variable_names
+        ]
 
         categorical_labels = {
             str(idx): name
@@ -295,18 +305,19 @@ class TemporalFusionTransformer(pl.LightningModule):
         }
         embedding_sizes.update(kwargs.get("embedding_sizes", {}))
         kwargs.setdefault("embedding_sizes", embedding_sizes)
+
         # reals
-        start = 0
-        length = len(dataset.static_reals)
-        static_reals = list(range(start, length))
-
-        start += length
-        length = len(dataset.time_varying_known_reals)
-        time_varying_known_reals = list(range(start, start + length))
-
-        start += length
-        length = len(dataset.time_varying_unknown_reals)
-        time_varying_unknown_reals = list(range(start, start + length))
+        static_reals = [dataset.reals.index(name) for name in dataset.static_reals]
+        time_varying_known_reals = [
+            dataset.reals.index(name)
+            for name in dataset.time_varying_known_reals
+            if name in allowed_encoder_variable_names
+        ]
+        time_varying_unknown_reals = [
+            dataset.reals.index(name)
+            for name in dataset.time_varying_unknown_reals
+            if name in allowed_encoder_variable_names
+        ]
 
         real_labels = {
             str(idx): name
@@ -317,17 +328,15 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         scales = dataset.scales
         real_scales = {idx: scales[name] for idx, name in real_labels.items()}
-        target_idx = len(dataset.reals)
 
         new_kwargs = dict(
-            max_encode_length=dataset.max_encode_length,
+            max_encoder_length=dataset.max_encoder_length,
             static_categoricals=static_categoricals,
             time_varying_categoricals_encoder=time_varying_known_categoricals + time_varying_unknown_categoricals,
             time_varying_categoricals_decoder=time_varying_known_categoricals,
             static_reals=static_reals,
             time_varying_reals_encoder=time_varying_known_reals + time_varying_unknown_reals,
             time_varying_reals_decoder=time_varying_known_reals,
-            target_idx=target_idx,
             real_labels=real_labels,
             categorical_labels=categorical_labels,
             embedding_labels=embedding_labels,
@@ -345,42 +354,40 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         return context[:, None].expand(-1, timesteps, -1)
 
-    def get_attention_mask(self, encode_lengths: torch.LongTensor, decode_length: int):
+    def get_attention_mask(self, encoder_lengths: torch.LongTensor, decoder_length: int):
         """Returns causal mask to apply for self-attention layer.
         Args:
         self_attn_inputs: Inputs to self attention layer to determine mask shape
         """
         # indices to which is attended
-        attend_step = torch.arange(decode_length, device=self.device)
+        attend_step = torch.arange(decoder_length, device=self.device)
         # indices for which is predicted
-        predict_step = torch.arange(decode_length, 0, step=-1, device=self.device)[:, None]
+        predict_step = torch.arange(decoder_length, 0, step=-1, device=self.device)[:, None]
         # do not attend to steps after to prediction
         decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
-        encoder_mask = self._get_mask(encode_lengths.max(), encode_lengths)
+        encoder_mask = self._get_mask(encoder_lengths.max(), encoder_lengths)
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
-                encoder_mask.unsqueeze(1).expand(-1, decode_length, -1),
-                decoder_mask.unsqueeze(0).expand(encode_lengths.size(0), -1, -1),
+                encoder_mask.unsqueeze(1).expand(-1, decoder_length, -1),
+                decoder_mask.unsqueeze(0).expand(encoder_lengths.size(0), -1, -1),
             ),
             dim=2,
         )
 
         return mask
 
-    def forward(
-        self,
-        x_cat: torch.Tensor,
-        x_cont: torch.LongTensor,
-        encode_lengths: torch.LongTensor,
-        decode_lengths: torch.LongTensor,
-    ) -> Dict[str, torch.Tensor]:
+    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
         input dimensions: n_samples x time x variables
         """
-        timesteps = x_cat.size(1)  # encode + decode length
-        max_encode_length = int(encode_lengths.max())
+        encoder_lengths = x["encoder_lengths"]
+        decoder_lengths = x["decoder_lengths"]
+        x_cat = torch.cat([x["encoder_cat"], x["decoder_cat"]], dim=1)  # concatenate in time dimension
+        x_cont = torch.cat([x["encoder_cont"], x["decoder_cont"]], dim=1)  # concatenate in time dimension
+        timesteps = x_cont.size(1)  # encode + decode length
+        max_encoder_length = int(encoder_lengths.max())
         embedding_vectors = {int(i): emb(x_cat[..., int(i)]) for i, emb in self.input_embeddings.items()}
         continuous_vectors = {
             int(i): lin(x_cont[..., int(i)].view(x_cont.size(0), -1, 1)) for i, lin in self.input_linear.items()
@@ -402,23 +409,23 @@ class TemporalFusionTransformer(pl.LightningModule):
             [embedding_vectors[i] for i in self.hparams.time_varying_categoricals_encoder]
             + [continuous_vectors[i] for i in self.hparams.time_varying_reals_encoder],
             dim=2,
-        )[:, :max_encode_length]
+        )[:, :max_encoder_length]
         embeddings_varying_decoder = torch.cat(
             [embedding_vectors[i] for i in self.hparams.time_varying_categoricals_decoder]
             + [continuous_vectors[i] for i in self.hparams.time_varying_reals_decoder],
             dim=2,
-        )[:, max_encode_length:]
+        )[:, max_encoder_length:]
 
         embeddings_varying_encoder, encoder_sparse_weights = self.encoder_variable_selection(
-            embeddings_varying_encoder, static_context_variable_selection[:, :max_encode_length],
+            embeddings_varying_encoder, static_context_variable_selection[:, :max_encoder_length],
         )
 
         embeddings_varying_decoder, decoder_sparse_weights = self.decoder_variable_selection(
-            embeddings_varying_decoder, static_context_variable_selection[:, max_encode_length:],
+            embeddings_varying_decoder, static_context_variable_selection[:, max_encoder_length:],
         )
         # LSTM
         # run lstm at least once, i.e. encode length has to be > 0
-        lstm_encode_lengths = encode_lengths.where(encode_lengths > 0, torch.ones_like(encode_lengths))
+        lstm_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
         # calculate initial state
         input_hidden = self.static_context_initial_hidden_lstm(static_embedding).expand(
             self.hparams.lstm_layers, -1, -1
@@ -428,20 +435,20 @@ class TemporalFusionTransformer(pl.LightningModule):
         # run local encoder
         encoder_output, (hidden, cell) = self.lstm_encoder(
             rnn.pack_padded_sequence(
-                embeddings_varying_encoder, lstm_encode_lengths, enforce_sorted=False, batch_first=True
+                embeddings_varying_encoder, lstm_encoder_lengths, enforce_sorted=False, batch_first=True
             ),
             (input_hidden, input_cell),
         )
         encoder_output, _ = rnn.pad_packed_sequence(encoder_output, batch_first=True)
-        # replace hidden cell with initial input if encode_length is zero to determine correct initial state
-        no_encoding = (encode_lengths > 0)[None, :, None]
+        # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
+        no_encoding = (encoder_lengths > 0)[None, :, None]
         hidden = hidden.masked_scatter(no_encoding, input_hidden)
         cell = cell.masked_scatter(no_encoding, input_cell)
 
         # run local decoder
         decoder_output, _ = self.lstm_decoder(
             rnn.pack_padded_sequence(
-                embeddings_varying_decoder, decode_lengths, enforce_sorted=False, batch_first=True
+                embeddings_varying_decoder, decoder_lengths, enforce_sorted=False, batch_first=True
             ),
             (hidden, cell),
         )
@@ -462,20 +469,22 @@ class TemporalFusionTransformer(pl.LightningModule):
 
         # Attention
         attn_output, attn_output_weights = self.multihead_attn(
-            q=attn_input[:, max_encode_length:],  # query only for predictions
+            q=attn_input[:, max_encoder_length:],  # query only for predictions
             k=attn_input,
             v=attn_input,
-            mask=self.get_attention_mask(encode_lengths=encode_lengths, decode_length=timesteps - max_encode_length),
+            mask=self.get_attention_mask(
+                encoder_lengths=encoder_lengths, decoder_length=timesteps - max_encoder_length
+            ),
         )
 
         # skip connection over attention
-        attn_output = self.post_attn_gate_norm(attn_output, attn_input[:, max_encode_length:])
+        attn_output = self.post_attn_gate_norm(attn_output, attn_input[:, max_encoder_length:])
 
         output = self.pos_wise_ff(attn_output)
 
         # skip connection over temporal fusion decoder (not LSTM decoder despite the LSTM output contains
         # a skip from the variable selection network)
-        output = self.pre_output_gate_norm(output, lstm_output[:, max_encode_length:])
+        output = self.pre_output_gate_norm(output, lstm_output[:, max_encoder_length:])
         output = self.output_layer(output)
 
         return dict(
@@ -484,12 +493,9 @@ class TemporalFusionTransformer(pl.LightningModule):
             static_variables=static_variable_selection,
             encoder_variables=encoder_sparse_weights,
             decoder_variables=decoder_sparse_weights,
-            decode_lengths=decode_lengths,
-            encode_lengths=encode_lengths,
+            decoder_lengths=decoder_lengths,
+            encoder_lengths=encoder_lengths,
         )
-
-    def configure_optimizers(self):
-        return Ranger(self.parameters(), lr=self.hparams.learning_rate)
 
     def training_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, label="train")
@@ -512,7 +518,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         return self._epoch_end(outputs, label="val")
 
     def on_train_end(self):
-        if self.hparams.log_interval > 0:
+        if self.log_interval(train=True) > 0:
             self._log_embeddings()
 
     def _step(self, batch, batch_idx, label="train"):
@@ -521,24 +527,10 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         # extract data and run model
         x, y = batch
-        y = rnn.pack_padded_sequence(y, lengths=x["decode_lengths"], batch_first=True, enforce_sorted=False)
-        out = self(**x)
-        y_hat = out["prediction"]
-        # calculate loss and log it
-        loss = self.loss(y_hat, y)
-        tensorboard_logs = {f"{label}_loss": loss}
-
-        if label == "train":
-            loss_label = "loss"
-        else:
-            loss_label = f"{label}_loss"
-        log = {
-            loss_label: loss,
-            "log": tensorboard_logs,
-        }
-
+        y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"], batch_first=True, enforce_sorted=False)
+        log, out = super()._step(x, y, batch_idx, label=label)
         # calculate interpretations etc for latter logging
-        if self.hparams.log_interval > 0:
+        if self.log_interval(label == "train") > 0:
             detached_output = {name: tensor.detach() for name, tensor in out.items()}
             interpretation = self.interpret_output(
                 detached_output,
@@ -548,30 +540,9 @@ class TemporalFusionTransformer(pl.LightningModule):
             log["interpretation"] = interpretation
 
             log["partial_dependence"] = self.calculate_partial_dependency(
-                x, self.loss.to_prediction(y_hat.detach()), normalize=False
+                x, self.loss.to_prediction(out["prediction"].detach()), normalize=False
             )
-
-        # log single prediction figure
-        if batch_idx % self.hparams.log_interval == 0 and self.hparams.log_interval > 0:
-            y_all = x["x_cont"][0, ..., self.hparams.target_idx]  # all true values for y of the first sample in batch
-            max_encode_length = x["encode_lengths"].max()
-            fig = self.plot_prediction(
-                torch.cat(
-                    (
-                        y_all[: x["encode_lengths"][0]],
-                        y_all[max_encode_length : (max_encode_length + x["decode_lengths"][0])],
-                    ),
-                ),
-                y_hat[0, : x["decode_lengths"][0]].detach(),
-            )  # first in batch
-            tag = f"{label.capitalize()} prediction"
-            if label == "train":
-                tag += f" of item 0 in global batch {self.global_step}"
-            else:
-                tag += f" of item 0 in batch {batch_idx}"
-            self.logger.experiment.add_figure(
-                tag, fig, global_step=self.global_step,
-            )
+            self._log_prediction(x, out["prediction"].detach(), batch_idx=batch_idx, label=label)
         return log
 
     def _epoch_end(self, outputs, label="train"):
@@ -584,7 +555,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
         tensorboard_logs = {f"avg_{label}_loss": avg_loss}
 
-        if self.hparams.log_interval > 0:
+        if self.log_interval(label == "train") > 0:
             self._log_interpretation(outputs, label=label)
             self._log_partial_dependence(outputs, label=label)
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
@@ -607,8 +578,8 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
         support = {}  # histogram
         dependency = {}  # dependencies
-        max_encode_length = x["decode_lengths"].max()
-        mask = self._get_mask(max_encode_length, x["encode_lengths"], inverse=True)
+        max_encoder_length = x["decoder_lengths"].max()
+        mask = self._get_mask(max_encoder_length, x["encoder_lengths"], inverse=True)
         # select valid y values
         y_flat = y[mask]
         if self.hparams.partial_dependence_scale == "linear":
@@ -627,7 +598,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         else:
             reduction = "sum"
         # continuous variables
-        reals = x["x_cont"][:, -max_encode_length:]
+        reals = x["decoder_cont"]
         for idx, name in self.hparams.real_labels.items():
             dependency[name], support[name] = groupby_apply(
                 (reals[..., int(idx)][mask] * positive_bins / self.hparams.partial_dependence_range)
@@ -642,7 +613,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             )
 
         # categorical_variables
-        cats = x["x_cat"][:, -max_encode_length:]
+        cats = x["decoder_cat"]
         for idx, name in self.hparams.categorical_labels.items():
             dependency[name], support[name] = groupby_apply(
                 cats[..., int(idx)][mask],
@@ -676,32 +647,36 @@ class TemporalFusionTransformer(pl.LightningModule):
         """
 
         # histogram of decode and encode lengths
-        encode_length_histogram = integer_histogram(out["encode_lengths"], min=0, max=self.hparams.max_encode_length)
-        decode_length_histogram = integer_histogram(out["decode_lengths"], min=1, max=out["decoder_variables"].size(1))
+        encoder_length_histogram = integer_histogram(out["encoder_lengths"], min=0, max=self.hparams.max_encoder_length)
+        decoder_length_histogram = integer_histogram(
+            out["decoder_lengths"], min=1, max=out["decoder_variables"].size(1)
+        )
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze(-2)
-        encode_mask = self._get_mask(encoder_variables.size(1), out["encode_lengths"])
+        encode_mask = self._get_mask(encoder_variables.size(1), out["encoder_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
-            out["encode_lengths"].where(out["encode_lengths"] > 0, torch.ones_like(out["encode_lengths"])).unsqueeze(-1)
+            out["encoder_lengths"]
+            .where(out["encoder_lengths"] > 0, torch.ones_like(out["encoder_lengths"]))
+            .unsqueeze(-1)
         )
 
         decoder_variables = out["decoder_variables"].squeeze(-2)
-        decode_mask = self._get_mask(decoder_variables.size(1), out["decode_lengths"])
+        decode_mask = self._get_mask(decoder_variables.size(1), out["decoder_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
-        decoder_variables /= out["decode_lengths"].unsqueeze(-1)
+        decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
 
         # static variables need no masking
         static_variables = out["static_variables"].squeeze(1)
         # attention is batch x time x heads x time_to_attend
         # average over heads + only keep prediction attention and attention on observed timesteps
-        attention = out["attention"][:, attention_prediction_horizon, :, : out["encode_lengths"].max()].mean(1)
+        attention = out["attention"][:, attention_prediction_horizon, :, : out["encoder_lengths"].max()].mean(1)
         # reorder attention
         for i in range(len(attention)):  # very inefficient but does the trick
-            if 0 < out["encode_lengths"][i] < attention.size(1):
-                attention[i, -out["encode_lengths"][i] :] = attention[i, : out["encode_lengths"][i]].clone()
-                attention[i, : attention.size(1) - out["encode_lengths"][i]] = 0.0
+            if 0 < out["encoder_lengths"][i] < attention.size(1):
+                attention[i, -out["encoder_lengths"][i] :] = attention[i, : out["encoder_lengths"][i]].clone()
+                attention[i, : attention.size(1) - out["encoder_lengths"][i]] = 0.0
 
         if reduction != "none":  # if to average over batches
             static_variables = static_variables.sum(dim=0)
@@ -709,29 +684,29 @@ class TemporalFusionTransformer(pl.LightningModule):
             decoder_variables = decoder_variables.sum(dim=0)
             attention = attention.sum(dim=0)
             if reduction == "mean":
-                attention = attention / encode_length_histogram[1:].flip(0).cumsum(0).clamp(1)
+                attention = attention / encoder_length_histogram[1:].flip(0).cumsum(0).clamp(1)
                 attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
             elif reduction == "sum":
                 pass
             else:
                 raise ValueError(f"Unknown reduction {reduction}")
 
-            attention = torch.zeros(self.hparams.max_encode_length, device=self.device).scatter(
+            attention = torch.zeros(self.hparams.max_encoder_length, device=self.device).scatter(
                 dim=0,
                 index=torch.arange(
-                    self.hparams.max_encode_length - attention.size(0),
-                    self.hparams.max_encode_length,
+                    self.hparams.max_encoder_length - attention.size(0),
+                    self.hparams.max_encoder_length,
                     device=self.device,
                 ),
                 src=attention,
             )
         else:
             attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
-            attention = torch.zeros(attention.size(0), self.hparams.max_encode_length, device=self.device).scatter(
+            attention = torch.zeros(attention.size(0), self.hparams.max_encoder_length, device=self.device).scatter(
                 dim=1,
                 index=torch.arange(
-                    self.hparams.max_encode_length - attention.size(0),
-                    self.hparams.max_encode_length,
+                    self.hparams.max_encoder_length - attention.size(0),
+                    self.hparams.max_encoder_length,
                     device=self.device,
                 ).unsqueeze(0),
                 src=attention,
@@ -742,8 +717,8 @@ class TemporalFusionTransformer(pl.LightningModule):
             static_variables=static_variables,
             encoder_variables=encoder_variables,
             decoder_variables=decoder_variables,
-            encode_length_histogram=encode_length_histogram,
-            decode_length_histogram=decode_length_histogram,
+            encoder_length_histogram=encoder_length_histogram,
+            decoder_length_histogram=decoder_length_histogram,
         )
         return interpretation
 
@@ -766,7 +741,7 @@ class TemporalFusionTransformer(pl.LightningModule):
         fig, ax = plt.subplots()
         attention = interpretation["attention"].cpu()
         attention = attention / attention.sum(-1).unsqueeze(-1)
-        ax.plot(np.arange(-self.hparams.max_encode_length, 0), attention)
+        ax.plot(np.arange(-self.hparams.max_encoder_length, 0), attention)
         ax.set_xlabel("Time index")
         ax.set_ylabel("Attention")
         ax.set_title("Attention")
@@ -804,7 +779,7 @@ class TemporalFusionTransformer(pl.LightningModule):
             name: torch.stack([x["interpretation"][name] for x in outputs]).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
-        interpretation["attention"] = interpretation["attention"] / interpretation["encode_length_histogram"][1:].flip(
+        interpretation["attention"] = interpretation["attention"] / interpretation["encoder_length_histogram"][1:].flip(
             0
         ).cumsum(0).clamp(1)
 
@@ -816,10 +791,10 @@ class TemporalFusionTransformer(pl.LightningModule):
             )
 
         # log lengths of encoder/decoder
-        for type in ["encode", "decode"]:
+        for type in ["encoder", "decoder"]:
             fig, ax = plt.subplots()
             lengths = torch.stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
-            if type == "decode":
+            if type == "decoder":
                 start = 1
             else:
                 start = 0
@@ -940,61 +915,6 @@ class TemporalFusionTransformer(pl.LightningModule):
             fig.tight_layout()
             return fig
 
-    def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor) -> plt.Figure:
-        """
-        plot prediction of prediction vs actuals
-
-        Args:
-            y: all actual values
-            y_hat: predictions
-
-        Returns:
-            matplotlib figure
-        """
-        # move to cpu
-        y = y.cpu()
-        y_hat = y_hat.cpu()
-        # create figure
-        fig, ax = plt.subplots()
-        n_pred = y_hat.shape[0]
-        x_obs = np.arange(y.shape[0] - n_pred)
-        x_pred = np.arange(y.shape[0] - n_pred, y.shape[0])
-        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
-        obs_color = next(prop_cycle)["color"]
-        pred_color = next(prop_cycle)["color"]
-        # plot observed history
-        if len(x_obs) > 0:
-            if len(x_obs) > 1:
-                plotter = ax.plot
-            else:
-                plotter = ax.scatter
-            plotter(x_obs, y[:-n_pred], label="observed", c=obs_color)
-        if len(x_pred) > 1:
-            plotter = ax.plot
-        else:
-            plotter = ax.scatter
-        # plot observed prediction
-        plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
-
-        # plot prediction
-        plotter(x_pred, self.loss.to_prediction(y_hat), label=f"predicted", c=pred_color)
-
-        # plot predicted quantiles
-        y_quantiles = self.loss.to_quantiles(y_hat)
-        plotter(x_pred, y_quantiles[:, y_quantiles.shape[1] // 2], c=pred_color, alpha=0.15)
-        for i in range(y_quantiles.shape[1] // 2):
-            if len(x_pred) > 1:
-                ax.fill_between(x_pred, y_quantiles[:, i], y_quantiles[:, -i - 1], alpha=0.15, fc=pred_color)
-            else:
-                ax.errorbar(
-                    x_pred, torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]]), c=pred_color, capsize=1.0,
-                )
-        loss = self.loss(y_hat[None], y[-n_pred:][None])
-        ax.set_title(f"Loss {loss:.3g}")
-        ax.set_xlabel("Time index")
-        fig.legend()
-        return fig
-
     def _log_gradient_flow(self, named_parameters):
         """
         log distribution of gradients to identify exploding / vanishing gradients
@@ -1024,29 +944,23 @@ class TemporalFusionTransformer(pl.LightningModule):
             data = emb.weight.data
             self.logger.experiment.add_embedding(data.cpu(), metadata=labels, tag=name, global_step=self.global_step)
 
-    def size(self) -> int:
-        """
-        get number of parameters in model
-        """
-        return sum(p.numel() for p in self.parameters())
-
     def predict(
         self,
         dataloader: DataLoader,
         mode: Union[str, Tuple[str, str]] = "prediction",
         return_index: bool = False,
-        return_decode_lengths: bool = False,
+        return_decoder_lengths: bool = False,
         fast_dev_run=False,
     ):
         """
-        predict da
+        predict dataloader
 
         Args:
             dataloader: dataloader for
             mode: one of "prediction", "quantiles" or "raw", or tuple ``("raw", output_name)`` where output_name is
                 a name in the dictionary returned by ``forward()``
             return_index: if to return the prediction index
-            return_decode_lengths: if to return decode_lengths
+            return_decoder_lengths: if to return decoder_lengths
             fast_dev_run: if to only return results of first batch
 
         Returns:
@@ -1059,9 +973,9 @@ class TemporalFusionTransformer(pl.LightningModule):
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader))
         with torch.no_grad():
             for x, _ in dataloader:
-                out = self(**x)  # raw output is dictionary
-                lengths = out["decode_lengths"]
-                if return_decode_lengths:
+                out = self(x)  # raw output is dictionary
+                lengths = out["decoder_lengths"]
+                if return_decoder_lengths:
                     decode_lenghts.append(decode_lenghts)
                 nan_mask = self._get_mask(out["prediction"].size(1), lengths)
                 if isinstance(mode, (tuple, list)):
@@ -1095,18 +1009,18 @@ class TemporalFusionTransformer(pl.LightningModule):
         elif mode == "raw":
             output = {name: torch.cat(values, dim=0) for name, values in output.items()}
 
-        if return_decode_lengths:
-            decode_lengths = torch.cat(decode_lenghts, dim=0)
+        if return_decoder_lengths:
+            decoder_lengths = torch.cat(decode_lenghts, dim=0)
 
         # get index
         if return_index:
             index = dataloader.dataset.get_index()
 
-        if return_index and return_decode_lengths:
-            return output, index, decode_lengths
+        if return_index and return_decoder_lengths:
+            return output, index, decoder_lengths
         elif return_index:
             return output, index
-        elif return_decode_lengths:
-            return output, decode_lengths
+        elif return_decoder_lengths:
+            return output, decoder_lengths
         else:
             return output
