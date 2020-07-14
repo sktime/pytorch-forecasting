@@ -40,7 +40,9 @@ class NBEATSBlock(nn.Module):
             nn.Dropout(dropout),
         ]
         for _ in range(num_block_layers - 1):
-            fc_stack.extend([nn.Linear(units, units), nn.ReLU(), nn.BatchNorm1d(units), nn.Dropout(dropout)])
+            fc_stack.extend(
+                [nn.Linear(units, units), nn.ReLU(), nn.BatchNorm1d(units), nn.Dropout(dropout),]
+            )
         self.fc = nn.Sequential(*fc_stack)
 
         if share_thetas:

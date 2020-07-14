@@ -1,6 +1,9 @@
 from typing import Dict, List
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
+
+import torch
+from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import SMAPE
@@ -89,25 +92,24 @@ class NBeats(BaseModel):
                     )
                 else:
                     raise ValueError(f"Unknown stack type {stack_type}")
+
                 self.net_blocks.append(net_block)
 
     def forward(self, x: Dict[str, torch.Tensor]):
         target = x["encoder_target"]
+
         timesteps = self.hparams.context_length + self.hparams.prediction_length
         generic_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
         trend_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
         seasonal_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
 
         backcast = target  # initialize backcast
-        forecast = torch.zeros(
-            (target.size(0), self.hparams.prediction_length), dtype=torch.float32, device=self.device
-        )
-        for block in self.net_blocks:
+        for i, block in enumerate(self.net_blocks):
             # evaluate block
             backcast_block, forecast_block = block(backcast)
 
             # add for interpretation
-            full = torch.cat([backcast_block, forecast_block], dim=1)
+            full = torch.cat([backcast_block.detach(), forecast_block.detach()], dim=1)
             if isinstance(block, NBEATSTrendBlock):
                 trend_forecast.append(full)
             elif isinstance(block, NBEATSSeasonalBlock):
@@ -117,7 +119,10 @@ class NBeats(BaseModel):
 
             # update backcast and forecast
             backcast -= backcast_block
-            forecast += forecast_block
+            if i == 0:
+                forecast = forecast_block
+            else:
+                forecast += forecast_block
 
         return dict(
             prediction=forecast,
@@ -150,13 +155,13 @@ class NBeats(BaseModel):
     def training_step(self, batch, batch_idx):
         x, y = batch
         log, out = self._step(x, y, batch_idx=batch_idx, label="train")
-        self._log_interpretation(x, out, batch_idx=batch_idx, label="train")
+        # self._log_interpretation(x, out, batch_idx=batch_idx, label="train")
         return log
 
     def validation_step(self, batch, batch_idx) -> Dict[str, torch.Tensor]:
         x, y = batch
         log, out = self._step(x, y, batch_idx=batch_idx, label="val")
-        self._log_interpretation(x, out, batch_idx=batch_idx, label="val")
+        # self._log_interpretation(x, out, batch_idx=batch_idx, label="val")
         return log
 
     def validation_epoch_end(self, outputs):
@@ -167,25 +172,28 @@ class NBeats(BaseModel):
     def _log_interpretation(self, x, out, batch_idx, label="train"):
         if self.log_interval(label == "train") > 0 and batch_idx % self.log_interval(label == "train") == 0:
             fig = self.plot_interpretation(
-                {name: value[0] for name, value in x.items()}, {name: value[0].detach() for name, value in out.items()},
+                {name: value[0] for name, value in x.items()}, {name: value[0] for name, value in out.items()},
             )
             self.logger.experiment.add_figure(f"{label.capitalize()} interpretation", fig, global_step=self.global_step)
 
     def plot_interpretation(self, x, output):
-        fig, ax = plt.subplots(4, 1, figsize=(15, 4))
+        fig, ax = plt.subplots(2, 1, figsize=(10, 4))
 
-        x = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
+        time = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
 
         # plot target vs prediction
-        ax[0].plot(x, torch.cat([x["decoder_target"], x["encoder_target"]], label="target"))
-        ax[0].plot(x, torch.cat([x["decoder_target"] - output["backcast"], output["prediction"]]), label="prediction")
+        # ax[0].plot(time, torch.cat([x["decoder_target"], x["encoder_target"]]), label="target")
+        # ax[0].plot(
+        #     time,
+        #     torch.cat([x["encoder_target"] - output["backcast"], output["prediction"]], dim=0),
+        #     label="prediction",
+        # )
         ax[0].set_xlabel("Time")
 
         # plot blocks
-        for idx, title in enumerate(["trend", "seasonality", "generic"]):
-            ax[idx + 1].plot(x, output[title])
-            ax[idx + 1].set_xlabel("Time")
-            ax[idx + 1].set_ylabel(title.capitalize())
+        for title in ["trend", "seasonality", "generic"]:
+            ax[1].plot(time, output[title], label=title.capitalize())
+            ax[1].set_xlabel("Time")
         fig.legend()
 
         return fig

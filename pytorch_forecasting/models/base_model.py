@@ -111,7 +111,7 @@ class BaseModel(LightningModule):
             matplotlib figure
         """
         # move to cpu
-        y = y.cpu()
+        y = y.detach().cpu()
         y_hat = y_hat.cpu()
         # create figure
         fig, ax = plt.subplots()
