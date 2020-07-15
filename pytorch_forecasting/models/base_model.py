@@ -26,7 +26,12 @@ class BaseModel(LightningModule):
     """
 
     def __init__(
-        self, log_interval=-1, log_val_interval: int = None, learning_rate: float = 1e-3, loss: TensorMetric = SMAPE()
+        self,
+        log_interval=-1,
+        log_val_interval: int = None,
+        learning_rate: float = 1e-3,
+        log_gradient_flow: bool = False,
+        loss: TensorMetric = SMAPE(),
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -35,6 +40,8 @@ class BaseModel(LightningModule):
             log_interval (int, optional): batches after which predictions are logged. Defaults to -1.
             log_val_interval (int, optional): batches after which predictions for validation are logged. Defaults to None/log_interval.
             learning_rate (float, optional): Learning rate. Defaults to 1e-3.
+            log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose training
+                failures. Defaults to False.
             loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
         """
         super().__init__()
@@ -153,6 +160,33 @@ class BaseModel(LightningModule):
         ax.set_xlabel("Time index")
         fig.legend()
         return fig
+
+    def _log_gradient_flow(self, named_parameters):
+        """
+        log distribution of gradients to identify exploding / vanishing gradients
+        """
+        ave_grads = []
+        layers = []
+        for name, p in named_parameters:
+            if p.grad is not None and p.requires_grad and "bias" not in name:
+                layers.append(name)
+                ave_grads.append(p.grad.abs().mean())
+                self.logger.experiment.add_histogram(tag=name, values=p.grad, global_step=self.global_step)
+        fig, ax = plt.subplots()
+        ax.plot(ave_grads)
+        ax.set_xlabel("Layers")
+        ax.set_ylabel("Average gradient")
+        ax.set_yscale("log")
+        ax.set_title("Gradient flow")
+        self.logger.experiment.add_figure(f"Gradient flow", fig, global_step=self.global_step)
+
+    def on_after_backward(self):
+        if (
+            self.global_step % self.hparams.log_interval == 0
+            and self.hparams.log_interval > 0
+            and self.hparams.log_gradient_flow
+        ):
+            self._log_gradient_flow(self.named_parameters())
 
     def configure_optimizers(self):
         return Ranger(self.parameters(), lr=self.hparams.learning_rate)

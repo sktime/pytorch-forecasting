@@ -11,10 +11,18 @@ import scipy.stats
 
 
 class Metric(TensorMetric, metaclass=abc.ABCMeta):
+    def __init__(self, name: str, log_space: bool = False):
+        self.log_space = log_space
+        super().__init__(name)
+
     def to_prediction(self, out: torch.Tensor) -> torch.Tensor:
+        if self.log_space:
+            out = out.exp()
         return out
 
     def to_quantiles(self, out: torch.Tensor) -> torch.Tensor:
+        if self.log_space:
+            out = out.exp()
         return out.unsqueeze(1)
 
 
@@ -108,8 +116,7 @@ class QuantileLoss(MultiHorizonMetric):
                 summed. This is useful if total quantities over the prediction horizon
                 are supposed to be predicted.
         """
-        super().__init__(name, *args, **kwargs)
-        self.log_space = log_space
+        super().__init__(name, log_space=log_space, *args, **kwargs)
         self.cummulative = cummulative
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -159,9 +166,11 @@ class QuantileLoss(MultiHorizonMetric):
 
 
 class SMAPE(Metric):
-    def __init__(self, name: str = "sMAPE"):
-        super().__init__(name=name)
+    def __init__(self, name: str = "sMAPE", log_space: bool = False):
+        super().__init__(name=name, log_space=log_space)
 
     def forward(self, y_pred, target):
+        if self.log_space:
+            y_pred = y_pred.exp()
         loss = (y_pred - target).abs() / (y_pred.abs() + target.abs())
         return loss.mean()

@@ -1,6 +1,7 @@
 from typing import Dict, List
 import numpy as np
 import matplotlib.pyplot as plt
+from pytorch_ranger import Ranger
 
 import torch
 from torch import nn
@@ -16,17 +17,19 @@ class NBeats(BaseModel):
         self,
         stack_types: List[str] = ["T", "S", "G"],
         num_blocks=[3, 3, 1],
-        num_block_layers=[4, 4, 4],
-        widths=[256, 2048, 512],
+        num_block_layers=[3, 3, 3],
+        widths=[16, 128, 16],
         sharing: List[int] = [True, True, False],
-        expansion_coefficient_lengths: List[int] = [4, 4, 32],
+        expansion_coefficient_lengths: List[int] = [5, 7, 4],
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,
         learning_rate: float = 1e-2,
         log_interval: int = -1,
+        log_gradient_flow: bool = False,
         log_val_interval: int = None,
-        loss=SMAPE(),
+        weight_decay: float = 1e-3,
+        loss=SMAPE(log_space=False),
     ):
         """
         Initialize NBeats Model
@@ -47,14 +50,16 @@ class NBeats(BaseModel):
                 A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [False] 
                 Recommended value for interpretable mode: [True]
             expansion_coefficient_length: If the type is “G” (generic), then the length of the expansion 
-                coefficient. 
+                coefficient.
                 If type is “T” (trend), then it corresponds to the degree of the polynomial. If the type is “S” 
-                (seasonal) then its not used. 
+                (seasonal) then this is the minimum period allowed, e.g. 2 for changes every timestep.
                 A list of ints of length 1 or ‘num_stacks’. Default value for generic mode: [32] Recommended value for 
                 interpretable mode: [3]
             prediction_length: Length of the prediction. Also known as 'horizon'.
             context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
             has_backcast: Only the last block of the network doesn't.
+            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
+                failures
         """
         self.save_hyperparameters()
         super().__init__()
@@ -79,6 +84,7 @@ class NBeats(BaseModel):
                         num_block_layers=self.hparams.num_block_layers[stack_id],
                         backcast_length=context_length,
                         forecast_length=prediction_length,
+                        min_period=self.hparams.expansion_coefficient_lengths[stack_id],
                         dropout=self.hparams.dropout,
                     )
                 elif stack_type == "T":
@@ -97,6 +103,9 @@ class NBeats(BaseModel):
 
     def forward(self, x: Dict[str, torch.Tensor]):
         target = x["encoder_target"]
+
+        if self.loss.log_space:
+            target = torch.log(target + 1e-8)
 
         timesteps = self.hparams.context_length + self.hparams.prediction_length
         generic_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
@@ -118,11 +127,13 @@ class NBeats(BaseModel):
                 generic_forecast.append(full)
 
             # update backcast and forecast
-            backcast -= backcast_block
+            backcast = (
+                backcast - backcast_block
+            )  # do not use backcast -= backcast_block as this signifies an inline operation
             if i == 0:
                 forecast = forecast_block
             else:
-                forecast += forecast_block
+                forecast = forecast + forecast_block
 
         return dict(
             prediction=forecast,
@@ -131,6 +142,9 @@ class NBeats(BaseModel):
             seasonality=torch.stack(seasonal_forecast, dim=0).sum(0),
             generic=torch.stack(generic_forecast, dim=0).sum(0),
         )
+
+    def configure_optimizers(self):
+        return Ranger(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
@@ -155,13 +169,13 @@ class NBeats(BaseModel):
     def training_step(self, batch, batch_idx):
         x, y = batch
         log, out = self._step(x, y, batch_idx=batch_idx, label="train")
-        # self._log_interpretation(x, out, batch_idx=batch_idx, label="train")
+        self._log_interpretation(x, out, batch_idx=batch_idx, label="train")
         return log
 
     def validation_step(self, batch, batch_idx) -> Dict[str, torch.Tensor]:
         x, y = batch
         log, out = self._step(x, y, batch_idx=batch_idx, label="val")
-        # self._log_interpretation(x, out, batch_idx=batch_idx, label="val")
+        self._log_interpretation(x, out, batch_idx=batch_idx, label="val")
         return log
 
     def validation_epoch_end(self, outputs):
@@ -174,27 +188,47 @@ class NBeats(BaseModel):
             fig = self.plot_interpretation(
                 {name: value[0] for name, value in x.items()}, {name: value[0] for name, value in out.items()},
             )
-            self.logger.experiment.add_figure(f"{label.capitalize()} interpretation", fig, global_step=self.global_step)
+            name = f"{label.capitalize()} interpretation of item 0 in "
+            if label == "train":
+                name += f"step {self.global_step}"
+            else:
+                name += f"batch {batch_idx}"
+            self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
 
     def plot_interpretation(self, x, output):
-        fig, ax = plt.subplots(2, 1, figsize=(10, 4))
+        fig, ax = plt.subplots(2, 1, figsize=(6, 8))
 
         time = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
 
         # plot target vs prediction
-        # ax[0].plot(time, torch.cat([x["decoder_target"], x["encoder_target"]]), label="target")
-        # ax[0].plot(
-        #     time,
-        #     torch.cat([x["encoder_target"] - output["backcast"], output["prediction"]], dim=0),
-        #     label="prediction",
-        # )
+        ax[0].plot(time, torch.cat([x["encoder_target"], x["decoder_target"]]), label="target")
+        ax[0].plot(
+            time,
+            torch.cat(
+                [
+                    x["encoder_target"] - self.loss.to_prediction(output["backcast"].detach()),
+                    self.loss.to_prediction(output["prediction"].detach()),
+                ],
+                dim=0,
+            ),
+            label="prediction",
+        )
         ax[0].set_xlabel("Time")
 
         # plot blocks
+        if self.loss.log_space:
+            ax2 = ax[1].twinx()
+            ax2.set_ylabel("Seasonality / Generic")
+        else:
+            ax2 = ax[1]
         for title in ["trend", "seasonality", "generic"]:
-            ax[1].plot(time, output[title], label=title.capitalize())
-            ax[1].set_xlabel("Time")
-        fig.legend()
+            if title == "trend":
+                ax[1].plot(time, self.loss.to_prediction(output[title]), label=title.capitalize())
+            else:
+                ax2.plot(time, self.loss.to_prediction(output[title]), label=title.capitalize())
+        ax[1].set_xlabel("Time")
+        ax[1].set_ylabel("Trend")
 
+        fig.legend()
         return fig
 

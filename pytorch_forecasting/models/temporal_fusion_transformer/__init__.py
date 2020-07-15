@@ -500,14 +500,6 @@ class TemporalFusionTransformer(BaseModel):
     def training_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, label="train")
 
-    def on_after_backward(self):
-        if (
-            self.global_step % self.hparams.log_interval == 0
-            and self.hparams.log_interval > 0
-            and self.hparams.log_gradient_flow
-        ):
-            self._log_gradient_flow(self.named_parameters())
-
     def training_epoch_end(self, outputs):
         return self._epoch_end(outputs, label="train")
 
@@ -914,25 +906,6 @@ class TemporalFusionTransformer(BaseModel):
             ax2.bar(x, support, width=x_step, linewidth=0, alpha=0.2, color="k")
             fig.tight_layout()
             return fig
-
-    def _log_gradient_flow(self, named_parameters):
-        """
-        log distribution of gradients to identify exploding / vanishing gradients
-        """
-        ave_grads = []
-        layers = []
-        for name, p in named_parameters:
-            if p.grad is not None and p.requires_grad and "bias" not in name:
-                layers.append(name)
-                ave_grads.append(p.grad.abs().mean())
-                self.logger.experiment.add_histogram(tag=name, values=p.grad, global_step=self.global_step)
-        fig, ax = plt.subplots()
-        ax.plot(ave_grads)
-        ax.set_xlabel("Layers")
-        ax.set_ylabel("Average gradient")
-        ax.set_yscale("log")
-        ax.set_title("Gradient flow")
-        self.logger.experiment.add_figure(f"Gradient flow", fig, global_step=self.global_step)
 
     def _log_embeddings(self):
         """
