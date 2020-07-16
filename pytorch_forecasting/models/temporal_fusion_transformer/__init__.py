@@ -18,7 +18,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     GateAddNorm,
     InterpretableMultiHeadAttention,
 )
-from pytorch_forecasting.utils import groupby_apply, integer_histogram
+from pytorch_forecasting.utils import groupby_apply, integer_histogram, get_embedding_size
 
 
 class TemporalFusionTransformer(BaseModel):
@@ -95,6 +95,7 @@ class TemporalFusionTransformer(BaseModel):
         self.save_hyperparameters()
         super().__init__()
         # store loss function separately as it is a module
+        assert isinstance(loss, MultiHorizonMetric), "Loss has to of class `MultiHorizonMetric`"
         self.loss = loss
 
         # processing inputs
@@ -301,7 +302,7 @@ class TemporalFusionTransformer(BaseModel):
         ]
         # determine embedding sizes based on heuristic
         embedding_sizes = {
-            idx: (len(labels), round(1.6 * len(labels) ** 0.56)) for idx, labels in embedding_labels.items()
+            idx: (len(labels), get_embedding_size(len(labels))) for idx, labels in embedding_labels.items()
         }
         embedding_sizes.update(kwargs.get("embedding_sizes", {}))
         kwargs.setdefault("embedding_sizes", embedding_sizes)

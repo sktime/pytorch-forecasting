@@ -8,13 +8,20 @@ import torch.nn.functional as F
 
 
 class TimeDistributedInterpolation(nn.Module):
-    def __init__(self, output_size, batch_first=False):
+    def __init__(self, output_size, batch_first=False, trainable=False):
         super().__init__()
         self.output_size = output_size
         self.batch_first = batch_first
+        self.trainable = trainable
+        if self.trainable:
+            self.soft_mask = nn.Parameter(torch.zeros(self.output_size, dtype=torch.float32))
+            self.softmax = nn.Softmax(dim=-1)
 
     def interpolate(self, x):
-        return F.interpolate(x.unsqueeze(1), self.output_size, mode="linear", align_corners=True).squeeze(1)
+        upsampled = F.interpolate(x.unsqueeze(1), self.output_size, mode="linear", align_corners=True).squeeze(1)
+        if self.trainable:
+            upsampled = upsampled * self.softmax(self.soft_mask).unsqueeze(0) * self.output_size
+        return upsampled
 
     def forward(self, x):
 
@@ -33,26 +40,6 @@ class TimeDistributedInterpolation(nn.Module):
             y = y.view(-1, x.size(1), y.size(-1))  # (timesteps, samples, output_size)
 
         return y
-
-
-class Upsample(nn.Module):
-    """Upsample in 1D with ``ouput_size`` parameters instead of using a FC layer."""
-
-    def __init__(self, output_size):
-        self.output_size = output_size
-        self.weights = nn.Parameter(torch.zeros(self.output_size))
-        self.softmax = nn.Softmax(dim=-1)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        input_size = x.shape[-1]
-
-        weights = self.softmax(self.weights).cumsum()
-
-        # to 2D
-        weights = (weights.unsqueeze(-1) * input_size - torch.arange(input_size).unsqueeze(0)).clamp(0)
-
-        out = x @ weights
-        return out
 
 
 class GLU(nn.Module):
@@ -106,23 +93,29 @@ class GatedResidualNetwork(nn.Module):
         self.residual = residual
 
         if self.input_size != self.output_size and not self.residual:
-            self.skip_layer = TimeDistributedInterpolation(self.output_size, batch_first=True)
+            self.skip_layer = TimeDistributedInterpolation(self.output_size, batch_first=True, trainable=True)
 
-        self.fc1 = nn.Linear(self.input_size, self.hidden_size)
-        self.elu1 = nn.ELU()
+        if self.input_size > 1 or self.hidden_size > 1:
+            self.fc1 = nn.Linear(self.input_size, self.hidden_size)
+            self.elu1 = nn.ELU()
 
-        if self.context_size is not None:
-            self.context = nn.Linear(self.context_size, self.hidden_size, bias=False)
+            if self.context_size is not None:
+                self.context = nn.Linear(self.context_size, self.hidden_size, bias=False)
 
-        self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
-        self.elu2 = nn.ELU()
-        self.gate_norm = GateAddNorm(input_size=self.hidden_size, hidden_size=self.output_size, dropout=self.dropout)
+            self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
+            self.elu2 = nn.ELU()
+            self.gate_norm = GateAddNorm(
+                input_size=self.hidden_size, hidden_size=self.output_size, dropout=self.dropout
+            )
 
     def forward(self, x, context=None, residual=None):
         if self.input_size != self.output_size and residual is None:
             residual = self.skip_layer(x)
         elif residual is None:
             residual = x
+
+        if self.input_size == 1 and self.hidden_size == 1:
+            return residual
 
         x = self.fc1(x)
         if context is not None:

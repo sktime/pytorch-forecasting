@@ -45,6 +45,29 @@ scipy = "*"
 pandas = "^1.0.3"
 scikit-learn = "^0.23"
 pytorch_ranger = "*"
+matplotlib = "*"
+
+[tool.poetry.dev-dependencies]
+# checks and make tools
+invoke = "*"
+flake8 = "*"
+pylint = "*"
+isort = "*"
+
+# pytest
+pytest = "*"
+pytest-xdist = "*"
+pytest-cov = "*"
+pytest-sugar = "*"
+coverage = "*"
+
+# jupyter notebook
+ipykernel = "*"
+black = { version = "*", allow-prereleases = true }
+
+# documentatation
+sphinx = "*"
+m2r = "*"
 
 [tool.poetry-dynamic-versioning]
 enable = true
@@ -55,4 +78,3 @@ style = "semver"  # semantic versioning
 [build-system]  # make the package pip installable
 requires = ["poetry^1.0.5", "poetry-dynamic-versioning"]
 build-backend = "poetry.masonry.api"
-

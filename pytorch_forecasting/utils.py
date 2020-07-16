@@ -79,3 +79,10 @@ def profile(function, profile_fname: str, filter: str = "", period=0.0001, **kwa
         with open(f"{os.path.splitext(profile_fname)[0]}.txt", "w") as f:
             with redirect_stdout(f):
                 LinesPrinter(filter=filter).show(profile_fname)
+
+
+def get_embedding_size(n: int) -> int:
+    if n > 2:
+        return round(1.6 * n ** 0.56)
+    else:
+        return 1

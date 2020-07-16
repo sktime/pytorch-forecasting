@@ -45,7 +45,7 @@ class BaseModel(LightningModule):
             loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
         """
         super().__init__()
-        if log_val_interval is None:
+        if self.hparams.log_val_interval is None:
             self.hparams.log_val_interval = self.hparams.log_interval
 
     def size(self) -> int:
