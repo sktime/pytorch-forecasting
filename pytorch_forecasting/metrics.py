@@ -54,11 +54,11 @@ class MultiHorizonMetric(Metric, metaclass=abc.ABCMeta):
         assert y_pred.size(0) == target.size(0)
 
         # calculate loss with "none" reduction
-        losses = self.loss(y_pred.squeeze(), target)
+        losses = self.loss(y_pred, target)
 
         # mask loss
         mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
-        if self.input_size > 1:
+        if y_pred.ndim > 2:
             mask = mask.unsqueeze(-1)
         losses = losses.masked_fill(mask, 0.0)
 
@@ -89,7 +89,7 @@ class PoissonLoss(MultiHorizonMetric):
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         if target.ndim == 3:
             raise NotImplementedError("Weights are not supported for Poisson loss")
-        return F.poisson_nll_loss(y_pred, target, log_input=True, full=False, eps=1e-6, reduction="none")
+        return F.poisson_nll_loss(y_pred.squeeze(2), target, log_input=True, full=False, eps=1e-6, reduction="none")
 
     @property
     def input_size(self) -> int:
@@ -140,15 +140,14 @@ class QuantileLoss(MultiHorizonMetric):
         # prepare for cummulative
         if self.cummulative:
             if self.log_space:
-                y_pred = y_pred.exp().cumsum(dim=-2).log()
-                target = target.exp().cumsum(dim=-1).log()
+                y_pred = y_pred.exp().cumsum(dim=-2)
             else:
                 y_pred = y_pred.cumsum(dim=-2)
-                target = target.cumsum(dim=-1)
-
-        # transform target into logspace
-        if self.log_space:
-            target = torch.log(target + 1e-8)
+            target = target.cumsum(dim=-1)
+        else:
+            # transform prediction into normal space
+            if self.log_space:
+                y_pred = y_pred.exp()
 
         # calculate quantile loss
         losses = []
