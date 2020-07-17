@@ -6,8 +6,6 @@ from matplotlib import pyplot as plt
 from pytorch_ranger import Ranger
 from torch import nn
 from torch.nn.utils import rnn
-from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
 
 from pytorch_forecasting.models import BaseModel
 from pytorch_forecasting.data import TimeSeriesDataSet
@@ -347,7 +345,9 @@ class TemporalFusionTransformer(BaseModel):
         new_kwargs.update(kwargs)
 
         # create class and return
-        return cls(**new_kwargs)
+        net = cls(**new_kwargs)
+        net.set_dataset_parameters(dataset)
+        return net
 
     def expand_static_context(self, context, timesteps):
         """
@@ -616,12 +616,6 @@ class TemporalFusionTransformer(BaseModel):
                 return_histogram=True,
             )
         return {"support": support, "dependency": dependency}
-
-    def _get_mask(self, size, lengths, inverse=False):
-        if inverse:  # return where values are
-            return torch.arange(size, device=self.device).unsqueeze(0) < lengths.unsqueeze(-1)
-        else:  # return where no values are
-            return torch.arange(size, device=self.device).unsqueeze(0) >= lengths.unsqueeze(-1)
 
     def interpret_output(
         self, out: Dict[str, torch.Tensor], reduction: str = "none", attention_prediction_horizon: int = 0,
@@ -918,83 +912,3 @@ class TemporalFusionTransformer(BaseModel):
             data = emb.weight.data
             self.logger.experiment.add_embedding(data.cpu(), metadata=labels, tag=name, global_step=self.global_step)
 
-    def predict(
-        self,
-        dataloader: DataLoader,
-        mode: Union[str, Tuple[str, str]] = "prediction",
-        return_index: bool = False,
-        return_decoder_lengths: bool = False,
-        fast_dev_run=False,
-    ):
-        """
-        predict dataloader
-
-        Args:
-            dataloader: dataloader for
-            mode: one of "prediction", "quantiles" or "raw", or tuple ``("raw", output_name)`` where output_name is
-                a name in the dictionary returned by ``forward()``
-            return_index: if to return the prediction index
-            return_decoder_lengths: if to return decoder_lengths
-            fast_dev_run: if to only return results of first batch
-
-        Returns:
-            tensor
-        """
-        assert isinstance(dataloader.dataset, TimeSeriesDataSet), "dataset behind dataloader mut be TimeSeriesDataSet"
-        self.eval()  # no dropout, etc. no gradients
-        output = []
-        decode_lenghts = []
-        progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader))
-        with torch.no_grad():
-            for x, _ in dataloader:
-                out = self(x)  # raw output is dictionary
-                lengths = out["decoder_lengths"]
-                if return_decoder_lengths:
-                    decode_lenghts.append(decode_lenghts)
-                nan_mask = self._get_mask(out["prediction"].size(1), lengths)
-                if isinstance(mode, (tuple, list)):
-                    if mode[0] == "raw":
-                        out = out[mode[1]]
-                    else:
-                        raise ValueError(
-                            f"If a tuple is specified, the first element must be 'raw' - got {mode[0]} instead"
-                        )
-                elif mode == "prediction":
-                    out = self.loss.to_prediction(out["prediction"])
-                    # mask non-predictions
-                    out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
-                elif mode == "quantiles":
-                    out = self.loss.to_quantiles(out["prediction"])
-                    # mask non-predictions
-                    out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
-                elif mode == "raw":
-                    pass
-                else:
-                    raise ValueError(f"Unknown mode {mode} - see docs for valid arguments")
-
-                output.append(out)
-                progress_bar.update()
-                if fast_dev_run:
-                    break
-
-        # concatenate
-        if isinstance(mode, (tuple, list)) or mode != "raw":
-            output = torch.cat(output, dim=0)
-        elif mode == "raw":
-            output = {name: torch.cat(values, dim=0) for name, values in output.items()}
-
-        if return_decoder_lengths:
-            decoder_lengths = torch.cat(decode_lenghts, dim=0)
-
-        # get index
-        if return_index:
-            index = dataloader.dataset.get_index()
-
-        if return_index and return_decoder_lengths:
-            return output, index, decoder_lengths
-        elif return_index:
-            return output, index
-        elif return_decoder_lengths:
-            return output, decoder_lengths
-        else:
-            return output

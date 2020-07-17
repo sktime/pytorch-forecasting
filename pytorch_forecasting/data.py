@@ -1,8 +1,9 @@
 """
 Timeseries data is special and has to be processed
 """
+from copy import deepcopy
 import inspect
-from typing import Union, Dict, List, Tuple
+from typing import Union, Dict, List, Tuple, Any
 import pandas as pd
 import numpy as np
 import torch
@@ -153,41 +154,40 @@ class TimeSeriesDataSet(Dataset):
 
         # set data
         assert data.index.is_unique, "data index has to be unique"
-        self.data = data.sort_values(self.group_ids + [self.time_idx])
-        # [lambda x: (x[self.time_idx] >= self.min_prediction_idx - self.max_encoder_length)  # limit data]
+        data = data.sort_values(self.group_ids + [self.time_idx])
 
         # encode categoricals
         self.categoricals_encoders = categoricals_encoders
-        for name in self.categoricals:
+        for name in set(self.categoricals + self.group_ids):
             if name not in self.categoricals_encoders:
                 self.categoricals_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
-                    self.data[name]
+                    data[name]
                 )
             if self.categoricals_encoders[name] is not None:
-                self.data[name] = self.categoricals_encoders[name].transform(self.data[name])
+                data[name] = self.categoricals_encoders[name].transform(data[name])
 
         # scale continuous variables
         self.scalers = scalers
-        self.data["__time_idx__"] = self.data[self.time_idx]  # save unscaled
-        self.data["__target__"] = self.data[self.target]
+        data["__time_idx__"] = data[self.time_idx]  # save unscaled
+        data["__target__"] = data[self.target]
         if self.weight is not None:
-            self.data["__weight__"] = self.data[self.weight]
+            data["__weight__"] = data[self.weight]
 
         # add time index relative to prediction position
         if self.add_relative_time_idx:
             if "relative_time_idx" not in self.time_varying_known_reals:
                 self.time_varying_known_reals.append("relative_time_idx")
-            self.data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
+            data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # rescale continuous variables
         for name in self.reals:
             if name not in self.scalers:
                 if name == self.time_idx:
-                    self.scalers[name] = MinMaxScaler(feature_range=(-1, 1)).fit(self.data[[name]])
+                    self.scalers[name] = MinMaxScaler(feature_range=(-1, 1)).fit(data[[name]])
                 else:
-                    self.scalers[name] = StandardScaler().fit(self.data[[name]])
+                    self.scalers[name] = StandardScaler().fit(data[[name]])
             if self.scalers[name] is not None:
-                self.data[name] = self.scalers[name].transform(self.data[[name]]).reshape(-1)
+                data[name] = self.scalers[name].transform(data[[name]]).reshape(-1)
 
         # encode constant values
         self.encoded_constant_fill_strategy = {}
@@ -200,21 +200,27 @@ class TimeSeriesDataSet(Dataset):
                 self.encoded_constant_fill_strategy[name] = value
 
         # create index
-        self.data_index = self.construct_index(self.data, predict_mode=predict_mode)
+        self.index = self.construct_index(data, predict_mode=predict_mode)
 
         # convert to torch tensor for high performance data loading later
-        self.data = self._data_to_tensor(self.data)
+        self.data = self._data_to_tensors(data)
 
-    def _data_to_tensor(self, data) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _data_to_tensors(self, data: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        categorical = torch.tensor(data[self.categoricals + ["__time_idx__"]].to_numpy(np.long))
+        index = torch.tensor(data[self.group_ids].to_numpy(np.long))
+        time = torch.tensor(data["__time_idx__"].to_numpy(np.long))
 
-        cont_cols = self.reals + ["__target__"]
+        categorical = torch.tensor(data[self.categoricals].to_numpy(np.long))
+
         if self.weight is not None:
-            cont_cols.append("__weight__")
-        continuous = torch.tensor(data[cont_cols].to_numpy(dtype=np.float32))
+            target_names = ["__target__", "__weight__"]
+        else:
+            target_names = "__target__"
 
-        return continuous, categorical
+        target = torch.tensor(data[target_names].to_numpy(dtype=np.float32))
+        continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float32))
+
+        return dict(reals=continuous, categoricals=categorical, groups=index, target=target, time=time)
 
     @property
     def categoricals(self):
@@ -224,26 +230,47 @@ class TimeSeriesDataSet(Dataset):
     def reals(self):
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
-    @staticmethod
-    def from_dataset(
-        dataset, data: pd.DataFrame, stop_randomization: bool = True, predict: bool = True, **update_kwargs
-    ):
+    def get_parameters(self) -> Dict[str, Any]:
+        """
+        Get parameters that can be used with :py:meth:`~from_parameters` to create a new dataset with the same scalers.
+
+        Returns:
+            Dict[str, Any]: dictionary of parameters
+        """
         kwargs = {
-            name: getattr(dataset, name)
-            for name in inspect.signature(TimeSeriesDataSet).parameters.keys()
-            if name != "data"
+            name: getattr(self, name) for name in inspect.signature(self.__class__).parameters.keys() if name != "data"
         }
-        kwargs["categoricals_encoders"] = dataset.categoricals_encoders
-        kwargs["scalers"] = dataset.scalers
+        kwargs["categoricals_encoders"] = self.categoricals_encoders
+        kwargs["scalers"] = self.scalers
+        return kwargs
+
+    @classmethod
+    def from_dataset(
+        cls, dataset, data: pd.DataFrame, stop_randomization: bool = True, predict: bool = True, **update_kwargs
+    ):
+        return cls.from_parameters(
+            dataset.get_parameters(), data, stop_randomization=stop_randomization, predict=predict, **update_kwargs
+        )
+
+    @classmethod
+    def from_parameters(
+        cls,
+        parameters: Dict[str, Any],
+        data: pd.DataFrame,
+        stop_randomization: bool = True,
+        predict: bool = True,
+        **update_kwargs,
+    ):
+        parameters = deepcopy(parameters)
         if predict:
             assert stop_randomization, "if predicting, no randomization should be possible"
-            kwargs["min_prediction_length"] = kwargs["max_prediction_length"]
-            kwargs["predict_mode"] = True
+            parameters["min_prediction_length"] = parameters["max_prediction_length"]
+            parameters["predict_mode"] = True
         if stop_randomization:
-            kwargs["randomize_length"] = None
-        kwargs.update(update_kwargs)
+            parameters["randomize_length"] = None
+        parameters.update(update_kwargs)
 
-        new = TimeSeriesDataSet(data, **kwargs)
+        new = cls(data, **parameters)
         return new
 
     def construct_index(self, data: pd.DataFrame, predict_mode: bool) -> pd.DataFrame:
@@ -255,7 +282,7 @@ class TimeSeriesDataSet(Dataset):
         df_index_diff_to_next = -g["__time_idx__"].diff(-1).fillna(-1).astype(int).to_frame("time_diff_to_next")
         df_index = pd.concat([df_index_first, df_index_last, df_index_diff_to_next], axis=1)
         df_index["index_start"] = np.arange(len(df_index))
-        df_index["time"] = self.data["__time_idx__"]
+        df_index["time"] = data["__time_idx__"]
         df_index["count"] = (df_index["time_last"] - df_index["time_first"]).astype(int) + 1
         df_index["group_id"] = g.ngroup()
 
@@ -302,36 +329,47 @@ class TimeSeriesDataSet(Dataset):
         return df_index
 
     def __len__(self):
-        return self.data_index.shape[0]
+        return self.index.shape[0]
 
     def __getitem__(self, idx):
-        index = self.data_index.iloc[idx]
+        index = self.index.iloc[idx]
         # get index data
-        data_cont = self.data[0][index.index_start : index.index_end + 1]
-        data_cat = self.data[1][index.index_start : index.index_end + 1]
+        data_cont = self.data["reals"][index.index_start : index.index_end + 1]
+        data_cat = self.data["categoricals"][index.index_start : index.index_end + 1]
+        time = self.data["time"][index.index_start : index.index_end + 1]
+        target = self.data["target"][index.index_start : index.index_end + 1]
 
-        sequence_length = len(data_cat)
+        sequence_length = len(time)
 
         # fill in missing values (if not all time indices are specified
         if sequence_length < index.sequence_length:
-            repetitions = torch.cat([data_cat[1:, -1] - data_cat[:-1, -1], torch.ones(1, dtype=data_cat.dtype)])
-            indices = torch.repeat_interleave(torch.arange(len(data_cat)), repetitions)
+            repetitions = torch.cat([time[1:] - time[:-1], torch.ones(1, dtype=time.dtype)])
+            indices = torch.repeat_interleave(torch.arange(len(time)), repetitions)
             repetition_indices = torch.cat([torch.tensor([False], dtype=torch.bool), indices[1:] == indices[:-1]])
+
+            # select data
             data_cat = data_cat[indices]
             data_cont = data_cont[indices]
-            # make replacements
+            target = target[indices]
+
+            # reset index
+            if self.time_idx in self.reals:
+                time_idx = self.reals.index(self.time_idx)
+                data_cont[:, time_idx] = torch.linspace(
+                    data_cont[0, time_idx], data_cont[-1, time_idx], len(target), dtype=data_cont.dtype
+                )
+
+            # make replacements to fill in categories
             for name, value in self.encoded_constant_fill_strategy.items():
                 col_idx = self.reals.index(name)
                 data_cont[repetition_indices, col_idx] = value
 
-            sequence_length = len(data_cat)
+            sequence_length = len(target)
 
         # determine data window
         assert sequence_length >= self.min_prediction_length
-        # determine prediction/decode length and encode length (data_cat[:, -1] is time index)
-        decoder_length = min(
-            data_cat[-1, -1] - (self.min_prediction_idx - 1), self.max_prediction_length, sequence_length
-        )
+        # determine prediction/decode length and encode length
+        decoder_length = min(time[-1] - (self.min_prediction_idx - 1), self.max_prediction_length, sequence_length)
         encoder_length = sequence_length - decoder_length
         assert decoder_length >= self.min_prediction_length
 
@@ -349,9 +387,10 @@ class TimeSeriesDataSet(Dataset):
                 max(self.min_prediction_length, Binomial(decoder_length, encoder_length_probability).sample()),
             )
             # select subset of sequence of new sequence
-            if new_encoder_length + new_decoder_length < len(data_cat):
+            if new_encoder_length + new_decoder_length < len(target):
                 data_cat = data_cat[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 data_cont = data_cont[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
+                target = target[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 encoder_length = new_encoder_length
                 decoder_length = new_decoder_length
 
@@ -361,14 +400,7 @@ class TimeSeriesDataSet(Dataset):
 
         assert decoder_length > 0
         assert encoder_length >= 0
-        assert data_cat[-1, -1] - self.min_prediction_idx + 1 >= decoder_length
 
-        if self.weight is None:
-            target = data_cont[:, -1]  # remove target
-            data_cont = data_cont[:, :-1]
-        else:
-            target = data_cont[:, :-2]
-            data_cont = data_cont[:, :-2]  # remove target and weights
         if self.add_relative_time_idx:
             data_cont[:, self.reals.index("relative_time_idx")] = (
                 torch.arange(-encoder_length, decoder_length, dtype=data_cont.dtype) / self.max_encoder_length
@@ -376,10 +408,7 @@ class TimeSeriesDataSet(Dataset):
 
         return (
             dict(
-                x_cat=data_cat[:, :-1],  # last column is __time_idx__ and not needed / was artificially added
-                x_cont=data_cont,
-                encoder_length=encoder_length,
-                encoder_target=target[:encoder_length],
+                x_cat=data_cat, x_cont=data_cont, encoder_length=encoder_length, encoder_target=target[:encoder_length],
             ),
             target[encoder_length:],
         )
@@ -430,20 +459,19 @@ class TimeSeriesDataSet(Dataset):
         """
         decoder_length = pd.DataFrame(
             dict(
-                prediction_idx=self.data["__time_idx__"].iloc[self.data_index.index_end].to_numpy()
-                - (self.min_prediction_idx - 1),
-                sequence_length=self.data_index.sequence_length,
+                prediction_idx=self.data["time"][self.index.index_end.to_numpy()] - (self.min_prediction_idx - 1),
+                sequence_length=self.index.sequence_length,
                 max_prediction_length=self.max_prediction_length,
             )
         ).min(axis=1)
-        encoder_lengths = self.data_index.sequence_length - decoder_length
-        index_data = {self.time_idx: self.data_index.time + encoder_lengths}
+        encoder_lengths = self.index.sequence_length - decoder_length
+        index_data = {self.time_idx: self.index.time + encoder_lengths}
         for id in self.group_ids:
-            index_data[id] = self.data[id].iloc[self.data_index.index_start]
+            index_data[id] = self.data["groups"][:, self.group_ids.index(id)][self.index.index_start.to_numpy()]
             # decode if possible
             if id in self.categoricals_encoders:
                 index_data[id] = self.categoricals_encoders[id].inverse_transform(index_data[id])
-        index = pd.DataFrame(index_data, index=self.data_index.index)
+        index = pd.DataFrame(index_data, index=self.index.index)
         return index
 
     @property

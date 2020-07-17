@@ -64,6 +64,9 @@ class MultiHorizonMetric(Metric, metaclass=abc.ABCMeta):
 
         # reduce to one number
         loss = losses.sum() / lengths.sum()
+        assert not torch.isnan(
+            loss
+        ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
         return loss
 
     @property
@@ -103,7 +106,15 @@ class PoissonLoss(MultiHorizonMetric):
 
 
 class QuantileLoss(MultiHorizonMetric):
-    def __init__(self, name: str = "quantile_loss", log_space: bool = None, cummulative=False, *args, **kwargs):
+    def __init__(
+        self,
+        name: str = "quantile_loss",
+        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
+        log_space: bool = None,
+        cummulative=False,
+        *args,
+        **kwargs
+    ):
         """
         Quantile loss
 
@@ -116,7 +127,7 @@ class QuantileLoss(MultiHorizonMetric):
                 summed. This is useful if total quantities over the prediction horizon
                 are supposed to be predicted.
         """
-        super().__init__(name, log_space=log_space, *args, **kwargs)
+        super().__init__(name, log_space=log_space, quantiles=quantiles, *args, **kwargs)
         self.cummulative = cummulative
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -128,7 +139,7 @@ class QuantileLoss(MultiHorizonMetric):
 
         # prepare for cummulative
         if self.cummulative:
-            if self.log_target:
+            if self.log_space:
                 y_pred = y_pred.exp().cumsum(dim=-2).log()
                 target = target.exp().cumsum(dim=-1).log()
             else:
@@ -137,7 +148,7 @@ class QuantileLoss(MultiHorizonMetric):
 
         # transform target into logspace
         if self.log_space:
-            target = torch.log(target + 1e-6)
+            target = torch.log(target + 1e-8)
 
         # calculate quantile loss
         losses = []
@@ -173,4 +184,6 @@ class SMAPE(Metric):
         if self.log_space:
             y_pred = y_pred.exp()
         loss = (y_pred - target).abs() / (y_pred.abs() + target.abs())
-        return loss.mean()
+        mean_loss = loss.mean()
+        assert not torch.isnan(mean_loss)
+        return mean_loss

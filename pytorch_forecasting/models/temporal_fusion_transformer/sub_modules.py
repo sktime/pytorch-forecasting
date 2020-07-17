@@ -20,7 +20,7 @@ class TimeDistributedInterpolation(nn.Module):
     def interpolate(self, x):
         upsampled = F.interpolate(x.unsqueeze(1), self.output_size, mode="linear", align_corners=True).squeeze(1)
         if self.trainable:
-            upsampled = upsampled * self.softmax(self.soft_mask).unsqueeze(0) * self.output_size
+            upsampled = upsampled * self.softmax(self.soft_mask).unsqueeze(0) * x.size(1)
         return upsampled
 
     def forward(self, x):

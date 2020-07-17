@@ -164,7 +164,9 @@ class NBeats(BaseModel):
         assert not dataset.add_relative_time_idx, "add_relative_time_idx has to be False"
 
         # initialize class
-        return cls(**new_kwargs)
+        net = cls(**new_kwargs)
+        net.set_dataset_parameters(dataset)
+        return net
 
     def training_step(self, batch, batch_idx):
         x, y = batch

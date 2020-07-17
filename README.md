@@ -1,13 +1,13 @@
 # Timeseries forecasting with Pytorch
 
-Install with 
+Install with
 
 `pip install pytorch-forecasting`
 
 ## Available models
 
-* [Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting](https://arxiv.org/pdf/1912.09363.pdf)
-* 
+- [Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting](https://arxiv.org/pdf/1912.09363.pdf)
+-
 
 ## Usage
 
@@ -18,7 +18,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 
 # load data
-data = ... 
+data = ...
 
 # define dataset
 max_encode_length = 36
@@ -42,7 +42,7 @@ training = TimeSeriesDataSet(
 )
 
 
-validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data_index.time.max() + 1)
+validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.index.time.max() + 1)
 batch_size = 128
 train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
 val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
