@@ -20,7 +20,6 @@ from pytorch_forecasting.utils import groupby_apply, integer_histogram, get_embe
 
 
 class TemporalFusionTransformer(BaseModel):
-    # TODO: improve scalability (many categories for dependence plots, lots of data accumulating over large epochs)
     def __init__(
         self,
         hidden_size: int = 16,
@@ -48,8 +47,9 @@ class TemporalFusionTransformer(BaseModel):
         log_interval: int = 10,
         log_val_interval: int = None,
         log_gradient_flow: bool = False,
-        partial_dependence_range: float = 2.0,
+        partial_dependence_range: float = 2.0,  # todo: those are actually not dependence plots ... rename
         partial_dependence_scale: str = "linear",
+        reduce_on_plateau_patience: int = 1000,
     ):
         """
         Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to
@@ -89,6 +89,7 @@ class TemporalFusionTransformer(BaseModel):
                 value of 2 means that dependency plots are created from -2 to 2 standard deviations for continuous
                 variables
             partial_dependence_scale: on which scale to average the target. One of "linear" or "log"
+            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
         """
         self.save_hyperparameters()
         super().__init__()

@@ -1,25 +1,29 @@
 from copy import deepcopy
+import inspect
 
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
 from pytorch_forecasting.metrics import SMAPE
-from typing import Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
 from pytorch_ranger import Ranger
 import torch
 import numpy as np
 import pandas as pd
+from torch.optim.lr_scheduler import ReduceLROnPlateau, LambdaLR
 
 import matplotlib.pyplot as plt
 from pytorch_forecasting.data import TimeSeriesDataSet
+
+from pytorch_lightning.utilities.parsing import AttributeDict, collect_init_args, get_init_args
 
 
 class BaseModel(LightningModule):
     """
     BaseModel from which new timeseries models should inherit from.
-    The ``__init__`` method should at least have the parameters indicated in :py:meth:`~__init__`.
+    The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
 
     The ``forward()`` method should return a dictionary with at least the entry ``prediction`` that contains the network's output
     """
@@ -28,9 +32,11 @@ class BaseModel(LightningModule):
         self,
         log_interval=-1,
         log_val_interval: int = None,
-        learning_rate: float = 1e-3,
+        learning_rate: Union[float, List[float]] = 1e-3,
         log_gradient_flow: bool = False,
         loss: TensorMetric = SMAPE(),
+        reduce_on_plateau_patience: int = 1000,
+        weight_decay: float = 0.0,
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -43,8 +49,16 @@ class BaseModel(LightningModule):
             log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose 
                 training failures. Defaults to False.
             loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
+            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults to 1000
+            weight_decay (float): weight decay. Defaults to 0.0.
         """
         super().__init__()
+        # update hparams
+        frame = inspect.currentframe()
+        init_args = get_init_args(frame)
+        self.save_hyperparameters({name: val for name, val in init_args.items() if name not in self.hparams})
+
+        # update log interval if not defined
         if self.hparams.log_val_interval is None:
             self.hparams.log_val_interval = self.hparams.log_interval
 
@@ -189,7 +203,35 @@ class BaseModel(LightningModule):
             self._log_gradient_flow(self.named_parameters())
 
     def configure_optimizers(self):
-        return Ranger(self.parameters(), lr=self.hparams.learning_rate)
+        # either set a schedule of lrs or find it dynamically
+        if isinstance(self.hparams.learning_rate, (list, tuple)):  # set schedule
+            lrs = self.hparams.learning_rate
+            optimizer = Ranger(self.parameters(), lr=lrs[0])
+            # normalize lrs
+            lrs = np.array(lrs) / lrs[0]
+            schedulers = [
+                {
+                    "scheduler": LambdaLR(optimizer, lambda epoch: lrs[min(epoch, len(lrs) - 1)]),
+                    "interval": "epoch",
+                    "reduce_on_plateau": False,
+                    "frequency": 1,
+                }
+            ]
+        else:  # find schedule based on validation loss
+            optimizer = Ranger(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
+            schedulers = [
+                {
+                    "scheduler": ReduceLROnPlateau(
+                        optimizer, mode="min", factor=0.1, patience=self.hparams.reduce_on_plateau_patience
+                    ),
+                    "monitor": "val_loss",  # Default: val_loss
+                    "interval": "epoch",
+                    "reduce_on_plateau": True,
+                    "frequency": 1,
+                }
+            ]
+
+        return [optimizer], schedulers
 
     def set_dataset_parameters(self, dataset: TimeSeriesDataSet):
         self.dataset_parameters = dataset.get_parameters()

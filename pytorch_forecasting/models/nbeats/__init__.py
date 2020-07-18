@@ -30,6 +30,7 @@ class NBeats(BaseModel):
         log_val_interval: int = None,
         weight_decay: float = 1e-3,
         loss=SMAPE(log_space=False),
+        reduce_on_plateau_patience: int = 1000,
     ):
         """
         Initialize NBeats Model
@@ -60,6 +61,7 @@ class NBeats(BaseModel):
             has_backcast: Only the last block of the network doesn't.
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
+            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
         """
         self.save_hyperparameters()
         super().__init__()
@@ -142,9 +144,6 @@ class NBeats(BaseModel):
             seasonality=torch.stack(seasonal_forecast, dim=0).sum(0),
             generic=torch.stack(generic_forecast, dim=0).sum(0),
         )
-
-    def configure_optimizers(self):
-        return Ranger(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
