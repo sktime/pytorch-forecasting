@@ -1,5 +1,6 @@
 """
-Timeseries data is special and has to be processed
+Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
+defines a class that is able to handle a wide variety of timeseries data problems.
 """
 from copy import deepcopy
 import inspect
@@ -309,6 +310,15 @@ class TimeSeriesDataSet(Dataset):
         # filter out where encode and decode length are not satisfied
         df_index["sequence_length"] = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
 
+        # filter too short sequences
+        df_index = df_index[
+            # sequence must be at least of minimal prediction length
+            lambda x: (x.sequence_length >= self.min_prediction_length + self.min_encoder_length)
+            &
+            # prediction must be for after minimal prediction index + length of prediction
+            (x["sequence_length"] + x["time"] >= self.min_prediction_idx - 1 + self.min_prediction_length)
+        ]
+
         if predict_mode:  # keep longest element per series (i.e. the first element that spans to the end of the series)
             # filter all elements that are longer than the allowed maximum sequence length
             df_index = df_index[
@@ -317,14 +327,6 @@ class TimeSeriesDataSet(Dataset):
             ]
             # choose longest sequence
             df_index = df_index.loc[df_index.groupby("group_id").sequence_length.idxmax()]
-        else:
-            df_index = df_index[
-                # sequence must be at least of minimal prediction length
-                lambda x: (x.sequence_length >= self.min_prediction_length + self.min_encoder_length)
-                &
-                # prediction must be for after minimal prediction index + length of prediction
-                (x["sequence_length"] + x["time"] >= self.min_prediction_idx - 1 + self.min_prediction_length)
-            ]
 
         return df_index
 
@@ -414,6 +416,7 @@ class TimeSeriesDataSet(Dataset):
         )
 
     def _collate_fn(self, batches):
+        # collate function for dataloader
         encoder_lengths = torch.tensor([batch[0]["encoder_length"] for batch in batches], dtype=torch.long)
         decoder_lengths = torch.tensor([len(batch[1]) for batch in batches], dtype=torch.long)
 
@@ -447,7 +450,30 @@ class TimeSeriesDataSet(Dataset):
             target,
         )
 
-    def to_dataloader(self, train: bool = True, **kwargs):
+    def to_dataloader(self, train: bool = True, **kwargs) -> DataLoader:
+        """
+        Get dataloader from dataset.
+
+        Args:
+            train (bool, optional): if dataloader is used for training or prediction
+                Will shuffle and drop last batch if True. Defaults to True.
+
+        Returns:
+            DataLoader: dataloader that returns Tuple.
+                First entry is a dictionary with the entries
+
+                    * encoder_cat
+                    * encoder_cont
+                    * encoder_target
+                    * encoder_lengths
+                    * decoder_cat
+                    * decoder_cont
+                    * decoder_target
+                    * decoder_lengths
+
+                Second entry is target
+        )
+        """
         return DataLoader(self, shuffle=train, drop_last=train, collate_fn=self._collate_fn, **kwargs)
 
     def get_index(self) -> pd.DataFrame:

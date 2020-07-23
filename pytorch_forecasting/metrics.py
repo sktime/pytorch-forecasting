@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Union
 
 import torch
@@ -11,38 +12,96 @@ import scipy.stats
 
 
 class Metric(TensorMetric, metaclass=abc.ABCMeta):
-    def __init__(self, name: str, log_space: bool = False):
+    """
+    Base metric class that has basic functions that can handle predicting quantiles and operate in log space
+
+    Other metrics should inherit from this base class
+    """
+
+    def __init__(
+        self, name: str, log_space: bool = False, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
+    ):
         self.log_space = log_space
+        self.quantiles = quantiles
         super().__init__(name)
 
+    @abstractmethod
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """
+        Abstract method that calcualtes metric
+
+        Should be overriden in derived classes
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        pass
+
     def to_prediction(self, out: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Args:
+            out (torch.Tensor): output of network
+
+        Returns:
+            torch.Tensor: point prediction
+        """
         if self.log_space:
             out = out.exp()
         return out
 
     def to_quantiles(self, out: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Args:
+            out (torch.Tensor): output of network
+
+        Returns:
+            torch.Tensor: prediction quantiles
+        """
         if self.log_space:
             out = out.exp()
         return out.unsqueeze(1)
 
 
-class MultiHorizonMetric(Metric, metaclass=abc.ABCMeta):
+class MultiHorizonMetric(Metric):
     """
-    Abstract class for defining metric
+    Abstract class for defining metric for a multihorizon forecast
     """
-
-    def __init__(self, name: str, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98], *args, **kwargs):
-        self.quantiles = quantiles
-        super().__init__(name, *args, **kwargs)
 
     @abc.abstractmethod
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
-        calculate loss without reduction
+        Calculate loss without reduction. Override in derived classes
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: loss/metric as a single number for backpropagation
         """
         pass
 
     def forward(self, y_pred: torch.Tensor, target: Union[torch.Tensor, rnn.PackedSequence]) -> torch.Tensor:
+        """
+        Forward method of metric that handles masking of values.
+
+        Do not override this method but :py:ref:`~loss` instead
+
+        Args:
+            y_pred (torch.Tensor): network output
+            target (Union[torch.Tensor, rnn.PackedSequence]): actual values
+
+        Returns:
+            torch.Tensor: loss as a single number for backpropagation
+        """
         # unpack
         if isinstance(target, rnn.PackedSequence):
             target, lengths = rnn.pad_packed_sequence(target, batch_first=True)
@@ -69,14 +128,6 @@ class MultiHorizonMetric(Metric, metaclass=abc.ABCMeta):
         ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
         return loss
 
-    @property
-    @abc.abstractmethod
-    def input_size(self) -> int:
-        """
-        number of dimensions of prediction (e.g. 5 for 5 different quantiles)
-        """
-        return 1
-
 
 class PoissonLoss(MultiHorizonMetric):
     """
@@ -91,10 +142,6 @@ class PoissonLoss(MultiHorizonMetric):
             raise NotImplementedError("Weights are not supported for Poisson loss")
         return F.poisson_nll_loss(y_pred.squeeze(2), target, log_input=True, full=False, eps=1e-6, reduction="none")
 
-    @property
-    def input_size(self) -> int:
-        return 1
-
     def to_prediction(self, out):
         rate = torch.exp(out[..., 0])
         return rate
@@ -106,6 +153,12 @@ class PoissonLoss(MultiHorizonMetric):
 
 
 class QuantileLoss(MultiHorizonMetric):
+    """
+    Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calcualted as
+
+    Defined as ``max(q * (y-y_pred), (1-q) * (y_pred-y))``
+    """
+
     def __init__(
         self,
         name: str = "quantile_loss",
@@ -159,10 +212,6 @@ class QuantileLoss(MultiHorizonMetric):
             losses = losses * weight.unsqueeze(-1)
         return losses
 
-    @property
-    def input_size(self) -> int:
-        return len(self.quantiles)
-
     def to_quantiles(self, out):
         if self.log_space:
             out = out.exp()
@@ -176,6 +225,12 @@ class QuantileLoss(MultiHorizonMetric):
 
 
 class SMAPE(Metric):
+    """
+    Symmetric mean average percentage. Assumes ``y >= 0``.
+
+    Defined as ``(y - y_pred).abs() / (y.abs() + y_pred.abs())``
+    """
+
     def __init__(self, name: str = "sMAPE", log_space: bool = False):
         super().__init__(name=name, log_space=log_space)
 

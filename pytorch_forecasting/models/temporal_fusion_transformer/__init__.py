@@ -1,4 +1,7 @@
-from typing import Union, List, Dict, Tuple
+"""
+The temporal fusion transformer is a powerful predictive model for forecasting timeseries
+"""
+from typing import Union, List, Dict, Tuple, Any
 
 import numpy as np
 import torch
@@ -25,6 +28,7 @@ class TemporalFusionTransformer(BaseModel):
         hidden_size: int = 16,
         lstm_layers: int = 1,
         dropout: float = 0.1,
+        output_size: int = 7,
         loss: MultiHorizonMetric = QuantileLoss(),
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
@@ -47,9 +51,8 @@ class TemporalFusionTransformer(BaseModel):
         log_interval: int = 10,
         log_val_interval: int = None,
         log_gradient_flow: bool = False,
-        partial_dependence_range: float = 2.0,  # todo: those are actually not dependence plots ... rename
-        partial_dependence_scale: str = "linear",
         reduce_on_plateau_patience: int = 1000,
+        monotonicity_constaints: Dict[str, int] = {},
     ):
         """
         Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to
@@ -59,6 +62,7 @@ class TemporalFusionTransformer(BaseModel):
             hidden_size: hidden size of network which is its main hyperparameter and can range from 8 to 512
             lstm_layers: number of LSTM layers (2 is mostly optimal)
             dropout: dropout rate
+            output_size: number of outputs (e.g. number of quantiles for QuantileLoss)
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
             max_encoder_length: length to encode
@@ -85,11 +89,12 @@ class TemporalFusionTransformer(BaseModel):
             log_val_interval: frequency with which to log validation set metrics, defaults to log_interval
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
-            partial_dependence_range: standard deviation until which dependency plots are created (positive float), e.g. a
-                value of 2 means that dependency plots are created from -2 to 2 standard deviations for continuous
-                variables
-            partial_dependence_scale: on which scale to average the target. One of "linear" or "log"
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
+            monotonicity_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder 
+                variables mapping
+                position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive, 
+                larger numbers add more weight to the constraint vs. the loss but are usually not necessary). 
+                This constraint significantly slows down training. Defaults to {}.
         """
         self.save_hyperparameters()
         super().__init__()
@@ -231,7 +236,7 @@ class TemporalFusionTransformer(BaseModel):
         # output processing
         self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
 
-        self.output_layer = nn.Linear(self.hparams.hidden_size, self.loss.input_size)
+        self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
 
     @property
     def static_variables(self) -> List[str]:
@@ -346,9 +351,7 @@ class TemporalFusionTransformer(BaseModel):
         new_kwargs.update(kwargs)
 
         # create class and return
-        net = cls(**new_kwargs)
-        net.set_dataset_parameters(dataset)
-        return net
+        return super().from_dataset(dataset, **new_kwargs)
 
     def expand_static_context(self, context, timesteps):
         """
@@ -532,10 +535,6 @@ class TemporalFusionTransformer(BaseModel):
                 attention_prediction_horizon=0,  # attention only for first prediction horizon
             )
             log["interpretation"] = interpretation
-
-            log["partial_dependence"] = self.calculate_partial_dependency(
-                x, self.loss.to_prediction(out["prediction"].detach()), normalize=False
-            )
             self._log_prediction(x, out["prediction"].detach(), batch_idx=batch_idx, label=label)
         return log
 
@@ -551,72 +550,7 @@ class TemporalFusionTransformer(BaseModel):
 
         if self.log_interval(label == "train") > 0:
             self._log_interpretation(outputs, label=label)
-            self._log_partial_dependence(outputs, label=label)
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
-
-    def calculate_partial_dependency(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, normalize: bool = True, bins: int = 95
-    ) -> Dict[str, Dict[str, torch.Tensor]]:
-        """
-        Calculate partial dependence
-
-        Args:
-            x: input as in ``forward()``
-            y: predictions
-            normalize: if to return normalized dependencies, i.e. mean or sum of ``y``
-            bins: number of bins to calculate
-            std: number of standard deviations for standard scaled continuous variables
-
-        Returns:
-            dictionary that can be used to plot dependencies with ``plot_partial_dependence()``
-        """
-        support = {}  # histogram
-        dependency = {}  # dependencies
-        max_encoder_length = x["decoder_lengths"].max()
-        mask = self._get_mask(max_encoder_length, x["encoder_lengths"], inverse=True)
-        # select valid y values
-        y_flat = y[mask]
-        if self.hparams.partial_dependence_scale == "linear":
-            pass
-        elif self.hparams.partial_dependence_scale == "log":
-            y_flat = torch.log(y_flat + 1e-8)
-        else:
-            raise ValueError(f"Unknown partial_dependence_scale {self.hparams.partial_dependence_scale}")
-
-        # real bins
-        positive_bins = (bins - 1) // 2
-
-        # if to normalize
-        if normalize:
-            reduction = "mean"
-        else:
-            reduction = "sum"
-        # continuous variables
-        reals = x["decoder_cont"]
-        for idx, name in self.hparams.real_labels.items():
-            dependency[name], support[name] = groupby_apply(
-                (reals[..., int(idx)][mask] * positive_bins / self.hparams.partial_dependence_range)
-                .round()
-                .clamp(-positive_bins, positive_bins)
-                .long()
-                + positive_bins,
-                y_flat,
-                bins=bins,
-                reduction=reduction,
-                return_histogram=True,
-            )
-
-        # categorical_variables
-        cats = x["decoder_cat"]
-        for idx, name in self.hparams.categorical_labels.items():
-            dependency[name], support[name] = groupby_apply(
-                cats[..., int(idx)][mask],
-                y_flat,
-                bins=self.hparams.embedding_sizes[idx][0],
-                reduction=reduction,
-                return_histogram=True,
-            )
-        return {"support": support, "dependency": dependency}
 
     def interpret_output(
         self, out: Dict[str, torch.Tensor], reduction: str = "none", attention_prediction_horizon: int = 0,
@@ -795,114 +729,6 @@ class TemporalFusionTransformer(BaseModel):
                 f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
             )
 
-    def _log_partial_dependence(self, outputs, label="train"):
-        """
-        log partial dependence plots to tensorboard
-        """
-        # extract all histograms
-        dependencies = {
-            type: {
-                name: torch.stack([x["partial_dependence"][type][name] for x in outputs]).sum(0)
-                for name in outputs[0]["partial_dependence"][type]
-            }
-            for type in outputs[0]["partial_dependence"].keys()
-        }
-        # normalize dependencies
-        for name, support in dependencies["support"].items():
-            dependencies["dependency"][name] /= support.clamp(1)
-
-        # log to tensorboard
-        for name in dependencies["support"].keys():
-            fig = self.plot_partial_dependence(dependencies, name=name)
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {name} decoder dependence", fig, global_step=self.global_step
-            )
-
-    def plot_partial_dependence(
-        self, dependencies: Dict[str, Dict[str, torch.Tensor]], name: str = None
-    ) -> Union[Dict[str, plt.Figure], plt.Figure]:
-        if name is None:  # run recursion for figures
-            figs = {name: self.plot_partial_dependence(dependencies, name) for name in dependencies["support"].keys()}
-            return figs
-        else:
-            # create figure
-            kwargs = {}
-            # adjust figure size for figures with many labels
-            if name in self.hparams.categorical_labels.values():
-                for idx, label_name in self.hparams.categorical_labels.items():
-                    if label_name == name:
-                        break
-                if self.hparams.embedding_sizes[str(idx)][0] > 10:
-                    kwargs = dict(figsize=(10, 5))
-            fig, ax = plt.subplots(**kwargs)
-            ax.set_title(f"{name} partial dependence")
-            ax.set_xlabel(name)
-            if self.hparams.partial_dependence_scale == "linear":
-                ax.set_ylabel("Prediction")
-            elif self.hparams.partial_dependence_scale == "log":
-                ax.set_ylabel("Log prediction")
-            else:
-                raise ValueError(f"Unkown partial_dependence_scale {self.hparams.partial_dependence_scale}")
-            ax2 = ax.twinx()  # second axis for histogram
-            ax2.set_ylabel("Frequency")
-
-            # get values for dependency plot and histogram
-            values = dependencies["dependency"][name].cpu().numpy()
-            bins = values.size
-            support = dependencies["support"][name].cpu().numpy()
-
-            # only display values where samples were observed
-            support_non_zero = support > 0
-            support = support[support_non_zero]
-            values = values[support_non_zero]
-
-            # plot dependence
-            if name in self.hparams.real_labels.values():
-                for idx, label_name in self.hparams.real_labels.items():
-                    if label_name == name:
-                        break
-                mean, scale = self.hparams.real_scales[idx]
-                x = (
-                    np.linspace(-self.hparams.partial_dependence_range, self.hparams.partial_dependence_range, bins)
-                    * scale
-                    + mean
-                )
-                if len(x) > 0:
-                    x_step = x[1] - x[0]
-                else:
-                    x_step = 1
-                x = x[support_non_zero]
-                ax.plot(x, values)
-
-            elif name in self.hparams.categorical_labels.values():
-                for idx, label_name in self.hparams.categorical_labels.items():
-                    if label_name == name:
-                        break
-                # sort values from lowest to highest
-                sorting = values.argsort()
-                labels = np.asarray(self.hparams.embedding_labels[str(idx)])[support_non_zero][sorting]
-                values = values[sorting]
-                support = support[sorting]
-                # cut entries if there are too many categories to fit nicely on the plot
-                maxsize = 50
-                if values.size > maxsize:
-                    values = np.concatenate([values[: maxsize // 2], values[-maxsize // 2 :]])
-                    labels = np.concatenate([labels[: maxsize // 2], labels[-maxsize // 2 :]])
-                    support = np.concatenate([support[: maxsize // 2], support[-maxsize // 2 :]])
-                # plot for each category
-                x = np.arange(values.size)
-                x_step = 1
-                ax.scatter(x, values)
-                # set labels at x axis
-                ax.set_xticks(x)
-                ax.set_xticklabels(labels, rotation=90)
-            else:
-                raise ValueError(f"Unknown name {name}")
-            # plot support histogram
-            ax2.bar(x, support, width=x_step, linewidth=0, alpha=0.2, color="k")
-            fig.tight_layout()
-            return fig
-
     def _log_embeddings(self):
         """
         log embeddings to tensorboard
@@ -912,4 +738,3 @@ class TemporalFusionTransformer(BaseModel):
             labels = self.hparams.embedding_labels[idx]
             data = emb.weight.data
             self.logger.experiment.add_embedding(data.cpu(), metadata=labels, tag=name, global_step=self.global_step)
-

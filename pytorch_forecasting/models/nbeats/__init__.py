@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 import numpy as np
 import matplotlib.pyplot as plt
 from pytorch_ranger import Ranger
@@ -148,6 +148,7 @@ class NBeats(BaseModel):
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         new_kwargs = {"prediction_length": dataset.max_prediction_length, "context_length": dataset.max_encoder_length}
+        new_kwargs["dataset_parameters"] = dataset.get_parameters()
         new_kwargs.update(kwargs)
 
         # validate arguments
@@ -163,9 +164,7 @@ class NBeats(BaseModel):
         assert not dataset.add_relative_time_idx, "add_relative_time_idx has to be False"
 
         # initialize class
-        net = cls(**new_kwargs)
-        net.set_dataset_parameters(dataset)
-        return net
+        return super().from_dataset(dataset, **new_kwargs)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
