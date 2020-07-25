@@ -4,6 +4,7 @@ The temporal fusion transformer is a powerful predictive model for forecasting t
 from typing import Union, List, Dict, Tuple, Any
 
 import numpy as np
+from pytorch_lightning.metrics.metric import TensorMetric
 import torch
 from matplotlib import pyplot as plt
 from pytorch_ranger import Ranger
@@ -12,7 +13,7 @@ from torch.nn.utils import rnn
 
 from pytorch_forecasting.models import BaseModel
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss, SMAPE, MAE, RMSE, MAPE
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
     GatedResidualNetwork,
@@ -101,6 +102,7 @@ class TemporalFusionTransformer(BaseModel):
         # store loss function separately as it is a module
         assert isinstance(loss, MultiHorizonMetric), "Loss has to of class `MultiHorizonMetric`"
         self.loss = loss
+        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE()]
 
         # processing inputs
         # embeddings
@@ -518,30 +520,17 @@ class TemporalFusionTransformer(BaseModel):
             encoder_lengths=encoder_lengths,
         )
 
-    def training_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, label="train")
-
-    def training_epoch_end(self, outputs):
-        return self._epoch_end(outputs, label="train")
-
-    def validation_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, label="val")
-
-    def validation_epoch_end(self, outputs):
-        return self._epoch_end(outputs, label="val")
-
     def on_train_end(self):
         if self.log_interval(train=True) > 0:
             self._log_embeddings()
 
-    def _step(self, batch, batch_idx, label="train"):
+    def step(self, x, y, batch_idx, label="train"):
         """
         run at each step for training or validation
         """
         # extract data and run model
-        x, y = batch
         y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"], batch_first=True, enforce_sorted=False)
-        log, out = super()._step(x, y, batch_idx, label=label)
+        log, out = super().step(x, y, batch_idx, label=label)
         # calculate interpretations etc for latter logging
         if self.log_interval(label == "train") > 0:
             detached_output = {name: tensor.detach() for name, tensor in out.items()}
@@ -552,21 +541,16 @@ class TemporalFusionTransformer(BaseModel):
             )
             log["interpretation"] = interpretation
             self._log_prediction(x, out["prediction"].detach(), batch_idx=batch_idx, label=label)
-        return log
+        return log, out
 
-    def _epoch_end(self, outputs, label="train"):
+    def epoch_end(self, outputs, label="train"):
         """
         run at epoch end for training or validation
         """
-        if "callback_metrics" in outputs[0]:  # workaround for pytorch-lightning bug
-            outputs = [out["callback_metrics"] for out in outputs]
-        # log loss
-        avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
-        tensorboard_logs = {f"avg_{label}_loss": avg_loss}
-
+        log, out = super().epoch_end(outputs, label=label)
         if self.log_interval(label == "train") > 0:
-            self._log_interpretation(outputs, label=label)
-        return {f"{label}_loss": avg_loss, "log": tensorboard_logs}
+            self._log_interpretation(out, label=label)
+        return log, out
 
     def interpret_output(
         self, out: Dict[str, torch.Tensor], reduction: str = "none", attention_prediction_horizon: int = 0,

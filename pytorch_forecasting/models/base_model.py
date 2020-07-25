@@ -65,6 +65,7 @@ class BaseModel(LightningModule):
         learning_rate: Union[float, List[float]] = 1e-3,
         log_gradient_flow: bool = False,
         loss: TensorMetric = SMAPE(),
+        logging_metrics: List[TensorMetric] = [],
         reduce_on_plateau_patience: int = 1000,
         weight_decay: float = 0.0,
         monotone_constaints: Dict[str, int] = {},
@@ -80,6 +81,7 @@ class BaseModel(LightningModule):
             log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose 
                 training failures. Defaults to False.
             loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
+            logging_metrics: (List[TensorMetric], optional): list of metrics to log.
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults 
                 to 1000
             weight_decay (float): weight decay. Defaults to 0.0.
@@ -101,6 +103,8 @@ class BaseModel(LightningModule):
 
         if not hasattr(self, "loss"):
             self.loss = loss
+        if not hasattr(self, "logging_metrics"):
+            self.logging_metrics = logging_metrics
 
     def size(self) -> int:
         """
@@ -108,8 +112,28 @@ class BaseModel(LightningModule):
         """
         return sum(p.numel() for p in self.parameters())
 
-    def _step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train"):
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        log, _ = self.step(x, y, batch_idx, label="train")
+        return log
 
+    def training_epoch_end(self, outputs):
+        log, _ = self.epoch_end(outputs, label="train")
+        return log
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        log, _ = self.step(x, y, batch_idx, label="val")
+        return log
+
+    def validation_epoch_end(self, outputs):
+        log, _ = self.epoch_end(outputs, label="val")
+        return log
+
+    def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train"):
+        """
+        Run for each train/val step.
+        """
         if label == "train" and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
@@ -144,6 +168,10 @@ class BaseModel(LightningModule):
 
         # log loss
         tensorboard_logs = {f"{label}_loss": loss}
+        # logging losses
+        y_hat_detached = self.loss.to_prediction(y_hat.detach())
+        for metric in self.logging_metrics:
+            tensorboard_logs[f"{label}_{metric.name}"] = metric(y_hat_detached, y)
         log = {
             f"{label}_loss": loss,
             "log": tensorboard_logs,
@@ -153,6 +181,19 @@ class BaseModel(LightningModule):
         if self.log_interval(label == "train") > 0:
             self._log_prediction(x, y_hat, batch_idx, label=label)
         return log, out
+
+    def epoch_end(self, outputs, label="train"):
+        """
+        Run at epoch end for training or validation.
+        """
+        if "callback_metrics" in outputs[0]:  # workaround for pytorch-lightning bug
+            outputs = [out["callback_metrics"] for out in outputs]
+        # log average loss and metrics
+        avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
+        log_keys = outputs[0]["log"].keys()
+        tensorboard_logs = {f"avg_{key}": torch.stack([x["log"][key] for x in outputs]).mean() for key in log_keys}
+
+        return {f"{label}_loss": avg_loss, "log": tensorboard_logs}, outputs
 
     def log_interval(self, train: bool):
         """
@@ -546,7 +587,8 @@ class BaseModel(LightningModule):
         Plot predicions and actual averages by variables
         
         Args:
-            data (Dict[str, Dict[str, torch.Tensor]]): data obtained from :py:ref:`~calculate_prediction_actual_by_variable`
+            data (Dict[str, Dict[str, torch.Tensor]]): data obtained from 
+                :py:ref:`~calculate_prediction_actual_by_variable`
             name (str, optional): name of variable for which to plot actuals vs predictions. Defaults to None which means returning a 
                 dictionary of plots for all variables.
 

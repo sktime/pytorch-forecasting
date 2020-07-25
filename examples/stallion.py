@@ -5,7 +5,7 @@ import warnings
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, LearningRateLogger
 
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 from pathlib import Path
@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 
 from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
-from pytorch_forecasting.tuning import optimize_hyperparameters
+from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_forecasting.utils import profile
 
 from pandas.core.common import SettingWithCopyWarning
@@ -62,6 +62,7 @@ for c in data.select_dtypes(object).columns:
 data = data.assign(discount_in_percent=lambda x: (x.discount / x.price_regular).fillna(0) * 100)
 data["month"] = data.date.dt.month
 data["log_volume"] = np.log1p(data.volume)
+data["volume2"] = data.volume
 data["weight"] = 1 + np.sqrt(data.volume)
 
 data["time_idx"] = (data["date"] - data["date"].min()).dt.days
@@ -79,7 +80,7 @@ training = TimeSeriesDataSet(
     target="volume",
     # weight="weight",
     group_ids=["agency", "sku"],
-    max_encode_length=max_encode_length,
+    max_encoder_length=max_encode_length,
     max_prediction_length=max_prediction_length,
     static_categoricals=["agency", "sku"],
     static_reals=[],
@@ -112,36 +113,40 @@ training = TimeSeriesDataSet(
     dropout_categoricals=["sku"],
 )
 
-validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.data_index.time.max() + 1)
+validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.index.time.max() + 1)
 batch_size = 128
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
+train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
+val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
+lr_logger = LearningRateLogger()
 trainer = pl.Trainer(
-    max_epochs=3,
+    max_epochs=100,
     gpus=0,
     weights_summary="top",
     gradient_clip_val=0.1,
     early_stop_callback=early_stop_callback,
-    # limit_train_batches=15,
+    limit_train_batches=15,
     # limit_val_batches=1,
     # fast_dev_run=True,
     # logger=logger,
     # profiler=True,
+    callbacks=[lr_logger],
 )
 
 
 tft = TemporalFusionTransformer.from_dataset(
     training,
     learning_rate=0.15,
-    hidden_size=48,
-    attention_head_size=2,
-    dropout=0.2,
-    hidden_continuous_size=16,
+    hidden_size=32,
+    attention_head_size=1,
+    dropout=0.1,
+    hidden_continuous_size=32,
+    output_size=7,
     loss=QuantileLoss(log_space=True),
-    partial_dependence_scale="log",
+    log_interval=2,
+    reduce_on_plateau_patience=4,
 )
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
@@ -149,7 +154,7 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # res = trainer.lr_find(
 #     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 # )
-#
+
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)
 # fig.show()

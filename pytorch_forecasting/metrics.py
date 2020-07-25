@@ -75,6 +75,20 @@ class MultiHorizonMetric(Metric):
     Abstract class for defining metric for a multihorizon forecast
     """
 
+    def __init__(self, name="loss", cummulative=False, *args, **kwargs):
+        """
+        Initialize multi-horizon loss
+
+        Args:
+            cummulative: if loss should be calculated cummulatively, i.e.
+                if false, the quantiles hold true for individual predictions but
+                if true, the quantiles hold true if the predictions are cummulatively
+                summed. This is useful if total quantities over the prediction horizon
+                are supposed to be predicted.
+        """
+        super().__init__(name, *args, **kwargs)
+        self.cummulative = cummulative
+
     @abc.abstractmethod
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
@@ -113,7 +127,28 @@ class MultiHorizonMetric(Metric):
         assert y_pred.size(0) == target.size(0)
 
         # calculate loss with "none" reduction
+        if target.ndim == 3:
+            weight = target[..., 1]
+            target = target[..., 0]
+        else:
+            weight = None
+
+        # prepare for cummulative
+        if self.cummulative:
+            if self.log_space:
+                y_pred = y_pred.exp().cumsum(dim=-2).log()
+            else:
+                y_pred = y_pred.cumsum(dim=-2)
+            target = (target.cumsum(dim=-1) + 1e-8).log()
+        else:
+            # transform prediction into normal space
+            if self.log_space:
+                target = (target + 1e-8).log()
+
         losses = self.loss(y_pred, target)
+        # weight samples
+        if weight is not None:
+            losses = losses * weight.unsqueeze(-1)
 
         # mask loss
         mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
@@ -183,36 +218,16 @@ class QuantileLoss(MultiHorizonMetric):
                 summed. This is useful if total quantities over the prediction horizon
                 are supposed to be predicted.
         """
-        super().__init__(name, log_space=log_space, quantiles=quantiles, *args, **kwargs)
-        self.cummulative = cummulative
+        super().__init__(name, log_space=log_space, quantiles=quantiles, cummulative=cummulative, *args, **kwargs)
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        if target.ndim == 3:
-            weight = target[..., 1]
-            target = target[..., 0]
-        else:
-            weight = None
-
-        # prepare for cummulative
-        if self.cummulative:
-            if self.log_space:
-                y_pred = y_pred.exp().cumsum(dim=-2)
-            else:
-                y_pred = y_pred.cumsum(dim=-2)
-            target = target.cumsum(dim=-1)
-        else:
-            # transform prediction into normal space
-            if self.log_space:
-                y_pred = y_pred.exp()
-
         # calculate quantile loss
         losses = []
         for i, q in enumerate(self.quantiles):
             errors = target - y_pred[..., i]
             losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(-1))
         losses = torch.cat(losses, dim=2)
-        if weight is not None:
-            losses = losses * weight.unsqueeze(-1)
+
         return losses
 
     def to_quantiles(self, out):
@@ -227,20 +242,61 @@ class QuantileLoss(MultiHorizonMetric):
         return pred
 
 
-class SMAPE(Metric):
+class SMAPE(MultiHorizonMetric):
     """
     Symmetric mean average percentage. Assumes ``y >= 0``.
 
     Defined as ``(y - y_pred).abs() / (y.abs() + y_pred.abs())``
     """
 
-    def __init__(self, name: str = "sMAPE", log_space: bool = False):
-        super().__init__(name=name, log_space=log_space)
+    def __init__(self, name: str = "sMAPE", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
 
-    def forward(self, y_pred, target):
-        if self.log_space:
-            y_pred = y_pred.exp()
+    def loss(self, y_pred, target):
         loss = (y_pred - target).abs() / (y_pred.abs() + target.abs())
-        mean_loss = loss.mean()
-        assert not torch.isnan(mean_loss)
-        return mean_loss
+        return loss
+
+
+class MAPE(MultiHorizonMetric):
+    """
+    Mean average percentage. Assumes ``y >= 0``.
+
+    Defined as ``(y - y_pred).abs() / y.abs()``
+    """
+
+    def __init__(self, name: str = "MAPE", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def loss(self, y_pred, target):
+        loss = (y_pred - target).abs() / (target.abs() + 1e-8)
+        return loss
+
+
+class MAE(MultiHorizonMetric):
+    """
+    Mean average absolute error.
+
+    Defined as ``(y_pred - target).abs()``
+    """
+
+    def __init__(self, name: str = "MAE", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def loss(self, y_pred, target):
+        loss = (y_pred - target).abs()
+        return loss
+
+
+class RMSE(MultiHorizonMetric):
+    """
+    Root mean square error
+
+    Defined as ``(y_pred - target)**2``
+    """
+
+    def __init__(self, name: str = "RMSE", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def loss(self, y_pred, target):
+        loss = torch.pow(y_pred - target, 2)
+        return loss

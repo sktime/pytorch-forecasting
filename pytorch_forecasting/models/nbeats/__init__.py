@@ -166,22 +166,10 @@ class NBeats(BaseModel):
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
 
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-        log, out = self._step(x, y, batch_idx=batch_idx, label="train")
-        self._log_interpretation(x, out, batch_idx=batch_idx, label="train")
-        return log
-
-    def validation_step(self, batch, batch_idx) -> Dict[str, torch.Tensor]:
-        x, y = batch
-        log, out = self._step(x, y, batch_idx=batch_idx, label="val")
-        self._log_interpretation(x, out, batch_idx=batch_idx, label="val")
-        return log
-
-    def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        tensorboard_logs = {"avg_val_loss": avg_loss}
-        return {"val_loss": avg_loss, "log": tensorboard_logs}
+    def step(self, x, y, batch_idx, label) -> Dict[str, torch.Tensor]:
+        log, out = self.step(x, y, batch_idx=batch_idx, label=label)
+        self._log_interpretation(x, out, batch_idx=batch_idx, label=label)
+        return log, out
 
     def _log_interpretation(self, x, out, batch_idx, label="train"):
         if self.log_interval(label == "train") > 0 and batch_idx % self.log_interval(label == "train") == 0:
