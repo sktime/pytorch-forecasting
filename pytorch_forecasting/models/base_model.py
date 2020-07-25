@@ -67,7 +67,7 @@ class BaseModel(LightningModule):
         loss: TensorMetric = SMAPE(),
         reduce_on_plateau_patience: int = 1000,
         weight_decay: float = 0.0,
-        monotonicity_constaints: Dict[str, int] = {},
+        monotone_constaints: Dict[str, int] = {},
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -83,7 +83,7 @@ class BaseModel(LightningModule):
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults 
                 to 1000
             weight_decay (float): weight decay. Defaults to 0.0.
-            monotonicity_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder 
+            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder 
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive, 
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary). 
@@ -110,7 +110,7 @@ class BaseModel(LightningModule):
 
     def _step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train"):
 
-        if label == "train" and len(self.hparams.monotonicity_constaints) > 0:
+        if label == "train" and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
             out = self(x)
@@ -124,9 +124,9 @@ class BaseModel(LightningModule):
             )[0]
 
             # select relevant features
-            indices = torch.tensor([int(i) for i in self.hparams.monotonicity_constaints.keys()])
+            indices = torch.tensor([int(i) for i in self.hparams.monotone_constaints.keys()])
             monotonicity = torch.tensor(
-                [self.hparams.monotonicity_constaints[str(i.item())] for i in indices], dtype=gradient.dtype
+                [self.hparams.monotone_constaints[str(i.item())] for i in indices], dtype=gradient.dtype
             )
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]

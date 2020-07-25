@@ -126,6 +126,9 @@ class MultiHorizonMetric(Metric):
         assert not torch.isnan(
             loss
         ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
+        assert torch.isfinite(
+            loss
+        ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
         return loss
 
 

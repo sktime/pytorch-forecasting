@@ -31,10 +31,10 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
         dropout=0.2,
         hidden_continuous_size=2,
         loss=QuantileLoss(log_space=True),
-        partial_dependence_scale="log",
         log_interval=5,
         log_val_interval=1,
         log_gradient_flow=True,
+        monotone_constaints={"discount_in_percent": +1},
     )
     net.size()
     try:

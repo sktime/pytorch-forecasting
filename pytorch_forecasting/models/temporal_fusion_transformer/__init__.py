@@ -52,7 +52,7 @@ class TemporalFusionTransformer(BaseModel):
         log_val_interval: int = None,
         log_gradient_flow: bool = False,
         reduce_on_plateau_patience: int = 1000,
-        monotonicity_constaints: Dict[str, int] = {},
+        monotone_constaints: Dict[str, int] = {},
     ):
         """
         Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to
@@ -90,7 +90,7 @@ class TemporalFusionTransformer(BaseModel):
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-            monotonicity_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder 
+            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder 
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive, 
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary). 
@@ -257,13 +257,20 @@ class TemporalFusionTransformer(BaseModel):
         ]
 
     @classmethod
-    def from_dataset(cls, dataset: TimeSeriesDataSet, allowed_encoder_variable_names=None, **kwargs):
+    def from_dataset(
+        cls,
+        dataset: TimeSeriesDataSet,
+        allowed_encoder_variable_names: List[str] = None,
+        monotone_constaints: Dict[str, float] = {},
+        **kwargs,
+    ):
         """
         create model from dataset
 
         Args:
             dataset: timeseries dataset
             allowed_encoder_variable_names: List of names that are allowed in encoder, defaults to all
+            monotone_constaints: dictionary of decoder names to monotonicity
             **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
 
         Returns:
@@ -334,6 +341,11 @@ class TemporalFusionTransformer(BaseModel):
         scales = dataset.scales
         real_scales = {idx: scales[name] for idx, name in real_labels.items()}
 
+        # convert monotonicity constraints
+        monotone_constaints = {
+            str(dataset.reals.index(name)): constraint for name, constraint in monotone_constaints.items()
+        }
+
         new_kwargs = dict(
             max_encoder_length=dataset.max_encoder_length,
             static_categoricals=static_categoricals,
@@ -347,6 +359,7 @@ class TemporalFusionTransformer(BaseModel):
             embedding_labels=embedding_labels,
             real_scales=real_scales,
             embedding_paddings=embedding_paddings,
+            monotone_constaints=monotone_constaints,
         )
         new_kwargs.update(kwargs)
 
@@ -380,7 +393,6 @@ class TemporalFusionTransformer(BaseModel):
             ),
             dim=2,
         )
-
         return mask
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -399,12 +411,16 @@ class TemporalFusionTransformer(BaseModel):
         }
 
         # Embedding and variable selection
-        static_embedding = torch.cat(
-            [embedding_vectors[i][:, 0] for i in self.hparams.static_categoricals]
-            + [continuous_vectors[i][:, 0] for i in self.hparams.static_reals],
-            dim=1,
-        )
-        static_embedding, static_variable_selection = self.static_variable_selection(static_embedding)
+        if len(self.hparams.static_categoricals + self.hparams.static_reals) > 0:
+            static_embedding = torch.cat(
+                [embedding_vectors[i][:, 0] for i in self.hparams.static_categoricals]
+                + [continuous_vectors[i][:, 0] for i in self.hparams.static_reals],
+                dim=1,
+            )
+            static_embedding, static_variable_selection = self.static_variable_selection(static_embedding)
+        else:
+            static_embedding = torch.zeros((x_cont.size(0), self.hparams.hidden_size), dtype=self.dtype)
+            static_variable_selection = torch.zeros((x_cont.size(0), 0), dtype=self.dtype)
 
         static_context_variable_selection = self.expand_static_context(
             self.static_context_variable_selection(static_embedding), timesteps

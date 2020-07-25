@@ -327,8 +327,13 @@ class TimeSeriesDataSet(Dataset):
             ]
             # choose longest sequence
             df_index = df_index.loc[df_index.groupby("group_id").sequence_length.idxmax()]
+        assert len(df_index) > 0, "filters should not remove entries"
 
         return df_index
+
+    @staticmethod
+    def plot_randomization(betas=()):
+        pass
 
     def __len__(self):
         return self.index.shape[0]
@@ -371,23 +376,27 @@ class TimeSeriesDataSet(Dataset):
         # determine data window
         assert sequence_length >= self.min_prediction_length
         # determine prediction/decode length and encode length
-        decoder_length = min(time[-1] - (self.min_prediction_idx - 1), self.max_prediction_length, sequence_length)
+        decoder_length = min(
+            time[-1] - (self.min_prediction_idx - 1),
+            self.max_prediction_length,
+            sequence_length - self.min_encoder_length,
+        )
         encoder_length = sequence_length - decoder_length
         assert decoder_length >= self.min_prediction_length
+        assert encoder_length >= self.min_encoder_length
 
         if self.randomize_length is not None:  # randomization improves generalization
             # modify encode and decode lengths
-            encoder_length_probability, decoder_length_probability = Beta(*self.randomize_length).sample(
-                torch.Size([2])
-            )
+            encoder_length_probability = Beta(*self.randomize_length).sample()
 
             # subsample a new/smaller encode length
-            new_encoder_length = int(Binomial(encoder_length, encoder_length_probability).sample())
-
-            # sample a new/smaller decode length
-            new_decoder_length = int(
-                max(self.min_prediction_length, Binomial(decoder_length, encoder_length_probability).sample()),
+            new_encoder_length = self.min_encoder_length + int(
+                Binomial(encoder_length - self.min_encoder_length, encoder_length_probability).sample()
             )
+
+            # extend decode length if possible
+            new_decoder_length = min(decoder_length + (encoder_length - new_encoder_length), self.max_prediction_length)
+
             # select subset of sequence of new sequence
             if new_encoder_length + new_decoder_length < len(target):
                 data_cat = data_cat[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
