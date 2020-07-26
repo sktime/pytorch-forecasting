@@ -2,6 +2,7 @@
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
+import warnings
 from copy import deepcopy
 import inspect
 from typing import Union, Dict, List, Tuple, Any
@@ -126,7 +127,7 @@ class TimeSeriesDataSet(Dataset):
             scalers: dictionary of scikit learn scalers or None
             randomize_length: None if not to randomize lengths. Tuple of beta distribution concentrations from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial distribution
-            predict_mode: if to only iterate over each timeseries once
+            predict_mode: if to only iterate over each timeseries once (only the last provided samples)
         """
         super().__init__()
         self.min_encoder_length = min_encoder_length
@@ -252,7 +253,7 @@ class TimeSeriesDataSet(Dataset):
 
     @classmethod
     def from_dataset(
-        cls, dataset, data: pd.DataFrame, stop_randomization: bool = True, predict: bool = True, **update_kwargs
+        cls, dataset, data: pd.DataFrame, stop_randomization: bool = False, predict: bool = False, **update_kwargs
     ):
         return cls.from_parameters(
             dataset.get_parameters(), data, stop_randomization=stop_randomization, predict=predict, **update_kwargs
@@ -263,13 +264,17 @@ class TimeSeriesDataSet(Dataset):
         cls,
         parameters: Dict[str, Any],
         data: pd.DataFrame,
-        stop_randomization: bool = True,
-        predict: bool = True,
+        stop_randomization: bool = False,
+        predict: bool = False,
         **update_kwargs,
     ):
         parameters = deepcopy(parameters)
         if predict:
-            assert stop_randomization, "if predicting, no randomization should be possible"
+            if not stop_randomization:
+                warnings.warn(
+                    "If predicting, no randomization should be possible - setting stop_randomization=True", UserWarning
+                )
+                stop_randomization = True
             parameters["min_prediction_length"] = parameters["max_prediction_length"]
             parameters["predict_mode"] = True
         if stop_randomization:

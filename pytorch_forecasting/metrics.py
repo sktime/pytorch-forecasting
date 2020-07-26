@@ -143,7 +143,6 @@ class MultiHorizonMetric(Metric):
         else:
             # transform prediction into normal space
             if self.log_space:
-                # target = (target + 1e-8).log()
                 y_pred = y_pred.exp()
 
         losses = self.loss(y_pred, target)
