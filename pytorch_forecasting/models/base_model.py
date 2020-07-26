@@ -172,10 +172,7 @@ class BaseModel(LightningModule):
         y_hat_detached = self.loss.to_prediction(y_hat.detach())
         for metric in self.logging_metrics:
             tensorboard_logs[f"{label}_{metric.name}"] = metric(y_hat_detached, y)
-        log = {
-            f"{label}_loss": loss,
-            "log": tensorboard_logs,
-        }
+        log = {f"{label}_loss": loss, "log": tensorboard_logs, "n_samples": x["decoder_lengths"].size(0)}
         if label == "train":
             log["loss"] = loss
         if self.log_interval(label == "train") > 0:
@@ -189,9 +186,13 @@ class BaseModel(LightningModule):
         if "callback_metrics" in outputs[0]:  # workaround for pytorch-lightning bug
             outputs = [out["callback_metrics"] for out in outputs]
         # log average loss and metrics
-        avg_loss = torch.stack([x[f"{label}_loss"] for x in outputs]).mean()
+        n_samples = sum([x["n_samples"] for x in outputs])
+        avg_loss = torch.stack([x[f"{label}_loss"] * x["n_samples"] / n_samples for x in outputs]).sum()
         log_keys = outputs[0]["log"].keys()
-        tensorboard_logs = {f"avg_{key}": torch.stack([x["log"][key] for x in outputs]).mean() for key in log_keys}
+        tensorboard_logs = {
+            f"avg_{key}": torch.stack([x["log"][key] * x["n_samples"] / n_samples for x in outputs]).sum()
+            for key in log_keys
+        }
 
         return {f"{label}_loss": avg_loss, "log": tensorboard_logs}, outputs
 
@@ -345,7 +346,11 @@ class BaseModel(LightningModule):
             schedulers = [
                 {
                     "scheduler": ReduceLROnPlateau(
-                        optimizer, mode="min", factor=0.1, patience=self.hparams.reduce_on_plateau_patience
+                        optimizer,
+                        mode="min",
+                        factor=0.1,
+                        patience=self.hparams.reduce_on_plateau_patience,
+                        cooldown=self.hparams.reduce_on_plateau_patience,
                     ),
                     "monitor": "val_loss",  # Default: val_loss
                     "interval": "epoch",

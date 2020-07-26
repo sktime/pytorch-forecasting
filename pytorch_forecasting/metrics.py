@@ -246,14 +246,14 @@ class SMAPE(MultiHorizonMetric):
     """
     Symmetric mean average percentage. Assumes ``y >= 0``.
 
-    Defined as ``(y - y_pred).abs() / (y.abs() + y_pred.abs())``
+    Defined as ``2*(y - y_pred).abs() / (y.abs() + y_pred.abs())``
     """
 
     def __init__(self, name: str = "sMAPE", *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
-        loss = (y_pred - target).abs() / (y_pred.abs() + target.abs())
+        loss = 2 * (y_pred - target).abs() / (y_pred.abs() + target.abs())
         return loss
 
 

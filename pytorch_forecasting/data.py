@@ -85,6 +85,7 @@ class TimeSeriesDataSet(Dataset):
         dropout_categoricals: List[str] = [],
         add_relative_time_idx: bool = True,
         constant_fill_strategy={},
+        allow_missings: bool = False,
         categoricals_encoders={},
         scalers={},
         randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
@@ -120,6 +121,7 @@ class TimeSeriesDataSet(Dataset):
             constant_fill_strategy: dictionary of column names with constants to fill in missing values if there are
                 gaps in the sequence
                 (otherwise forward fill strategy is used)
+            allow_missings: if to allow missing timesteps that are automatically filled up
             categoricals_encoders: dictionary of scikit learn label transformers or None
             scalers: dictionary of scikit learn scalers or None
             randomize_length: None if not to randomize lengths. Tuple of beta distribution concentrations from which
@@ -148,6 +150,7 @@ class TimeSeriesDataSet(Dataset):
         self.min_prediction_idx = min_prediction_idx or data[self.time_idx].min()
         self.constant_fill_strategy = constant_fill_strategy
         self.predict_mode = predict_mode
+        self.allow_missings = allow_missings
 
         assert (
             self.target not in self.time_varying_known_reals
@@ -193,6 +196,8 @@ class TimeSeriesDataSet(Dataset):
         # encode constant values
         self.encoded_constant_fill_strategy = {}
         for name, value in self.constant_fill_strategy.items():
+            if name == self.target:
+                self.encoded_constant_fill_strategy["__target__"] = value
             if name in self.scalers:
                 self.encoded_constant_fill_strategy[name] = self.scalers[name].transform(np.array([[value]]))[0, 0]
             elif name in self.categoricals_encoders:
@@ -295,6 +300,9 @@ class TimeSeriesDataSet(Dataset):
         # if there are missing timesteps, we cannot say directly what is the last timestep to include
         # therefore we iterate until it is found
         if (df_index["time_diff_to_next"] != 1).any():
+            assert (
+                self.allow_missings
+            ), "Time difference between steps has been idenfied as larger than 1 - set allow_missings=True"
             df_index["index_end"] = df_index["index_start"]
             for _ in range(df_index["count"].max()):
                 new_end_time = (
@@ -368,8 +376,14 @@ class TimeSeriesDataSet(Dataset):
 
             # make replacements to fill in categories
             for name, value in self.encoded_constant_fill_strategy.items():
-                col_idx = self.reals.index(name)
-                data_cont[repetition_indices, col_idx] = value
+                if name in self.reals:
+                    data_cont[repetition_indices, self.reals.index(name)] = value
+                elif name == "__target__":
+                    target[repetition_indices] = value
+                elif name in self.categoricals:
+                    data_cat[repetition_indices, self.categoricals.index(name)] = value
+                else:
+                    raise KeyError(f"Variable {name} is not known and thus cannot be filled in")
 
             sequence_length = len(target)
 
