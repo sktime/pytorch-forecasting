@@ -329,7 +329,7 @@ class TimeSeriesDataSet(Dataset):
             lambda x: (x.sequence_length >= self.min_prediction_length + self.min_encoder_length)
             &
             # prediction must be for after minimal prediction index + length of prediction
-            (x["sequence_length"] + x["time"] >= self.min_prediction_idx - 1 + self.min_prediction_length)
+            (x["sequence_length"] + x["time"] - 1 >= self.min_prediction_idx - 1 + self.min_prediction_length)
         ]
 
         if predict_mode:  # keep longest element per series (i.e. the first element that spans to the end of the series)
@@ -393,7 +393,9 @@ class TimeSeriesDataSet(Dataset):
             sequence_length = len(target)
 
         # determine data window
-        assert sequence_length >= self.min_prediction_length
+        assert (
+            sequence_length >= self.min_prediction_length
+        ), "Sequence length should be at least minimum prediction length"
         # determine prediction/decode length and encode length
         decoder_length = min(
             time[-1] - (self.min_prediction_idx - 1),
@@ -401,8 +403,10 @@ class TimeSeriesDataSet(Dataset):
             sequence_length - self.min_encoder_length,
         )
         encoder_length = sequence_length - decoder_length
-        assert decoder_length >= self.min_prediction_length
-        assert encoder_length >= self.min_encoder_length
+        assert (
+            decoder_length >= self.min_prediction_length
+        ), "Decoder length should be at least minimum prediction length"
+        assert encoder_length >= self.min_encoder_length, "Encoder length should be at least minimum encoder length"
 
         if self.randomize_length is not None:  # randomization improves generalization
             # modify encode and decode lengths
@@ -428,8 +432,8 @@ class TimeSeriesDataSet(Dataset):
             if encoder_length == 0 and len(self.dropout_categoricals) > 0:
                 data_cat[:, [self.categoricals.index(c) for c in self.dropout_categoricals]] = 0  # zero is encoded nan
 
-        assert decoder_length > 0
-        assert encoder_length >= 0
+        assert decoder_length > 0, "Decoder length should be greater than 0"
+        assert encoder_length >= 0, "Encoder length should be at least 0"
 
         if self.add_relative_time_idx:
             data_cont[:, self.reals.index("relative_time_idx")] = (
