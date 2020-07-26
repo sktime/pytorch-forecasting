@@ -14,13 +14,13 @@ class TimeDistributedInterpolation(nn.Module):
         self.batch_first = batch_first
         self.trainable = trainable
         if self.trainable:
-            self.soft_mask = nn.Parameter(torch.zeros(self.output_size, dtype=torch.float32))
-            self.softmax = nn.Softmax(dim=-1)
+            self.mask = nn.Parameter(torch.zeros(self.output_size, dtype=torch.float32))
+            self.gate = nn.Sigmoid()
 
     def interpolate(self, x):
         upsampled = F.interpolate(x.unsqueeze(1), self.output_size, mode="linear", align_corners=True).squeeze(1)
         if self.trainable:
-            upsampled = upsampled * self.softmax(self.soft_mask).unsqueeze(0) * x.size(1)
+            upsampled = upsampled * self.gate(self.mask.unsqueeze(0))
         return upsampled
 
     def forward(self, x):

@@ -25,7 +25,7 @@ exclude = '''
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
-version = "0.1.0"
+version = "0.1.2"
 
 authors = ["Jan Beitner"]
 classifiers = [

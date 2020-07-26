@@ -143,7 +143,8 @@ class MultiHorizonMetric(Metric):
         else:
             # transform prediction into normal space
             if self.log_space:
-                target = (target + 1e-8).log()
+                # target = (target + 1e-8).log()
+                y_pred = y_pred.exp()
 
         losses = self.loss(y_pred, target)
         # weight samples
@@ -152,7 +153,7 @@ class MultiHorizonMetric(Metric):
 
         # mask loss
         mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
-        if y_pred.ndim > 2:
+        if losses.ndim > 2:
             mask = mask.unsqueeze(-1)
         losses = losses.masked_fill(mask, 0.0)
 
@@ -176,9 +177,9 @@ class PoissonLoss(MultiHorizonMetric):
         return super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        if target.ndim == 3:
-            raise NotImplementedError("Weights are not supported for Poisson loss")
-        return F.poisson_nll_loss(y_pred.squeeze(2), target, log_input=True, full=False, eps=1e-6, reduction="none")
+        if y_pred.ndim == 3:
+            y_pred = y_pred.squeeze(2)
+        return F.poisson_nll_loss(y_pred, target, log_input=True, full=False, eps=1e-6, reduction="none")
 
     def to_prediction(self, out):
         rate = torch.exp(out[..., 0])
@@ -253,7 +254,9 @@ class SMAPE(MultiHorizonMetric):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
-        loss = 2 * (y_pred - target).abs() / (y_pred.abs() + target.abs())
+        if y_pred.ndim == 3:
+            y_pred = y_pred.squeeze(2)
+        loss = 2 * (y_pred - target).abs() / (y_pred.abs() + target.abs() + 1e-8)
         return loss
 
 
@@ -268,6 +271,8 @@ class MAPE(MultiHorizonMetric):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
+        if y_pred.ndim == 3:
+            y_pred = y_pred.squeeze(2)
         loss = (y_pred - target).abs() / (target.abs() + 1e-8)
         return loss
 
@@ -283,6 +288,8 @@ class MAE(MultiHorizonMetric):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
+        if y_pred.ndim == 3:
+            y_pred = y_pred.squeeze(2)
         loss = (y_pred - target).abs()
         return loss
 
@@ -298,5 +305,7 @@ class RMSE(MultiHorizonMetric):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
+        if y_pred.ndim == 3:
+            y_pred = y_pred.squeeze(2)
         loss = torch.pow(y_pred - target, 2)
         return loss

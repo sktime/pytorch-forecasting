@@ -1,5 +1,4 @@
 import pickle
-
 import warnings
 
 
@@ -12,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
+from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss, SMAPE
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_forecasting.utils import profile
 
@@ -21,69 +20,33 @@ from pandas.core.common import SettingWithCopyWarning
 warnings.simplefilter("error", category=SettingWithCopyWarning)
 
 
-def parse_yearmonth(df):
-    return df.assign(date=lambda x: pd.to_datetime(x.yearmonth, format="%Y%m")).drop("yearmonth", axis=1)
+from data import get_stallion_data
 
+data = get_stallion_data()
 
-def clean_column_names(df):
-    df.columns = [c.strip(" ").replace(" ", "_").replace("-", "_").lower() for c in df.columns]
-    return df
-
-
-data_path = Path("examples/data/stallion")
-weather = parse_yearmonth(clean_column_names(pd.read_csv(data_path / "weather.csv"))).set_index(["date", "agency"])
-price_sales_promotion = parse_yearmonth(
-    clean_column_names(pd.read_csv(data_path / "price_sales_promotion.csv")).rename(
-        columns={"sales": "price_actual", "price": "price_regular", "promotions": "discount"}
-    )
-).set_index(["date", "sku", "agency"])
-industry_volume = parse_yearmonth(clean_column_names(pd.read_csv(data_path / "industry_volume.csv"))).set_index("date")
-industry_soda_sales = parse_yearmonth(clean_column_names(pd.read_csv(data_path / "industry_soda_sales.csv"))).set_index(
-    "date"
-)
-historical_volume = parse_yearmonth(clean_column_names(pd.read_csv(data_path / "historical_volume.csv")))
-event_calendar = parse_yearmonth(clean_column_names(pd.read_csv(data_path / "event_calendar.csv"))).set_index("date")
-demographics = clean_column_names(pd.read_csv(data_path / "demographics.csv")).set_index("agency")
-
-# combine the data
-data = (
-    historical_volume.join(industry_volume, on="date")
-    .join(industry_soda_sales, on="date")
-    .join(weather, on=["date", "agency"])
-    .join(price_sales_promotion, on=["date", "sku", "agency"])
-    .join(demographics, on="agency")
-    .join(event_calendar, on="date")
-    .sort_values("date")
-)
-for c in data.select_dtypes(object).columns:
-    data[c] = data[c].astype("category")
-
-# minor feature engineering: add 12 month rolling mean volume
-data = data.assign(discount_in_percent=lambda x: (x.discount / x.price_regular).fillna(0) * 100)
 data["month"] = data.date.dt.month
-data["log_volume"] = np.log1p(data.volume)
-data["volume2"] = data.volume
-data["weight"] = 1 + np.sqrt(data.volume)
+data["log_volume"] = np.log(data.volume + 1e-8)
 
-data["time_idx"] = (data["date"] - data["date"].min()).dt.days
+data["time_idx"] = data["date"].dt.year * 12 + data["date"].dt.month
+data["time_idx"] -= data["time_idx"].min()
 
-training_cutoff = "2016-09-01"
-max_encode_length = 36
+training_cutoff = data["time_idx"].max() - 6
+max_encoder_length = 12
 max_prediction_length = 6
 
 features = data.drop(["volume"], axis=1).dropna()
 target = data.volume[features.index]
 
 training = TimeSeriesDataSet(
-    data[lambda x: x.date < training_cutoff],
+    data[lambda x: x.time_idx < training_cutoff],
     time_idx="time_idx",
     target="volume",
-    # weight="weight",
     group_ids=["agency", "sku"],
-    max_encoder_length=max_encode_length,
+    min_encoder_length=max_encoder_length,
+    max_encoder_length=max_encoder_length,
     max_prediction_length=max_prediction_length,
     static_categoricals=["agency", "sku"],
-    static_reals=[],
+    static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
     time_varying_known_categoricals=[
         "easter_day",
         "good_friday",
@@ -98,28 +61,18 @@ training = TimeSeriesDataSet(
         "beer_capital",
         "music_fest",
     ],
-    time_varying_known_reals=[
-        "time_idx",
-        "price_regular",
-        "price_actual",
-        "discount",
-        "avg_population_2017",
-        "avg_yearly_household_income_2017",
-        "discount_in_percent",
-    ],
+    time_varying_known_reals=["time_idx", "price_regular", "discount_in_percent"],
     time_varying_unknown_categoricals=[],
     time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
-    constant_fill_strategy={"volume": 0},
-    dropout_categoricals=["sku"],
 )
 
-validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training.index.time.max() + 1)
+validation = TimeSeriesDataSet.from_dataset(training, data, predict=True)
 batch_size = 128
 train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size * 10, num_workers=0)
 
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
+early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=15, verbose=False, mode="min")
 lr_logger = LearningRateLogger()
 trainer = pl.Trainer(
     max_epochs=100,
@@ -138,11 +91,11 @@ trainer = pl.Trainer(
 
 tft = TemporalFusionTransformer.from_dataset(
     training,
-    learning_rate=0.15,
+    learning_rate=0.03,
     hidden_size=32,
     attention_head_size=1,
     dropout=0.1,
-    hidden_continuous_size=32,
+    hidden_continuous_size=16,
     output_size=7,
     loss=QuantileLoss(log_space=True),
     log_interval=2,
@@ -150,11 +103,11 @@ tft = TemporalFusionTransformer.from_dataset(
 )
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
-# find optimal learning rate
+# # find optimal learning rate
 # res = trainer.lr_find(
 #     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 # )
-
+#
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)
 # fig.show()

@@ -116,7 +116,11 @@ class TemporalFusionTransformer(BaseModel):
                 padding_idx = 0
             else:
                 padding_idx = None
-            self.input_embeddings[str(i)] = nn.Embedding(*self.hparams.embedding_sizes[str(i)], padding_idx=padding_idx)
+            self.input_embeddings[str(i)] = nn.Embedding(
+                self.hparams.embedding_sizes[str(i)][0],
+                min(self.hparams.embedding_sizes[str(i)][1], self.hparams.hidden_size),
+                padding_idx=padding_idx,
+            )
 
         # linear layers
         self.input_linear = nn.ModuleDict()
