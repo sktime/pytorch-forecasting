@@ -65,8 +65,27 @@ class GLU(nn.Module):
         return torch.mul(sig, x)
 
 
+class AddNorm(nn.Module):
+    def __init__(self, input_size=None, trainable_add: bool = True):
+        super().__init__()
+
+        self.input_size = input_size
+        self.trainable_add = trainable_add
+
+        if self.trainable_add:
+            self.mask = nn.Parameter(torch.zeros(self.input_size, dtype=torch.float))
+            self.gate = nn.Sigmoid()
+        self.norm = nn.LayerNorm(self.input_size)
+
+    def forward(self, x, skip):
+        if self.trainable_add:
+            skip = skip * self.gate(self.mask)
+        output = self.norm(x + skip)
+        return output
+
+
 class GateAddNorm(nn.Module):
-    def __init__(self, input_size, hidden_size=None, dropout: float = 0.1):
+    def __init__(self, input_size, hidden_size=None, trainable_add: bool = True, dropout: float = 0.1):
         super().__init__()
 
         self.input_size = input_size
@@ -74,11 +93,11 @@ class GateAddNorm(nn.Module):
         self.dropout = dropout
 
         self.glu = GLU(self.input_size, hidden_size=self.hidden_size, dropout=self.dropout)
-
-        self.norm = nn.LayerNorm(self.hidden_size)
+        self.add_norm = AddNorm(self.hidden_size, trainable_add=trainable_add)
 
     def forward(self, x, skip):
-        output = self.norm(self.glu(x) + skip)
+        output = self.glu(x)
+        output = self.add_norm(output, skip)
         return output
 
 
@@ -128,7 +147,14 @@ class GatedResidualNetwork(nn.Module):
 
 
 class VariableSelectionNetwork(nn.Module):
-    def __init__(self, input_sizes, hidden_size, dropout=0.1, context_size=None):
+    def __init__(
+        self,
+        input_sizes: Dict[str, int],
+        hidden_size,
+        dropout=0.1,
+        context_size=None,
+        single_variable_grns: Dict[str, GatedResidualNetwork] = {},
+    ):
         """
         Calcualte weights for ``num_inputs`` variables  which are each of size ``input_size``
         """
@@ -161,17 +187,20 @@ class VariableSelectionNetwork(nn.Module):
             # transform residual for flattened_grn
             self.residual_norm = nn.LayerNorm(self.num_inputs)
 
-        self.single_variable_grns = nn.ModuleList()
-        for input_size in self.input_sizes:
-            self.single_variable_grns.append(
-                GatedResidualNetwork(input_size, min(input_size, self.hidden_size), self.hidden_size, self.dropout)
-            )
+        self.single_variable_grns = nn.ModuleDict()
+        for name, input_size in self.input_sizes.items():
+            if name in single_variable_grns:
+                self.single_variable_grns[name] = single_variable_grns[name]
+            else:
+                self.single_variable_grns[name] = GatedResidualNetwork(
+                    input_size, min(input_size, self.hidden_size), self.hidden_size, self.dropout
+                )
 
         self.softmax = nn.Softmax(dim=-1)
 
     @property
     def input_size_total(self):
-        return sum(self.input_sizes)
+        return sum(self.input_sizes.values())
 
     @property
     def num_inputs(self):
@@ -183,11 +212,11 @@ class VariableSelectionNetwork(nn.Module):
             var_outputs = []
             variable_embedding_mean = []
             start = 0
-            for i, input_size in enumerate(self.input_sizes):
+            for name, input_size in self.input_sizes.items():
                 # select slice of embedding belonging to a single input
                 variable_embedding = embedding[..., start : (start + input_size)]
                 variable_embedding_mean.append(variable_embedding.abs().mean(-1))
-                var_outputs.append(self.single_variable_grns[i](variable_embedding))
+                var_outputs.append(self.single_variable_grns[name](variable_embedding))
                 start += input_size
             var_outputs = torch.stack(var_outputs, axis=-1)
 
@@ -198,7 +227,7 @@ class VariableSelectionNetwork(nn.Module):
             sparse_weights = self.softmax(sparse_weights).unsqueeze(-2)
 
             outputs = var_outputs * sparse_weights
-            outputs = outputs.sum(axis=-1)
+            outputs = outputs.mean(axis=-1)
         else:  # for one input, do not perform variable selection but just encoding
             outputs = self.single_variable_grns[0](embedding)  # fast forward if only one variable
             sparse_weights = torch.ones(outputs.size(0), outputs.size(1), 1, 1, device=outputs.device)

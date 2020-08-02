@@ -2,12 +2,16 @@
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
+
 import warnings
 from copy import deepcopy
 import inspect
-from typing import Union, Dict, List, Tuple, Any
+from typing import Callable, Union, Dict, List, Tuple, Any
+import matplotlib.pyplot as plt
 import pandas as pd
+import abc
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import Binomial, Beta
 from torch.nn.utils import rnn
@@ -61,6 +65,59 @@ class NaNLabelEncoder(LabelEncoder):
         return super().transform(y)
 
 
+class TargetNormalizer(BaseEstimator, TransformerMixin):
+    @abc.abstractmethod
+    def __call__(self, out):
+        """
+        inverse transform where input is output of network
+        """
+        pass
+
+
+class GroupNormalizer(BaseEstimator, TransformerMixin):
+    def __init__(self, groups: List[str] = [], center: bool = False, scale_by_group: bool = False):
+        self.groups = groups
+        self.center = center
+        self.scale_by_group = scale_by_group
+
+    def fit(self, y, X):
+        if len(self.groups) == 0:
+            assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
+            self.mean = np.mean(y)
+            self.std = np.std(y)
+        elif self.scale_by_group:
+            self.norm = {g: y.groupby(X[g], observed=True).agg(["mean", "std"]) for g in self.groups}
+        else:
+            self.norm = y.groupby(X[self.groups], observed=True).agg(["mean", "std"])
+        return self
+
+    @property
+    def scale_names(self) -> List[str]:
+        return ["mean", "std"]
+
+    def transform(self, X: pd.DataFrame, norm_name=None) -> pd.DataFrame:
+        norm = self.get_norm(X)
+        X.loc[:, self.target] = X[self.target] / norm
+        if norm_name is not None:
+            X[norm_name] = norm
+        return X
+
+    def get_scales(self, X):
+        if len(self.groups) == 0:
+            norm = self.norm
+        else:
+            norm = X[self.groups + [self.target]].set_index(self.groups).join(self.norm)[self.scale_names].to_numpy()
+        return norm + 1e-8
+
+    def __call__(self, data: Dict[str, torch.Tensor]):
+        # call with tensors
+        pass
+
+    @property
+    def is_fitted(self):
+        return hasattr(self, "norm")
+
+
 class TimeSeriesDataSet(Dataset):
     """Dataset Basic Structure for Temporal Fusion Transformer"""
 
@@ -91,8 +148,10 @@ class TimeSeriesDataSet(Dataset):
         scalers={},
         randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
         predict_mode: bool = False,
+        target_normalizer: Union[GroupNormalizer, str] = "mean",
+        add_target_scales: bool = True,
     ):
-        """
+        """ 
         Timeseries dataset
 
         Args:
@@ -128,6 +187,8 @@ class TimeSeriesDataSet(Dataset):
             randomize_length: None if not to randomize lengths. Tuple of beta distribution concentrations from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial distribution
             predict_mode: if to only iterate over each timeseries once (only the last provided samples)
+            target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
+            add_target_scales: 
         """
         super().__init__()
         self.min_encoder_length = min_encoder_length
@@ -152,6 +213,10 @@ class TimeSeriesDataSet(Dataset):
         self.constant_fill_strategy = constant_fill_strategy
         self.predict_mode = predict_mode
         self.allow_missings = allow_missings
+        self.target_normalizer = target_normalizer
+        self.categoricals_encoders = categoricals_encoders
+        self.scalers = scalers
+        self.add_target_scales = add_target_scales
 
         assert (
             self.target not in self.time_varying_known_reals
@@ -161,8 +226,24 @@ class TimeSeriesDataSet(Dataset):
         assert data.index.is_unique, "data index has to be unique"
         data = data.sort_values(self.group_ids + [self.time_idx])
 
+        # add time index relative to prediction position
+        if self.add_relative_time_idx:
+            if "relative_time_idx" not in self.time_varying_known_reals:
+                self.time_varying_known_reals.append("relative_time_idx")
+            data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
+
+        # preprocess data
+        data = self._preprocess_data(data)
+
+        # create index
+        self.index = self._construct_index(data, predict_mode=predict_mode)
+
+        # convert to torch tensor for high performance data loading later
+        self.data = self._data_to_tensors(data)
+
+    def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
+
         # encode categoricals
-        self.categoricals_encoders = categoricals_encoders
         for name in set(self.categoricals + self.group_ids):
             if name not in self.categoricals_encoders:
                 self.categoricals_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
@@ -171,19 +252,21 @@ class TimeSeriesDataSet(Dataset):
             if self.categoricals_encoders[name] is not None:
                 data[name] = self.categoricals_encoders[name].transform(data[name])
 
-        # scale continuous variables
-        self.scalers = scalers
+        # train target normalizer
+        if self.target_normalizer is not None:
+            if isinstance(self.target_normalizer, str):
+                self.target_normalizer = GroupNormalizer(
+                    method=self.target_normalizer, groups=self.group_ids, target="__target__"
+                )
+            if not self.target_normalizer.is_fitted:
+                self.target_normalizer.fit(data)
+            data = self.target_normalizer.transform(data)
+
+        # save special variables
         data["__time_idx__"] = data[self.time_idx]  # save unscaled
         data["__target__"] = data[self.target]
         if self.weight is not None:
             data["__weight__"] = data[self.weight]
-
-        # add time index relative to prediction position
-        if self.add_relative_time_idx:
-            if "relative_time_idx" not in self.time_varying_known_reals:
-                self.time_varying_known_reals.append("relative_time_idx")
-            data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
-
         # rescale continuous variables
         for name in self.reals:
             if name not in self.scalers:
@@ -206,12 +289,6 @@ class TimeSeriesDataSet(Dataset):
             else:
                 self.encoded_constant_fill_strategy[name] = value
 
-        # create index
-        self.index = self.construct_index(data, predict_mode=predict_mode)
-
-        # convert to torch tensor for high performance data loading later
-        self.data = self._data_to_tensors(data)
-
     def _data_to_tensors(self, data: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tensor]:
 
         index = torch.tensor(data[self.group_ids].to_numpy(np.long))
@@ -219,15 +296,16 @@ class TimeSeriesDataSet(Dataset):
 
         categorical = torch.tensor(data[self.categoricals].to_numpy(np.long))
 
-        if self.weight is not None:
-            target_names = ["__target__", "__weight__"]
-        else:
+        if self.weight is None:
             target_names = "__target__"
-
+        else:
+            target_names = ["__target__", "__weight__"]
         target = torch.tensor(data[target_names].to_numpy(dtype=np.float32))
         continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float32))
 
-        return dict(reals=continuous, categoricals=categorical, groups=index, target=target, time=time)
+        tensors = dict(reals=continuous, categoricals=categorical, groups=index, target=target, time=time)
+
+        return tensors
 
     @property
     def categoricals(self):
@@ -284,7 +362,7 @@ class TimeSeriesDataSet(Dataset):
         new = cls(data, **parameters)
         return new
 
-    def construct_index(self, data: pd.DataFrame, predict_mode: bool) -> pd.DataFrame:
+    def _construct_index(self, data: pd.DataFrame, predict_mode: bool) -> pd.DataFrame:
 
         g = data.groupby(self.group_ids, observed=True)
 
@@ -346,7 +424,10 @@ class TimeSeriesDataSet(Dataset):
 
     @staticmethod
     def plot_randomization(betas=()):
-        pass
+        data = Beta(*betas).sample(1000)
+        fig, ax = plt.subplots()
+        ax.hist(data)
+        return fig
 
     def __len__(self):
         return self.index.shape[0]
@@ -358,6 +439,7 @@ class TimeSeriesDataSet(Dataset):
         data_cat = self.data["categoricals"][index.index_start : index.index_end + 1]
         time = self.data["time"][index.index_start : index.index_end + 1]
         target = self.data["target"][index.index_start : index.index_end + 1]
+        groups = self.data["groups"][index.index_start]
 
         sequence_length = len(time)
 
@@ -384,7 +466,10 @@ class TimeSeriesDataSet(Dataset):
                 if name in self.reals:
                     data_cont[repetition_indices, self.reals.index(name)] = value
                 elif name == "__target__":
-                    target[repetition_indices] = value
+                    if target.ndim == 2:
+                        target[repetition_indices, 0] = value
+                    else:
+                        target[repetition_indices] = value
                 elif name in self.categoricals:
                     data_cat[repetition_indices, self.categoricals.index(name)] = value
                 else:
@@ -442,16 +527,30 @@ class TimeSeriesDataSet(Dataset):
 
         return (
             dict(
-                x_cat=data_cat, x_cont=data_cont, encoder_length=encoder_length, encoder_target=target[:encoder_length],
+                x_cat=data_cat,
+                x_cont=data_cont,
+                encoder_length=encoder_length,
+                encoder_target=target[:encoder_length],
+                encoder_time_idx_start=time[0],
+                groups=groups,
             ),
             target[encoder_length:],
         )
 
     def _collate_fn(self, batches):
         # collate function for dataloader
+        # lengths
         encoder_lengths = torch.tensor([batch[0]["encoder_length"] for batch in batches], dtype=torch.long)
         decoder_lengths = torch.tensor([len(batch[1]) for batch in batches], dtype=torch.long)
 
+        # ids
+        decoder_time_idx_start = (
+            torch.tensor([batch[0]["encoder_time_idx_start"] for batch in batches], dtype=torch.long) + encoder_lengths
+        )
+        decoder_time_idx = decoder_time_idx_start.unsqueeze(1) + torch.arange(decoder_lengths.max()).unsqueeze(0)
+        groups = torch.stack([batch[0]["groups"] for batch in batches])
+
+        # data
         encoder_cont = rnn.pad_sequence(
             [batch[0]["x_cont"][:length] for length, batch in zip(encoder_lengths, batches)], batch_first=True
         )
@@ -468,6 +567,7 @@ class TimeSeriesDataSet(Dataset):
         )
 
         target = rnn.pad_sequence([batch[1] for batch in batches], batch_first=True)
+
         return (
             dict(
                 encoder_cat=encoder_cat,
@@ -478,11 +578,13 @@ class TimeSeriesDataSet(Dataset):
                 decoder_cont=decoder_cont,
                 decoder_target=target,
                 decoder_lengths=decoder_lengths,
+                decoder_time_idx=decoder_time_idx,
+                groups=groups,
             ),
             target,
         )
 
-    def to_dataloader(self, train: bool = True, **kwargs) -> DataLoader:
+    def to_dataloader(self, train: bool = True, batch_size: int = 64, **kwargs) -> DataLoader:
         """
         Get dataloader from dataset.
 
@@ -506,7 +608,14 @@ class TimeSeriesDataSet(Dataset):
                 Second entry is target
         )
         """
-        return DataLoader(self, shuffle=train, drop_last=train, collate_fn=self._collate_fn, **kwargs)
+        return DataLoader(
+            self,
+            shuffle=train,
+            drop_last=train and len(self) > batch_size,
+            collate_fn=self._collate_fn,
+            batch_size=batch_size,
+            **kwargs,
+        )
 
     def get_index(self) -> pd.DataFrame:
         """

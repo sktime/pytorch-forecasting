@@ -5,6 +5,7 @@ from copy import deepcopy
 import inspect
 import cloudpickle
 from torch import unsqueeze
+from torch import optim
 from torch.functional import Tensor
 
 from torch.utils.data import DataLoader
@@ -330,7 +331,7 @@ class BaseModel(LightningModule):
         # either set a schedule of lrs or find it dynamically
         if isinstance(self.hparams.learning_rate, (list, tuple)):  # set schedule
             lrs = self.hparams.learning_rate
-            optimizer = Ranger(self.parameters(), lr=lrs[0])
+            optimizer = Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             schedulers = [
@@ -358,7 +359,6 @@ class BaseModel(LightningModule):
                     "frequency": 1,
                 }
             ]
-
         return [optimizer], schedulers
 
     def _get_mask(self, size, lengths, inverse=False):
@@ -382,6 +382,7 @@ class BaseModel(LightningModule):
         """
         net = cls(**kwargs)
         net.dataset_parameters = dataset.get_parameters()
+        net.loss.transformer = dataset.target_normalizer
         return net
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
