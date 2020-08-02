@@ -53,7 +53,7 @@ class BaseModel(LightningModule):
                 # implement lightning steps
                 def training_step(self, batch, batch_idx):
                     x, y = batch
-                    return {"loss": self.loss.to_prediction(self(x), y)}
+                    return {"loss": self.loss(self(x), y)}
 
                 # implement further steps
 
@@ -139,11 +139,11 @@ class BaseModel(LightningModule):
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
             out = self(x)
-            y_hat = out["prediction"]
+            prediction = self.loss.to_prediction(out)
             gradient = torch.autograd.grad(
-                outputs=y_hat,
+                outputs=prediction,
                 inputs=x["decoder_cont"],
-                grad_outputs=torch.ones_like(y_hat),  # t
+                grad_outputs=torch.ones_like(prediction),  # t
                 create_graph=True,  # allows usage in graph
                 allow_unused=True,
             )[0]
@@ -160,24 +160,23 @@ class BaseModel(LightningModule):
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
 
-            loss = self.loss(y_hat, y) * (1 + monotinicity_loss)
+            loss = self.loss(out, y) * (1 + monotinicity_loss)
         else:
             out = self(x)
-            y_hat = out["prediction"]
             # calculate loss
-            loss = self.loss(y_hat, y)
+            loss = self.loss(out, y)
 
         # log loss
         tensorboard_logs = {f"{label}_loss": loss}
         # logging losses
-        y_hat_detached = self.loss.to_prediction(y_hat.detach())
+        y_hat_detached = self.loss.to_prediction(out).detach()
         for metric in self.logging_metrics:
             tensorboard_logs[f"{label}_{metric.name}"] = metric(y_hat_detached, y)
         log = {f"{label}_loss": loss, "log": tensorboard_logs, "n_samples": x["decoder_lengths"].size(0)}
         if label == "train":
             log["loss"] = loss
         if self.log_interval(label == "train") > 0:
-            self._log_prediction(x, y_hat, batch_idx, label=label)
+            self._log_prediction(x, y_hat_detached, batch_idx, label=label)
         return log, out
 
     def epoch_end(self, outputs, label="train"):
@@ -460,11 +459,11 @@ class BaseModel(LightningModule):
                             f"If a tuple is specified, the first element must be 'raw' - got {mode[0]} instead"
                         )
                 elif mode == "prediction":
-                    out = self.loss.to_prediction(out["prediction"])
+                    out = self.loss.to_prediction(out)
                     # mask non-predictions
                     out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
                 elif mode == "quantiles":
-                    out = self.loss.to_quantiles(out["prediction"])
+                    out = self.loss.to_quantiles(out)
                     # mask non-predictions
                     out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
                 elif mode == "raw":
