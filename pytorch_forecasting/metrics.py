@@ -21,9 +21,8 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
     """
 
     def __init__(
-        self, name: str, transformer: BaseEstimator = None, quantiles: List[float] = [0.5],
+        self, name: str, quantiles: List[float] = [0.5],
     ):
-        self.transformer = transformer
         self.quantiles = quantiles
         super().__init__(name)
 
@@ -43,43 +42,34 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
         """
         pass
 
-    def to_prediction(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
 
         Args:
-            out: output of network
+            y_pred: prediction output of network
 
         Returns:
             torch.Tensor: point prediction
         """
-        out = self.transform(out)
-        if out.ndim == 3:
+        if y_pred.ndim == 3:
             idx = self.quantiles.index(0.5)
-            out = out[..., idx]
-        return out
+            y_pred = y_pred[..., idx]
+        return y_pred
 
-    def to_quantiles(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
         Args:
-            out: output of network
+            y_pred: prediction output of network
 
         Returns:
             torch.Tensor: prediction quantiles
         """
-        out = self.transform(out)
-        if out.ndim == 2:
-            out = out.unsqueeze(1)
-        return out
-
-    def transform(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
-        if self.transformer is None:
-            out = out["prediction"]
-        else:
-            out = self.transform(out)
-        return out
+        if y_pred.ndim == 2:
+            y_pred = y_pred.unsqueeze(-1)
+        return y_pred
 
 
 class MultiHorizonMetric(Metric):
@@ -108,7 +98,7 @@ class MultiHorizonMetric(Metric):
         Do not override this method but :py:ref:`~loss` instead
 
         Args:
-            y_pred (torch.Tensor): network output
+            y_pred (Dict[str, torch.Tensor]): network output
             target (Union[torch.Tensor, rnn.PackedSequence]): actual values
 
         Returns:
@@ -197,9 +187,8 @@ class QuantileLoss(MultiHorizonMetric):
         """
         super().__init__(name, quantiles=quantiles, *args, **kwargs)
 
-    def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
+    def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         # calculate quantile loss
-        y_pred = self.transform(y_pred)
         losses = []
         for i, q in enumerate(self.quantiles):
             errors = target - y_pred[..., i]
@@ -268,3 +257,4 @@ class RMSE(MultiHorizonMetric):
     def loss(self, y_pred: Dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
         return loss
+

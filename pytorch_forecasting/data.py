@@ -13,8 +13,11 @@ import abc
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
+from torch import clamp_min
 from torch.distributions import Binomial, Beta
+from torch.nn.functional import normalize
 from torch.nn.utils import rnn
+import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
@@ -65,53 +68,202 @@ class NaNLabelEncoder(LabelEncoder):
         return super().transform(y)
 
 
-class TargetNormalizer(BaseEstimator, TransformerMixin):
-    @abc.abstractmethod
-    def __call__(self, out):
-        """
-        inverse transform where input is output of network
-        """
-        pass
-
-
 class GroupNormalizer(BaseEstimator, TransformerMixin):
-    def __init__(self, groups: List[str] = [], center: bool = False, scale_by_group: bool = False):
+    # todo: allow window (exp weighted), different methods such as quantile for robust scaling
+    def __init__(
+        self,
+        method: str = "standard",
+        groups: List[str] = [],
+        center: bool = True,
+        scale_by_group: bool = False,
+        log_scale: Union[bool, float] = False,
+        log_zero_value: float = 0.0,
+        coerce_positive: Union[float, bool] = None,
+        eps: float = 1e-8,
+    ):
+        """
+        Group normalizer to normalize a given entry by groups. Can be used as target normalizer.
+
+        Args:
+            method (str, optional): method to rescale series. Either "standard" (standard scaling) or "robust"
+                (scale using quantiles 0.25-0.75). Defaults to "standard".
+            groups (List[str], optional): Group names to normalize by. Defaults to [].
+            center (bool, optional): If to center the output to zero. Defaults to True.
+            scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as 
+                ``(group1_norm * group2_norm * ...) ^ (1 / n_groups)``. Defaults to False.
+            log_scale (bool, optional): If to take log of values. Defaults to False. Defaults to False.
+            log_zero_value (float, optional): Value to map 0 to for ``log_scale=True`` or in softplus. Defaults to 0.0
+            coerce_positive (Union[bool, float, str], optional): If to coerce output to positive. Valid values:
+                * None, i.e. is automatically determined and might change to True if all values are >= 0 (Default).
+                * True, i.e. output is clamped at 0.
+                * False, i.e. values are not coerced
+                * float, i.e. softmax is applied with beta = coerce_positive.
+            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8.
+        """
+        self.method = method
+        assert method in ["standard", "robust"], f"method has invalid value {method}"
         self.groups = groups
         self.center = center
         self.scale_by_group = scale_by_group
+        self.eps = eps
+
+        # set log scale
+        self.log_zero_value = np.exp(log_zero_value)
+        self.log_scale = log_scale
+
+        # check if coerce positive should be determined automatically
+        if coerce_positive is None:
+            if log_scale:
+                coerce_positive = False
+        else:
+            assert not (self.log_scale and self.coerce_positive), (
+                "log scale means that output is transformed to a positive number by default while coercing positive"
+                " will apply softmax function - decide for either one or the other"
+            )
+        self.coerce_positive = coerce_positive
+
+    def _preprocess_y(self, y):
+        if self.coerce_positive is None and not self.log_scale:
+            self.coerce_positive = [False, "relu"](y >= 0).all()
+
+        if self.log_scale:
+            y = np.log(y + self.log_zero_value)
+        return y
 
     def fit(self, y, X):
+        y = self._preprocess_y(y)
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
-            self.mean = np.mean(y)
-            self.std = np.std(y)
+            if self.method == "standard":
+                mean = np.mean(y)
+                self.norm = mean, np.std(y) / (mean + self.eps)
+            else:
+                quantiles = np.quantile(y, [0.25, 0.5, 0.75])
+                self.norm = quantiles[1], (quantiles[2] - quantiles[0]) / (quantiles[1] + self.eps)
+
         elif self.scale_by_group:
-            self.norm = {g: y.groupby(X[g], observed=True).agg(["mean", "std"]) for g in self.groups}
+            if self.method == "standard":
+                self.norm = {
+                    g: X[[g]]
+                    .assign(y=y)
+                    .groupby(g, observed=True)
+                    .agg(mean=("y", "mean"), scale=("y", "std"))
+                    .assign(scale=lambda x: x.scale / (x["mean"] + self.eps))
+                    for g in self.groups
+                }
+            else:
+                self.norm = {
+                    g: X[[g]]
+                    .assign(y=y)
+                    .groupby(g, observed=True)
+                    .y.quantile([0.25, 0.5, 0.75])
+                    .unstack(-1)
+                    .assign(
+                        median=lambda x: x[0.5] + self.eps,
+                        scale=lambda x: (x[0.75] - x[0.25] + self.eps) / (x[0.5] + self.eps),
+                    )[["median", "scale"]]
+                    for g in self.groups
+                }
+            # calculate missings
+            self._missing = {group: scales.median().to_dict() for group, scales in self.norm.items()}
+
         else:
-            self.norm = y.groupby(X[self.groups], observed=True).agg(["mean", "std"])
+            if self.method == "standard":
+                self.norm = (
+                    X[self.groups]
+                    .assign(y=y)
+                    .groupby(self.groups, observed=True)
+                    .agg(mean=("y", "mean"), scale=("y", "std"))
+                    .assign(scale=lambda x: x.scale / (x["mean"] + self.eps))
+                )
+            else:
+                self.norm = (
+                    X[self.groups]
+                    .assign(y=y)
+                    .groupby(self.groups, observed=True)
+                    .y.quantile([0.25, 0.5, 0.75])
+                    .unstack(-1)
+                    .assign(
+                        median=lambda x: x[0.5] + self.eps,
+                        scale=lambda x: (x[0.75] - x[0.25] + self.eps) / (x[0.5] + self.eps),
+                    )[["median", "scale"]]
+                )
+            self._missing = self.norm.median().to_dict()
         return self
 
     @property
-    def scale_names(self) -> List[str]:
-        return ["mean", "std"]
-
-    def transform(self, X: pd.DataFrame, norm_name=None) -> pd.DataFrame:
-        norm = self.get_norm(X)
-        X.loc[:, self.target] = X[self.target] / norm
-        if norm_name is not None:
-            X[norm_name] = norm
-        return X
-
-    def get_scales(self, X):
-        if len(self.groups) == 0:
-            norm = self.norm
+    def names(self) -> List[str]:
+        if self.method == "standard":
+            return ["mean", "scale"]
         else:
-            norm = X[self.groups + [self.target]].set_index(self.groups).join(self.norm)[self.scale_names].to_numpy()
-        return norm + 1e-8
+            return ["median", "scale"]
+
+    def transform(self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False) -> pd.DataFrame:
+        norm = self.get_norm(X)
+        y = self._preprocess_y(y)
+        y_normed = (y / (norm[:, 0] + self.eps) - 1) / (norm[:, 1] + self.eps)
+        if return_norm:
+            return y_normed, norm
+        else:
+            return y_normed
+
+    def get_parameters(self, groups):
+        if isinstance(groups, torch.Tensor):
+            groups = groups.tolist()
+        if isinstance(groups, list):
+            groups = tuple(groups)
+        if len(self.groups) == 0:
+            return np.asarray(self.norm)
+        elif self.scale_by_group:
+            norm = np.array([1.0, 1.0])
+            for group, group_name in zip(groups, self.groups):
+                try:
+                    norm = norm * self.norm[group_name].loc[group].to_numpy()
+                except KeyError:
+                    norm = norm * np.asarray([self._missing[group_name][name] for name in self.names])
+            norm = np.power(norm, 1.0 / len(self.groups))
+            return norm
+        else:
+            try:
+                return self.norm.loc[groups].to_numpy()
+            except (KeyError, TypeError):
+                return np.asarray([self._missing[name] for name in self.names])
+
+    def get_norm(self, X):
+        if len(self.groups) == 0:
+            norm = np.asarray(self.norm).reshape(1, -1)
+        elif self.scale_by_group:
+            norm = [
+                np.prod(
+                    [
+                        X[group_name]
+                        .map(self.norm[group_name][name])
+                        .fillna(self._missing[group_name][name])
+                        .to_numpy()
+                        for group_name in self.groups
+                    ],
+                    axis=0,
+                )
+                for name in self.names
+            ]
+            norm = np.power(np.stack(norm, axis=1), 1.0 / len(self.groups))
+        else:
+            norm = X[self.groups].set_index(self.groups).join(self.norm).fillna(self._missing).to_numpy()
+        return norm
 
     def __call__(self, data: Dict[str, torch.Tensor]):
-        # call with tensors
-        pass
+        # inverse transformation with tensors
+        norm = data["target_scale"]
+        if data["prediction"].ndim > 1:
+            norm = norm.unsqueeze(-1)
+        y_normed = (data["prediction"] * norm[:, 1, None] + 1) * norm[:, 0, None]
+        if self.log_scale:
+            y_normed = (y_normed.exp() - self.log_zero_value).clamp_min(0.0)
+        elif isinstance(self.coerce_positive, bool) and self.coerce_positive:
+            y_normed = y_normed.clamp_min(0.0)
+        elif isinstance(self.coerce_positive, float):
+            y_normed = F.softplus(y_normed, beta=float(self.coerce_positive))
+        return y_normed
 
     @property
     def is_fitted(self):
@@ -121,7 +273,6 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
 class TimeSeriesDataSet(Dataset):
     """Dataset Basic Structure for Temporal Fusion Transformer"""
 
-    # todo: automatic skew
     def __init__(
         self,
         data: pd.DataFrame,
@@ -188,13 +339,19 @@ class TimeSeriesDataSet(Dataset):
                 probabilities are sampled that are used to sample new sequence lengths with a binomial distribution
             predict_mode: if to only iterate over each timeseries once (only the last provided samples)
             target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
-            add_target_scales: 
+            add_target_scales: if to add scales for target to static real features
         """
         super().__init__()
         self.min_encoder_length = min_encoder_length
         self.max_encoder_length = max_encoder_length
+        assert (
+            self.min_encoder_length <= self.max_encoder_length
+        ), "max encoder length has to be larger equals min encoder length"
         self.max_prediction_length = max_prediction_length
         self.min_prediction_length = min_prediction_length
+        assert (
+            self.min_prediction_length <= self.max_prediction_length
+        ), "max prediction length has to be larger equals min prediction length"
         assert self.min_prediction_length > 0, "prediction length must be larger than 0"
         self.target = target
         self.weight = weight
@@ -218,16 +375,24 @@ class TimeSeriesDataSet(Dataset):
         self.scalers = scalers
         self.add_target_scales = add_target_scales
 
+        # overwrite values
+        self.reset_overwrite_values()
+
         assert (
             self.target not in self.time_varying_known_reals
         ), "target should be an unknown continuous variable in the future"
 
         # set data
         assert data.index.is_unique, "data index has to be unique"
+        if min_prediction_idx is not None:
+            data = data[lambda x: data[self.time_idx] >= self.min_prediction_idx - self.max_encoder_length]
         data = data.sort_values(self.group_ids + [self.time_idx])
 
         # add time index relative to prediction position
         if self.add_relative_time_idx:
+            assert (
+                "relative_time_idx" not in data.columns
+            ), "relative_time_idx is a protected column and must not be present in data"
             if "relative_time_idx" not in self.time_varying_known_reals:
                 self.time_varying_known_reals.append("relative_time_idx")
             data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
@@ -252,30 +417,43 @@ class TimeSeriesDataSet(Dataset):
             if self.categoricals_encoders[name] is not None:
                 data[name] = self.categoricals_encoders[name].transform(data[name])
 
-        # train target normalizer
-        if self.target_normalizer is not None:
-            if isinstance(self.target_normalizer, str):
-                self.target_normalizer = GroupNormalizer(
-                    method=self.target_normalizer, groups=self.group_ids, target="__target__"
-                )
-            if not self.target_normalizer.is_fitted:
-                self.target_normalizer.fit(data)
-            data = self.target_normalizer.transform(data)
-
         # save special variables
+        assert "__time_idx__" not in data.columns, "__time_idx__ is a protected column and must not be present in data"
         data["__time_idx__"] = data[self.time_idx]  # save unscaled
+        assert "__target__" not in data.columns, "__target__ is a protected column and must not be present in data"
         data["__target__"] = data[self.target]
         if self.weight is not None:
             data["__weight__"] = data[self.weight]
+
+        # train target normalizer
+        if self.target_normalizer is not None:
+            if isinstance(self.target_normalizer, str):
+                self.target_normalizer = GroupNormalizer(groups=self.group_ids)
+            if (
+                not self.target_normalizer.is_fitted
+            ):  # todo: should check if transformation is possible -> if error means it is not fitted
+                self.target_normalizer.fit(data[self.target], data)
+            if self.add_target_scales:
+                data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+                for idx, name in enumerate(self.target_normalizer.names):
+                    feature_name = f"{self.target}_{name}"
+                    assert (
+                        feature_name not in data.columns
+                    ), f"{feature_name} is a protected column and must not be present in data"
+                    data[feature_name] = scales[:, idx].squeeze()
+                    self.static_reals.append(feature_name)
+            else:
+                data[self.target] = self.target_normalizer.transform(data[self.target], data)
+
         # rescale continuous variables
         for name in self.reals:
             if name not in self.scalers:
-                if name == self.time_idx:
-                    self.scalers[name] = MinMaxScaler(feature_range=(-1, 1)).fit(data[[name]])
-                else:
-                    self.scalers[name] = StandardScaler().fit(data[[name]])
+                self.scalers[name] = StandardScaler().fit(data[[name]])
             if self.scalers[name] is not None:
-                data[name] = self.scalers[name].transform(data[[name]]).reshape(-1)
+                if isinstance(self.scales[name], GroupNormalizer):
+                    data[name] = self.scalers[name].transform(data[name], data)
+                else:
+                    data[name] = self.scalers[name].transform(data[[name]]).reshape(-1)
 
         # encode constant values
         self.encoded_constant_fill_strategy = {}
@@ -288,6 +466,7 @@ class TimeSeriesDataSet(Dataset):
                 self.encoded_constant_fill_strategy[name] = self.categoricals_encoders[name].transform([value])[0]
             else:
                 self.encoded_constant_fill_strategy[name] = value
+        return data
 
     def _data_to_tensors(self, data: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tensor]:
 
@@ -308,11 +487,11 @@ class TimeSeriesDataSet(Dataset):
         return tensors
 
     @property
-    def categoricals(self):
+    def categoricals(self) -> List[str]:
         return self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
 
     @property
-    def reals(self):
+    def reals(self) -> List[str]:
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
     def get_parameters(self) -> Dict[str, Any]:
@@ -423,14 +602,43 @@ class TimeSeriesDataSet(Dataset):
         return df_index
 
     @staticmethod
-    def plot_randomization(betas=()):
+    def plot_randomization(betas=()) -> plt.Figure:
         data = Beta(*betas).sample(1000)
         fig, ax = plt.subplots()
         ax.hist(data)
         return fig
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.index.shape[0]
+
+    def set_overwrite_values(self, values: Union[float, torch.Tensor], variable: str, target: str = "decoder"):
+        """
+        Convenience method to quickly overwrite values in decoder or encoder (or both) for a specific variable.
+
+        Args:
+            values (Union[float, torch.Tensor]): values to use for overwrite.
+            variable (str): variable whose values should be overwritten.
+            target (str, optional): positions to overwrite. One of "decoder", "encoder" or "all". Defaults to "decoder".
+        """
+        if variable in self.scalers:
+            values = torch.tensor(self.categorical_encoders[variable].transform(np.asarray(values).reshape(-1, 1)))[
+                :, 0
+            ].squeeze()
+        if variable in self.categoricals_encoders:
+            values = torch.tensor(
+                self.categorical_encoders[variable].transform(np.asarray(values).reshape(-1))
+            ).squeeze()
+        assert target in [
+            "all",
+            "decoder",
+            "encoder",
+        ], f"target has be one of 'all', 'decoder' or 'encoder' but target={target} instead"
+        if self._overwrite_values is None:
+            self._overwrite_values = {}
+        self._overwrite_values.update(dict(values=values, variable=variable, target=target))
+
+    def reset_overwrite_values(self):
+        self._overwrite_values = None
 
     def __getitem__(self, idx):
         index = self.index.iloc[idx]
@@ -440,10 +648,10 @@ class TimeSeriesDataSet(Dataset):
         time = self.data["time"][index.index_start : index.index_end + 1]
         target = self.data["target"][index.index_start : index.index_end + 1]
         groups = self.data["groups"][index.index_start]
-
-        sequence_length = len(time)
+        target_scale = self.target_normalizer.get_parameters(groups)
 
         # fill in missing values (if not all time indices are specified
+        sequence_length = len(time)
         if sequence_length < index.sequence_length:
             repetitions = torch.cat([time[1:] - time[:-1], torch.ones(1, dtype=time.dtype)])
             indices = torch.repeat_interleave(torch.arange(len(time)), repetitions)
@@ -525,6 +733,26 @@ class TimeSeriesDataSet(Dataset):
                 torch.arange(-encoder_length, decoder_length, dtype=data_cont.dtype) / self.max_encoder_length
             )
 
+        # overwrite values
+        if self._overwrite_values is not None:
+
+            if self._overwrite_values["target"] == "all":
+                positions = slice(None)
+            elif self._overwrite_values["target"] == "encoder":
+                positions = slice(None, encoder_length)
+            else:  # decoder
+                positions = slice(encoder_length, None)
+
+            if self._overwrite_values["variable"] in self.reals:
+                idx = self.reals.index(self._overwrite_values["variable"])
+                data_cont[positions, idx] = self._overwrite_values["values"]
+            else:
+                assert (
+                    self._overwrite_values["variable"] in self.categoricals
+                ), "overwrite values variable has to be either in real or categorical variables"
+                idx = self.categoricals.index(self._overwrite_values["variable"])
+                data_cat[positions, idx] = self._overwrite_values["values"]
+
         return (
             dict(
                 x_cat=data_cat,
@@ -533,6 +761,7 @@ class TimeSeriesDataSet(Dataset):
                 encoder_target=target[:encoder_length],
                 encoder_time_idx_start=time[0],
                 groups=groups,
+                target_scale=target_scale,
             ),
             target[encoder_length:],
         )
@@ -550,7 +779,7 @@ class TimeSeriesDataSet(Dataset):
         decoder_time_idx = decoder_time_idx_start.unsqueeze(1) + torch.arange(decoder_lengths.max()).unsqueeze(0)
         groups = torch.stack([batch[0]["groups"] for batch in batches])
 
-        # data
+        # features
         encoder_cont = rnn.pad_sequence(
             [batch[0]["x_cont"][:length] for length, batch in zip(encoder_lengths, batches)], batch_first=True
         )
@@ -566,7 +795,9 @@ class TimeSeriesDataSet(Dataset):
             [batch[0]["x_cat"][length:] for length, batch in zip(encoder_lengths, batches)], batch_first=True
         )
 
+        # target
         target = rnn.pad_sequence([batch[1] for batch in batches], batch_first=True)
+        target_scale = torch.tensor([batch[0]["target_scale"] for batch in batches], dtype=torch.float32)
 
         return (
             dict(
@@ -580,6 +811,7 @@ class TimeSeriesDataSet(Dataset):
                 decoder_lengths=decoder_lengths,
                 decoder_time_idx=decoder_time_idx,
                 groups=groups,
+                target_scale=target_scale,
             ),
             target,
         )
@@ -656,4 +888,3 @@ class TimeSeriesDataSet(Dataset):
                 raise ValueError(f"Scales extraction for scaler of type {type(scaler)} not implemented")
             scales[name] = (mean, scale)
         return scales
-

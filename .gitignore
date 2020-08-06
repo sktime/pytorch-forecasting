@@ -137,3 +137,9 @@ dmypy.json
 # logs
 lightning_logs
 .history
+
+# checkpoints
+*.ckpt
+*.parquet
+*.pkl
+.DS_Store

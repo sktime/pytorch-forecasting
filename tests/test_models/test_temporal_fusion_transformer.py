@@ -30,7 +30,7 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
         attention_head_size=1,
         dropout=0.2,
         hidden_continuous_size=2,
-        loss=QuantileLoss(log_space=True),
+        loss=QuantileLoss(),
         log_interval=5,
         log_val_interval=1,
         log_gradient_flow=True,

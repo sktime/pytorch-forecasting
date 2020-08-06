@@ -1,7 +1,7 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
-from typing import Union, List, Dict, Tuple, Any
+from typing import Callable, Union, List, Dict, Tuple, Any
 
 import numpy as np
 from pytorch_lightning.metrics.metric import TensorMetric
@@ -57,6 +57,7 @@ class TemporalFusionTransformer(BaseModel):
         reduce_on_plateau_patience: int = 1000,
         monotone_constaints: Dict[str, int] = {},
         share_single_variable_networks: bool = False,
+        output_transformer: Callable = None,
     ):
         """
         Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to
@@ -107,6 +108,7 @@ class TemporalFusionTransformer(BaseModel):
         # store loss function separately as it is a module
         assert isinstance(loss, MultiHorizonMetric), "Loss has to of class `MultiHorizonMetric`"
         self.loss = loss
+        self.output_transformer = output_transformer
         self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE()]
 
         # processing inputs
@@ -567,6 +569,7 @@ class TemporalFusionTransformer(BaseModel):
             encoder_lengths=encoder_lengths,
             groups=x["groups"],
             decoder_time_idx=x["decoder_time_idx"],
+            target_scale=x["target_scale"],
         )
 
     def on_train_end(self):

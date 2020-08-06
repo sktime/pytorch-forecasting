@@ -7,7 +7,7 @@ import torch
 from pytorch_lightning.callbacks import EarlyStopping, LearningRateLogger
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
+from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, GroupNormalizer
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -33,7 +33,7 @@ data["time_idx"] -= data["time_idx"].min()
 # data = data[lambda x: (x.sku == data.iloc[0]["sku"]) & (x.agency == data.iloc[0]["agency"])]
 
 training_cutoff = data["time_idx"].max() - 6
-max_encoder_length = 12
+max_encoder_length = 32
 max_prediction_length = 6
 
 training = TimeSeriesDataSet(
@@ -41,7 +41,7 @@ training = TimeSeriesDataSet(
     time_idx="time_idx",
     target="volume",
     group_ids=["agency", "sku"],
-    min_encoder_length=max_encoder_length,
+    # min_encoder_length=max_encoder_length,
     max_encoder_length=max_encoder_length,
     max_prediction_length=max_prediction_length,
     static_categoricals=["agency", "sku"],
@@ -59,11 +59,12 @@ training = TimeSeriesDataSet(
         "football_gold_cup",
         "beer_capital",
         "music_fest",
+        "month",
     ],
     time_varying_known_reals=["time_idx", "price_regular", "discount_in_percent"],
     time_varying_unknown_categoricals=[],
     time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
-    target_normalizer="mean",
+    target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=True),
 )
 
 validation = TimeSeriesDataSet.from_dataset(training, data, predict=True, stop_randomization=True)
@@ -99,7 +100,7 @@ tft = TemporalFusionTransformer.from_dataset(
     dropout=0.15,
     hidden_continuous_size=32,
     output_size=7,
-    loss=QuantileLoss(log_space=True),
+    loss=QuantileLoss(),
     log_interval=2,
     reduce_on_plateau_patience=3,
 )

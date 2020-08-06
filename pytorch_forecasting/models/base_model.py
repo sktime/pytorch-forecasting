@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
 from pytorch_forecasting.metrics import SMAPE
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
 from pytorch_ranger import Ranger
@@ -70,6 +70,7 @@ class BaseModel(LightningModule):
         reduce_on_plateau_patience: int = 1000,
         weight_decay: float = 0.0,
         monotone_constaints: Dict[str, int] = {},
+        output_transformer: Callable = None,
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -91,6 +92,7 @@ class BaseModel(LightningModule):
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive, 
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary). 
                 This constraint significantly slows down training. Defaults to {}.
+            output_transformer (Callable): transformer that takes network output and transforms it to prediction space. Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
         """
         super().__init__()
         # update hparams
@@ -106,6 +108,17 @@ class BaseModel(LightningModule):
             self.loss = loss
         if not hasattr(self, "logging_metrics"):
             self.logging_metrics = logging_metrics
+        if not hasattr(self, "output_transformer"):
+            self.output_transformer = output_transformer
+
+    def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
+        if isinstance(out, torch.Tensor):
+            return out
+        elif self.output_transformer is None:
+            out = out["prediction"]
+        else:
+            out = self.output_transformer(out)
+        return out
 
     def size(self) -> int:
         """
@@ -139,7 +152,9 @@ class BaseModel(LightningModule):
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
             out = self(x)
-            prediction = self.loss.to_prediction(out)
+            out["prediction"] = self.transform_output(out)
+            prediction = out["prediction"]
+
             gradient = torch.autograd.grad(
                 outputs=prediction,
                 inputs=x["decoder_cont"],
@@ -160,18 +175,22 @@ class BaseModel(LightningModule):
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
 
-            loss = self.loss(out, y) * (1 + monotinicity_loss)
+            loss = self.loss(prediction, y) * (1 + monotinicity_loss)
         else:
             out = self(x)
+            out["prediction"] = self.transform_output(out)
+
             # calculate loss
-            loss = self.loss(out, y)
+            prediction = out["prediction"]
+            loss = self.loss(prediction, y)
 
         # log loss
         tensorboard_logs = {f"{label}_loss": loss}
         # logging losses
-        y_hat_detached = self.loss.to_prediction(out).detach()
+        y_hat_detached = prediction.detach()
+        y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
         for metric in self.logging_metrics:
-            tensorboard_logs[f"{label}_{metric.name}"] = metric(y_hat_detached, y)
+            tensorboard_logs[f"{label}_{metric.name}"] = metric(y_hat_point_detached, y)
         log = {f"{label}_loss": loss, "log": tensorboard_logs, "n_samples": x["decoder_lengths"].size(0)}
         if label == "train":
             log["loss"] = loss
@@ -205,7 +224,7 @@ class BaseModel(LightningModule):
         else:
             return self.hparams.log_val_interval
 
-    def _log_prediction(self, x, y_hat, batch_idx, label="train"):
+    def _log_prediction(self, x, y_pred, batch_idx, label="train"):
         # log single prediction figure
         if batch_idx % self.log_interval(label == "train") == 0 and self.log_interval(label == "train") > 0:
             y_all = torch.cat(
@@ -221,7 +240,7 @@ class BaseModel(LightningModule):
                         y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][0])],
                     ),
                 ),
-                y_hat[0, : x["decoder_lengths"][0]].detach(),
+                y_pred[0, : x["decoder_lengths"][0]].detach(),
             )  # first in batch
             tag = f"{label.capitalize()} prediction"
             if label == "train":
@@ -245,7 +264,6 @@ class BaseModel(LightningModule):
         """
         # move to cpu
         y = y.detach().cpu()
-        y_hat = y_hat.cpu()
         # create figure
         fig, ax = plt.subplots()
         n_pred = y_hat.shape[0]
@@ -269,10 +287,10 @@ class BaseModel(LightningModule):
         plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
 
         # plot prediction
-        plotter(x_pred, self.loss.to_prediction(y_hat), label="predicted", c=pred_color)
+        plotter(x_pred, self.loss.to_prediction(y_hat.unsqueeze(0))[0], label="predicted", c=pred_color)
 
         # plot predicted quantiles
-        y_quantiles = self.loss.to_quantiles(y_hat)
+        y_quantiles = self.loss.to_quantiles(y_hat.unsqueeze(0))[0]
         plotter(x_pred, y_quantiles[:, y_quantiles.shape[1] // 2], c=pred_color, alpha=0.15)
         for i in range(y_quantiles.shape[1] // 2):
             if len(x_pred) > 1:
@@ -379,9 +397,10 @@ class BaseModel(LightningModule):
         Returns:
             BaseModel: Model that can be trained
         """
+        if "output_transformer" not in kwargs:
+            kwargs["output_transformer"] = dataset.target_normalizer
         net = cls(**kwargs)
         net.dataset_parameters = dataset.get_parameters()
-        net.loss.transformer = dataset.target_normalizer
         return net
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
@@ -389,13 +408,14 @@ class BaseModel(LightningModule):
             self, "dataset_parameters", None
         )  # add dataset parameters for making fast predictions
         checkpoint["loss"] = cloudpickle.dumps(self.loss)  # restore loss
-        checkpoint[
-            "hparams_name"
-        ] = "kwargs"  # hyper parameters are passed as arguments directly and not as single dictionary
+        checkpoint["output_transformer"] = cloudpickle.dumps(self.output_transformer)  # restore output transformer
+        # hyper parameters are passed as arguments directly and not as single dictionary
+        checkpoint["hparams_name"] = "kwargs"
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
         self.loss = cloudpickle.loads(checkpoint["loss"])
+        self.output_transformer = cloudpickle.loads(checkpoint["output_transformer"])
 
     def predict(
         self,
@@ -447,6 +467,7 @@ class BaseModel(LightningModule):
         with torch.no_grad():
             for x, _ in dataloader:
                 out = self(x)  # raw output is dictionary
+                out["prediction"] = self.transform_output(out)
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
                     decode_lenghts.append(lengths)
@@ -459,7 +480,7 @@ class BaseModel(LightningModule):
                             f"If a tuple is specified, the first element must be 'raw' - got {mode[0]} instead"
                         )
                 elif mode == "prediction":
-                    out = self.loss.to_prediction(out)
+                    out = self.loss.to_prediction(out["prediction"])
                     # mask non-predictions
                     out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
                 elif mode == "quantiles":
