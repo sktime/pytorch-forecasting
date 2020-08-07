@@ -1,4 +1,4 @@
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 
 import math
 
@@ -66,11 +66,15 @@ class GLU(nn.Module):
 
 
 class AddNorm(nn.Module):
-    def __init__(self, input_size: int = None, trainable_add: bool = True):
+    def __init__(self, input_size: int, skip_size: int = None, trainable_add: bool = True):
         super().__init__()
 
         self.input_size = input_size
         self.trainable_add = trainable_add
+        self.skip_size = skip_size or input_size
+
+        if self.input_size != self.skip_size:
+            self.resample = TimeDistributedInterpolation(self.input_size, batch_first=True, trainable=False)
 
         if self.trainable_add:
             self.mask = nn.Parameter(torch.zeros(self.input_size, dtype=torch.float))
@@ -78,6 +82,8 @@ class AddNorm(nn.Module):
         self.norm = nn.LayerNorm(self.input_size)
 
     def forward(self, x, skip):
+        if self.input_size != self.skip_size:
+            skip = self.resample(skip)
         if self.trainable_add:
             skip = skip * self.gate(self.mask) * 2.0
         output = self.norm(x + skip)
@@ -85,15 +91,23 @@ class AddNorm(nn.Module):
 
 
 class GateAddNorm(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int = None, trainable_add: bool = True, dropout: float = 0.1):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int = None,
+        skip_size: int = None,
+        trainable_add: bool = True,
+        dropout: float = 0.1,
+    ):
         super().__init__()
 
         self.input_size = input_size
         self.hidden_size = hidden_size or input_size
+        self.skip_size = skip_size or self.hidden_size
         self.dropout = dropout
 
         self.glu = GLU(self.input_size, hidden_size=self.hidden_size, dropout=self.dropout)
-        self.add_norm = AddNorm(self.hidden_size, trainable_add=trainable_add)
+        self.add_norm = AddNorm(self.hidden_size, skip_size=self.skip_size, trainable_add=trainable_add)
 
     def forward(self, x, skip):
         output = self.glu(x)
@@ -120,9 +134,13 @@ class GatedResidualNetwork(nn.Module):
         self.residual = residual
 
         if self.input_size != self.output_size and not self.residual:
-            self.skip_layer = TimeDistributedInterpolation(self.output_size, batch_first=True, trainable=True)
+            residual_size = self.input_size
+        else:
+            residual_size = self.output_size
 
-        if self.input_size > 1 or self.hidden_size > 1:
+        if self.input_size == 1 and self.hidden_size == 1:
+            self.add_norm = AddNorm(input_size=self.output_size, skip_size=residual_size)
+        else:
             self.fc1 = nn.Linear(self.input_size, self.hidden_size)
             self.elu1 = nn.ELU()
 
@@ -131,27 +149,28 @@ class GatedResidualNetwork(nn.Module):
 
             self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
             self.elu2 = nn.ELU()
+
             self.gate_norm = GateAddNorm(
-                input_size=self.hidden_size, hidden_size=self.output_size, dropout=self.dropout
+                input_size=self.hidden_size, skip_size=residual_size, hidden_size=self.output_size, dropout=self.dropout
             )
 
     def forward(self, x, context=None, residual=None):
-        if self.input_size != self.output_size and residual is None:
-            residual = self.skip_layer(x)
         if residual is None:
             residual = x
 
         if self.input_size == 1 and self.hidden_size == 1:
-            return residual
-
-        x = self.fc1(x)
-        if context is not None:
-            context = self.context(context)
-            x = x + context
-        x = self.elu1(x)
-        x = self.fc2(x)
-        x = self.gate_norm(x, residual)
-        return x
+            x = torch.zeros_like(residual, device=residual.device)
+            x = self.add_norm(x, residual)
+            return x
+        else:
+            x = self.fc1(x)
+            if context is not None:
+                context = self.context(context)
+                x = x + context
+            x = self.elu1(x)
+            x = self.fc2(x)
+            x = self.gate_norm(x, residual)
+            return x
 
 
 class VariableSelectionNetwork(nn.Module):
