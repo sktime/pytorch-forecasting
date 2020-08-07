@@ -65,6 +65,33 @@ class GLU(nn.Module):
         return torch.mul(sig, x)
 
 
+class ResampleNorm(nn.Module):
+    def __init__(self, input_size: int, output_size: int = None, trainable_add: bool = True):
+        super().__init__()
+
+        self.input_size = input_size
+        self.trainable_add = trainable_add
+        self.output_size = output_size or input_size
+
+        if self.input_size != self.output_size:
+            self.resample = TimeDistributedInterpolation(self.output_size, batch_first=True, trainable=False)
+
+        if self.trainable_add:
+            self.mask = nn.Parameter(torch.zeros(self.output_size, dtype=torch.float))
+            self.gate = nn.Sigmoid()
+        self.norm = nn.LayerNorm(self.output_size)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.input_size != self.output_size:
+            x = self.resample(x)
+
+        if self.trainable_add:
+            x = x * self.gate(self.mask) * 2.0
+
+        output = self.norm(x)
+        return output
+
+
 class AddNorm(nn.Module):
     def __init__(self, input_size: int, skip_size: int = None, trainable_add: bool = True):
         super().__init__()
@@ -81,11 +108,13 @@ class AddNorm(nn.Module):
             self.gate = nn.Sigmoid()
         self.norm = nn.LayerNorm(self.input_size)
 
-    def forward(self, x, skip):
+    def forward(self, x: torch.Tensor, skip: torch.Tensor):
         if self.input_size != self.skip_size:
             skip = self.resample(skip)
+
         if self.trainable_add:
             skip = skip * self.gate(self.mask) * 2.0
+
         output = self.norm(x + skip)
         return output
 
@@ -139,7 +168,7 @@ class GatedResidualNetwork(nn.Module):
             residual_size = self.output_size
 
         if self.input_size == 1 and self.hidden_size == 1:
-            self.add_norm = AddNorm(input_size=self.output_size, skip_size=residual_size)
+            self.resample_norm = ResampleNorm(input_size=residual_size, output_size=self.output_size)
         else:
             self.fc1 = nn.Linear(self.input_size, self.hidden_size)
             self.elu1 = nn.ELU()
@@ -159,9 +188,7 @@ class GatedResidualNetwork(nn.Module):
             residual = x
 
         if self.input_size == 1 and self.hidden_size == 1:
-            x = torch.zeros_like(residual, device=residual.device)
-            x = self.add_norm(x, residual)
-            return x
+            x = self.resample_norm(residual)
         else:
             x = self.fc1(x)
             if context is not None:
@@ -170,7 +197,7 @@ class GatedResidualNetwork(nn.Module):
             x = self.elu1(x)
             x = self.fc2(x)
             x = self.gate_norm(x, residual)
-            return x
+        return x
 
 
 class VariableSelectionNetwork(nn.Module):
@@ -178,6 +205,7 @@ class VariableSelectionNetwork(nn.Module):
         self,
         input_sizes: Dict[str, int],
         hidden_size: int,
+        input_embedding_flags: Dict[str, bool] = {},
         dropout: float = 0.1,
         context_size: int = None,
         single_variable_grns: Dict[str, GatedResidualNetwork] = {},
@@ -189,6 +217,7 @@ class VariableSelectionNetwork(nn.Module):
 
         self.hidden_size = hidden_size
         self.input_sizes = input_sizes
+        self.input_embedding_flags = input_embedding_flags
         self.dropout = dropout
         self.context_size = context_size
 
@@ -218,6 +247,8 @@ class VariableSelectionNetwork(nn.Module):
         for name, input_size in self.input_sizes.items():
             if name in single_variable_grns:
                 self.single_variable_grns[name] = single_variable_grns[name]
+            elif self.input_embedding_flags.get(name, False):
+                self.single_variable_grns[name] = ResampleNorm(input_size=input_size, output_size=self.hidden_size)
             else:
                 self.single_variable_grns[name] = GatedResidualNetwork(
                     input_size, min(input_size, self.hidden_size), self.hidden_size, self.dropout

@@ -154,7 +154,10 @@ class TemporalFusionTransformer(BaseModel):
             }
         )
         self.static_variable_selection = VariableSelectionNetwork(
-            input_sizes=static_input_sizes, hidden_size=self.hparams.hidden_size, dropout=self.hparams.dropout,
+            input_sizes=static_input_sizes,
+            hidden_size=self.hparams.hidden_size,
+            input_embedding_flags={f"cat_{i}": True for i in self.hparams.static_categoricals},
+            dropout=self.hparams.dropout,
         )
 
         # variable selection for encoder and decoder
@@ -200,6 +203,7 @@ class TemporalFusionTransformer(BaseModel):
         self.encoder_variable_selection = VariableSelectionNetwork(
             input_sizes=encoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
+            input_embedding_flags={f"cat_{i}": True for i in self.hparams.time_varying_categoricals_encoder},
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             single_variable_grns=self.single_variable_grns,
@@ -208,6 +212,7 @@ class TemporalFusionTransformer(BaseModel):
         self.decoder_variable_selection = VariableSelectionNetwork(
             input_sizes=decoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
+            input_embedding_flags={f"cat_{i}": True for i in self.hparams.time_varying_categoricals_decoder},
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             single_variable_grns=self.single_variable_grns,
