@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 
 class TimeDistributedInterpolation(nn.Module):
-    def __init__(self, output_size, batch_first=False, trainable=False):
+    def __init__(self, output_size: int, batch_first: bool = False, trainable: bool = False):
         super().__init__()
         self.output_size = output_size
         self.batch_first = batch_first
@@ -20,7 +20,7 @@ class TimeDistributedInterpolation(nn.Module):
     def interpolate(self, x):
         upsampled = F.interpolate(x.unsqueeze(1), self.output_size, mode="linear", align_corners=True).squeeze(1)
         if self.trainable:
-            upsampled = upsampled * self.gate(self.mask.unsqueeze(0))
+            upsampled = upsampled * self.gate(self.mask.unsqueeze(0)) * 2.0
         return upsampled
 
     def forward(self, x):
@@ -45,7 +45,7 @@ class TimeDistributedInterpolation(nn.Module):
 class GLU(nn.Module):
     """Gated Linear Unit"""
 
-    def __init__(self, input_size, hidden_size=None, dropout=None):
+    def __init__(self, input_size: int, hidden_size: int = None, dropout: float = None):
         super().__init__()
 
         if dropout is not None:
@@ -66,7 +66,7 @@ class GLU(nn.Module):
 
 
 class AddNorm(nn.Module):
-    def __init__(self, input_size=None, trainable_add: bool = True):
+    def __init__(self, input_size: int = None, trainable_add: bool = True):
         super().__init__()
 
         self.input_size = input_size
@@ -79,13 +79,13 @@ class AddNorm(nn.Module):
 
     def forward(self, x, skip):
         if self.trainable_add:
-            skip = skip * self.gate(self.mask)
+            skip = skip * self.gate(self.mask) * 2.0
         output = self.norm(x + skip)
         return output
 
 
 class GateAddNorm(nn.Module):
-    def __init__(self, input_size, hidden_size=None, trainable_add: bool = True, dropout: float = 0.1):
+    def __init__(self, input_size: int, hidden_size: int = None, trainable_add: bool = True, dropout: float = 0.1):
         super().__init__()
 
         self.input_size = input_size
@@ -102,7 +102,15 @@ class GateAddNorm(nn.Module):
 
 
 class GatedResidualNetwork(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, dropout=0.1, context_size=None, residual=False):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        output_size: int,
+        dropout: float = 0.1,
+        context_size: int = None,
+        residual: bool = False,
+    ):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
@@ -130,7 +138,7 @@ class GatedResidualNetwork(nn.Module):
     def forward(self, x, context=None, residual=None):
         if self.input_size != self.output_size and residual is None:
             residual = self.skip_layer(x)
-        elif residual is None:
+        if residual is None:
             residual = x
 
         if self.input_size == 1 and self.hidden_size == 1:
@@ -150,9 +158,9 @@ class VariableSelectionNetwork(nn.Module):
     def __init__(
         self,
         input_sizes: Dict[str, int],
-        hidden_size,
-        dropout=0.1,
-        context_size=None,
+        hidden_size: int,
+        dropout: float = 0.1,
+        context_size: int = None,
         single_variable_grns: Dict[str, GatedResidualNetwork] = {},
     ):
         """
@@ -257,7 +265,7 @@ class PositionalEncoder(torch.nn.Module):
 
 
 class ScaledDotProductAttention(nn.Module):
-    def __init__(self, dropout=0.0, scale=True):
+    def __init__(self, dropout: float = 0.0, scale: bool = True):
         super(ScaledDotProductAttention, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
         self.softmax = nn.Softmax(dim=2)
@@ -278,7 +286,7 @@ class ScaledDotProductAttention(nn.Module):
 
 
 class InterpretableMultiHeadAttention(nn.Module):
-    def __init__(self, n_head, d_model, dropout=0.0):
+    def __init__(self, n_head: int, d_model: int, dropout: float = 0.0):
         super(InterpretableMultiHeadAttention, self).__init__()
 
         self.n_head = n_head
@@ -301,7 +309,7 @@ class InterpretableMultiHeadAttention(nn.Module):
             else:
                 torch.nn.init.zeros_(p)
 
-    def forward(self, q, k, v, mask=None):
+    def forward(self, q, k, v, mask=None) -> Tuple[torch.Tensor, torch.Tensor]:
 
         heads = []
         attns = []

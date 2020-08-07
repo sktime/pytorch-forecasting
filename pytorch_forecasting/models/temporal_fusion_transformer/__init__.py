@@ -51,8 +51,8 @@ class TemporalFusionTransformer(BaseModel):
         categorical_labels: Dict[str, str] = {},
         real_scales: Dict[str, Tuple[float, float]] = {},
         learning_rate: float = 1e-3,
-        log_interval: int = 10,
-        log_val_interval: int = None,
+        log_interval: Union[int, float] = -1,
+        log_val_interval: Union[int, float] = None,
         log_gradient_flow: bool = False,
         reduce_on_plateau_patience: int = 1000,
         monotone_constaints: Dict[str, int] = {},
@@ -90,7 +90,8 @@ class TemporalFusionTransformer(BaseModel):
                 transform them into their original shape
             categorical_labels: dictionary mapping (string) indices to categorical variable names
             learning_rate: learning rate
-            log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0
+            log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0. If < 1.0
+                , will log multiple entries per batch. Defaults to -1.
             log_val_interval: frequency with which to log validation set metrics, defaults to log_interval
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
@@ -241,13 +242,6 @@ class TemporalFusionTransformer(BaseModel):
         self.static_context_enrichment = GatedResidualNetwork(
             self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.dropout
         )
-        self.static_enrichment = GatedResidualNetwork(
-            input_size=self.hparams.hidden_size,
-            hidden_size=self.hparams.hidden_size,
-            output_size=self.hparams.hidden_size,
-            dropout=self.hparams.dropout,
-            context_size=self.hparams.hidden_size,
-        )
 
         # lstm encoder (history) and decoder (future) for local processing
         self.lstm_encoder = nn.LSTM(
@@ -271,6 +265,15 @@ class TemporalFusionTransformer(BaseModel):
         self.post_lstm_gate_decoder = GLU(self.hparams.hidden_size, dropout=self.hparams.dropout)
         self.post_lstm_add_norm_encoder = AddNorm(self.hparams.hidden_size)
         self.post_lstm_add_norm_decoder = AddNorm(self.hparams.hidden_size)
+
+        # static enrichment and processing past LSTM
+        self.static_enrichment = GatedResidualNetwork(
+            input_size=self.hparams.hidden_size,
+            hidden_size=self.hparams.hidden_size,
+            output_size=self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
+            context_size=self.hparams.hidden_size,
+        )
 
         # attention for long-range processing
         self.multihead_attn = InterpretableMultiHeadAttention(
@@ -428,8 +431,14 @@ class TemporalFusionTransformer(BaseModel):
         # indices to which is attended
         attend_step = torch.arange(decoder_length, device=self.device)
         # indices for which is predicted
-        predict_step = torch.arange(decoder_length, 0, step=-1, device=self.device)[:, None]
-        # do not attend to steps after to prediction
+        predict_step = torch.arange(0, decoder_length, device=self.device)[:, None]
+        # do not attend to steps to self or after prediction
+        # todo: there is potential value in attending to future forecasts if they are made with knowledge currently
+        #   available
+        #   one possibility is here to use a second attention layer for future attention (assuming different effects
+        #   matter in the future than the past)
+        #   or alternatively using the same layer but allowing forward attention - i.e. only masking out non-available
+        #   data and self
         decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
         encoder_mask = self._get_mask(encoder_lengths.max(), encoder_lengths)

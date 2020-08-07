@@ -3,6 +3,7 @@ Timeseries data is special and has to be processed and fed to algorithms in a sp
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
 
+import pickle
 import warnings
 from copy import deepcopy
 import inspect
@@ -124,7 +125,7 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
 
     def _preprocess_y(self, y):
         if self.coerce_positive is None and not self.log_scale:
-            self.coerce_positive = [False, "relu"](y >= 0).all()
+            self.coerce_positive = (y >= 0).all()
 
         if self.log_scale:
             y = np.log(y + self.log_zero_value)
@@ -201,7 +202,10 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
     def transform(self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False) -> pd.DataFrame:
         norm = self.get_norm(X)
         y = self._preprocess_y(y)
-        y_normed = (y / (norm[:, 0] + self.eps) - 1) / (norm[:, 1] + self.eps)
+        if self.center:
+            y_normed = (y / (norm[:, 0] + self.eps) - 1) / (norm[:, 1] + self.eps)
+        else:
+            y_normed = y / (norm[:, 0] + self.eps)
         if return_norm:
             return y_normed, norm
         else:
@@ -256,7 +260,10 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
         norm = data["target_scale"]
         if data["prediction"].ndim > 1:
             norm = norm.unsqueeze(-1)
-        y_normed = (data["prediction"] * norm[:, 1, None] + 1) * norm[:, 0, None]
+        if self.center:
+            y_normed = (data["prediction"] * norm[:, 1, None] + 1) * norm[:, 0, None]
+        else:
+            y_normed = data["prediction"] * norm[:, 0, None]
         if self.log_scale:
             y_normed = (y_normed.exp() - self.log_zero_value).clamp_min(0.0)
         elif isinstance(self.coerce_positive, bool) and self.coerce_positive:
@@ -394,7 +401,8 @@ class TimeSeriesDataSet(Dataset):
                 "relative_time_idx" not in data.columns
             ), "relative_time_idx is a protected column and must not be present in data"
             if "relative_time_idx" not in self.time_varying_known_reals:
-                self.time_varying_known_reals.append("relative_time_idx")
+                if "relative_time_idx" not in self.reals:
+                    self.time_varying_known_reals.append("relative_time_idx")
             data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # preprocess data
@@ -405,6 +413,32 @@ class TimeSeriesDataSet(Dataset):
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
+
+    def save(self, fname: str) -> None:
+        """
+        Save dataset to disk
+
+        Args:
+            fname (str): filename to save to
+        """
+        with open(fname, "wb") as file:
+            pickle.dump(self, file)
+
+    @classmethod
+    def load(cls, fname: str):
+        """
+        Load dataset from disk
+
+        Args:
+            fname (str): filename to load from
+
+        Returns:
+            TimeSeriesDataSet
+        """
+        with open(fname, "rb") as file:
+            obj = pickle.load(file)
+        assert isinstance(obj, cls), f"Loaded file is not of class {cls}"
+        return obj
 
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
 
@@ -441,16 +475,20 @@ class TimeSeriesDataSet(Dataset):
                         feature_name not in data.columns
                     ), f"{feature_name} is a protected column and must not be present in data"
                     data[feature_name] = scales[:, idx].squeeze()
-                    self.static_reals.append(feature_name)
+                    if feature_name not in self.reals:
+                        self.static_reals.append(feature_name)
             else:
                 data[self.target] = self.target_normalizer.transform(data[self.target], data)
 
-        # rescale continuous variables
+        # rescale continuous variables apart from target
         for name in self.reals:
             if name not in self.scalers:
-                self.scalers[name] = StandardScaler().fit(data[[name]])
-            if self.scalers[name] is not None:
-                if isinstance(self.scales[name], GroupNormalizer):
+                if name != self.target:
+                    self.scalers[name] = StandardScaler().fit(data[[name]])
+                else:
+                    self.scalers[name] = self.target_normalizer
+            if self.scalers[name] is not None and name != self.target:
+                if isinstance(self.scalers[name], GroupNormalizer):
                     data[name] = self.scalers[name].transform(data[name], data)
                 else:
                     data[name] = self.scalers[name].transform(data[[name]]).reshape(-1)
@@ -885,6 +923,7 @@ class TimeSeriesDataSet(Dataset):
                 mean = scaler.mean_[0]
                 scale = scaler.scale_[0]
             else:
-                raise ValueError(f"Scales extraction for scaler of type {type(scaler)} not implemented")
+                mean = np.nan
+                scale = np.nan
             scales[name] = (mean, scale)
         return scales

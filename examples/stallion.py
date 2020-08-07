@@ -30,10 +30,12 @@ data["log_volume"] = np.log(data.volume + 1e-8)
 
 data["time_idx"] = data["date"].dt.year * 12 + data["date"].dt.month
 data["time_idx"] -= data["time_idx"].min()
+data["avg_volume_by_sku"] = data.groupby(["time_idx", "sku"], observed=True).volume.transform("mean")
+data["avg_volume_by_agency"] = data.groupby(["time_idx", "agency"], observed=True).volume.transform("mean")
 # data = data[lambda x: (x.sku == data.iloc[0]["sku"]) & (x.agency == data.iloc[0]["agency"])]
 
 training_cutoff = data["time_idx"].max() - 6
-max_encoder_length = 32
+max_encoder_length = 12
 max_prediction_length = 6
 
 training = TimeSeriesDataSet(
@@ -41,8 +43,9 @@ training = TimeSeriesDataSet(
     time_idx="time_idx",
     target="volume",
     group_ids=["agency", "sku"],
-    # min_encoder_length=max_encoder_length,
+    min_encoder_length=max_encoder_length,
     max_encoder_length=max_encoder_length,
+    min_prediction_length=max_prediction_length,
     max_prediction_length=max_prediction_length,
     static_categoricals=["agency", "sku"],
     static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
@@ -63,7 +66,15 @@ training = TimeSeriesDataSet(
     ],
     time_varying_known_reals=["time_idx", "price_regular", "discount_in_percent"],
     time_varying_unknown_categoricals=[],
-    time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
+    time_varying_unknown_reals=[
+        "volume",
+        "log_volume",
+        "industry_volume",
+        "soda_volume",
+        "avg_max_temp",
+        "avg_volume_by_sku",
+        "avg_volume_by_agency",
+    ],
     target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=True),
 )
 
@@ -72,6 +83,9 @@ batch_size = 128
 train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
 val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
+# save datasets
+training.save("training.pkl")
+validation.save("validation.pkl")
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=15, verbose=False, mode="min")
 lr_logger = LearningRateLogger()
@@ -97,11 +111,12 @@ tft = TemporalFusionTransformer.from_dataset(
     learning_rate=0.01,
     hidden_size=32,
     attention_head_size=2,
-    dropout=0.15,
-    hidden_continuous_size=32,
+    dropout=0.1,
+    hidden_continuous_size=16,
     output_size=7,
     loss=QuantileLoss(),
     log_interval=2,
+    log_val_interval=0.2,
     reduce_on_plateau_patience=3,
 )
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")

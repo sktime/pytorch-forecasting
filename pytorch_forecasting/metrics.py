@@ -20,10 +20,9 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
     Other metrics should inherit from this base class
     """
 
-    def __init__(
-        self, name: str, quantiles: List[float] = [0.5],
-    ):
+    def __init__(self, name: str, quantiles: List[float] = [0.5], reduction="mean"):
         self.quantiles = quantiles
+        self.reduction = "mean"
         super().__init__(name)
 
     @abstractmethod
@@ -129,16 +128,18 @@ class MultiHorizonMetric(Metric):
         mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
         if losses.ndim > 2:
             mask = mask.unsqueeze(-1)
-        losses = losses.masked_fill(mask, 0.0)
-
         # reduce to one number
-        loss = losses.sum() / lengths.sum()
-        assert not torch.isnan(
-            loss
-        ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
-        assert torch.isfinite(
-            loss
-        ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
+        if self.reduction == "mean":
+            losses = losses.masked_fill(mask, 0.0)
+            loss = losses.sum() / lengths.sum()
+            assert not torch.isnan(
+                loss
+            ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
+            assert torch.isfinite(
+                loss
+            ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
+        elif self.reduction == "none":
+            loss = losses.masked_fill(mask, "nan")
         return loss
 
 

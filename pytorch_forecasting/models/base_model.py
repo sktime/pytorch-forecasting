@@ -61,8 +61,8 @@ class BaseModel(LightningModule):
 
     def __init__(
         self,
-        log_interval=-1,
-        log_val_interval: int = None,
+        log_interval: Union[int, float] = -1,
+        log_val_interval: Union[int, float] = None,
         learning_rate: Union[float, List[float]] = 1e-3,
         log_gradient_flow: bool = False,
         loss: TensorMetric = SMAPE(),
@@ -76,8 +76,9 @@ class BaseModel(LightningModule):
         BaseModel for timeseries forecasting from which to inherit from
 
         Args:
-            log_interval (int, optional): batches after which predictions are logged. Defaults to -1.
-            log_val_interval (int, optional): batches after which predictions for validation are logged. Defaults to 
+            log_interval (Union[int, float], optional): Batches after which predictions are logged. If < 1.0, will log 
+                multiple entries per batch. Defaults to -1.
+            log_val_interval (Union[int, float], optional): batches after which predictions for validation are logged. Defaults to 
                 None/log_interval.
             learning_rate (float, optional): Learning rate. Defaults to 1e-3.
             log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose 
@@ -92,7 +93,8 @@ class BaseModel(LightningModule):
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive, 
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary). 
                 This constraint significantly slows down training. Defaults to {}.
-            output_transformer (Callable): transformer that takes network output and transforms it to prediction space. Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
+            output_transformer (Callable): transformer that takes network output and transforms it to prediction space. 
+                Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
         """
         super().__init__()
         # update hparams
@@ -226,38 +228,45 @@ class BaseModel(LightningModule):
 
     def _log_prediction(self, x, y_pred, batch_idx, label="train"):
         # log single prediction figure
-        if batch_idx % self.log_interval(label == "train") == 0 and self.log_interval(label == "train") > 0:
-            y_all = torch.cat(
-                [x["encoder_target"][0], x["decoder_target"][0]]
-            )  # all true values for y of the first sample in batch
-            if y_all.ndim == 2:  # timesteps, (target, weight), i.e. weight is included
-                y_all = y_all[:, 0]
-            max_encoder_length = x["encoder_lengths"].max()
-            fig = self.plot_prediction(
-                torch.cat(
-                    (
-                        y_all[: x["encoder_lengths"][0]],
-                        y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][0])],
-                    ),
-                ),
-                y_pred[0, : x["decoder_lengths"][0]].detach(),
-            )  # first in batch
-            tag = f"{label.capitalize()} prediction"
-            if label == "train":
-                tag += f" of item 0 in global batch {self.global_step}"
+        log_interval = self.log_interval(label == "train")
+        if (batch_idx % log_interval == 0 or log_interval < 1.0) and log_interval > 0:
+            if log_interval < 1.0:  # log multiple steps
+                log_indices = torch.arange(0, len(y_pred), round(log_interval * len(y_pred)))
             else:
-                tag += f" of item 0 in batch {batch_idx}"
-            self.logger.experiment.add_figure(
-                tag, fig, global_step=self.global_step,
-            )
+                log_indices = [0]
 
-    def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor) -> plt.Figure:
+            for idx in log_indices:
+                # all true values for y of the first sample in batch
+                y_all = torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]])
+                if y_all.ndim == 2:  # timesteps, (target, weight), i.e. weight is included
+                    y_all = y_all[:, 0]
+                max_encoder_length = x["encoder_lengths"].max()
+                fig = self.plot_prediction(
+                    torch.cat(
+                        (
+                            y_all[: x["encoder_lengths"][0]],
+                            y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][0])],
+                        ),
+                    ),
+                    y_pred[idx, : x["decoder_lengths"][0]].detach(),
+                )  # first in batch
+                tag = f"{label.capitalize()} prediction"
+                if label == "train":
+                    tag += f" of item {idx} in global batch {self.global_step}"
+                else:
+                    tag += f" of item {idx} in batch {batch_idx}"
+                self.logger.experiment.add_figure(
+                    tag, fig, global_step=self.global_step,
+                )
+
+    def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor, add_loss_to_title: bool = True) -> plt.Figure:
         """
         Plot prediction of prediction vs actuals
 
         Args:
             y: all actual values
             y_hat: predictions
+            add_loss_to_title: if to add loss to title. Default to True.
 
         Returns:
             matplotlib figure
@@ -299,8 +308,8 @@ class BaseModel(LightningModule):
                 ax.errorbar(
                     x_pred, torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]]), c=pred_color, capsize=1.0,
                 )
-        loss = self.loss(y_hat[None], y[-n_pred:][None])
-        ax.set_title(f"Loss {loss:.3g}")
+        if add_loss_to_title:
+            ax.set_title(f"Loss {self.loss(y_hat[None], y[-n_pred:][None]):.3g}")
         ax.set_xlabel("Time index")
         fig.legend()
         return fig
@@ -443,7 +452,7 @@ class BaseModel(LightningModule):
             show_progress_bar: if to show progress bar. Defaults to True
 
         Returns:
-            output, index, decoder_lengths: some elements might not be present depending on what is configured 
+            output, index, decoder_lengths: some elements might not be present depending on what is configured
                 to be returned
         """
         # convert to dataloader
@@ -484,7 +493,7 @@ class BaseModel(LightningModule):
                     # mask non-predictions
                     out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
                 elif mode == "quantiles":
-                    out = self.loss.to_quantiles(out)
+                    out = self.loss.to_quantiles(out["prediction"])
                     # mask non-predictions
                     out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
                 elif mode == "raw":
@@ -501,7 +510,10 @@ class BaseModel(LightningModule):
         if isinstance(mode, (tuple, list)) or mode != "raw":
             output = torch.cat(output, dim=0)
         elif mode == "raw":
-            output = {name: torch.cat(values, dim=0) for name, values in output.items()}
+            output_cat = {}
+            for name in output[0].keys():
+                output_cat[name] = torch.cat([out[name] for out in output], dim=0)
+            output = output_cat
 
         if return_decoder_lengths:
             decoder_lengths = torch.cat(decode_lenghts, dim=0)

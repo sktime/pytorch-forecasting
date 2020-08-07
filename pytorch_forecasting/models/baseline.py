@@ -20,7 +20,8 @@ class Baseline(BaseModel):
         max_prediction_length = x["decoder_lengths"].max()
         assert x["encoder_lengths"].min() > 0, "Encoder lengths of at least 1 required to obtain last value"
         last_values = x["encoder_target"][torch.arange(x["encoder_target"].size(0)), x["encoder_lengths"] - 1]
-        return last_values[:, None, None].expand(-1, max_prediction_length, self.hparam.output_size)
+        prediction = last_values[:, None, None].expand(-1, max_prediction_length, self.hparams.output_size)
+        return dict(prediction=prediction)
 
     def _step(self, batch, batch_idx, label="train"):
         """
