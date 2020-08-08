@@ -166,10 +166,10 @@ class BaseModel(LightningModule):
             )[0]
 
             # select relevant features
-            indices = torch.tensor([int(i) for i in self.hparams.monotone_constaints.keys()])
-            monotonicity = torch.tensor(
-                [self.hparams.monotone_constaints[str(i.item())] for i in indices], dtype=gradient.dtype
+            indices = torch.tensor(
+                [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constaints.keys()]
             )
+            monotonicity = torch.tensor([val for val in self.hparams.monotonicity.values()], dtype=gradient.dtype)
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
             monotinicity_loss = gradient.clamp_max(0).mean()
@@ -577,9 +577,9 @@ class BaseModel(LightningModule):
             reduction = "sum"
         # continuous variables
         reals = x["decoder_cont"]
-        for idx, name in self.hparams.real_labels.items():
+        for idx, name in enumerate(self.hparams.x_reals):
             averages_actual[name], support[name] = groupby_apply(
-                (reals[..., int(idx)][mask] * positive_bins / std).round().clamp(-positive_bins, positive_bins).long()
+                (reals[..., idx][mask] * positive_bins / std).round().clamp(-positive_bins, positive_bins).long()
                 + positive_bins,
                 y_flat,
                 bins=bins,
@@ -587,7 +587,7 @@ class BaseModel(LightningModule):
                 return_histogram=True,
             )
             averages_prediction[name], _ = groupby_apply(
-                (reals[..., int(idx)][mask] * positive_bins / std).round().clamp(-positive_bins, positive_bins).long()
+                (reals[..., idx][mask] * positive_bins / std).round().clamp(-positive_bins, positive_bins).long()
                 + positive_bins,
                 y_pred_flat,
                 bins=bins,
@@ -597,16 +597,16 @@ class BaseModel(LightningModule):
 
         # categorical_variables
         cats = x["decoder_cat"]
-        for idx, name in self.hparams.categorical_labels.items():
+        for idx, name in enumerate(self.hparams.x_categoricals):  # todo: make it work for grouped categoricals
             averages_actual[name], support[name] = groupby_apply(
-                cats[..., int(idx)][mask],
+                cats[..., idx][mask],
                 y_flat,
                 bins=self.hparams.embedding_sizes[idx][0],
                 reduction=reduction,
                 return_histogram=True,
             )
             averages_prediction[name], _ = groupby_apply(
-                cats[..., int(idx)][mask],
+                cats[..., idx][mask],
                 y_pred_flat,
                 bins=self.hparams.embedding_sizes[idx][0],
                 reduction=reduction,
@@ -643,12 +643,8 @@ class BaseModel(LightningModule):
             # create figure
             kwargs = {}
             # adjust figure size for figures with many labels
-            if name in self.hparams.categorical_labels.values():
-                for idx, label_name in self.hparams.categorical_labels.items():
-                    if label_name == name:
-                        break
-                if self.hparams.embedding_sizes[str(idx)][0] > 10:
-                    kwargs = dict(figsize=(10, 5))
+            if self.hparams.embedding_sizes[name][0] > 10:
+                kwargs = dict(figsize=(10, 5))
             fig, ax = plt.subplots(**kwargs)
             ax.set_title(f"{name} averages")
             ax.set_xlabel(name)
@@ -672,11 +668,8 @@ class BaseModel(LightningModule):
             values_prediction = values_prediction[support_non_zero]
 
             # plot averages
-            if name in self.hparams.real_labels.values():
-                for idx, label_name in self.hparams.real_labels.items():
-                    if label_name == name:
-                        break
-                mean, scale = self.hparams.real_scales[idx]
+            if name in self.hparams.x_reals:
+                mean, scale = self.dataset_parameters.scalers[name].mean, self.dataset_parameters.scalers[name].scale
                 x = np.linspace(-data["std"], data["std"], bins) * scale + mean
                 if len(x) > 0:
                     x_step = x[1] - x[0]
@@ -686,13 +679,10 @@ class BaseModel(LightningModule):
                 ax.plot(x, values_actual, label="Actual")
                 ax.plot(x, values_prediction, label="Prediction")
 
-            elif name in self.hparams.categorical_labels.values():
-                for idx, label_name in self.hparams.categorical_labels.items():
-                    if label_name == name:
-                        break
+            elif name in self.hparams.embedding_labels:
                 # sort values from lowest to highest
                 sorting = values_actual.argsort()
-                labels = np.asarray(self.hparams.embedding_labels[str(idx)])[support_non_zero][sorting]
+                labels = np.asarray(self.hparams.embedding_labels[name])[support_non_zero][sorting]
                 values_actual = values_actual[sorting]
                 values_prediction = values_prediction[sorting]
                 support = support[sorting]

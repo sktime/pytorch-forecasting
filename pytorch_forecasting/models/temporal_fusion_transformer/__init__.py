@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from pytorch_ranger import Ranger
 from torch import nn
 from torch.nn.utils import rnn
+from torch.utils import data
 
 from pytorch_forecasting.models import BaseModel
 from pytorch_forecasting.data import TimeSeriesDataSet
@@ -21,6 +22,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     GLU,
     AddNorm,
+    TimeDistributedEmbeddingBag,
 )
 from pytorch_forecasting.utils import groupby_apply, integer_histogram, get_embedding_size
 
@@ -35,20 +37,20 @@ class TemporalFusionTransformer(BaseModel):
         loss: MultiHorizonMetric = QuantileLoss(),
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
-        weight_idx: Union[None, int] = None,
-        static_categoricals: List[int] = [],
-        static_reals: List[int] = [],
-        time_varying_categoricals_encoder: List[int] = [],
-        time_varying_categoricals_decoder: List[int] = [],
-        time_varying_reals_encoder: List[int] = [],
-        time_varying_reals_decoder: List[int] = [],
+        static_categoricals: List[str] = [],
+        static_reals: List[str] = [],
+        time_varying_categoricals_encoder: List[str] = [],
+        time_varying_categoricals_decoder: List[str] = [],
+        categorical_groups: Dict[str, List[str]] = {},
+        time_varying_reals_encoder: List[str] = [],
+        time_varying_reals_decoder: List[str] = [],
+        x_reals: List[str] = [],
+        x_categoricals: List[str] = [],
         hidden_continuous_size: int = 8,
         hidden_continuous_sizes: Dict[str, int] = {},
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_paddings: List[str] = [],
         embedding_labels: Dict[str, np.ndarray] = {},
-        real_labels: Dict[str, str] = {},
-        categorical_labels: Dict[str, str] = {},
         real_scales: Dict[str, Tuple[float, float]] = {},
         learning_rate: float = 1e-3,
         log_interval: Union[int, float] = -1,
@@ -77,6 +79,8 @@ class TemporalFusionTransformer(BaseModel):
             time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
             time_varying_reals_encoder: integer of positions of continuous variables for encoder
             time_varying_reals_decoder: integer of positions of continuous variables for decoder
+            x_reals: order of continuous variables in tensor passed to forward function
+            x_categoricals: order of categorical variables in tensor passed to forward function
             hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical
                 embedding size)
             hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
@@ -88,7 +92,6 @@ class TemporalFusionTransformer(BaseModel):
             real_labels: dictionary mapping (string) indices to continuous variable names
             real_scales: dictionary of tuples with mean and scale for each continuous variable that can be used to
                 transform them into their original shape
-            categorical_labels: dictionary mapping (string) indices to categorical variable names
             learning_rate: learning rate
             log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0. If < 1.0
                 , will log multiple entries per batch. Defaults to -1.
@@ -115,69 +118,65 @@ class TemporalFusionTransformer(BaseModel):
         # processing inputs
         # embeddings
         self.input_embeddings = nn.ModuleDict()
-        for i in set(
-            self.hparams.static_categoricals
-            + self.hparams.time_varying_categoricals_encoder
-            + self.hparams.time_varying_categoricals_decoder
-        ):
-            embedding_size = min(self.hparams.embedding_sizes[str(i)][1], self.hparams.hidden_size)
-            self.hparams.embedding_sizes[str(i)] = list(self.hparams.embedding_sizes[str(i)])
-            self.hparams.embedding_sizes[str(i)][1] = embedding_size
-            if i in self.hparams.embedding_paddings:
-                padding_idx = 0
+        for name in self.hparams.embedding_sizes.keys():
+            embedding_size = min(self.hparams.embedding_sizes[name][1], self.hparams.hidden_size)
+            # convert to list to become mutable
+            self.hparams.embedding_sizes[name] = list(self.hparams.embedding_sizes[name])
+            self.hparams.embedding_sizes[name][1] = embedding_size
+            if name in self.hparams.categorical_groups:  # embedding bag if related embeddings
+                self.input_embeddings[name] = TimeDistributedEmbeddingBag(
+                    self.hparams.embedding_sizes[name][0], embedding_size, mode="sum", batch_first=True
+                )
             else:
-                padding_idx = None
-            self.input_embeddings[str(i)] = nn.Embedding(
-                self.hparams.embedding_sizes[str(i)][0], embedding_size, padding_idx=padding_idx,
-            )
+                if name in self.hparams.embedding_paddings:
+                    padding_idx = 0
+                else:
+                    padding_idx = None
+                self.input_embeddings[name] = nn.Embedding(
+                    self.hparams.embedding_sizes[name][0], embedding_size, padding_idx=padding_idx,
+                )
 
         # linear layers
         self.input_linear = nn.ModuleDict()
-        for i in set(
-            self.hparams.time_varying_reals_encoder
-            + self.hparams.time_varying_reals_encoder
-            + self.hparams.static_reals
-        ):
-            self.input_linear[str(i)] = nn.Linear(
-                1, self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
+        for name in self.hparams.x_reals:
+            self.input_linear[name] = nn.Linear(
+                1, self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
             )
 
         # variable selection
         # variable selection for static variables
-        static_input_sizes = {
-            f"cat_{i}": self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.static_categoricals
-        }
+        static_input_sizes = {name: self.hparams.embedding_sizes[name][1] for name in self.hparams.static_categoricals}
         static_input_sizes.update(
             {
-                f"cont_{i}": self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
-                for i in self.hparams.static_reals
+                name: self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
+                for name in self.hparams.static_reals
             }
         )
         self.static_variable_selection = VariableSelectionNetwork(
             input_sizes=static_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={f"cat_{i}": True for i in self.hparams.static_categoricals},
+            input_embedding_flags={name: True for name in self.hparams.static_categoricals},
             dropout=self.hparams.dropout,
         )
 
         # variable selection for encoder and decoder
         encoder_input_sizes = {
-            f"cat_{i}": self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_encoder
+            name: self.hparams.embedding_sizes[name][1] for name in self.hparams.time_varying_categoricals_encoder
         }
         encoder_input_sizes.update(
             {
-                f"cont_{i}": self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
-                for i in self.hparams.time_varying_reals_encoder
+                name: self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
+                for name in self.hparams.time_varying_reals_encoder
             }
         )
 
         decoder_input_sizes = {
-            f"cat_{i}": self.hparams.embedding_sizes[str(i)][1] for i in self.hparams.time_varying_categoricals_decoder
+            name: self.hparams.embedding_sizes[name][1] for name in self.hparams.time_varying_categoricals_decoder
         }
         decoder_input_sizes.update(
             {
-                f"cont_{i}": self.hparams.hidden_continuous_sizes.get(str(i), self.hparams.hidden_continuous_size)
-                for i in self.hparams.time_varying_reals_decoder
+                name: self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
+                for name in self.hparams.time_varying_reals_decoder
             }
         )
 
@@ -295,127 +294,74 @@ class TemporalFusionTransformer(BaseModel):
         self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
 
     @property
+    def categorical_groups_mapping(self) -> Dict[str, str]:
+        groups = {}
+        for group_name, sublist in self.categorical_groups.items():
+            groups.update({name: group_name for name in sublist})
+        return groups
+
+    @property
     def static_variables(self) -> List[str]:
-        return [self.hparams.categorical_labels[str(i)] for i in self.hparams.static_categoricals] + [
-            self.hparams.real_labels[str(i)] for i in self.hparams.static_reals
-        ]
+        return self.hparams.static_categoricals + self.hparams.static_reals
 
     @property
     def encoder_variables(self) -> List[str]:
-        return [self.hparams.categorical_labels[str(i)] for i in self.hparams.time_varying_categoricals_encoder] + [
-            self.hparams.real_labels[str(i)] for i in self.hparams.time_varying_reals_encoder
-        ]
+        return self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
 
     @property
     def decoder_variables(self) -> List[str]:
-        return [self.hparams.categorical_labels[str(i)] for i in self.hparams.time_varying_categoricals_decoder] + [
-            self.hparams.real_labels[str(i)] for i in self.hparams.time_varying_reals_decoder
-        ]
+        return self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
 
     @classmethod
     def from_dataset(
-        cls,
-        dataset: TimeSeriesDataSet,
-        allowed_encoder_variable_names: List[str] = None,
-        monotone_constaints: Dict[str, float] = {},
-        **kwargs,
+        cls, dataset: TimeSeriesDataSet, allowed_encoder_known_variable_names: List[str] = None, **kwargs,
     ):
         """
         create model from dataset
 
         Args:
             dataset: timeseries dataset
-            allowed_encoder_variable_names: List of names that are allowed in encoder, defaults to all
-            monotone_constaints: dictionary of decoder names to monotonicity
+            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all
             **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
 
         Returns:
             TemporalFusionTransformer
         """
-        if allowed_encoder_variable_names is None:
-            allowed_encoder_variable_names = (
-                dataset.time_varying_known_categoricals
-                + dataset.time_varying_known_reals
-                + dataset.time_varying_unknown_categoricals
-                + dataset.time_varying_unknown_reals
+        if allowed_encoder_known_variable_names is None:
+            allowed_encoder_known_variable_names = (
+                dataset.time_varying_known_categoricals + dataset.time_varying_known_reals
             )
 
-        # categoricals
-        static_categoricals = [dataset.categoricals.index(name) for name in dataset.static_categoricals]
-        time_varying_known_categoricals = [
-            dataset.categoricals.index(name)
-            for name in dataset.time_varying_known_categoricals
-            if name in allowed_encoder_variable_names
-        ]
-        time_varying_unknown_categoricals = [
-            dataset.categoricals.index(name)
-            for name in dataset.time_varying_unknown_categoricals
-            if name in allowed_encoder_variable_names
-        ]
-
-        categorical_labels = {
-            str(idx): name
-            for idx, name in enumerate(
-                dataset.static_categoricals
-                + dataset.time_varying_known_categoricals
-                + dataset.time_varying_unknown_categoricals
-            )
-        }
-        embedding_labels = {
-            str(idx): dataset.categoricals_encoders[name].classes_ for idx, name in enumerate(dataset.categoricals)
-        }
-        embedding_paddings = [
-            int(idx) for idx, name in categorical_labels.items() if name in dataset.dropout_categoricals
-        ]
+        # embeddings
+        embedding_labels = {name: encoder.classes_ for name, encoder in dataset.categorical_encoders.items()}
+        embedding_paddings = dataset.dropout_categoricals
         # determine embedding sizes based on heuristic
         embedding_sizes = {
-            idx: (len(labels), get_embedding_size(len(labels))) for idx, labels in embedding_labels.items()
+            name: (len(encoder.classes_), get_embedding_size(len(encoder.classes_)))
+            for name, encoder in dataset.categorical_encoders.items()
         }
         embedding_sizes.update(kwargs.get("embedding_sizes", {}))
         kwargs.setdefault("embedding_sizes", embedding_sizes)
 
-        # reals
-        static_reals = [dataset.reals.index(name) for name in dataset.static_reals]
-        time_varying_known_reals = [
-            dataset.reals.index(name)
-            for name in dataset.time_varying_known_reals
-            if name in allowed_encoder_variable_names
-        ]
-        time_varying_unknown_reals = [
-            dataset.reals.index(name)
-            for name in dataset.time_varying_unknown_reals
-            if name in allowed_encoder_variable_names
-        ]
-
-        real_labels = {
-            str(idx): name
-            for idx, name in enumerate(
-                dataset.static_reals + dataset.time_varying_known_reals + dataset.time_varying_unknown_reals
-            )
-        }
-
-        scales = dataset.scales
-        real_scales = {idx: scales[name] for idx, name in real_labels.items()}
-
-        # convert monotonicity constraints
-        monotone_constaints = {
-            str(dataset.reals.index(name)): constraint for name, constraint in monotone_constaints.items()
-        }
-
         new_kwargs = dict(
             max_encoder_length=dataset.max_encoder_length,
-            static_categoricals=static_categoricals,
-            time_varying_categoricals_encoder=time_varying_known_categoricals + time_varying_unknown_categoricals,
-            time_varying_categoricals_decoder=time_varying_known_categoricals,
-            static_reals=static_reals,
-            time_varying_reals_encoder=time_varying_known_reals + time_varying_unknown_reals,
-            time_varying_reals_decoder=time_varying_known_reals,
-            real_labels=real_labels,
-            categorical_labels=categorical_labels,
+            static_categoricals=dataset.static_categoricals,
+            time_varying_categoricals_encoder=[
+                name for name in dataset.time_varying_known_categoricals if name in allowed_encoder_known_variable_names
+            ]
+            + dataset.time_varying_unknown_categoricals,
+            time_varying_categoricals_decoder=dataset.time_varying_known_categoricals,
+            static_reals=dataset.static_reals,
+            time_varying_reals_encoder=[
+                name for name in dataset.time_varying_known_reals if name in allowed_encoder_known_variable_names
+            ]
+            + dataset.time_varying_unknown_reals,
+            time_varying_reals_decoder=dataset.time_varying_known_reals,
+            x_reals=dataset.reals,
+            x_categoricals=dataset.flat_categoricals,
             embedding_labels=embedding_labels,
-            real_scales=real_scales,
             embedding_paddings=embedding_paddings,
-            monotone_constaints=monotone_constaints,
+            categorical_groups=dataset.variable_groups,
         )
         new_kwargs.update(kwargs)
 
@@ -467,9 +413,23 @@ class TemporalFusionTransformer(BaseModel):
         x_cont = torch.cat([x["encoder_cont"], x["decoder_cont"]], dim=1)  # concatenate in time dimension
         timesteps = x_cont.size(1)  # encode + decode length
         max_encoder_length = int(encoder_lengths.max())
-        embedding_vectors = {int(i): emb(x_cat[..., int(i)]) for i, emb in self.input_embeddings.items()}
+        embedding_vectors = {}
+        for name, emb in self.input_embeddings.items():
+            if name in self.hparams.categorical_groups:
+                embedding_vectors[name] = emb(
+                    x_cat[
+                        ...,
+                        [
+                            self.hparams.x_categoricals.index(cat_name)
+                            for cat_name in self.hparams.categorical_groups[name]
+                        ],
+                    ]
+                )
+            else:
+                embedding_vectors[name] = emb(x_cat[..., self.hparams.x_categoricals.index(name)])
         continuous_vectors = {
-            int(i): lin(x_cont[..., int(i)].view(x_cont.size(0), -1, 1)) for i, lin in self.input_linear.items()
+            name: lin(x_cont[..., self.hparams.x_reals.index(name)].view(x_cont.size(0), -1, 1))
+            for name, lin in self.input_linear.items()
         }
 
         # Embedding and variable selection
@@ -797,10 +757,11 @@ class TemporalFusionTransformer(BaseModel):
 
     def _log_embeddings(self):
         """
-        log embeddings to tensorboard
+        Log embeddings to tensorboard
         """
-        for idx, emb in self.input_embeddings.items():
-            name = self.hparams.categorical_labels[idx]
-            labels = self.hparams.embedding_labels[idx]
-            data = emb.weight.data
-            self.logger.experiment.add_embedding(data.cpu(), metadata=labels, tag=name, global_step=self.global_step)
+        for name, emb in self.input_embeddings.items():
+            labels = self.hparams.embedding_labels[name]
+            self.logger.experiment.add_embedding(
+                emb.weight.data.cpu(), metadata=labels, tag=name, global_step=self.global_step
+            )
+

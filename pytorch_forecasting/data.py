@@ -14,14 +14,12 @@ import abc
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
-from torch import clamp_min
 from torch.distributions import Binomial, Beta
-from torch.nn.functional import normalize
 from torch.nn.utils import rnn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 
 class NaNLabelEncoder(LabelEncoder):
@@ -298,6 +296,7 @@ class TimeSeriesDataSet(Dataset):
         time_varying_known_reals: List[str] = [],
         time_varying_unknown_categoricals: List[str] = [],
         time_varying_unknown_reals: List[str] = [],
+        variable_groups: Dict[str, List[int]] = [],
         dropout_categoricals: List[str] = [],
         add_relative_time_idx: bool = True,
         constant_fill_strategy={},
@@ -385,6 +384,7 @@ class TimeSeriesDataSet(Dataset):
         self.categorical_encoders = categorical_encoders
         self.scalers = scalers
         self.add_target_scales = add_target_scales
+        self.variable_groups = variable_groups
 
         # overwrite values
         self.reset_overwrite_values()
@@ -447,22 +447,21 @@ class TimeSeriesDataSet(Dataset):
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
 
         # encode categoricals
-        # fit groups
-        for name, columns in self.categorical_groups.items():
-            if name not in self.categorical_encoders:
-                self.categorical_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
-                    data[columns].to_numpy().reshape(-1)
-                )
-        # fit non-grouped categories
         for name in set(self.categoricals + self.group_ids):
-            if name not in self.categorical_groups:
+            if name in self.variable_groups:  # fit groups
+                columns = self.variable_groups[name]
+                if name not in self.categorical_encoders:
+                    self.categorical_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
+                        data[columns].to_numpy().reshape(-1)
+                    )
+            else:
                 if name not in self.categorical_encoders:
                     self.categorical_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
                         data[name]
                     )
 
         # encode them
-        for name in set(self.categoricals + self.group_ids):
+        for name in set(self.flat_categoricals + self.group_ids):
             data[name] = self.transform_values(name, data[name], inverse=False)
 
         # save special variables
@@ -515,19 +514,9 @@ class TimeSeriesDataSet(Dataset):
         return data
 
     def transform_values(self, name, values, data: pd.DataFrame = None, inverse=False):
-        # grouped categories
-        for encoder_name, columns in self.categorical_groups.items():
-            if name in columns:
-                encoder = self.categorical_encoders[encoder_name]
-                if encoder is None:
-                    return values
-                elif inverse:
-                    return encoder.inverse_transform(values)
-                else:
-                    return encoder.transform(values)
-
         # remaining categories
-        if name in self.categorical_encoders:
+        if name in self.flat_categoricals:
+            name = self.variable_to_group_mapping.get(name, name)  # map name to encoder
             encoder = self.categorical_encoders[name]
             if encoder is None:
                 return values
@@ -561,7 +550,7 @@ class TimeSeriesDataSet(Dataset):
         index = torch.tensor(data[self.group_ids].to_numpy(np.long))
         time = torch.tensor(data["__time_idx__"].to_numpy(np.long))
 
-        categorical = torch.tensor(data[self.categoricals].to_numpy(np.long))
+        categorical = torch.tensor(data[self.flat_categoricals].to_numpy(np.long))
 
         if self.weight is None:
             target_names = "__target__"
@@ -576,23 +565,23 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     def categoricals(self) -> List[str]:
+        return self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
+
+    @property
+    def flat_categoricals(self) -> List[str]:
         categories = []
-        for sublist in (
-            self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
-        ):
-            if not isinstance(sublist, (tuple, list)):
-                sublist = [sublist]
-            categories.extend(sublist)
+        for name in self.categoricals:
+            if name in self.variable_groups:
+                categories.extend(self.variable_groups[name])
+            else:
+                categories.append(name)
         return categories
 
     @property
-    def categorical_groups(self) -> Dict[str, List[str]]:
+    def variable_to_group_mapping(self) -> Dict[str, str]:
         groups = {}
-        for sublist in (
-            self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
-        ):
-            if isinstance(sublist, (tuple, list)):
-                groups[f"group_{sublist[0]}"] = sublist
+        for group_name, sublist in self.variable_groups.items():
+            groups.update({name: group_name for name in sublist})
         return groups
 
     @property
@@ -777,8 +766,8 @@ class TimeSeriesDataSet(Dataset):
                         target[repetition_indices, 0] = value
                     else:
                         target[repetition_indices] = value
-                elif name in self.categoricals:
-                    data_cat[repetition_indices, self.categoricals.index(name)] = value
+                elif name in self.flat_categoricals:
+                    data_cat[repetition_indices, self.flat_categoricals.index(name)] = value
                 else:
                     raise KeyError(f"Variable {name} is not known and thus cannot be filled in")
 
@@ -822,7 +811,9 @@ class TimeSeriesDataSet(Dataset):
 
             # switch some variables to nan if encode length is 0
             if encoder_length == 0 and len(self.dropout_categoricals) > 0:
-                data_cat[:, [self.categoricals.index(c) for c in self.dropout_categoricals]] = 0  # zero is encoded nan
+                data_cat[
+                    :, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]
+                ] = 0  # zero is encoded nan
 
         assert decoder_length > 0, "Decoder length should be greater than 0"
         assert encoder_length >= 0, "Encoder length should be at least 0"
@@ -847,9 +838,9 @@ class TimeSeriesDataSet(Dataset):
                 data_cont[positions, idx] = self._overwrite_values["values"]
             else:
                 assert (
-                    self._overwrite_values["variable"] in self.categoricals
+                    self._overwrite_values["variable"] in self.flat_categoricals
                 ), "overwrite values variable has to be either in real or categorical variables"
-                idx = self.categoricals.index(self._overwrite_values["variable"])
+                idx = self.flat_categoricals.index(self._overwrite_values["variable"])
                 data_cat[positions, idx] = self._overwrite_values["values"]
 
         return (
@@ -970,20 +961,3 @@ class TimeSeriesDataSet(Dataset):
             index_data[id] = self.transform_values(id, index_data[id], inverse=True)
         index = pd.DataFrame(index_data, index=self.index.index)
         return index
-
-    @property
-    def scales(self) -> Dict[str, Tuple[float, float]]:
-        """Mean and scale for each real type column."""
-        scales = {}
-        for name, scaler in self.scalers.items():
-            if isinstance(scaler, MinMaxScaler):
-                mean = scaler.data_min_[0] + scaler.data_max_[0] / 2
-                scale = scaler.scale_[0]
-            elif isinstance(scaler, StandardScaler):
-                mean = scaler.mean_[0]
-                scale = scaler.scale_[0]
-            else:
-                mean = np.nan
-                scale = np.nan
-            scales[name] = (mean, scale)
-        return scales
