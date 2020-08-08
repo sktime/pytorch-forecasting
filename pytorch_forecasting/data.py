@@ -302,7 +302,7 @@ class TimeSeriesDataSet(Dataset):
         add_relative_time_idx: bool = True,
         constant_fill_strategy={},
         allow_missings: bool = False,
-        categoricals_encoders={},
+        categorical_encoders={},
         scalers={},
         randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
         predict_mode: bool = False,
@@ -323,14 +323,18 @@ class TimeSeriesDataSet(Dataset):
             min_prediction_idx: minimum time index from where to start predictions
             min_prediction_length: minimum prediction length
             max_prediction_length: maximum prediction length (choose this not too short as it can help convergence)
-            static_categoricals: list of categorical variables that do not change over time
+            static_categoricals: list of categorical variables that do not change over time, 
+                entries can be also lists which are then encoded together
+                (e.g. useful for product categories)
             static_reals: list of continuous variables that do not change over time
             time_varying_known_categoricals: list of categorical variables that change over
-                time and are know in the future
+                time and are know in the future, entries can be also lists which are then encoded together
+                (e.g. useful for special days or promotion categories)
             time_varying_known_reals: list of continuous variables that change over
                 time and are know in the future
             time_varying_unknown_categoricals: list of categorical variables that change over
-                time and are not know in the future
+                time and are not know in the future, entries can be also lists which are then encoded together
+                (e.g. useful for weather categories)
             time_varying_unknown_reals: list of continuous variables that change over
                 time and are not know in the future
             dropout_categoricals: list of categorical variables that are unknown when making a forecast without
@@ -340,7 +344,7 @@ class TimeSeriesDataSet(Dataset):
                 gaps in the sequence
                 (otherwise forward fill strategy is used)
             allow_missings: if to allow missing timesteps that are automatically filled up
-            categoricals_encoders: dictionary of scikit learn label transformers or None
+            categorical_encoders: dictionary of scikit learn label transformers or None
             scalers: dictionary of scikit learn scalers or None
             randomize_length: None if not to randomize lengths. Tuple of beta distribution concentrations from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial distribution
@@ -378,7 +382,7 @@ class TimeSeriesDataSet(Dataset):
         self.predict_mode = predict_mode
         self.allow_missings = allow_missings
         self.target_normalizer = target_normalizer
-        self.categoricals_encoders = categoricals_encoders
+        self.categorical_encoders = categorical_encoders
         self.scalers = scalers
         self.add_target_scales = add_target_scales
 
@@ -443,13 +447,23 @@ class TimeSeriesDataSet(Dataset):
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
 
         # encode categoricals
-        for name in set(self.categoricals + self.group_ids):
-            if name not in self.categoricals_encoders:
-                self.categoricals_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
-                    data[name]
+        # fit groups
+        for name, columns in self.categorical_groups.items():
+            if name not in self.categorical_encoders:
+                self.categorical_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
+                    data[columns].to_numpy().reshape(-1)
                 )
-            if self.categoricals_encoders[name] is not None:
-                data[name] = self.categoricals_encoders[name].transform(data[name])
+        # fit non-grouped categories
+        for name in set(self.categoricals + self.group_ids):
+            if name not in self.categorical_groups:
+                if name not in self.categorical_encoders:
+                    self.categorical_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
+                        data[name]
+                    )
+
+        # encode them
+        for name in set(self.categoricals + self.group_ids):
+            data[name] = self.transform_values(name, data[name], inverse=False)
 
         # save special variables
         assert "__time_idx__" not in data.columns, "__time_idx__ is a protected column and must not be present in data"
@@ -488,23 +502,59 @@ class TimeSeriesDataSet(Dataset):
                 else:
                     self.scalers[name] = self.target_normalizer
             if self.scalers[name] is not None and name != self.target:
-                if isinstance(self.scalers[name], GroupNormalizer):
-                    data[name] = self.scalers[name].transform(data[name], data)
-                else:
-                    data[name] = self.scalers[name].transform(data[[name]]).reshape(-1)
+                data[name] = self.transform_values(name, data[name], data=data, inverse=False)
 
         # encode constant values
         self.encoded_constant_fill_strategy = {}
         for name, value in self.constant_fill_strategy.items():
             if name == self.target:
                 self.encoded_constant_fill_strategy["__target__"] = value
-            if name in self.scalers:
-                self.encoded_constant_fill_strategy[name] = self.scalers[name].transform(np.array([[value]]))[0, 0]
-            elif name in self.categoricals_encoders:
-                self.encoded_constant_fill_strategy[name] = self.categoricals_encoders[name].transform([value])[0]
-            else:
-                self.encoded_constant_fill_strategy[name] = value
+            self.encoded_constant_fill_strategy[name] = self.transform_values(
+                name, np.array([value]), data=data, inverse=False
+            )[0]
         return data
+
+    def transform_values(self, name, values, data: pd.DataFrame = None, inverse=False):
+        # grouped categories
+        for encoder_name, columns in self.categorical_groups.items():
+            if name in columns:
+                encoder = self.categorical_encoders[encoder_name]
+                if encoder is None:
+                    return values
+                elif inverse:
+                    return encoder.inverse_transform(values)
+                else:
+                    return encoder.transform(values)
+
+        # remaining categories
+        if name in self.categorical_encoders:
+            encoder = self.categorical_encoders[name]
+            if encoder is None:
+                return values
+            elif inverse:
+                return encoder.inverse_transform(values)
+            else:
+                return encoder.transform(values)
+
+        # reals
+        if name in self.scalers:
+            scaler = self.scalers[name]
+            if scaler is None:
+                return values
+            if inverse:
+                transform = scaler.inverse_transform
+            else:
+                transform = scaler.transform
+            if isinstance(scaler, GroupNormalizer):
+                return transform(values, data)
+            else:
+                if isinstance(values, pd.Series):
+                    values = values.to_frame()
+                else:
+                    values = values.reshape(-1, 1)
+                return transform(values).reshape(-1)
+
+        return values  # fallback
 
     def _data_to_tensors(self, data: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tensor]:
 
@@ -526,7 +576,24 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     def categoricals(self) -> List[str]:
-        return self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
+        categories = []
+        for sublist in (
+            self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
+        ):
+            if not isinstance(sublist, (tuple, list)):
+                sublist = [sublist]
+            categories.extend(sublist)
+        return categories
+
+    @property
+    def categorical_groups(self) -> Dict[str, List[str]]:
+        groups = {}
+        for sublist in (
+            self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
+        ):
+            if isinstance(sublist, (tuple, list)):
+                groups[f"group_{sublist[0]}"] = sublist
+        return groups
 
     @property
     def reals(self) -> List[str]:
@@ -542,7 +609,7 @@ class TimeSeriesDataSet(Dataset):
         kwargs = {
             name: getattr(self, name) for name in inspect.signature(self.__class__).parameters.keys() if name != "data"
         }
-        kwargs["categoricals_encoders"] = self.categoricals_encoders
+        kwargs["categorical_encoders"] = self.categorical_encoders
         kwargs["scalers"] = self.scalers
         return kwargs
 
@@ -658,14 +725,8 @@ class TimeSeriesDataSet(Dataset):
             variable (str): variable whose values should be overwritten.
             target (str, optional): positions to overwrite. One of "decoder", "encoder" or "all". Defaults to "decoder".
         """
-        if variable in self.scalers:
-            values = torch.tensor(self.categorical_encoders[variable].transform(np.asarray(values).reshape(-1, 1)))[
-                :, 0
-            ].squeeze()
-        if variable in self.categoricals_encoders:
-            values = torch.tensor(
-                self.categorical_encoders[variable].transform(np.asarray(values).reshape(-1))
-            ).squeeze()
+        # todo: this does not work if passed scaler is a groupnormalizer because we do not pass "data"
+        values = torch.tensor(self.transform_values(variable, np.asarray(values).reshape(-1), inverse=False)).squeeze()
         assert target in [
             "all",
             "decoder",
@@ -889,7 +950,7 @@ class TimeSeriesDataSet(Dataset):
 
     def get_index(self) -> pd.DataFrame:
         """
-        Index
+        Data index / order in which items are returned in train=False mode by dataloader.
 
         Returns:
             dataframe with time index column for first prediction and group ids
@@ -906,8 +967,7 @@ class TimeSeriesDataSet(Dataset):
         for id in self.group_ids:
             index_data[id] = self.data["groups"][:, self.group_ids.index(id)][self.index.index_start.to_numpy()]
             # decode if possible
-            if id in self.categoricals_encoders:
-                index_data[id] = self.categoricals_encoders[id].inverse_transform(index_data[id])
+            index_data[id] = self.transform_values(id, index_data[id], inverse=True)
         index = pd.DataFrame(index_data, index=self.index.index)
         return index
 
