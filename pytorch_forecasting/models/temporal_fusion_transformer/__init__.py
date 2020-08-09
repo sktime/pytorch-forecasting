@@ -266,9 +266,10 @@ class TemporalFusionTransformer(BaseModel):
 
         # skip connection for lstm
         self.post_lstm_gate_encoder = GLU(self.hparams.hidden_size, dropout=self.hparams.dropout)
-        self.post_lstm_gate_decoder = GLU(self.hparams.hidden_size, dropout=self.hparams.dropout)
-        self.post_lstm_add_norm_encoder = AddNorm(self.hparams.hidden_size)
-        self.post_lstm_add_norm_decoder = AddNorm(self.hparams.hidden_size)
+        self.post_lstm_gate_decoder = self.post_lstm_gate_encoder
+        # self.post_lstm_gate_decoder = GLU(self.hparams.hidden_size, dropout=self.hparams.dropout)
+        self.post_lstm_add_norm_encoder = AddNorm(self.hparams.hidden_size, trainable_add=False)
+        self.post_lstm_add_norm_decoder = AddNorm(self.hparams.hidden_size, trainable_add=False)
 
         # static enrichment and processing past LSTM
         self.static_enrichment = GatedResidualNetwork(
@@ -283,13 +284,17 @@ class TemporalFusionTransformer(BaseModel):
         self.multihead_attn = InterpretableMultiHeadAttention(
             d_model=self.hparams.hidden_size, n_head=self.hparams.attention_head_size, dropout=self.hparams.dropout
         )
-        self.post_attn_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
+        self.post_attn_gate_norm = GateAddNorm(
+            self.hparams.hidden_size, dropout=self.hparams.dropout, trainable_add=False
+        )
         self.pos_wise_ff = GatedResidualNetwork(
             self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.dropout
         )
 
         # output processing
-        self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=self.hparams.dropout)
+        self.pre_output_gate_norm = GateAddNorm(
+            self.hparams.hidden_size, dropout=self.hparams.dropout, trainable_add=False
+        )
 
         self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
 
@@ -333,12 +338,17 @@ class TemporalFusionTransformer(BaseModel):
             )
 
         # embeddings
-        embedding_labels = {name: encoder.classes_ for name, encoder in dataset.categorical_encoders.items()}
+        embedding_labels = {
+            name: encoder.classes_
+            for name, encoder in dataset.categorical_encoders.items()
+            if name in dataset.flat_categoricals
+        }
         embedding_paddings = dataset.dropout_categoricals
         # determine embedding sizes based on heuristic
         embedding_sizes = {
             name: (len(encoder.classes_), get_embedding_size(len(encoder.classes_)))
             for name, encoder in dataset.categorical_encoders.items()
+            if name in dataset.flat_categoricals
         }
         embedding_sizes.update(kwargs.get("embedding_sizes", {}))
         kwargs.setdefault("embedding_sizes", embedding_sizes)
@@ -727,9 +737,12 @@ class TemporalFusionTransformer(BaseModel):
             name: torch.stack([x["interpretation"][name] for x in outputs]).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
-        interpretation["attention"] = interpretation["attention"] / interpretation["encoder_length_histogram"][1:].flip(
-            0
-        ).cumsum(0).clamp(1)
+        # normalize attention with length histogram squared to account for: 1. zeros in attention and
+        # 2. higher attention due to less values
+        attention_occurances = interpretation["encoder_length_histogram"][1:].flip(0).cumsum(0).float()
+        attention_occurances = attention_occurances / attention_occurances.sum()
+        interpretation["attention"] = interpretation["attention"] / attention_occurances.pow(2).clamp(1.0)
+        interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
         # log to tensorboard

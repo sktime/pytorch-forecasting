@@ -219,7 +219,11 @@ class GatedResidualNetwork(nn.Module):
             self.elu2 = nn.ELU()
 
             self.gate_norm = GateAddNorm(
-                input_size=self.hidden_size, skip_size=residual_size, hidden_size=self.output_size, dropout=self.dropout
+                input_size=self.hidden_size,
+                skip_size=residual_size,
+                hidden_size=self.output_size,
+                dropout=self.dropout,
+                trainable_add=False,
             )
 
     def forward(self, x, context=None, residual=None):
@@ -326,7 +330,8 @@ class VariableSelectionNetwork(nn.Module):
             outputs = var_outputs * sparse_weights
             outputs = outputs.mean(axis=-1)
         else:  # for one input, do not perform variable selection but just encoding
-            outputs = self.single_variable_grns[0](embedding)  # fast forward if only one variable
+            name = next(iter(self.single_variable_grns.keys()))
+            outputs = self.single_variable_grns[name](embedding)  # fast forward if only one variable
             sparse_weights = torch.ones(outputs.size(0), outputs.size(1), 1, 1, device=outputs.device)
         return outputs, sparse_weights
 

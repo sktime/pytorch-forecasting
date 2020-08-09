@@ -129,17 +129,22 @@ class MultiHorizonMetric(Metric):
         if losses.ndim > 2:
             mask = mask.unsqueeze(-1)
         # reduce to one number
-        if self.reduction == "mean":
-            losses = losses.masked_fill(mask, 0.0)
-            loss = losses.sum() / lengths.sum()
+        if self.reduction == "none":
+            loss = losses.masked_fill(mask, "nan")
+        else:
+            if self.reduction == "mean":
+                losses = losses.masked_fill(mask, 0.0)
+                loss = losses.sum() / lengths.sum()
+            elif self.reduction == "sqrt-mean":
+                losses = losses.masked_fill(mask, 0.0)
+                loss = losses.sum() / lengths.sum()
+                loss = loss.sqrt()
             assert not torch.isnan(
                 loss
             ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
             assert torch.isfinite(
                 loss
             ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
-        elif self.reduction == "none":
-            loss = losses.masked_fill(mask, "nan")
         return loss
 
 
@@ -252,8 +257,8 @@ class RMSE(MultiHorizonMetric):
     Defined as ``(y_pred - target)**2``
     """
 
-    def __init__(self, name: str = "RMSE", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
+    def __init__(self, name: str = "RMSE", reduction="sqrt-mean", *args, **kwargs):
+        super().__init__(name, *args, reduction=reduction, **kwargs)
 
     def loss(self, y_pred: Dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)

@@ -14,6 +14,7 @@ import abc
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
+from torch import ones
 from torch.distributions import Binomial, Beta
 from torch.nn.utils import rnn
 import torch.nn.functional as F
@@ -209,16 +210,23 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
         else:
             return y_normed
 
-    def get_parameters(self, groups):
+    def get_parameters(self, groups, group_names: List[str] = None):
         if isinstance(groups, torch.Tensor):
             groups = groups.tolist()
         if isinstance(groups, list):
             groups = tuple(groups)
+        if group_names is None:
+            group_names = self.groups
+        else:
+            # filter group names
+            group_names = [name for name in group_names if name in self.groups]
+        assert len(group_names) == len(self.groups), "Passed groups and fitted do not match"
+
         if len(self.groups) == 0:
             return np.asarray(self.norm)
         elif self.scale_by_group:
             norm = np.array([1.0, 1.0])
-            for group, group_name in zip(groups, self.groups):
+            for group, group_name in zip(groups, group_names):
                 try:
                     norm = norm * self.norm[group_name].loc[group].to_numpy()
                 except KeyError:
@@ -296,7 +304,7 @@ class TimeSeriesDataSet(Dataset):
         time_varying_known_reals: List[str] = [],
         time_varying_unknown_categoricals: List[str] = [],
         time_varying_unknown_reals: List[str] = [],
-        variable_groups: Dict[str, List[int]] = [],
+        variable_groups: Dict[str, List[int]] = {},
         dropout_categoricals: List[str] = [],
         add_relative_time_idx: bool = True,
         constant_fill_strategy={},
@@ -696,11 +704,14 @@ class TimeSeriesDataSet(Dataset):
         return df_index
 
     @staticmethod
-    def plot_randomization(betas=()) -> plt.Figure:
-        data = Beta(*betas).sample(1000)
+    def plot_randomization(betas=(0.2, 0.1), length=24, min_length=0) -> Tuple[plt.Figure, torch.Tensor]:
+        probabilities = Beta(betas[0], betas[1]).sample((1000,))
+
+        lengths = ((length - min_length) * probabilities).round() + min_length
+
         fig, ax = plt.subplots()
-        ax.hist(data)
-        return fig
+        ax.hist(lengths)
+        return fig, lengths
 
     def __len__(self) -> int:
         return self.index.shape[0]
@@ -736,7 +747,7 @@ class TimeSeriesDataSet(Dataset):
         time = self.data["time"][index.index_start : index.index_end + 1]
         target = self.data["target"][index.index_start : index.index_end + 1]
         groups = self.data["groups"][index.index_start]
-        target_scale = self.target_normalizer.get_parameters(groups)
+        target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
 
         # fill in missing values (if not all time indices are specified
         sequence_length = len(time)
@@ -791,11 +802,12 @@ class TimeSeriesDataSet(Dataset):
 
         if self.randomize_length is not None:  # randomization improves generalization
             # modify encode and decode lengths
-            encoder_length_probability = Beta(*self.randomize_length).sample()
+            modifiable_encoder_length = encoder_length - self.min_encoder_length
+            encoder_length_probability = Beta(self.randomize_length[0], self.randomize_length[1]).sample()
 
             # subsample a new/smaller encode length
             new_encoder_length = self.min_encoder_length + int(
-                Binomial(encoder_length - self.min_encoder_length, encoder_length_probability).sample()
+                (modifiable_encoder_length * encoder_length_probability).round()
             )
 
             # extend decode length if possible

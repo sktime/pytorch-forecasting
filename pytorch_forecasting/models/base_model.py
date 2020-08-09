@@ -231,7 +231,7 @@ class BaseModel(LightningModule):
         log_interval = self.log_interval(label == "train")
         if (batch_idx % log_interval == 0 or log_interval < 1.0) and log_interval > 0:
             if log_interval < 1.0:  # log multiple steps
-                log_indices = torch.arange(0, len(y_pred), round(log_interval * len(y_pred)))
+                log_indices = torch.arange(0, len(y_pred), max(1, round(log_interval * len(y_pred))))
             else:
                 log_indices = [0]
 
