@@ -357,7 +357,9 @@ class BaseModel(LightningModule):
         # either set a schedule of lrs or find it dynamically
         if isinstance(self.hparams.learning_rate, (list, tuple)):  # set schedule
             lrs = self.hparams.learning_rate
-            optimizer = Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
+            optimizer = torch.optim.Adam(
+                self.parameters(), lr=lrs[0]
+            )  # alternative: Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             schedulers = [
@@ -369,7 +371,9 @@ class BaseModel(LightningModule):
                 }
             ]
         else:  # find schedule based on validation loss
-            optimizer = Ranger(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
+            optimizer = torch.optim.Adam(
+                self.parameters(), lr=self.hparams.learning_rate
+            )  # alternative: Ranger(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
             schedulers = [
                 {
                     "scheduler": ReduceLROnPlateau(

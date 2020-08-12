@@ -523,7 +523,7 @@ class TimeSeriesDataSet(Dataset):
 
     def transform_values(self, name, values, data: pd.DataFrame = None, inverse=False):
         # remaining categories
-        if name in self.flat_categoricals:
+        if name in set(self.flat_categoricals + self.group_ids):
             name = self.variable_to_group_mapping.get(name, name)  # map name to encoder
             encoder = self.categorical_encoders[name]
             if encoder is None:
