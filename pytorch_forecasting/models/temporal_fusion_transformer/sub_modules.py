@@ -181,7 +181,7 @@ class GateAddNorm(nn.Module):
         input_size: int,
         hidden_size: int = None,
         skip_size: int = None,
-        trainable_add: bool = False,  # alternative: True
+        trainable_add: bool = False,
         dropout: float = None,
     ):
         super().__init__()
@@ -327,16 +327,16 @@ class VariableSelectionNetwork(nn.Module):
                 #     input_size, self.hidden_size, bias=False
                 # )  # alternative: ResampleNorm
             else:
-                if name in prescalers:
-                    self.prescalers[name] = prescalers[name]
-                else:
-                    self.prescalers[name] = nn.Linear(1, input_size)  # reals need to be first scaled up
                 self.single_variable_grns[name] = GatedResidualNetwork(
                     input_size,
                     self.hidden_size,  # alternative: min(input_size, self.hidden_size),
                     output_size=self.hidden_size,
                     dropout=self.dropout,
                 )
+            if name in prescalers:  # reals need to be first scaled up
+                self.prescalers[name] = prescalers[name]
+            elif not self.input_embedding_flags.get(name, False):
+                self.prescalers[name] = nn.Linear(1, input_size)
 
         self.softmax = nn.Softmax(dim=-1)
 

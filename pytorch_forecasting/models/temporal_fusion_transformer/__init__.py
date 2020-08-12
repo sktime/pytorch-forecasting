@@ -187,15 +187,15 @@ class TemporalFusionTransformer(BaseModel):
         if self.hparams.share_single_variable_networks:
             self.shared_single_variable_grns = nn.ModuleDict()
             for name, input_size in encoder_input_sizes.items():
-                self.single_variable_grns[name] = GatedResidualNetwork(
+                self.shared_single_variable_grns[name] = GatedResidualNetwork(
                     input_size,
                     min(input_size, self.hparams.hidden_size),
                     self.hparams.hidden_size,
                     self.hparams.dropout,
                 )
             for name, input_size in decoder_input_sizes.items():
-                if name not in self.single_variable_grns:
-                    self.single_variable_grns[name] = GatedResidualNetwork(
+                if name not in self.shared_single_variable_grns:
+                    self.shared_single_variable_grns[name] = GatedResidualNetwork(
                         input_size,
                         min(input_size, self.hparams.hidden_size),
                         self.hparams.hidden_size,
@@ -276,9 +276,9 @@ class TemporalFusionTransformer(BaseModel):
         # skip connection for lstm
         self.post_lstm_gate_encoder = GatedLinearUnit(self.hparams.hidden_size, dropout=self.hparams.dropout)
         self.post_lstm_gate_decoder = self.post_lstm_gate_encoder
-        # self.post_lstm_gate_decoder = GatedLinearUnit(self.hparams.hidden_size, dropout=self.hparams.dropout)  # alternative
+        # self.post_lstm_gate_decoder = GatedLinearUnit(self.hparams.hidden_size, dropout=self.hparams.dropout)
         self.post_lstm_add_norm_encoder = AddNorm(self.hparams.hidden_size, trainable_add=False)
-        # self.post_lstm_add_norm_decoder = AddNorm(self.hparams.hidden_size, trainable_add=False)  # alternative
+        # self.post_lstm_add_norm_decoder = AddNorm(self.hparams.hidden_size, trainable_add=True)
         self.post_lstm_add_norm_decoder = self.post_lstm_add_norm_encoder
 
         # static enrichment and processing past LSTM
@@ -349,14 +349,14 @@ class TemporalFusionTransformer(BaseModel):
         embedding_labels = {
             name: encoder.classes_
             for name, encoder in dataset.categorical_encoders.items()
-            if name in dataset.flat_categoricals
+            if name in dataset.categoricals
         }
         embedding_paddings = dataset.dropout_categoricals
         # determine embedding sizes based on heuristic
         embedding_sizes = {
             name: (len(encoder.classes_), get_embedding_size(len(encoder.classes_)))
             for name, encoder in dataset.categorical_encoders.items()
-            if name in dataset.flat_categoricals
+            if name in dataset.categoricals
         }
         embedding_sizes.update(kwargs.get("embedding_sizes", {}))
         kwargs.setdefault("embedding_sizes", embedding_sizes)

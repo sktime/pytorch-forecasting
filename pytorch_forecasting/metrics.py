@@ -22,7 +22,7 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
 
     def __init__(self, name: str, quantiles: List[float] = [0.5], reduction="mean"):
         self.quantiles = quantiles
-        self.reduction = "mean"
+        self.reduction = reduction
         super().__init__(name)
 
     @abstractmethod

@@ -71,6 +71,7 @@ class BaseModel(LightningModule):
         weight_decay: float = 0.0,
         monotone_constaints: Dict[str, int] = {},
         output_transformer: Callable = None,
+        optimizer="ranger",
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -95,6 +96,7 @@ class BaseModel(LightningModule):
                 This constraint significantly slows down training. Defaults to {}.
             output_transformer (Callable): transformer that takes network output and transforms it to prediction space. 
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
+            optimizer (str): optimizer
         """
         super().__init__()
         # update hparams
@@ -357,9 +359,12 @@ class BaseModel(LightningModule):
         # either set a schedule of lrs or find it dynamically
         if isinstance(self.hparams.learning_rate, (list, tuple)):  # set schedule
             lrs = self.hparams.learning_rate
-            optimizer = torch.optim.Adam(
-                self.parameters(), lr=lrs[0]
-            )  # alternative: Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
+            if self.hparams.optimizer == "adam":
+                optimizer = torch.optim.Adam(self.parameters(), lr=lrs[0])
+            elif self.hparams.optimizer == "ranger":
+                optimizer = Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
+            else:
+                raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             schedulers = [
@@ -371,9 +376,14 @@ class BaseModel(LightningModule):
                 }
             ]
         else:  # find schedule based on validation loss
-            optimizer = torch.optim.Adam(
-                self.parameters(), lr=self.hparams.learning_rate
-            )  # alternative: Ranger(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
+            if self.hparams.optimizer == "adam":
+                optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+            elif self.hparams.optimizer == "ranger":
+                optimizer = Ranger(
+                    self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay
+                )
+            else:
+                raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
             schedulers = [
                 {
                     "scheduler": ReduceLROnPlateau(
