@@ -291,11 +291,11 @@ class VariableSelectionNetwork(nn.Module):
         self.dropout = dropout
         self.context_size = context_size
 
-        if self.num_inputs > 1 or True:  # alternative: > 1 only
+        if self.num_inputs > 1:
             if self.context_size is not None:
                 self.flattened_grn = GatedResidualNetwork(
                     self.input_size_total,
-                    self.hidden_size,  # alternative: min(self.hidden_size, self.num_inputs),
+                    min(self.hidden_size, self.num_inputs),
                     self.num_inputs,
                     self.dropout,
                     self.context_size,
@@ -304,7 +304,7 @@ class VariableSelectionNetwork(nn.Module):
             else:
                 self.flattened_grn = GatedResidualNetwork(
                     self.input_size_total,
-                    self.hidden_size,  # alternative: min(self.hidden_size, self.num_inputs),
+                    min(self.hidden_size, self.num_inputs),
                     self.num_inputs,
                     self.dropout,
                     residual=False,
@@ -317,21 +317,14 @@ class VariableSelectionNetwork(nn.Module):
                 self.single_variable_grns[name] = single_variable_grns[name]
             elif self.input_embedding_flags.get(name, False):
                 self.single_variable_grns[name] = GatedResidualNetwork(
-                    input_size,
-                    self.hidden_size,  # alternative: min(input_size, self.hidden_size),
-                    output_size=self.hidden_size,
-                    dropout=self.dropout,
+                    input_size, min(input_size, self.hidden_size), output_size=self.hidden_size, dropout=self.dropout,
                 )
-                # alternative
-                # self.single_variable_grns[name] = nn.Linear(
-                #     input_size, self.hidden_size, bias=False
-                # )  # alternative: ResampleNorm
+                self.single_variable_grns[name] = nn.Linear(
+                    input_size, self.hidden_size, bias=False
+                )  # alternative: ResampleNorm
             else:
                 self.single_variable_grns[name] = GatedResidualNetwork(
-                    input_size,
-                    self.hidden_size,  # alternative: min(input_size, self.hidden_size),
-                    output_size=self.hidden_size,
-                    dropout=self.dropout,
+                    input_size, min(input_size, self.hidden_size), output_size=self.hidden_size, dropout=self.dropout,
                 )
             if name in prescalers:  # reals need to be first scaled up
                 self.prescalers[name] = prescalers[name]
