@@ -170,7 +170,13 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, y):
-        return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
+        if self.log_scale:
+            y = (y + self.log_zero_value + self.eps).log()
+        if self.center:
+            y = (y / (self.center + self.eps) - 1) / (self.scale + self.eps)
+        else:
+            y = y / (self.center + self.eps)
+        return y
 
     def __call__(self, data: Dict[str, torch.Tensor]):
         # inverse transformation with tensors
@@ -580,44 +586,44 @@ class TimeSeriesDataSet(Dataset):
             data["__weight__"] = data[self.weight]
 
         # train target normalizer
-        if isinstance(self.target_normalizer, str) and self.target_normalizer == "groups":
-            self.target_normalizer = GroupNormalizer(groups=self.group_ids)
-        if isinstance(self.target_normalizer, GroupNormalizer):
-            try:
-                check_is_fitted(self.target_normalizer)
-            except NotFittedError:
-                self.target_normalizer.fit(data[self.target], data)
-            if self.add_target_scales:
-                data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+        if self.target_normalizer is not None:
+            if isinstance(self.target_normalizer, str) and self.target_normalizer == "groups":
+                self.target_normalizer = GroupNormalizer(groups=self.group_ids)
+            if isinstance(self.target_normalizer, GroupNormalizer):
+                try:
+                    check_is_fitted(self.target_normalizer)
+                except NotFittedError:
+                    self.target_normalizer.fit(data[self.target], data)
+                if self.add_target_scales:
+                    data[self.target], scales = self.target_normalizer.transform(
+                        data[self.target], data, return_norm=True
+                    )
+                    for idx, name in enumerate(["center", "scale"]):
+                        feature_name = f"{self.target}_{name}"
+                        assert (
+                            feature_name not in data.columns
+                        ), f"{feature_name} is a protected column and must not be present in data"
+                        data[feature_name] = scales[:, idx].squeeze()
+                        if feature_name not in self.reals:
+                            self.static_reals.append(feature_name)
+                else:
+                    data[self.target] = self.target_normalizer.transform(data[self.target], data)
+            elif self.add_target_scales and isinstance(self.target_normalizer, TorchNormalizer):
                 for idx, name in enumerate(["center", "scale"]):
                     feature_name = f"{self.target}_{name}"
                     assert (
                         feature_name not in data.columns
                     ), f"{feature_name} is a protected column and must not be present in data"
-                    data[feature_name] = scales[:, idx].squeeze()
                     if feature_name not in self.reals:
                         self.static_reals.append(feature_name)
-            else:
-                data[self.target] = self.target_normalizer.transform(data[self.target], data)
-        elif self.add_target_scales and isinstance(self.target_normalizer, TorchNormalizer):
-            for idx, name in enumerate(["center", "scale"]):
-                feature_name = f"{self.target}_{name}"
-                assert (
-                    feature_name not in data.columns
-                ), f"{feature_name} is a protected column and must not be present in data"
-                if feature_name not in self.reals:
-                    self.static_reals.append(feature_name)
-                # initialize values that will be overwritten in __getitem__() but that need to be approximate correct for scaling them
-                if name == "center":
-                    data[feature_name] = data.groupby(self.group_ids, observed=True)[self.target].mean()
-                else:
-                    data[feature_name] = (
-                        data.assign(
-                            __ynormed__=data[self.target] / (data[f"{self.target}_center"] + self.target_normalizer.eps)
-                        )
-                        .groupby(self.group_ids, observed=True)["__ynormed__"]
-                        .std()
-                    )
+                    # initialize values that will be overwritten in __getitem__() but that need to be approximate
+                    # correct for scaling them
+                    if name == "center":
+                        data[feature_name] = data.groupby(self.group_ids, observed=True)[self.target].transform("mean")
+                    else:
+                        data[feature_name] = (
+                            data.groupby(self.group_ids, observed=True)[self.target].transform("std")
+                        ) / (data[f"{self.target}_center"] + self.target_normalizer.eps)
 
         # rescale continuous variables apart from target
         for name in self.reals:
@@ -954,16 +960,14 @@ class TimeSeriesDataSet(Dataset):
             )
 
         # rescale target
-        if not isinstance(self.target_normalizer, GroupNormalizer):
+        if self.target_normalizer is not None and not isinstance(self.target_normalizer, GroupNormalizer):
             # fit and transform
             self.target_normalizer.fit(target[:encoder_length])
             # get new scale
             target_scale = self.target_normalizer.get_parameters()
             # modify input data
             if self.target in self.reals:
-                data_cont[:, self.reals.index(self.target)] = self.target_normalizer.transform(
-                    data_cont[:, self.reals.index(self.target)]
-                )
+                data_cont[:, self.reals.index(self.target)] = self.target_normalizer.transform(target)
             if self.add_target_scales:
                 data_cont[:, self.reals.index(f"{self.target}_center")] = self.transform_values(
                     f"{self.target}_center", target_scale[0]
