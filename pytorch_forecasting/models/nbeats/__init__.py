@@ -29,7 +29,7 @@ class NBeats(BaseModel):
         log_gradient_flow: bool = False,
         log_val_interval: int = None,
         weight_decay: float = 1e-3,
-        loss=SMAPE(log_space=False),
+        loss=SMAPE(),
         reduce_on_plateau_patience: int = 1000,
     ):
         """

@@ -1,5 +1,7 @@
 from abc import abstractmethod
-from typing import List, Union
+from typing import Dict, List, Union
+
+from sklearn.base import BaseEstimator
 
 import torch
 from torch import nn
@@ -18,11 +20,9 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
     Other metrics should inherit from this base class
     """
 
-    def __init__(
-        self, name: str, log_space: bool = False, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
-    ):
-        self.log_space = log_space
+    def __init__(self, name: str, quantiles: List[float] = [0.5], reduction="mean"):
         self.quantiles = quantiles
+        self.reduction = reduction
         super().__init__(name)
 
     @abstractmethod
@@ -41,33 +41,34 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
         """
         pass
 
-    def to_prediction(self, out: torch.Tensor) -> torch.Tensor:
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
 
         Args:
-            out (torch.Tensor): output of network
+            y_pred: prediction output of network
 
         Returns:
             torch.Tensor: point prediction
         """
-        if self.log_space:
-            out = out.exp()
-        return out
+        if y_pred.ndim == 3:
+            idx = self.quantiles.index(0.5)
+            y_pred = y_pred[..., idx]
+        return y_pred
 
-    def to_quantiles(self, out: torch.Tensor) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
         Args:
-            out (torch.Tensor): output of network
+            y_pred: prediction output of network
 
         Returns:
             torch.Tensor: prediction quantiles
         """
-        if self.log_space:
-            out = out.exp()
-        return out.unsqueeze(1)
+        if y_pred.ndim == 2:
+            y_pred = y_pred.unsqueeze(-1)
+        return y_pred
 
 
 class MultiHorizonMetric(Metric):
@@ -75,22 +76,8 @@ class MultiHorizonMetric(Metric):
     Abstract class for defining metric for a multihorizon forecast
     """
 
-    def __init__(self, name="loss", cummulative=False, *args, **kwargs):
-        """
-        Initialize multi-horizon loss
-
-        Args:
-            cummulative: if loss should be calculated cummulatively, i.e.
-                if false, the quantiles hold true for individual predictions but
-                if true, the quantiles hold true if the predictions are cummulatively
-                summed. This is useful if total quantities over the prediction horizon
-                are supposed to be predicted.
-        """
-        super().__init__(name, *args, **kwargs)
-        self.cummulative = cummulative
-
     @abc.abstractmethod
-    def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
         """
         Calculate loss without reduction. Override in derived classes
 
@@ -103,14 +90,14 @@ class MultiHorizonMetric(Metric):
         """
         pass
 
-    def forward(self, y_pred: torch.Tensor, target: Union[torch.Tensor, rnn.PackedSequence]) -> torch.Tensor:
+    def forward(self, y_pred: Dict[str, torch.Tensor], target: Union[torch.Tensor, rnn.PackedSequence]) -> torch.Tensor:
         """
         Forward method of metric that handles masking of values.
 
         Do not override this method but :py:ref:`~loss` instead
 
         Args:
-            y_pred (torch.Tensor): network output
+            y_pred (Dict[str, torch.Tensor]): network output
             target (Union[torch.Tensor, rnn.PackedSequence]): actual values
 
         Returns:
@@ -124,7 +111,6 @@ class MultiHorizonMetric(Metric):
         else:
             lengths = torch.LongTensor([target.size(1)], device=target.device).expand(target.size(0))
         assert not target.requires_grad
-        assert y_pred.size(0) == target.size(0)
 
         # calculate loss with "none" reduction
         if target.ndim == 3:
@@ -132,18 +118,6 @@ class MultiHorizonMetric(Metric):
             target = target[..., 0]
         else:
             weight = None
-
-        # prepare for cummulative
-        if self.cummulative:
-            if self.log_space:
-                y_pred = y_pred.exp().cumsum(dim=-2).log()
-            else:
-                y_pred = y_pred.cumsum(dim=-2)
-            target = (target.cumsum(dim=-1) + 1e-8).log()
-        else:
-            # transform prediction into normal space
-            if self.log_space:
-                y_pred = y_pred.exp()
 
         losses = self.loss(y_pred, target)
         # weight samples
@@ -154,16 +128,23 @@ class MultiHorizonMetric(Metric):
         mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
         if losses.ndim > 2:
             mask = mask.unsqueeze(-1)
-        losses = losses.masked_fill(mask, 0.0)
-
         # reduce to one number
-        loss = losses.sum() / lengths.sum()
-        assert not torch.isnan(
-            loss
-        ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
-        assert torch.isfinite(
-            loss
-        ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
+        if self.reduction == "none":
+            loss = losses.masked_fill(mask, "nan")
+        else:
+            if self.reduction == "mean":
+                losses = losses.masked_fill(mask, 0.0)
+                loss = losses.sum() / lengths.sum()
+            elif self.reduction == "sqrt-mean":
+                losses = losses.masked_fill(mask, 0.0)
+                loss = losses.sum() / lengths.sum()
+                loss = loss.sqrt()
+            assert not torch.isnan(
+                loss
+            ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
+            assert torch.isfinite(
+                loss
+            ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
         return loss
 
 
@@ -175,19 +156,19 @@ class PoissonLoss(MultiHorizonMetric):
     def __init__(self, name: str = "poisson_loss", *args, **kwargs):
         return super().__init__(name, *args, **kwargs)
 
-    def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        if y_pred.ndim == 3:
-            y_pred = y_pred.squeeze(2)
-        return F.poisson_nll_loss(y_pred, target, log_input=True, full=False, eps=1e-6, reduction="none")
+    def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
+        return F.poisson_nll_loss(
+            super().to_prediction(y_pred), target, log_input=True, full=False, eps=1e-6, reduction="none"
+        )
 
-    def to_prediction(self, out):
-        rate = torch.exp(out[..., 0])
+    def to_prediction(self, out: Dict[str, torch.Tensor]):
+        rate = torch.exp(super().to_prediction(out))
         return rate
 
-    def to_quantiles(self, out, quantiles=None):
+    def to_quantiles(self, out: Dict[str, torch.Tensor], quantiles=None):
         if quantiles is None:
             quantiles = self.quantiles
-        return scipy.stats.poisson(self.to_prediction(out).unsqueeze(-1)).ppf(quantiles)
+        return scipy.stats.poisson(super().to_prediction(out)).ppf(quantiles)
 
 
 class QuantileLoss(MultiHorizonMetric):
@@ -201,8 +182,6 @@ class QuantileLoss(MultiHorizonMetric):
         self,
         name: str = "quantile_loss",
         quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
-        log_space: bool = None,
-        cummulative=False,
         *args,
         **kwargs
     ):
@@ -211,14 +190,8 @@ class QuantileLoss(MultiHorizonMetric):
 
         Args:
             name: name of metric
-            log_space: if model should be estimated in log
-            cummulative: if loss should be calculated cummulatively, i.e.
-                if false, the quantiles hold true for individual predictions but
-                if true, the quantiles hold true if the predictions are cummulatively
-                summed. This is useful if total quantities over the prediction horizon
-                are supposed to be predicted.
         """
-        super().__init__(name, log_space=log_space, quantiles=quantiles, cummulative=cummulative, *args, **kwargs)
+        super().__init__(name, quantiles=quantiles, *args, **kwargs)
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         # calculate quantile loss
@@ -229,17 +202,6 @@ class QuantileLoss(MultiHorizonMetric):
         losses = torch.cat(losses, dim=2)
 
         return losses
-
-    def to_quantiles(self, out):
-        if self.log_space:
-            out = out.exp()
-        return out
-
-    def to_prediction(self, out):
-        pred = out[..., self.quantiles.index(0.5)]
-        if self.log_space:
-            pred = pred.exp()
-        return pred
 
 
 class SMAPE(MultiHorizonMetric):
@@ -253,8 +215,7 @@ class SMAPE(MultiHorizonMetric):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
-        if y_pred.ndim == 3:
-            y_pred = y_pred.squeeze(2)
+        y_pred = self.to_prediction(y_pred)
         loss = 2 * (y_pred - target).abs() / (y_pred.abs() + target.abs() + 1e-8)
         return loss
 
@@ -270,9 +231,7 @@ class MAPE(MultiHorizonMetric):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
-        if y_pred.ndim == 3:
-            y_pred = y_pred.squeeze(2)
-        loss = (y_pred - target).abs() / (target.abs() + 1e-8)
+        loss = (self.to_prediction(y_pred) - target).abs() / (target.abs() + 1e-8)
         return loss
 
 
@@ -287,9 +246,7 @@ class MAE(MultiHorizonMetric):
         super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
-        if y_pred.ndim == 3:
-            y_pred = y_pred.squeeze(2)
-        loss = (y_pred - target).abs()
+        loss = (self.to_prediction(y_pred) - target).abs()
         return loss
 
 
@@ -300,11 +257,10 @@ class RMSE(MultiHorizonMetric):
     Defined as ``(y_pred - target)**2``
     """
 
-    def __init__(self, name: str = "RMSE", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
+    def __init__(self, name: str = "RMSE", reduction="sqrt-mean", *args, **kwargs):
+        super().__init__(name, *args, reduction=reduction, **kwargs)
 
-    def loss(self, y_pred, target):
-        if y_pred.ndim == 3:
-            y_pred = y_pred.squeeze(2)
-        loss = torch.pow(y_pred - target, 2)
+    def loss(self, y_pred: Dict[str, torch.Tensor], target):
+        loss = torch.pow(self.to_prediction(y_pred) - target, 2)
         return loss
+

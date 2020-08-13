@@ -38,14 +38,15 @@ repository = "https://github.com/jdb78/pytorch_forecasting"
 [tool.poetry.dependencies]
 python= "^3.7"
 
-torch = "^1.5"
+torch = "^1.6"
 pytorch_lightning = "^0.8"
-optuna = "^1.5.0"
+optuna = "^2.0.0"
 scipy = "*"
 pandas = "^1.0.3"
 scikit-learn = "^0.23"
 pytorch_ranger = "*"
 matplotlib = "*"
+cloudpickle = "*"
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
