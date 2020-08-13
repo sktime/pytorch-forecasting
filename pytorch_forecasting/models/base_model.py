@@ -199,7 +199,7 @@ class BaseModel(LightningModule):
         if label == "train":
             log["loss"] = loss
         if self.log_interval(label == "train") > 0:
-            self._log_prediction(x, y_hat_detached, batch_idx, label=label)
+            self._log_prediction(x, out, batch_idx, label=label)
         return log, out
 
     def epoch_end(self, outputs, label="train"):
@@ -228,30 +228,18 @@ class BaseModel(LightningModule):
         else:
             return self.hparams.log_val_interval
 
-    def _log_prediction(self, x, y_pred, batch_idx, label="train"):
+    def _log_prediction(self, x, out, batch_idx, label="train"):
         # log single prediction figure
         log_interval = self.log_interval(label == "train")
         if (batch_idx % log_interval == 0 or log_interval < 1.0) and log_interval > 0:
             if log_interval < 1.0:  # log multiple steps
-                log_indices = torch.arange(0, len(y_pred), max(1, round(log_interval * len(y_pred))))
+                log_indices = torch.arange(
+                    0, len(x["encoder_lengths"]), max(1, round(log_interval * len(x["encoder_lengths"])))
+                )
             else:
                 log_indices = [0]
-
             for idx in log_indices:
-                # all true values for y of the first sample in batch
-                y_all = torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]])
-                if y_all.ndim == 2:  # timesteps, (target, weight), i.e. weight is included
-                    y_all = y_all[:, 0]
-                max_encoder_length = x["encoder_lengths"].max()
-                fig = self.plot_prediction(
-                    torch.cat(
-                        (
-                            y_all[: x["encoder_lengths"][0]],
-                            y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][0])],
-                        ),
-                    ),
-                    y_pred[idx, : x["decoder_lengths"][0]].detach(),
-                )  # first in batch
+                fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True)
                 tag = f"{label.capitalize()} prediction"
                 if label == "train":
                     tag += f" of item {idx} in global batch {self.global_step}"
@@ -261,25 +249,43 @@ class BaseModel(LightningModule):
                     tag, fig, global_step=self.global_step,
                 )
 
-    def plot_prediction(self, y: torch.Tensor, y_hat: torch.Tensor, add_loss_to_title: bool = True) -> plt.Figure:
+    def plot_prediction(
+        self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], idx: int = 0, add_loss_to_title: bool = False
+    ) -> plt.Figure:
         """
         Plot prediction of prediction vs actuals
 
         Args:
-            y: all actual values
-            y_hat: predictions
-            add_loss_to_title: if to add loss to title. Default to True.
+            x: network input
+            out: network output
+            idx: index of prediction to plot
+            add_loss_to_title: if to add loss to title. Default to False.
 
         Returns:
             matplotlib figure
         """
+        # all true values for y of the first sample in batch
+        y_all = torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]])
+        if y_all.ndim == 2:  # timesteps, (target, weight), i.e. weight is included
+            y_all = y_all[:, 0]
+        max_encoder_length = x["encoder_lengths"].max()
+        y = torch.cat(
+            (
+                y_all[: x["encoder_lengths"][0]],
+                y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][0])],
+            ),
+        )
+        # get predictions
+        y_pred = out["prediction"].detach().cpu()
+        y_hat = y_pred[idx, : x["decoder_lengths"][0]]
+
         # move to cpu
         y = y.detach().cpu()
         # create figure
         fig, ax = plt.subplots()
         n_pred = y_hat.shape[0]
-        x_obs = np.arange(y.shape[0] - n_pred)
-        x_pred = np.arange(y.shape[0] - n_pred, y.shape[0])
+        x_obs = np.arange(-(y.shape[0] - n_pred), 0)
+        x_pred = np.arange(n_pred)
         prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
         obs_color = next(prop_cycle)["color"]
         pred_color = next(prop_cycle)["color"]
@@ -361,6 +367,8 @@ class BaseModel(LightningModule):
             lrs = self.hparams.learning_rate
             if self.hparams.optimizer == "adam":
                 optimizer = torch.optim.Adam(self.parameters(), lr=lrs[0])
+            elif self.hparams.optimizer == "adamw":
+                optimizer = torch.optim.AdamW(self.parameters(), lr=lrs[0])
             elif self.hparams.optimizer == "ranger":
                 optimizer = Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
             else:
@@ -382,6 +390,8 @@ class BaseModel(LightningModule):
                 optimizer = Ranger(
                     self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay
                 )
+            elif self.hparams.optimizer == "adamw":
+                optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.learning_rate)
             else:
                 raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
             schedulers = [

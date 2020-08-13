@@ -7,15 +7,22 @@ def get_stallion_data():
     return pd.read_parquet(Path(__file__).joinpath("../stallion.parquet").resolve())
 
 
+def get_volatility_data():
+    return pd.read_parquet(Path(__file__).joinpath("../volatility.parquet").resolve())
+
+
 def generate_ar_data(
     n_series: int = 10,
     timesteps: int = 400,
     seasonality: float = 3.0,
-    noise: float = 0.0,
+    trend: float = 3.0,
+    noise: float = 0.1,
     level: float = 1.0,
     exp: bool = False,
+    seed: int = 213,
 ):
     # sample parameters
+    np.random.seed(seed)
     linear_trends = np.random.normal(size=n_series)[:, None] / timesteps
     quadratic_trends = np.random.normal(size=n_series)[:, None] / timesteps ** 2
     seasonalities = np.random.normal(size=n_series)[:, None]
@@ -23,7 +30,7 @@ def generate_ar_data(
 
     # generate series
     x = np.arange(timesteps)[None, :]
-    series = (x * linear_trends + x ** 2 * quadratic_trends) + seasonalities * np.sin(
+    series = (x * linear_trends + x ** 2 * quadratic_trends) * trend + seasonalities * np.sin(
         2 * np.pi * seasonality * x / timesteps
     )
     # add noise

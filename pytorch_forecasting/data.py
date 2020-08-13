@@ -8,11 +8,16 @@ import warnings
 from copy import deepcopy
 import inspect
 from typing import Callable, Union, Dict, List, Tuple, Any
+
 import matplotlib.pyplot as plt
 import pandas as pd
-import abc
 import numpy as np
+
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_is_fitted
+from sklearn.exceptions import NotFittedError
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
 import torch
 from torch import ones
 from torch.distributions import Binomial, Beta
@@ -20,22 +25,23 @@ from torch.nn.utils import rnn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-
 
 class NaNLabelEncoder(LabelEncoder):
     """
     Labelencoder that can optionally always encode nan as class 0
     """
 
-    def __init__(self, add_nan: bool = False):
+    def __init__(self, add_nan: bool = False, warn: bool = True):
         """
         init NaNLabelEncoder
 
         Args:
             add_nan: if to force encoding of nan at 0
+            warn: if to warn if additional nans are added because items are unknown
         """
         self.add_nan = add_nan
+        self.warn = warn
+        super().__init__()
 
     def fit_transform(self, y):
         if self.add_nan:
@@ -64,11 +70,135 @@ class NaNLabelEncoder(LabelEncoder):
 
     def transform(self, y):
         if self.add_nan:
+            if self.is_numeric(y):
+                nan = np.nan
+            else:
+                nan = "nan"
+            cond = ~y.isin(self.classes_)
+
+            if cond.any():
+                y[cond] = nan
+                if self.warn:
+                    warnings.warn(f"Found {y[cond].nunique()} unknown classes which were set to NaN", UserWarning)
+
             y = self.encode_nans(y)
+
         return super().transform(y)
 
 
-class GroupNormalizer(BaseEstimator, TransformerMixin):
+class TorchNormalizer(BaseEstimator, TransformerMixin):
+    """
+    Basic target transformer
+
+    Args:
+        BaseEstimator ([type]): [description]
+        TransformerMixin ([type]): [description]
+    """
+
+    def __init__(
+        self,
+        method: str = "standard",
+        center: bool = True,
+        log_scale: Union[bool, float] = False,
+        log_zero_value: float = 0.0,
+        coerce_positive: Union[float, bool] = None,
+        eps: float = 1e-8,
+    ):
+        """
+        Initialize TorchNormalizer
+
+        Args:
+            method (str, optional): method to rescale series. Either "standard" (standard scaling) or "robust"
+                (scale using quantiles 0.25-0.75). Defaults to "standard".
+            center (bool, optional): If to center the output to zero. Defaults to True.
+            log_scale (bool, optional): If to take log of values. Defaults to False. Defaults to False.
+            log_zero_value (float, optional): Value to map 0 to for ``log_scale=True`` or in softplus. Defaults to 0.0
+            coerce_positive (Union[bool, float, str], optional): If to coerce output to positive. Valid values:
+                * None, i.e. is automatically determined and might change to True if all values are >= 0 (Default).
+                * True, i.e. output is clamped at 0.
+                * False, i.e. values are not coerced
+                * float, i.e. softmax is applied with beta = coerce_positive.
+            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8.
+        """
+        self.method = method
+        assert method in ["standard", "robust"], f"method has invalid value {method}"
+        self.center = center
+        self.eps = eps
+
+        # set log scale
+        self.log_zero_value = np.exp(log_zero_value)
+        self.log_scale = log_scale
+
+        # check if coerce positive should be determined automatically
+        if coerce_positive is None:
+            if log_scale:
+                coerce_positive = False
+        else:
+            assert not (self.log_scale and self.coerce_positive), (
+                "log scale means that output is transformed to a positive number by default while coercing positive"
+                " will apply softmax function - decide for either one or the other"
+            )
+        self.coerce_positive = coerce_positive
+        self.center, self.scale = 0.0, 1.0
+
+    def get_parameters(self, *args, **kwargs):
+        return torch.tensor([self.center, self.scale])
+
+    def _preprocess_y(self, y):
+        if self.coerce_positive is None and not self.log_scale:
+            self.coerce_positive = (y >= 0).all()
+
+        if self.log_scale:
+            if isinstance(y, torch.Tensor):
+                y = torch.log(y + self.log_zero_value)
+            else:
+                y = np.log(y + self.log_zero_value)
+        return y
+
+    def fit(self, y):
+        y = self._preprocess_y(y)
+
+        if self.method == "standard":
+            self.center = torch.mean(y)
+            self.scale = torch.std(y) / (self.center + self.eps)
+
+        elif self.method == "robust":
+            self.center = torch.median(y)
+            q_75 = y.kthvalue(int(len(y) * 0.75)).values
+            q_25 = y.kthvalue(int(len(y) * 0.25)).values
+            self.scale = (q_75 - q_25) / (self.center + self.eps) / 2.0
+        return self
+
+    def transform(self, y):
+        return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
+
+    def __call__(self, data: Dict[str, torch.Tensor]):
+        # inverse transformation with tensors
+        norm = data["target_scale"]
+
+        # use correct shape for norm
+        if data["prediction"].ndim > 1:
+            norm = norm.unsqueeze(-1)
+
+        # transform
+        if self.center:
+            y_normed = (data["prediction"] * norm[:, 1, None] + 1) * norm[:, 0, None]
+        else:
+            y_normed = data["prediction"] * norm[:, 0, None]
+        if self.log_scale:
+            y_normed = (y_normed.exp() - self.log_zero_value).clamp_min(0.0)
+        elif isinstance(self.coerce_positive, bool) and self.coerce_positive:
+            y_normed = y_normed.clamp_min(0.0)
+        elif isinstance(self.coerce_positive, float):
+            y_normed = F.softplus(y_normed, beta=float(self.coerce_positive))
+
+        # return correct shape
+        if data["prediction"].ndim == 1 and y_normed.ndim > 1:
+            y_normed = y_normed.squeeze(0)
+        return y_normed
+
+
+class GroupNormalizer(TorchNormalizer):
     # todo: allow window (exp weighted), different methods such as quantile for robust scaling
     def __init__(
         self,
@@ -100,35 +230,16 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
                 * float, i.e. softmax is applied with beta = coerce_positive.
             eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8.
         """
-        self.method = method
-        assert method in ["standard", "robust"], f"method has invalid value {method}"
         self.groups = groups
-        self.center = center
         self.scale_by_group = scale_by_group
-        self.eps = eps
-
-        # set log scale
-        self.log_zero_value = np.exp(log_zero_value)
-        self.log_scale = log_scale
-
-        # check if coerce positive should be determined automatically
-        if coerce_positive is None:
-            if log_scale:
-                coerce_positive = False
-        else:
-            assert not (self.log_scale and self.coerce_positive), (
-                "log scale means that output is transformed to a positive number by default while coercing positive"
-                " will apply softmax function - decide for either one or the other"
-            )
-        self.coerce_positive = coerce_positive
-
-    def _preprocess_y(self, y):
-        if self.coerce_positive is None and not self.log_scale:
-            self.coerce_positive = (y >= 0).all()
-
-        if self.log_scale:
-            y = np.log(y + self.log_zero_value)
-        return y
+        super().__init__(
+            method=method,
+            center=center,
+            log_scale=log_scale,
+            log_zero_value=log_zero_value,
+            coerce_positive=coerce_positive,
+            eps=eps,
+        )
 
     def fit(self, y, X):
         y = self._preprocess_y(y)
@@ -185,7 +296,7 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
                     .unstack(-1)
                     .assign(
                         median=lambda x: x[0.5] + self.eps,
-                        scale=lambda x: (x[0.75] - x[0.25] + self.eps) / (x[0.5] + self.eps),
+                        scale=lambda x: (x[0.75] - x[0.25] + self.eps) / (x[0.5] + self.eps) / 2.0,
                     )[["median", "scale"]]
                 )
             self._missing = self.norm.median().to_dict()
@@ -261,27 +372,6 @@ class GroupNormalizer(BaseEstimator, TransformerMixin):
             norm = X[self.groups].set_index(self.groups).join(self.norm).fillna(self._missing).to_numpy()
         return norm
 
-    def __call__(self, data: Dict[str, torch.Tensor]):
-        # inverse transformation with tensors
-        norm = data["target_scale"]
-        if data["prediction"].ndim > 1:
-            norm = norm.unsqueeze(-1)
-        if self.center:
-            y_normed = (data["prediction"] * norm[:, 1, None] + 1) * norm[:, 0, None]
-        else:
-            y_normed = data["prediction"] * norm[:, 0, None]
-        if self.log_scale:
-            y_normed = (y_normed.exp() - self.log_zero_value).clamp_min(0.0)
-        elif isinstance(self.coerce_positive, bool) and self.coerce_positive:
-            y_normed = y_normed.clamp_min(0.0)
-        elif isinstance(self.coerce_positive, float):
-            y_normed = F.softplus(y_normed, beta=float(self.coerce_positive))
-        return y_normed
-
-    @property
-    def is_fitted(self):
-        return hasattr(self, "norm")
-
 
 class TimeSeriesDataSet(Dataset):
     """Dataset Basic Structure for Temporal Fusion Transformer"""
@@ -313,7 +403,7 @@ class TimeSeriesDataSet(Dataset):
         scalers={},
         randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
         predict_mode: bool = False,
-        target_normalizer: Union[GroupNormalizer, str] = "mean",
+        target_normalizer: Union[TorchNormalizer, str] = "auto",
         add_target_scales: bool = True,
     ):
         """ 
@@ -394,6 +484,16 @@ class TimeSeriesDataSet(Dataset):
         self.add_target_scales = add_target_scales
         self.variable_groups = variable_groups
 
+        if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
+            coerce_positive = (data[self.target] >= 0).all()
+            if coerce_positive:
+                log_scale = data[self.target].skew() > 2.5
+                coerce_positive = False
+            if self.max_encoder_length > 20:
+                self.target_normalizer = TorchNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
+            else:
+                self.target_normalizer = GroupNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
+
         # overwrite values
         self.reset_overwrite_values()
 
@@ -456,17 +556,16 @@ class TimeSeriesDataSet(Dataset):
 
         # encode categoricals
         for name in set(self.categoricals + self.group_ids):
+            allow_nans = name in self.dropout_categoricals
             if name in self.variable_groups:  # fit groups
                 columns = self.variable_groups[name]
                 if name not in self.categorical_encoders:
-                    self.categorical_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
+                    self.categorical_encoders[name] = NaNLabelEncoder(add_nan=allow_nans).fit(
                         data[columns].to_numpy().reshape(-1)
                     )
             else:
                 if name not in self.categorical_encoders:
-                    self.categorical_encoders[name] = NaNLabelEncoder(add_nan=name in self.dropout_categoricals).fit(
-                        data[name]
-                    )
+                    self.categorical_encoders[name] = NaNLabelEncoder(add_nan=allow_nans).fit(data[name])
 
         # encode them
         for name in set(self.flat_categoricals + self.group_ids):
@@ -481,16 +580,16 @@ class TimeSeriesDataSet(Dataset):
             data["__weight__"] = data[self.weight]
 
         # train target normalizer
-        if self.target_normalizer is not None:
-            if isinstance(self.target_normalizer, str):
-                self.target_normalizer = GroupNormalizer(groups=self.group_ids)
-            if (
-                not self.target_normalizer.is_fitted
-            ):  # todo: should check if transformation is possible -> if error means it is not fitted
+        if isinstance(self.target_normalizer, str) and self.target_normalizer == "groups":
+            self.target_normalizer = GroupNormalizer(groups=self.group_ids)
+        if isinstance(self.target_normalizer, GroupNormalizer):
+            try:
+                check_is_fitted(self.target_normalizer)
+            except NotFittedError:
                 self.target_normalizer.fit(data[self.target], data)
             if self.add_target_scales:
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
-                for idx, name in enumerate(self.target_normalizer.names):
+                for idx, name in enumerate(["center", "scale"]):
                     feature_name = f"{self.target}_{name}"
                     assert (
                         feature_name not in data.columns
@@ -500,6 +599,25 @@ class TimeSeriesDataSet(Dataset):
                         self.static_reals.append(feature_name)
             else:
                 data[self.target] = self.target_normalizer.transform(data[self.target], data)
+        elif self.add_target_scales and isinstance(self.target_normalizer, TorchNormalizer):
+            for idx, name in enumerate(["center", "scale"]):
+                feature_name = f"{self.target}_{name}"
+                assert (
+                    feature_name not in data.columns
+                ), f"{feature_name} is a protected column and must not be present in data"
+                if feature_name not in self.reals:
+                    self.static_reals.append(feature_name)
+                # initialize values that will be overwritten in __getitem__() but that need to be approximate correct for scaling them
+                if name == "center":
+                    data[feature_name] = data.groupby(self.group_ids, observed=True)[self.target].mean()
+                else:
+                    data[feature_name] = (
+                        data.assign(
+                            __ynormed__=data[self.target] / (data[f"{self.target}_center"] + self.target_normalizer.eps)
+                        )
+                        .groupby(self.group_ids, observed=True)["__ynormed__"]
+                        .std()
+                    )
 
         # rescale continuous variables apart from target
         for name in self.reals:
@@ -834,6 +952,26 @@ class TimeSeriesDataSet(Dataset):
             data_cont[:, self.reals.index("relative_time_idx")] = (
                 torch.arange(-encoder_length, decoder_length, dtype=data_cont.dtype) / self.max_encoder_length
             )
+
+        # rescale target
+        if not isinstance(self.target_normalizer, GroupNormalizer):
+            # fit and transform
+            self.target_normalizer.fit(target[:encoder_length])
+            # get new scale
+            target_scale = self.target_normalizer.get_parameters()
+            # modify input data
+            if self.target in self.reals:
+                data_cont[:, self.reals.index(self.target)] = self.target_normalizer.transform(
+                    data_cont[:, self.reals.index(self.target)]
+                )
+            if self.add_target_scales:
+                data_cont[:, self.reals.index(f"{self.target}_center")] = self.transform_values(
+                    f"{self.target}_center", target_scale[0]
+                )[0]
+                data_cont[:, self.reals.index(f"{self.target}_scale")] = self.transform_values(
+                    f"{self.target}_scale", target_scale[1]
+                )[0]
+            target_scale = target_scale.numpy()  # scale needs to be numpy to be consistent with GroupNormalizer
 
         # overwrite values
         if self._overwrite_values is not None:

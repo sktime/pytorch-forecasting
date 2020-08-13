@@ -224,13 +224,13 @@ class GatedResidualNetwork(nn.Module):
             residual_size = self.output_size
 
         if self.output_size != residual_size:
-            self.resample_norm = nn.Linear(residual_size, self.output_size)  # alternative: ResampleNorm
+            self.resample_norm = ResampleNorm(residual_size, self.output_size)
 
         self.fc1 = nn.Linear(self.input_size, self.hidden_size)
         self.elu = nn.ELU()
 
         if self.context_size is not None:
-            self.context = nn.Linear(self.context_size, self.hidden_size, bias=False)  # alternative: ResampleNorm
+            self.context = nn.Linear(self.context_size, self.hidden_size, bias=False)
 
         self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
         self.init_weights()
@@ -249,7 +249,7 @@ class GatedResidualNetwork(nn.Module):
                 torch.nn.init.zeros_(p)
             elif "fc1" in name or "fc2" in name:
                 torch.nn.init.kaiming_normal_(p, a=0, mode="fan_in", nonlinearity="leaky_relu")
-            elif "resample_norm" in name or "context" in name:
+            elif "context" in name:
                 torch.nn.init.xavier_uniform_(p)
 
     def forward(self, x, context=None, residual=None):
@@ -316,12 +316,7 @@ class VariableSelectionNetwork(nn.Module):
             if name in single_variable_grns:
                 self.single_variable_grns[name] = single_variable_grns[name]
             elif self.input_embedding_flags.get(name, False):
-                self.single_variable_grns[name] = GatedResidualNetwork(
-                    input_size, min(input_size, self.hidden_size), output_size=self.hidden_size, dropout=self.dropout,
-                )
-                self.single_variable_grns[name] = nn.Linear(
-                    input_size, self.hidden_size, bias=False
-                )  # alternative: ResampleNorm
+                self.single_variable_grns[name] = ResampleNorm(input_size, self.hidden_size)
             else:
                 self.single_variable_grns[name] = GatedResidualNetwork(
                     input_size, min(input_size, self.hidden_size), output_size=self.hidden_size, dropout=self.dropout,
