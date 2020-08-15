@@ -99,12 +99,12 @@ class TemporalFusionTransformer(BaseModel):
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder 
+            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
-                position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive, 
-                larger numbers add more weight to the constraint vs. the loss but are usually not necessary). 
+                position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
+                larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
                 This constraint significantly slows down training. Defaults to {}.
-            share_single_variable_networks (bool): if to share the single variable networks between the encoder and 
+            share_single_variable_networks (bool): if to share the single variable networks between the encoder and
                 decoder. Defaults to False.
         """
         self.save_hyperparameters()

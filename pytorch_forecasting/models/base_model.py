@@ -33,7 +33,8 @@ class BaseModel(LightningModule):
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
 
-    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` that contains the network's output
+    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` that contains
+    the network's output
 
     Example:
 
@@ -77,24 +78,24 @@ class BaseModel(LightningModule):
         BaseModel for timeseries forecasting from which to inherit from
 
         Args:
-            log_interval (Union[int, float], optional): Batches after which predictions are logged. If < 1.0, will log 
+            log_interval (Union[int, float], optional): Batches after which predictions are logged. If < 1.0, will log
                 multiple entries per batch. Defaults to -1.
-            log_val_interval (Union[int, float], optional): batches after which predictions for validation are logged. Defaults to 
-                None/log_interval.
+            log_val_interval (Union[int, float], optional): batches after which predictions for validation are
+                logged. Defaults to None/log_interval.
             learning_rate (float, optional): Learning rate. Defaults to 1e-3.
-            log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose 
+            log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose
                 training failures. Defaults to False.
             loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
             logging_metrics: (List[TensorMetric], optional): list of metrics to log.
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults 
+            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
             weight_decay (float): weight decay. Defaults to 0.0.
-            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder 
+            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
-                position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive, 
-                larger numbers add more weight to the constraint vs. the loss but are usually not necessary). 
+                position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
+                larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
                 This constraint significantly slows down training. Defaults to {}.
-            output_transformer (Callable): transformer that takes network output and transforms it to prediction space. 
+            output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
             optimizer (str): optimizer
         """
@@ -171,7 +172,9 @@ class BaseModel(LightningModule):
             indices = torch.tensor(
                 [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constaints.keys()]
             )
-            monotonicity = torch.tensor([val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype)
+            monotonicity = torch.tensor(
+                [val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype
+            )
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
             monotinicity_loss = gradient.clamp_max(0).mean()
@@ -356,7 +359,7 @@ class BaseModel(LightningModule):
         """
         Configure optimizers.
 
-        Uses single Ranger optimizer. Depending if learning rate is a list or a single float, implement dynamic 
+        Uses single Ranger optimizer. Depending if learning rate is a list or a single float, implement dynamic
         learning rate scheduler or deterministic version
 
         Returns:
@@ -647,12 +650,12 @@ class BaseModel(LightningModule):
     ) -> Union[Dict[str, plt.Figure], plt.Figure]:
         """
         Plot predicions and actual averages by variables
-        
+
         Args:
-            data (Dict[str, Dict[str, torch.Tensor]]): data obtained from 
+            data (Dict[str, Dict[str, torch.Tensor]]): data obtained from
                 :py:ref:`~calculate_prediction_actual_by_variable`
-            name (str, optional): name of variable for which to plot actuals vs predictions. Defaults to None which means returning a 
-                dictionary of plots for all variables.
+            name (str, optional): name of variable for which to plot actuals vs predictions. Defaults to None which
+                means returning a dictionary of plots for all variables.
 
         Raises:
             ValueError: if the variable name is unkown

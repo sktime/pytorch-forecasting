@@ -51,7 +51,7 @@ def dataloaders_with_coveratiates(data_with_covariates):
                 "music_fest",
             ]
         ),
-        time_varying_known_reals=["time_idx", "price_regular", "price_actual", "discount", "discount_in_percent",],
+        time_varying_known_reals=["time_idx", "price_regular", "price_actual", "discount", "discount_in_percent"],
         time_varying_unknown_categoricals=[],
         time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
         constant_fill_strategy={"volume": 0},
