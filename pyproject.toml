@@ -48,6 +48,8 @@ pytorch-ranger = "*"
 matplotlib = "*"
 cloudpickle = "*"
 
+pytest-github-actions-annotate-failures = {version = "*", optional = true}
+
 [tool.poetry.dev-dependencies]
 # checks and make tools
 invoke = "*"
@@ -71,6 +73,9 @@ black = { version = "*", allow-prereleases = true }
 # documentatation
 sphinx = "*"
 m2r = "*"
+
+[tool.poetry.extras]  # extras
+github-actions = ["pytest-github-actions-annotate-failures"]
 
 [tool.poetry-dynamic-versioning]
 enable = true
