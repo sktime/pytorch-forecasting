@@ -31,6 +31,7 @@ class NBeats(BaseModel):
         weight_decay: float = 1e-3,
         loss=SMAPE(),
         reduce_on_plateau_patience: int = 1000,
+        **kwargs,
     ):
         """
         Initialize NBeats Model
@@ -64,7 +65,7 @@ class NBeats(BaseModel):
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
         """
         self.save_hyperparameters()
-        super().__init__()
+        super().__init__(**kwargs)
         self.loss = loss
 
         # setup stacks
@@ -106,9 +107,6 @@ class NBeats(BaseModel):
     def forward(self, x: Dict[str, torch.Tensor]):
         target = x["encoder_target"]
 
-        if self.loss.log_space:
-            target = torch.log(target + 1e-8)
-
         timesteps = self.hparams.context_length + self.hparams.prediction_length
         generic_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
         trend_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
@@ -139,6 +137,7 @@ class NBeats(BaseModel):
 
         return dict(
             prediction=forecast,
+            target_scale=x["target_scale"],
             backcast=backcast,
             trend=torch.stack(trend_forecast, dim=0).sum(0),
             seasonality=torch.stack(seasonal_forecast, dim=0).sum(0),
@@ -148,7 +147,6 @@ class NBeats(BaseModel):
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         new_kwargs = {"prediction_length": dataset.max_prediction_length, "context_length": dataset.max_encoder_length}
-        new_kwargs["dataset_parameters"] = dataset.get_parameters()
         new_kwargs.update(kwargs)
 
         # validate arguments
@@ -167,7 +165,7 @@ class NBeats(BaseModel):
         return super().from_dataset(dataset, **new_kwargs)
 
     def step(self, x, y, batch_idx, label) -> Dict[str, torch.Tensor]:
-        log, out = self.step(x, y, batch_idx=batch_idx, label=label)
+        log, out = super().step(x, y, batch_idx=batch_idx, label=label)
         self._log_interpretation(x, out, batch_idx=batch_idx, label=label)
         return log, out
 

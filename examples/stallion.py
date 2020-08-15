@@ -25,7 +25,7 @@ from data import get_stallion_data
 
 data = get_stallion_data()
 
-data["month"] = data.date.dt.month
+data["month"] = data.date.dt.month.astype("str").astype("category")
 data["log_volume"] = np.log(data.volume + 1e-8)
 
 data["time_idx"] = data["date"].dt.year * 12 + data["date"].dt.month
@@ -124,7 +124,6 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # fig = res.plot(show=True, suggest=True)
 # fig.show()
 # tft.hparams.learning_rate = res.suggestion()
-
 
 trainer.fit(
     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,

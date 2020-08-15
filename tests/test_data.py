@@ -119,19 +119,6 @@ def test_GroupNormalizer(kwargs, groups):
             ).all(), "Inverse transform should reverse transform"
 
 
-@pytest.fixture
-def test_data():
-    data = get_stallion_data()
-    data["month"] = data.date.dt.month
-    data["log_volume"] = np.log1p(data.volume)
-    data["weight"] = 1 + np.sqrt(data.volume)
-
-    data["time_idx"] = data["date"].dt.year * 12 + data["date"].dt.month
-    data["time_idx"] -= data["time_idx"].min()
-    data = data[lambda x: x.time_idx < 10]  # downsample
-    return data
-
-
 def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):
     x, y = out
 
@@ -217,22 +204,6 @@ def test_TimeSeriesDataSet(test_data, kwargs):
     # create dataset and sample from it
     dataset = TimeSeriesDataSet(test_data, **kwargs)
     check_dataloader_output(dataset, next(iter(dataset.to_dataloader(num_workers=0))))
-
-
-@pytest.fixture
-def test_dataset(test_data):
-    training = TimeSeriesDataSet(
-        test_data,
-        time_idx="time_idx",
-        target="volume",
-        time_varying_known_reals=["price_regular"],
-        group_ids=["agency", "sku"],
-        static_categoricals=["agency"],
-        max_encoder_length=5,
-        max_prediction_length=2,
-        randomize_length=None,
-    )
-    return training
 
 
 def test_from_dataset(test_dataset, test_data):

@@ -5,7 +5,10 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 
-
+# todo: run with multiple normalizers
+# todo: run with muliple datasets and normalizers: ...
+# todo: monotonicity
+# todo: test different parameters
 def test_integration(dataloaders_with_coveratiates, tmp_path):
     train_dataloader = dataloaders_with_coveratiates["train"]
     val_dataloader = dataloaders_with_coveratiates["val"]
@@ -50,3 +53,7 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_monotinicity():
+    pass

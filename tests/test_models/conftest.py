@@ -8,12 +8,29 @@ from pytorch_forecasting.data import NaNLabelEncoder, EncoderNormalizer
 @pytest.fixture
 def data_with_covariates():
     data = get_stallion_data()
-    data["month"] = data.date.dt.month
+    data["month"] = data.date.dt.month.astype(str)
     data["log_volume"] = np.log1p(data.volume)
     data["weight"] = 1 + np.sqrt(data.volume)
 
     data["time_idx"] = data["date"].dt.year * 12 + data["date"].dt.month
     data["time_idx"] -= data["time_idx"].min()
+
+    # convert special days into strings
+    special_days = [
+        "easter_day",
+        "good_friday",
+        "new_year",
+        "christmas",
+        "labor_day",
+        "independence_day",
+        "revolution_day_memorial",
+        "regional_games",
+        "fifa_u_17_world_cup",
+        "football_gold_cup",
+        "beer_capital",
+        "music_fest",
+    ]
+    data[special_days] = data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
 
     return data
 
@@ -70,9 +87,9 @@ def dataloaders_with_coveratiates(data_with_covariates):
 
 @pytest.fixture
 def dataloaders_fixed_window_without_coveratiates(data_with_covariates):
-    data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=100)
-    data["static"] = 2
-    validation = data.series.sample(20)
+    data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10)
+    data["static"] = "2"
+    validation = data.series.iloc[:2]
 
     max_encoder_length = 60
     max_prediction_length = 20
