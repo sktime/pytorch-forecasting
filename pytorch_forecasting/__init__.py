@@ -1,4 +1,11 @@
 from pytorch_forecasting.models import TemporalFusionTransformer, NBeats, Baseline
-from pytorch_forecasting.data import TimeSeriesDataSet, GroupNormalizer, TorchNormalizer
+from pytorch_forecasting.data import TimeSeriesDataSet, GroupNormalizer, EncoderNormalizer
 
-__all__ = ["TimeSeriesDataSet", "GroupNormalizer", "TorchNormalizer", "TemporalFusionTransformer", "NBeats", "Baseline"]
+__all__ = [
+    "TimeSeriesDataSet",
+    "GroupNormalizer",
+    "EncoderNormalizer",
+    "TemporalFusionTransformer",
+    "NBeats",
+    "Baseline",
+]

@@ -3,11 +3,11 @@ import pandas as pd
 import numpy as np
 
 
-def get_stallion_data():
+def get_stallion_data() -> pd.DataFrame:
     return pd.read_parquet(Path(__file__).joinpath("../stallion.parquet").resolve())
 
 
-def get_volatility_data():
+def get_volatility_data() -> pd.DataFrame:
     return pd.read_parquet(Path(__file__).joinpath("../volatility.parquet").resolve())
 
 
@@ -20,7 +20,7 @@ def generate_ar_data(
     level: float = 1.0,
     exp: bool = False,
     seed: int = 213,
-):
+) -> pd.DataFrame:
     # sample parameters
     np.random.seed(seed)
     linear_trends = np.random.normal(size=n_series)[:, None] / timesteps

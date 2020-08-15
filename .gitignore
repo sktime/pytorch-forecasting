@@ -140,6 +140,5 @@ lightning_logs
 
 # checkpoints
 *.ckpt
-*.parquet
 *.pkl
 .DS_Store

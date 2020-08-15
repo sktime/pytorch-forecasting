@@ -171,7 +171,7 @@ class BaseModel(LightningModule):
             indices = torch.tensor(
                 [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constaints.keys()]
             )
-            monotonicity = torch.tensor([val for val in self.hparams.monotonicity.values()], dtype=gradient.dtype)
+            monotonicity = torch.tensor([val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype)
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
             monotinicity_loss = gradient.clamp_max(0).mean()
