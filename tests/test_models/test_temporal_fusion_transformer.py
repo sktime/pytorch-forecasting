@@ -50,4 +50,3 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
-

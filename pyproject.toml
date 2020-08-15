@@ -39,19 +39,22 @@ repository = "https://github.com/jdb78/pytorch_forecasting"
 python= "^3.7"
 
 torch = "^1.6"
-pytorch_lightning = "^0.8"
+pytorch-lightning = "^0.8.5"
 optuna = "^2.0.0"
 scipy = "*"
 pandas = "^1.0.3"
 scikit-learn = "^0.23"
-pytorch_ranger = "*"
+pytorch-ranger = "*"
 matplotlib = "*"
 cloudpickle = "*"
+
+pytest-github-actions-annotate-failures = {version = "*", optional = true}
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
 invoke = "*"
 flake8 = "*"
+mypy = "*"
 pylint = "*"
 isort = "*"
 
@@ -61,6 +64,7 @@ pytest-xdist = "*"
 pytest-cov = "*"
 pytest-sugar = "*"
 coverage = "*"
+pyarrow = "*"
 
 # jupyter notebook
 ipykernel = "*"
@@ -69,6 +73,9 @@ black = { version = "*", allow-prereleases = true }
 # documentatation
 sphinx = "*"
 m2r = "*"
+
+[tool.poetry.extras]  # extras
+github-actions = ["pytest-github-actions-annotate-failures"]
 
 [tool.poetry-dynamic-versioning]
 enable = true

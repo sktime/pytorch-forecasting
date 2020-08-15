@@ -66,7 +66,7 @@ def profile(function: Callable, profile_fname: str, filter: str = "", period=0.0
     Profile a given function with ``vmprof``.
 
     Args:
-        function (Callable): function to profile 
+        function (Callable): function to profile
         profile_fname (str): path where to save profile (`.txt` file will be saved with line profile)
         filter (str, optional): filter name (e.g. module name) to filter profile. Defaults to "".
         period (float, optional): frequency of calling profiler in seconds. Defaults to 0.0001.

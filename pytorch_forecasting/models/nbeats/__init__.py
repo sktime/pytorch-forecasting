@@ -36,25 +36,25 @@ class NBeats(BaseModel):
         Initialize NBeats Model
 
         Args:
-            stack_types: One of the following values: “G” (generic), “S” (seasonal) or “T” (trend). A list of strings 
-                of length 1 or ‘num_stacks’. Default and recommended value 
+            stack_types: One of the following values: “G” (generic), “S” (seasonal) or “T” (trend). A list of strings
+                of length 1 or ‘num_stacks’. Default and recommended value
                 for generic mode: [“G”] Recommended value for interpretable mode: [“T”,”S”]
-            num_blocks: The number of blocks per stack. A list of ints of length 1 or ‘num_stacks’. 
+            num_blocks: The number of blocks per stack. A list of ints of length 1 or ‘num_stacks’.
                 Default and recommended value for generic mode: [1] Recommended value for interpretable mode: [3]
-            num_block_layers: Number of fully connected layers with ReLu activation per block. A list of ints of length 
-                1 or ‘num_stacks’. 
+            num_block_layers: Number of fully connected layers with ReLu activation per block. A list of ints of length
+                1 or ‘num_stacks’.
                 Default and recommended value for generic mode: [4] Recommended value for interpretable mode: [4]
-            width: Widths of the fully connected layers with ReLu activation in the blocks. 
-                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [512] 
+            width: Widths of the fully connected layers with ReLu activation in the blocks.
+                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [512]
                 Recommended value for interpretable mode: [256, 2048]
-            sharing: Whether the weights are shared with the other blocks per stack. 
-                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [False] 
+            sharing: Whether the weights are shared with the other blocks per stack.
+                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [False]
                 Recommended value for interpretable mode: [True]
-            expansion_coefficient_length: If the type is “G” (generic), then the length of the expansion 
+            expansion_coefficient_length: If the type is “G” (generic), then the length of the expansion
                 coefficient.
-                If type is “T” (trend), then it corresponds to the degree of the polynomial. If the type is “S” 
+                If type is “T” (trend), then it corresponds to the degree of the polynomial. If the type is “S”
                 (seasonal) then this is the minimum period allowed, e.g. 2 for changes every timestep.
-                A list of ints of length 1 or ‘num_stacks’. Default value for generic mode: [32] Recommended value for 
+                A list of ints of length 1 or ‘num_stacks’. Default value for generic mode: [32] Recommended value for
                 interpretable mode: [3]
             prediction_length: Length of the prediction. Also known as 'horizon'.
             context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
@@ -219,4 +219,3 @@ class NBeats(BaseModel):
 
         fig.legend()
         return fig
-

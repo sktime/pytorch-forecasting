@@ -139,9 +139,10 @@ class MultiHorizonMetric(Metric):
                 losses = losses.masked_fill(mask, 0.0)
                 loss = losses.sum() / lengths.sum()
                 loss = loss.sqrt()
-            assert not torch.isnan(
-                loss
-            ), "Loss should not be nan - i.e. something went wrong in calculating the loss (e.g. log of a negative number)"
+            assert not torch.isnan(loss), (
+                "Loss should not be nan - i.e. something went wrong "
+                "in calculating the loss (e.g. log of a negative number)"
+            )
             assert torch.isfinite(
                 loss
             ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
@@ -263,4 +264,3 @@ class RMSE(MultiHorizonMetric):
     def loss(self, y_pred: Dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
         return loss
-

@@ -69,14 +69,9 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
 
     def transform(self, y):
         if self.add_nan:
-            if self.is_numeric(y):
-                nan = np.nan
-            else:
-                nan = "nan"
-            cond = ~np.isin(y, self.classes_)
-
-            if cond.any():
-                if self.warn:
+            if self.warn:
+                cond = ~np.isin(y, self.classes_)
+                if cond.any():
                     warnings.warn(f"Found {y[cond].nunique()} unknown classes which were set to NaN", UserWarning)
 
             encoded = [self.classes_.get(v, 0) for v in y]
@@ -263,7 +258,7 @@ class GroupNormalizer(TorchNormalizer):
                 (scale using quantiles 0.25-0.75). Defaults to "standard".
             groups (List[str], optional): Group names to normalize by. Defaults to [].
             center (bool, optional): If to center the output to zero. Defaults to True.
-            scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as 
+            scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as
                 ``(group1_norm * group2_norm * ...) ^ (1 / n_groups)``. Defaults to False.
             log_scale (bool, optional): If to take log of values. Defaults to False. Defaults to False.
             log_zero_value (float, optional): Value to map 0 to for ``log_scale=True`` or in softplus. Defaults to 0.0
@@ -457,7 +452,7 @@ class TimeSeriesDataSet(Dataset):
         add_target_scales: bool = True,
         add_decoder_length: Union[bool, str] = "auto",
     ):
-        """ 
+        """
         Timeseries dataset
 
         Args:
@@ -471,7 +466,7 @@ class TimeSeriesDataSet(Dataset):
             min_prediction_idx: minimum time index from where to start predictions
             min_prediction_length: minimum prediction length
             max_prediction_length: maximum prediction length (choose this not too short as it can help convergence)
-            static_categoricals: list of categorical variables that do not change over time, 
+            static_categoricals: list of categorical variables that do not change over time,
                 entries can be also lists which are then encoded together
                 (e.g. useful for product categories)
             static_reals: list of continuous variables that do not change over time
@@ -499,7 +494,7 @@ class TimeSeriesDataSet(Dataset):
             predict_mode: if to only iterate over each timeseries once (only the last provided samples)
             target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
             add_target_scales: if to add scales for target to static real features
-            add_decoder_length: if to add decoder length to list of static real variables. Defaults to "auto", 
+            add_decoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
                 i.e. yes if ``min_encoder_length != max_encoder_length``.
         """
         super().__init__()
