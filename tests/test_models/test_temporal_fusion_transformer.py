@@ -1,7 +1,7 @@
 import shutil
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 
@@ -17,7 +17,9 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
 
     # check training
     logger = TensorBoardLogger(tmp_path)
+    checkpoint = ModelCheckpoint(filepath=tmp_path)
     trainer = pl.Trainer(
+        checkpoint_callback=checkpoint,
         max_epochs=3,
         gpus=0,
         weights_summary="top",
