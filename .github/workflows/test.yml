@@ -61,7 +61,7 @@ jobs:
 
       - name: Run pytest
         shell: bash
-        run: poetry run pytest tests --junitxml=test-results/junit.xml
+        run: poetry run pytest tests --junitxml=junit/test-results-${{ matrix.python-version }}.xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v2
