@@ -1193,21 +1193,20 @@ class TimeSeriesDataSet(Dataset):
                 Will shuffle and drop last batch if True. Defaults to True.
             batch_size (int): batch size for training model. Defaults to 64.
             **kwargs: additional arguments to ``DataLoader()``
-            
-            
+
+
         Examples:
-        
+
             To samples for training:
-            
+
             .. code-block:: python
-                
+
                 from torch.utils.data import WeightedRandomSampler
-                
+
                 # length of probabilties for sampler have to be equal to the length of the index
                 probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
                 sampler = WeightedRandomSampler(probabilities, len(probabilities))
                 dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)
-                
 
         Returns:
             DataLoader: dataloader that returns Tuple.
