@@ -1,3 +1,5 @@
+from pytorch_forecasting.data import TimeSeriesDataSet
+import pytest
 import shutil
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -7,8 +9,6 @@ from pytorch_forecasting.models import TemporalFusionTransformer
 
 
 # todo: run with multiple normalizers
-# todo: run with muliple datasets and normalizers: ...
-# todo: monotonicity
 # todo: test different parameters
 def test_integration(dataloaders_with_coveratiates, tmp_path):
     train_dataloader = dataloaders_with_coveratiates["train"]
@@ -28,7 +28,11 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
         fast_dev_run=True,
         logger=logger,
     )
-
+    # test monotone constraints automatically
+    if "discount_in_percent" in dataloaders_with_coveratiates["train"].dataset.reals:
+        monotone_constaints = {"discount_in_percent": +1}
+    else:
+        monotone_constaints = {}
     net = TemporalFusionTransformer.from_dataset(
         train_dataloader.dataset,
         learning_rate=0.15,
@@ -40,7 +44,7 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
         log_interval=5,
         log_val_interval=1,
         log_gradient_flow=True,
-        monotone_constaints={"discount_in_percent": +1},
+        monotone_constaints=monotone_constaints,
     )
     net.size()
     try:
@@ -56,7 +60,3 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
-
-
-def test_monotinicity():
-    pass

@@ -1191,6 +1191,22 @@ class TimeSeriesDataSet(Dataset):
         Args:
             train (bool, optional): if dataloader is used for training or prediction
                 Will shuffle and drop last batch if True. Defaults to True.
+            batch_size (int): batch size for training model. Defaults to 64.
+            **kwargs: additional arguments to ``DataLoader()``
+
+
+        Examples:
+
+            To samples for training:
+
+            .. code-block:: python
+
+                from torch.utils.data import WeightedRandomSampler
+
+                # length of probabilties for sampler have to be equal to the length of the index
+                probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
+                sampler = WeightedRandomSampler(probabilities, len(probabilities))
+                dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)
 
         Returns:
             DataLoader: dataloader that returns Tuple.
@@ -1208,14 +1224,15 @@ class TimeSeriesDataSet(Dataset):
                 Second entry is target
         )
         """
-        return DataLoader(
-            self,
+        default_kwargs = dict(
             shuffle=train,
             drop_last=train and len(self) > batch_size,
             collate_fn=self._collate_fn,
             batch_size=batch_size,
-            **kwargs,
         )
+
+        default_kwargs.update(kwargs)
+        return DataLoader(self, **default_kwargs,)
 
     def get_index(self) -> pd.DataFrame:
         """
