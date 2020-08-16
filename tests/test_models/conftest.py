@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from data import get_stallion_data, generate_ar_data
 from pytorch_forecasting import TimeSeriesDataSet
-from pytorch_forecasting.data import NaNLabelEncoder, EncoderNormalizer
+from pytorch_forecasting.data import GroupNormalizer, NaNLabelEncoder, EncoderNormalizer
 
 
 @pytest.fixture
@@ -35,8 +35,42 @@ def data_with_covariates():
     return data
 
 
-@pytest.fixture
-def dataloaders_with_coveratiates(data_with_covariates):
+@pytest.fixture(
+    params=[
+        dict(),
+        dict(
+            static_categoricals=["agency", "sku"],
+            static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
+            time_varying_known_categoricals=["special_days", "month"],
+            variable_groups=dict(
+                special_days=[
+                    "easter_day",
+                    "good_friday",
+                    "new_year",
+                    "christmas",
+                    "labor_day",
+                    "independence_day",
+                    "revolution_day_memorial",
+                    "regional_games",
+                    "fifa_u_17_world_cup",
+                    "football_gold_cup",
+                    "beer_capital",
+                    "music_fest",
+                ]
+            ),
+            time_varying_known_reals=["time_idx", "price_regular", "price_actual", "discount", "discount_in_percent"],
+            time_varying_unknown_categoricals=[],
+            time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
+            constant_fill_strategy={"volume": 0},
+            dropout_categoricals=["sku"],
+        ),
+        dict(static_categoricals=["agency", "sku"]),
+        dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
+        dict(target_normalizer=GroupNormalizer(log_scale=True)),
+        dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=1.0)),
+    ]
+)
+def dataloaders_with_coveratiates(data_with_covariates, request):
     training_cutoff = "2016-09-01"
     max_encoder_length = 36
     max_prediction_length = 6
@@ -49,30 +83,7 @@ def dataloaders_with_coveratiates(data_with_covariates):
         group_ids=["agency", "sku"],
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
-        static_categoricals=["agency", "sku"],
-        static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
-        time_varying_known_categoricals=["special_days", "month"],
-        variable_groups=dict(
-            special_days=[
-                "easter_day",
-                "good_friday",
-                "new_year",
-                "christmas",
-                "labor_day",
-                "independence_day",
-                "revolution_day_memorial",
-                "regional_games",
-                "fifa_u_17_world_cup",
-                "football_gold_cup",
-                "beer_capital",
-                "music_fest",
-            ]
-        ),
-        time_varying_known_reals=["time_idx", "price_regular", "price_actual", "discount", "discount_in_percent"],
-        time_varying_unknown_categoricals=[],
-        time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
-        constant_fill_strategy={"volume": 0},
-        dropout_categoricals=["sku"],
+        **request.param  # fixture parametrization
     )
 
     validation = TimeSeriesDataSet.from_dataset(
@@ -85,7 +96,7 @@ def dataloaders_with_coveratiates(data_with_covariates):
     return dict(train=train_dataloader, val=val_dataloader)
 
 
-@pytest.fixture
+@pytest.fixture()
 def dataloaders_fixed_window_without_coveratiates(data_with_covariates):
     data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10)
     data["static"] = "2"
