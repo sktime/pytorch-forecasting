@@ -4,10 +4,12 @@ Install with
 
 `pip install pytorch-forecasting`
 
+Visit the documentation at [https://pytorch-forecasting.readthedocs.io](https://pytorch-forecasting.readthedocs.io).
+
 ## Available models
 
 - [Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting](https://arxiv.org/pdf/1912.09363.pdf)
--
+- [N-Beats]()
 
 ## Usage
 
@@ -68,7 +70,7 @@ tft = TemporalFusionTransformer.from_dataset(
     dropout=0.1,
     hidden_continuous_size=16,
     output_size=7,
-    loss=QuantileLoss(log_space=True),
+    loss=QuantileLoss(),
     log_interval=2,
     reduce_on_plateau_patience=4
 )

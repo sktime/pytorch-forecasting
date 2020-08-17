@@ -3,13 +3,30 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pytorch-forecasting's documentation!
-===============================================
+PyTorch Forecasting Documentation
+===================================
+
+Pytorch Forecasting aims to ease timeseries forecasting with neural networks.
+
+To install, execute
+
+.. code-block::
+
+   pip install pytorch-forecasting
+
+Vist :ref:`Getting started<getting-started>` to learn more about the package.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :titlesonly:
+   :hidden:
+   :maxdepth: 6
 
+   getting-started
+   tutorials
+   data
+   models
+   metrics
+   api
 
 
 Indices and tables

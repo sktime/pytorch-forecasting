@@ -1,0 +1,5 @@
+sphinx
+nbsphinx
+pandoc
+docutils
+pydata-sphinx-theme

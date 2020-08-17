@@ -25,7 +25,7 @@ exclude = '''
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
-version = "0.1.2"
+version = "0.2.0"
 
 authors = ["Jan Beitner"]
 classifiers = [
@@ -34,6 +34,8 @@ classifiers = [
     "License :: OSI Approved :: MIT License"]
 description = "Temporal fusion transformer for timeseries forecasting"
 repository = "https://github.com/jdb78/pytorch_forecasting"
+documentatation = "https://pytorch-forecasting.readthedocs.io"
+homepage = "https://pytorch-forecasting.readthedocs.io"
 
 [tool.poetry.dependencies]
 python= "^3.7"
