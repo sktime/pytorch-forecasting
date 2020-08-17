@@ -33,8 +33,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License"]
 description = "Temporal fusion transformer for timeseries forecasting"
-repository = "https://github.com/jdb78/pytorch_forecasting"
-documentatation = "https://pytorch-forecasting.readthedocs.io"
+repository = "https://github.com/jdb78/pytorch-forecasting"
+documentation = "https://pytorch-forecasting.readthedocs.io"
 homepage = "https://pytorch-forecasting.readthedocs.io"
 
 [tool.poetry.dependencies]
