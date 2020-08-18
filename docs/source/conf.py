@@ -68,18 +68,11 @@ html_theme = "pydata_sphinx_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
-# setup configuration
 
-# document __init__ methods
+# setup configuration
 def skip(app, what, name, obj, skip, options):
     """
-    Args:
-        app:
-        what:
-        name:
-        obj:
-        skip:
-        options:
+    Document __init__ methods
     """
     if name == "__init__":
         return False
@@ -92,16 +85,11 @@ PACKAGES = [pytorch_forecasting.__name__]
 
 
 def setup(app):
-    """
-    Args:
-        app:
-    """
     app.add_css_file("styling.css")
     app.connect("autodoc-skip-member", skip)
 
 
 # extension configuration
-
 mathjax_path = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
 
 html_theme_options = {
@@ -111,4 +99,6 @@ html_theme_options = {
 autodoc_member_order = "groupwise"
 autoclass_content = "both"
 
+# autosummary
 autosummary_generate = True
+shutil.rmtree(SOURCE_PATH.joinpath("api"), ignore_errors=True)

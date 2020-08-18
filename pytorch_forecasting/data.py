@@ -7,7 +7,7 @@ import pickle
 import warnings
 from copy import deepcopy
 import inspect
-from typing import Callable, Union, Dict, List, Tuple, Any
+from typing import Callable, Union, Dict, List, Tuple, Any, Iterable
 
 import matplotlib.pyplot as plt
 from numpy.lib.arraysetops import isin
@@ -29,7 +29,7 @@ from torch.utils.data import Dataset, DataLoader
 
 class NaNLabelEncoder(BaseEstimator, TransformerMixin):
     """
-    Labelencoder that can optionally always encode nan as class 0
+    Labelencoder that can optionally always encode nan and unknown classes (in transform) as class ``0``
     """
 
     def __init__(self, add_nan: bool = False, warn: bool = True):
@@ -44,16 +44,45 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         self.warn = warn
         super().__init__()
 
-    def fit_transform(self, y):
+    def fit_transform(self, y: pd.Series) -> np.ndarray:
+        """
+        Fit and transform data.
+
+        Args:
+            y (pd.Series): input data
+
+        Returns:
+            np.ndarray: encoded data
+        """
         if self.add_nan:
             self.fit(y)
             return self.transform(y)
         return super().transform(y)
 
-    def is_numeric(self, y):
+    @staticmethod
+    def is_numeric(y: pd.Series) -> bool:
+        """
+        Determine if series is numeric or not. Will also return True if series is a categorical type with
+        underlying integers.
+
+        Args:
+            y (pd.Series): series for which to carry out assessment
+
+        Returns:
+            bool: True if series is numeric
+        """
         return y.dtype.kind in "bcif" or (isinstance(y, pd.CategoricalDtype) and y.cat.categories.dtype.kind in "bcif")
 
-    def fit(self, y):
+    def fit(self, y: pd.Series):
+        """
+        Fit transformer
+
+        Args:
+            y (pd.Series): input data to fit on
+
+        Returns:
+            NaNLabelEncoder: self
+        """
         if self.add_nan:
             if self.is_numeric(y):
                 nan = np.nan
@@ -67,7 +96,16 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         self.classes_vector_ = np.array(list(self.classes_.keys()))
         return self
 
-    def transform(self, y):
+    def transform(self, y: Iterable) -> Union[torch.Tensor, np.ndarray]:
+        """
+        Encode iterable with integers.
+
+        Args:
+            y (Iterable): iterable to encode
+
+        Returns:
+            Union[torch.Tensor, np.ndarray]: returns encoded data as torch tensor or numpy array depending on input type
+        """
         if self.add_nan:
             if self.warn:
                 cond = ~np.isin(y, self.classes_)
@@ -85,7 +123,19 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
             encoded = np.array(encoded)
         return encoded
 
-    def inverse_transform(self, y):
+    def inverse_transform(self, y: Union[torch.Tensor, np.ndarray]) -> np.ndarray:
+        """
+        Decode data, i.e. transform from integers to labels.
+
+        Args:
+            y (Union[torch.Tensor, np.ndarray]): encoded data
+
+        Raises:
+            KeyError: if unknown elements should be decoded
+
+        Returns:
+            np.ndarray: decoded data
+        """
         if y.max() >= len(self.classes_vector_):
             raise KeyError("New unknown values detected")
 
@@ -97,10 +147,6 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
 class TorchNormalizer(BaseEstimator, TransformerMixin):
     """
     Basic target transformer that can be fit also on torch tensors.
-
-    Args:
-        BaseEstimator ([type]): [description]
-        TransformerMixin ([type]): [description]
     """
 
     def __init__(
@@ -148,10 +194,24 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             )
         self.coerce_positive = coerce_positive
 
-    def get_parameters(self, *args, **kwargs):
+    def get_parameters(self, *args, **kwargs) -> torch.Tensor:
+        """
+        Returns parameters that were used for encoding.
+
+        Returns:
+            torch.Tensor: First element is center of data and second is scale
+        """
         return torch.tensor([self.center_, self.scale_])
 
-    def _preprocess_y(self, y):
+    def _preprocess_y(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Preprocess input data (e.g. take log).
+
+        Can set coerce positive to a value if it was set to None and log_scale to False.
+
+        Returns:
+            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
+        """
         if self.coerce_positive is None and not self.log_scale:
             self.coerce_positive = (y >= 0).all()
 
@@ -162,7 +222,16 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 y = np.log(y + self.log_zero_value)
         return y
 
-    def fit(self, y):
+    def fit(self, y: Union[pd.Series, np.ndarray, torch.Tensor]):
+        """
+        Fit transformer, i.e. determine center and scale of data
+
+        Args:
+            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
+
+        Returns:
+            TorchNormalizer: self
+        """
         y = self._preprocess_y(y)
 
         if self.method == "standard":
@@ -185,7 +254,20 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             self.scale_ = (q_75 - q_25) / (self.center_ + self.eps) / 2.0
         return self
 
-    def transform(self, y, return_norm: bool = False):
+    def transform(
+        self, y: Union[pd.Series, np.ndarray, torch.Tensor], return_norm: bool = False
+    ) -> Union[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray], Union[np.ndarray, torch.Tensor]]:
+        """
+        Rescale data.
+
+        Args:
+            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
+            return_norm (bool, optional): [description]. Defaults to False.
+
+        Returns:
+            Union[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray], Union[np.ndarray, torch.Tensor]]: rescaled
+                data with type depending on input type. returns second element if ``return_norm=True``
+        """
         if self.log_scale:
             if isinstance(y, torch.Tensor):
                 y = (y + self.log_zero_value + self.eps).log()
@@ -200,10 +282,30 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         else:
             return y
 
-    def inverse_transform(self, y):
+    def inverse_transform(self, y: torch.Tensor) -> torch.Tensor:
+        """
+        Inverse scale.
+
+        Args:
+            y (torch.Tensor): scaled data
+
+        Returns:
+            torch.Tensor: de-scaled data
+        """
         return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
 
-    def __call__(self, data: Dict[str, torch.Tensor]):
+    def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """
+        Inverse transformation but with network output as input.
+
+        Args:
+            data (Dict[str, torch.Tensor]): Dictionary with entries
+                * prediction: data to de-scale
+                * target_scale: center and scale of data
+
+        Returns:
+            torch.Tensor: de-scaled data
+        """
         # inverse transformation with tensors
         norm = data["target_scale"]
 
@@ -231,13 +333,22 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
 
 class EncoderNormalizer(TorchNormalizer):
     """
-    Special Normalizer that is fit on each encoding sequence
+    Special Normalizer that is fit on each encoding sequence.
+
+    If passed as target normalizer, this transformer will be fitted on each encoder sequence separately.
     """
 
     pass
 
 
 class GroupNormalizer(TorchNormalizer):
+    """
+    Normalizer that scales by groups.
+
+    For each group a scaler is fitted and applied. This scaler can be used as target normalizer or
+    also to normalize any other variable.
+    """
+
     # todo: allow window (exp weighted), different methods such as quantile for robust scaling
     def __init__(
         self,
@@ -280,7 +391,17 @@ class GroupNormalizer(TorchNormalizer):
             eps=eps,
         )
 
-    def fit(self, y, X):
+    def fit(self, y: pd.Series, X: pd.DataFrame):
+        """
+        Determine scales for each group
+
+        Args:
+            y (pd.Series): input data
+            X (pd.DataFrame): dataframe with columns for each group defined in ``groups`` parameter.
+
+        Returns:
+            self
+        """
         y = self._preprocess_y(y)
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
@@ -343,18 +464,55 @@ class GroupNormalizer(TorchNormalizer):
 
     @property
     def names(self) -> List[str]:
+        """
+        Names of determined scales.
+
+        Returns:
+            List[str]: list of names
+        """
         if self.method == "standard":
             return ["mean", "scale"]
         else:
             return ["median", "scale"]
 
-    def fit_transform(self, y, X, return_norm: bool = False) -> pd.DataFrame:
+    def fit_transform(
+        self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+        """
+        Fit normalizer and scale input data.
+
+        Args:
+            y (pd.Series): data to scale
+            X (pd.DataFrame): dataframe with ``groups`` columns
+            return_norm (bool, optional): If to return . Defaults to False.
+
+        Returns:
+            Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
+                as second element
+        """
         return self.fit(y, X).transform(y, X, return_norm=return_norm)
 
-    def inverse_transform(self, y, X):
+    def inverse_transform(self, y: pd.Series, X: pd.DataFrame):
+        """
+        Rescaling data to original scale - not implemented.
+        """
         raise NotImplementedError()
 
-    def transform(self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False) -> pd.DataFrame:
+    def transform(
+        self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+        """
+        Scale input data.
+
+        Args:
+            y (pd.Series): data to scale
+            X (pd.DataFrame): dataframe with ``groups`` columns
+            return_norm (bool, optional): If to return . Defaults to False.
+
+        Returns:
+            Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
+                as second element
+        """
         norm = self.get_norm(X)
         y = self._preprocess_y(y)
         if self.center:
@@ -366,7 +524,18 @@ class GroupNormalizer(TorchNormalizer):
         else:
             return y_normed
 
-    def get_parameters(self, groups, group_names: List[str] = None):
+    def get_parameters(self, groups: Union[torch.Tensor, list, tuple], group_names: List[str] = None) -> np.ndarray:
+        """
+        Get fitted scaling parameters for a given group.
+
+        Args:
+            groups (Union[torch.Tensor, list, tuple]): group ids for which to get parameters
+            group_names (List[str], optional): Names of groups corresponding to positions
+                in ``groups``. Defaults to None, i.e. the instance attribute ``groups``.
+
+        Returns:
+            np.ndarray: parameters used for scaling
+        """
         if isinstance(groups, torch.Tensor):
             groups = groups.tolist()
         if isinstance(groups, list):
@@ -396,7 +565,16 @@ class GroupNormalizer(TorchNormalizer):
                 params = np.asarray([self.missing_[name] for name in self.names])
         return params
 
-    def get_norm(self, X):
+    def get_norm(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Get scaling parameters for multiple groups.
+
+        Args:
+            X (pd.DataFrame): dataframe with ``groups`` columns
+
+        Returns:
+            pd.DataFrame: dataframe with scaling parameterswhere each row corresponds to the input dataframe
+        """
         if len(self.groups) == 0:
             norm = np.asarray(self.norm_).reshape(1, -1)
         elif self.scale_by_group:
@@ -420,7 +598,7 @@ class GroupNormalizer(TorchNormalizer):
 
 
 class TimeSeriesDataSet(Dataset):
-    """Dataset Basic Structure for Temporal Fusion Transformer"""
+    """PyTorch Dataset for fitting timeseries models"""
 
     def __init__(
         self,
@@ -447,7 +625,7 @@ class TimeSeriesDataSet(Dataset):
         allow_missings: bool = False,
         categorical_encoders={},
         scalers={},
-        randomize_length: Union[None, Tuple[float, float]] = (0.2, 0.05),
+        randomize_length: Union[None, Tuple[float, float], bool] = False,
         predict_mode: bool = False,
         target_normalizer: Union[TorchNormalizer, str] = "auto",
         add_target_scales: bool = True,
@@ -490,8 +668,12 @@ class TimeSeriesDataSet(Dataset):
             allow_missings: if to allow missing timesteps that are automatically filled up
             categorical_encoders: dictionary of scikit learn label transformers or None
             scalers: dictionary of scikit learn scalers or None
-            randomize_length: None if not to randomize lengths. Tuple of beta distribution concentrations from which
-                probabilities are sampled that are used to sample new sequence lengths with a binomial distribution
+            randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
+                from which
+                probabilities are sampled that are used to sample new sequence lengths with a binomial
+                distribution.
+                If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples around minimum encoder length.
+                Defaults to False otherwise.
             predict_mode: if to only iterate over each timeseries once (only the last provided samples)
             target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
             add_target_scales: if to add scales for target to static real features
@@ -522,6 +704,13 @@ class TimeSeriesDataSet(Dataset):
         self.time_varying_unknown_reals = [] + time_varying_unknown_reals
         self.dropout_categoricals = [] + dropout_categoricals
         self.add_relative_time_idx = add_relative_time_idx
+
+        # set automatic defaults
+        if isinstance(randomize_length, bool):
+            if randomize_length:
+                randomize_length = None
+            else:
+                randomize_length = (0.2, 0.05)
         self.randomize_length = randomize_length
         self.min_prediction_idx = min_prediction_idx or data[self.time_idx].min()
         self.constant_fill_strategy = {} if len(constant_fill_strategy) == 0 else constant_fill_strategy
@@ -605,7 +794,10 @@ class TimeSeriesDataSet(Dataset):
         self.data = self._data_to_tensors(data)
 
     def _validate_data(self, data: pd.DataFrame):
-        # check for numeric categoricals which can cause hick-ups in logging
+        """
+        Validate that data will not cause hick-ups later on.
+        """
+        # check for numeric categoricals which can cause hick-ups in logging in tensorboard
         category_columns = data.head(1).select_dtypes("category").columns
         object_columns = data.head(1).select_dtypes(object).columns
         for name in self.flat_categoricals:
@@ -644,6 +836,15 @@ class TimeSeriesDataSet(Dataset):
         return obj
 
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Scale continuous variables, encode categories and set aside target and weight.
+
+        Args:
+            data (pd.DataFrame): original data
+
+        Returns:
+            pd.DataFrame: pre-processed dataframe
+        """
 
         # encode categoricals
         for name in set(self.categoricals + self.group_ids):
@@ -752,7 +953,22 @@ class TimeSeriesDataSet(Dataset):
             )[0]
         return data
 
-    def transform_values(self, name, values, data: pd.DataFrame = None, inverse=False):
+    def transform_values(
+        self, name: str, values: Union[pd.Series, torch.Tensor, np.ndarray], data: pd.DataFrame = None, inverse=False
+    ) -> np.ndarray:
+        """
+        Scale and encode values.
+
+        Args:
+            name (str): name of variable
+            values (Union[pd.Series, torch.Tensor, np.ndarray]): values to encode/scale
+            data (pd.DataFrame, optional): extra data used for scaling (e.g. dataframe with groups columns).
+                Defaults to None.
+            inverse (bool, optional): if to conduct inverse transformation. Defaults to False.
+
+        Returns:
+            np.ndarray: (de/en)coded/(de)scaled values
+        """
         # remaining categories
         if name in set(self.flat_categoricals + self.group_ids):
             name = self.variable_to_group_mapping.get(name, name)  # map name to encoder
@@ -786,7 +1002,17 @@ class TimeSeriesDataSet(Dataset):
 
         return values  # fallback
 
-    def _data_to_tensors(self, data: pd.DataFrame) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _data_to_tensors(self, data: pd.DataFrame) -> Dict[str, torch.Tensor]:
+        """
+        Convert data to tensors for faster access with :py:meth:`~__getitem__`.
+
+        Args:
+            data (pd.DataFrame): preprocessed data
+
+        Returns:
+            Dict[str, torch.Tensor]: dictionary of tensors for continous, categorical data, groups, target and
+                time index
+        """
 
         index = torch.tensor(data[self.group_ids].to_numpy(np.long))
         time = torch.tensor(data["__time_idx__"].to_numpy(np.long))
@@ -806,10 +1032,22 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     def categoricals(self) -> List[str]:
+        """
+        Categorical variables as used for modelling.
+
+        Returns:
+            List[str]: list of variables
+        """
         return self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
 
     @property
     def flat_categoricals(self) -> List[str]:
+        """
+        Categorical variables as defined in input data.
+
+        Returns:
+            List[str]: list of variables
+        """
         categories = []
         for name in self.categoricals:
             if name in self.variable_groups:
@@ -820,6 +1058,12 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     def variable_to_group_mapping(self) -> Dict[str, str]:
+        """
+        Mapping from categorical variables to variables in input data.
+
+        Returns:
+            Dict[str, str]: dictionary mapping from :py:meth:`~categorical` to :py:meth`~flat_categoricals`.
+        """
         groups = {}
         for group_name, sublist in self.variable_groups.items():
             groups.update({name: group_name for name in sublist})
@@ -827,6 +1071,12 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     def reals(self) -> List[str]:
+        """
+        Continous variables as used for modelling.
+
+        Returns:
+            List[str]: list of variables
+        """
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
     def get_parameters(self) -> Dict[str, Any]:
@@ -847,6 +1097,23 @@ class TimeSeriesDataSet(Dataset):
     def from_dataset(
         cls, dataset, data: pd.DataFrame, stop_randomization: bool = False, predict: bool = False, **update_kwargs
     ):
+        """
+        Generate dataset with different underlying data but same variable encoders and scalers, etc.
+
+        Calls :py:meth:`~from_parameters` under the hood.
+
+        Args:
+            dataset (TimeSeriesDataSet): dataset from which to copy parameters
+            data (pd.DataFrame): data from which new dataset will be generated
+            stop_randomization (bool, optional): If to stop randomizing encoder and decoder lengths,
+                e.g. useful for validation set. Defaults to False.
+            predict (bool, optional): If to predict the decoder length on the last entries in the
+                time index (i.e. one prediction per group only). Defaults to False.
+            **kwargs: keyword arguments overriding parameters in the original dataset
+
+        Returns:
+            TimeSeriesDataSet: new dataset
+        """
         return cls.from_parameters(
             dataset.get_parameters(), data, stop_randomization=stop_randomization, predict=predict, **update_kwargs
         )
@@ -860,6 +1127,21 @@ class TimeSeriesDataSet(Dataset):
         predict: bool = False,
         **update_kwargs,
     ):
+        """
+        Generate dataset with different underlying data but same variable encoders and scalers, etc.
+
+        Args:
+            parameters (Dict[str, Any]): dataset parameters which to use for the new dataset
+            data (pd.DataFrame): data from which new dataset will be generated
+            stop_randomization (bool, optional): If to stop randomizing encoder and decoder lengths,
+                e.g. useful for validation set. Defaults to False.
+            predict (bool, optional): If to predict the decoder length on the last entries in the
+                time index (i.e. one prediction per group only). Defaults to False.
+            **kwargs: keyword arguments overriding parameters
+
+        Returns:
+            TimeSeriesDataSet: new dataset
+        """
         parameters = deepcopy(parameters)
         if predict:
             if not stop_randomization:
@@ -877,7 +1159,16 @@ class TimeSeriesDataSet(Dataset):
         return new
 
     def _construct_index(self, data: pd.DataFrame, predict_mode: bool) -> pd.DataFrame:
+        """
+        Create index of samples.
 
+        Args:
+            data (pd.DataFrame): preprocessed data
+            predict_mode (bool): if to create one same per group with prediction length equals ``max_decoder_length``
+
+        Returns:
+            pd.DataFrame: index dataframe
+        """
         g = data.groupby(self.group_ids, observed=True)
 
         df_index_first = g["__time_idx__"].transform("nth", 0).to_frame("time_first")
@@ -936,8 +1227,25 @@ class TimeSeriesDataSet(Dataset):
 
         return df_index
 
-    @staticmethod
-    def plot_randomization(betas=(0.2, 0.1), length=24, min_length=0) -> Tuple[plt.Figure, torch.Tensor]:
+    def plot_randomization(
+        self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None
+    ) -> Tuple[plt.Figure, torch.Tensor]:
+        """
+        Plot expected randomized length distribution.
+
+        Args:
+            betas (Tuple[float, float], optional): Tuple of betas, e.g. ``(0.2, 0.05)`` to use for randomization.
+                Defaults to ``randomize_length`` of dataset.
+            length (int, optional): . Defaults to ``max_encoder_length``.
+            min_length (int, optional): [description]. Defaults to ``min_encoder_length``.
+
+        Returns:
+            Tuple[plt.Figure, torch.Tensor]: tuple of figure and histogram based on 1000 samples
+        """
+        if betas is None:
+            betas = self.randomize_length
+        length = length or self.max_encoder_length
+        min_length = min_length or self.min_encoder_length
         probabilities = Beta(betas[0], betas[1]).sample((1000,))
 
         lengths = ((length - min_length) * probabilities).round() + min_length
@@ -947,9 +1255,15 @@ class TimeSeriesDataSet(Dataset):
         return fig, lengths
 
     def __len__(self) -> int:
+        """
+        Length of dataset.
+
+        Returns:
+            int: length
+        """
         return self.index.shape[0]
 
-    def set_overwrite_values(self, values: Union[float, torch.Tensor], variable: str, target: str = "decoder"):
+    def set_overwrite_values(self, values: Union[float, torch.Tensor], variable: str, target: str = "decoder") -> None:
         """
         Convenience method to quickly overwrite values in decoder or encoder (or both) for a specific variable.
 
@@ -976,10 +1290,22 @@ class TimeSeriesDataSet(Dataset):
             self._overwrite_values = {}
         self._overwrite_values.update(dict(values=values, variable=variable, target=target))
 
-    def reset_overwrite_values(self):
+    def reset_overwrite_values(self) -> None:
+        """
+        Reset values used to override sample features.
+        """
         self._overwrite_values = None
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+        """
+        Get sample for model
+
+        Args:
+            idx (int): index of prediction (between ``0`` and ``len(dataset) - 1``)
+
+        Returns:
+            Tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
+        """
         index = self.index.iloc[idx]
         # get index data
         data_cont = self.data["reals"][index.index_start : index.index_end + 1].clone()
@@ -1134,7 +1460,19 @@ class TimeSeriesDataSet(Dataset):
             target[encoder_length:],
         )
 
-    def _collate_fn(self, batches):
+    def _collate_fn(
+        self, batches: List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]
+    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+        """
+        Collate function to combine items into mini-batch for dataloader.
+
+        Args:
+            batches (List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]): List of samples generated with
+                :py:meth:`~__getitem__`.
+
+        Returns:
+            Tuple[Dict[str, torch.Tensor], torch.Tensor]: minibatch
+        """
         # collate function for dataloader
         # lengths
         encoder_lengths = torch.tensor([batch[0]["encoder_length"] for batch in batches], dtype=torch.long)

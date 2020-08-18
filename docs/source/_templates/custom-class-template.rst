@@ -1,14 +1,13 @@
-{{ fullname | escape | underline}}
+{{ fullname.split(".")[-1] | escape | underline}}
 
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
    :members:                                    
    :show-inheritance:
+   :exclude-members: __init__
 
    {% block methods %}
-   .. automethod:: __init__
-
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 

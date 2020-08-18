@@ -330,7 +330,7 @@ class TemporalFusionTransformer(BaseModel):
         cls, dataset: TimeSeriesDataSet, allowed_encoder_known_variable_names: List[str] = None, **kwargs,
     ):
         """
-        create model from dataset
+        Create model from dataset.
 
         Args:
             dataset: timeseries dataset
@@ -393,9 +393,11 @@ class TemporalFusionTransformer(BaseModel):
         return context[:, None].expand(-1, timesteps, -1)
 
     def get_attention_mask(self, encoder_lengths: torch.LongTensor, decoder_length: int):
-        """Returns causal mask to apply for self-attention layer.
+        """
+        Returns causal mask to apply for self-attention layer.
+
         Args:
-        self_attn_inputs: Inputs to self attention layer to determine mask shape
+            self_attn_inputs: Inputs to self attention layer to determine mask shape
         """
         # indices to which is attended
         attend_step = torch.arange(decoder_length, device=self.device)
@@ -705,7 +707,21 @@ class TemporalFusionTransformer(BaseModel):
         )
         return interpretation
 
-    def plot_prediction(self, x, out, idx, **kwargs):
+    def plot_prediction(
+        self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], idx: int, **kwargs
+    ) -> plt.Figure:
+        """
+        Plot actuals vs prediction and attention
+
+        Args:
+            x (Dict[str, torch.Tensor]): network input
+            out (Dict[str, torch.Tensor]): network output
+            idx (int): sample index
+
+        Returns:
+            plt.Figure: matplotlib figure
+        """
+
         # plot prediction as normal
         fig = super().plot_prediction(x, out, **kwargs)
 
@@ -727,7 +743,7 @@ class TemporalFusionTransformer(BaseModel):
 
     def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]) -> Dict[str, plt.Figure]:
         """
-        make figures that interpret model:
+        Make figures that interpret model.
 
         * Attention
         * Variable selection weights / importances
@@ -777,7 +793,7 @@ class TemporalFusionTransformer(BaseModel):
 
     def _log_interpretation(self, outputs, label="train"):
         """
-        log interpretation metrics to tensorboard
+        Log interpretation metrics to tensorboard.
         """
         # extract interpretations
         interpretation = {

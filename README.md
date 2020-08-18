@@ -28,10 +28,9 @@ max_prediction_length = 6
 training_cutoff = "YYYY-MM-DD"  # day for cutoff
 
 training = TimeSeriesDataSet(
-    data[lambda x: x.date < training_cutoff],
+    data[lambda x: x.date <= training_cutoff],
     time_idx= ...,
     target= ...,
-    # weight="weight",
     group_ids=[ ... ],
     max_encode_length=max_encode_length,
     max_prediction_length=max_prediction_length,

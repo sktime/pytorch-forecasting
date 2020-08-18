@@ -1,4 +1,4 @@
-{{ fullname | escape | underline}}
+{{ fullname.split(".")[-1] | escape | underline}}
 
 .. automodule:: {{ fullname }}
   

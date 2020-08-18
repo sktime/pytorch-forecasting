@@ -1,3 +1,6 @@
+"""
+Implementation of ``nn.Modules`` for temporal fusion transformer.
+"""
 from typing import Union, List, Dict, Tuple
 
 import math

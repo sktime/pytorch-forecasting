@@ -11,5 +11,11 @@ or test dataset from a training dataset using the same label encoders and data n
 Further, timeseries have to be (almost always) normalized for a neural network to learn efficiently. PyTorch Forecasting
 provides multiple such target normalizers (which can largely also be used for normalizing covariates).
 
-.. include:: _autosummary/pytorch_forecasting.data.rst
-    :start-line: 3
+.. currentmodule:: pytorch_forecasting
+
+.. autosummary::
+   :toctree: api/
+   :template: custom-module-template.rst
+   :recursive:
+   
+   pytorch_forecasting.data
