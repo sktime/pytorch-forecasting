@@ -75,7 +75,7 @@ def skip(app, what, name, obj, skip, options):
     Document __init__ methods
     """
     if name == "__init__":
-        return False
+        return True
     return skip
 
 
