@@ -1,3 +1,6 @@
+"""
+Baseline model.
+"""
 from typing import Dict
 import torch
 from torch.nn.utils import rnn
@@ -8,7 +11,7 @@ from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss
 
 class Baseline(BaseModel):
     """
-    Baseline model that uses last value to make prediction.
+    Baseline model that uses last known target value to make prediction.
     """
 
     def __init__(self, output_size: int = 7, loss: MultiHorizonMetric = QuantileLoss()):
@@ -17,6 +20,15 @@ class Baseline(BaseModel):
         self.loss = loss
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Network forward pass.
+
+        Args:
+            x (Dict[str, torch.Tensor]): network input
+
+        Returns:
+            Dict[str, torch.Tensor]: netowrk outputs
+        """
         max_prediction_length = x["decoder_lengths"].max()
         assert x["encoder_lengths"].min() > 0, "Encoder lengths of at least 1 required to obtain last value"
         last_values = x["encoder_target"][torch.arange(x["encoder_target"].size(0)), x["encoder_lengths"] - 1]

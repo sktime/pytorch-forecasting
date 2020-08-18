@@ -33,8 +33,8 @@ class BaseModel(LightningModule):
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
 
-    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` that contains
-    the network's output
+    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` and
+    ``target_scale`` that contains the network's output.
 
     Example:
 
@@ -49,7 +49,7 @@ class BaseModel(LightningModule):
 
                 def forward(self, x):
                     encoding_target = x["encoder_target"]
-                    return dict(prediction=...)
+                    return dict(prediction=..., target_scale=x["target_scale"])
 
                 # implement lightning steps
                 def training_step(self, batch, batch_idx):
@@ -132,6 +132,9 @@ class BaseModel(LightningModule):
         return sum(p.numel() for p in self.parameters())
 
     def training_step(self, batch, batch_idx):
+        """
+        Train on batch.
+        """
         x, y = batch
         log, _ = self.step(x, y, batch_idx, label="train")
         return log
@@ -204,6 +207,18 @@ class BaseModel(LightningModule):
         if self.log_interval(label == "train") > 0:
             self._log_prediction(x, out, batch_idx, label=label)
         return log, out
+
+    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Network forward pass.
+
+        Args:
+            x (Dict[str, torch.Tensor]): network input
+
+        Returns:
+            Dict[str, torch.Tensor]: netowrk outputs
+        """
+        raise NotImplementedError()
 
     def epoch_end(self, outputs, label="train"):
         """
@@ -653,7 +668,7 @@ class BaseModel(LightningModule):
 
         Args:
             data (Dict[str, Dict[str, torch.Tensor]]): data obtained from
-                :py:ref:`~calculate_prediction_actual_by_variable`
+                :py:meth:`~calculate_prediction_actual_by_variable`
             name (str, optional): name of variable for which to plot actuals vs predictions. Defaults to None which
                 means returning a dictionary of plots for all variables.
 

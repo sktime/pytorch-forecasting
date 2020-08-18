@@ -1,3 +1,6 @@
+"""
+Implementation of metrics for (mulit-horizon) timeseries forecasting.
+"""
 from abc import abstractmethod
 from typing import Dict, List, Union
 
@@ -20,9 +23,19 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
     Other metrics should inherit from this base class
     """
 
-    def __init__(self, name: str, quantiles: List[float] = [0.5], reduction="mean"):
+    def __init__(self, name: str = None, quantiles: List[float] = [0.5], reduction="mean"):
+        """
+        Initialize metric
+
+        Args:
+            name (str): metric name. Defaults to class name.
+            quantiles (List[float], optional): quantiles for probability range. Defaults to [0.5].
+            reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
+        """
         self.quantiles = quantiles
         self.reduction = reduction
+        if name is None:
+            name = self.__class__.__name__
         super().__init__(name)
 
     @abstractmethod
@@ -88,13 +101,14 @@ class MultiHorizonMetric(Metric):
         Returns:
             torch.Tensor: loss/metric as a single number for backpropagation
         """
+
         pass
 
     def forward(self, y_pred: Dict[str, torch.Tensor], target: Union[torch.Tensor, rnn.PackedSequence]) -> torch.Tensor:
         """
         Forward method of metric that handles masking of values.
 
-        Do not override this method but :py:ref:`~loss` instead
+        Do not override this method but :py:meth:`~loss` instead
 
         Args:
             y_pred (Dict[str, torch.Tensor]): network output

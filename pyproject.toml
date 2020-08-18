@@ -25,7 +25,7 @@ exclude = '''
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
-version = "0.1.2"
+version = "0.2.0"
 
 authors = ["Jan Beitner"]
 classifiers = [
@@ -33,7 +33,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License"]
 description = "Temporal fusion transformer for timeseries forecasting"
-repository = "https://github.com/jdb78/pytorch_forecasting"
+repository = "https://github.com/jdb78/pytorch-forecasting"
+documentation = "https://pytorch-forecasting.readthedocs.io"
+homepage = "https://pytorch-forecasting.readthedocs.io"
 
 [tool.poetry.dependencies]
 python= "^3.7"
@@ -47,6 +49,7 @@ scikit-learn = "^0.23"
 pytorch-ranger = "*"
 matplotlib = "*"
 cloudpickle = "*"
+statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
 
@@ -71,8 +74,10 @@ ipykernel = "*"
 black = { version = "*", allow-prereleases = true }
 
 # documentatation
-sphinx = "*"
-m2r = "*"
+sphinx = "^3.2"
+pydata-sphinx-theme = "*"
+nbsphinx = "*"
+
 
 [tool.poetry.extras]  # extras
 github-actions = ["pytest-github-actions-annotate-failures"]
