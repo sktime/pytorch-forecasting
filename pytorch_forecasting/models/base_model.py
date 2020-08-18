@@ -33,8 +33,8 @@ class BaseModel(LightningModule):
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
 
-    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` and ``target_scale`` that contains
-    the network's output
+    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` and
+    ``target_scale`` that contains the network's output.
 
     Example:
 
