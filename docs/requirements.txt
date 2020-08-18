@@ -3,3 +3,13 @@ nbsphinx
 pandoc
 docutils
 pydata-sphinx-theme
+pytorch-lightning
+cloudpickle
+torch
+optuna
+scipy
+pandas
+scikit-learn
+pytorch-ranger
+matplotlib
+statsmodels
