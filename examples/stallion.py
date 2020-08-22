@@ -1,7 +1,6 @@
 import pickle
 import warnings
 
-
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.callbacks import EarlyStopping, LearningRateLogger
@@ -50,7 +49,7 @@ special_days = [
 data[special_days] = data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
 
 training_cutoff = data["time_idx"].max() - 6
-max_encoder_length = 12
+max_encoder_length = 36
 max_prediction_length = 6
 
 training = TimeSeriesDataSet(
@@ -58,7 +57,7 @@ training = TimeSeriesDataSet(
     time_idx="time_idx",
     target="volume",
     group_ids=["agency", "sku"],
-    min_encoder_length=max_encoder_length,
+    # min_encoder_length=max_encoder_length,
     max_encoder_length=max_encoder_length,
     min_prediction_length=max_prediction_length,
     max_prediction_length=max_prediction_length,
@@ -70,6 +69,7 @@ training = TimeSeriesDataSet(
     time_varying_unknown_categoricals=[],
     time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
     target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=True),
+    randomize_length=False,
 )
 
 validation = TimeSeriesDataSet.from_dataset(training, data, predict=True, stop_randomization=True)
@@ -102,7 +102,7 @@ trainer = pl.Trainer(
 
 tft = TemporalFusionTransformer.from_dataset(
     training,
-    learning_rate=0.1,
+    learning_rate=0.03,
     hidden_size=32,
     attention_head_size=1,
     dropout=0.2,
@@ -116,9 +116,11 @@ tft = TemporalFusionTransformer.from_dataset(
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # # find optimal learning rate
+# # remove logging and artificial epoch size
 # tft.hparams.log_interval = -1
 # tft.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
+# # run learning rate finder
 # res = trainer.lr_find(tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2)
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)
