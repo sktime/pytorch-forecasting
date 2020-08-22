@@ -3,9 +3,9 @@ Timeseries models share a number of common characteristics. This module implemen
 """
 from copy import deepcopy
 import inspect
-import cloudpickle
 from torch import unsqueeze
 from torch import optim
+import cloudpickle
 from torch.functional import Tensor
 
 from torch.utils.data import DataLoader
@@ -268,7 +268,12 @@ class BaseModel(LightningModule):
                 )
 
     def plot_prediction(
-        self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], idx: int = 0, add_loss_to_title: bool = False
+        self,
+        x: Dict[str, torch.Tensor],
+        out: Dict[str, torch.Tensor],
+        idx: int = 0,
+        add_loss_to_title: Union[TensorMetric, bool] = False,
+        ax=None,
     ) -> plt.Figure:
         """
         Plot prediction of prediction vs actuals
@@ -277,7 +282,8 @@ class BaseModel(LightningModule):
             x: network input
             out: network output
             idx: index of prediction to plot
-            add_loss_to_title: if to add loss to title. Default to False.
+            add_loss_to_title: if to add loss to title or loss function to calculate. Default to False.
+            ax: matplotlib axes to plot on
 
         Returns:
             matplotlib figure
@@ -289,18 +295,21 @@ class BaseModel(LightningModule):
         max_encoder_length = x["encoder_lengths"].max()
         y = torch.cat(
             (
-                y_all[: x["encoder_lengths"][0]],
-                y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][0])],
+                y_all[: x["encoder_lengths"][idx]],
+                y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][idx])],
             ),
         )
         # get predictions
         y_pred = out["prediction"].detach().cpu()
-        y_hat = y_pred[idx, : x["decoder_lengths"][0]]
+        y_hat = y_pred[idx, : x["decoder_lengths"][idx]]
 
         # move to cpu
         y = y.detach().cpu()
         # create figure
-        fig, ax = plt.subplots()
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.get_figure()
         n_pred = y_hat.shape[0]
         x_obs = np.arange(-(y.shape[0] - n_pred), 0)
         x_pred = np.arange(n_pred)
@@ -335,7 +344,12 @@ class BaseModel(LightningModule):
                     x_pred, torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]]), c=pred_color, capsize=1.0,
                 )
         if add_loss_to_title:
-            ax.set_title(f"Loss {self.loss(y_hat[None], y[-n_pred:][None]):.3g}")
+            if isinstance(add_loss_to_title, bool):
+                loss = self.loss
+            else:
+                loss = add_loss_to_title
+                loss.quantiles = self.loss.quantiles
+            ax.set_title(f"Loss {loss(y_hat[None], y[-n_pred:][None]):.3g}")
         ax.set_xlabel("Time index")
         fig.legend()
         return fig
@@ -478,6 +492,7 @@ class BaseModel(LightningModule):
         num_workers: int = 0,
         fast_dev_run: bool = False,
         show_progress_bar: bool = False,
+        return_x: bool = False,
     ):
         """
         predict dataloader
@@ -492,9 +507,10 @@ class BaseModel(LightningModule):
             num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
             fast_dev_run: if to only return results of first batch
             show_progress_bar: if to show progress bar. Defaults to True
+            return_x: if to return network inputs
 
         Returns:
-            output, index, decoder_lengths: some elements might not be present depending on what is configured
+            output, x, index, decoder_lengths: some elements might not be present depending on what is configured
                 to be returned
         """
         # convert to dataloader
@@ -514,6 +530,7 @@ class BaseModel(LightningModule):
         # run predictions
         output = []
         decode_lenghts = []
+        x_list = []
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader), disable=not show_progress_bar)
         with torch.no_grad():
             for x, _ in dataloader:
@@ -544,6 +561,8 @@ class BaseModel(LightningModule):
                     raise ValueError(f"Unknown mode {mode} - see docs for valid arguments")
 
                 output.append(out)
+                if return_x:
+                    x_list.append(x)
                 progress_bar.update()
                 if fast_dev_run:
                     break
@@ -557,21 +576,20 @@ class BaseModel(LightningModule):
                 output_cat[name] = torch.cat([out[name] for out in output], dim=0)
             output = output_cat
 
-        if return_decoder_lengths:
-            decoder_lengths = torch.cat(decode_lenghts, dim=0)
-
-        # get index
+        # generate output
+        if return_x or return_index or return_decoder_lengths:
+            output = [output]
+        if return_x:
+            x_cat = {}
+            for name in x_list[0].keys():
+                x_cat[name] = torch.cat([x[name] for x in x_list], dim=0)
+            x_cat = x_cat
+            output.append(x_cat)
         if return_index:
-            index = dataloader.dataset.get_index()
-
-        if return_index and return_decoder_lengths:
-            return output, index, decoder_lengths
-        elif return_index:
-            return output, index
-        elif return_decoder_lengths:
-            return output, decoder_lengths
-        else:
-            return output
+            output.append(dataloader.dataset.get_index())
+        if return_decoder_lengths:
+            output.append(torch.cat(decode_lenghts, dim=0))
+        return output
 
     def calculate_prediction_actual_by_variable(
         self,
