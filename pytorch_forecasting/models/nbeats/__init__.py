@@ -37,7 +37,7 @@ class NBeats(BaseModel):
         **kwargs,
     ):
         """
-        Initialize NBeats Model
+        Initialize NBeats Model - use its :py:meth:`~from_dataset` method if possible.
 
         Args:
             stack_types: One of the following values: “generic”, “seasonality" or “trend". A list of strings
@@ -107,7 +107,16 @@ class NBeats(BaseModel):
 
                 self.net_blocks.append(net_block)
 
-    def forward(self, x: Dict[str, torch.Tensor]):
+    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Pass forward of network.
+
+        Args:
+            x (Dict[str, torch.Tensor]): input from dataloader generated from :py:class:`~TimeSeriesDataSet`.
+
+        Returns:
+            Dict[str, torch.Tensor]: output of model
+        """
         target = x["encoder_cont"][..., 0]
 
         timesteps = self.hparams.context_length + self.hparams.prediction_length
@@ -149,6 +158,16 @@ class NBeats(BaseModel):
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
+        """
+        Convenience function to create network from :py:class`~TimeSeriesDataSet`.
+
+        Args:
+            dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
+            **kwargs: additional arguments to be passed to ``__init__`` method.
+
+        Returns:
+            NBeats
+        """
         new_kwargs = {"prediction_length": dataset.max_prediction_length, "context_length": dataset.max_encoder_length}
         new_kwargs.update(kwargs)
 
@@ -175,11 +194,17 @@ class NBeats(BaseModel):
         return super().from_dataset(dataset, **new_kwargs)
 
     def step(self, x, y, batch_idx, label) -> Dict[str, torch.Tensor]:
+        """
+        Take training / validation step.
+        """
         log, out = super().step(x, y, batch_idx=batch_idx, label=label)
         self._log_interpretation(x, out, batch_idx=batch_idx, label=label)
         return log, out
 
     def _log_interpretation(self, x, out, batch_idx, label="train"):
+        """
+        Log interpretation of network predictions in tensorboard.
+        """
         if self.log_interval(label == "train") > 0 and batch_idx % self.log_interval(label == "train") == 0:
             fig = self.plot_interpretation(x, out, idx=0)
             name = f"{label.capitalize()} interpretation of item 0 in "
@@ -196,7 +221,25 @@ class NBeats(BaseModel):
         idx: int,
         ax=None,
         plot_seasonality_and_generic_on_secondary_axis: bool = False,
-    ):
+    ) -> plt.Figure:
+        """
+        Plot interpretation.
+
+        [extended_summary]
+
+        Args:
+            x (Dict[str, torch.Tensor]): network input
+            output (Dict[str, torch.Tensor]): network output
+            idx (int): index of sample for which to plot the interpretation.
+            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which to plot the interpretation.
+                Defaults to None.
+            plot_seasonality_and_generic_on_secondary_axis (bool, optional): if to plot seasonality and
+                generic forecast on secondary axis in second panel. Defaults to False.
+
+        Returns:
+            plt.Figure: matplotlib figure with two pannels: prediction and backcast vs actuals and
+                decomposition of prediction into trend, seasonality and generic forecast
+        """
         if ax is None:
             fig, ax = plt.subplots(2, 1, figsize=(6, 8))
         else:

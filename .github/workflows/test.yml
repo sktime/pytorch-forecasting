@@ -76,10 +76,31 @@ jobs:
         with:
           python-version: 3.8
 
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('docs/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
+          sudo apt-get update && sudo apt-get install -y pandoc
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
+        shell: bash
+
       - name: Build sphinx documentation
         run: |
-          cd docs && make --no-keep-going html
+          cd docs
+          make clean
+          make html --debug --jobs 2 SPHINXOPTS="-W"
+
+      - name: Upload built docs
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs-results-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.requires }}
+          path: docs/build/html/
+        # Use always() to always run this step to publish test results when there are test failures
+        if: success()
