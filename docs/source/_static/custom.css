@@ -1,0 +1,41 @@
+.container-xl {
+  max-width: 4000px;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.active > a,
+.active .nav-link,
+.navbar-nav > .active > a.nav-link {
+  color: #ee4c2c !important;
+}
+
+code {
+  color: #d14 !important;
+}
+
+pre code,
+a > code,
+.reference {
+  color: #4974d1 !important;
+}
+
+dt:target,
+span.highlighted {
+  background-color: #fff !important;
+}
+
+/* code highlighting */
+.highlight > pre > .mi {
+  color: #d14 !important;
+}
+.highlight > pre > .mf {
+  color: #d14 !important;
+}
+
+.highlight > pre > .s2 {
+  color: #4974d1 !important;
+}
