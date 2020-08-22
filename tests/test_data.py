@@ -137,7 +137,7 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
 @pytest.mark.parametrize(
     "kwargs",
     [
-        dict(min_encoder_length=2, max_prediction_length=2),
+        dict(min_encoder_length=0, max_prediction_length=2),
         dict(static_categoricals=["agency", "sku"]),
         dict(static_reals=["avg_population_2017", "avg_yearly_household_income_2017"]),
         dict(time_varying_known_categoricals=["month"]),
@@ -168,12 +168,12 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
             )
         ),
         dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
-        dict(randomize_length=None),
+        dict(randomize_length=True, min_encoder_length=2, min_prediction_length=1),
         dict(predict_mode=True),
-        dict(add_target_scales=False),
-        dict(add_decoder_length=False),
+        dict(add_target_scales=True),
         dict(add_decoder_length=True),
-        dict(add_relative_time_idx=False),
+        dict(add_decoder_length=True),
+        dict(add_relative_time_idx=True),
         dict(weight="volume"),
         dict(
             scalers=dict(time_idx=GroupNormalizer(), price_regular=StandardScaler()),

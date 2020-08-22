@@ -8,6 +8,11 @@ can take tensors that are not only of shape ``n_samples`` but also ``n_samples x
 or even ``n_samples x prediction_horizon x n_outputs``, where ``n_outputs`` could be the number
 of forecasted quantiles.
 
+Details
+--------
+
+See the API documentation for further details on available metrics:
+
 .. currentmodule:: pytorch_forecasting
 
 .. autosummary::

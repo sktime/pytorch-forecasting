@@ -8,8 +8,6 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 
 
-# todo: run with multiple normalizers
-# todo: test different parameters
 def test_integration(dataloaders_with_coveratiates, tmp_path):
     train_dataloader = dataloaders_with_coveratiates["train"]
     val_dataloader = dataloaders_with_coveratiates["val"]

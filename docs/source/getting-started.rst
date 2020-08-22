@@ -37,9 +37,8 @@ The general setup for training and testing a model is
 #. Find the optimal learning rate with its ``.lr_find()`` method.
 #. Train the model with early stopping on the training dataset and use the tensorboard logs
    to understand if it has converged with acceptable accuracy.
-#. Tune the 
-   `hyperparameters of the model <https://pytorch-lightning.readthedocs.io/en/latest/hyperparameters.html>`_ 
-   with your favourite package.
+#. Tune the hyperparameters of the model with your
+   `favourite package <https://pytorch-lightning.readthedocs.io/en/latest/hyperparameters.html#hyperparameter-optimization>`_.
 #. Train the model with the same learning rate schedule on the entire dataset.
 #. Load the model from the model checkpoint and apply it to new data.
 

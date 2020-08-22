@@ -1,4 +1,9 @@
-# Timeseries forecasting with Pytorch
+![](./docs/source/_static/logo.svg)
+
+Pytorch Forecasting aims to ease timeseries forecasting with neural networks.
+It specificially provides a class to wrap timeseries datasets and a number of PyTorch models.
+
+# Installation
 
 Install with
 
@@ -6,12 +11,12 @@ Install with
 
 Visit the documentation at [https://pytorch-forecasting.readthedocs.io](https://pytorch-forecasting.readthedocs.io).
 
-## Available models
+# Available models
 
 - [Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting](https://arxiv.org/pdf/1912.09363.pdf)
-- [N-Beats]()
+- [N-Beats](http://arxiv.org/abs/1905.10437)
 
-## Usage
+# Usage
 
 ```python
 import pytorch_lightning as pl

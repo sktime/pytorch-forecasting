@@ -2,8 +2,6 @@
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
-
-import pickle
 import warnings
 from copy import deepcopy
 import inspect
@@ -608,9 +606,9 @@ class TimeSeriesDataSet(Dataset):
         group_ids: List[str],
         weight: Union[str, None] = None,
         max_encoder_length: int = 30,
-        min_encoder_length: int = 0,
+        min_encoder_length: int = None,
         min_prediction_idx: int = None,
-        min_prediction_length: int = 1,
+        min_prediction_length: int = None,
         max_prediction_length: int = 1,
         static_categoricals: List[str] = [],
         static_reals: List[str] = [],
@@ -620,16 +618,16 @@ class TimeSeriesDataSet(Dataset):
         time_varying_unknown_reals: List[str] = [],
         variable_groups: Dict[str, List[int]] = {},
         dropout_categoricals: List[str] = [],
-        add_relative_time_idx: bool = True,
         constant_fill_strategy={},
         allow_missings: bool = False,
+        add_relative_time_idx: bool = False,
+        add_target_scales: bool = False,
+        add_decoder_length: Union[bool, str] = "auto",
+        target_normalizer: Union[TorchNormalizer, str] = "auto",
         categorical_encoders={},
         scalers={},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
         predict_mode: bool = False,
-        target_normalizer: Union[TorchNormalizer, str] = "auto",
-        add_target_scales: bool = True,
-        add_decoder_length: Union[bool, str] = "auto",
     ):
         """
         Timeseries dataset
@@ -641,10 +639,10 @@ class TimeSeriesDataSet(Dataset):
             group_ids: list of column names identifying a timeseries
             weight: column name for weights
             max_encoder_length: maximum length to encode
-            min_encoder_length: minimum allowed length to encode
+            min_encoder_length: minimum allowed length to encode. Defaults to max_encoder_length.
             min_prediction_idx: minimum time index from where to start predictions
-            min_prediction_length: minimum prediction length
             max_prediction_length: maximum prediction length (choose this not too short as it can help convergence)
+            min_prediction_length: minimum prediction length. Defaults to max_prediction_length
             static_categoricals: list of categorical variables that do not change over time,
                 entries can be also lists which are then encoded together
                 (e.g. useful for product categories)
@@ -661,11 +659,15 @@ class TimeSeriesDataSet(Dataset):
                 time and are not know in the future
             dropout_categoricals: list of categorical variables that are unknown when making a forecast without
                 observed history
-            add_relative_time_idx: if to add a relative time index as feature
             constant_fill_strategy: dictionary of column names with constants to fill in missing values if there are
                 gaps in the sequence
                 (otherwise forward fill strategy is used)
             allow_missings: if to allow missing timesteps that are automatically filled up
+            add_relative_time_idx: if to add a relative time index as feature
+            add_target_scales: if to add scales for target to static real features
+            add_decoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
+                i.e. yes if ``min_encoder_length != max_encoder_length``.
+            target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
             categorical_encoders: dictionary of scikit learn label transformers or None
             scalers: dictionary of scikit learn scalers or None
             randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
@@ -675,19 +677,15 @@ class TimeSeriesDataSet(Dataset):
                 If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples around minimum encoder length.
                 Defaults to False otherwise.
             predict_mode: if to only iterate over each timeseries once (only the last provided samples)
-            target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
-            add_target_scales: if to add scales for target to static real features
-            add_decoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
-                i.e. yes if ``min_encoder_length != max_encoder_length``.
         """
         super().__init__()
-        self.min_encoder_length = min_encoder_length
         self.max_encoder_length = max_encoder_length
+        self.min_encoder_length = min_encoder_length or max_encoder_length
         assert (
             self.min_encoder_length <= self.max_encoder_length
         ), "max encoder length has to be larger equals min encoder length"
         self.max_prediction_length = max_prediction_length
-        self.min_prediction_length = min_prediction_length
+        self.min_prediction_length = min_prediction_length or max_prediction_length
         assert (
             self.min_prediction_length <= self.max_prediction_length
         ), "max prediction length has to be larger equals min prediction length"
@@ -707,7 +705,7 @@ class TimeSeriesDataSet(Dataset):
 
         # set automatic defaults
         if isinstance(randomize_length, bool):
-            if randomize_length:
+            if not randomize_length:
                 randomize_length = None
             else:
                 randomize_length = (0.2, 0.05)
@@ -739,6 +737,8 @@ class TimeSeriesDataSet(Dataset):
             if coerce_positive:
                 log_scale = data[self.target].skew() > 2.5
                 coerce_positive = False
+            else:
+                log_scale = False
             if self.max_encoder_length > 20 and self.min_encoder_length > 1:
                 self.target_normalizer = EncoderNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
             else:
@@ -816,8 +816,7 @@ class TimeSeriesDataSet(Dataset):
         Args:
             fname (str): filename to save to
         """
-        with open(fname, "wb") as file:
-            pickle.dump(self, file)
+        torch.save(self, fname)
 
     @classmethod
     def load(cls, fname: str):
@@ -830,8 +829,7 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             TimeSeriesDataSet
         """
-        with open(fname, "rb") as file:
-            obj = pickle.load(file)
+        obj = torch.load(fname)
         assert isinstance(obj, cls), f"Loaded file is not of class {cls}"
         return obj
 
@@ -1062,7 +1060,7 @@ class TimeSeriesDataSet(Dataset):
         Mapping from categorical variables to variables in input data.
 
         Returns:
-            Dict[str, str]: dictionary mapping from :py:meth:`~categorical` to :py:meth`~flat_categoricals`.
+            Dict[str, str]: dictionary mapping from :py:meth:`~categorical` to :py:meth:`~flat_categoricals`.
         """
         groups = {}
         for group_name, sublist in self.variable_groups.items():

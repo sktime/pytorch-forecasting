@@ -62,7 +62,7 @@ class TemporalFusionTransformer(BaseModel):
         output_transformer: Callable = None,
     ):
         """
-        Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to
+        Temporal Fusion Transformer for forecasting timeseries - use its :py:meth:`~from_dataset` method if possible.
 
         Args:
 
@@ -644,23 +644,27 @@ class TemporalFusionTransformer(BaseModel):
         attention = out["attention"][
             :, attention_prediction_horizon, :, : out["encoder_lengths"].max() + attention_prediction_horizon + 1
         ].mean(1)
-        # reorder attention
-        for i in range(len(attention)):  # very inefficient but does the trick
-            if 0 < out["encoder_lengths"][i] < attention.size(1) - attention_prediction_horizon - 1:
-                relevant_attention = attention[
-                    i, : out["encoder_lengths"][i] + attention_prediction_horizon + 1
-                ].clone()
-                if attention_as_autocorrelation:
-                    relevant_attention = autocorrelation(relevant_attention)
-                attention[i, -out["encoder_lengths"][i] - attention_prediction_horizon - 1 :] = relevant_attention
-                attention[i, : attention.size(1) - out["encoder_lengths"][i] - attention_prediction_horizon - 1] = 0.0
-            elif attention_as_autocorrelation:
-                attention[i] = autocorrelation(attention[i])
 
         if reduction != "none":  # if to average over batches
             static_variables = static_variables.sum(dim=0)
             encoder_variables = encoder_variables.sum(dim=0)
             decoder_variables = decoder_variables.sum(dim=0)
+
+            # reorder attention or averaging
+            for i in range(len(attention)):  # very inefficient but does the trick
+                if 0 < out["encoder_lengths"][i] < attention.size(1) - attention_prediction_horizon - 1:
+                    relevant_attention = attention[
+                        i, : out["encoder_lengths"][i] + attention_prediction_horizon + 1
+                    ].clone()
+                    if attention_as_autocorrelation:
+                        relevant_attention = autocorrelation(relevant_attention)
+                    attention[i, -out["encoder_lengths"][i] - attention_prediction_horizon - 1 :] = relevant_attention
+                    attention[
+                        i, : attention.size(1) - out["encoder_lengths"][i] - attention_prediction_horizon - 1
+                    ] = 0.0
+                elif attention_as_autocorrelation:
+                    attention[i] = autocorrelation(attention[i])
+
             attention = attention.sum(dim=0)
             if reduction == "mean":
                 attention = attention / encoder_length_histogram[1:].flip(0).cumsum(0).clamp(1)
@@ -683,19 +687,6 @@ class TemporalFusionTransformer(BaseModel):
             )
         else:
             attention = attention / attention.sum(-1).unsqueeze(-1)  # renormalize
-            attention = torch.zeros(
-                attention.size(0),
-                self.hparams.max_encoder_length + attention_prediction_horizon + 1,
-                device=self.device,
-            ).scatter(
-                dim=1,
-                index=torch.arange(
-                    self.hparams.max_encoder_length + attention_prediction_horizon + 1 - attention.size(1),
-                    self.hparams.max_encoder_length + attention_prediction_horizon + 1,
-                    device=self.device,
-                ).unsqueeze(0),
-                src=attention,
-            )
 
         interpretation = dict(
             attention=attention,
@@ -708,7 +699,13 @@ class TemporalFusionTransformer(BaseModel):
         return interpretation
 
     def plot_prediction(
-        self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], idx: int, **kwargs
+        self,
+        x: Dict[str, torch.Tensor],
+        out: Dict[str, torch.Tensor],
+        idx: int,
+        plot_attention: bool = True,
+        add_loss_to_title: bool = False,
+        ax=None,
     ) -> plt.Figure:
         """
         Plot actuals vs prediction and attention
@@ -717,27 +714,31 @@ class TemporalFusionTransformer(BaseModel):
             x (Dict[str, torch.Tensor]): network input
             out (Dict[str, torch.Tensor]): network output
             idx (int): sample index
+            plot_attention: if to plot attention on secondary axis
+            add_loss_to_title: if to add loss to title. Default to False.
+            ax: matplotlib axes to plot on
 
         Returns:
             plt.Figure: matplotlib figure
         """
 
         # plot prediction as normal
-        fig = super().plot_prediction(x, out, **kwargs)
+        fig = super().plot_prediction(x, out, idx=idx, add_loss_to_title=add_loss_to_title, ax=ax)
 
         # add attention on secondary axis
-        interpretation = self.interpret_output(out)
-        ax = fig.axes[0]
-        ax2 = ax.twinx()
-        ax2.set_ylabel("Attention")
-        ax2.plot(
-            np.arange(
-                -self.hparams.max_encoder_length, interpretation["attention"].size(1) - self.hparams.max_encoder_length
-            ),
-            interpretation["attention"][idx].detach().cpu(),
-            alpha=0.2,
-            color="k",
-        )
+        if plot_attention:
+            interpretation = self.interpret_output(out)
+            ax = fig.axes[0]
+            ax2 = ax.twinx()
+            ax2.set_ylabel("Attention")
+            max_encoder_length = out["encoder_lengths"].max()
+            encoder_length = x["encoder_lengths"][idx]
+            ax2.plot(
+                torch.arange(-encoder_length, 1),
+                interpretation["attention"][idx, list(range(encoder_length)) + [max_encoder_length]].detach().cpu(),
+                alpha=0.2,
+                color="k",
+            )
         fig.tight_layout()
         return fig
 

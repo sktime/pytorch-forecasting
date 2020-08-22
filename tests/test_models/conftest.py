@@ -65,6 +65,7 @@ def data_with_covariates():
             dropout_categoricals=["sku"],
         ),
         dict(static_categoricals=["agency", "sku"]),
+        dict(randomize_length=True, min_encoder_length=2),
         dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
         dict(target_normalizer=GroupNormalizer(log_scale=True)),
         dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=1.0)),
@@ -83,6 +84,7 @@ def dataloaders_with_coveratiates(data_with_covariates, request):
         group_ids=["agency", "sku"],
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
+        add_relative_time_idx=True,
         **request.param  # fixture parametrization
     )
 
@@ -99,7 +101,6 @@ def dataloaders_with_coveratiates(data_with_covariates, request):
 @pytest.fixture()
 def dataloaders_fixed_window_without_coveratiates(data_with_covariates):
     data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10)
-    data["static"] = "2"
     validation = data.series.iloc[:2]
 
     max_encoder_length = 60
@@ -111,17 +112,11 @@ def dataloaders_fixed_window_without_coveratiates(data_with_covariates):
         target="value",
         categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
         group_ids=["series"],
-        static_categoricals=["static"],
-        min_encoder_length=max_encoder_length,
+        static_categoricals=[],
         max_encoder_length=max_encoder_length,
-        min_prediction_length=max_prediction_length,
         max_prediction_length=max_prediction_length,
         time_varying_unknown_reals=["value"],
-        time_varying_known_reals=["time_idx"],
         target_normalizer=EncoderNormalizer(),
-        add_relative_time_idx=False,
-        add_target_scales=True,
-        randomize_length=None,
     )
 
     validation = TimeSeriesDataSet.from_dataset(

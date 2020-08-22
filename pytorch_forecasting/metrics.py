@@ -1,10 +1,7 @@
 """
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
-from abc import abstractmethod
 from typing import Dict, List, Union
-
-from sklearn.base import BaseEstimator
 
 import torch
 from torch import nn
@@ -16,7 +13,7 @@ from pytorch_lightning.metrics import TensorMetric
 import scipy.stats
 
 
-class Metric(TensorMetric, metaclass=abc.ABCMeta):
+class Metric(TensorMetric):
     """
     Base metric class that has basic functions that can handle predicting quantiles and operate in log space
 
@@ -38,7 +35,6 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
             name = self.__class__.__name__
         super().__init__(name)
 
-    @abstractmethod
     def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """
         Abstract method that calcualtes metric
@@ -52,7 +48,7 @@ class Metric(TensorMetric, metaclass=abc.ABCMeta):
         Returns:
             torch.Tensor: metric value on which backpropagation can be applied
         """
-        pass
+        raise NotImplementedError()
 
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
@@ -101,8 +97,7 @@ class MultiHorizonMetric(Metric):
         Returns:
             torch.Tensor: loss/metric as a single number for backpropagation
         """
-
-        pass
+        raise NotImplementedError()
 
     def forward(self, y_pred: Dict[str, torch.Tensor], target: Union[torch.Tensor, rnn.PackedSequence]) -> torch.Tensor:
         """
@@ -144,7 +139,7 @@ class MultiHorizonMetric(Metric):
             mask = mask.unsqueeze(-1)
         # reduce to one number
         if self.reduction == "none":
-            loss = losses.masked_fill(mask, "nan")
+            loss = losses.masked_fill(mask, float("nan"))
         else:
             if self.reduction == "mean":
                 losses = losses.masked_fill(mask, 0.0)

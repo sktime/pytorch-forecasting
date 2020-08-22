@@ -3,7 +3,7 @@ nbsphinx
 pandoc
 docutils
 pydata-sphinx-theme
-pytorch-lightning>=0.8.5
+pytorch-lightning>=0.9.0
 cloudpickle
 torch>=1.6
 optuna>=2.0
@@ -13,3 +13,4 @@ scikit-learn>0.23
 pytorch-ranger
 matplotlib
 statsmodels
+ipython
