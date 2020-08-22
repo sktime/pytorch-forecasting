@@ -62,7 +62,7 @@ class TemporalFusionTransformer(BaseModel):
         output_transformer: Callable = None,
     ):
         """
-        Temporal Fusion Transformer for forecasting timeseries. Use ``from_dataset()`` to
+        Temporal Fusion Transformer for forecasting timeseries - use its :py:meth:`~from_dataset` method if possible.
 
         Args:
 
@@ -734,7 +734,7 @@ class TemporalFusionTransformer(BaseModel):
             max_encoder_length = out["encoder_lengths"].max()
             encoder_length = x["encoder_lengths"][idx]
             ax2.plot(
-                np.arange(-encoder_length, 1),
+                torch.arange(-encoder_length, 1),
                 interpretation["attention"][idx, list(range(encoder_length)) + [max_encoder_length]].detach().cpu(),
                 alpha=0.2,
                 color="k",

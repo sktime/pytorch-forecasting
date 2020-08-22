@@ -3,11 +3,9 @@ Helper functions for PyTorch forecasting
 """
 import os
 import io
-from typing import Callable, Union, List, Dict, Tuple
+from typing import Callable, Union, Tuple
 import torch
-import torch.nn as nn
-import cloudpickle
-import dill
+from contextlib import redirect_stdout
 
 
 def integer_histogram(

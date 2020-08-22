@@ -33,7 +33,7 @@ class Metric(TensorMetric):
         self.reduction = reduction
         if name is None:
             name = self.__class__.__name__
-        self.name = name
+        super().__init__(name)
 
     def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """
