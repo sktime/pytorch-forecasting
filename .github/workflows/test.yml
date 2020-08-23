@@ -11,9 +11,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-18.04, macOS-10.15] # add windows-2019 when poetry allows installation with `-f` flag
         python-version: [3.7, 3.8]
 
     steps:
@@ -23,6 +24,16 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Setup macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install libomp  # https://github.com/pytorch/pytorch/issues/20030
+
+      - name: Setup macOS
+        if: runner.os == 'windows'
+        run: |
+          brew install libomp  # https://github.com/pytorch/pytorch/issues/20030
 
       - name: Get full Python version
         id: full-python-version
@@ -62,6 +73,23 @@ jobs:
       - name: Run pytest
         shell: bash
         run: poetry run pytest tests
+
+      - name: Statistics
+        if: success()
+        run: |
+          pip install coverage
+          coverage report
+          coverage xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        if: always()
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: coverage.xml
+          flags: cpu,pytest
+          name: CPU-coverage
+          fail_ci_if_error: false
 
   docs:
     name: Test docs build
