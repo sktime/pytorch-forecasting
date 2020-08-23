@@ -159,7 +159,10 @@ class BaseModel(LightningModule):
         if label == "train" and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
-            # assert that torch.backends.cudnn.flags(enabled=False)
+            assert not torch._C._get_cudnn_enabled(), (
+                "To use monotone constraints, wrap model and training in context "
+                "`torch.backends.cudnn.flags(enable=False)`"
+            )
             out = self(x)
             out["prediction"] = self.transform_output(out)
             prediction = out["prediction"]

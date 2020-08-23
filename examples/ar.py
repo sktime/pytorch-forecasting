@@ -25,7 +25,7 @@ warnings.simplefilter("error", category=SettingWithCopyWarning)
 from data import generate_ar_data
 
 data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=100)
-data["static"] = 2
+data["static"] = "2"
 data["date"] = pd.Timestamp("2020-01-01") + pd.to_timedelta(data.time_idx, "D")
 validation = data.series.sample(20)
 
