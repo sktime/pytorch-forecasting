@@ -5,7 +5,11 @@ It specificially provides a class to wrap timeseries datasets and a number of Py
 
 # Installation
 
-Install with
+If you are working windows, you need to first install PyTorch with
+
+`pip install torch -f https://download.pytorch.org/whl/torch_stable.html`.
+
+Otherwise, you can proceed with
 
 `pip install pytorch-forecasting`
 

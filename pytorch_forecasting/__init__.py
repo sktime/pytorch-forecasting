@@ -12,3 +12,5 @@ __all__ = [
     "NBeats",
     "Baseline",
 ]
+
+__version__ = "0.0.0"

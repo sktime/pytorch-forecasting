@@ -1012,17 +1012,17 @@ class TimeSeriesDataSet(Dataset):
                 time index
         """
 
-        index = torch.tensor(data[self.group_ids].to_numpy(np.long))
-        time = torch.tensor(data["__time_idx__"].to_numpy(np.long))
+        index = torch.tensor(data[self.group_ids].to_numpy(np.long), dtype=torch.long)
+        time = torch.tensor(data["__time_idx__"].to_numpy(np.long), dtype=torch.long)
 
-        categorical = torch.tensor(data[self.flat_categoricals].to_numpy(np.long))
+        categorical = torch.tensor(data[self.flat_categoricals].to_numpy(np.long), dtype=torch.long)
 
         if self.weight is None:
             target_names = "__target__"
         else:
             target_names = ["__target__", "__weight__"]
-        target = torch.tensor(data[target_names].to_numpy(dtype=np.float32))
-        continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float32))
+        target = torch.tensor(data[target_names].to_numpy(dtype=np.float32), dtype=torch.float)
+        continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float32), dtype=torch.float)
 
         tensors = dict(reals=continuous, categoricals=categorical, groups=index, target=target, time=time)
 
