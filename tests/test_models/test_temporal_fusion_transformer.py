@@ -1,5 +1,4 @@
-from pytorch_forecasting.data import TimeSeriesDataSet
-import pytest
+import torch
 import shutil
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -8,7 +7,7 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 
 
-def test_integration(dataloaders_with_coveratiates, tmp_path):
+def test_integration(dataloaders_with_coveratiates, tmp_path, gpus):
     train_dataloader = dataloaders_with_coveratiates["train"]
     val_dataloader = dataloaders_with_coveratiates["val"]
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
@@ -19,7 +18,7 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
     trainer = pl.Trainer(
         checkpoint_callback=checkpoint,
         max_epochs=3,
-        gpus=0,
+        gpus=gpus,
         weights_summary="top",
         gradient_clip_val=0.1,
         early_stop_callback=early_stop_callback,
@@ -29,6 +28,7 @@ def test_integration(dataloaders_with_coveratiates, tmp_path):
     # test monotone constraints automatically
     if "discount_in_percent" in dataloaders_with_coveratiates["train"].dataset.reals:
         monotone_constaints = {"discount_in_percent": +1}
+        torch.backends.cudnn.flags(enabled=False)
     else:
         monotone_constaints = {}
     net = TemporalFusionTransformer.from_dataset(

@@ -457,8 +457,10 @@ class TemporalFusionTransformer(BaseModel):
             }
             static_embedding, static_variable_selection = self.static_variable_selection(static_embedding)
         else:
-            static_embedding = torch.zeros((x_cont.size(0), self.hparams.hidden_size), dtype=self.dtype)
-            static_variable_selection = torch.zeros((x_cont.size(0), 0), dtype=self.dtype)
+            static_embedding = torch.zeros(
+                (x_cont.size(0), self.hparams.hidden_size), dtype=self.dtype, device=self.device
+            )
+            static_variable_selection = torch.zeros((x_cont.size(0), 0), dtype=self.dtype, device=self.device)
 
         static_context_variable_selection = self.expand_static_context(
             self.static_context_variable_selection(static_embedding), timesteps
@@ -806,7 +808,14 @@ class TemporalFusionTransformer(BaseModel):
         attention_occurances = interpretation["encoder_length_histogram"][1:].flip(0).cumsum(0).float()
         attention_occurances = attention_occurances / attention_occurances.max()
         attention_occurances = torch.cat(
-            [attention_occurances, torch.ones(interpretation["attention"].size(0) - attention_occurances.size(0))],
+            [
+                attention_occurances,
+                torch.ones(
+                    interpretation["attention"].size(0) - attention_occurances.size(0),
+                    dtype=attention_occurances.dtype,
+                    device=attention_occurances.device,
+                ),
+            ],
             dim=0,
         )
         interpretation["attention"] = interpretation["attention"] / attention_occurances.pow(2).clamp(1.0)

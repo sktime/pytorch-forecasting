@@ -159,6 +159,7 @@ class BaseModel(LightningModule):
         if label == "train" and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
+            # assert that torch.backends.cudnn.flags(enabled=False)
             out = self(x)
             out["prediction"] = self.transform_output(out)
             prediction = out["prediction"]
@@ -176,7 +177,7 @@ class BaseModel(LightningModule):
                 [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constaints.keys()]
             )
             monotonicity = torch.tensor(
-                [val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype
+                [val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype, device=gradient.device
             )
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
