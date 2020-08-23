@@ -118,7 +118,7 @@ class MultiHorizonMetric(Metric):
             # batch sizes reside on the CPU by default -> we need to bring them to GPU
             lengths = lengths.to(target.device)
         else:
-            lengths = torch.LongTensor([target.size(1)], device=target.device).expand(target.size(0))
+            lengths = torch.ones(target.size(0), device=target.device, dtype=torch.long) * target.size(1)
         assert not target.requires_grad
 
         # calculate loss with "none" reduction

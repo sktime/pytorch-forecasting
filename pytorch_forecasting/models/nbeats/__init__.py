@@ -225,7 +225,8 @@ class NBeats(BaseModel):
         """
         Plot interpretation.
 
-        [extended_summary]
+        Plot two pannels: prediction and backcast vs actuals and
+        decomposition of prediction into trend, seasonality and generic forecast.
 
         Args:
             x (Dict[str, torch.Tensor]): network input
@@ -237,8 +238,7 @@ class NBeats(BaseModel):
                 generic forecast on secondary axis in second panel. Defaults to False.
 
         Returns:
-            plt.Figure: matplotlib figure with two pannels: prediction and backcast vs actuals and
-                decomposition of prediction into trend, seasonality and generic forecast
+            plt.Figure: matplotlib figure
         """
         if ax is None:
             fig, ax = plt.subplots(2, 1, figsize=(6, 8))
