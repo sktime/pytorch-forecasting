@@ -25,7 +25,7 @@ exclude = '''
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
-version = "0.2.1"
+version = "0.2.2"
 
 authors = ["Jan Beitner"]
 classifiers = [
@@ -90,5 +90,5 @@ dirty = false
 style = "semver"  # semantic versioning
 
 [build-system]  # make the package pip installable
-requires = ["poetry^1.0.5", "poetry-dynamic-versioning"]
+requires = ["poetry>=1.0.5", "poetry-dynamic-versioning"]
 build-backend = "poetry.masonry.api"
