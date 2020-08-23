@@ -1,0 +1,38 @@
+name: PyPI Release
+
+# https://help.github.com/en/actions/reference/events-that-trigger-workflows
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the master branch
+  push:
+    branches:
+      - master
+  release:
+    types:
+      - created
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Install poetry
+        shell: bash
+        run: |
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+          echo "::set-env name=PATH::$HOME/.poetry/bin:$PATH"
+          python -m pip install poetry-dynamic-versioning
+
+      - name: Build
+        run: |
+          poetry build
+
+      - name: Publish distribution 📦 to PyPI
+        if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
+        run: |
+          poetry publish --username ${{ secrets.pypi_user }} --password ${{ secrets.pypi_password }}

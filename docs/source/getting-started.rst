@@ -8,11 +8,13 @@ Installation
 --------------
 
 
-To get started, install PyTorch Forecasting with
+If you are working windows, you need to first install PyTorch with
 
-.. code-block::
+``pip install torch -f https://download.pytorch.org/whl/torch_stable.html``.
 
-   pip install pytorch-forecasting
+Otherwise, you can proceed with
+
+``pip install pytorch-forecasting``
 
 
 Usage

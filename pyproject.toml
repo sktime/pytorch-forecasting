@@ -25,7 +25,7 @@ exclude = '''
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
-version = "0.2.0"
+version = "0.2.1"
 
 authors = ["Jan Beitner"]
 classifiers = [
@@ -77,6 +77,7 @@ black = { version = "*", allow-prereleases = true }
 sphinx = "^3.2"
 pydata-sphinx-theme = "*"
 nbsphinx = "*"
+pandoc = "*"
 
 
 [tool.poetry.extras]  # extras
