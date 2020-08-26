@@ -57,20 +57,33 @@ training = TimeSeriesDataSet(
     time_idx="time_idx",
     target="volume",
     group_ids=["agency", "sku"],
-    # min_encoder_length=max_encoder_length,
+    min_encoder_length=0,  # allow encoder lengths from 0 to max_prediction_length
     max_encoder_length=max_encoder_length,
-    min_prediction_length=max_prediction_length,
+    min_prediction_length=1,
     max_prediction_length=max_prediction_length,
     static_categoricals=["agency", "sku"],
     static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
     time_varying_known_categoricals=["special_days", "month"],
-    variable_groups=dict(special_days=special_days),
+    variable_groups={"special_days": special_days},  # group of categorical variables can be treated as one variable
     time_varying_known_reals=["time_idx", "price_regular", "discount_in_percent"],
     time_varying_unknown_categoricals=[],
-    time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
-    target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=True),
-    randomize_length=False,
+    time_varying_unknown_reals=[
+        "volume",
+        "log_volume",
+        "industry_volume",
+        "soda_volume",
+        "avg_max_temp",
+        "avg_volume_by_agency",
+        "avg_volume_by_sku",
+    ],
+    target_normalizer=GroupNormalizer(
+        groups=["agency", "sku"], coerce_positive=1.0
+    ),  # use softplus with beta=1.0 and normalize by group
+    add_relative_time_idx=True,
+    add_target_scales=True,
+    add_decoder_length=True,
 )
+
 
 validation = TimeSeriesDataSet.from_dataset(training, data, predict=True, stop_randomization=True)
 batch_size = 64
@@ -103,10 +116,10 @@ trainer = pl.Trainer(
 tft = TemporalFusionTransformer.from_dataset(
     training,
     learning_rate=0.03,
-    hidden_size=32,
+    hidden_size=16,
     attention_head_size=1,
-    dropout=0.2,
-    hidden_continuous_size=32,
+    dropout=0.1,
+    hidden_continuous_size=8,
     output_size=7,
     loss=QuantileLoss(),
     log_interval=10,
