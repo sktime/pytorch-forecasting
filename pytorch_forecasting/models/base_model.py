@@ -6,7 +6,6 @@ import inspect
 from torch import unsqueeze
 from torch import optim
 import cloudpickle
-from torch.functional import Tensor
 
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
@@ -344,8 +343,9 @@ class BaseModel(LightningModule):
             if len(x_pred) > 1:
                 ax.fill_between(x_pred, y_quantiles[:, i], y_quantiles[:, -i - 1], alpha=0.15, fc=pred_color)
             else:
+                quantiles = torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]])
                 ax.errorbar(
-                    x_pred, torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]]), c=pred_color, capsize=1.0,
+                    x_pred, y[[-n_pred]], yerr=quantiles - y[-n_pred], c=pred_color, capsize=1.0,
                 )
         if add_loss_to_title:
             if isinstance(add_loss_to_title, bool):
@@ -358,7 +358,7 @@ class BaseModel(LightningModule):
         fig.legend()
         return fig
 
-    def _log_gradient_flow(self, named_parameters: Dict[str, Tensor]) -> None:
+    def _log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor]) -> None:
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """
