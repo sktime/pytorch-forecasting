@@ -25,14 +25,14 @@ exclude = '''
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
-version = "0.2.2"
+version = "0.2.3"
 
 authors = ["Jan Beitner"]
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License"]
-description = "Temporal fusion transformer for timeseries forecasting"
+description = "Forecasting timeseries with PyTorch - dataloaders, normalizers, metrics and models"
 repository = "https://github.com/jdb78/pytorch-forecasting"
 documentation = "https://pytorch-forecasting.readthedocs.io"
 homepage = "https://pytorch-forecasting.readthedocs.io"
