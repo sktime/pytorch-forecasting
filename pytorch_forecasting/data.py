@@ -622,7 +622,7 @@ class TimeSeriesDataSet(Dataset):
         allow_missings: bool = False,
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
-        add_decoder_length: Union[bool, str] = "auto",
+        add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[TorchNormalizer, str] = "auto",
         categorical_encoders={},
         scalers={},
@@ -665,7 +665,7 @@ class TimeSeriesDataSet(Dataset):
             allow_missings: if to allow missing timesteps that are automatically filled up
             add_relative_time_idx: if to add a relative time index as feature
             add_target_scales: if to add scales for target to static real features
-            add_decoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
+            add_encoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
                 i.e. yes if ``min_encoder_length != max_encoder_length``.
             target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
             categorical_encoders: dictionary of scikit learn label transformers or None
@@ -720,16 +720,16 @@ class TimeSeriesDataSet(Dataset):
         self.add_target_scales = add_target_scales
         self.variable_groups = {} if len(variable_groups) == 0 else variable_groups
 
-        # add_decoder_length
-        if isinstance(add_decoder_length, str):
+        # add_encoder_length
+        if isinstance(add_encoder_length, str):
             assert (
-                add_decoder_length == "auto"
-            ), f"Only 'auto' allowed for add_decoder_length but found {add_decoder_length}"
-            add_decoder_length = self.min_encoder_length != self.max_encoder_length
+                add_encoder_length == "auto"
+            ), f"Only 'auto' allowed for add_encoder_length but found {add_encoder_length}"
+            add_encoder_length = self.min_encoder_length != self.max_encoder_length
         assert isinstance(
-            add_decoder_length, bool
-        ), f"add_decoder_length should be boolean or 'auto' but found {add_decoder_length}"
-        self.add_decoder_length = add_decoder_length
+            add_encoder_length, bool
+        ), f"add_encoder_length should be boolean or 'auto' but found {add_encoder_length}"
+        self.add_encoder_length = add_encoder_length
 
         # target normalizer
         if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
@@ -773,7 +773,7 @@ class TimeSeriesDataSet(Dataset):
             data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # add decoder length to static real variables
-        if self.add_decoder_length:
+        if self.add_encoder_length:
             assert (
                 "decoder_length" not in data.columns
             ), "decoder_length is a protected column and must not be present in data"
@@ -1401,7 +1401,7 @@ class TimeSeriesDataSet(Dataset):
                 torch.arange(-encoder_length, decoder_length, dtype=data_cont.dtype) / self.max_encoder_length
             )
 
-        if self.add_decoder_length:
+        if self.add_encoder_length:
             data_cont[:, self.reals.index("decoder_length")] = (
                 decoder_length - 0.5 * self.max_encoder_length
             ) / self.max_encoder_length
@@ -1568,7 +1568,10 @@ class TimeSeriesDataSet(Dataset):
         )
 
         default_kwargs.update(kwargs)
-        return DataLoader(self, **default_kwargs,)
+        return DataLoader(
+            self,
+            **default_kwargs,
+        )
 
     def get_index(self) -> pd.DataFrame:
         """

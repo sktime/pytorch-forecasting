@@ -81,7 +81,7 @@ training = TimeSeriesDataSet(
     ),  # use softplus with beta=1.0 and normalize by group
     add_relative_time_idx=True,
     add_target_scales=True,
-    add_decoder_length=True,
+    add_encoder_length=True,
 )
 
 
@@ -141,7 +141,9 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # tft.hparams.learning_rate = res.suggestion()
 
 trainer.fit(
-    tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+    tft,
+    train_dataloader=train_dataloader,
+    val_dataloaders=val_dataloader,
 )
 
 # # make a prediction on entire validation set
