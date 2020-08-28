@@ -1556,14 +1556,14 @@ category = "main"
 description = "Statistical computations and models for Python"
 name = "statsmodels"
 optional = false
-python-versions = ">=3.5"
-version = "0.11.1"
+python-versions = ">=3.6"
+version = "0.12.0"
 
 [package.dependencies]
-numpy = ">=1.14"
+numpy = ">=1.15"
 pandas = ">=0.21"
 patsy = ">=0.5"
-scipy = ">=1.0"
+scipy = ">=1.1"
 
 [package.extras]
 build = ["cython (>=0.29)"]
@@ -2723,27 +2723,22 @@ sqlalchemy = [
     {file = "SQLAlchemy-1.3.19.tar.gz", hash = "sha256:3bba2e9fbedb0511769780fe1d63007081008c5c2d7d715e91858c94dbaa260e"},
 ]
 statsmodels = [
-    {file = "statsmodels-0.11.1-cp35-cp35m-macosx_10_13_intel.whl", hash = "sha256:47e0f27fe515fae06240a1f1dbcdce8b93417ea294b4965335f538627f711b10"},
-    {file = "statsmodels-0.11.1-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:92536c3579a6c7fbdaeb1c026781a17d4760e4b76ca861eaae05b2a43309dca5"},
-    {file = "statsmodels-0.11.1-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:1e3ae5671cae0da8f94ce5e9331fc9880fe6210ffd5750ac961f84203d262763"},
-    {file = "statsmodels-0.11.1-cp35-none-win32.whl", hash = "sha256:e728156ae279f05574ef9e840ec57f44c96c85ba14010169e9b4e1085d89642f"},
-    {file = "statsmodels-0.11.1-cp35-none-win_amd64.whl", hash = "sha256:f2ac0559d6ef824d5a47576f572de62b0f088ef4f912dd40298ee9ab20d3ef9b"},
-    {file = "statsmodels-0.11.1-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:5e7afc596164c1c7464ba3943721a9668aa0ce07853ce9881ac49d3a043784dd"},
-    {file = "statsmodels-0.11.1-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:bce1e6b94ade985a8319621c9ea4f7e312ed8cfcb5d93ab0cb0013c58b98680c"},
-    {file = "statsmodels-0.11.1-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:9efd2e27c08077330cecdbfb589cf84d735abface94e9a6387282a6a7c91362d"},
-    {file = "statsmodels-0.11.1-cp36-none-win32.whl", hash = "sha256:02e95c567ac77834210ecbe96a64eb939fc42669f95d583ac6184b00830db743"},
-    {file = "statsmodels-0.11.1-cp36-none-win_amd64.whl", hash = "sha256:49aa8ffbe0b0e2e86afa58dec6bd5c483898e9b8223d8a7d13b69b5ad144b674"},
-    {file = "statsmodels-0.11.1-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:59403da80bdba84713d93f36897fba4fd3b2964a1b983816ed488a405abc18b1"},
-    {file = "statsmodels-0.11.1-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:6e7e2cb74d8ae56cffc0581f3467cdcd16d8f7e97297974cefdf0d727020c287"},
-    {file = "statsmodels-0.11.1-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:67e1a5d9fc6900209203cd446b2ed6822eb4b03581dea669c4fe97f512cfde36"},
-    {file = "statsmodels-0.11.1-cp37-none-win32.whl", hash = "sha256:f5e4928e230332260cb55458953dbbae6a63356f91d3242c7ba2d17dc6c4bd7f"},
-    {file = "statsmodels-0.11.1-cp37-none-win_amd64.whl", hash = "sha256:434240abd14f4998ec6350473cd105e9977e930635ecf7e352d641d729dbc2a2"},
-    {file = "statsmodels-0.11.1-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:621f2ec00ff8a4749cef3c9cc11c12ac2ee549ecf3ccfde626b3f1461165f0e6"},
-    {file = "statsmodels-0.11.1-cp38-cp38-manylinux1_i686.whl", hash = "sha256:a4fcb03d2a5d0f37d0ecb38f6d9d10a3ab6f9e2e583c3be4d4615484d5d10e88"},
-    {file = "statsmodels-0.11.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:6243bc78bc805acee7690098fa749094895bb3c2dd0b7f7ac8d57f97fe2b1eb2"},
-    {file = "statsmodels-0.11.1-cp38-none-win32.whl", hash = "sha256:6371267d051b555898611913afa4a46144e9d29a234ef32c2e36e558e88a8de9"},
-    {file = "statsmodels-0.11.1-cp38-none-win_amd64.whl", hash = "sha256:b9b9cb6ced4f9b644cfd0b6a9d4a88e406c643dba4f2ad61e22d03ee48bc7731"},
-    {file = "statsmodels-0.11.1.tar.gz", hash = "sha256:5bde3fa0a35a91b45dba7cbc28270b5b649ff1d721c89290883f6e831672d5f0"},
+    {file = "statsmodels-0.12.0-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:c8eb0f602e92e59b480001d4f3edac96736f47130a0d4485245cfc168e0ab116"},
+    {file = "statsmodels-0.12.0-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:abb266fb5273fea512a9dac2097e66cbd574d119d162f1c7eab392ae069ee640"},
+    {file = "statsmodels-0.12.0-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:cb317ab297b4196ac16d4ab671854f2e029916210ab6c93a642b7b94686327fc"},
+    {file = "statsmodels-0.12.0-cp36-none-win32.whl", hash = "sha256:63126117af7b402b500742df39b3e5fec2dc3c9084a71852f9c52ac8bfa4c035"},
+    {file = "statsmodels-0.12.0-cp36-none-win_amd64.whl", hash = "sha256:e2c513846ffeecf38f901005b06c596e9b115e7c631b43bb5354339de5ee8e95"},
+    {file = "statsmodels-0.12.0-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:6aa45c4182cd80926222fcff851850ff02778b16c0fb1381e04c1cf1cfbd4a8d"},
+    {file = "statsmodels-0.12.0-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:6f795ba042f0f183e60d0177da4fb85ebad6fe90f1c0ce2c4ed20336253aacf2"},
+    {file = "statsmodels-0.12.0-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:9ada3ddf13e60a5728304e6ca176e6ad8ca83b80c85db593087d853c5c6d4a98"},
+    {file = "statsmodels-0.12.0-cp37-none-win32.whl", hash = "sha256:20e275f63e7e4c79133af444043a6ea95846b6165ecb21c7a4983fa7dbaf5396"},
+    {file = "statsmodels-0.12.0-cp37-none-win_amd64.whl", hash = "sha256:b4d549d8502b349e8e3bdd19ab424b1c5a5cd0b2e14e9aa2156e99d7396276a3"},
+    {file = "statsmodels-0.12.0-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:8a555397609e01e7802393dedff19a8811a5fd0d2b177b88dd8a2e156824bbd3"},
+    {file = "statsmodels-0.12.0-cp38-cp38-manylinux1_i686.whl", hash = "sha256:6ef6b8c26ea3ab45ed4f5dce3e79ea725ab8896c15ed6ac405f619e33fa321da"},
+    {file = "statsmodels-0.12.0-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:9e9845db4fcd06272da5db95c75a2e30366d3116260a6e559881a1c9d9bccfba"},
+    {file = "statsmodels-0.12.0-cp38-none-win32.whl", hash = "sha256:5d93e7650632ffb05bd407248a673cc8b4a5dfc47bf6def4066c502a331fb5f4"},
+    {file = "statsmodels-0.12.0-cp38-none-win_amd64.whl", hash = "sha256:8cf730e37c5f21d9dabfb9af144fb9654d1211ec88eb6aa771ed96d814f7398d"},
+    {file = "statsmodels-0.12.0.tar.gz", hash = "sha256:5c7d6707ad3112b67f564abaf1845d3c02ecc7174c2d990d539f45c37e98ad35"},
 ]
 stevedore = [
     {file = "stevedore-3.2.0-py3-none-any.whl", hash = "sha256:c8f4f0ebbc394e52ddf49de8bcc3cf8ad2b4425ebac494106bbc5e3661ac7633"},
