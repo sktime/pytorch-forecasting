@@ -1,11 +1,23 @@
 import torch
 import shutil
-from contextlib import nullcontext
+import sys
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
+
+
+if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
+    from contextlib import contextmanager
+
+    @contextmanager
+    def nullcontext(enter_result=None):
+        yield enter_result
+
+
+else:
+    from contextlib import nullcontext
 
 
 def test_integration(dataloaders_with_coveratiates, tmp_path, gpus):
@@ -51,7 +63,9 @@ def test_integration(dataloaders_with_coveratiates, tmp_path, gpus):
         net.size()
         try:
             trainer.fit(
-                net, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+                net,
+                train_dataloader=train_dataloader,
+                val_dataloaders=val_dataloader,
             )
 
             # check loading
