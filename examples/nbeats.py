@@ -80,5 +80,7 @@ print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
 # net.hparams.learning_rate = res.suggestion()
 
 trainer.fit(
-    net, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+    net,
+    train_dataloader=train_dataloader,
+    val_dataloaders=val_dataloader,
 )

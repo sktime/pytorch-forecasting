@@ -129,7 +129,9 @@ def dataloaders_fixed_window_without_coveratiates(data_with_covariates):
     )
 
     validation = TimeSeriesDataSet.from_dataset(
-        training, data[lambda x: x.series.isin(validation)], stop_randomization=True,
+        training,
+        data[lambda x: x.series.isin(validation)],
+        stop_randomization=True,
     )
     batch_size = 64
     train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
