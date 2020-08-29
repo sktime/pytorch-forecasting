@@ -322,7 +322,10 @@ class VariableSelectionNetwork(nn.Module):
                 self.single_variable_grns[name] = ResampleNorm(input_size, self.hidden_size)
             else:
                 self.single_variable_grns[name] = GatedResidualNetwork(
-                    input_size, min(input_size, self.hidden_size), output_size=self.hidden_size, dropout=self.dropout,
+                    input_size,
+                    min(input_size, self.hidden_size),
+                    output_size=self.hidden_size,
+                    dropout=self.dropout,
                 )
             if name in prescalers:  # reals need to be first scaled up
                 self.prescalers[name] = prescalers[name]

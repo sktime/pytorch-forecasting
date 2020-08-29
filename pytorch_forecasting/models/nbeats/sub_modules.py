@@ -129,7 +129,13 @@ class NBEATSSeasonalBlock(NBEATSBlock):
 
 class NBEATSTrendBlock(NBEATSBlock):
     def __init__(
-        self, units, thetas_dim, num_block_layers=4, backcast_length=10, forecast_length=5, dropout=0.1,
+        self,
+        units,
+        thetas_dim,
+        num_block_layers=4,
+        backcast_length=10,
+        forecast_length=5,
+        dropout=0.1,
     ):
         super().__init__(
             units=units,
@@ -159,7 +165,13 @@ class NBEATSTrendBlock(NBEATSBlock):
 
 class NBEATSGenericBlock(NBEATSBlock):
     def __init__(
-        self, units, thetas_dim, num_block_layers=4, backcast_length=10, forecast_length=5, dropout=0.1,
+        self,
+        units,
+        thetas_dim,
+        num_block_layers=4,
+        backcast_length=10,
+        forecast_length=5,
+        dropout=0.1,
     ):
         super().__init__(
             units=units,

@@ -94,7 +94,9 @@ def optimize_hyperparameters(
         # find good learning rate
         if "learning_rate" not in kwargs or isinstance(kwargs["learning_rate"], (tuple, list)):
             lr_trainer = pl.Trainer(
-                gradient_clip_val=gradient_clip_val, gpus=[0] if torch.cuda.is_available() else None, logger=False,
+                gradient_clip_val=gradient_clip_val,
+                gpus=[0] if torch.cuda.is_available() else None,
+                logger=False,
             )
             res = lr_trainer.lr_find(
                 model,

@@ -267,7 +267,9 @@ class BaseModel(LightningModule):
                 else:
                     tag += f" of item {idx} in batch {batch_idx}"
                 self.logger.experiment.add_figure(
-                    tag, fig, global_step=self.global_step,
+                    tag,
+                    fig,
+                    global_step=self.global_step,
                 )
 
     def plot_prediction(
@@ -345,7 +347,11 @@ class BaseModel(LightningModule):
             else:
                 quantiles = torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]])
                 ax.errorbar(
-                    x_pred, y[[-n_pred]], yerr=quantiles - y[-n_pred], c=pred_color, capsize=1.0,
+                    x_pred,
+                    y[[-n_pred]],
+                    yerr=quantiles - y[-n_pred],
+                    c=pred_color,
+                    capsize=1.0,
                 )
         if add_loss_to_title:
             if isinstance(add_loss_to_title, bool):

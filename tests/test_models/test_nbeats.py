@@ -28,7 +28,9 @@ def test_integration(dataloaders_fixed_window_without_coveratiates, tmp_path, gp
     net.size()
     try:
         trainer.fit(
-            net, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+            net,
+            train_dataloader=train_dataloader,
+            val_dataloaders=val_dataloader,
         )
         # check loading
         fname = f"{trainer.checkpoint_callback.dirpath}/epoch=0.ckpt"

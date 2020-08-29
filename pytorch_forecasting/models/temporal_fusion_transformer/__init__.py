@@ -133,7 +133,9 @@ class TemporalFusionTransformer(BaseModel):
                 else:
                     padding_idx = None
                 self.input_embeddings[name] = nn.Embedding(
-                    self.hparams.embedding_sizes[name][0], embedding_size, padding_idx=padding_idx,
+                    self.hparams.embedding_sizes[name][0],
+                    embedding_size,
+                    padding_idx=padding_idx,
                 )
 
         # continuous variable processing
@@ -327,7 +329,10 @@ class TemporalFusionTransformer(BaseModel):
 
     @classmethod
     def from_dataset(
-        cls, dataset: TimeSeriesDataSet, allowed_encoder_known_variable_names: List[str] = None, **kwargs,
+        cls,
+        dataset: TimeSeriesDataSet,
+        allowed_encoder_known_variable_names: List[str] = None,
+        **kwargs,
     ):
         """
         Create model from dataset.
@@ -471,7 +476,8 @@ class TemporalFusionTransformer(BaseModel):
             for name in self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
         }
         embeddings_varying_encoder, encoder_sparse_weights = self.encoder_variable_selection(
-            embeddings_varying_encoder, static_context_variable_selection[:, :max_encoder_length],
+            embeddings_varying_encoder,
+            static_context_variable_selection[:, :max_encoder_length],
         )
 
         embeddings_varying_decoder = {
@@ -479,7 +485,8 @@ class TemporalFusionTransformer(BaseModel):
             for name in self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
         }
         embeddings_varying_decoder, decoder_sparse_weights = self.decoder_variable_selection(
-            embeddings_varying_decoder, static_context_variable_selection[:, max_encoder_length:],
+            embeddings_varying_decoder,
+            static_context_variable_selection[:, max_encoder_length:],
         )
 
         # LSTM
@@ -515,7 +522,10 @@ class TemporalFusionTransformer(BaseModel):
         decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
 
         # run local decoder
-        decoder_output, _ = self.lstm_decoder(embeddings_varying_decoder, (hidden, cell),)
+        decoder_output, _ = self.lstm_decoder(
+            embeddings_varying_decoder,
+            (hidden, cell),
+        )
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)

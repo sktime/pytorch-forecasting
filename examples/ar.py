@@ -113,7 +113,9 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 torch.set_num_threads(10)
 trainer.fit(
-    tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+    tft,
+    train_dataloader=train_dataloader,
+    val_dataloaders=val_dataloader,
 )
 
 # # make a prediction on entire validation set
