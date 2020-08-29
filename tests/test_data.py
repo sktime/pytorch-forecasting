@@ -171,8 +171,8 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
         dict(randomize_length=True, min_encoder_length=2, min_prediction_length=1),
         dict(predict_mode=True),
         dict(add_target_scales=True),
-        dict(add_decoder_length=True),
-        dict(add_decoder_length=True),
+        dict(add_encoder_length=True),
+        dict(add_encoder_length=True),
         dict(add_relative_time_idx=True),
         dict(weight="volume"),
         dict(

@@ -14,7 +14,7 @@ provides multiple such target normalizers (some of which can also be used for no
 Details
 --------
 
-See the API documentation for further details on available data encoders and the :py:class:~`TimeSeriesDataSet`:
+See the API documentation for further details on available data encoders and the :py:class:`~TimeSeriesDataSet`:
 
 .. currentmodule:: pytorch_forecasting
 
