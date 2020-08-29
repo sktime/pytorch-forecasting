@@ -74,5 +74,9 @@ def test_integration(dataloaders_with_coveratiates, tmp_path, gpus):
 
             # check prediction
             net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+            # check prediction on gpu
+            if not (isinstance(gpus, int) and gpus == 0):
+                net.to("cuda")
+                net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
         finally:
             shutil.rmtree(tmp_path, ignore_errors=True)
