@@ -22,7 +22,7 @@ from pandas.core.common import SettingWithCopyWarning
 warnings.simplefilter("error", category=SettingWithCopyWarning)
 
 
-from data import generate_ar_data
+from pytorch_forecasting.data.examples import generate_ar_data
 
 data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=100)
 data["static"] = "2"

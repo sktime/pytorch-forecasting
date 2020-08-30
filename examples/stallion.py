@@ -20,7 +20,7 @@ from pandas.core.common import SettingWithCopyWarning
 warnings.simplefilter("error", category=SettingWithCopyWarning)
 
 
-from data import get_stallion_data
+from pytorch_forecasting.data.examples import get_stallion_data
 
 data = get_stallion_data()
 

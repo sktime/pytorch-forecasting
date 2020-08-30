@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))
 sys.path.insert(0, "examples")
 
-from examples.data import get_stallion_data
+from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting import TimeSeriesDataSet
 
 

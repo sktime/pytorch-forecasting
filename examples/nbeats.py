@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_forecasting import TimeSeriesDataSet, NBeats
 from pytorch_forecasting.data import NaNLabelEncoder
 from sklearn.preprocessing import scale
-from examples.data import generate_ar_data
+from pytorch_forecasting.data.examples import generate_ar_data
 
 print("load data")
 data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=100)
