@@ -8,7 +8,7 @@ import pandas as pd
 
 from sklearn.preprocessing import StandardScaler
 
-from examples.data import get_stallion_data
+from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data import NaNLabelEncoder, GroupNormalizer, TimeSeriesDataSet, EncoderNormalizer
 
 torch.manual_seed(23)

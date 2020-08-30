@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import torch
-from data import get_stallion_data, generate_ar_data
+from pytorch_forecasting.data.examples import get_stallion_data, generate_ar_data
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import GroupNormalizer, NaNLabelEncoder, EncoderNormalizer
 

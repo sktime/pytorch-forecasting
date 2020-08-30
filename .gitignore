@@ -143,3 +143,6 @@ lightning_logs
 *.ckpt
 *.pkl
 .DS_Store
+
+# data
+pytorch_forecasting/data/*.parquet
