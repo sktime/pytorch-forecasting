@@ -544,8 +544,15 @@ class BaseModel(LightningModule):
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader), disable=not show_progress_bar)
         with torch.no_grad():
             for x, _ in dataloader:
+                # move data to appropriate device
+                for name in x.keys():
+                    if x[name].device != self.device:
+                        x[name].to(self.device)
+
+                # make prediction
                 out = self(x)  # raw output is dictionary
                 out["prediction"] = self.transform_output(out)
+
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
                     decode_lenghts.append(lengths)
