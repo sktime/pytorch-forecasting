@@ -1,10 +1,8 @@
 """
 N-Beats model for timeseries forecasting without covariates.
 """
-from typing import Dict, List, Any
-import numpy as np
+from typing import Dict, List
 import matplotlib.pyplot as plt
-from pytorch_ranger import Ranger
 
 import torch
 from torch import nn

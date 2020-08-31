@@ -478,14 +478,14 @@ description = "IPython: Productive Interactive Computing"
 name = "ipython"
 optional = false
 python-versions = ">=3.7"
-version = "7.18.0"
+version = "7.18.1"
 
 [package.dependencies]
 appnope = "*"
 backcall = "*"
 colorama = "*"
 decorator = "*"
-jedi = ">=0.16"
+jedi = ">=0.10"
 pexpect = ">4.3"
 pickleshare = "*"
 prompt-toolkit = ">=2.0.0,<3.0.0 || >3.0.0,<3.0.1 || >3.0.1,<3.1.0"
@@ -1000,7 +1000,7 @@ description = "Library for building powerful interactive command lines in Python
 name = "prompt-toolkit"
 optional = false
 python-versions = ">=3.6.1"
-version = "3.0.6"
+version = "3.0.7"
 
 [package.dependencies]
 wcwidth = "*"
@@ -1078,7 +1078,7 @@ description = "Bootstrap-based Sphinx theme from the PyData community"
 name = "pydata-sphinx-theme"
 optional = false
 python-versions = ">=3.5"
-version = "0.3.2"
+version = "0.4.0"
 
 [package.dependencies]
 sphinx = "*"
@@ -1288,17 +1288,6 @@ docs = ["sphinx (>=2.0,<3.0)", "recommonmark", "m2r", "nbsphinx", "pandoc", "doc
 examples = ["torchvision (>=0.4.0,<0.7)", "gym (>=0.17.0)"]
 extra = ["neptune-client (>=0.4.109)", "comet-ml (>=3.1.12)", "mlflow (>=1.0.0)", "test-tube (>=0.7.5)", "wandb (>=0.8.21)", "matplotlib (>=3.1.1)", "horovod (>=0.19.2)", "omegaconf (>=2.0.0)", "scikit-learn (>=0.22.2)", "torchtext (>=0.3.1,<0.7)", "onnx (>=1.7.0)", "onnxruntime (>=1.3.0)"]
 test = ["coverage", "codecov (>=2.1)", "pytest (>=3.0.5)", "pytest-cov", "pytest-flake8", "flake8", "flake8-black", "check-manifest", "twine (1.13.0)", "scikit-image", "black (19.10b0)", "pre-commit (>=1.0)", "cloudpickle (>=1.2)", "nltk (>=3.3)"]
-
-[[package]]
-category = "main"
-description = "Ranger - a synergistic optimizer using RAdam (Rectified Adam) and LookAhead in one codebase"
-name = "pytorch-ranger"
-optional = false
-python-versions = ">=3.5"
-version = "0.1.1"
-
-[package.dependencies]
-torch = "*"
 
 [[package]]
 category = "main"
@@ -1797,7 +1786,7 @@ testing = ["jaraco.itertools", "func-timeout"]
 github-actions = ["pytest-github-actions-annotate-failures"]
 
 [metadata]
-content-hash = "152ac5bb8251bc7cd8637dd7dbedfde0ed849b9ac7db524a1cf89b3d6cbbd4a0"
+content-hash = "8d0c4972839fcdda2d6257c52bcc876cceb06277b79912a9d37a95db34fb7e60"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -2034,8 +2023,8 @@ ipykernel = [
     {file = "ipykernel-5.3.4.tar.gz", hash = "sha256:9b2652af1607986a1b231c62302d070bc0534f564c393a5d9d130db9abbbe89d"},
 ]
 ipython = [
-    {file = "ipython-7.18.0-py3-none-any.whl", hash = "sha256:73c61ebcc30baadf600b870c3a38b96d6e5ae8dde5ef5425b8aab75dc9a9a602"},
-    {file = "ipython-7.18.0.tar.gz", hash = "sha256:4dbacf73ac7409c33c918044476eefe4c2428ce0ca4cc118aee718ac6026ac0f"},
+    {file = "ipython-7.18.1-py3-none-any.whl", hash = "sha256:2e22c1f74477b5106a6fb301c342ab8c64bb75d702e350f05a649e8cb40a0fb8"},
+    {file = "ipython-7.18.1.tar.gz", hash = "sha256:a331e78086001931de9424940699691ad49dfb457cea31f5471eae7b78222d5e"},
 ]
 ipython-genutils = [
     {file = "ipython_genutils-0.2.0-py2.py3-none-any.whl", hash = "sha256:72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8"},
@@ -2346,8 +2335,8 @@ prettytable = [
     {file = "prettytable-0.7.2.zip", hash = "sha256:a53da3b43d7a5c229b5e3ca2892ef982c46b7923b51e98f0db49956531211c4f"},
 ]
 prompt-toolkit = [
-    {file = "prompt_toolkit-3.0.6-py3-none-any.whl", hash = "sha256:683397077a64cd1f750b71c05afcfc6612a7300cb6932666531e5a54f38ea564"},
-    {file = "prompt_toolkit-3.0.6.tar.gz", hash = "sha256:7630ab85a23302839a0f26b31cc24f518e6155dea1ed395ea61b42c45941b6a6"},
+    {file = "prompt_toolkit-3.0.7-py3-none-any.whl", hash = "sha256:83074ee28ad4ba6af190593d4d4c607ff525272a504eb159199b6dd9f950c950"},
+    {file = "prompt_toolkit-3.0.7.tar.gz", hash = "sha256:822f4605f28f7d2ba6b0b09a31e25e140871e96364d1d377667b547bb3bf4489"},
 ]
 protobuf = [
     {file = "protobuf-3.13.0-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:9c2e63c1743cba12737169c447374fab3dfeb18111a460a8c1a000e35836b18c"},
@@ -2435,8 +2424,8 @@ pycodestyle = [
     {file = "pycodestyle-2.6.0.tar.gz", hash = "sha256:c58a7d2815e0e8d7972bf1803331fb0152f867bd89adf8a01dfd55085434192e"},
 ]
 pydata-sphinx-theme = [
-    {file = "pydata-sphinx-theme-0.3.2.tar.gz", hash = "sha256:3920d7689324dd00b96747b61d2bd8968b096ee6e2bec6c7e88253ee302d51c7"},
-    {file = "pydata_sphinx_theme-0.3.2-py3-none-any.whl", hash = "sha256:ec2b5851c3382ba2715040189e1e9e45f1e9a3a290c494fec83121feac1f7e80"},
+    {file = "pydata-sphinx-theme-0.4.0.tar.gz", hash = "sha256:363ffdc3dffacc137fa06d7a15893acd12c28d74f7f32401d300c3922788cdeb"},
+    {file = "pydata_sphinx_theme-0.4.0-py3-none-any.whl", hash = "sha256:2029bd25d3b8e4de9b06120bb02be6a0becb5f8fbf087309e792623ae8ea6b55"},
 ]
 pyflakes = [
     {file = "pyflakes-2.2.0-py2.py3-none-any.whl", hash = "sha256:0d94e0e05a19e57a99444b6ddcf9a6eb2e5c68d3ca1e98e90707af8152c90a92"},
@@ -2502,10 +2491,6 @@ python-editor = [
 pytorch-lightning = [
     {file = "pytorch-lightning-0.9.0.tar.gz", hash = "sha256:9f1010a49b1d1ee4a09653cfa00c438d1117b509e16661e271df587403f8d9e7"},
     {file = "pytorch_lightning-0.9.0-py3-none-any.whl", hash = "sha256:d3d36bba6c7c9968af9e16123a01848e297f727eb6cef2d963843c6149afad79"},
-]
-pytorch-ranger = [
-    {file = "pytorch_ranger-0.1.1-py3-none-any.whl", hash = "sha256:1e69156c9cc8439185cb8ba4725b18c91947fbe72743e25aca937da8aeb0c8ec"},
-    {file = "pytorch_ranger-0.1.1.tar.gz", hash = "sha256:aa7115431cef11b57d7dd7bc86e7302a911dae467f62ec5d0b10e1ff744875db"},
 ]
 pytz = [
     {file = "pytz-2020.1-py2.py3-none-any.whl", hash = "sha256:a494d53b6d39c3c6e44c3bec237336e14305e4f29bbf800b599253057fbb79ed"},
