@@ -1,16 +1,13 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
-from typing import Callable, Union, List, Dict, Tuple, Any
+from typing import Callable, Union, List, Dict, Tuple
 
 import numpy as np
-from pytorch_lightning.metrics.metric import TensorMetric
 import torch
 from matplotlib import pyplot as plt
-from pytorch_ranger import Ranger
 from torch import nn
 from torch.nn.utils import rnn
-from torch.utils import data
 
 from pytorch_forecasting.models import BaseModel
 from pytorch_forecasting.data import TimeSeriesDataSet

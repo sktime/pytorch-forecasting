@@ -14,7 +14,7 @@ from pytorch_forecasting.metrics import SMAPE
 from typing import Any, Callable, Dict, List, Tuple, Union
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
-from pytorch_ranger import Ranger
+from pytorch_forecasting.optim import Ranger
 import torch
 import numpy as np
 import pandas as pd
