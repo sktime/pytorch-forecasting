@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
 from pytorch_forecasting.metrics import SMAPE
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
 from pytorch_forecasting.optim import Ranger
@@ -516,7 +516,7 @@ class BaseModel(LightningModule):
             batch_size: batch size for dataloader - only used if data is not a dataloader is passed
             num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
             fast_dev_run: if to only return results of first batch
-            show_progress_bar: if to show progress bar. Defaults to True
+            show_progress_bar: if to show progress bar. Defaults to False.
             return_x: if to return network inputs
 
         Returns:
@@ -694,6 +694,78 @@ class BaseModel(LightningModule):
             "average": {"actual": averages_actual, "prediction": averages_prediction},
             "std": std,
         }
+
+    def predict_dependency(
+        self,
+        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
+        variable: str,
+        values: Iterable,
+        mode: str = "dataframe",
+        show_progress_bar: bool = False,
+        **kwargs,
+    ) -> Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]:
+        """
+        Predict dependency (e.g. for partial dependency plots).
+
+
+        Args:
+            data (Union[DataLoader, pd.DataFrame, TimeSeriesDataSet]): data
+            variable (str): variable which to modify
+            values (Iterable): array of values to probe
+            mode (str, optional): Output mode: either "series", "dataframe" or "raw". Defaults to "dataframe".
+            show_progress_bar: if to show progress bar. Defaults to False.
+            **kwargs: additional kwargs to :py:meth:`~predict` method
+
+        Returns:
+            Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]: output
+        """
+        values = np.asarray(values)
+        if isinstance(data, pd.DataFrame):  # convert to dataframe
+            data = TimeSeriesDataSet.from_parameters(self.dataset_parameters, data, predict=True)
+
+        results = []
+        progress_bar = tqdm(desc="Predict", unit=" batches", total=len(values), disable=not show_progress_bar)
+        for value in values:
+            # set values
+            data.set_overwrite_values(variable=variable, values=value, target="decoder")
+            # predict
+            kwargs["mode"] = "prediction"
+            results.append(self.predict(data, **kwargs))
+            # increment progress
+            progress_bar.update()
+
+        data.reset_overwrite_values()  # reset overwrite values to avoid side-effect
+
+        # results to one tensor
+        results = torch.stack(results, dim=0)
+
+        # convert results to requested output format
+        # todo: handle nans
+        if mode == "series":
+            results = results.mean([1, 2])  # average samples and prediction horizon
+            results = pd.Series(results, index=values)
+
+        elif mode == "dataframe":
+            dependencies = data.get_index()
+            dependencies = (
+                dependencies.iloc[np.tile(np.arange(len(dependencies)), len(values))]
+                .reset_index(drop=True)
+                .assign(prediction=results.mean(2).flatten(), value=values.repeat(len(data)))
+            )
+            dependencies["first_prediction"] = dependencies.groupby(data.group_ids, observed=True).prediction.transform(
+                "first"
+            )
+            dependencies["normalized_prediction"] = dependencies["prediction"] / dependencies["first_prediction"]
+            dependencies["id"] = dependencies.groupby(data.group_ids, observed=True).ngroup()
+            results = dependencies
+
+        elif mode == "raw":
+            pass
+
+        else:
+            raise ValueError(f"mode {mode} is unknown - see documentation for available modes")
+
+        return results
 
     def plot_prediction_actual_by_variable(
         self, data: Dict[str, Dict[str, torch.Tensor]], name: str = None
