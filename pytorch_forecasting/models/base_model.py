@@ -604,7 +604,7 @@ class BaseModel(LightningModule):
 
     def predict_dependency(
         self,
-        data: Union[pd.DataFrame, TimeSeriesDataSet],
+        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
         variable: str,
         values: Iterable,
         mode: str = "dataframe",
@@ -616,7 +616,7 @@ class BaseModel(LightningModule):
 
 
         Args:
-            data (Union[pd.DataFrame, TimeSeriesDataSet]): data
+            data (Union[DataLoader, pd.DataFrame, TimeSeriesDataSet]): data
             variable (str): variable which to modify
             values (Iterable): array of values to probe
             mode (str, optional): Output mode. Defaults to "dataframe". Either
@@ -637,6 +637,8 @@ class BaseModel(LightningModule):
         values = np.asarray(values)
         if isinstance(data, pd.DataFrame):  # convert to dataframe
             data = TimeSeriesDataSet.from_parameters(self.dataset_parameters, data, predict=True)
+        elif isinstance(data, DataLoader):
+            data = data.dataset
 
         results = []
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(values), disable=not show_progress_bar)
@@ -897,7 +899,7 @@ class CovariatesMixin:
             elif name in self.hparams.embedding_labels:
                 # sort values from lowest to highest
                 sorting = values_actual.argsort()
-                labels = np.asarray(list(self.hparams.embedding_labels[name].values()))[support_non_zero][sorting]
+                labels = np.asarray(list(self.hparams.embedding_labels[name].keys()))[support_non_zero][sorting]
                 values_actual = values_actual[sorting]
                 values_prediction = values_prediction[sorting]
                 support = support[sorting]
