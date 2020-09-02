@@ -222,6 +222,7 @@ def test_dataset_index(test_dataset):
         (1.0, "price_regular", "encoder"),
         (1.0, "price_regular", "all"),
         (1.0, "price_regular", "decoder"),
+        ("Agency_01", "agency", "all"),
         ("Agency_01", "agency", "decoder"),
     ],
 )
@@ -247,14 +248,18 @@ def test_overwrite_values(test_dataset, value, variable, target):
         output_names = [f"{target}_{output_name_suffix}"]
 
     for name in outputs[0].keys():
-        if name in output_names:
-            assert not torch.isclose(outputs[0][name], control_outputs[0][name]).all(), f"Output {name} should change"
+        changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
+        if name in output_names or (
+            "cat" in name and variable == "agency"
+        ):  # exception for static categorical which should always change
+            assert not changed, f"Output {name} should change"
         else:
-            assert torch.isclose(outputs[0][name], control_outputs[0][name]).all(), f"Output {name} should not change"
+            assert changed, f"Output {name} should not change"
 
     # test resetting
     dataset.reset_overwrite_values()
     outputs = next(iter(dataset.to_dataloader(num_workers=0, train=False)))
     for name in outputs[0].keys():
-        assert torch.isclose(outputs[0][name], control_outputs[0][name]).all(), f"Output {name} should be reset"
+        changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
+        assert changed, f"Output {name} should be reset"
     assert torch.isclose(outputs[1], control_outputs[1]).all(), "Target should be reset"
