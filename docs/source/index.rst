@@ -50,6 +50,8 @@ Vist :ref:`Getting started<getting-started>` to learn more about the package.
    data
    models
    metrics
+   faq
+   contribute
    api
 
 
