@@ -691,14 +691,18 @@ class TimeSeriesDataSet(Dataset):
         """
         return self.index.shape[0]
 
-    def set_overwrite_values(self, values: Union[float, torch.Tensor], variable: str, target: str = "decoder") -> None:
+    def set_overwrite_values(
+        self, values: Union[float, torch.Tensor], variable: str, target: Union[str, slice] = "decoder"
+    ) -> None:
         """
         Convenience method to quickly overwrite values in decoder or encoder (or both) for a specific variable.
 
         Args:
             values (Union[float, torch.Tensor]): values to use for overwrite.
             variable (str): variable whose values should be overwritten.
-            target (str, optional): positions to overwrite. One of "decoder", "encoder" or "all". Defaults to "decoder".
+            target (Union[str, slice], optional): positions to overwrite. One of "decoder", "encoder" or "all" or
+                a slice object which is directly used to overwrite indices, e.g. ``slice(-5, None)`` will overwrite the last
+                5 values. Defaults to "decoder".
         """
         values = torch.tensor(self.transform_values(variable, np.asarray(values).reshape(-1), inverse=False)).squeeze()
         assert target in [
@@ -706,6 +710,9 @@ class TimeSeriesDataSet(Dataset):
             "decoder",
             "encoder",
         ], f"target has be one of 'all', 'decoder' or 'encoder' but target={target} instead"
+
+        if variable in self.static_categoricals or variable in self.static_categoricals:
+            target = "all"
 
         if variable == self.target:
             raise NotImplementedError("Target variable is not supported")
@@ -856,7 +863,9 @@ class TimeSeriesDataSet(Dataset):
 
         # overwrite values
         if self._overwrite_values is not None:
-            if self._overwrite_values["target"] == "all":
+            if isinstance(self._overwrite_values["target"], slice):
+                positions = self._overwrite_values["target"]
+            elif self._overwrite_values["target"] == "all":
                 positions = slice(None)
             elif self._overwrite_values["target"] == "encoder":
                 positions = slice(None, encoder_length)

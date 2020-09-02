@@ -608,6 +608,7 @@ class BaseModel(LightningModule):
         variable: str,
         values: Iterable,
         mode: str = "dataframe",
+        target="decoder",
         show_progress_bar: bool = False,
         **kwargs,
     ) -> Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]:
@@ -628,6 +629,9 @@ class BaseModel(LightningModule):
                     the variable name for the probed values
                 * "raw": outputs a tensor of shape len(values) x prediction_shape
 
+            target: Defines which values are overwritten for making a prediction.
+                Same as in :py:meth:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet.set_overwrite_values`.
+                Defaults to "decoder".
             show_progress_bar: if to show progress bar. Defaults to False.
             **kwargs: additional kwargs to :py:meth:`~predict` method
 
@@ -644,7 +648,7 @@ class BaseModel(LightningModule):
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(values), disable=not show_progress_bar)
         for value in values:
             # set values
-            data.set_overwrite_values(variable=variable, values=value, target="decoder")
+            data.set_overwrite_values(variable=variable, values=value, target=target)
             # predict
             kwargs.setdefault("mode", "prediction")
             results.append(self.predict(data, **kwargs))
