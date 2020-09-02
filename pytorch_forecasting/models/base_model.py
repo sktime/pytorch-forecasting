@@ -50,13 +50,6 @@ class BaseModel(LightningModule):
                     encoding_target = x["encoder_target"]
                     return dict(prediction=..., target_scale=x["target_scale"])
 
-                # implement lightning steps
-                def training_step(self, batch, batch_idx):
-                    x, y = batch
-                    return {"loss": self.loss(self(x), y)}
-
-                # implement further steps
-
     """
 
     def __init__(
@@ -640,7 +633,9 @@ class BaseModel(LightningModule):
         # select valid y values
         y_flat = x["decoder_target"][mask]
         y_pred_flat = y_pred[mask]
-        if self.loss.log_space:
+        if self.dataset_parameters["target_normalizer"] is not None and getattr(
+            self.dataset_parameters["target_normalizer"], "log_scale", False
+        ):
             y_flat = torch.log(y_flat + 1e-8)
             y_pred_flat = torch.log(y_pred_flat + 1e-8)
 
@@ -697,7 +692,7 @@ class BaseModel(LightningModule):
 
     def predict_dependency(
         self,
-        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
+        data: Union[pd.DataFrame, TimeSeriesDataSet],
         variable: str,
         values: Iterable,
         mode: str = "dataframe",
@@ -705,14 +700,22 @@ class BaseModel(LightningModule):
         **kwargs,
     ) -> Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]:
         """
-        Predict dependency (e.g. for partial dependency plots).
+        Predict partial dependency.
 
 
         Args:
-            data (Union[DataLoader, pd.DataFrame, TimeSeriesDataSet]): data
+            data (Union[pd.DataFrame, TimeSeriesDataSet]): data
             variable (str): variable which to modify
             values (Iterable): array of values to probe
-            mode (str, optional): Output mode: either "series", "dataframe" or "raw". Defaults to "dataframe".
+            mode (str, optional): Output mode. Defaults to "dataframe". Either
+
+                * "series": values are average prediction and index are probed values
+                * "dataframe": columns are as obtained by the `dataset.get_index()` method,
+                    prediction (which is the mean prediction over the time horizon),
+                    normalized_prediction (which are predictions devided by the prediction for the first probed value)
+                    the variable name for the probed values
+                * "raw": outputs a tensor of shape len(values) x prediction_shape
+
             show_progress_bar: if to show progress bar. Defaults to False.
             **kwargs: additional kwargs to :py:meth:`~predict` method
 
@@ -729,7 +732,7 @@ class BaseModel(LightningModule):
             # set values
             data.set_overwrite_values(variable=variable, values=value, target="decoder")
             # predict
-            kwargs["mode"] = "prediction"
+            kwargs.setdefault("mode", "prediction")
             results.append(self.predict(data, **kwargs))
             # increment progress
             progress_bar.update()
@@ -740,22 +743,26 @@ class BaseModel(LightningModule):
         results = torch.stack(results, dim=0)
 
         # convert results to requested output format
-        # todo: handle nans
         if mode == "series":
-            results = results.mean([1, 2])  # average samples and prediction horizon
+            results = results[:, ~torch.isnan(results[0])].mean(1)  # average samples and prediction horizon
             results = pd.Series(results, index=values)
 
         elif mode == "dataframe":
+            # take mean over time
+            is_nan = torch.isnan(results)
+            results[is_nan] = 0
+            results = results.sum(-1) / (~is_nan).float().sum(-1)
+
+            # create dataframe
             dependencies = data.get_index()
             dependencies = (
                 dependencies.iloc[np.tile(np.arange(len(dependencies)), len(values))]
                 .reset_index(drop=True)
-                .assign(prediction=results.mean(2).flatten(), value=values.repeat(len(data)))
+                .assign(prediction=results.flatten())
             )
-            dependencies["first_prediction"] = dependencies.groupby(data.group_ids, observed=True).prediction.transform(
-                "first"
-            )
-            dependencies["normalized_prediction"] = dependencies["prediction"] / dependencies["first_prediction"]
+            dependencies[variable] = values.repeat(len(data))
+            first_prediction = dependencies.groupby(data.group_ids, observed=True).prediction.transform("first")
+            dependencies["normalized_prediction"] = dependencies["prediction"] / first_prediction
             dependencies["id"] = dependencies.groupby(data.group_ids, observed=True).ngroup()
             results = dependencies
 

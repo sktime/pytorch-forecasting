@@ -60,6 +60,7 @@ class NBeats(BaseModel):
                 interpretable mode: [3]
             prediction_length: Length of the prediction. Also known as 'horizon'.
             context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
+                Should be between 1-10 times the prediction length.
             has_backcast: Only the last block of the network doesn't.
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
@@ -110,7 +111,7 @@ class NBeats(BaseModel):
         Pass forward of network.
 
         Args:
-            x (Dict[str, torch.Tensor]): input from dataloader generated from :py:class:`~TimeSeriesDataSet`.
+            x (Dict[str, torch.Tensor]): input from dataloader generated from :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
         Returns:
             Dict[str, torch.Tensor]: output of model
@@ -157,7 +158,7 @@ class NBeats(BaseModel):
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         """
-        Convenience function to create network from :py:class`~TimeSeriesDataSet`.
+        Convenience function to create network from :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
         Args:
             dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
