@@ -112,7 +112,7 @@ class NBeats(BaseModel):
 
         Args:
             x (Dict[str, torch.Tensor]): input from dataloader generated from
-            :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+                :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
         Returns:
             Dict[str, torch.Tensor]: output of model
