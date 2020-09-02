@@ -80,7 +80,7 @@ def data_with_covariates():
         dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=1.0)),
     ]
 )
-def dataloaders_with_coveratiates(data_with_covariates, request):
+def multiple_dataloaders_with_coveratiates(data_with_covariates, request):
     training_cutoff = "2016-09-01"
     max_encoder_length = 36
     max_prediction_length = 6
@@ -107,8 +107,37 @@ def dataloaders_with_coveratiates(data_with_covariates, request):
     return dict(train=train_dataloader, val=val_dataloader)
 
 
+@pytest.fixture
+def dataloaders_with_coveratiates(data_with_covariates):
+    training_cutoff = "2016-09-01"
+    max_encoder_length = 36
+    max_prediction_length = 6
+
+    training = TimeSeriesDataSet(
+        data_with_covariates[lambda x: x.date < training_cutoff],
+        time_idx="time_idx",
+        target="volume",
+        # weight="weight",
+        group_ids=["agency", "sku"],
+        time_varying_known_reals=["discount"],
+        max_encoder_length=max_encoder_length,
+        max_prediction_length=max_prediction_length,
+        add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=1.0),
+    )
+
+    validation = TimeSeriesDataSet.from_dataset(
+        training, data_with_covariates, min_prediction_idx=training.index.time.max() + 1
+    )
+    batch_size = 32
+    train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
+    val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+
+    return dict(train=train_dataloader, val=val_dataloader)
+
+
 @pytest.fixture()
-def dataloaders_fixed_window_without_coveratiates(data_with_covariates):
+def dataloaders_fixed_window_without_coveratiates():
     data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10)
     validation = data.series.iloc[:2]
 

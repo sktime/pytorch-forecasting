@@ -1,3 +1,5 @@
+import pytest
+
 import torch
 import shutil
 import sys
@@ -20,9 +22,9 @@ else:
     from contextlib import nullcontext
 
 
-def test_integration(dataloaders_with_coveratiates, tmp_path, gpus):
-    train_dataloader = dataloaders_with_coveratiates["train"]
-    val_dataloader = dataloaders_with_coveratiates["val"]
+def test_integration(multiple_dataloaders_with_coveratiates, tmp_path, gpus):
+    train_dataloader = multiple_dataloaders_with_coveratiates["train"]
+    val_dataloader = multiple_dataloaders_with_coveratiates["val"]
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     # check training
@@ -39,7 +41,7 @@ def test_integration(dataloaders_with_coveratiates, tmp_path, gpus):
         logger=logger,
     )
     # test monotone constraints automatically
-    if "discount_in_percent" in dataloaders_with_coveratiates["train"].dataset.reals:
+    if "discount_in_percent" in train_dataloader.dataset.reals:
         monotone_constaints = {"discount_in_percent": +1}
         cuda_context = torch.backends.cudnn.flags(enabled=False)
     else:
@@ -80,3 +82,57 @@ def test_integration(dataloaders_with_coveratiates, tmp_path, gpus):
                 net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
         finally:
             shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+@pytest.fixture
+def model(dataloaders_with_coveratiates):
+    dataset = dataloaders_with_coveratiates["train"].dataset
+    net = TemporalFusionTransformer.from_dataset(
+        dataset,
+        learning_rate=0.15,
+        hidden_size=4,
+        attention_head_size=1,
+        dropout=0.2,
+        hidden_continuous_size=2,
+        loss=QuantileLoss(),
+        log_interval=5,
+        log_val_interval=1,
+        log_gradient_flow=True,
+    )
+    return net
+
+
+@pytest.mark.parametrize("kwargs", [dict(mode="series"), dict(mode="raw")])
+def test_predict_dependency(model, dataloaders_with_coveratiates, kwargs):
+    dataset = dataloaders_with_coveratiates["val"].dataset
+    model.predict_dependency(dataset, variable="discount", values=[0.1, 0.0], **kwargs)
+
+
+def test_actual_vs_predicted_plot(model, dataloaders_with_coveratiates):
+    y_hat, x = model.predict(dataloaders_with_coveratiates["val"], return_x=True)
+    averages = model.calculate_prediction_actual_by_variable(x, y_hat)
+    model.plot_prediction_actual_by_variable(averages)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(mode="raw"),
+        dict(mode="quantiles"),
+        dict(return_index=True),
+        dict(return_decoder_lengths=True),
+        dict(return_x=True),
+    ],
+)
+def test_prediction_with_dataloder(model, dataloaders_with_coveratiates, kwargs):
+    val_dataloader = dataloaders_with_coveratiates["val"]
+    model.predict(val_dataloader, fast_dev_run=True, **kwargs)
+
+
+def test_prediction_with_dataset(model, dataloaders_with_coveratiates):
+    val_dataloader = dataloaders_with_coveratiates["val"]
+    model.predict(val_dataloader.dataset, fast_dev_run=True)
+
+
+def test_prediction_with_dataframe(model, data_with_covariates):
+    model.predict(data_with_covariates, fast_dev_run=True)

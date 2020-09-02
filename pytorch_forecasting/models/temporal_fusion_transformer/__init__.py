@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from torch import nn
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.models import BaseModel
+from pytorch_forecasting.models.base_model import BaseModel, CovariatesMixin
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss, SMAPE, MAE, RMSE, MAPE
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
@@ -24,7 +24,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
 from pytorch_forecasting.utils import autocorrelation, integer_histogram, get_embedding_size
 
 
-class TemporalFusionTransformer(BaseModel):
+class TemporalFusionTransformer(BaseModel, CovariatesMixin):
     def __init__(
         self,
         hidden_size: int = 16,
@@ -48,7 +48,6 @@ class TemporalFusionTransformer(BaseModel):
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_paddings: List[str] = [],
         embedding_labels: Dict[str, np.ndarray] = {},
-        real_scales: Dict[str, Tuple[float, float]] = {},
         learning_rate: float = 1e-3,
         log_interval: Union[int, float] = -1,
         log_val_interval: Union[int, float] = None,
@@ -69,7 +68,7 @@ class TemporalFusionTransformer(BaseModel):
             output_size: number of outputs (e.g. number of quantiles for QuantileLoss)
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
-            max_encoder_length: length to encode
+            max_encoder_length: length to encode (can be far longer than the decoder length but does not have to be)
             static_categoricals: integer of positions of static categorical variables
             static_reals: integer of positions of static continuous variables
             time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
@@ -86,9 +85,6 @@ class TemporalFusionTransformer(BaseModel):
                 embedding size
             embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
             embedding_labels: dictionary mapping (string) indices to list of categorical labels
-            real_labels: dictionary mapping (string) indices to continuous variable names
-            real_scales: dictionary of tuples with mean and scale for each continuous variable that can be used to
-                transform them into their original shape
             learning_rate: learning rate
             log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0. If < 1.0
                 , will log multiple entries per batch. Defaults to -1.
@@ -304,13 +300,6 @@ class TemporalFusionTransformer(BaseModel):
         self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=None, trainable_add=False)
 
         self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
-
-    @property
-    def categorical_groups_mapping(self) -> Dict[str, str]:
-        groups = {}
-        for group_name, sublist in self.categorical_groups.items():
-            groups.update({name: group_name for name in sublist})
-        return groups
 
     @property
     def static_variables(self) -> List[str]:

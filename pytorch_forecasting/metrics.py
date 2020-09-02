@@ -137,16 +137,19 @@ class MultiHorizonMetric(Metric):
         mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
         if losses.ndim > 2:
             mask = mask.unsqueeze(-1)
+            dim_normalizer = losses.size(-1)
+        else:
+            dim_normalizer = 1.0
         # reduce to one number
         if self.reduction == "none":
             loss = losses.masked_fill(mask, float("nan"))
         else:
             if self.reduction == "mean":
                 losses = losses.masked_fill(mask, 0.0)
-                loss = losses.sum() / lengths.sum()
+                loss = losses.sum() / lengths.sum() / dim_normalizer
             elif self.reduction == "sqrt-mean":
                 losses = losses.masked_fill(mask, 0.0)
-                loss = losses.sum() / lengths.sum()
+                loss = losses.sum() / lengths.sum() / dim_normalizer
                 loss = loss.sqrt()
             assert not torch.isnan(loss), (
                 "Loss should not be nan - i.e. something went wrong "
