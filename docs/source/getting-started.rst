@@ -29,8 +29,8 @@ Further, we rely on `Tensorboard <https://pytorch.org/docs/stable/tensorboard.ht
 
 The general setup for training and testing a model is
 
-#. Create training dataset using :py:class:`~TimeSeriesDataSet`.
-#. Using the training dataset, create a validation dataset with :py:meth:`~TimeSeriesDataSet.from_dataset`.
+#. Create training dataset using :py:class:`~data.timeseries.TimeSeriesDataSet`.
+#. Using the training dataset, create a validation dataset with :py:meth:`~data.timeseries.TimeSeriesDataSet.from_dataset`.
    Similarly, a test dataset or later a dataset for inference can be created. You can store the dataset parameters
    directly if you do not wish to load the entire training dataset at inference time.
 
