@@ -123,6 +123,7 @@ def dataloaders_with_coveratiates(data_with_covariates):
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
         add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=1.0),
     )
 
     validation = TimeSeriesDataSet.from_dataset(

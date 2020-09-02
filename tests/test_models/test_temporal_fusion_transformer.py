@@ -109,7 +109,9 @@ def test_predict_dependency(model, dataloaders_with_coveratiates, kwargs):
 
 
 def test_actual_vs_predicted_plot(model, dataloaders_with_coveratiates):
-    pass
+    y_hat, x = model.predict(dataloaders_with_coveratiates["val"], return_x=True)
+    averages = model.calculate_prediction_actual_by_variable(x, y_hat)
+    model.plot_prediction_actual_by_variable(averages)
 
 
 @pytest.mark.parametrize(
