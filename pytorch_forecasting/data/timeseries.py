@@ -26,7 +26,20 @@ from pytorch_forecasting.data.encoders import NaNLabelEncoder, GroupNormalizer, 
 
 
 class TimeSeriesDataSet(Dataset):
-    """PyTorch Dataset for fitting timeseries models"""
+    """
+    PyTorch Dataset for fitting timeseries models.
+
+    The dataset automates common tasks such as
+
+    * scaling and encoding of variables
+    * normalizing the target variable
+    * efficiently converting timeseries in pandas dataframes to torch tensors
+    * holding information about static and time-varying variables known and unknown in the future
+    * holiding information about related categories (such as holidays)
+    * downsampling for data augmentation
+    * generating inference, validation and test datasets
+    * etc.
+    """
 
     def __init__(
         self,
