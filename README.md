@@ -1,7 +1,17 @@
 ![](./docs/source/_static/logo.svg)
 
-Pytorch Forecasting aims to ease timeseries forecasting with neural networks.
-It specificially provides a class to wrap timeseries datasets and a number of PyTorch models.
+Pytorch Forecasting aims to ease timeseries forecasting with neural networks for real-world cases and research alike. Specifically, the package provides
+
+- A timeseries dataset class which abstracts handling variable transformations, missing values,
+  randomized subsampling, multiple history lengths, etc.
+- A base model class which provides basic training of timeseries models along with logging in tensorboard
+  and generic visualizations such actual vs predictions and dependency plots
+- Multiple neural network architectures for timeseries forecasting that have been enhanced
+  for real-world deployment and come with in-built interpretation capabilities
+- Multi-horizon timeseries metrics
+- Ranger optimizer for faster model training
+
+The package is built on [pytorch-lightning])(https://pytorch-lightning.readthedocs.io/) to allow training on CPUs, single and multiple GPUs out-of-the-box.
 
 # Installation
 

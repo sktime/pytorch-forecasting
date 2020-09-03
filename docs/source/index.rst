@@ -6,31 +6,21 @@
 .. image:: _static/logo.svg
    :height: 120
 
-Pytorch Forecasting aims to ease timeseries forecasting with neural networks.
-It specificially provides a class to wrap timeseries datasets and a number of PyTorch models.
+Pytorch Forecasting aims to ease timeseries forecasting with neural networks for real-world cases and 
+research alike. Specifically, the package provides
 
-The timeseries dataset automates many common tasks such as
+* A timeseries dataset class which abstracts handling variable transformations, missing values,
+  randomized subsampling, multiple history lengths, etc.
+* A base model class which provides basic training of timeseries models along with logging in tensorboard
+  and generic visualizations such actual vs predictions and dependency plots
+* Multiple neural network architectures for timeseries forecasting that have been enhanced
+  for real-world deployment and come with in-built interpretation capabilities
+* Multi-horizon timeseries metrics
+* Ranger optimizer for faster model training
 
-* scaling and encoding of variables
-* normalizing the target variable
-* efficiently converting timeseries in pandas dataframes to torch tensors
-* holding information about static and time-varying variables known and unknown in the future
-* holiding information about related categories (such as holidays)
-* downsampling for data augmentation
-* generating inference, validation and test datasets
-* etc.
+The package is built on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ to allow 
+training on CPUs, single and multiple GPUs out-of-the-box.
 
-Model implementations go beyond soley implementing neural networks. PyTorch Forecasting includes
-
-* Model interpretation (if supported by the architecture)
-* Logging of predictions and actuals in tensorboard along with a number of metrics
-* etc.
-
-They are build on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ and as such
-
-* Can be trained on multiple GPUs out of the box
-* Quickly be tested with new datasets
-* etc.
 
 To install the package, execute
 
