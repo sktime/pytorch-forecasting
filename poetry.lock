@@ -835,16 +835,16 @@ description = "A hyperparameter optimization framework"
 name = "optuna"
 optional = false
 python-versions = ">=3.5"
-version = "2.0.0"
+version = "2.1.0"
 
 [package.dependencies]
 alembic = "*"
 cliff = "*"
-cmaes = ">=0.5.1"
+cmaes = ">=0.6.0"
 colorlog = "*"
 joblib = "*"
 numpy = "*"
-packaging = "*"
+packaging = ">=20.0"
 scipy = "!=1.4.0"
 sqlalchemy = ">=1.1.0"
 tqdm = "*"
@@ -853,12 +853,12 @@ tqdm = "*"
 checking = ["black", "hacking", "mypy"]
 codecov = ["codecov", "pytest-cov"]
 doctest = ["cma", "pandas", "plotly (>=4.0.0)", "scikit-learn (>=0.19.0,<0.23.0)", "scikit-optimize", "mlflow"]
-document = ["sphinx (>=3.0.0,<3.1.0 || >3.1.0,<3.1.1 || >3.1.1,<3.1.2 || >3.1.2)", "sphinx_rtd_theme (<0.5.0)"]
-example = ["catboost", "chainer", "lightgbm", "mlflow", "mpi4py", "mxnet", "nbval", "pytorch-ignite", "scikit-image", "scikit-learn", "thop", "torch (1.5.1+cpu)", "torchvision (0.6.1+cpu)", "xgboost", "stable-baselines3 (>=0.7.0)", "allennlp (1.0.0)", "fastai (<2)", "pytorch_lightning (>=0.7.1)", "dask", "dask-ml", "keras (<2.4.0)", "tensorflow (>=2.0.0)", "tensorflow-datasets", "catalyst"]
+document = ["sphinx (3.0.4)", "sphinx_rtd_theme (<0.5.0)", "sphinx-gallery", "pillow", "matplotlib", "scikit-learn"]
+example = ["catboost", "chainer", "lightgbm", "mlflow", "mpi4py", "mxnet", "nbval", "scikit-image", "scikit-learn (>=0.19.0,<0.23.0)", "xgboost", "keras", "tensorflow (>=2.0.0)", "tensorflow-datasets", "torch (1.6.0+cpu)", "torchvision (0.7.0+cpu)", "pytorch-ignite", "thop", "skorch", "stable-baselines3 (>=0.7.0)", "allennlp (1.0.0)", "fastai (<2)", "pytorch_lightning (>=0.7.1)", "dask", "dask-ml", "catalyst"]
 experimental = ["redis"]
-integration = ["chainer (>=5.0.0)", "cma", "lightgbm", "mlflow", "mpi4py", "mxnet", "pandas", "pytorch-ignite", "scikit-learn (>=0.19.0,<0.23.0)", "scikit-optimize", "torch (1.5.1+cpu)", "torchvision (0.6.1+cpu)", "xgboost", "allennlp (1.0.0)", "fastai (<2)", "pytorch-lightning (>=0.7.1)", "catalyst", "keras (<2.4.0)", "tensorflow", "tensorflow-datasets"]
+integration = ["chainer (>=5.0.0)", "cma", "lightgbm", "mlflow", "mpi4py", "mxnet", "pandas", "scikit-learn (>=0.19.0,<0.23.0)", "scikit-optimize", "xgboost", "keras", "tensorflow", "tensorflow-datasets", "torch (1.6.0+cpu)", "torchvision (0.7.0+cpu)", "pytorch-ignite", "skorch", "allennlp (1.0.0)", "fastai (<2)", "pytorch-lightning (>=0.7.1)", "catalyst"]
 optional = ["bokeh (<2.0.0)", "pandas", "plotly (>=4.0.0)", "redis", "scikit-learn (>=0.19.0,<0.23.0)"]
-testing = ["bokeh (<2.0.0)", "chainer (>=5.0.0)", "cma", "fakeredis", "lightgbm", "mlflow", "mpi4py", "mxnet", "pandas", "plotly (>=4.0.0)", "pytest", "pytorch-ignite", "scikit-learn (>=0.19.0,<0.23.0)", "scikit-optimize", "torch (1.5.1+cpu)", "torchvision (0.6.1+cpu)", "xgboost", "allennlp (1.0.0)", "fastai (<2)", "pytorch_lightning (>=0.7.1)", "catalyst", "keras (<2.4.0)", "tensorflow", "tensorflow-datasets"]
+testing = ["bokeh (<2.0.0)", "chainer (>=5.0.0)", "cma", "fakeredis", "lightgbm", "mlflow", "mpi4py", "mxnet", "pandas", "plotly (>=4.0.0)", "pytest", "scikit-learn (>=0.19.0,<0.23.0)", "scikit-optimize", "xgboost", "keras", "tensorflow", "tensorflow-datasets", "torch (1.6.0+cpu)", "torchvision (0.7.0+cpu)", "pytorch-ignite", "skorch", "allennlp (1.0.0)", "fastai (<2)", "pytorch_lightning (>=0.7.1)", "catalyst"]
 tests = ["fakeredis", "pytest"]
 
 [[package]]
@@ -2269,7 +2269,7 @@ oauthlib = [
     {file = "oauthlib-3.1.0.tar.gz", hash = "sha256:bee41cc35fcca6e988463cacc3bcb8a96224f470ca547e697b604cc697b2f889"},
 ]
 optuna = [
-    {file = "optuna-2.0.0.tar.gz", hash = "sha256:2c2006d4da9db73795c6537890b1aebddd0b826624e6ea0acc20f99ba6390494"},
+    {file = "optuna-2.1.0.tar.gz", hash = "sha256:7bef0e9b9cd00fbecc1894c125631c48e0178190abeed66c043fada040d13942"},
 ]
 packaging = [
     {file = "packaging-20.4-py2.py3-none-any.whl", hash = "sha256:998416ba6962ae7fbd6596850b80e17859a5753ba17c32284f67bfff33784181"},
