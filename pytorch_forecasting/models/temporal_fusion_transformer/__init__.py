@@ -1,7 +1,7 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
-from typing import Callable, Union, List, Dict, Tuple
+from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
@@ -9,19 +9,19 @@ from matplotlib import pyplot as plt
 from torch import nn
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.models.base_model import BaseModel, CovariatesMixin
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss, SMAPE, MAE, RMSE, MAPE
+from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.models.base_model import BaseModel, CovariatesMixin
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
-    VariableSelectionNetwork,
-    GatedResidualNetwork,
-    GateAddNorm,
-    InterpretableMultiHeadAttention,
-    GatedLinearUnit,
     AddNorm,
+    GateAddNorm,
+    GatedLinearUnit,
+    GatedResidualNetwork,
+    InterpretableMultiHeadAttention,
     TimeDistributedEmbeddingBag,
+    VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import autocorrelation, integer_histogram, get_embedding_size
+from pytorch_forecasting.utils import autocorrelation, get_embedding_size, integer_histogram
 
 
 class TemporalFusionTransformer(BaseModel, CovariatesMixin):

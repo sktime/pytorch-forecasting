@@ -1,12 +1,13 @@
-import pytest
-
-import torch
 import shutil
 import sys
+
+import pytest
 import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
+import torch
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_forecasting.metrics import QuantileLoss, PoissonLoss
+from pytorch_lightning.loggers import TensorBoardLogger
+
+from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 
 

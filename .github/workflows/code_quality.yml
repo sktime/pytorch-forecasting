@@ -23,7 +23,7 @@ jobs:
       - name: Install Python dependencies
         run: pip install black flake8 mypy
 
-      - name: Run linters
+      - name: Run style linters
         uses: wearerequired/lint-action@v1
         with:
           github_token: ${{ secrets.github_token }}
@@ -31,3 +31,20 @@ jobs:
           black: true
           flake8: true
           # mypy: true
+
+      - name: Run additional linters
+        uses: ricardochaves/python-lint@v1.3.0
+        with:
+          python-root-list: "pytorch_forecasting examples tests"
+          use-pylint: false
+          use-pycodestyle: false
+          use-flake8: false
+          use-black: false
+          use-mypy: false
+          use-isort: true
+          extra-pylint-options: ""
+          extra-pycodestyle-options: ""
+          extra-flake8-options: ""
+          extra-black-options: ""
+          extra-mypy-options: ""
+          extra-isort-options: ""

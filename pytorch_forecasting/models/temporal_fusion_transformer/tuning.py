@@ -2,12 +2,14 @@
 Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedocs.io/>`_.
 """
 import os
-from typing import Dict, Tuple, Any
+from typing import Any, Dict, Tuple
 
-import optuna
-import torch
 import numpy as np
+import optuna
+import pytorch_lightning as pl
 import statsmodels.api as sm
+import torch
+from optuna.integration import PyTorchLightningPruningCallback, TensorBoardCallback
 from pytorch_lightning import Callback
 from pytorch_lightning.callbacks import LearningRateLogger
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -15,8 +17,6 @@ from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
-import pytorch_lightning as pl
-from optuna.integration import PyTorchLightningPruningCallback, TensorBoardCallback
 
 
 class MetricsCallback(Callback):

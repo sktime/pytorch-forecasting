@@ -4,25 +4,23 @@ Timeseries datasets.
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
+import inspect
 import warnings
 from copy import deepcopy
-import inspect
-from typing import Union, Dict, List, Tuple, Any
+from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
-
+import pandas as pd
 import torch
-from torch.distributions import Beta
-from torch.nn.utils import rnn
-from torch.utils.data import Dataset, DataLoader
-
-from sklearn.utils.validation import check_is_fitted
 from sklearn.exceptions import NotFittedError
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.validation import check_is_fitted
+from torch.distributions import Beta
+from torch.nn.utils import rnn
+from torch.utils.data import DataLoader, Dataset
 
-from pytorch_forecasting.data.encoders import NaNLabelEncoder, GroupNormalizer, EncoderNormalizer, TorchNormalizer
+from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TorchNormalizer
 
 
 class TimeSeriesDataSet(Dataset):

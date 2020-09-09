@@ -1,9 +1,10 @@
-import pytest
 import numpy as np
+import pytest
 import torch
-from pytorch_forecasting.data.examples import get_stallion_data, generate_ar_data
+
 from pytorch_forecasting import TimeSeriesDataSet
-from pytorch_forecasting.data import GroupNormalizer, NaNLabelEncoder, EncoderNormalizer
+from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
+from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
 
 
 @pytest.fixture

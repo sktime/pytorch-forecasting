@@ -1,31 +1,28 @@
 """
 Timeseries models share a number of common characteristics. This module implements these in a common base class.
 """
-from copy import deepcopy
 import inspect
-from pytorch_forecasting.data.encoders import GroupNormalizer
-from torch import unsqueeze
-from torch import optim
-import cloudpickle
+from copy import deepcopy
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
+import cloudpickle
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+from pytorch_lightning import LightningModule
+from pytorch_lightning.metrics.metric import TensorMetric
+from pytorch_lightning.utilities.parsing import AttributeDict, collect_init_args, get_init_args
+from torch import optim, unsqueeze
+from torch.optim.lr_scheduler import LambdaLR, OneCycleLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
-from pytorch_forecasting.metrics import SMAPE
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
-from pytorch_lightning import LightningModule
-from pytorch_lightning.metrics.metric import TensorMetric
-from pytorch_forecasting.optim import Ranger
-import torch
-import numpy as np
-import pandas as pd
-from torch.optim.lr_scheduler import ReduceLROnPlateau, LambdaLR, OneCycleLR
-
-import matplotlib.pyplot as plt
 from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.data.encoders import GroupNormalizer
+from pytorch_forecasting.metrics import SMAPE
+from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import groupby_apply
-
-from pytorch_lightning.utilities.parsing import AttributeDict, collect_init_args, get_init_args
 
 
 class BaseModel(LightningModule):

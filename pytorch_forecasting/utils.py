@@ -1,11 +1,12 @@
 """
 Helper functions for PyTorch forecasting
 """
-import os
 import io
-from typing import Callable, Union, Tuple
-import torch
+import os
 from contextlib import redirect_stdout
+from typing import Callable, Tuple, Union
+
+import torch
 
 
 def integer_histogram(

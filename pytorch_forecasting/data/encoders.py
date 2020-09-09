@@ -2,14 +2,13 @@
 Encoders for encoding categorical variables and scaling continuous data.
 """
 import warnings
-from typing import Union, Dict, List, Tuple, Iterable
-import pandas as pd
+from typing import Dict, Iterable, List, Tuple, Union
+
 import numpy as np
-
-from sklearn.base import BaseEstimator, TransformerMixin
-
+import pandas as pd
 import torch
 import torch.nn.functional as F
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class NaNLabelEncoder(BaseEstimator, TransformerMixin):

@@ -2,9 +2,11 @@
 Example datasets for tutorials and testing.
 """
 from pathlib import Path
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import requests
+
 
 BASE_URL = "https://raw.github.com/jdb78/pytorch-forecasting/master/examples/data/"
 
