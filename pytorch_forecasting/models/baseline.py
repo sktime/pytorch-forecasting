@@ -2,11 +2,12 @@
 Baseline model.
 """
 from typing import Dict
+
 import torch
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.models import BaseModel
 from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.models import BaseModel
 
 
 class Baseline(BaseModel):

@@ -1,13 +1,12 @@
 """
 Encoders for encoding categorical variables and scaling continuous data.
 """
+from typing import Dict, Iterable, List, Tuple, Union
 import warnings
-from typing import Union, Dict, List, Tuple, Iterable
-import pandas as pd
+
 import numpy as np
-
+import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
-
 import torch
 import torch.nn.functional as F
 

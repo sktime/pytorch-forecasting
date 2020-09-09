@@ -1,14 +1,15 @@
-import pytest
-
-import torch
 import shutil
 import sys
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_forecasting.metrics import QuantileLoss, PoissonLoss
-from pytorch_forecasting.models import TemporalFusionTransformer
 
+import pytest
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
+import torch
+
+from pytorch_forecasting import TimeSeriesDataSet
+from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
+from pytorch_forecasting.models import TemporalFusionTransformer
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -106,9 +107,12 @@ def model(dataloaders_with_coveratiates):
 
 @pytest.mark.parametrize("kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")])
 def test_predict_dependency(model, dataloaders_with_coveratiates, data_with_covariates, kwargs):
-    dataset = dataloaders_with_coveratiates["val"].dataset
+    train_dataset = dataloaders_with_coveratiates["train"].dataset
+    dataset = TimeSeriesDataSet.from_dataset(
+        train_dataset, data_with_covariates[lambda x: x.agency == data_with_covariates.agency.iloc[0]], predict=True
+    )
     model.predict_dependency(dataset, variable="discount", values=[0.1, 0.0], **kwargs)
-    model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique(), **kwargs)
+    model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique()[:2], **kwargs)
 
 
 def test_actual_vs_predicted_plot(model, dataloaders_with_coveratiates):

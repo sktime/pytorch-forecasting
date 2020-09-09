@@ -2,8 +2,9 @@
 Implementation of ``nn.Modules`` for N-Beats model.
 """
 from typing import Tuple
-import torch
+
 import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 

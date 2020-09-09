@@ -11,18 +11,20 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
-import sys
+from pathlib import Path
 import shutil
 import subprocess
-from pathlib import Path
+import sys
+
 from sphinx.ext import apidoc
 
-SOURCE_PATH = Path(os.path.dirname(__file__))  # docs source
-PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # project root
+SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
+PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
 
-sys.path.insert(0, str(PROJECT_PATH))  # isort:skip
+sys.path.insert(0, str(PROJECT_PATH))  # noqa
 
-import pytorch_forecasting  # noqa
+import pytorch_forecasting  # isort:skip
+
 
 # -- Project information -----------------------------------------------------
 

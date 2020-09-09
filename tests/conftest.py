@@ -1,13 +1,14 @@
-import pytest
-import numpy as np
-import sys
 import os
+import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))
-sys.path.insert(0, "examples")
+import numpy as np
+import pytest
 
-from pytorch_forecasting.data.examples import get_stallion_data
-from pytorch_forecasting import TimeSeriesDataSet
+sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:skip
+
+
+from pytorch_forecasting import TimeSeriesDataSet  # isort:skip
+from pytorch_forecasting.data.examples import get_stallion_data  # isort:skip
 
 
 @pytest.fixture

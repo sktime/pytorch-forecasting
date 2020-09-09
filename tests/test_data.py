@@ -1,15 +1,15 @@
-import pytest
-from typing import Dict
 from copy import deepcopy
 import itertools
-import torch
+from typing import Dict
+
 import numpy as np
 import pandas as pd
-
+import pytest
 from sklearn.preprocessing import StandardScaler
+import torch
 
+from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TimeSeriesDataSet
 from pytorch_forecasting.data.examples import get_stallion_data
-from pytorch_forecasting.data import NaNLabelEncoder, GroupNormalizer, TimeSeriesDataSet, EncoderNormalizer
 
 torch.manual_seed(23)
 

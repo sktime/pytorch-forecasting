@@ -1,12 +1,11 @@
 """
 Implementation of ``nn.Modules`` for temporal fusion transformer.
 """
-from typing import Union, List, Dict, Tuple
-
 import math
+from typing import Dict, List, Tuple, Union
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 

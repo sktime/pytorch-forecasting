@@ -1,26 +1,23 @@
+from pathlib import Path
 import pickle
 import warnings
 
+import numpy as np
+import pandas as pd
+from pandas.core.common import SettingWithCopyWarning
 import pytorch_lightning as pl
-import torch
 from pytorch_lightning.callbacks import EarlyStopping, LearningRateLogger
 from pytorch_lightning.loggers import TensorBoardLogger
+import torch
 
-from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, GroupNormalizer
-from pathlib import Path
-import pandas as pd
-import numpy as np
-
-from pytorch_forecasting.metrics import MAE, PoissonLoss, QuantileLoss, SMAPE, RMSE
+from pytorch_forecasting import GroupNormalizer, TemporalFusionTransformer, TimeSeriesDataSet
+from pytorch_forecasting.data.examples import get_stallion_data
+from pytorch_forecasting.metrics import MAE, RMSE, SMAPE, PoissonLoss, QuantileLoss
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_forecasting.utils import profile
 
-from pandas.core.common import SettingWithCopyWarning
-
 warnings.simplefilter("error", category=SettingWithCopyWarning)
 
-
-from pytorch_forecasting.data.examples import get_stallion_data
 
 data = get_stallion_data()
 

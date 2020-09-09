@@ -2,10 +2,10 @@
 Optimizers not provided by PyTorch natively.
 """
 import math
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
+
 import torch
 from torch.optim.optimizer import Optimizer
-
-from typing import Iterable, Union, Callable, Dict, Optional, Tuple, Any
 
 Params = Union[Iterable[torch.Tensor], Iterable[dict]]
 

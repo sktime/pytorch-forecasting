@@ -2,15 +2,15 @@
 N-Beats model for timeseries forecasting without covariates.
 """
 from typing import Dict, List
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
 import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.models.base_model import BaseModel
-from pytorch_forecasting.models.nbeats.sub_modules import NBEATSTrendBlock, NBEATSGenericBlock, NBEATSSeasonalBlock
+from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
 
 
 class NBeats(BaseModel):
