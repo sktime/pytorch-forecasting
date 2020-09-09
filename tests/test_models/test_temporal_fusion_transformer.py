@@ -6,7 +6,7 @@ import sys
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_forecasting.metrics import QuantileLoss
+from pytorch_forecasting.metrics import QuantileLoss, PoissonLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 
 
@@ -57,6 +57,7 @@ def test_integration(multiple_dataloaders_with_coveratiates, tmp_path, gpus):
             dropout=0.2,
             hidden_continuous_size=2,
             loss=QuantileLoss(),
+            output_size=7,
             log_interval=5,
             log_val_interval=1,
             log_gradient_flow=True,
@@ -94,7 +95,8 @@ def model(dataloaders_with_coveratiates):
         attention_head_size=1,
         dropout=0.2,
         hidden_continuous_size=2,
-        loss=QuantileLoss(),
+        loss=PoissonLoss(),
+        output_size=1,
         log_interval=5,
         log_val_interval=1,
         log_gradient_flow=True,
@@ -102,10 +104,11 @@ def model(dataloaders_with_coveratiates):
     return net
 
 
-@pytest.mark.parametrize("kwargs", [dict(mode="series"), dict(mode="raw")])
-def test_predict_dependency(model, dataloaders_with_coveratiates, kwargs):
+@pytest.mark.parametrize("kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")])
+def test_predict_dependency(model, dataloaders_with_coveratiates, data_with_covariates, kwargs):
     dataset = dataloaders_with_coveratiates["val"].dataset
     model.predict_dependency(dataset, variable="discount", values=[0.1, 0.0], **kwargs)
+    model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique(), **kwargs)
 
 
 def test_actual_vs_predicted_plot(model, dataloaders_with_coveratiates):

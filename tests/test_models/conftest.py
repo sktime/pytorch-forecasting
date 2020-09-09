@@ -120,6 +120,7 @@ def dataloaders_with_coveratiates(data_with_covariates):
         # weight="weight",
         group_ids=["agency", "sku"],
         time_varying_known_reals=["discount"],
+        static_categoricals=["agency"],
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
         add_relative_time_idx=True,
