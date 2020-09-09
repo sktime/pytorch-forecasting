@@ -21,7 +21,7 @@ jobs:
           python-version: 3.8
 
       - name: Install Python dependencies
-        run: pip install black flake8 mypy
+        run: pip install -U black flake8 mypy isort
 
       - name: Run style linters
         uses: wearerequired/lint-action@v1
@@ -42,9 +42,3 @@ jobs:
           use-black: false
           use-mypy: false
           use-isort: true
-          extra-pylint-options: ""
-          extra-pycodestyle-options: ""
-          extra-flake8-options: ""
-          extra-black-options: ""
-          extra-mypy-options: ""
-          extra-isort-options: ""
