@@ -101,7 +101,7 @@ def multiple_dataloaders_with_coveratiates(data_with_covariates, request):
     validation = TimeSeriesDataSet.from_dataset(
         training, data_with_covariates, min_prediction_idx=training.index.time.max() + 1
     )
-    batch_size = 32
+    batch_size = 4
     train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
     val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
@@ -131,7 +131,7 @@ def dataloaders_with_coveratiates(data_with_covariates):
     validation = TimeSeriesDataSet.from_dataset(
         training, data_with_covariates, min_prediction_idx=training.index.time.max() + 1
     )
-    batch_size = 32
+    batch_size = 4
     train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
     val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
@@ -164,7 +164,7 @@ def dataloaders_fixed_window_without_coveratiates():
         data[lambda x: x.series.isin(validation)],
         stop_randomization=True,
     )
-    batch_size = 64
+    batch_size = 4
     train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
     val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
