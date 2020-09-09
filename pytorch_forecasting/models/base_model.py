@@ -382,8 +382,8 @@ class BaseModel(LightningModule):
         Log gradient flow for debugging.
         """
         if (
-            self.global_step % self.hparams.log_interval == 0
-            and self.hparams.log_interval > 0
+            self.hparams.log_interval > 0
+            and self.global_step % self.hparams.log_interval == 0
             and self.hparams.log_gradient_flow
         ):
             self._log_gradient_flow(self.named_parameters())
