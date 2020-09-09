@@ -11,13 +11,12 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 from sphinx.ext import apidoc
-
 
 SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root

@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
 import torch
 from torch.optim.optimizer import Optimizer
 
-
 Params = Union[Iterable[torch.Tensor], Iterable[dict]]
 
 LossClosure = Callable[[], float]

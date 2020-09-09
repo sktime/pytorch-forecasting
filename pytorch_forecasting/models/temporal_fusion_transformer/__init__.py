@@ -3,9 +3,9 @@ The temporal fusion transformer is a powerful predictive model for forecasting t
 """
 from typing import Callable, Dict, List, Tuple, Union
 
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
 from torch import nn
 from torch.nn.utils import rnn
 

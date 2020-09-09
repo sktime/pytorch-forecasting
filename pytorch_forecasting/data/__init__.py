@@ -7,5 +7,4 @@ to abstracts the necessary work.
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 
-
 __all__ = ["TimeSeriesDataSet", "NaNLabelEncoder", "GroupNormalizer", "TorchNormalizer", "EncoderNormalizer"]

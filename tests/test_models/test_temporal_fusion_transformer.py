@@ -3,14 +3,13 @@ import sys
 
 import pytest
 import pytorch_lightning as pl
-import torch
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
-
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager

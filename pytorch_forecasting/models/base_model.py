@@ -1,18 +1,18 @@
 """
 Timeseries models share a number of common characteristics. This module implements these in a common base class.
 """
-import inspect
 from copy import deepcopy
+import inspect
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
 import cloudpickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
 from pytorch_lightning.utilities.parsing import AttributeDict, collect_init_args, get_init_args
+import torch
 from torch import optim, unsqueeze
 from torch.optim.lr_scheduler import LambdaLR, OneCycleLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader

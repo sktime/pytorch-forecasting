@@ -4,11 +4,11 @@ Implementation of metrics for (mulit-horizon) timeseries forecasting.
 import abc
 from typing import Dict, List, Union
 
+from pytorch_lightning.metrics import TensorMetric
 import scipy.stats
 import torch
-import torch.nn.functional as F
-from pytorch_lightning.metrics import TensorMetric
 from torch import nn
+import torch.nn.functional as F
 from torch.nn.utils import rnn
 
 

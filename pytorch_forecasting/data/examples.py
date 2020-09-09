@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import requests
 
-
 BASE_URL = "https://raw.github.com/jdb78/pytorch-forecasting/master/examples/data/"
 
 DATA_PATH = Path(__file__).parent

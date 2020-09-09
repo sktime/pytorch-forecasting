@@ -4,18 +4,18 @@ Timeseries datasets.
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
-import inspect
-import warnings
 from copy import deepcopy
+import inspect
 from typing import Any, Dict, List, Tuple, Union
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch
 from sklearn.exceptions import NotFittedError
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
+import torch
 from torch.distributions import Beta
 from torch.nn.utils import rnn
 from torch.utils.data import DataLoader, Dataset
