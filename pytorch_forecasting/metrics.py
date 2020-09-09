@@ -181,7 +181,8 @@ class PoissonLoss(MultiHorizonMetric):
     def to_quantiles(self, out: Dict[str, torch.Tensor], quantiles=None):
         if quantiles is None:
             quantiles = self.quantiles
-        return scipy.stats.poisson(super().to_prediction(out)).ppf(quantiles)
+        predictions = super().to_prediction(out)
+        return torch.stack([torch.tensor(scipy.stats.poisson(predictions).ppf(q)) for q in quantiles], dim=-1)
 
 
 class QuantileLoss(MultiHorizonMetric):
