@@ -885,14 +885,12 @@ class TimeSeriesDataSet(Dataset):
 
             if self._overwrite_values["variable"] in self.reals:
                 idx = self.reals.index(self._overwrite_values["variable"])
-                data_cont = data_cont  # not to overwrite original data
                 data_cont[positions, idx] = self._overwrite_values["values"]
             else:
                 assert (
                     self._overwrite_values["variable"] in self.flat_categoricals
                 ), "overwrite values variable has to be either in real or categorical variables"
                 idx = self.flat_categoricals.index(self._overwrite_values["variable"])
-                data_cat = data_cat  # not to overwrite original data
                 data_cat[positions, idx] = self._overwrite_values["values"]
 
         return (
