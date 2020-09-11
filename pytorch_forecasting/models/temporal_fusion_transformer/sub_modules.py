@@ -102,9 +102,7 @@ class GatedLinearUnit(nn.Module):
         else:
             self.dropout = dropout
         self.hidden_size = hidden_size or input_size
-        self.fc1 = nn.Linear(input_size, self.hidden_size)
-        self.fc2 = nn.Linear(input_size, self.hidden_size)
-        self.sigmoid = nn.Sigmoid()
+        self.fc = nn.Linear(input_size, self.hidden_size * 2)
 
         self.init_weights()
 
@@ -118,9 +116,9 @@ class GatedLinearUnit(nn.Module):
     def forward(self, x):
         if self.dropout is not None:
             x = self.dropout(x)
-        sig = self.sigmoid(self.fc1(x))
-        x = self.fc2(x)
-        return torch.mul(sig, x)
+        x = self.fc(x)
+        x = F.glu(x, dim=-1)
+        return x
 
 
 class ResampleNorm(nn.Module):
