@@ -10,6 +10,7 @@ Pytorch Forecasting aims to ease timeseries forecasting with neural networks for
   for real-world deployment and come with in-built interpretation capabilities
 - Multi-horizon timeseries metrics
 - Ranger optimizer for faster model training
+- Hyperparameter tuning with [optuna](https://optuna.readthedocs.io/)
 
 The package is built on [pytorch-lightning])(https://pytorch-lightning.readthedocs.io/) to allow training on CPUs, single and multiple GPUs out-of-the-box.
 
@@ -28,7 +29,7 @@ Visit the documentation at [https://pytorch-forecasting.readthedocs.io](https://
 # Available models
 
 - [Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting](https://arxiv.org/pdf/1912.09363.pdf)
-- [N-Beats](http://arxiv.org/abs/1905.10437)
+- [N-BEATS: Neural basis expansion analysis for interpretable time series forecasting](http://arxiv.org/abs/1905.10437)
 
 # Usage
 
