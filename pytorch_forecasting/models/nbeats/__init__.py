@@ -37,6 +37,10 @@ class NBeats(BaseModel):
         """
         Initialize NBeats Model - use its :py:meth:`~from_dataset` method if possible.
 
+        Based on the article
+        `N-BEATS: Neural basis expansion analysis for interpretable time series
+        forecasting <http://arxiv.org/abs/1905.10437>`_.
+
         Args:
             stack_types: One of the following values: “generic”, “seasonality" or “trend". A list of strings
                 of length 1 or ‘num_stacks’. Default and recommended value

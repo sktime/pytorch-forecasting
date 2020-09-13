@@ -17,6 +17,7 @@ research alike. Specifically, the package provides
   for real-world deployment and come with in-built interpretation capabilities
 * Multi-horizon timeseries metrics
 * Ranger optimizer for faster model training
+* Hyperparameter tuning with `optuna <https://optuna.readthedocs.io/>`_
 
 The package is built on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ to allow 
 training on CPUs, single and multiple GPUs out-of-the-box.

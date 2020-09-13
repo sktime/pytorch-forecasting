@@ -42,10 +42,46 @@ def optimize_hyperparameters(
     hidden_continuous_size_range: Tuple[int, int] = (8, 64),
     attention_head_size_range: Tuple[int, int] = (1, 4),
     dropout_range: Tuple[float, float] = (0.1, 0.3),
+    learning_rate_range: Tuple[float, float] = (1e-5, 1.0),
+    use_learning_rate_finder: bool = True,
     trainer_kwargs: Dict[str, Any] = {},
     log_dir: str = "lightning_logs",
     **kwargs,
 ) -> optuna.Study:
+    """
+    Optimize Temporal Fusion Transformer hyperparameters.
+
+    Run hyperparameter optimization. Learning rate for is determined with
+    the PyTorch Lightning learning rate finder.
+
+    Args:
+        train_dataloader (DataLoader): dataloader for training model
+        val_dataloader (DataLoader): dataloader for validating model
+        model_path (str): folder to which model checkpoints are saved
+        max_epochs (int, optional): Maximum number of epochs to run training. Defaults to 20.
+        n_trials (int, optional): Number of hyperparameter trials to run. Defaults to 100.
+        timeout (float, optional): Time in seconds after which training is stopped regardless of number of epochs
+            or validation metric. Defaults to 3600*8.0.
+        hidden_size_range (Tuple[int, int], optional): Minimum and maximum of ``hidden_size`` hyperparameter. Defaults
+            to (16, 265).
+        hidden_continuous_size_range (Tuple[int, int], optional):  Minimum and maximum of ``hidden_continuous_size``
+            hyperparameter. Defaults to (8, 64).
+        attention_head_size_range (Tuple[int, int], optional):  Minimum and maximum of ``attention_head_size``
+            hyperparameter. Defaults to (1, 4).
+        dropout_range (Tuple[float, float], optional):  Minimum and maximum of ``dropout`` hyperparameter. Defaults to
+            (0.1, 0.3).
+        learning_rate_range (Tuple[float, float], optional): Learning rate range. Defaults to (1e-5, 1.0).
+        use_learning_rate_finder (bool): If to use learning rate finder or optimize as part of hyperparameters.
+            Defaults to True.
+        trainer_kwargs (Dict[str, Any], optional): Additional arguments to the
+            `PyTorch Lightning trainer <https://pytorch-lightning.readthedocs.io/en/latest/trainer.html>`_ such
+            as ``limit_train_batches``. Defaults to {}.
+        log_dir (str, optional): Folder into which to log results for tensorboard. Defaults to "lightning_logs".
+        **kwargs: Additional arguments for the :py:class:`~TemporalFusionTransformer`.
+
+    Returns:
+        optuna.Study: optuna study results
+    """
     assert isinstance(train_dataloader.dataset, TimeSeriesDataSet) and isinstance(
         val_dataloader.dataset, TimeSeriesDataSet
     ), "dataloaders must be built from timeseriesdataset"
@@ -92,7 +128,7 @@ def optimize_hyperparameters(
             **kwargs,
         )
         # find good learning rate
-        if "learning_rate" not in kwargs or isinstance(kwargs["learning_rate"], (tuple, list)):
+        if use_learning_rate_finder:
             lr_trainer = pl.Trainer(
                 gradient_clip_val=gradient_clip_val,
                 gpus=[0] if torch.cuda.is_available() else None,
@@ -103,9 +139,9 @@ def optimize_hyperparameters(
                 train_dataloader=train_dataloader,
                 val_dataloaders=val_dataloader,
                 early_stop_threshold=10000.0,
-                min_lr=kwargs.get("learning_rate", [1e-5, 1.0])[0],
+                min_lr=learning_rate_range[0],
                 num_training=100,
-                max_lr=kwargs.get("learning_rate", [1e-5, 1.0])[1],
+                max_lr=learning_rate_range[1],
             )
 
             loss_finite = np.isfinite(res.results["loss"])
@@ -118,6 +154,8 @@ def optimize_hyperparameters(
             optimal_lr = lr_smoothed[optimal_idx]
             print(f"Using learning rate of {optimal_lr:.3g}")
             model.hparams.learning_rate = optimal_lr
+        else:
+            model.hparams.learning_rate = trial.suggest_loguniform("learning_rate_range", *learning_rate_range)
 
         # fit
         trainer.fit(model, train_dataloader=train_dataloader, val_dataloaders=val_dataloader)

@@ -60,6 +60,25 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         """
         Temporal Fusion Transformer for forecasting timeseries - use its :py:meth:`~from_dataset` method if possible.
 
+        Implementation of the article
+        `Temporal Fusion Transformers for Interpretable Multi-horizon Time Series
+        Forecasting <https://arxiv.org/pdf/1912.09363.pdf>`_.
+
+        Enhancements compared to the original implementation (apart from capabilities added through base model
+        such as monotone constraints):
+
+        * static variables can be continuous
+        * multiple categorical variables can be summarized with an EmbeddingBag
+        * variable encoder and decoder length by sample
+        * categorical embeddings are not transformed by variable selection network (because it is a redundant operation)
+        * variable dimension in variable selection network are scaled up via linear interpolation to reduce
+          number of parameters
+        * non-linear variable processing in variable selection network can be shared among decoder and encoder
+          (not shared by default)
+
+        Tune its hyperparameters with
+        :py:func:`~pytorch_forecasting.models.temporal_fusion_transformer.tuning.optimize_hyperparameters`.
+
         Args:
 
             hidden_size: hidden size of network which is its main hyperparameter and can range from 8 to 512
