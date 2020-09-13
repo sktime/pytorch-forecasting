@@ -116,8 +116,9 @@ def optimize_hyperparameters(
             )[10:-1].T
             optimal_idx = np.gradient(loss_smoothed).argmin()
             optimal_lr = lr_smoothed[optimal_idx]
-            print(f"using learning rate of {optimal_lr:.3g}")
+            print(f"Using learning rate of {optimal_lr:.3g}")
             model.hparams.learning_rate = optimal_lr
+
         # fit
         trainer.fit(model, train_dataloader=train_dataloader, val_dataloaders=val_dataloader)
 
