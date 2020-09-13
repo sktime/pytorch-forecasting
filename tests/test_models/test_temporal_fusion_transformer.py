@@ -6,10 +6,12 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
+from torch.utils.data import dataloader
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
+from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -143,3 +145,20 @@ def test_prediction_with_dataset(model, dataloaders_with_coveratiates):
 
 def test_prediction_with_dataframe(model, data_with_covariates):
     model.predict(data_with_covariates, fast_dev_run=True)
+
+
+def test_hyperparameter_optimization_integration(dataloaders_with_coveratiates, tmp_path):
+    train_dataloader = dataloaders_with_coveratiates["train"]
+    val_dataloader = dataloaders_with_coveratiates["val"]
+    try:
+        optimize_hyperparameters(
+            train_dataloader=train_dataloader,
+            val_dataloader=val_dataloader,
+            model_path=tmp_path,
+            max_epochs=1,
+            n_trials=3,
+            log_dir=tmp_path,
+            trainer_kwargs=dict(fast_dev_run=True, limit_train_batches=5),
+        )
+    finally:
+        shutil.rmtree(tmp_path, ignore_errors=True)
