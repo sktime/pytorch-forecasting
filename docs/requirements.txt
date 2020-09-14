@@ -13,3 +13,4 @@ scikit-learn>0.23
 matplotlib
 statsmodels
 ipython
+nbconvert<6.0

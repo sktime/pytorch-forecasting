@@ -7,6 +7,7 @@ Getting started
 Installation
 --------------
 
+.. _install:
 
 If you are working windows, you need to first install PyTorch with
 
@@ -15,6 +16,15 @@ If you are working windows, you need to first install PyTorch with
 Otherwise, you can proceed with
 
 ``pip install pytorch-forecasting``
+
+
+Alternatively, to installl the package via conda: 
+
+``conda install pytorch-forecasting -c conda-forge``
+
+If you do not have pytorch installed, install it is recommended to install it first from the pytorch channel
+
+``conda install pytorch -c pytorch``
 
 
 Usage

@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. image:: _static/logo.svg
-   :height: 120
+PyTorch Forecasting Documentation
+==================================
 
 Pytorch Forecasting aims to ease timeseries forecasting with neural networks for real-world cases and 
 research alike. Specifically, the package provides
@@ -22,14 +22,21 @@ research alike. Specifically, the package provides
 The package is built on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ to allow 
 training on CPUs, single and multiple GPUs out-of-the-box.
 
+If you do not have pytorch already installed, follow the :ref:`detailed installation instructions<install>`.
 
-To install the package, execute
+Otherwise, proceed to install the package by executing
 
 .. code-block::
 
    pip install pytorch-forecasting
 
-Vist :ref:`Getting started<getting-started>` to learn more about the package.
+or to install via conda
+
+.. code-block::
+
+   conda install pytorch-forecasting -c conda-forge
+
+Vist :ref:`Getting started<getting-started>` to learn more about the package and detailled installation instruction.
 
 .. toctree::
    :titlesonly:
