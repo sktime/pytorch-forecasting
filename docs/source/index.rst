@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. image:: _static/logo.svg
-   :height: 120
+PyTorch Forecasting Documentation
+==================================
 
 Pytorch Forecasting aims to ease timeseries forecasting with neural networks for real-world cases and 
 research alike. Specifically, the package provides
