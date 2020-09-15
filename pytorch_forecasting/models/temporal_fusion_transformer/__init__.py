@@ -62,7 +62,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
 
         Implementation of the article
         `Temporal Fusion Transformers for Interpretable Multi-horizon Time Series
-        Forecasting <https://arxiv.org/pdf/1912.09363.pdf>`_.
+        Forecasting <https://arxiv.org/pdf/1912.09363.pdf>`_. The network outperforms DeepAR by Amazon by 36-69% in benchmarks.
 
         Enhancements compared to the original implementation (apart from capabilities added through base model
         such as monotone constraints):
