@@ -8,6 +8,30 @@ can take tensors that are not only of shape ``n_samples`` but also ``n_samples x
 or even ``n_samples x prediction_horizon x n_outputs``, where ``n_outputs`` could be the number
 of forecasted quantiles.
 
+Metrics can be easily combined by addition, e.g.
+
+.. code-block:: python
+
+   from pytorch_forecasting.metrics import SMAPE, MAE
+
+   composite_metric = SMAPE() + 1e-4 * MAE()
+
+Such composite metrics are useful when training because they can reduce outliers in other metrics.
+In the example, SMAPE is mostly optimized, while large outliers in MAE are avoided.
+
+Further, one can modify a loss metric to reduce a mean prediction bias, i.e. ensure that
+predictions add up. For example:
+
+.. code-block:: python
+
+   from pytorch_forecasting.metrics import SMAPE, AggregationMetric
+
+   composite_metric = SMAPE() + AggregationMetric(metric=SMAPE())
+
+Here we add to SMAPE an additional loss. This additional loss is the SMAPE calculated on the summed predictions
+and actuals.
+
+
 Details
 --------
 
