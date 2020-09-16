@@ -105,6 +105,7 @@ class CompositeMetric(TensorMetric):
     Example:
 
         .. code-block:: python
+
             composite_metric = SMAPE() + 0.4 * MAE()
     """
 
