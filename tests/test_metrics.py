@@ -10,7 +10,7 @@ from pytorch_forecasting.metrics import MAE, SMAPE, AggregationMetric, Composite
 def test_composite_metric():
     metric1 = SMAPE()
     metric2 = MAE()
-    combined_metric = 0.3 * metric1 + 2.0 * metric2
+    combined_metric = 1.0 * (0.3 * metric1 + 2.0 * metric2 + metric1)
     assert isinstance(combined_metric, CompositeMetric), "combined metric should be composite metric"
 
     # test repr()
@@ -24,7 +24,7 @@ def test_composite_metric():
     res2 = metric2(y_pred, y)
     combined_res = combined_metric(y_pred, y)
 
-    assert torch.isclose(combined_res, res1 * 0.3 + res2 * 2.0)
+    assert torch.isclose(combined_res, res1 * 0.3 + res2 * 2.0 + res1)
 
     # test quantiles and prediction
     combined_metric.to_prediction(y_pred)
@@ -41,10 +41,13 @@ def test_composite_metric():
 )
 def test_aggregation_metric(decoder_lengths, y):
     y_pred = torch.tensor([[0.0, 2.0], [4.0, 3.0]])
-    y_packed = rnn.pack_padded_sequence(y, lengths=decoder_lengths, batch_first=True, enforce_sorted=False)
+    if (decoder_lengths != y_pred.size(-1)).any():
+        y_packed = rnn.pack_padded_sequence(y, lengths=decoder_lengths, batch_first=True, enforce_sorted=False)
+    else:
+        y_packed = y
 
     # metric
     metric = AggregationMetric(MAE())
     res = metric(y_pred, y_packed)
-    if (decoder_lengths == 1).all() and y.ndim == 2:
+    if (decoder_lengths == y_pred.size(-1)).all() and y.ndim == 2:
         assert torch.isclose(res, (y.sum(0) - y_pred.mean(0)).abs())
