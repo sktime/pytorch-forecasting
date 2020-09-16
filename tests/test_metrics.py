@@ -50,4 +50,4 @@ def test_aggregation_metric(decoder_lengths, y):
     metric = AggregationMetric(MAE())
     res = metric(y_pred, y_packed)
     if (decoder_lengths == y_pred.size(-1)).all() and y.ndim == 2:
-        assert torch.isclose(res, (y.sum(0) - y_pred.mean(0)).abs())
+        assert torch.isclose(res, (y.mean(0) - y_pred.mean(0)).abs().mean())
