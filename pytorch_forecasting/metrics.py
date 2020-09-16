@@ -11,6 +11,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
+from pytorch_forecasting.utils import integer_histogram
+
 
 class Metric(TensorMetric):
     """
@@ -194,16 +196,54 @@ class CompositeMetric(TensorMetric):
 
 class AggregationMetric(Metric):
     """
-    Calculate metric on mean prediction and actuals
+    Calculate metric on mean prediction and actuals.
     """
 
     def __init__(self, metric: Metric):
+        """
+        Args:
+            metric (Metric): metric which to calculate on aggreation.
+        """
+        super().__init__(name=f"agg-{metric.name}")
         self.metric = metric
-        super().__init__()
 
-    def forward(self, y_pred, y):
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
         y_pred_mean = y_pred.mean(0).unsqueeze(0)
-        y_mean = y.mean(0).unsqueeze(0)
+        if isinstance(y_actual, rnn.PackedSequence):
+            target, lengths = rnn.pad_packed_sequence(y_actual, batch_first=True)
+            # batch sizes reside on the CPU by default -> we need to bring them to GPU
+            lengths = lengths.to(target.device)
+
+            # calculate mean for all time steps
+            tmask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
+            if target.ndim > 2:
+                tmask = tmask.unsqueeze(-1)
+                lengths = lengths.unsqueeze(-1)
+            target = target.masked_fill(tmask, 0.0)
+            y_mean = target.sum(0).unsqueeze(0) / lengths.sum()
+
+            # calculate weight as length
+            decoder_length_histogram = integer_histogram(lengths, min=1, max=target.size(1))
+            weight = decoder_length_histogram.flip(0).cumsum(0).flip(0).float().unsqueeze(0)
+
+            # modify weight
+            if y_mean.ndim == 3:
+                y_mean[..., 1] = y_mean[..., 1] * weight
+            else:
+                y_mean = torch.stack((y_mean, weight), dim=-1)
+
+        else:
+            y_mean = y_actual.mean(0).unsqueeze(0)
         out = self.metric(y_pred_mean, y_mean)
         return out
 

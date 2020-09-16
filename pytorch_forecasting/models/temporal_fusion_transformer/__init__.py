@@ -589,7 +589,6 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         run at each step for training or validation
         """
         # extract data and run model
-        y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"], batch_first=True, enforce_sorted=False)
         log, out = super().step(x, y, batch_idx, label=label)
         # calculate interpretations etc for latter logging
         if self.log_interval(label == "train") > 0:

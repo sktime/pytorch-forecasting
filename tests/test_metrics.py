@@ -1,5 +1,10 @@
+import itertools
+
+import pytest
 import torch
-from pytorch_forecasting.metrics import CompositeMetric, SMAPE, MAE
+from torch.nn.utils import rnn
+
+from pytorch_forecasting.metrics import MAE, SMAPE, AggregationMetric, CompositeMetric
 
 
 def test_composite_metric():
@@ -24,3 +29,22 @@ def test_composite_metric():
     # test quantiles and prediction
     combined_metric.to_prediction(y_pred)
     combined_metric.to_quantiles(y_pred)
+
+
+@pytest.mark.parametrize(
+    "decoder_lengths,y",
+    [
+        (torch.tensor([1, 2], dtype=torch.long), torch.tensor([[0.0, 1.0], [5.0, 1.0]])),
+        (2 * torch.ones(2, dtype=torch.long), torch.tensor([[0.0, 1.0], [5.0, 1.0]])),
+        (2 * torch.ones(2, dtype=torch.long), torch.tensor([[[0.0, 1.0], [1.0, 1.0]], [[5.0, 1.0], [1.0, 2.0]]])),
+    ],
+)
+def test_aggregation_metric(decoder_lengths, y):
+    y_pred = torch.tensor([[0.0, 2.0], [4.0, 3.0]])
+    y_packed = rnn.pack_padded_sequence(y, lengths=decoder_lengths, batch_first=True, enforce_sorted=False)
+
+    # metric
+    metric = AggregationMetric(MAE())
+    res = metric(y_pred, y_packed)
+    if (decoder_lengths == 1).all() and y.ndim == 2:
+        assert torch.isclose(res, (y.sum(0) - y_pred.mean(0)).abs())
