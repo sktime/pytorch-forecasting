@@ -24,12 +24,14 @@ predictions add up. For example:
 
 .. code-block:: python
 
-   from pytorch_forecasting.metrics import SMAPE, AggregationMetric
+   from pytorch_forecasting.metrics import MAE, AggregationMetric
 
-   composite_metric = SMAPE() + AggregationMetric(metric=SMAPE())
+   composite_metric = MAE() + AggregationMetric(metric=MAE())
 
-Here we add to SMAPE an additional loss. This additional loss is the SMAPE calculated on the summed predictions
-and actuals.
+Here we add to MAE an additional loss. This additional loss is the MAE calculated on the mean predictions
+and actuals. We can also use other metrics such as SMAPE to ensure aggregated results are unbiased in that metric.
+One important point to keep in mind is that this metric is calculated accross samples, i.e. it will vary depending
+on the batch size. In particular, errors tend to average out with increased batch sizes.
 
 
 Details
