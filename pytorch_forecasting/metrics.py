@@ -11,6 +11,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
+from pytorch_forecasting.utils import integer_histogram
+
 
 class Metric(TensorMetric):
     """
@@ -19,13 +21,13 @@ class Metric(TensorMetric):
     Other metrics should inherit from this base class
     """
 
-    def __init__(self, name: str = None, quantiles: List[float] = [0.5], reduction="mean"):
+    def __init__(self, name: str = None, quantiles: List[float] = None, reduction="mean"):
         """
         Initialize metric
 
         Args:
             name (str): metric name. Defaults to class name.
-            quantiles (List[float], optional): quantiles for probability range. Defaults to [0.5].
+            quantiles (List[float], optional): quantiles for probability range. Defaults to None.
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
         """
         self.quantiles = quantiles
@@ -60,7 +62,10 @@ class Metric(TensorMetric):
             torch.Tensor: point prediction
         """
         if y_pred.ndim == 3:
-            idx = self.quantiles.index(0.5)
+            if self.quantiles is None:
+                idx = y_pred.size(-1) // 2
+            else:
+                idx = self.quantiles.index(0.5)
             y_pred = y_pred[..., idx]
         return y_pred
 
@@ -77,6 +82,171 @@ class Metric(TensorMetric):
         if y_pred.ndim == 2:
             y_pred = y_pred.unsqueeze(-1)
         return y_pred
+
+    def __add__(self, metric: TensorMetric):
+        composite_metric = CompositeMetric(metrics=[self])
+        new_metric = composite_metric + metric
+        return new_metric
+
+    def __mul__(self, multiplier: float):
+        new_metric = CompositeMetric(metrics=[self], weights=[multiplier])
+        return new_metric
+
+    __rmul__ = __mul__
+
+
+class CompositeMetric(TensorMetric):
+    """
+    Metric that combines multiple metrics.
+
+    Metric does not have to be called explicitly but is automatically created when adding and multiplying metrics
+    with each other.
+
+    Example:
+
+        .. code-block:: python
+
+            composite_metric = SMAPE() + 0.4 * MAE()
+    """
+
+    def __init__(self, name: str = "composite", metrics: List[TensorMetric] = [], weights: List[float] = None):
+        """
+        Args:
+            name (str, optional): name of composite metric. Defaults to "composite".
+            metrics (List[TensorMetric], optional): list of metrics to combine. Defaults to [].
+            weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
+        """
+        if weights is None:
+            weights = [1.0 for _ in metrics]
+        assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
+
+        self.metrics = metrics
+        self.weights = weights
+
+        super().__init__(name=name)
+
+    def __repr__(self):
+        name = " + ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
+        return name
+
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        results = []
+        for weight, metric in zip(self.weights, self.metrics):
+            results.append(metric(y_pred, y_actual) * weight)
+
+        if len(results) == 1:
+            results = results[0]
+        else:
+            results = torch.stack(results, dim=0).sum(0)
+        return results
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Will use first metric in ``metrics`` attribute to calculate result.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: point prediction
+        """
+        return self.metrics[0].to_prediction(y_pred)
+
+    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Will use first metric in ``metrics`` attribute to calculate result.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: prediction quantiles
+        """
+        return self.metrics[0].to_quantiles(y_pred)
+
+    def __add__(self, metric: TensorMetric):
+        if isinstance(metric, self.__class__):
+            self.metrics.extend(metric.metrics)
+            self.weights.extend(metric.weights)
+        else:
+            self.metrics.append(metric)
+            self.weights.append(1.0)
+
+        return self
+
+    def __mul__(self, multiplier: float):
+        self.weights = [w * multiplier for w in self.weights]
+        return self
+
+    __rmul__ = __mul__
+
+
+class AggregationMetric(Metric):
+    """
+    Calculate metric on mean prediction and actuals.
+    """
+
+    def __init__(self, metric: Metric):
+        """
+        Args:
+            metric (Metric): metric which to calculate on aggreation.
+        """
+        super().__init__(name=f"agg-{metric.name}")
+        self.metric = metric
+
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        y_pred_mean = y_pred.mean(0).unsqueeze(0)
+        if isinstance(y_actual, rnn.PackedSequence):
+            target, lengths = rnn.pad_packed_sequence(y_actual, batch_first=True)
+            # batch sizes reside on the CPU by default -> we need to bring them to GPU
+            lengths = lengths.to(target.device)
+
+            # calculate mean for all time steps
+            tmask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
+            if target.ndim > 2:
+                tmask = tmask.unsqueeze(-1)
+                lengths = lengths.unsqueeze(-1)
+            target = target.masked_fill(tmask, 0.0)
+            y_mean = target.sum(0).unsqueeze(0) / lengths.sum()
+
+            # calculate weight as length
+            decoder_length_histogram = integer_histogram(lengths, min=1, max=target.size(1))
+            weight = decoder_length_histogram.flip(0).cumsum(0).flip(0).float().unsqueeze(0)
+
+            # modify weight
+            if y_mean.ndim == 3:
+                y_mean[..., 1] = y_mean[..., 1] * weight
+            else:
+                y_mean = torch.stack((y_mean, weight), dim=-1)
+
+        else:
+            y_mean = y_actual.mean(0).unsqueeze(0)
+        out = self.metric(y_pred_mean, y_mean)
+        return out
 
 
 class MultiHorizonMetric(Metric):
@@ -179,7 +349,10 @@ class PoissonLoss(MultiHorizonMetric):
 
     def to_quantiles(self, out: Dict[str, torch.Tensor], quantiles=None):
         if quantiles is None:
-            quantiles = self.quantiles
+            if self.quantiles is None:
+                quantiles = [0.5]
+            else:
+                quantiles = self.quantiles
         predictions = super().to_prediction(out)
         return torch.stack([torch.tensor(scipy.stats.poisson(predictions).ppf(q)) for q in quantiles], dim=-1)
 
@@ -196,7 +369,7 @@ class QuantileLoss(MultiHorizonMetric):
         name: str = "quantile_loss",
         quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         Quantile loss

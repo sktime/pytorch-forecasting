@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
-from pytorch_lightning.utilities.parsing import AttributeDict, collect_init_args, get_init_args
+from pytorch_lightning.utilities.parsing import get_init_args
 import torch
-from torch import optim, unsqueeze
+from torch.nn.utils import rnn
 from torch.optim.lr_scheduler import LambdaLR, OneCycleLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
@@ -146,6 +146,10 @@ class BaseModel(LightningModule):
         """
         Run for each train/val step.
         """
+        # pack y sequence if different encoder lengths exist
+        if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
+            y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"], batch_first=True, enforce_sorted=False)
+
         if label == "train" and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
