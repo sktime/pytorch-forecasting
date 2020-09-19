@@ -1,5 +1,8 @@
 ![](./docs/source/_static/logo.svg)
 
+Our article on [Towards Data Science](https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46)
+introduces the package and provides background information.
+
 Pytorch Forecasting aims to ease timeseries forecasting with neural networks for real-world cases and research alike.
 Specifically, the package provides
 
