@@ -6,7 +6,10 @@
 PyTorch Forecasting Documentation
 ==================================
 
-Pytorch Forecasting aims to ease timeseries forecasting with neural networks for real-world cases and 
+Our article on `Towards Data Science <https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46>`_
+introduces the package and provides background information.
+
+Pytorch Forecasting aims to ease timeseries forecasting with neural networks for both real-world cases and 
 research alike. Specifically, the package provides
 
 * A timeseries dataset class which abstracts handling variable transformations, missing values,
