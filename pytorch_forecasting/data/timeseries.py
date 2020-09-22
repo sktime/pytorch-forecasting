@@ -98,6 +98,8 @@ class TimeSeriesDataSet(Dataset):
                 (e.g. useful for weather categories)
             time_varying_unknown_reals: list of continuous variables that change over
                 time and are not know in the future
+            variable_groups: dictionary mapping a name to a list of columns in the data. The name should be present
+                in a categorical or real class argument, to be able to encode or scale the columns by group.
             dropout_categoricals: list of categorical variables that are unknown when making a forecast without
                 observed history
             constant_fill_strategy: dictionary of column names with constants to fill in missing values if there are
@@ -353,7 +355,7 @@ class TimeSeriesDataSet(Dataset):
             else:
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], return_norm=True)
 
-            # add target sclaes
+            # add target scales
             if self.add_target_scales:
                 for idx, name in enumerate(["center", "scale"]):
                     feature_name = f"{self.target}_{name}"
@@ -619,7 +621,7 @@ class TimeSeriesDataSet(Dataset):
         df_index["count"] = (df_index["time_last"] - df_index["time_first"]).astype(int) + 1
         df_index["group_id"] = g.ngroup()
 
-        # calculate maxium index to include from current index_start
+        # calculate maximum index to include from current index_start
         max_time = (df_index["time"] + self.max_encoder_length + self.max_prediction_length).clip(
             upper=df_index["count"] + df_index.time_first
         )
