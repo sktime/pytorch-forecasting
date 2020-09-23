@@ -287,7 +287,7 @@ class NBeats(BaseModel):
             else:
                 ax2.plot(time, to_prediction(output[title]), label=title.capitalize())
         ax[1].set_xlabel("Time")
-        ax[1].set_ylabel("Trend")
+        ax[1].set_ylabel("Decomposition")
 
         fig.legend()
         return fig
