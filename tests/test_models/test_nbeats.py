@@ -27,7 +27,12 @@ def test_integration(dataloaders_fixed_window_without_coveratiates, tmp_path, gp
     )
 
     net = NBeats.from_dataset(
-        train_dataloader.dataset, learning_rate=0.15, log_gradient_flow=True, widths=[4, 4, 4], log_interval=1000
+        train_dataloader.dataset,
+        learning_rate=0.15,
+        log_gradient_flow=True,
+        widths=[4, 4, 4],
+        log_interval=1000,
+        backcast_loss_ratio=1.0,
     )
     net.size()
     try:
