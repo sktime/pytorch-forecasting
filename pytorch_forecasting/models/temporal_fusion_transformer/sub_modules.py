@@ -110,7 +110,7 @@ class GatedLinearUnit(nn.Module):
         for n, p in self.named_parameters():
             if "bias" in n:
                 torch.nn.init.zeros_(p)
-            elif "fc2" in n:
+            elif "fc" in n:
                 torch.nn.init.xavier_uniform_(p)
 
     def forward(self, x):
