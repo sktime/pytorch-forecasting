@@ -10,7 +10,7 @@ from torch import nn
 from torch.nn.utils import rnn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.models.base_model import BaseModel, CovariatesMixin
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,
@@ -126,7 +126,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         assert isinstance(loss, MultiHorizonMetric), "Loss has to of class `MultiHorizonMetric`"
         self.loss = loss
         self.output_transformer = output_transformer
-        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE()]
+        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE(), MASE()]
 
         # processing inputs
         # embeddings

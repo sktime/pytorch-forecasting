@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE
+from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
 
@@ -78,7 +78,7 @@ class NBeats(BaseModel):
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
         """
         self.save_hyperparameters()
-        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE()]
+        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE(), MASE()]
         super().__init__(**kwargs)
         self.loss = loss
 
