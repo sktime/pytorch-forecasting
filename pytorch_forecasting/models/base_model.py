@@ -183,11 +183,11 @@ class BaseModel(LightningModule):
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
             if isinstance(self.loss, MASE):
-                self.loss(prediction, y)
-            else:
                 loss = self.loss(
                     prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
                 )
+            else:
+                loss = self.loss(prediction, y)
 
             loss = loss * (1 + monotinicity_loss)
         else:

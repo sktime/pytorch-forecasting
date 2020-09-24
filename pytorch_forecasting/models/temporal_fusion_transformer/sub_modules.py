@@ -351,7 +351,7 @@ class VariableSelectionNetwork(nn.Module):
                     variable_embedding = self.prescalers[name](variable_embedding)
                 weight_inputs.append(variable_embedding)
                 var_outputs.append(self.single_variable_grns[name](variable_embedding))
-            var_outputs = torch.stack(var_outputs, axis=-1)
+            var_outputs = torch.stack(var_outputs, dim=-1)
 
             # calculate variable weights
             flat_embedding = torch.cat(weight_inputs, dim=-1)
@@ -359,7 +359,7 @@ class VariableSelectionNetwork(nn.Module):
             sparse_weights = self.softmax(sparse_weights).unsqueeze(-2)
 
             outputs = var_outputs * sparse_weights
-            outputs = outputs.sum(axis=-1)
+            outputs = outputs.sum(dim=-1)
         else:  # for one input, do not perform variable selection but just encoding
             name = next(iter(self.single_variable_grns.keys()))
             variable_embedding = x[name]

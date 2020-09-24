@@ -218,7 +218,10 @@ class NBeats(BaseModel):
             )
             backcast_weight = backcast_weight / (backcast_weight + 1)  # normalize
             forecast_weight = 1 - backcast_weight
-            backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
+            if isinstance(self.loss, MASE):
+                backcast_loss = self.loss(backcast, x["encoder_target"], x["decoder_target"]) * backcast_weight
+            else:
+                backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
             if label == "train":
                 log["loss"] = log["loss"] * forecast_weight + backcast_loss
                 log["log"]["train_loss"] = log["log"]["train_loss"] * forecast_weight + backcast_loss
