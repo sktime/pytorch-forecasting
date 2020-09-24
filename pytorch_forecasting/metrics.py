@@ -11,7 +11,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.utils import integer_histogram
+from pytorch_forecasting.utils import integer_histogram, unpack_sequence
 
 
 class Metric(TensorMetric):
@@ -281,13 +281,7 @@ class MultiHorizonMetric(Metric):
         Returns:
             torch.Tensor: loss as a single number for backpropagation
         """
-        # unpack
-        if isinstance(target, rnn.PackedSequence):
-            target, lengths = rnn.pad_packed_sequence(target, batch_first=True)
-            # batch sizes reside on the CPU by default -> we need to bring them to GPU
-            lengths = lengths.to(target.device)
-        else:
-            lengths = torch.ones(target.size(0), device=target.device, dtype=torch.long) * target.size(1)
+        target, lengths = unpack_sequence(target)
         assert not target.requires_grad
 
         # calculate loss with "none" reduction
@@ -302,24 +296,43 @@ class MultiHorizonMetric(Metric):
         if weight is not None:
             losses = losses * weight.unsqueeze(-1)
 
+        loss = self.reduce_loss(losses, lengths=lengths, reduction=self.reduction)
+        return loss
+
+    def reduce_loss(self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None) -> torch.Tensor:
+        """
+        Reduce loss.
+
+        Args:
+            losses (torch.Tensor): tensor of losses. first dimenion are samples, second timesteps
+            lengths (torch.Tensor): tensor of lengths
+            reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
+
+        Returns:
+            torch.Tensor: reduced loss
+        """
+        if reduction is None:
+            reduction = self.reduction
         # mask loss
-        mask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
+        mask = torch.arange(losses.size(1), device=losses.device).unsqueeze(0) >= lengths.unsqueeze(-1)
         if losses.ndim > 2:
             mask = mask.unsqueeze(-1)
             dim_normalizer = losses.size(-1)
         else:
             dim_normalizer = 1.0
         # reduce to one number
-        if self.reduction == "none":
+        if reduction == "none":
             loss = losses.masked_fill(mask, float("nan"))
         else:
-            if self.reduction == "mean":
+            if reduction == "mean":
                 losses = losses.masked_fill(mask, 0.0)
                 loss = losses.sum() / lengths.sum() / dim_normalizer
-            elif self.reduction == "sqrt-mean":
+            elif reduction == "sqrt-mean":
                 losses = losses.masked_fill(mask, 0.0)
                 loss = losses.sum() / lengths.sum() / dim_normalizer
                 loss = loss.sqrt()
+            else:
+                raise ValueError(f"reduction {reduction} unknown")
             assert not torch.isnan(loss), (
                 "Loss should not be nan - i.e. something went wrong "
                 "in calculating the loss (e.g. log of a negative number)"
@@ -449,3 +462,100 @@ class RMSE(MultiHorizonMetric):
     def loss(self, y_pred: Dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
         return loss
+
+
+class MASE(MultiHorizonMetric):
+    """
+    Mean absolute scaled error
+
+    Defined as ``(y_pred - target).abs() / all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
+    ``all_targets`` are here the concatenated encoder and decoder targets
+    """
+
+    def __init__(self, name: str = "MASE", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def forward(
+        self,
+        y_pred: Dict[str, torch.Tensor],
+        target: Union[torch.Tensor, rnn.PackedSequence],
+        encoder_target: Union[torch.Tensor, rnn.PackedSequence],
+        encoder_lengths: torch.Tensor = None,
+    ) -> torch.Tensor:
+        """
+        Forward method of metric that handles masking of values.
+
+        Args:
+            y_pred (Dict[str, torch.Tensor]): network output
+            target (Union[torch.Tensor, rnn.PackedSequence]): actual values
+            encoder_target (Union[torch.Tensor, rnn.PackedSequence]): historic actual values
+            encoder_lengths (torch.Tensor): optional encoder lengths, not necessary if encoder_target
+                is rnn.PackedSequence. Assumed encoder_target is torch.Tensor
+
+        Returns:
+            torch.Tensor: loss as a single number for backpropagation
+        """
+        target, lengths = unpack_sequence(target)
+        if encoder_lengths is None:
+            encoder_target, encoder_lengths = unpack_sequence(target)
+        else:
+            assert isinstance(encoder_target, torch.Tensor)
+        assert not target.requires_grad
+
+        # calculate loss with "none" reduction
+        if target.ndim == 3:
+            weight = target[..., 1]
+            target = target[..., 0]
+        else:
+            weight = None
+
+        scaling = self.calculate_scaling(target, lengths, encoder_target, encoder_lengths)
+        losses = self.loss(y_pred, target, scaling)
+        # weight samples
+        if weight is not None:
+            losses = losses * weight.unsqueeze(-1)
+
+        loss = self.reduce_loss(losses, lengths=lengths, reduction=self.reduction)
+        return loss
+
+    def loss(self, y_pred, target, scaling):
+        return (y_pred - target).abs() / scaling.unsqueeze(-1)
+
+    def calculate_scaling(self, target, lengths, encoder_target, encoder_lengths):
+        # calcualte mean(abs(diff(targets)))
+        eps = 1e-6
+        batch_size = target.size(0)
+        total_lengths = lengths + encoder_lengths
+        assert (total_lengths > 1).all(), "Need at least 2 target values to be able to calculate MASE"
+        max_length = target.size(1) + encoder_target.size(1)
+        if (total_lengths != max_length).any():  # if decoder or encoder targets have sequences of different lengths
+            targets = torch.cat(
+                [
+                    encoder_target,
+                    torch.zeros(batch_size, target.size(1), device=target.device, dtype=encoder_target.dtype),
+                ],
+                dim=1,
+            )
+            target_index = torch.arange(target.size(1), device=target.device, dtype=torch.long).unsqueeze(0).expand(
+                batch_size, -1
+            ) + encoder_lengths.unsqueeze(-1)
+            targets.scatter_(dim=1, src=target, index=target_index)
+        else:
+            targets = torch.cat([encoder_target, target], dim=1)
+
+        # take absolute difference
+        diffs = (targets[:, :-1] - targets[:, 1:]).abs()
+
+        # set last difference to 0
+        not_maximum_length = total_lengths != max_length
+        zero_correction_indices = total_lengths[not_maximum_length] - 1
+        if len(zero_correction_indices) > 0:
+            diffs[
+                torch.arange(batch_size, dtype=torch.long, device=diffs.device)[not_maximum_length],
+                zero_correction_indices,
+            ] = 0.0
+
+        # calculate mean over differences
+        scaling = diffs.sum(1) / total_lengths + eps
+
+        return scaling

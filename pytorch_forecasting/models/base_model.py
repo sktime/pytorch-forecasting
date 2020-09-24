@@ -20,7 +20,7 @@ from tqdm.notebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer
-from pytorch_forecasting.metrics import SMAPE
+from pytorch_forecasting.metrics import MASE, SMAPE
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import groupby_apply
 
@@ -182,15 +182,26 @@ class BaseModel(LightningModule):
             # multiply monotinicity loss by large number to ensure relevance and take to the power of 2
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
+            if isinstance(self.loss, MASE):
+                loss = self.loss(
+                    prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
+                )
+            else:
+                loss = self.loss(prediction, y)
 
-            loss = self.loss(prediction, y) * (1 + monotinicity_loss)
+            loss = loss * (1 + monotinicity_loss)
         else:
             out = self(x)
             out["prediction"] = self.transform_output(out)
 
             # calculate loss
             prediction = out["prediction"]
-            loss = self.loss(prediction, y)
+            if isinstance(self.loss, MASE):
+                loss = self.loss(
+                    prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
+                )
+            else:
+                loss = self.loss(prediction, y)
 
         # log loss
         tensorboard_logs = {f"{label}_loss": loss}
@@ -198,7 +209,13 @@ class BaseModel(LightningModule):
         y_hat_detached = prediction.detach()
         y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
         for metric in self.logging_metrics:
-            tensorboard_logs[f"{label}_{metric.name}"] = metric(y_hat_point_detached, y)
+            if isinstance(metric, MASE):
+                loss_value = metric(
+                    y_hat_point_detached, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
+                )
+            else:
+                loss_value = metric(y_hat_point_detached, y)
+            tensorboard_logs[f"{label}_{metric.name}"] = loss_value
         log = {f"{label}_loss": loss, "log": tensorboard_logs, "n_samples": x["decoder_lengths"].size(0)}
         if label == "train":
             log["loss"] = loss
@@ -354,7 +371,11 @@ class BaseModel(LightningModule):
             else:
                 loss = add_loss_to_title
                 loss.quantiles = self.loss.quantiles
-            ax.set_title(f"Loss {loss(y_hat[None], y[-n_pred:][None]):.3g}")
+            if isinstance(loss, MASE):
+                loss_value = loss(y_hat[None], y[-n_pred:][None], y[:n_pred][None])
+            else:
+                loss_value = loss(y_hat[None], y[-n_pred:][None])
+            ax.set_title(f"Loss {loss_value:.3g}")
         ax.set_xlabel("Time index")
         fig.legend()
         return fig

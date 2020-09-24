@@ -94,7 +94,10 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
             if self.warn:
                 cond = ~np.isin(y, self.classes_)
                 if cond.any():
-                    warnings.warn(f"Found {y[cond].nunique()} unknown classes which were set to NaN", UserWarning)
+                    warnings.warn(
+                        f"Found {np.unique(np.asarray(y)[cond]).size} unknown classes which were set to NaN",
+                        UserWarning,
+                    )
 
             encoded = [self.classes_.get(v, 0) for v in y]
 
