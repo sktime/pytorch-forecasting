@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import SMAPE
+from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
 
@@ -19,7 +19,7 @@ class NBeats(BaseModel):
         stack_types: List[str] = ["trend", "seasonality"],
         num_blocks=[3, 3],
         num_block_layers=[3, 3],
-        widths=[16, 128, 16],
+        widths=[32, 512],
         sharing: List[int] = [True, True],
         expansion_coefficient_lengths: List[int] = [5, 7],
         prediction_length: int = 1,
@@ -32,6 +32,7 @@ class NBeats(BaseModel):
         weight_decay: float = 1e-3,
         loss=SMAPE(),
         reduce_on_plateau_patience: int = 1000,
+        backcast_loss_ratio: float = 0.0,
         **kwargs,
     ):
         """
@@ -69,12 +70,15 @@ class NBeats(BaseModel):
             prediction_length: Length of the prediction. Also known as 'horizon'.
             context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
                 Should be between 1-10 times the prediction length.
-            has_backcast: Only the last block of the network doesn't.
+            backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.
+                A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
+                forecast lengths). Defaults to 0.0, i.e. no weight.
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
         """
         self.save_hyperparameters()
+        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE()]
         super().__init__(**kwargs)
         self.loss = loss
 
@@ -158,7 +162,7 @@ class NBeats(BaseModel):
         return dict(
             prediction=forecast,
             target_scale=x["target_scale"],
-            backcast=backcast,
+            backcast=target - backcast,
             trend=torch.stack(trend_forecast, dim=0).sum(0),
             seasonality=torch.stack(seasonal_forecast, dim=0).sum(0),
             generic=torch.stack(generic_forecast, dim=0).sum(0),
@@ -206,6 +210,22 @@ class NBeats(BaseModel):
         Take training / validation step.
         """
         log, out = super().step(x, y, batch_idx=batch_idx, label=label)
+
+        if self.hparams.backcast_loss_ratio > 0:  # add loss from backcast
+            backcast = self.transform_output(dict(prediction=out["backcast"], target_scale=out["target_scale"]))
+            backcast_weight = (
+                self.hparams.backcast_loss_ratio * self.hparams.context_length / self.hparams.prediction_length
+            )
+            backcast_weight = backcast_weight / (backcast_weight + 1)  # normalize
+            forecast_weight = 1 - backcast_weight
+            backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
+            if label == "train":
+                log["loss"] = log["loss"] * forecast_weight + backcast_loss
+                log["log"]["train_loss"] = log["log"]["train_loss"] * forecast_weight + backcast_loss
+            else:
+                log["val_loss"] = log["val_loss"] * forecast_weight + backcast_loss
+                log["log"]["val_loss"] = log["log"]["val_loss"] * forecast_weight + backcast_loss
+
         self._log_interpretation(x, out, batch_idx=batch_idx, label=label)
         return log, out
 
@@ -264,7 +284,7 @@ class NBeats(BaseModel):
             time,
             torch.cat(
                 [
-                    to_prediction(x["encoder_cont"][idx, :, 0] - output["backcast"].detach()),
+                    to_prediction(output["backcast"].detach()),
                     output["prediction"][idx].detach(),
                 ],
                 dim=0,
@@ -274,6 +294,9 @@ class NBeats(BaseModel):
         ax[0].set_xlabel("Time")
 
         # plot blocks
+        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
+        next(prop_cycle)  # prediction
+        next(prop_cycle)  # observations
         if plot_seasonality_and_generic_on_secondary_axis:
             ax2 = ax[1].twinx()
             ax2.set_ylabel("Seasonality / Generic")
@@ -283,9 +306,9 @@ class NBeats(BaseModel):
             if title not in self.hparams.stack_types:
                 continue
             if title == "trend":
-                ax[1].plot(time, to_prediction(output[title]), label=title.capitalize())
+                ax[1].plot(time, to_prediction(output[title]), label=title.capitalize(), c=next(prop_cycle)["color"])
             else:
-                ax2.plot(time, to_prediction(output[title]), label=title.capitalize())
+                ax2.plot(time, to_prediction(output[title]), label=title.capitalize(), c=next(prop_cycle)["color"])
         ax[1].set_xlabel("Time")
         ax[1].set_ylabel("Decomposition")
 
