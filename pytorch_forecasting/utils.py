@@ -7,6 +7,8 @@ import os
 from typing import Callable, Tuple, Union
 
 import torch
+from torch.nn.utils import rnn
+from torch.tensor import Tensor
 
 
 def integer_histogram(
@@ -179,3 +181,23 @@ def autocorrelation(input, dim=0):
     autocorr = autocorr / torch.tensor(range(N, 0, -1), dtype=input.dtype, device=input.device)
     autocorr = autocorr / autocorr[..., :1]
     return autocorr.transpose(dim, -1)
+
+
+def unpack_sequence(sequence: Union[torch.Tensor, rnn.PackedSequence]) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Unpack RNN sequence.
+
+    Args:
+        sequence (Union[torch.Tensor, rnn.PackedSequence]): RNN packed sequence or tensor of which
+            first index are samples and second are timesteps
+
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor]: tuple of unpacked sequence and length of samples
+    """
+    if isinstance(sequence, rnn.PackedSequence):
+        sequence, lengths = rnn.pad_packed_sequence(sequence, batch_first=True)
+        # batch sizes reside on the CPU by default -> we need to bring them to GPU
+        lengths = lengths.to(sequence.device)
+    else:
+        lengths = torch.ones(sequence.size(0), device=sequence.device, dtype=torch.long) * sequence.size(1)
+    return sequence, lengths
