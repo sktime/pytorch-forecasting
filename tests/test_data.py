@@ -13,6 +13,7 @@ from pytorch_forecasting.data import (
     GroupNormalizer,
     NaNLabelEncoder,
     TimeSeriesDataSet,
+    TimeSynchronizedBatchSampler,
 )
 from pytorch_forecasting.data.examples import get_stallion_data
 
@@ -270,8 +271,24 @@ def test_overwrite_values(test_dataset, value, variable, target):
     assert torch.isclose(outputs[1], control_outputs[1]).all(), "Target should be reset"
 
 
-def test_TimeSynchronizedBatchSampler(test_dataset):
-    dataloader = test_dataset.to_dataloader(batch_sampler="synchronized")
+@pytest.mark.parametrize(
+    "drop_last,shuffle,as_string,batch_size",
+    [
+        (True, True, True, 64),
+        (False, False, False, 64),
+        (True, False, False, 1000),
+    ],
+)
+def test_TimeSynchronizedBatchSampler(test_dataset, shuffle, drop_last, as_string, batch_size):
+    if as_string:
+        dataloader = test_dataset.to_dataloader(
+            batch_sampler="synchronized", shuffle=shuffle, drop_last=drop_last, batch_size=batch_size
+        )
+    else:
+        sampler = TimeSynchronizedBatchSampler(
+            data_source=test_dataset, shuffle=shuffle, drop_last=drop_last, batch_size=batch_size
+        )
+        dataloader = test_dataset.to_dataloader(batch_sampler=sampler)
 
     time_idx_pos = test_dataset.reals.index("time_idx")
     for x, _ in iter(dataloader):  # check all samples
