@@ -7,8 +7,15 @@ import pandas as pd
 import pytest
 from sklearn.preprocessing import StandardScaler
 import torch
+from torch.utils.data import dataset
 
-from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TimeSeriesDataSet
+from pytorch_forecasting.data import (
+    EncoderNormalizer,
+    GroupNormalizer,
+    NaNLabelEncoder,
+    TimeSeriesDataSet,
+    TimeSynchronizedBatchSampler,
+)
 from pytorch_forecasting.data.examples import get_stallion_data
 
 torch.manual_seed(23)
@@ -263,3 +270,15 @@ def test_overwrite_values(test_dataset, value, variable, target):
         changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
         assert changed, f"Output {name} should be reset"
     assert torch.isclose(outputs[1], control_outputs[1]).all(), "Target should be reset"
+
+
+def test_TimeSynchronizedBatchSampler(test_dataset):
+    sampler = TimeSynchronizedBatchSampler(test_dataset)
+    dataloader = test_dataset.to_dataloader(batch_sampler="synchronized")
+
+    time_idx_pos = test_dataset.reals.index("time_idx")
+    for x, _ in iter(dataloader):  # check all samples
+        time_idx_of_first_prediction = x["decoder_cont"][:, 0, time_idx_pos]
+        assert torch.isclose(
+            time_idx_of_first_prediction, time_idx_of_first_prediction[0]
+        ).all(), "Time index should be the same for the first prediction"

@@ -47,7 +47,7 @@ def test_dataset(test_data):
         test_data,
         time_idx="time_idx",
         target="volume",
-        time_varying_known_reals=["price_regular"],
+        time_varying_known_reals=["price_regular", "time_idx"],
         group_ids=["agency", "sku"],
         static_categoricals=["agency"],
         max_encoder_length=5,
