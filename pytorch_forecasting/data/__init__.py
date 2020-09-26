@@ -5,6 +5,13 @@ Handling timeseries data is not trivial. It requires special treatment. This sub
 to abstracts the necessary work.
 """
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TorchNormalizer
-from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
+from pytorch_forecasting.data.timeseries import TimeSeriesDataSet, TimeSynchronizedBatchSampler
 
-__all__ = ["TimeSeriesDataSet", "NaNLabelEncoder", "GroupNormalizer", "TorchNormalizer", "EncoderNormalizer"]
+__all__ = [
+    "TimeSeriesDataSet",
+    "NaNLabelEncoder",
+    "GroupNormalizer",
+    "TorchNormalizer",
+    "EncoderNormalizer",
+    "TimeSynchronizedBatchSampler",
+]

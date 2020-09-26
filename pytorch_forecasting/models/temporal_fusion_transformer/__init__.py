@@ -95,6 +95,9 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
             time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
             time_varying_reals_encoder: integer of positions of continuous variables for encoder
             time_varying_reals_decoder: integer of positions of continuous variables for decoder
+            categorical_groups: dictionary where values
+                are list of categorical variables that are forming together a new categorical
+                variable which is the key in the dictionary
             x_reals: order of continuous variables in tensor passed to forward function
             x_categoricals: order of categorical variables in tensor passed to forward function
             hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical

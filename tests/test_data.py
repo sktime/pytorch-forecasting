@@ -8,7 +8,13 @@ import pytest
 from sklearn.preprocessing import StandardScaler
 import torch
 
-from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TimeSeriesDataSet
+from pytorch_forecasting.data import (
+    EncoderNormalizer,
+    GroupNormalizer,
+    NaNLabelEncoder,
+    TimeSeriesDataSet,
+    TimeSynchronizedBatchSampler,
+)
 from pytorch_forecasting.data.examples import get_stallion_data
 
 torch.manual_seed(23)
@@ -263,3 +269,30 @@ def test_overwrite_values(test_dataset, value, variable, target):
         changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
         assert changed, f"Output {name} should be reset"
     assert torch.isclose(outputs[1], control_outputs[1]).all(), "Target should be reset"
+
+
+@pytest.mark.parametrize(
+    "drop_last,shuffle,as_string,batch_size",
+    [
+        (True, True, True, 64),
+        (False, False, False, 64),
+        (True, False, False, 1000),
+    ],
+)
+def test_TimeSynchronizedBatchSampler(test_dataset, shuffle, drop_last, as_string, batch_size):
+    if as_string:
+        dataloader = test_dataset.to_dataloader(
+            batch_sampler="synchronized", shuffle=shuffle, drop_last=drop_last, batch_size=batch_size
+        )
+    else:
+        sampler = TimeSynchronizedBatchSampler(
+            data_source=test_dataset, shuffle=shuffle, drop_last=drop_last, batch_size=batch_size
+        )
+        dataloader = test_dataset.to_dataloader(batch_sampler=sampler)
+
+    time_idx_pos = test_dataset.reals.index("time_idx")
+    for x, _ in iter(dataloader):  # check all samples
+        time_idx_of_first_prediction = x["decoder_cont"][:, 0, time_idx_pos]
+        assert torch.isclose(
+            time_idx_of_first_prediction, time_idx_of_first_prediction[0]
+        ).all(), "Time index should be the same for the first prediction"
