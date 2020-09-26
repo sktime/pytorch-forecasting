@@ -557,6 +557,7 @@ class BaseModel(LightningModule):
         output = []
         decode_lenghts = []
         x_list = []
+        index = []
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader), disable=not show_progress_bar)
         with torch.no_grad():
             for x, _ in dataloader:
@@ -596,6 +597,8 @@ class BaseModel(LightningModule):
                 output.append(out)
                 if return_x:
                     x_list.append(x)
+                if return_index:
+                    index.append(dataloader.dataset.x_to_index(x))
                 progress_bar.update()
                 if fast_dev_run:
                     break
@@ -619,7 +622,7 @@ class BaseModel(LightningModule):
             x_cat = x_cat
             output.append(x_cat)
         if return_index:
-            output.append(dataloader.dataset.get_index())
+            output.append(pd.concat(index, axis=0, ignore_index=True))
         if return_decoder_lengths:
             output.append(torch.cat(decode_lenghts, dim=0))
         return output
@@ -645,7 +648,7 @@ class BaseModel(LightningModule):
             mode (str, optional): Output mode. Defaults to "dataframe". Either
 
                 * "series": values are average prediction and index are probed values
-                * "dataframe": columns are as obtained by the `dataset.get_index()` method,
+                * "dataframe": columns are as obtained by the `dataset.x_to_index()` method,
                     prediction (which is the mean prediction over the time horizon),
                     normalized_prediction (which are predictions devided by the prediction for the first probed value)
                     the variable name for the probed values
@@ -668,12 +671,17 @@ class BaseModel(LightningModule):
 
         results = []
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(values), disable=not show_progress_bar)
-        for value in values:
+        for idx, value in enumerate(values):
             # set values
             data.set_overwrite_values(variable=variable, values=value, target=target)
             # predict
             kwargs.setdefault("mode", "prediction")
-            results.append(self.predict(data, **kwargs))
+
+            if idx == 0 and mode == "dataframe":  # need index for returning as dataframe
+                res, index = self.predict(data, return_index=True, **kwargs)
+                results.append(res)
+            else:
+                results.append(self.predict(data, **kwargs))
             # increment progress
             progress_bar.update()
 
@@ -694,9 +702,8 @@ class BaseModel(LightningModule):
             results = results.sum(-1) / (~is_nan).float().sum(-1)
 
             # create dataframe
-            dependencies = data.get_index()
             dependencies = (
-                dependencies.iloc[np.tile(np.arange(len(dependencies)), len(values))]
+                index.iloc[np.tile(np.arange(len(index)), len(values))]
                 .reset_index(drop=True)
                 .assign(prediction=results.flatten())
             )

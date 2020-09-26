@@ -1050,27 +1050,19 @@ class TimeSeriesDataSet(Dataset):
             **kwargs,
         )
 
-    def get_index(self) -> pd.DataFrame:
+    def x_to_index(self, x) -> pd.DataFrame:
         """
-        Data index / order in which items are returned in train=False mode by dataloader.
+        Decode dataframe index from x.
 
         Returns:
             dataframe with time index column for first prediction and group ids
         """
-        decoder_length = pd.DataFrame(
-            dict(
-                prediction_idx=self.data["time"][self.index.index_end.to_numpy()] - (self.min_prediction_idx - 1),
-                sequence_length=self.index.sequence_length,
-                max_prediction_length=self.max_prediction_length,
-            )
-        ).min(axis=1)
-        encoder_lengths = self.index.sequence_length - decoder_length
-        index_data = {self.time_idx: self.index.time + encoder_lengths}
+        index_data = {self.time_idx: x["decoder_time_idx"][:, 0]}
         for id in self.group_ids:
-            index_data[id] = self.data["groups"][:, self.group_ids.index(id)][self.index.index_start.to_numpy()]
+            index_data[id] = x["groups"][:, self.group_ids.index(id)]
             # decode if possible
             index_data[id] = self.transform_values(id, index_data[id], inverse=True)
-        index = pd.DataFrame(index_data, index=self.index.index)
+        index = pd.DataFrame(index_data)
         return index
 
 

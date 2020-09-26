@@ -218,7 +218,10 @@ def test_from_dataset(test_dataset, test_data):
 
 
 def test_dataset_index(test_dataset):
-    index = test_dataset.get_index()
+    index = []
+    for x, _ in iter(test_dataset.to_dataloader()):
+        index.append(test_dataset.x_to_index(x))
+    index = pd.concat(index, axis=0, ignore_index=True)
     assert len(index) <= len(test_dataset), "Index can only be subset of dataset"
 
 
