@@ -273,7 +273,6 @@ def test_overwrite_values(test_dataset, value, variable, target):
 
 
 def test_TimeSynchronizedBatchSampler(test_dataset):
-    sampler = TimeSynchronizedBatchSampler(test_dataset)
     dataloader = test_dataset.to_dataloader(batch_sampler="synchronized")
 
     time_idx_pos = test_dataset.reals.index("time_idx")
