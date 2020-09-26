@@ -1094,7 +1094,8 @@ class TimeSynchronizedBatchSampler(Sampler):
 
         Args:
             data_source (TimeSeriesDataSet): timeseries dataset.
-            drop_last (bool): if to drop last mini-batch from a group if it is smaller than batch_size. Defaults to False.
+            drop_last (bool): if to drop last mini-batch from a group if it is smaller than batch_size.
+                Defaults to False.
             shuffle (bool): if to shuffle dataset. Defaults to False.
             batch_size (int, optional): Number of samples in a mini-batch. This is rather the maximum number
                 of samples. Because mini-batches are grouped by prediction time, chances are that there

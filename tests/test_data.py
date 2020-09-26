@@ -7,14 +7,12 @@ import pandas as pd
 import pytest
 from sklearn.preprocessing import StandardScaler
 import torch
-from torch.utils.data import dataset
 
 from pytorch_forecasting.data import (
     EncoderNormalizer,
     GroupNormalizer,
     NaNLabelEncoder,
     TimeSeriesDataSet,
-    TimeSynchronizedBatchSampler,
 )
 from pytorch_forecasting.data.examples import get_stallion_data
 
