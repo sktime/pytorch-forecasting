@@ -33,6 +33,7 @@ class NBeats(BaseModel):
         loss=SMAPE(),
         reduce_on_plateau_patience: int = 1000,
         backcast_loss_ratio: float = 0.0,
+        logging_metrics: nn.ModuleList = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]),
         **kwargs,
     ):
         """
@@ -76,11 +77,12 @@ class NBeats(BaseModel):
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
+            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+            **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
         self.save_hyperparameters()
-        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE(), MASE()]
-        super().__init__(**kwargs)
-        self.loss = loss
+        super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # setup stacks
         self.net_blocks = nn.ModuleList()

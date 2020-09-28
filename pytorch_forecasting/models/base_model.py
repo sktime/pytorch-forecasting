@@ -13,6 +13,7 @@ from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
 from pytorch_lightning.utilities.parsing import get_init_args
 import torch
+import torch.nn as nn
 from torch.nn.utils import rnn
 from torch.optim.lr_scheduler import LambdaLR, OneCycleLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
@@ -57,7 +58,7 @@ class BaseModel(LightningModule):
         learning_rate: Union[float, List[float]] = 1e-3,
         log_gradient_flow: bool = False,
         loss: TensorMetric = SMAPE(),
-        logging_metrics: List[TensorMetric] = [],
+        logging_metrics: nn.ModuleList = nn.ModuleList([]),
         reduce_on_plateau_patience: int = 1000,
         weight_decay: float = 0.0,
         monotone_constaints: Dict[str, int] = {},
@@ -76,7 +77,8 @@ class BaseModel(LightningModule):
             log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose
                 training failures. Defaults to False.
             loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
-            logging_metrics: (List[TensorMetric], optional): list of metrics to log.
+            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+                Defaults to [].
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
             weight_decay (float): weight decay. Defaults to 0.0.
@@ -102,7 +104,7 @@ class BaseModel(LightningModule):
         if not hasattr(self, "loss"):
             self.loss = loss
         if not hasattr(self, "logging_metrics"):
-            self.logging_metrics = logging_metrics
+            self.logging_metrics = nn.ModuleList([l for l in logging_metrics])
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
 
@@ -557,6 +559,7 @@ class BaseModel(LightningModule):
         output = []
         decode_lenghts = []
         x_list = []
+        index = []
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader), disable=not show_progress_bar)
         with torch.no_grad():
             for x, _ in dataloader:
@@ -596,6 +599,8 @@ class BaseModel(LightningModule):
                 output.append(out)
                 if return_x:
                     x_list.append(x)
+                if return_index:
+                    index.append(dataloader.dataset.x_to_index(x))
                 progress_bar.update()
                 if fast_dev_run:
                     break
@@ -619,7 +624,7 @@ class BaseModel(LightningModule):
             x_cat = x_cat
             output.append(x_cat)
         if return_index:
-            output.append(dataloader.dataset.get_index())
+            output.append(pd.concat(index, axis=0, ignore_index=True))
         if return_decoder_lengths:
             output.append(torch.cat(decode_lenghts, dim=0))
         return output
@@ -645,7 +650,7 @@ class BaseModel(LightningModule):
             mode (str, optional): Output mode. Defaults to "dataframe". Either
 
                 * "series": values are average prediction and index are probed values
-                * "dataframe": columns are as obtained by the `dataset.get_index()` method,
+                * "dataframe": columns are as obtained by the `dataset.x_to_index()` method,
                     prediction (which is the mean prediction over the time horizon),
                     normalized_prediction (which are predictions devided by the prediction for the first probed value)
                     the variable name for the probed values
@@ -668,12 +673,17 @@ class BaseModel(LightningModule):
 
         results = []
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(values), disable=not show_progress_bar)
-        for value in values:
+        for idx, value in enumerate(values):
             # set values
             data.set_overwrite_values(variable=variable, values=value, target=target)
             # predict
             kwargs.setdefault("mode", "prediction")
-            results.append(self.predict(data, **kwargs))
+
+            if idx == 0 and mode == "dataframe":  # need index for returning as dataframe
+                res, index = self.predict(data, return_index=True, **kwargs)
+                results.append(res)
+            else:
+                results.append(self.predict(data, **kwargs))
             # increment progress
             progress_bar.update()
 
@@ -694,9 +704,8 @@ class BaseModel(LightningModule):
             results = results.sum(-1) / (~is_nan).float().sum(-1)
 
             # create dataframe
-            dependencies = data.get_index()
             dependencies = (
-                dependencies.iloc[np.tile(np.arange(len(dependencies)), len(values))]
+                index.iloc[np.tile(np.arange(len(index)), len(values))]
                 .reset_index(drop=True)
                 .assign(prediction=results.flatten())
             )

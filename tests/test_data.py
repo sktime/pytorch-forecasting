@@ -16,6 +16,7 @@ from pytorch_forecasting.data import (
     TimeSynchronizedBatchSampler,
 )
 from pytorch_forecasting.data.examples import get_stallion_data
+from pytorch_forecasting.data.timeseries import _find_end_indices
 
 torch.manual_seed(23)
 
@@ -218,7 +219,10 @@ def test_from_dataset(test_dataset, test_data):
 
 
 def test_dataset_index(test_dataset):
-    index = test_dataset.get_index()
+    index = []
+    for x, _ in iter(test_dataset.to_dataloader()):
+        index.append(test_dataset.x_to_index(x))
+    index = pd.concat(index, axis=0, ignore_index=True)
     assert len(index) <= len(test_dataset), "Index can only be subset of dataset"
 
 
@@ -296,3 +300,14 @@ def test_TimeSynchronizedBatchSampler(test_dataset, shuffle, drop_last, as_strin
         assert torch.isclose(
             time_idx_of_first_prediction, time_idx_of_first_prediction[0]
         ).all(), "Time index should be the same for the first prediction"
+
+
+def test_find_end_indices():
+    diffs = np.array([1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1])
+    max_lengths = np.array([4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1])
+
+    ends, missings = _find_end_indices(diffs, max_lengths, min_length=3)
+    ends_test = np.array([3, 4, 4, 5, 6, 8, 9, 10, 10, 10, 10, 14, 15, 15, 16, 17, 19, 20, 21, 21, 21, 21])
+    missings_test = np.array([[0, 2], [5, 7], [11, 13], [16, 18]])
+    np.testing.assert_array_equal(ends, ends_test)
+    np.testing.assert_array_equal(missings, missings_test)

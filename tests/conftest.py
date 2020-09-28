@@ -52,6 +52,8 @@ def test_dataset(test_data):
         static_categoricals=["agency"],
         max_encoder_length=5,
         max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=0,
         randomize_length=None,
     )
     return training
