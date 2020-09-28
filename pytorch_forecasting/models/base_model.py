@@ -13,6 +13,7 @@ from pytorch_lightning import LightningModule
 from pytorch_lightning.metrics.metric import TensorMetric
 from pytorch_lightning.utilities.parsing import get_init_args
 import torch
+import torch.nn as nn
 from torch.nn.utils import rnn
 from torch.optim.lr_scheduler import LambdaLR, OneCycleLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
@@ -57,7 +58,7 @@ class BaseModel(LightningModule):
         learning_rate: Union[float, List[float]] = 1e-3,
         log_gradient_flow: bool = False,
         loss: TensorMetric = SMAPE(),
-        logging_metrics: List[TensorMetric] = [],
+        logging_metrics: nn.ModuleList = nn.ModuleList([]),
         reduce_on_plateau_patience: int = 1000,
         weight_decay: float = 0.0,
         monotone_constaints: Dict[str, int] = {},
@@ -76,7 +77,8 @@ class BaseModel(LightningModule):
             log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose
                 training failures. Defaults to False.
             loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
-            logging_metrics: (List[TensorMetric], optional): list of metrics to log.
+            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+                Defaults to [].
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
             weight_decay (float): weight decay. Defaults to 0.0.
@@ -102,7 +104,7 @@ class BaseModel(LightningModule):
         if not hasattr(self, "loss"):
             self.loss = loss
         if not hasattr(self, "logging_metrics"):
-            self.logging_metrics = logging_metrics
+            self.logging_metrics = nn.ModuleList([l for l in logging_metrics])
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
 

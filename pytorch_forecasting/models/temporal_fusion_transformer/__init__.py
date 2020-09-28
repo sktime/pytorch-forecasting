@@ -5,6 +5,7 @@ from typing import Callable, Dict, List, Tuple, Union
 
 from matplotlib import pyplot as plt
 import numpy as np
+from pytorch_lightning.metrics.metric import TensorMetric
 import torch
 from torch import nn
 from torch.nn.utils import rnn
@@ -55,7 +56,8 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         reduce_on_plateau_patience: int = 1000,
         monotone_constaints: Dict[str, int] = {},
         share_single_variable_networks: bool = False,
-        output_transformer: Callable = None,
+        logging_metrics: nn.ModuleList = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]),
+        **kwargs,
     ):
         """
         Temporal Fusion Transformer for forecasting timeseries - use its :py:meth:`~from_dataset` method if possible.
@@ -122,14 +124,14 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
                 This constraint significantly slows down training. Defaults to {}.
             share_single_variable_networks (bool): if to share the single variable networks between the encoder and
                 decoder. Defaults to False.
+            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
+            **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
         self.save_hyperparameters()
-        super().__init__()
         # store loss function separately as it is a module
         assert isinstance(loss, MultiHorizonMetric), "Loss has to of class `MultiHorizonMetric`"
-        self.loss = loss
-        self.output_transformer = output_transformer
-        self.logging_metrics = [SMAPE(), MAE(), RMSE(), MAPE(), MASE()]
+        super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # processing inputs
         # embeddings
@@ -201,7 +203,6 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         )
 
         # create single variable grns that are shared across decoder and encoder
-
         if self.hparams.share_single_variable_networks:
             self.shared_single_variable_grns = nn.ModuleDict()
             for name, input_size in encoder_input_sizes.items():
