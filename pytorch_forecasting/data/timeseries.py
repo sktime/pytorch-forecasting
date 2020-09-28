@@ -59,7 +59,10 @@ def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: in
         elif length >= min_length:
             missing_start_ends.append([start_idx, idx])
         length += diff
-    return np.asarray(end_indices), np.asarray(missing_start_ends)
+    if len(missing_start_ends) > 0:  # required for numba compliance
+        return np.asarray(end_indices), np.asarray(missing_start_ends)
+    else:
+        return np.asarray(end_indices), np.empty((0, 2), dtype=np.int64)
 
 
 try:
