@@ -25,6 +25,51 @@ from torch.utils.data.sampler import Sampler
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TorchNormalizer
 
 
+def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: int) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Identify end indices in series even if some values are missing.
+
+    Args:
+        diffs (np.ndarray): array of differences to next time step. nans should be filled up with ones
+        max_lengths (np.ndarray): maximum length of sequence by position.
+        min_length (int): minimum length of sequence.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: tuple of arrays where first is end indices and second is list of start
+            and end indices that are currently missing.
+    """
+    missing_start_ends = []
+    end_indices = []
+    length = 1
+    start_idx = 0
+    max_idx = len(diffs) - 1
+    max_length = max_lengths[start_idx]
+
+    for idx, diff in enumerate(diffs):
+        if length >= max_length:
+            while length >= max_length:
+                if length == max_length:
+                    end_indices.append(idx)
+                else:
+                    end_indices.append(idx - 1)
+                length -= diffs[start_idx]
+                if start_idx < max_idx:
+                    start_idx += 1
+                max_length = max_lengths[start_idx]
+        elif length >= min_length:
+            missing_start_ends.append([start_idx, idx])
+        length += diff
+    return np.asarray(end_indices), np.asarray(missing_start_ends)
+
+
+try:
+    import numba
+
+    _find_end_indices = numba.jit(nopython=True)(_find_end_indices)
+except ImportError:
+    pass
+
+
 class TimeSeriesDataSet(Dataset):
     """
     PyTorch Dataset for fitting timeseries models.
@@ -125,12 +170,16 @@ class TimeSeriesDataSet(Dataset):
         """
         super().__init__()
         self.max_encoder_length = max_encoder_length
-        self.min_encoder_length = min_encoder_length or max_encoder_length
+        if min_encoder_length is None:
+            min_encoder_length = max_encoder_length
+        self.min_encoder_length = min_encoder_length
         assert (
             self.min_encoder_length <= self.max_encoder_length
         ), "max encoder length has to be larger equals min encoder length"
         self.max_prediction_length = max_prediction_length
-        self.min_prediction_length = min_prediction_length or max_prediction_length
+        if min_prediction_length is None:
+            min_prediction_length = max_prediction_length
+        self.min_prediction_length = min_prediction_length
         assert (
             self.min_prediction_length <= self.max_prediction_length
         ), "max prediction length has to be larger equals min prediction length"
@@ -155,7 +204,9 @@ class TimeSeriesDataSet(Dataset):
             else:
                 randomize_length = (0.2, 0.05)
         self.randomize_length = randomize_length
-        self.min_prediction_idx = min_prediction_idx or data[self.time_idx].min()
+        if min_prediction_idx is None:
+            min_prediction_idx = data[self.time_idx].min()
+        self.min_prediction_idx = min_prediction_idx
         self.constant_fill_strategy = {} if len(constant_fill_strategy) == 0 else constant_fill_strategy
         self.predict_mode = predict_mode
         self.allow_missings = allow_missings
@@ -623,10 +674,11 @@ class TimeSeriesDataSet(Dataset):
         df_index["count"] = (df_index["time_last"] - df_index["time_first"]).astype(int) + 1
         df_index["group_id"] = g.ngroup()
 
+        min_sequence_length = self.min_prediction_length + self.min_encoder_length
+        max_sequence_length = self.max_prediction_length + self.max_encoder_length
+
         # calculate maximum index to include from current index_start
-        max_time = (df_index["time"] + self.max_encoder_length + self.max_prediction_length).clip(
-            upper=df_index["count"] + df_index.time_first
-        )
+        max_time = (df_index["time"] + max_sequence_length - 1).clip(upper=df_index["count"] + df_index.time_first - 1)
 
         # if there are missing timesteps, we cannot say directly what is the last timestep to include
         # therefore we iterate until it is found
@@ -634,17 +686,20 @@ class TimeSeriesDataSet(Dataset):
             assert (
                 self.allow_missings
             ), "Time difference between steps has been idenfied as larger than 1 - set allow_missings=True"
-            df_index["index_end"] = df_index["index_start"]
-            for _ in range(df_index["count"].max()):
-                new_end_time = (
-                    df_index[["time", "time_diff_to_next"]].iloc[df_index["index_end"]].sum(axis=1).to_numpy()
-                )
-                df_index["index_end"] = df_index["index_end"].where(
-                    new_end_time + 1 > max_time, df_index["index_end"] + 1
-                )
-        else:
-            # direct calculation of end index if there are no missing timesteps in the data
-            df_index["index_end"] = df_index["index_start"] + (max_time - df_index["time"] - 1)
+
+        df_index["index_end"], missing_sequences = _find_end_indices(
+            diffs=df_index.time_diff_to_next.to_numpy(),
+            max_lengths=(max_time - df_index.time).to_numpy() + 1,
+            min_length=min_sequence_length,
+        )
+        # add duplicates but mostly with shorter sequence length for start of timeseries
+        # while the previous steps have ensured that we start a sequence on every time step, the missing_sequences
+        # ensure that there is a sequence that finishes on every timestep
+        if len(missing_sequences) > 0:
+            shortened_sequences = df_index.iloc[missing_sequences[:, 0]].assign(index_end=missing_sequences[:, 1])
+
+            # concatenate shortened sequences
+            df_index = pd.concat([df_index, shortened_sequences], axis=0, ignore_index=True)
 
         # filter out where encode and decode length are not satisfied
         df_index["sequence_length"] = df_index["time"].iloc[df_index["index_end"]].to_numpy() - df_index["time"] + 1
@@ -652,23 +707,21 @@ class TimeSeriesDataSet(Dataset):
         # filter too short sequences
         df_index = df_index[
             # sequence must be at least of minimal prediction length
-            lambda x: (x.sequence_length >= self.min_prediction_length + self.min_encoder_length)
+            lambda x: (x.sequence_length >= min_sequence_length)
             &
             # prediction must be for after minimal prediction index + length of prediction
-            (x["sequence_length"] + x["time"] - 1 >= self.min_prediction_idx - 1 + self.min_prediction_length)
+            (x["sequence_length"] + x["time"] >= self.min_prediction_idx + self.min_prediction_length)
         ]
-        # todo: add duplicates for
-        # (x.sequence length > self.min_prediction_length + self.min_encoder_length) &
-        # (x.time - x.time_start < self.max_prediction_length + self.max_encoder_length)
 
         if predict_mode:  # keep longest element per series (i.e. the first element that spans to the end of the series)
             # filter all elements that are longer than the allowed maximum sequence length
             df_index = df_index[
-                lambda x: (x["time_last"] - x["time"] + 1 <= self.max_prediction_length + self.max_encoder_length)
-                & (x["sequence_length"] >= self.min_prediction_length + self.min_encoder_length)
+                lambda x: (x["time_last"] - x["time"] + 1 <= max_sequence_length)
+                & (x["sequence_length"] >= min_sequence_length)
             ]
             # choose longest sequence
             df_index = df_index.loc[df_index.groupby("group_id").sequence_length.idxmax()]
+
         assert len(df_index) > 0, "filters should not remove entries"
 
         return df_index
@@ -690,8 +743,10 @@ class TimeSeriesDataSet(Dataset):
         """
         if betas is None:
             betas = self.randomize_length
-        length = length or self.max_encoder_length
-        min_length = min_length or self.min_encoder_length
+        if length is None:
+            length = self.max_encoder_length
+        if min_length is None:
+            min_length = self.min_encoder_length
         probabilities = Beta(betas[0], betas[1]).sample((1000,))
 
         lengths = ((length - min_length) * probabilities).round() + min_length

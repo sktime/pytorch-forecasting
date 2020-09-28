@@ -2,13 +2,14 @@
 Helper functions for PyTorch forecasting
 """
 from contextlib import redirect_stdout
-import io
+import functools
+import inspect
 import os
+import re
 from typing import Callable, Tuple, Union
 
 import torch
 from torch.nn.utils import rnn
-from torch.tensor import Tensor
 
 
 def integer_histogram(
