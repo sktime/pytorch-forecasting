@@ -218,6 +218,36 @@ def test_from_dataset(test_dataset, test_data):
     check_dataloader_output(dataset, next(iter(dataset.to_dataloader(num_workers=0))))
 
 
+def test_from_dataset_equivalence(test_data):
+    training = TimeSeriesDataSet(
+        test_data[lambda x: x.time_idx < x.time_idx.max() - 1],
+        time_idx="time_idx",
+        target="volume",
+        time_varying_known_reals=["price_regular", "time_idx"],
+        group_ids=["agency", "sku"],
+        static_categoricals=["agency"],
+        max_encoder_length=3,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=0,
+        randomize_length=None,
+        add_encoder_length=True,
+        add_relative_time_idx=True,
+        add_target_scales=True,
+    )
+    validation1 = TimeSeriesDataSet.from_dataset(training, test_data, predict=True)
+    validation2 = TimeSeriesDataSet.from_dataset(
+        training,
+        test_data[lambda x: x.time_idx > x.time_idx.min() + 2],
+        predict=True,
+    )
+    # ensure validation1 and validation2 datasets are exactly the same despite different data inputs
+    for v1, v2 in zip(iter(validation1.to_dataloader(train=False)), iter(validation2.to_dataloader(train=False))):
+        for k in v1[0].keys():
+            assert torch.isclose(v1[0][k], v2[0][k]).all()
+        assert torch.isclose(v1[1], v2[1]).all()
+
+
 def test_dataset_index(test_dataset):
     index = []
     for x, _ in iter(test_dataset.to_dataloader()):
