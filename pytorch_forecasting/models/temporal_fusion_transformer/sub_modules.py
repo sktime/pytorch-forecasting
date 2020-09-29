@@ -431,9 +431,9 @@ class InterpretableMultiHeadAttention(nn.Module):
         self.d_k = self.d_q = self.d_v = d_model // n_head
         self.dropout = nn.Dropout(p=dropout)
 
-        self.v_layer = nn.Linear(self.d_model, self.d_v, bias=False)
-        self.q_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_q, bias=False) for _ in range(self.n_head)])
-        self.k_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_k, bias=False) for _ in range(self.n_head)])
+        self.v_layer = nn.Linear(self.d_model, self.d_v)
+        self.q_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_q) for _ in range(self.n_head)])
+        self.k_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_k) for _ in range(self.n_head)])
         self.attention = ScaledDotProductAttention()
         self.w_h = nn.Linear(self.d_v, self.d_model, bias=False)
 
