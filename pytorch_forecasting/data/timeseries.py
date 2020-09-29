@@ -274,11 +274,11 @@ class TimeSeriesDataSet(Dataset):
         # add decoder length to static real variables
         if self.add_encoder_length:
             assert (
-                "decoder_length" not in data.columns
-            ), "decoder_length is a protected column and must not be present in data"
-            if "decoder_length" not in self.time_varying_known_reals and "decoder_length" not in self.reals:
-                self.static_reals.append("decoder_length")
-            data["decoder_length"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
+                "encoder_length" not in data.columns
+            ), "encoder_length is a protected column and must not be present in data"
+            if "encoder_length" not in self.time_varying_known_reals and "encoder_length" not in self.reals:
+                self.static_reals.append("encoder_length")
+            data["encoder_length"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # validate
         self._validate_data(data)
@@ -916,9 +916,9 @@ class TimeSeriesDataSet(Dataset):
             )
 
         if self.add_encoder_length:
-            data_cont[:, self.reals.index("decoder_length")] = (
-                decoder_length - 0.5 * self.max_encoder_length
-            ) / self.max_encoder_length
+            data_cont[:, self.reals.index("encoder_length")] = (
+                (encoder_length - 0.5 * self.max_encoder_length) / self.max_encoder_length * 2.0
+            )
 
         # rescale target
         if self.target_normalizer is not None and isinstance(self.target_normalizer, EncoderNormalizer):
