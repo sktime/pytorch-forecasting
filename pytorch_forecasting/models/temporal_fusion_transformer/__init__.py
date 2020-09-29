@@ -425,7 +425,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         #   matter in the future than the past)
         #   or alternatively using the same layer but allowing forward attention - i.e. only masking out non-available
         #   data and self
-        decoder_mask = attend_step > predict_step
+        decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
         encoder_mask = self._get_mask(encoder_lengths.max(), encoder_lengths)
         # combine masks along attended time - first encoder and then decoder
@@ -663,7 +663,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         # attention is batch x time x heads x time_to_attend
         # average over heads + only keep prediction attention and attention on observed timesteps
         attention = out["attention"][
-            :, attention_prediction_horizon, :, : out["encoder_lengths"].max() + attention_prediction_horizon + 1
+            :, attention_prediction_horizon, :, : out["encoder_lengths"].max() + attention_prediction_horizon
         ].mean(1)
 
         if reduction != "none":  # if to average over batches
@@ -675,14 +675,12 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
             for i in range(len(attention)):  # very inefficient but does the trick
                 if 0 < out["encoder_lengths"][i] < attention.size(1) - attention_prediction_horizon - 1:
                     relevant_attention = attention[
-                        i, : out["encoder_lengths"][i] + attention_prediction_horizon + 1
+                        i, : out["encoder_lengths"][i] + attention_prediction_horizon
                     ].clone()
                     if attention_as_autocorrelation:
                         relevant_attention = autocorrelation(relevant_attention)
-                    attention[i, -out["encoder_lengths"][i] - attention_prediction_horizon - 1 :] = relevant_attention
-                    attention[
-                        i, : attention.size(1) - out["encoder_lengths"][i] - attention_prediction_horizon - 1
-                    ] = 0.0
+                    attention[i, -out["encoder_lengths"][i] - attention_prediction_horizon :] = relevant_attention
+                    attention[i, : attention.size(1) - out["encoder_lengths"][i] - attention_prediction_horizon] = 0.0
                 elif attention_as_autocorrelation:
                     attention[i] = autocorrelation(attention[i])
 
@@ -696,12 +694,12 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
                 raise ValueError(f"Unknown reduction {reduction}")
 
             attention = torch.zeros(
-                self.hparams.max_encoder_length + attention_prediction_horizon + 1, device=self.device
+                self.hparams.max_encoder_length + attention_prediction_horizon, device=self.device
             ).scatter(
                 dim=0,
                 index=torch.arange(
-                    self.hparams.max_encoder_length + attention_prediction_horizon + 1 - attention.size(-1),
-                    self.hparams.max_encoder_length + attention_prediction_horizon + 1,
+                    self.hparams.max_encoder_length + attention_prediction_horizon - attention.size(-1),
+                    self.hparams.max_encoder_length + attention_prediction_horizon,
                     device=self.device,
                 ),
                 src=attention,
@@ -752,11 +750,10 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
             ax = fig.axes[0]
             ax2 = ax.twinx()
             ax2.set_ylabel("Attention")
-            max_encoder_length = out["encoder_lengths"].max()
             encoder_length = x["encoder_lengths"][idx]
             ax2.plot(
-                torch.arange(-encoder_length, 1),
-                interpretation["attention"][idx, list(range(encoder_length)) + [max_encoder_length]].detach().cpu(),
+                torch.arange(-encoder_length, 0),
+                interpretation["attention"][idx, :encoder_length].detach().cpu(),
                 alpha=0.2,
                 color="k",
             )
