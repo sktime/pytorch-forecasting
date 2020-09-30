@@ -46,6 +46,7 @@ def optimize_hyperparameters(
     use_learning_rate_finder: bool = True,
     trainer_kwargs: Dict[str, Any] = {},
     log_dir: str = "lightning_logs",
+    study: optuna.Study = None,
     **kwargs,
 ) -> optuna.Study:
     """
@@ -77,6 +78,7 @@ def optimize_hyperparameters(
             `PyTorch Lightning trainer <https://pytorch-lightning.readthedocs.io/en/latest/trainer.html>`_ such
             as ``limit_train_batches``. Defaults to {}.
         log_dir (str, optional): Folder into which to log results for tensorboard. Defaults to "lightning_logs".
+        study (optuna.Study, optional): study to resume. Will create new study by default.
         **kwargs: Additional arguments for the :py:class:`~TemporalFusionTransformer`.
 
     Returns:
@@ -165,6 +167,7 @@ def optimize_hyperparameters(
 
     # setup optuna and run
     pruner = optuna.pruners.SuccessiveHalvingPruner()
-    study = optuna.create_study(direction="minimize", pruner=pruner)
+    if study is None:
+        study = optuna.create_study(direction="minimize", pruner=pruner)
     study.optimize(objective, n_trials=n_trials, timeout=timeout)
     return study
