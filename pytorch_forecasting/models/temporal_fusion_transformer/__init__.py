@@ -724,6 +724,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         idx: int,
         plot_attention: bool = True,
         add_loss_to_title: bool = False,
+        show_future_observed: bool = True,
         ax=None,
     ) -> plt.Figure:
         """
@@ -735,6 +736,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
             idx (int): sample index
             plot_attention: if to plot attention on secondary axis
             add_loss_to_title: if to add loss to title. Default to False.
+            show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
 
         Returns:
@@ -742,7 +744,9 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         """
 
         # plot prediction as normal
-        fig = super().plot_prediction(x, out, idx=idx, add_loss_to_title=add_loss_to_title, ax=ax)
+        fig = super().plot_prediction(
+            x, out, idx=idx, add_loss_to_title=add_loss_to_title, show_future_observed=show_future_observed, ax=ax
+        )
 
         # add attention on secondary axis
         if plot_attention:

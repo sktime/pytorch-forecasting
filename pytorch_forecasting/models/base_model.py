@@ -292,6 +292,7 @@ class BaseModel(LightningModule):
         out: Dict[str, torch.Tensor],
         idx: int = 0,
         add_loss_to_title: Union[TensorMetric, bool] = False,
+        show_future_observed: bool = True,
         ax=None,
     ) -> plt.Figure:
         """
@@ -302,6 +303,7 @@ class BaseModel(LightningModule):
             out: network output
             idx: index of prediction to plot
             add_loss_to_title: if to add loss to title or loss function to calculate. Default to False.
+            show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
 
         Returns:
@@ -346,8 +348,10 @@ class BaseModel(LightningModule):
             plotter = ax.plot
         else:
             plotter = ax.scatter
+
         # plot observed prediction
-        plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
+        if show_future_observed:
+            plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
 
         # plot prediction
         plotter(x_pred, self.loss.to_prediction(y_hat.unsqueeze(0))[0], label="predicted", c=pred_color)
