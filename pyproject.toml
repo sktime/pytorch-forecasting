@@ -89,5 +89,5 @@ dirty = false
 style = "semver"  # semantic versioning
 
 [build-system]  # make the package pip installable
-requires = ["poetry>=1.0.5", "poetry-dynamic-versioning"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry_core>=1.0.0", "poetry-dynamic-versioning>=0.9.0"]
+build-backend = "poetry.core.masonry.api"
