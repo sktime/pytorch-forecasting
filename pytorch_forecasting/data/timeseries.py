@@ -278,7 +278,7 @@ class TimeSeriesDataSet(Dataset):
             ), "encoder_length is a protected column and must not be present in data"
             if "encoder_length" not in self.time_varying_known_reals and "encoder_length" not in self.reals:
                 self.static_reals.append("encoder_length")
-            data["encoder_length"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
+            data["encoder_length"] = 0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # validate
         self._validate_data(data)
@@ -869,16 +869,18 @@ class TimeSeriesDataSet(Dataset):
             sequence_length >= self.min_prediction_length
         ), "Sequence length should be at least minimum prediction length"
         # determine prediction/decode length and encode length
-        decoder_length = min(
-            time[-1] - (self.min_prediction_idx - 1),
-            self.max_prediction_length,
-            sequence_length - self.min_encoder_length,
-        )
+        decoder_length = int(min(
+                    time[-1] - (self.min_prediction_idx - 1),
+                    self.max_prediction_length,
+                    sequence_length - self.min_encoder_length,
+                ))
+
         encoder_length = sequence_length - decoder_length
         assert (
             decoder_length >= self.min_prediction_length
         ), "Decoder length should be at least minimum prediction length"
         assert encoder_length >= self.min_encoder_length, "Encoder length should be at least minimum encoder length"
+        assert isinstance(encoder_length, int), f"encoder_length = {encoder_length}, must be of integer type"
 
         if self.randomize_length is not None:  # randomization improves generalization
             # modify encode and decode lengths
