@@ -5,12 +5,12 @@ from typing import Callable, Dict, List, Tuple, Union
 
 from matplotlib import pyplot as plt
 import numpy as np
-from pytorch_lightning.metrics.metric import TensorMetric
 import torch
 from torch import nn
 from torch.nn.utils import rnn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.models.nn import MultiEmbedding
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.models.base_model import BaseModel, CovariatesMixin
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
@@ -19,7 +19,6 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     GatedLinearUnit,
     GatedResidualNetwork,
     InterpretableMultiHeadAttention,
-    TimeDistributedEmbeddingBag,
     VariableSelectionNetwork,
 )
 from pytorch_forecasting.utils import autocorrelation, get_embedding_size, integer_histogram
@@ -135,26 +134,13 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
 
         # processing inputs
         # embeddings
-        self.input_embeddings = nn.ModuleDict()
-        for name in self.hparams.embedding_sizes.keys():
-            embedding_size = min(self.hparams.embedding_sizes[name][1], self.hparams.hidden_size)
-            # convert to list to become mutable
-            self.hparams.embedding_sizes[name] = list(self.hparams.embedding_sizes[name])
-            self.hparams.embedding_sizes[name][1] = embedding_size
-            if name in self.hparams.categorical_groups:  # embedding bag if related embeddings
-                self.input_embeddings[name] = TimeDistributedEmbeddingBag(
-                    self.hparams.embedding_sizes[name][0], embedding_size, mode="sum", batch_first=True
-                )
-            else:
-                if name in self.hparams.embedding_paddings:
-                    padding_idx = 0
-                else:
-                    padding_idx = None
-                self.input_embeddings[name] = nn.Embedding(
-                    self.hparams.embedding_sizes[name][0],
-                    embedding_size,
-                    padding_idx=padding_idx,
-                )
+        self.input_embeddings = MultiEmbedding(
+            embedding_sizes=self.hparams.embedding_sizes,
+            categorical_groups=self.hparams.categorical_groups,
+            embedding_paddings=self.hparams.embedding_paddings,
+            x_categoricals=self.hparams.x_categoricals,
+            max_embedding_size=self.hparams.hidden_size,
+        )
 
         # continuous variable processing
         self.prescalers = nn.ModuleDict(
@@ -448,20 +434,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         x_cont = torch.cat([x["encoder_cont"], x["decoder_cont"]], dim=1)  # concatenate in time dimension
         timesteps = x_cont.size(1)  # encode + decode length
         max_encoder_length = int(encoder_lengths.max())
-        input_vectors = {}
-        for name, emb in self.input_embeddings.items():
-            if name in self.hparams.categorical_groups:
-                input_vectors[name] = emb(
-                    x_cat[
-                        ...,
-                        [
-                            self.hparams.x_categoricals.index(cat_name)
-                            for cat_name in self.hparams.categorical_groups[name]
-                        ],
-                    ]
-                )
-            else:
-                input_vectors[name] = emb(x_cat[..., self.hparams.x_categoricals.index(name)])
+        input_vectors = self.embeddings(x_cat)
         input_vectors.update({name: x_cont[..., idx].unsqueeze(-1) for idx, name in enumerate(self.hparams.x_reals)})
 
         # Embedding and variable selection

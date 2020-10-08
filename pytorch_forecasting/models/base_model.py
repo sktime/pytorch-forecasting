@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
-from pytorch_lightning.metrics.metric import TensorMetric
+from pytorch_lightning.metrics import TensorMetric
 from pytorch_lightning.utilities.parsing import get_init_args
 import torch
 import torch.nn as nn
@@ -969,3 +969,7 @@ class CovariatesMixin:
             fig.tight_layout()
             fig.legend()
             return fig
+
+
+class AutoRegressiveBaseModel(BaseModel):
+    pass
