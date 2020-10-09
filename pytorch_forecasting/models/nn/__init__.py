@@ -1,3 +1,3 @@
-from pytorch_forecasting.model.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 
 __all__ = ["MultiEmbedding"]

@@ -136,7 +136,7 @@ def optimize_hyperparameters(
                 gpus=[0] if torch.cuda.is_available() else None,
                 logger=False,
             )
-            res = lr_trainer.lr_find(
+            res = lr_trainer.tuner.tuner.lr_find(
                 model,
                 train_dataloader=train_dataloader,
                 val_dataloaders=val_dataloader,

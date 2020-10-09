@@ -434,7 +434,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         x_cont = torch.cat([x["encoder_cont"], x["decoder_cont"]], dim=1)  # concatenate in time dimension
         timesteps = x_cont.size(1)  # encode + decode length
         max_encoder_length = int(encoder_lengths.max())
-        input_vectors = self.embeddings(x_cat)
+        input_vectors = self.input_embeddings(x_cat)
         input_vectors.update({name: x_cont[..., idx].unsqueeze(-1) for idx, name in enumerate(self.hparams.x_reals)})
 
         # Embedding and variable selection
@@ -583,10 +583,8 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         """
         run at epoch end for training or validation
         """
-        log, out = super().epoch_end(outputs, label=label)
         if self.log_interval(label == "train") > 0:
-            self._log_interpretation(out, label=label)
-        return log, out
+            self._log_interpretation(outputs, label=label)
 
     def interpret_output(
         self,

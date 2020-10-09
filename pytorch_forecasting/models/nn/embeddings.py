@@ -34,7 +34,7 @@ class MultiEmbedding(nn.Module):
         x_categoricals: List[str],
         max_embedding_size: int = None,
     ):
-
+        super().__init__()
         self.embedding_sizes = embedding_sizes
         self.categorical_groups = categorical_groups
         self.embedding_paddings = embedding_paddings
@@ -68,7 +68,19 @@ class MultiEmbedding(nn.Module):
                 )
 
     def names(self):
-        return list(self.embeddings.keys())
+        return list(self.keys())
+
+    def items(self):
+        return self.embeddings.items()
+
+    def keys(self):
+        return self.embeddings.keys()
+
+    def values(self):
+        return self.embeddings.values()
+
+    def __getitem__(self, name: str):
+        return self.embeddings[name]
 
     def forward(self, x):
         input_vectors = {}

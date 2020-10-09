@@ -4,7 +4,7 @@ Implementation of metrics for (mulit-horizon) timeseries forecasting.
 import abc
 from typing import Dict, List, Union
 
-from pytorch_lightning.metrics import TensorMetric
+from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 import torch
 from torch import nn
@@ -14,9 +14,11 @@ from torch.nn.utils import rnn
 from pytorch_forecasting.utils import integer_histogram, unpack_sequence
 
 
-class Metric(TensorMetric):
+class Metric(LightningMetric):
     """
-    Base metric class that has basic functions that can handle predicting quantiles and operate in log space
+    Base metric class that has basic functions that can handle predicting quantiles and operate in log space.
+    See the `Lightning documentation <https://pytorch-lightning.readthedocs.io/en/latest/metrics.html>`_
+    for details of how to implement a new metric
 
     Other metrics should inherit from this base class
     """
@@ -34,9 +36,13 @@ class Metric(TensorMetric):
         self.reduction = reduction
         if name is None:
             name = self.__class__.__name__
-        super().__init__(name)
+        self.name = name
+        super().__init__()
 
-    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+    def update(y_pred: torch.Tensor, y_actual: torch.Tensor):
+        raise NotImplementedError()
+
+    def compute(self) -> torch.Tensor:
         """
         Abstract method that calcualtes metric
 
@@ -83,7 +89,7 @@ class Metric(TensorMetric):
             y_pred = y_pred.unsqueeze(-1)
         return y_pred
 
-    def __add__(self, metric: TensorMetric):
+    def __add__(self, metric: LightningMetric):
         composite_metric = CompositeMetric(metrics=[self])
         new_metric = composite_metric + metric
         return new_metric
@@ -95,7 +101,7 @@ class Metric(TensorMetric):
     __rmul__ = __mul__
 
 
-class CompositeMetric(TensorMetric):
+class CompositeMetric(LightningMetric):
     """
     Metric that combines multiple metrics.
 
@@ -109,11 +115,11 @@ class CompositeMetric(TensorMetric):
             composite_metric = SMAPE() + 0.4 * MAE()
     """
 
-    def __init__(self, name: str = "composite", metrics: List[TensorMetric] = [], weights: List[float] = None):
+    def __init__(self, metrics: List[LightningMetric] = [], weights: List[float] = None):
         """
         Args:
             name (str, optional): name of composite metric. Defaults to "composite".
-            metrics (List[TensorMetric], optional): list of metrics to combine. Defaults to [].
+            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to [].
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """
         if weights is None:
@@ -123,15 +129,15 @@ class CompositeMetric(TensorMetric):
         self.metrics = metrics
         self.weights = weights
 
-        super().__init__(name=name)
+        super().__init__()
 
     def __repr__(self):
         name = " + ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
         return name
 
-    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
         """
-        Calculate composite metric
+        Update composite metric
 
         Args:
             y_pred: network output
@@ -140,9 +146,19 @@ class CompositeMetric(TensorMetric):
         Returns:
             torch.Tensor: metric value on which backpropagation can be applied
         """
+        for metric in self.metrics:
+            metric.update(y_pred, y_actual)
+
+    def compute(self) -> torch.Tensor:
+        """
+        Get metric
+
+        Returns:
+            torch.Tensor: metric
+        """
         results = []
         for weight, metric in zip(self.weights, self.metrics):
-            results.append(metric(y_pred, y_actual) * weight)
+            results.append(metric.compute() * weight)
 
         if len(results) == 1:
             results = results[0]
@@ -178,7 +194,7 @@ class CompositeMetric(TensorMetric):
         """
         return self.metrics[0].to_quantiles(y_pred)
 
-    def __add__(self, metric: TensorMetric):
+    def __add__(self, metric: LightningMetric):
         if isinstance(metric, self.__class__):
             self.metrics.extend(metric.metrics)
             self.weights.extend(metric.weights)
@@ -200,12 +216,12 @@ class AggregationMetric(Metric):
     Calculate metric on mean prediction and actuals.
     """
 
-    def __init__(self, metric: Metric):
+    def __init__(self, metric: Metric, **kwargs):
         """
         Args:
             metric (Metric): metric which to calculate on aggreation.
         """
-        super().__init__(name=f"agg-{metric.name}")
+        super().__init__(**kwargs)
         self.metric = metric
 
     def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
@@ -254,6 +270,11 @@ class MultiHorizonMetric(Metric):
     Abstract class for defining metric for a multihorizon forecast
     """
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.add_state("losses", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("lengths", default=torch.tensor(0), dist_reduce_fx="sum")
+
     @abc.abstractmethod
     def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
         """
@@ -268,9 +289,9 @@ class MultiHorizonMetric(Metric):
         """
         raise NotImplementedError()
 
-    def forward(self, y_pred: Dict[str, torch.Tensor], target: Union[torch.Tensor, rnn.PackedSequence]) -> torch.Tensor:
+    def update(self, y_pred: Dict[str, torch.Tensor], target: Union[torch.Tensor, rnn.PackedSequence]):
         """
-        Forward method of metric that handles masking of values.
+        Update method of metric that handles masking of values.
 
         Do not override this method but :py:meth:`~loss` instead
 
@@ -295,17 +316,50 @@ class MultiHorizonMetric(Metric):
         # weight samples
         if weight is not None:
             losses = losses * weight.unsqueeze(-1)
+        losses = self.mask_losses(losses, lengths)
+        self.losses = self.losses + losses.sum()
+        self.lengths = self.lengths + lengths.sum()
 
-        loss = self.reduce_loss(losses, lengths=lengths, reduction=self.reduction)
+    def compute(self):
+        loss = self.reduce_loss(self.losses, lengths=self.lengths, reduction=self.reduction)
         return loss
+
+    def mask_losses(self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None) -> torch.Tensor:
+        """
+        Mask losses.
+
+        Args:
+            losses (torch.Tensor): total loss. first dimenion are samples, second timesteps
+            lengths (torch.Tensor): total length
+            reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
+
+        Returns:
+            torch.Tensor: masked losses
+        """
+        if reduction is None:
+            reduction = self.reduction
+        if losses.ndim > 0:
+            # mask loss
+            mask = torch.arange(losses.size(1), device=losses.device).unsqueeze(0) >= lengths.unsqueeze(-1)
+            if losses.ndim > 2:
+                mask = mask.unsqueeze(-1)
+                dim_normalizer = losses.size(-1)
+            else:
+                dim_normalizer = 1.0
+            # reduce to one number
+            if reduction == "none":
+                losses = losses.masked_fill(mask, float("nan"))
+            else:
+                losses = losses.masked_fill(mask, 0.0) / dim_normalizer
+        return losses
 
     def reduce_loss(self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None) -> torch.Tensor:
         """
         Reduce loss.
 
         Args:
-            losses (torch.Tensor): tensor of losses. first dimenion are samples, second timesteps
-            lengths (torch.Tensor): tensor of lengths
+            losses (torch.Tensor): total loss. first dimenion are samples, second timesteps
+            lengths (torch.Tensor): total length
             reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
 
         Returns:
@@ -313,33 +367,23 @@ class MultiHorizonMetric(Metric):
         """
         if reduction is None:
             reduction = self.reduction
-        # mask loss
-        mask = torch.arange(losses.size(1), device=losses.device).unsqueeze(0) >= lengths.unsqueeze(-1)
-        if losses.ndim > 2:
-            mask = mask.unsqueeze(-1)
-            dim_normalizer = losses.size(-1)
-        else:
-            dim_normalizer = 1.0
-        # reduce to one number
+        losses = self.mask_losses(losses, lengths, reduction=reduction)
         if reduction == "none":
-            loss = losses.masked_fill(mask, float("nan"))
+            return losses  # return immediately, no checks
+        elif reduction == "mean":
+            loss = losses.sum() / lengths.sum()
+        elif reduction == "sqrt-mean":
+            loss = losses.sum() / lengths.sum()
+            loss = loss.sqrt()
         else:
-            if reduction == "mean":
-                losses = losses.masked_fill(mask, 0.0)
-                loss = losses.sum() / lengths.sum() / dim_normalizer
-            elif reduction == "sqrt-mean":
-                losses = losses.masked_fill(mask, 0.0)
-                loss = losses.sum() / lengths.sum() / dim_normalizer
-                loss = loss.sqrt()
-            else:
-                raise ValueError(f"reduction {reduction} unknown")
-            assert not torch.isnan(loss), (
-                "Loss should not be nan - i.e. something went wrong "
-                "in calculating the loss (e.g. log of a negative number)"
-            )
-            assert torch.isfinite(
-                loss
-            ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
+            raise ValueError(f"reduction {reduction} unknown")
+        assert not torch.isnan(loss), (
+            "Loss should not be nan - i.e. something went wrong "
+            "in calculating the loss (e.g. log of a negative number)"
+        )
+        assert torch.isfinite(
+            loss
+        ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
         return loss
 
 
@@ -347,9 +391,6 @@ class PoissonLoss(MultiHorizonMetric):
     """
     Poisson loss for count data
     """
-
-    def __init__(self, name: str = "poisson_loss", *args, **kwargs):
-        return super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
         return F.poisson_nll_loss(
@@ -379,18 +420,16 @@ class QuantileLoss(MultiHorizonMetric):
 
     def __init__(
         self,
-        name: str = "quantile_loss",
         quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
-        *args,
         **kwargs,
     ):
         """
         Quantile loss
 
         Args:
-            name: name of metric
+            quantiles: quantiles for metric
         """
-        super().__init__(name, quantiles=quantiles, *args, **kwargs)
+        super().__init__(quantiles=quantiles, **kwargs)
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         # calculate quantile loss
@@ -410,9 +449,6 @@ class SMAPE(MultiHorizonMetric):
     Defined as ``2*(y - y_pred).abs() / (y.abs() + y_pred.abs())``
     """
 
-    def __init__(self, name: str = "sMAPE", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
     def loss(self, y_pred, target):
         y_pred = self.to_prediction(y_pred)
         loss = 2 * (y_pred - target).abs() / (y_pred.abs() + target.abs() + 1e-8)
@@ -426,9 +462,6 @@ class MAPE(MultiHorizonMetric):
     Defined as ``(y - y_pred).abs() / y.abs()``
     """
 
-    def __init__(self, name: str = "MAPE", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
     def loss(self, y_pred, target):
         loss = (self.to_prediction(y_pred) - target).abs() / (target.abs() + 1e-8)
         return loss
@@ -440,9 +473,6 @@ class MAE(MultiHorizonMetric):
 
     Defined as ``(y_pred - target).abs()``
     """
-
-    def __init__(self, name: str = "MAE", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
 
     def loss(self, y_pred, target):
         loss = (self.to_prediction(y_pred) - target).abs()
@@ -456,8 +486,8 @@ class RMSE(MultiHorizonMetric):
     Defined as ``(y_pred - target)**2``
     """
 
-    def __init__(self, name: str = "RMSE", reduction="sqrt-mean", *args, **kwargs):
-        super().__init__(name, *args, reduction=reduction, **kwargs)
+    def __init__(self, reduction="sqrt-mean", **kwargs):
+        super().__init__(reduction=reduction, **kwargs)
 
     def loss(self, y_pred: Dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
@@ -472,10 +502,7 @@ class MASE(MultiHorizonMetric):
     ``all_targets`` are here the concatenated encoder and decoder targets
     """
 
-    def __init__(self, name: str = "MASE", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
-    def forward(
+    def update(
         self,
         y_pred: Dict[str, torch.Tensor],
         target: Union[torch.Tensor, rnn.PackedSequence],
@@ -483,7 +510,7 @@ class MASE(MultiHorizonMetric):
         encoder_lengths: torch.Tensor = None,
     ) -> torch.Tensor:
         """
-        Forward method of metric that handles masking of values.
+        Update metric that handles masking of values.
 
         Args:
             y_pred (Dict[str, torch.Tensor]): network output
@@ -515,8 +542,9 @@ class MASE(MultiHorizonMetric):
         if weight is not None:
             losses = losses * weight.unsqueeze(-1)
 
-        loss = self.reduce_loss(losses, lengths=lengths, reduction=self.reduction)
-        return loss
+        losses = self.mask_losses(losses, lengths=lengths, reduction=self.reduction)
+        self.losses = self.losses + losses.sum()
+        self.lengths = self.lengths + lengths.sum()
 
     def loss(self, y_pred, target, scaling):
         return (y_pred - target).abs() / scaling.unsqueeze(-1)
