@@ -10,9 +10,9 @@ from torch import nn
 from torch.nn.utils import rnn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.models.nn import MultiEmbedding
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.models.base_model import BaseModel, CovariatesMixin
+from pytorch_forecasting.models.nn import MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,
     GateAddNorm,

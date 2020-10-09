@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
-from pytorch_forecasting.metrics import Metric
 from pytorch_lightning.utilities.parsing import get_init_args
 import torch
 import torch.nn as nn
@@ -21,7 +20,7 @@ from tqdm.notebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer
-from pytorch_forecasting.metrics import MASE, SMAPE
+from pytorch_forecasting.metrics import MASE, SMAPE, Metric
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import groupby_apply
 
@@ -138,7 +137,7 @@ class BaseModel(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="val")# log loss
+        log, _ = self.step(x, y, batch_idx, label="val")  # log loss
         self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 

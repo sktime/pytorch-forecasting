@@ -100,7 +100,9 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # tft.hparams.log_interval = -1
 # tft.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
-# res = trainer.tuner.lr_find(tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2)
+# res = trainer.tuner.lr_find(
+#     tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+# )
 
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)
