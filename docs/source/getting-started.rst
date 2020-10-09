@@ -46,7 +46,7 @@ The general setup for training and testing a model is
 
 #. Instantiate a model using the its ``.from_dataset()`` method.
 #. Create a ``pytorch_lightning.Trainer()`` object.
-#. Find the optimal learning rate with its ``.lr_find()`` method.
+#. Find the optimal learning rate with its ``.tuner.lr_find()`` method.
 #. Train the model with early stopping on the training dataset and use the tensorboard logs
    to understand if it has converged with acceptable accuracy.
 #. Tune the hyperparameters of the model with your
@@ -124,7 +124,7 @@ Example
     print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
     # find optimal learning rate (set limit_train_batches to 1.0 and log_interval = -1)
-    res = trainer.lr_find(
+    res = trainer.tuner.lr_find(
         tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
     )
 
