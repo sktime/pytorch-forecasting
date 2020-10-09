@@ -1,7 +1,6 @@
 """
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
-import abc
 from typing import Dict, List, Union
 
 from pytorch_lightning.metrics import Metric as LightningMetric
@@ -277,7 +276,6 @@ class MultiHorizonMetric(Metric):
         self.add_state("losses", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("lengths", default=torch.tensor(0), dist_reduce_fx="sum")
 
-    @abc.abstractmethod
     def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
         """
         Calculate loss without reduction. Override in derived classes
