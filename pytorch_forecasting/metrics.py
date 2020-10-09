@@ -224,7 +224,7 @@ class AggregationMetric(Metric):
         super().__init__(**kwargs)
         self.metric = metric
 
-    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """
         Calculate composite metric
 
@@ -261,8 +261,10 @@ class AggregationMetric(Metric):
 
         else:
             y_mean = y_actual.mean(0).unsqueeze(0)
-        out = self.metric(y_pred_mean, y_mean)
-        return out
+        self.metric.update(y_pred_mean, y_mean)
+
+    def compute(self):
+        return self.metric.compute()
 
 
 class MultiHorizonMetric(Metric):
