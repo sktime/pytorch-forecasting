@@ -2,11 +2,11 @@
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
 from typing import Dict, List, Union
+import warnings
 
 from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 import torch
-from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -271,10 +271,10 @@ class MultiHorizonMetric(Metric):
     Abstract class for defining metric for a multihorizon forecast
     """
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.add_state("losses", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("lengths", default=torch.tensor(0), dist_reduce_fx="sum")
+    def __init__(self, reduction: str = "mean", **kwargs) -> None:
+        super().__init__(reduction=reduction, **kwargs)
+        self.add_state("losses", default=torch.tensor(0.0), dist_reduce_fx="sum" if reduction != "none" else "cat")
+        self.add_state("lengths", default=torch.tensor(0), dist_reduce_fx="sum" if reduction != "none" else "mean")
 
     def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
         """
@@ -316,12 +316,27 @@ class MultiHorizonMetric(Metric):
         # weight samples
         if weight is not None:
             losses = losses * weight.unsqueeze(-1)
+        self._update_losses_and_lengths(losses, lengths)
+
+    def _update_losses_and_lengths(self, losses: torch.Tensor, lengths: torch.Tensor):
         losses = self.mask_losses(losses, lengths)
-        self.losses = self.losses + losses.sum()
-        self.lengths = self.lengths + lengths.sum()
+        if self.reduction == "none":
+            if self.losses.ndim == 0:
+                self.losses = losses
+                self.lengths = self.lengths
+            else:
+                self.losses = torch.cat([self.losses, losses], dim=0)
+                self.lengths = torch.cat([self.lengths, lengths], dim=0)
+        else:
+            losses = losses.sum()
+            if not torch.isfinite(losses):
+                losses = torch.tensor(1e9)
+                warnings.warn("Loss is not finite. Resetting it to 1e9")
+            self.losses = self.losses + losses
+            self.lengths = self.lengths + lengths.sum()
 
     def compute(self):
-        loss = self.reduce_loss(self.losses, lengths=self.lengths, reduction=self.reduction)
+        loss = self.reduce_loss(self.losses, lengths=self.lengths)
         return loss
 
     def mask_losses(self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None) -> torch.Tensor:
@@ -367,7 +382,6 @@ class MultiHorizonMetric(Metric):
         """
         if reduction is None:
             reduction = self.reduction
-        losses = self.mask_losses(losses, lengths, reduction=reduction)
         if reduction == "none":
             return losses  # return immediately, no checks
         elif reduction == "mean":
@@ -542,9 +556,7 @@ class MASE(MultiHorizonMetric):
         if weight is not None:
             losses = losses * weight.unsqueeze(-1)
 
-        losses = self.mask_losses(losses, lengths=lengths, reduction=self.reduction)
-        self.losses = self.losses + losses.sum()
-        self.lengths = self.lengths + lengths.sum()
+        self._update_losses_and_lengths(losses, lengths)
 
     def loss(self, y_pred, target, scaling):
         return (y_pred - target).abs() / scaling.unsqueeze(-1)
