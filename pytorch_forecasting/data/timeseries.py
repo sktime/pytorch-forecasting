@@ -127,7 +127,7 @@ class TimeSeriesDataSet(Dataset):
         Args:
             data: dataframe with sequence data - each row can be identified with ``time_idx`` and the ``group_ids``
             time_idx: integer column denoting the time index
-            target: column denoting the target or list of columns denoting the target
+            target: column denoting the target or list of columns denoting the target - categorical or continous.
             group_ids: list of column names identifying a timeseries
             weight: column name for weights or list of column names corresponding to each target
             max_encoder_length: maximum length to encode

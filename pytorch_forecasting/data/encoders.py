@@ -130,6 +130,20 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         decoded = self.classes_vector_[y]
         return decoded
 
+    def __call__(self, data: (Dict[str, torch.Tensor])) -> torch.Tensor:
+        """
+        Extract prediction from network output. Does not map back to input
+        categories as this would require a numpy tensor without grad-abilities.
+
+        Args:
+            data (Dict[str, torch.Tensor]): Dictionary with entries
+                * prediction: data to de-scale
+
+        Returns:
+            torch.Tensor: prediction
+        """
+        return data["prediction"]
+
 
 class TorchNormalizer(BaseEstimator, TransformerMixin):
     """

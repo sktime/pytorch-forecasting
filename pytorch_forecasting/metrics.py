@@ -493,6 +493,16 @@ class MAE(MultiHorizonMetric):
         return loss
 
 
+class CrossEntropy(MultiHorizonMetric):
+    """
+    Cross entropy loss for classification.
+    """
+
+    def loss(self, y_pred, target):
+        loss = F.cross_entropy(y_pred, target, reduction="none")
+        return loss
+
+
 class RMSE(MultiHorizonMetric):
     """
     Root mean square error
