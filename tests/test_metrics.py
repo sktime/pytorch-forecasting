@@ -51,3 +51,11 @@ def test_aggregation_metric(decoder_lengths, y):
     res = metric(y_pred, y_packed)
     if (decoder_lengths == y_pred.size(-1)).all() and y.ndim == 2:
         assert torch.isclose(res, (y.mean(0) - y_pred.mean(0)).abs().mean())
+
+
+def test_none_reduction():
+    pred = torch.rand(20, 10)
+    target = torch.rand(20, 10)
+
+    mae = MAE(reduction="none")(pred, target)
+    assert mae.size() == pred.size(), "dimension should not change if reduction is none"
