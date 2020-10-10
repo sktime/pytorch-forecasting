@@ -341,3 +341,18 @@ def test_find_end_indices():
     missings_test = np.array([[0, 2], [5, 7], [11, 13], [16, 18]])
     np.testing.assert_array_equal(ends, ends_test)
     np.testing.assert_array_equal(missings, missings_test)
+
+
+def test_raise_short_encoder_length(test_data):
+    with pytest.raises(ValueError):
+        test_data = test_data[lambda x: ~((x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3))]
+        TimeSeriesDataSet(
+            test_data,
+            time_idx="time_idx",
+            target="volume",
+            group_ids=["agency", "sku"],
+            max_encoder_length=5,
+            max_prediction_length=2,
+            min_prediction_length=1,
+            min_encoder_length=5,
+        )

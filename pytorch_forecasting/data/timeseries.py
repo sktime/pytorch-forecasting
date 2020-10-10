@@ -173,20 +173,24 @@ class TimeSeriesDataSet(Dataset):
         """
         super().__init__()
         self.max_encoder_length = max_encoder_length
+        assert isinstance(self.max_encoder_length, int), "max encoder length must be integer"
         if min_encoder_length is None:
             min_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
         assert (
             self.min_encoder_length <= self.max_encoder_length
         ), "max encoder length has to be larger equals min encoder length"
+        assert isinstance(self.min_encoder_length, int), "min encoder length must be integer"
         self.max_prediction_length = max_prediction_length
+        assert isinstance(self.max_prediction_length, int), "max prediction length must be integer"
         if min_prediction_length is None:
             min_prediction_length = max_prediction_length
         self.min_prediction_length = min_prediction_length
         assert (
             self.min_prediction_length <= self.max_prediction_length
         ), "max prediction length has to be larger equals min prediction length"
-        assert self.min_prediction_length > 0, "prediction length must be larger than 0"
+        assert self.min_prediction_length > 0, "min prediction length must be larger than 0"
+        assert isinstance(self.min_prediction_length, int), "min prediction length must be integer"
         self.target = target
         self.weight = weight
         self.time_idx = time_idx
@@ -278,7 +282,7 @@ class TimeSeriesDataSet(Dataset):
             ), "encoder_length is a protected column and must not be present in data"
             if "encoder_length" not in self.time_varying_known_reals and "encoder_length" not in self.reals:
                 self.static_reals.append("encoder_length")
-            data["encoder_length"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
+            data["encoder_length"] = 0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # validate
         self._validate_data(data)
@@ -675,7 +679,8 @@ class TimeSeriesDataSet(Dataset):
         df_index["index_start"] = np.arange(len(df_index))
         df_index["time"] = data["__time_idx__"]
         df_index["count"] = (df_index["time_last"] - df_index["time_first"]).astype(int) + 1
-        df_index["group_id"] = g.ngroup()
+        group_ids = g.ngroup()
+        df_index["group_id"] = group_ids
 
         min_sequence_length = self.min_prediction_length + self.min_encoder_length
         max_sequence_length = self.max_prediction_length + self.max_encoder_length
@@ -726,6 +731,16 @@ class TimeSeriesDataSet(Dataset):
             df_index = df_index.loc[df_index.groupby("group_id").sequence_length.idxmax()]
 
         assert len(df_index) > 0, "filters should not remove entries"
+        # check that all groups/series have at least one entry in the index
+        if not group_ids.isin(df_index.group_id).all():
+            missing_groups = data.loc[~group_ids.isin(df_index.group_id), self.group_ids].drop_duplicates()
+            # decode values
+            for name in missing_groups.columns:
+                missing_groups[name] = self.transform_values(name, missing_groups[name], inverse=True)
+            raise ValueError(
+                f"Min encoder length and/or min prediction length is too large for {len(missing_groups)} series/group. "
+                f"First 10 examples: {list(missing_groups.iloc[:10].to_dict(orient='index').values())}"
+            )
 
         return df_index
 
