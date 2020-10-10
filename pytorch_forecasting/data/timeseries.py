@@ -11,6 +11,7 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.lib.type_check import nan_to_num
 import pandas as pd
 from sklearn.exceptions import NotFittedError
 from sklearn.preprocessing import StandardScaler
@@ -93,9 +94,9 @@ class TimeSeriesDataSet(Dataset):
         self,
         data: pd.DataFrame,
         time_idx: str,
-        target: str,
+        target: Union[str, List[str]],
         group_ids: List[str],
-        weight: Union[str, None] = None,
+        weight: Union[str, List[str], None] = None,
         max_encoder_length: int = 30,
         min_encoder_length: int = None,
         min_prediction_idx: int = None,
@@ -114,7 +115,7 @@ class TimeSeriesDataSet(Dataset):
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[TorchNormalizer, str] = "auto",
+        target_normalizer: Union[TorchNormalizer, NaNLabelEncoder, str] = "auto",
         categorical_encoders={},
         scalers={},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
@@ -126,9 +127,9 @@ class TimeSeriesDataSet(Dataset):
         Args:
             data: dataframe with sequence data - each row can be identified with ``time_idx`` and the ``group_ids``
             time_idx: integer column denoting the time index
-            target: float column denoting the target
+            target: column denoting the target or list of columns denoting the target
             group_ids: list of column names identifying a timeseries
-            weight: column name for weights
+            weight: column name for weights or list of column names corresponding to each target
             max_encoder_length: maximum length to encode
             min_encoder_length: minimum allowed length to encode. Defaults to max_encoder_length.
             min_prediction_idx: minimum time index from where to start predictions
@@ -192,6 +193,11 @@ class TimeSeriesDataSet(Dataset):
         assert self.min_prediction_length > 0, "min prediction length must be larger than 0"
         assert isinstance(self.min_prediction_length, int), "min prediction length must be integer"
         self.target = target
+        if isinstance(target, list) and weight is not None:
+            assert isinstance(weight, list) and len(target) == len(weight), (
+                "if target is a list, then weights should "
+                "be either None or also a list of the same length corresponding to targets"
+            )
         self.weight = weight
         self.time_idx = time_idx
         self.group_ids = [] + group_ids
@@ -235,23 +241,7 @@ class TimeSeriesDataSet(Dataset):
         self.add_encoder_length = add_encoder_length
 
         # target normalizer
-        if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
-            coerce_positive = (data[self.target] >= 0).all()
-            if coerce_positive:
-                log_scale = data[self.target].skew() > 2.5
-                coerce_positive = False
-            else:
-                log_scale = False
-            if self.max_encoder_length > 20 and self.min_encoder_length > 1:
-                self.target_normalizer = EncoderNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
-            else:
-                self.target_normalizer = GroupNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
-        assert self.min_encoder_length > 1 or not isinstance(
-            self.target_normalizer, EncoderNormalizer
-        ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
-        assert isinstance(
-            self.target_normalizer, TorchNormalizer
-        ), f"target_normalizer has to be either None or of class TorchNormalizer but found {self.target_normalizer}"
+        self._set_target_normalizer(data)
 
         # overwrite values
         self.reset_overwrite_values()
@@ -295,6 +285,35 @@ class TimeSeriesDataSet(Dataset):
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
+
+    def _set_target_normalizer(self, data: pd.DataFrame):
+        """
+        Determine target normalizer.
+
+        Args:
+            data (pd.DataFrame): input data
+        """
+        if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
+            if data[self.target].dtype.kind != "f":  # category
+                self.target_normalizer = NaNLabelEncoder()
+                assert not self.add_target_scales, "Target scales can be only added for continous targets"
+            else:
+                coerce_positive = (data[self.target] >= 0).all()
+                if coerce_positive:
+                    log_scale = data[self.target].skew() > 2.5
+                    coerce_positive = False
+                else:
+                    log_scale = False
+                if self.max_encoder_length > 20 and self.min_encoder_length > 1:
+                    self.target_normalizer = EncoderNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
+                else:
+                    self.target_normalizer = GroupNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
+        assert self.min_encoder_length > 1 or not isinstance(
+            self.target_normalizer, EncoderNormalizer
+        ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
+        assert isinstance(
+            self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)
+        ), f"target_normalizer has to be either None or of class TorchNormalizer but found {self.target_normalizer}"
 
     def _validate_data(self, data: pd.DataFrame):
         """
@@ -412,6 +431,8 @@ class TimeSeriesDataSet(Dataset):
                 data[self.target], scales = normalizer.fit_transform(data[self.target], data, return_norm=True)
             elif isinstance(self.target_normalizer, GroupNormalizer):
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+            elif isinstance(self.target_normalizer, NaNLabelEncoder):
+                data[self.target] = self.target_normalizer.transform(data[self.target])
             else:
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], return_norm=True)
 
@@ -524,8 +545,11 @@ class TimeSeriesDataSet(Dataset):
             target_names = "__target__"
         else:
             target_names = ["__target__", "__weight__"]
-        target = torch.tensor(data[target_names].to_numpy(dtype=np.float32), dtype=torch.float)
-        continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float32), dtype=torch.float)
+        if isinstance(self.target_normalizer, NaNLabelEncoder):
+            target = torch.tensor(data[target_names].to_numpy(dtype=np.long), dtype=torch.long)
+        else:
+            target = torch.tensor(data[target_names].to_numpy(dtype=np.float), dtype=torch.float)
+        continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float), dtype=torch.float)
 
         tensors = dict(reals=continuous, categoricals=categorical, groups=index, target=target, time=time)
 
@@ -839,7 +863,10 @@ class TimeSeriesDataSet(Dataset):
         time = self.data["time"][index.index_start : index.index_end + 1].clone()
         target = self.data["target"][index.index_start : index.index_end + 1].clone()
         groups = self.data["groups"][index.index_start].clone()
-        target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
+        if isinstance(self.target_normalizer, NaNLabelEncoder):
+            target_scale = np.zeros(2, dtype=float)
+        else:
+            target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
 
         # fill in missing values (if not all time indices are specified
         sequence_length = len(time)
@@ -1030,7 +1057,7 @@ class TimeSeriesDataSet(Dataset):
 
         # target
         target = rnn.pad_sequence([batch[1] for batch in batches], batch_first=True)
-        target_scale = torch.tensor([batch[0]["target_scale"] for batch in batches], dtype=torch.float32)
+        target_scale = torch.tensor([batch[0]["target_scale"] for batch in batches], dtype=torch.float)
 
         return (
             dict(

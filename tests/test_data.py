@@ -207,6 +207,8 @@ def test_TimeSeriesDataSet(test_data, kwargs):
     if kwargs.get("allow_missings", False):
         np.random.seed(2)
         test_data = test_data.sample(frac=0.5)
+        defaults["min_encoder_length"] = 0
+        defaults["min_prediction_length"] = 1
 
     # create dataset and sample from it
     dataset = TimeSeriesDataSet(test_data, **kwargs)
@@ -356,3 +358,19 @@ def test_raise_short_encoder_length(test_data):
             min_prediction_length=1,
             min_encoder_length=5,
         )
+
+
+def test_categorical_target(test_data):
+    dataset = TimeSeriesDataSet(
+        test_data,
+        time_idx="time_idx",
+        target="agency",
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=1,
+    )
+
+    x, y = next(iter(dataset.to_dataloader()))
+    assert y.dtype is torch.long, "target must be of type long"
