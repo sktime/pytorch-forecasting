@@ -44,7 +44,9 @@ jobs:
         shell: bash
         run: |
           curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-          echo "::set-env name=PATH::$HOME/.poetry/bin:$PATH"
+
+      - name: Set poetry path variable
+        run: echo "$HOME/.poetry/bin" >> $GITHUB_PATH
 
       - name: Configure poetry
         shell: bash

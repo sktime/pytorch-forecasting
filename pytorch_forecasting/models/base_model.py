@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
-from pytorch_lightning.metrics.metric import TensorMetric
 from pytorch_lightning.utilities.parsing import get_init_args
 import torch
 import torch.nn as nn
@@ -21,7 +20,7 @@ from tqdm.notebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer
-from pytorch_forecasting.metrics import MASE, SMAPE
+from pytorch_forecasting.metrics import MASE, SMAPE, Metric
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import groupby_apply
 
@@ -57,7 +56,7 @@ class BaseModel(LightningModule):
         log_val_interval: Union[int, float] = None,
         learning_rate: Union[float, List[float]] = 1e-3,
         log_gradient_flow: bool = False,
-        loss: TensorMetric = SMAPE(),
+        loss: Metric = SMAPE(),
         logging_metrics: nn.ModuleList = nn.ModuleList([]),
         reduce_on_plateau_patience: int = 1000,
         weight_decay: float = 0.0,
@@ -76,7 +75,7 @@ class BaseModel(LightningModule):
             learning_rate (float, optional): Learning rate. Defaults to 1e-3.
             log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose
                 training failures. Defaults to False.
-            loss (TensorMetric, optional): metric to optimize. Defaults to SMAPE().
+            loss (Metric, optional): metric to optimize. Defaults to SMAPE().
             logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
                 Defaults to [].
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
@@ -129,20 +128,21 @@ class BaseModel(LightningModule):
         """
         x, y = batch
         log, _ = self.step(x, y, batch_idx, label="train")
+        # log loss
+        self.log("train_loss", log["loss"], on_step=True, on_epoch=True, prog_bar=True)
         return log
 
     def training_epoch_end(self, outputs):
-        log, _ = self.epoch_end(outputs, label="train")
-        return log
+        self.epoch_end(outputs, label="train")
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="val")
+        log, _ = self.step(x, y, batch_idx, label="val")  # log loss
+        self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 
     def validation_epoch_end(self, outputs):
-        log, _ = self.epoch_end(outputs, label="val")
-        return log
+        self.epoch_end(outputs, label="val")
 
     def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train"):
         """
@@ -205,8 +205,6 @@ class BaseModel(LightningModule):
             else:
                 loss = self.loss(prediction, y)
 
-        # log loss
-        tensorboard_logs = {f"{label}_loss": loss}
         # logging losses
         y_hat_detached = prediction.detach()
         y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
@@ -217,10 +215,8 @@ class BaseModel(LightningModule):
                 )
             else:
                 loss_value = metric(y_hat_point_detached, y)
-            tensorboard_logs[f"{label}_{metric.name}"] = loss_value
-        log = {f"{label}_loss": loss, "log": tensorboard_logs, "n_samples": x["decoder_lengths"].size(0)}
-        if label == "train":
-            log["loss"] = loss
+            self.log(f"{label}_{metric.name}", loss_value, on_step=label == "train", on_epoch=True)
+        log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
         if self.log_interval(label == "train") > 0:
             self._log_prediction(x, out, batch_idx, label=label)
         return log, out
@@ -239,20 +235,9 @@ class BaseModel(LightningModule):
 
     def epoch_end(self, outputs, label="train"):
         """
-        Run at epoch end for training or validation.
+        Run at epoch end for training or validation. Can be overriden in models.
         """
-        if "callback_metrics" in outputs[0]:  # workaround for pytorch-lightning bug
-            outputs = [out["callback_metrics"] for out in outputs]
-        # log average loss and metrics
-        n_samples = sum([x["n_samples"] for x in outputs])
-        avg_loss = torch.stack([x[f"{label}_loss"] * x["n_samples"] / n_samples for x in outputs]).sum()
-        log_keys = outputs[0]["log"].keys()
-        tensorboard_logs = {
-            f"avg_{key}": torch.stack([x["log"][key] * x["n_samples"] / n_samples for x in outputs]).sum()
-            for key in log_keys
-        }
-
-        return {f"{label}_loss": avg_loss, "log": tensorboard_logs}, outputs
+        pass
 
     def log_interval(self, train: bool):
         """
@@ -291,7 +276,7 @@ class BaseModel(LightningModule):
         x: Dict[str, torch.Tensor],
         out: Dict[str, torch.Tensor],
         idx: int = 0,
-        add_loss_to_title: Union[TensorMetric, bool] = False,
+        add_loss_to_title: Union[Metric, bool] = False,
         show_future_observed: bool = True,
         ax=None,
     ) -> plt.Figure:
@@ -969,3 +954,7 @@ class CovariatesMixin:
             fig.tight_layout()
             fig.legend()
             return fig
+
+
+class AutoRegressiveBaseModel(BaseModel):
+    pass
