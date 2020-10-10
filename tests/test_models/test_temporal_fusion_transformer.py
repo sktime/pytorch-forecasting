@@ -10,7 +10,7 @@ from torch.utils.data import dataloader
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
-from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
+from pytorch_forecasting.metrics import CrossEntropy, PoissonLoss, QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
@@ -55,7 +55,7 @@ def test_integration(multiple_dataloaders_with_coveratiates, tmp_path, gpus):
     with cuda_context:
         if isinstance(train_dataloader.dataset.target_normalizer, NaNLabelEncoder):
             output_size = len(train_dataloader.dataset.target_normalizer.classes_)
-            loss = QuantileLoss()
+            loss = CrossEntropy()
         else:
             output_size = 7
             loss = QuantileLoss()
