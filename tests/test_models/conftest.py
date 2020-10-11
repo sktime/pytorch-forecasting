@@ -79,6 +79,7 @@ def data_with_covariates():
         dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
         dict(target_normalizer=GroupNormalizer(log_scale=True)),
         dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=1.0)),
+        dict(target="agency"),
     ]
 )
 def multiple_dataloaders_with_coveratiates(data_with_covariates, request):
@@ -86,16 +87,18 @@ def multiple_dataloaders_with_coveratiates(data_with_covariates, request):
     max_encoder_length = 36
     max_prediction_length = 6
 
+    params = request.param
+    params.setdefault("target", "volume")
+
     training = TimeSeriesDataSet(
         data_with_covariates[lambda x: x.date < training_cutoff],
         time_idx="time_idx",
-        target="volume",
         # weight="weight",
         group_ids=["agency", "sku"],
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
         add_relative_time_idx=True,
-        **request.param  # fixture parametrization
+        **params  # fixture parametrization
     )
 
     validation = TimeSeriesDataSet.from_dataset(

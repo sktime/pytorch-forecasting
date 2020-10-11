@@ -14,12 +14,12 @@ from pytorch_lightning.utilities.parsing import get_init_args
 import torch
 import torch.nn as nn
 from torch.nn.utils import rnn
-from torch.optim.lr_scheduler import LambdaLR, OneCycleLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.data.encoders import GroupNormalizer
+from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer
 from pytorch_forecasting.metrics import MASE, SMAPE, Metric
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import groupby_apply
@@ -908,7 +908,7 @@ class CovariatesMixin:
                 scaler = self.dataset_parameters["scalers"][name]
                 x = np.linspace(-data["std"], data["std"], bins)
                 # reversing normalization for group normalizer is not possible without sample level information
-                if not isinstance(scaler, GroupNormalizer):
+                if not isinstance(scaler, (GroupNormalizer, EncoderNormalizer)):
                     x = scaler.inverse_transform(x)
                     ax.set_xlabel(f"Normalized {name}")
 
