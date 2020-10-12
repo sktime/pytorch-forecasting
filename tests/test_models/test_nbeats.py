@@ -4,7 +4,6 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models import NBeats
 
 
@@ -21,7 +20,7 @@ def test_integration(dataloaders_fixed_window_without_coveratiates, tmp_path, gp
         gpus=gpus,
         weights_summary="top",
         gradient_clip_val=0.1,
-        early_stop_callback=early_stop_callback,
+        callbacks=[early_stop_callback],
         fast_dev_run=True,
         logger=logger,
     )

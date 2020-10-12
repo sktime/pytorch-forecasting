@@ -9,7 +9,7 @@ import optuna
 from optuna.integration import PyTorchLightningPruningCallback, TensorBoardCallback
 import pytorch_lightning as pl
 from pytorch_lightning import Callback
-from pytorch_lightning.callbacks import LearningRateLogger
+from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 import statsmodels.api as sm
 import torch
@@ -99,7 +99,7 @@ def optimize_hyperparameters(
         # TensorBoard. We don't use any logger here as it requires us to implement several abstract
         # methods. Instead we setup a simple callback, that saves metrics from each validation step.
         metrics_callback = MetricsCallback()
-        learning_rate_callback = LearningRateLogger()
+        learning_rate_callback = LearningRateMonitor()
         logger = TensorBoardLogger(log_dir, name="optuna", version=trial.number)
         gradient_clip_val = trial.suggest_loguniform("gradient_clip_val", *gradient_clip_val_range)
         trainer = pl.Trainer(
@@ -107,8 +107,11 @@ def optimize_hyperparameters(
             max_epochs=max_epochs,
             gradient_clip_val=gradient_clip_val,
             gpus=[0] if torch.cuda.is_available() else None,
-            callbacks=[metrics_callback, learning_rate_callback],
-            early_stop_callback=PyTorchLightningPruningCallback(trial, monitor="val_loss"),
+            callbacks=[
+                metrics_callback,
+                learning_rate_callback,
+                PyTorchLightningPruningCallback(trial, monitor="val_loss"),
+            ],
             logger=logger,
             **trainer_kwargs,
         )
