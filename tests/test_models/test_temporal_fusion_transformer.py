@@ -40,7 +40,7 @@ def test_integration(multiple_dataloaders_with_coveratiates, tmp_path, gpus):
         gpus=gpus,
         weights_summary="top",
         gradient_clip_val=0.1,
-        early_stop_callback=early_stop_callback,
+        callbacks=[early_stop_callback],
         fast_dev_run=True,
         logger=logger,
     )

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.common import SettingWithCopyWarning
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, LearningRateLogger
+from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 
@@ -93,21 +93,20 @@ training.save("t raining.pkl")
 validation.save("validation.pkl")
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
-lr_logger = LearningRateLogger()
+lr_logger = LearningRateMonitor()
 
 trainer = pl.Trainer(
     max_epochs=100,
     gpus=0,
     weights_summary="top",
     gradient_clip_val=0.1,
-    early_stop_callback=early_stop_callback,
     limit_train_batches=30,
     # val_check_interval=20,
     # limit_val_batches=1,
     # fast_dev_run=True,
     # logger=logger,
     # profiler=True,
-    callbacks=[lr_logger],
+    callbacks=[lr_logger, early_stop_callback],
 )
 
 
