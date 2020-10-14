@@ -41,7 +41,7 @@ homepage = "https://pytorch-forecasting.readthedocs.io"
 python= "^3.6.1"
 
 torch = "^1.4"
-pytorch-lightning = "^0.10.0"
+pytorch-lightning = ">=0.10,<1.1"
 optuna = "^2.0.0"
 scipy = "*"
 pandas = "^1.1.0"
