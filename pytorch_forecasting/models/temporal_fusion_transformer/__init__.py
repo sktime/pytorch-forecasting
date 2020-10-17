@@ -21,7 +21,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import autocorrelation, get_embedding_size, integer_histogram
+from pytorch_forecasting.utils import autocorrelation, get_embedding_size, integer_histogram, padded_stack
 
 
 class TemporalFusionTransformer(BaseModel, CovariatesMixin):
@@ -791,7 +791,8 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         """
         # extract interpretations
         interpretation = {
-            name: torch.stack([x["interpretation"][name] for x in outputs]).sum(0)
+            # use padded_stack because decoder length histogram can be of different length
+            name: padded_stack([x["interpretation"][name] for x in outputs], side="right", value=0).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
         # normalize attention with length histogram squared to account for: 1. zeros in attention and
