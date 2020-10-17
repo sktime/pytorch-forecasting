@@ -171,7 +171,7 @@ def optimize_hyperparameters(
                 model,
                 train_dataloader=train_dataloader,
                 val_dataloaders=val_dataloader,
-                # early_stop_threshold=10000,
+                early_stop_threshold=10000,
                 min_lr=learning_rate_range[0],
                 num_training=100,
                 max_lr=learning_rate_range[1],
