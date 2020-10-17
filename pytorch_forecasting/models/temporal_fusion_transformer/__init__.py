@@ -823,7 +823,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         # log lengths of encoder/decoder
         for type in ["encoder", "decoder"]:
             fig, ax = plt.subplots()
-            lengths = torch.stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
+            lengths = padded_stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
             if type == "decoder":
                 start = 1
             else:
