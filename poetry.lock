@@ -1307,7 +1307,7 @@ python-versions = "*"
 
 [[package]]
 name = "pytorch-lightning"
-version = "1.0.1"
+version = "1.0.2"
 description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 category = "main"
 optional = false
@@ -2535,8 +2535,8 @@ python-editor = [
     {file = "python_editor-1.0.4-py3.5.egg", hash = "sha256:c3da2053dbab6b29c94e43c486ff67206eafbe7eb52dbec7390b5e2fb05aac77"},
 ]
 pytorch-lightning = [
-    {file = "pytorch-lightning-1.0.1.tar.gz", hash = "sha256:cf399daeab89086b524060713d72e6bdea61b04dfe235025d2d044b95ed754f2"},
-    {file = "pytorch_lightning-1.0.1-py3-none-any.whl", hash = "sha256:6563cc52b4fa78e4f23bc08edec091efeec7f3d1bac70c8e497536e8f4c9cb16"},
+    {file = "pytorch-lightning-1.0.2.tar.gz", hash = "sha256:a9ee83c45efb1a7b4ba8bde135d4068a24f960ca2fb4ace5dee020c242d21cf9"},
+    {file = "pytorch_lightning-1.0.2-py3-none-any.whl", hash = "sha256:d700511d05d0a6a572272d6429ff44e70f48408e3abc224e12b402ca206c6cd6"},
 ]
 pytz = [
     {file = "pytz-2020.1-py2.py3-none-any.whl", hash = "sha256:a494d53b6d39c3c6e44c3bec237336e14305e4f29bbf800b599253057fbb79ed"},
@@ -2598,6 +2598,7 @@ pyzmq = [
     {file = "pyzmq-19.0.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:18189fc59ff5bf46b7ccf5a65c1963326dbfc85a2bc73e9f4a90a40322b992c8"},
     {file = "pyzmq-19.0.2-cp39-cp39-manylinux1_i686.whl", hash = "sha256:b1dd4cf4c5e09cbeef0aee83f3b8af1e9986c086a8927b261c042655607571e8"},
     {file = "pyzmq-19.0.2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:c6d653bab76b3925c65d4ac2ddbdffe09710f3f41cc7f177299e8c4498adb04a"},
+    {file = "pyzmq-19.0.2-cp39-cp39-win_amd64.whl", hash = "sha256:949a219493a861c263b75a16588eadeeeab08f372e25ff4a15a00f73dfe341f4"},
     {file = "pyzmq-19.0.2-pp27-pypy_73-macosx_10_9_x86_64.whl", hash = "sha256:c1a31cd42905b405530e92bdb70a8a56f048c8a371728b8acf9d746ecd4482c0"},
     {file = "pyzmq-19.0.2-pp36-pypy36_pp73-macosx_10_9_x86_64.whl", hash = "sha256:a7e7f930039ee0c4c26e4dfee015f20bd6919cd8b97c9cd7afbde2923a5167b6"},
     {file = "pyzmq-19.0.2.tar.gz", hash = "sha256:296540a065c8c21b26d63e3cea2d1d57902373b16e4256afe46422691903a438"},
