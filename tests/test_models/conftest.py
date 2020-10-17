@@ -82,7 +82,7 @@ def data_with_covariates():
         dict(target="agency"),
     ]
 )
-def multiple_dataloaders_with_coveratiates(data_with_covariates, request):
+def multiple_dataloaders_with_covariates(data_with_covariates, request):
     training_cutoff = "2016-09-01"
     max_encoder_length = 36
     max_prediction_length = 6
@@ -112,7 +112,7 @@ def multiple_dataloaders_with_coveratiates(data_with_covariates, request):
 
 
 @pytest.fixture
-def dataloaders_with_coveratiates(data_with_covariates):
+def dataloaders_with_covariates(data_with_covariates):
     training_cutoff = "2016-09-01"
     max_encoder_length = 36
     max_prediction_length = 6
@@ -142,7 +142,7 @@ def dataloaders_with_coveratiates(data_with_covariates):
 
 
 @pytest.fixture()
-def dataloaders_fixed_window_without_coveratiates():
+def dataloaders_fixed_window_without_covariates():
     data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10)
     validation = data.series.iloc[:2]
 

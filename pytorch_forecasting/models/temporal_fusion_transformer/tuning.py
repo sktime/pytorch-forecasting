@@ -1,12 +1,15 @@
 """
 Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedocs.io/>`_.
 """
+import copy
+import logging
 import os
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import optuna
 from optuna.integration import PyTorchLightningPruningCallback, TensorBoardCallback
+import optuna.logging
 import pytorch_lightning as pl
 from pytorch_lightning import Callback
 from pytorch_lightning.callbacks import LearningRateMonitor
@@ -17,6 +20,9 @@ from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.metrics import QuantileLoss
+
+optuna_logger = logging.getLogger("optuna")
 
 
 class MetricsCallback(Callback):
@@ -47,6 +53,7 @@ def optimize_hyperparameters(
     trainer_kwargs: Dict[str, Any] = {},
     log_dir: str = "lightning_logs",
     study: optuna.Study = None,
+    verbose: Union[int, bool] = None,
     **kwargs,
 ) -> optuna.Study:
     """
@@ -79,6 +86,13 @@ def optimize_hyperparameters(
             as ``limit_train_batches``. Defaults to {}.
         log_dir (str, optional): Folder into which to log results for tensorboard. Defaults to "lightning_logs".
         study (optuna.Study, optional): study to resume. Will create new study by default.
+        verbose (Union[int, bool]): level of verbosity.
+            * None: no change in verbosity level (equivalent to verbose=1 by optuna-set default).
+            * 0 or False: log only warnings.
+            * 1 or True: log pruning events.
+            * 2: optuna logging level at debug level.
+            Defaults to None.
+
         **kwargs: Additional arguments for the :py:class:`~TemporalFusionTransformer`.
 
     Returns:
@@ -87,6 +101,19 @@ def optimize_hyperparameters(
     assert isinstance(train_dataloader.dataset, TimeSeriesDataSet) and isinstance(
         val_dataloader.dataset, TimeSeriesDataSet
     ), "dataloaders must be built from timeseriesdataset"
+
+    logging_level = {
+        None: optuna.logging.get_verbosity(),
+        0: optuna.logging.WARNING,
+        1: optuna.logging.INFO,
+        2: optuna.logging.DEBUG,
+    }
+    verbose = logging_level[verbose]
+    optuna.logging.set_verbosity(verbose)
+
+    loss = kwargs.get(
+        "loss", QuantileLoss()
+    )  # need a deepcopy of loss as it will otherwise propagate from one trial to the next
 
     # create objective function
     def objective(trial: optuna.Trial) -> float:
@@ -102,11 +129,11 @@ def optimize_hyperparameters(
         learning_rate_callback = LearningRateMonitor()
         logger = TensorBoardLogger(log_dir, name="optuna", version=trial.number)
         gradient_clip_val = trial.suggest_loguniform("gradient_clip_val", *gradient_clip_val_range)
+        trainer_kwargs.setdefault("gpus", [0] if torch.cuda.is_available() else None)
         trainer = pl.Trainer(
             checkpoint_callback=checkpoint_callback,
             max_epochs=max_epochs,
             gradient_clip_val=gradient_clip_val,
-            gpus=[0] if torch.cuda.is_available() else None,
             callbacks=[
                 metrics_callback,
                 learning_rate_callback,
@@ -118,6 +145,7 @@ def optimize_hyperparameters(
 
         # create model
         hidden_size = trial.suggest_int("hidden_size", *hidden_size_range, log=True)
+        kwargs["loss"] = copy.deepcopy(loss)
         model = TemporalFusionTransformer.from_dataset(
             train_dataloader.dataset,
             dropout=trial.suggest_uniform("dropout", *dropout_range),
@@ -143,7 +171,7 @@ def optimize_hyperparameters(
                 model,
                 train_dataloader=train_dataloader,
                 val_dataloaders=val_dataloader,
-                early_stop_threshold=10000.0,
+                early_stop_threshold=10000,
                 min_lr=learning_rate_range[0],
                 num_training=100,
                 max_lr=learning_rate_range[1],
@@ -157,10 +185,11 @@ def optimize_hyperparameters(
             )[10:-1].T
             optimal_idx = np.gradient(loss_smoothed).argmin()
             optimal_lr = lr_smoothed[optimal_idx]
-            print(f"Using learning rate of {optimal_lr:.3g}")
-            model.hparams.learning_rate = optimal_lr
+            optuna_logger.info(f"Using learning rate of {optimal_lr:.3g}")
+            # add learning rate artificially
+            model.hparams.learning_rate = trial.suggest_uniform("learning_rate", optimal_lr, optimal_lr)
         else:
-            model.hparams.learning_rate = trial.suggest_loguniform("learning_rate_range", *learning_rate_range)
+            model.hparams.learning_rate = trial.suggest_loguniform("learning_rate", *learning_rate_range)
 
         # fit
         trainer.fit(model, train_dataloader=train_dataloader, val_dataloaders=val_dataloader)

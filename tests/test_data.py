@@ -1,5 +1,6 @@
 from copy import deepcopy
 import itertools
+import pickle
 from typing import Dict
 
 import numpy as np
@@ -374,3 +375,8 @@ def test_categorical_target(test_data):
 
     x, y = next(iter(dataset.to_dataloader()))
     assert y.dtype is torch.long, "target must be of type long"
+
+
+def test_pickle(test_dataset):
+    pickle.dumps(test_dataset)
+    pickle.dumps(test_dataset.to_dataloader())
