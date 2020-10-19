@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE
+from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
 
@@ -30,10 +30,10 @@ class NBeats(BaseModel):
         log_gradient_flow: bool = False,
         log_val_interval: int = None,
         weight_decay: float = 1e-3,
-        loss=SMAPE(),
+        loss: MultiHorizonMetric = None,
         reduce_on_plateau_patience: int = 1000,
         backcast_loss_ratio: float = 0.0,
-        logging_metrics: nn.ModuleList = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]),
+        logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
         """
@@ -74,6 +74,7 @@ class NBeats(BaseModel):
             backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.
                 A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
                 forecast lengths). Defaults to 0.0, i.e. no weight.
+            loss: loss to optimize. Defaults to MASE().
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
@@ -81,6 +82,10 @@ class NBeats(BaseModel):
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
+        if logging_metrics is None:
+            logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+        if loss is None:
+            loss = MASE()
         self.save_hyperparameters()
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
