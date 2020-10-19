@@ -31,7 +31,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         lstm_layers: int = 1,
         dropout: float = 0.1,
         output_size: int = 7,
-        loss: MultiHorizonMetric = QuantileLoss(),
+        loss: MultiHorizonMetric = None,
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
         static_categoricals: List[str] = [],
@@ -55,7 +55,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         reduce_on_plateau_patience: int = 1000,
         monotone_constaints: Dict[str, int] = {},
         share_single_variable_networks: bool = False,
-        logging_metrics: nn.ModuleList = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]),
+        logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
         """
@@ -127,6 +127,10 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
+        if logging_metrics is None:
+            logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
+        if loss is None:
+            loss = QuantileLoss()
         self.save_hyperparameters()
         # store loss function separately as it is a module
         assert isinstance(loss, MultiHorizonMetric), "Loss has to of class `MultiHorizonMetric`"
