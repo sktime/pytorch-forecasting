@@ -11,7 +11,7 @@ from torch.nn.utils import rnn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
-from pytorch_forecasting.models.base_model import BaseModel, CovariatesMixin
+from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nn import MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,
@@ -21,10 +21,10 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import autocorrelation, get_embedding_size, integer_histogram, padded_stack
+from pytorch_forecasting.utils import autocorrelation, integer_histogram, padded_stack
 
 
-class TemporalFusionTransformer(BaseModel, CovariatesMixin):
+class TemporalFusionTransformer(BaseModelWithCovariates):
     def __init__(
         self,
         hidden_size: int = 16,
@@ -150,7 +150,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         self.prescalers = nn.ModuleDict(
             {
                 name: nn.Linear(1, self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size))
-                for name in self.hparams.x_reals
+                for name in self.reals
             }
         )
 
@@ -315,18 +315,6 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
 
         self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
 
-    @property
-    def static_variables(self) -> List[str]:
-        return self.hparams.static_categoricals + self.hparams.static_reals
-
-    @property
-    def encoder_variables(self) -> List[str]:
-        return self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
-
-    @property
-    def decoder_variables(self) -> List[str]:
-        return self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
-
     @classmethod
     def from_dataset(
         cls,
@@ -345,51 +333,15 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         Returns:
             TemporalFusionTransformer
         """
-        if allowed_encoder_known_variable_names is None:
-            allowed_encoder_known_variable_names = (
-                dataset.time_varying_known_categoricals + dataset.time_varying_known_reals
-            )
-
-        # embeddings
-        embedding_labels = {
-            name: encoder.classes_
-            for name, encoder in dataset.categorical_encoders.items()
-            if name in dataset.categoricals
-        }
-        embedding_paddings = dataset.dropout_categoricals
-        # determine embedding sizes based on heuristic
-        embedding_sizes = {
-            name: (len(encoder.classes_), get_embedding_size(len(encoder.classes_)))
-            for name, encoder in dataset.categorical_encoders.items()
-            if name in dataset.categoricals
-        }
-        embedding_sizes.update(kwargs.get("embedding_sizes", {}))
-        kwargs.setdefault("embedding_sizes", embedding_sizes)
-
         new_kwargs = dict(
             max_encoder_length=dataset.max_encoder_length,
-            static_categoricals=dataset.static_categoricals,
-            time_varying_categoricals_encoder=[
-                name for name in dataset.time_varying_known_categoricals if name in allowed_encoder_known_variable_names
-            ]
-            + dataset.time_varying_unknown_categoricals,
-            time_varying_categoricals_decoder=dataset.time_varying_known_categoricals,
-            static_reals=dataset.static_reals,
-            time_varying_reals_encoder=[
-                name for name in dataset.time_varying_known_reals if name in allowed_encoder_known_variable_names
-            ]
-            + dataset.time_varying_unknown_reals,
-            time_varying_reals_decoder=dataset.time_varying_known_reals,
-            x_reals=dataset.reals,
-            x_categoricals=dataset.flat_categoricals,
-            embedding_labels=embedding_labels,
-            embedding_paddings=embedding_paddings,
-            categorical_groups=dataset.variable_groups,
         )
         new_kwargs.update(kwargs)
 
         # create class and return
-        return super().from_dataset(dataset, **new_kwargs)
+        return super().from_dataset(
+            dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
+        )
 
     def expand_static_context(self, context, timesteps):
         """
@@ -439,14 +391,18 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         timesteps = x_cont.size(1)  # encode + decode length
         max_encoder_length = int(encoder_lengths.max())
         input_vectors = self.input_embeddings(x_cat)
-        input_vectors.update({name: x_cont[..., idx].unsqueeze(-1) for idx, name in enumerate(self.hparams.x_reals)})
+        input_vectors.update(
+            {
+                name: x_cont[..., idx].unsqueeze(-1)
+                for idx, name in enumerate(self.hparams.x_reals)
+                if name in self.reals
+            }
+        )
 
         # Embedding and variable selection
-        if len(self.hparams.static_categoricals + self.hparams.static_reals) > 0:
+        if len(self.static_variables) > 0:
             # static embeddings will be constant over entire batch
-            static_embedding = {
-                name: input_vectors[name][:, 0] for name in self.hparams.static_categoricals + self.hparams.static_reals
-            }
+            static_embedding = {name: input_vectors[name][:, 0] for name in self.static_variables}
             static_embedding, static_variable_selection = self.static_variable_selection(static_embedding)
         else:
             static_embedding = torch.zeros(
@@ -459,8 +415,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         )
 
         embeddings_varying_encoder = {
-            name: input_vectors[name][:, :max_encoder_length]
-            for name in self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
+            name: input_vectors[name][:, :max_encoder_length] for name in self.encoder_variables
         }
         embeddings_varying_encoder, encoder_sparse_weights = self.encoder_variable_selection(
             embeddings_varying_encoder,
@@ -468,8 +423,7 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
         )
 
         embeddings_varying_decoder = {
-            name: input_vectors[name][:, max_encoder_length:]  # select decoder
-            for name in self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
+            name: input_vectors[name][:, max_encoder_length:] for name in self.decoder_variables  # select decoder
         }
         embeddings_varying_decoder, decoder_sparse_weights = self.decoder_variable_selection(
             embeddings_varying_decoder,

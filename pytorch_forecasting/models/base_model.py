@@ -22,7 +22,7 @@ from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer
 from pytorch_forecasting.metrics import MASE, SMAPE, Metric
 from pytorch_forecasting.optim import Ranger
-from pytorch_forecasting.utils import groupby_apply
+from pytorch_forecasting.utils import groupby_apply, get_embedding_size
 
 
 class BaseModel(LightningModule):
@@ -713,9 +713,9 @@ class BaseModel(LightningModule):
         return results
 
 
-class CovariatesMixin:
+class BaseModelWithCovariates(BaseModel):
     """
-    Model mix-in for additional methods using covariates.
+    Model with additional methods using covariates.
 
     Assumes the following hyperparameters:
 
@@ -725,7 +725,45 @@ class CovariatesMixin:
         embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
             embedding size
         embedding_labels: dictionary mapping (string) indices to list of categorical labels
+        static_categoricals: integer of positions of static categorical variables
+        static_reals: integer of positions of static continuous variables
+        time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
+        time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
+        time_varying_reals_encoder: integer of positions of continuous variables for encoder
+        time_varying_reals_decoder: integer of positions of continuous variables for decoder
     """
+
+    @property
+    def reals(self) -> List[str]:
+        return list(
+            set(
+                self.hparams.static_reals
+                + self.hparams.time_varying_reals_encoder
+                + self.hparams.time_varying_reals_decoder
+            )
+        )
+
+    @property
+    def categoricals(self) -> List[str]:
+        return list(
+            set(
+                self.hparams.static_categoricals
+                + self.hparams.time_varying_categoricals_encoder
+                + self.hparams.time_varying_categoricals_decoder
+            )
+        )
+
+    @property
+    def static_variables(self) -> List[str]:
+        return self.hparams.static_categoricals + self.hparams.static_reals
+
+    @property
+    def encoder_variables(self) -> List[str]:
+        return self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
+
+    @property
+    def decoder_variables(self) -> List[str]:
+        return self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
 
     @property
     def categorical_groups_mapping(self) -> Dict[str, str]:
@@ -733,6 +771,68 @@ class CovariatesMixin:
         for group_name, sublist in self.hparams.categorical_groups.items():
             groups.update({name: group_name for name in sublist})
         return groups
+
+    @classmethod
+    def from_dataset(
+        cls,
+        dataset: TimeSeriesDataSet,
+        allowed_encoder_known_variable_names: List[str] = None,
+        **kwargs,
+    ) -> LightningModule:
+        """
+        Create model from dataset.
+
+        Args:
+            dataset: timeseries dataset
+            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all
+            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+
+        Returns:
+            LightningModule
+        """
+        # assert fixed encoder and decoder length for the moment
+        if allowed_encoder_known_variable_names is None:
+            allowed_encoder_known_variable_names = (
+                dataset.time_varying_known_categoricals + dataset.time_varying_known_reals
+            )
+
+        # embeddings
+        embedding_labels = {
+            name: encoder.classes_
+            for name, encoder in dataset.categorical_encoders.items()
+            if name in dataset.categoricals
+        }
+        embedding_paddings = dataset.dropout_categoricals
+        # determine embedding sizes based on heuristic
+        embedding_sizes = {
+            name: (len(encoder.classes_), get_embedding_size(len(encoder.classes_)))
+            for name, encoder in dataset.categorical_encoders.items()
+            if name in dataset.categoricals
+        }
+        embedding_sizes.update(kwargs.get("embedding_sizes", {}))
+        kwargs.setdefault("embedding_sizes", embedding_sizes)
+
+        new_kwargs = dict(
+            static_categoricals=dataset.static_categoricals,
+            time_varying_categoricals_encoder=[
+                name for name in dataset.time_varying_known_categoricals if name in allowed_encoder_known_variable_names
+            ]
+            + dataset.time_varying_unknown_categoricals,
+            time_varying_categoricals_decoder=dataset.time_varying_known_categoricals,
+            static_reals=dataset.static_reals,
+            time_varying_reals_encoder=[
+                name for name in dataset.time_varying_known_reals if name in allowed_encoder_known_variable_names
+            ]
+            + dataset.time_varying_unknown_reals,
+            time_varying_reals_decoder=dataset.time_varying_known_reals,
+            x_reals=dataset.reals,
+            x_categoricals=dataset.flat_categoricals,
+            embedding_labels=embedding_labels,
+            embedding_paddings=embedding_paddings,
+            categorical_groups=dataset.variable_groups,
+        )
+        new_kwargs.update(kwargs)
+        return super().from_dataset(dataset, **new_kwargs)
 
     def calculate_prediction_actual_by_variable(
         self,
@@ -957,4 +1057,8 @@ class CovariatesMixin:
 
 
 class AutoRegressiveBaseModel(BaseModel):
+    pass
+
+
+class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates):
     pass

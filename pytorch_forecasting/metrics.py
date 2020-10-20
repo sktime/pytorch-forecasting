@@ -7,6 +7,8 @@ import warnings
 from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 import torch
+from torch import nn
+from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -612,3 +614,85 @@ class MASE(MultiHorizonMetric):
         scaling = diffs.sum(1) / total_lengths + eps
 
         return scaling
+
+
+class DistributionLoss(MultiHorizonMetric):
+
+    distribution_class: distributions.Distribution
+    distribution_arguments: List[str]
+
+    def __init__(self, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98], reduction: str = "mean"):
+        name = self.distribution_class.__name__
+        super().__init__(name=name, reduction=reduction, quantiles=quantiles)
+
+    def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
+        kwargs = {name: x[..., idx] for idx, name in enumerate(self.distribution_arguments)}
+        return self.distribution_class(**kwargs)
+
+    def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate negative likelihood
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        distribution = self.map_x_to_distribution(y_pred)
+        loss = -distribution.log_prob(y_actual)
+        return loss
+
+    def to_prediction(self, y_pred: torch.Tensor, samples: int = None) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Args:
+            y_pred: prediction output of network
+            samples: number of samples to draw. By default return mean.
+
+        Returns:
+            torch.Tensor: point prediction
+        """
+        dist = self.map_x_to_distribution(y_pred)
+        if samples is None:
+            return dist.mean
+        else:
+            dist.sample_n(samples)
+
+    def sample_n(self, y_pred, samples: int) -> torch.Tensor:
+        """
+        Sample from distribution.
+
+        Args:
+            y_pred: prediction output of network
+            samples (int): number of samples to draw
+
+        Returns:
+            torch.Tensor: tensor where first dimensionare samples
+        """
+        dist = self.map_x_to_distribution(y_pred)
+        return dist.sample_n(samples)
+
+    def to_quantiles(self, y_pred: torch.Tensor, samples: int = 100) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Args:
+            y_pred: prediction output of network
+            samples: number of samples to draw for calculating quantiles. Defaults to 100.
+
+        Returns:
+            torch.Tensor: prediction quantiles (last dimension)
+        """
+        values = self.sample_n(y_pred, samples=samples)
+        # todo: replace with torch.quantile in torch>=1.7
+        quantiles = torch.stack([torch.kthvalue(values, int(samples * q), dim=0)[0] for q in self.quantiles], dim=-1)
+        return quantiles
+
+
+class NormalDistributionLoss(DistributionLoss):
+
+    distribution_class = distributions.Normal
+    distribution_arguments = ["loc", "scale"]
