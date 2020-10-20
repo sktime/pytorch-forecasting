@@ -612,7 +612,9 @@ class TimeSeriesDataSet(Dataset):
             Dict[str, Any]: dictionary of parameters
         """
         kwargs = {
-            name: getattr(self, name) for name in inspect.signature(self.__class__).parameters.keys() if name != "data"
+            name: getattr(self, name)
+            for name in inspect.signature(self.__class__.__init__).parameters.keys()
+            if name not in ["data", "self"]
         }
         kwargs["categorical_encoders"] = self.categorical_encoders
         kwargs["scalers"] = self.scalers
