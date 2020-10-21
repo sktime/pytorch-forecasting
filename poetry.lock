@@ -1307,7 +1307,7 @@ python-versions = "*"
 
 [[package]]
 name = "pytorch-lightning"
-version = "1.0.2"
+version = "1.0.3"
 description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 category = "main"
 optional = false
@@ -2538,8 +2538,8 @@ python-editor = [
     {file = "python_editor-1.0.4-py3.5.egg", hash = "sha256:c3da2053dbab6b29c94e43c486ff67206eafbe7eb52dbec7390b5e2fb05aac77"},
 ]
 pytorch-lightning = [
-    {file = "pytorch-lightning-1.0.2.tar.gz", hash = "sha256:a9ee83c45efb1a7b4ba8bde135d4068a24f960ca2fb4ace5dee020c242d21cf9"},
-    {file = "pytorch_lightning-1.0.2-py3-none-any.whl", hash = "sha256:d700511d05d0a6a572272d6429ff44e70f48408e3abc224e12b402ca206c6cd6"},
+    {file = "pytorch-lightning-1.0.3.tar.gz", hash = "sha256:5c13b2c93479cd85442c784bfb2315d397a66f52f66a58c519c7c4c6177564c8"},
+    {file = "pytorch_lightning-1.0.3-py3-none-any.whl", hash = "sha256:c54a02c6bfae71ddd8fbd5c6e55d89e9bbc5d8360f4c777da439be4121802fba"},
 ]
 pytz = [
     {file = "pytz-2020.1-py2.py3-none-any.whl", hash = "sha256:a494d53b6d39c3c6e44c3bec237336e14305e4f29bbf800b599253057fbb79ed"},
