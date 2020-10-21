@@ -108,8 +108,8 @@ def optimize_hyperparameters(
         1: optuna.logging.INFO,
         2: optuna.logging.DEBUG,
     }
-    verbose = logging_level[verbose]
-    optuna.logging.set_verbosity(verbose)
+    optuna_verbose = logging_level[verbose]
+    optuna.logging.set_verbosity(optuna_verbose)
 
     loss = kwargs.get(
         "loss", QuantileLoss()
@@ -140,6 +140,8 @@ def optimize_hyperparameters(
                 PyTorchLightningPruningCallback(trial, monitor="val_loss"),
             ],
             logger=logger,
+            progress_bar_refresh_rate=[0, 1][optuna_verbose < optuna.logging.INFO],
+            weights_summary=[None, "top"][optuna_verbose < optuna.logging.INFO],
             **trainer_kwargs,
         )
 
@@ -166,6 +168,8 @@ def optimize_hyperparameters(
                 gradient_clip_val=gradient_clip_val,
                 gpus=[0] if torch.cuda.is_available() else None,
                 logger=False,
+                progress_bar_refresh_rate=0,
+                weights_summary=None,
             )
             res = lr_trainer.tuner.lr_find(
                 model,
