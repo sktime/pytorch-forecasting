@@ -22,7 +22,7 @@ from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer
 from pytorch_forecasting.metrics import MASE, SMAPE, Metric
 from pytorch_forecasting.optim import Ranger
-from pytorch_forecasting.utils import groupby_apply, get_embedding_size
+from pytorch_forecasting.utils import get_embedding_size, groupby_apply
 
 
 class BaseModel(LightningModule):
@@ -1057,8 +1057,25 @@ class BaseModelWithCovariates(BaseModel):
 
 
 class AutoRegressiveBaseModel(BaseModel):
-    pass
+    @classmethod
+    def from_dataset(
+        cls,
+        dataset: TimeSeriesDataSet,
+        **kwargs,
+    ) -> LightningModule:
+        """
+        Create model from dataset.
+
+        Args:
+            dataset: timeseries dataset
+            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+
+        Returns:
+            LightningModule
+        """
+        kwargs.setdefault("target", dataset.target)
+        return super().from_dataset(dataset, **kwargs)
 
 
-class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates):
+class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegressiveBaseModel):
     pass

@@ -3,18 +3,19 @@
 <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_
 which is the one of the most popular forecasting algorithms and is often used as a baseline
 """
-from pytorch_lightning.core.lightning import LightningModule
-from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from typing import Dict, Tuple, Union, List
-import torch
-import torch.nn as nn
-import torch.distributions as dists
+from typing import Dict, List, Tuple, Union
+
 import numpy as np
+from pytorch_lightning.core.lightning import LightningModule
+import torch
+import torch.distributions as dists
+import torch.nn as nn
 from torch.nn.utils import rnn
 
+from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
+from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, DistributionLoss, NormalDistributionLoss
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
-from pytorch_forecasting.metrics import SMAPE, MAE, RMSE, MAPE, MASE, DistributionLoss, NormalDistributionLoss
+from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
@@ -57,10 +58,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             x_categoricals=x_categoricals,
         )
 
-        assert set(self.encoder_variables) == set(
+        assert set(self.encoder_variables) - {target} == set(
             self.decoder_variables
-        ), "Encoder and decoder variables have to be the same"
-        assert target in time_varying_reals_decoder, "target has to be real"  # todo: remove this restriction
+        ), "Encoder and decoder variables have to be the same apart from target variable"
+        assert target in time_varying_reals_encoder, "target has to be real"  # todo: remove this restriction
 
         rnn = getattr(nn, cell_type)
         self.rnn = rnn(
@@ -124,7 +125,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             input_vector = torch.cat([x_cont, flat_embeddings], dim=-1)
 
         # shift target by one
-        input_vector[..., self.target_position] = torch.roll(input_vector[..., self.target_position], shifts=1, dim=1)
+        input_vector[..., self.target_position] = torch.roll(input_vector[..., self.target_position], shifts=1, dims=1)
 
         if one_off_target is not None:  # set first target input (which is rolled over)
             input_vector[:, 0, self.target_position] = one_off_target
@@ -140,25 +141,21 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         pos = variables.index(self.hparams.target)
         return pos
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        """
-        input dimensions: n_samples x time x variables
-        """
+    def encode(self, x: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+        # encode using rnn
         max_encoder_length = x["encoder_lengths"].max()
         assert x["encoder_lengths"].min() > 0
-        # encode using rnn
         if max_encoder_length > 1:
             encoder_lengths = x["encoder_lengths"] - 1
             rnn_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
             input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
-            packed_input = rnn.pack_padded_sequence(
-                input_vector, rnn_encoder_lengths, enforce_sorted=False, batch_first=True
-            )
-            _, (hidden, cell) = self.rnn(packed_input)  # second ouput is not needed (hidden state)
+            _, (hidden, cell) = self.rnn(
+                rnn.pack_padded_sequence(input_vector, rnn_encoder_lengths, enforce_sorted=False, batch_first=True)
+            )  # second ouput is not needed (hidden state)
             # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
             no_encoding = (encoder_lengths == 0)[None, :, None]  # shape: n_lstm_layers x batch_size x hidden_size
-            hidden = hidden.masked_scatter(no_encoding, 0)
-            cell = cell.masked_scatter(no_encoding, 0)
+            hidden = hidden.masked_fill(no_encoding, 0.0)
+            cell = cell.masked_fill(no_encoding, 0.0)
         else:
             hidden = torch.zeros(
                 (x["encoder_cont"].size(0), self.hparams.hidden_size),
@@ -170,26 +167,71 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 device=x["decoder_cont"].device,
                 dtype=torch.float,
             )
+        return hidden, cell
 
+    def decode(self, input_vector, hidden: torch.Tensor, cell: torch.Tensor, train: bool = False) -> torch.Tensor:
+
+        if train:
+            decoder_output, _ = self.rnn(
+                input_vector,
+                (hidden, cell),
+            )
+            decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
+            output = self.distribution_projector(decoder_output)
+
+        else:
+            # run in eval, i.e. simulation mode
+            target_pos = self.target_position
+            input_target = input_vector[:, 0, target_pos]
+            output = []
+            for idx in range(input_vector.size(1)):
+                x = input_vector[:, [idx]]
+                x[:, 0, target_pos] = input_target
+                decoder_output, (hidden, cell) = self.rnn(x, (hidden, cell))
+                input_target = self.distribution_projector(decoder_output)
+                # transform into real space
+                # todo: this needs to be revised: sample in real space
+                #  easier to understand intuitively (e.g. Possion) but
+                #  can lead to strange outcomes (e.g. strictly positive gaussian?)
+
+                input_target = self.transform_output(input_target)
+                # sample value(s) from distribution
+                input_target = self.loss.sample(input_target)
+                # normalize prediction prediction
+                input_target = self.output_transformer.transform(
+                    dict(input_target, groups=x["groups"], target_scale=x["target_scale"])
+                )
+                output.append(input_target)
+            output = torch.cat(output, dim=1)
+
+        return output
+
+    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        input dimensions: n_samples x time x variables
+        """
+        hidden, cell = self.encode(x)
         # decode
         input_vector = self.construct_input_vector(
             x["decoder_cat"], x["decoder_cont"], one_off_target=x["encoder_cont"][:, -1, self.target_position]
         )
-        if self.training:
-            decoder_output, _ = self.rnn(
-                rnn.pack_padded_sequence(packed_input, x["decoder_lengths"], enforce_sorted=False, batch_first=True),
-                (hidden, cell),
-            )
-        else:
-            decoder_output = 2
-
-        output = self.distribution_projector(decoder_output)
-
+        input_vector = rnn.pack_padded_sequence(
+            input_vector, x["decoder_lengths"], enforce_sorted=False, batch_first=True
+        )
+        output = self.decode(input_vector, hidden, cell, train=True)
         # return relevant part
         return dict(
-            encoder_output=output[:, :max_encoder_length],
-            prediction=output[:, max_encoder_length:],
+            prediction=output,
             groups=x["groups"],
             decoder_time_idx=x["decoder_time_idx"],
             target_scale=x["target_scale"],
         )
+
+    def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
+        if isinstance(out, torch.Tensor):
+            return out
+        elif self.output_transformer is None:
+            out = out["prediction"]
+        else:
+            out = self.output_transformer(out)  # todo: needs to be revised - probably depending on loss
+        return out
