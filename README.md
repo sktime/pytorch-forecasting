@@ -33,9 +33,13 @@ Alternatively, you can install the package via conda
 
 `conda install pytorch-forecasting -c conda-forge`
 
-If you do not have pytorch installed, install it is recommended to install it first from the pytorch channel
+If you do not have pytorch installed, install it is recommended to install it first from the pytorch channel.
 
 `conda install pytorch -c pytorch`
+
+If you have installed a version below PyTorch 1.6, update it:
+
+`conda update pytorch -c pytorch`
 
 # Documentation
 
