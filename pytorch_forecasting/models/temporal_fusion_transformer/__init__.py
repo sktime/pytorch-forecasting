@@ -505,6 +505,8 @@ class TemporalFusionTransformer(BaseModel, CovariatesMixin):
             ),
             (hidden, cell),
         )
+        
+        decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)
