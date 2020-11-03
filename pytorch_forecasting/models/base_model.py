@@ -555,7 +555,7 @@ class BaseModel(LightningModule):
                 # move data to appropriate device
                 for name in x.keys():
                     if x[name].device != self.device:
-                        x[name].to(self.device)
+                        x[name] = x[name].to(self.device)
 
                 # make prediction
                 out = self(x)  # raw output is dictionary
