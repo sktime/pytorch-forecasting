@@ -423,8 +423,9 @@ class TimeSeriesDataSet(Dataset):
                 # transformation over the entire time range but by each group
                 common_init_args = [
                     name
-                    for name in inspect.signature(GroupNormalizer).parameters.keys()
-                    if name in inspect.signature(EncoderNormalizer).parameters.keys()
+                    for name in inspect.signature(GroupNormalizer.__init__).parameters.keys()
+                    if name in inspect.signature(EncoderNormalizer.__init__).parameters.keys()
+                    and name not in ["data", "self"]
                 ]
                 copy_kwargs = {name: getattr(self.target_normalizer, name) for name in common_init_args}
                 normalizer = GroupNormalizer(groups=self.group_ids, **copy_kwargs)
@@ -612,7 +613,9 @@ class TimeSeriesDataSet(Dataset):
             Dict[str, Any]: dictionary of parameters
         """
         kwargs = {
-            name: getattr(self, name) for name in inspect.signature(self.__class__).parameters.keys() if name != "data"
+            name: getattr(self, name)
+            for name in inspect.signature(self.__class__.__init__).parameters.keys()
+            if name not in ["data", "self"]
         }
         kwargs["categorical_encoders"] = self.categorical_encoders
         kwargs["scalers"] = self.scalers
@@ -754,17 +757,22 @@ class TimeSeriesDataSet(Dataset):
             # choose longest sequence
             df_index = df_index.loc[df_index.groupby("group_id").sequence_length.idxmax()]
 
-        assert len(df_index) > 0, "filters should not remove entries"
         # check that all groups/series have at least one entry in the index
         if not group_ids.isin(df_index.group_id).all():
             missing_groups = data.loc[~group_ids.isin(df_index.group_id), self.group_ids].drop_duplicates()
             # decode values
             for name in missing_groups.columns:
                 missing_groups[name] = self.transform_values(name, missing_groups[name], inverse=True)
-            raise ValueError(
-                f"Min encoder length and/or min prediction length is too large for {len(missing_groups)} series/group. "
-                f"First 10 examples: {list(missing_groups.iloc[:10].to_dict(orient='index').values())}"
+            warnings.warn(
+                (
+                    "Min encoder length and/or min_prediction_idx and/or min prediction length is too large for "
+                    f"{len(missing_groups)} series/groups which therefore are not present in the dataset index. "
+                    "This means no predictions can be made for those series",
+                    f"First 10 removed groups: {list(missing_groups.iloc[:10].to_dict(orient='index').values())}",
+                ),
+                UserWarning,
             )
+        assert len(df_index) > 0, "filters should not remove entries"
 
         return df_index
 
