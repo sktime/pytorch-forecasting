@@ -213,14 +213,11 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
         """
-        if self.coerce_positive is None and not self.log_scale:
-            self.coerce_positive = (y >= 0).all()
-
         if self.log_scale:
             if isinstance(y, torch.Tensor):
-                y = torch.log(y + self.log_zero_value)
+                y = torch.log(y + self.log_zero_value + self.eps)
             else:
-                y = np.log(y + self.log_zero_value)
+                y = np.log(y + self.log_zero_value + self.eps)
         return y
 
     def fit(self, y: Union[pd.Series, np.ndarray, torch.Tensor]):
@@ -233,21 +230,30 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             TorchNormalizer: self
         """
+        if self.coerce_positive is None and not self.log_scale:
+            self.coerce_positive = (y >= 0).all()
         y = self._preprocess_y(y)
 
         if self.method == "standard":
             if isinstance(y, torch.Tensor):
-                self.center_ = torch.mean(y)
-                self.scale_ = torch.std(y) / (self.center_ + self.eps)
+                self.center_ = torch.mean(y, dim=-1)
+                self.scale_ = torch.std(y, dim=-1) / (self.center_ + self.eps)
+            elif isinstance(y, np.ndarray):
+                self.center_ = np.mean(y, axis=-1)
+                self.scale_ = np.std(y, axis=-1) / (self.center_ + self.eps)
             else:
                 self.center_ = np.mean(y)
-                self.scale_ = np.std(y) / (self.center_ + self.eps)
+                self.scale_ = np.std(y)
 
         elif self.method == "robust":
             if isinstance(y, torch.Tensor):
-                self.center_ = torch.median(y)
-                q_75 = y.kthvalue(int(len(y) * 0.75)).values
-                q_25 = y.kthvalue(int(len(y) * 0.25)).values
+                self.center_ = torch.median(y, dim=-1).values
+                q_75 = y.kthvalue(int(len(y) * 0.75), dim=-1).values
+                q_25 = y.kthvalue(int(len(y) * 0.25), dim=-1).values
+            elif isinstance(y, np.ndarray):
+                self.center_ = np.median(y, axis=-1)
+                q_75 = np.percentiley(y, 75, axis=-1)
+                q_25 = np.percentiley(y, 25, axis=-1)
             else:
                 self.center_ = np.median(y)
                 q_75 = np.percentiley(y, 75)
@@ -256,7 +262,10 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(
-        self, y: Union[pd.Series, np.ndarray, torch.Tensor], return_norm: bool = False
+        self,
+        y: Union[pd.Series, np.ndarray, torch.Tensor],
+        return_norm: bool = False,
+        target_scale: torch.Tensor = None,
     ) -> Union[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray], Union[np.ndarray, torch.Tensor]]:
         """
         Rescale data.
@@ -264,22 +273,31 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Args:
             y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
             return_norm (bool, optional): [description]. Defaults to False.
+            target_scale (torch.Tensor): target scale to use instead of fitted center and scale
 
         Returns:
             Union[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray], Union[np.ndarray, torch.Tensor]]: rescaled
                 data with type depending on input type. returns second element if ``return_norm=True``
         """
-        if self.log_scale:
-            if isinstance(y, torch.Tensor):
-                y = (y + self.log_zero_value + self.eps).log()
-            else:
-                y = np.log(y + self.log_zero_value + self.eps)
+        y = self._preprocess_y(y)
+        # get center and scale
+        if target_scale is None:
+            target_scale = self.get_parameters().numpy()[None, :]
+        center = target_scale[..., 0]
+        scale = target_scale[..., 1]
+        if y.ndim > center.ndim:  # multiple batches -> expand size
+            center = center.view(*center.size(), *(1,) * (y.ndim - center.ndim))
+            scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
+
+        # transform
         if self.center:
-            y = (y / (self.center_ + self.eps) - 1) / (self.scale_ + self.eps)
+            y = (y / (center + self.eps) - 1) / (scale + self.eps)
         else:
-            y = y / (self.center_ + self.eps)
+            y = y / (center + self.eps)
+
+        # return with center and scale or without
         if return_norm:
-            return y, self.get_parameters().numpy()[None, :]
+            return y, target_scale
         else:
             return y
 
@@ -303,6 +321,8 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             data (Dict[str, torch.Tensor]): Dictionary with entries
                 * prediction: data to de-scale
                 * target_scale: center and scale of data
+            scale_only (bool): if to only scale prediction and not center it (even if `self.center is True`).
+                Defaults to False.
 
         Returns:
             torch.Tensor: de-scaled data
@@ -403,6 +423,8 @@ class GroupNormalizer(TorchNormalizer):
         Returns:
             self
         """
+        if self.coerce_positive is None and not self.log_scale:
+            self.coerce_positive = (y >= 0).all()
         y = self._preprocess_y(y)
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
@@ -495,12 +517,12 @@ class GroupNormalizer(TorchNormalizer):
 
     def inverse_transform(self, y: pd.Series, X: pd.DataFrame):
         """
-        Rescaling data to original scale - not implemented.
+        Rescaling data to original scale - not implemented - call class with target scale instead.
         """
         raise NotImplementedError()
 
     def transform(
-        self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False
+        self, y: pd.Series, X: pd.DataFrame = None, return_norm: bool = False, target_scale: torch.Tensor = None
     ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """
         Scale input data.
@@ -509,21 +531,16 @@ class GroupNormalizer(TorchNormalizer):
             y (pd.Series): data to scale
             X (pd.DataFrame): dataframe with ``groups`` columns
             return_norm (bool, optional): If to return . Defaults to False.
+            target_scale (torch.Tensor): target scale to use instead of fitted center and scale
 
         Returns:
             Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
                 as second element
         """
-        norm = self.get_norm(X)
-        y = self._preprocess_y(y)
-        if self.center:
-            y_normed = (y / (norm[:, 0] + self.eps) - 1) / (norm[:, 1] + self.eps)
-        else:
-            y_normed = y / (norm[:, 0] + self.eps)
-        if return_norm:
-            return y_normed, norm
-        else:
-            return y_normed
+        if target_scale is None:
+            assert X is not None, "either target_scale or X has to be passed"
+            target_scale = self.get_norm(X)
+        return super().transform(y=y, return_norm=return_norm, target_scale=target_scale)
 
     def get_parameters(self, groups: Union[torch.Tensor, list, tuple], group_names: List[str] = None) -> np.ndarray:
         """
