@@ -6,9 +6,9 @@ import warnings
 
 from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
+from sklearn.base import BaseEstimator
 import torch
-from torch import nn
-from torch import distributions
+from torch import distributions, nn
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -617,6 +617,22 @@ class MASE(MultiHorizonMetric):
 
 
 class DistributionLoss(MultiHorizonMetric):
+    """
+    DistributionLoss base class.
+
+    Class should be inherited for all distribution losses, i.e. if a network predicts
+    the parameters of a probability distribution, DistributionLoss can be used to
+    score those parameters and calculate loss for given true values.
+
+    Define two class attributes in a child class:
+
+    Attributes:
+        distribution_class (distributions.Distribution): torch probability distribution
+        distribution_arguments (List[str]): list of parameter names for the distribution
+
+    Further, implement the methods :py:meth:`~map_x_to_distribution` and :py:meth:`~transform_parameters`.
+
+    """
 
     distribution_class: distributions.Distribution
     distribution_arguments: List[str]
@@ -626,8 +642,17 @@ class DistributionLoss(MultiHorizonMetric):
         super().__init__(name=name, reduction=reduction, quantiles=quantiles)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
-        kwargs = {name: x[..., idx] for idx, name in enumerate(self.distribution_arguments)}
-        return self.distribution_class(**kwargs)
+        """
+        Map the a tensor of parameters to a probability distribution.
+
+        Args:
+            x (torch.Tensor): parameters for probability distribution. Last dimension will index the parameters
+
+        Returns:
+            distributions.Distribution: torch probability distribution as defined in the
+                class attribute ``distribution_class``
+        """
+        raise NotImplementedError("implement this method")
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """
@@ -644,55 +669,161 @@ class DistributionLoss(MultiHorizonMetric):
         loss = -distribution.log_prob(y_actual)
         return loss
 
-    def to_prediction(self, y_pred: torch.Tensor, samples: int = None) -> torch.Tensor:
+    def transform_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
+    ) -> torch.Tensor:
+        """
+        Transform normalized parameters into the scale required for the distribution.
+
+        [extended_summary]
+
+        Args:
+            parameters (torch.Tensor): normalized parameters (indexed by last dimension)
+            target_scale (torch.Tensor): scale of parameters (n_batch_samples x (center, scale))
+            transformer (BaseEstimator): original transformer that normalized the target in the first place
+
+        Returns:
+            torch.Tensor: parameters in real/not normalized space
+        """
+        return parameters
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
 
         Args:
-            y_pred: prediction output of network
-            samples: number of samples to draw. By default return mean.
+            y_pred: prediction output of network (with ``output_type = samples``)
 
         Returns:
-            torch.Tensor: point prediction
+            torch.Tensor: mean prediction
         """
-        dist = self.map_x_to_distribution(y_pred)
-        if samples is None:
-            return dist.mean
-        else:
-            dist.sample_n(samples)
+        return y_pred.mean(-1)
 
-    def sample_n(self, y_pred, samples: int) -> torch.Tensor:
+    def sample_n(self, y_pred, n_samples: int) -> torch.Tensor:
         """
         Sample from distribution.
 
         Args:
             y_pred: prediction output of network
-            samples (int): number of samples to draw
+            n_samples (int): number of samples to draw
 
         Returns:
             torch.Tensor: tensor where first dimensionare samples
         """
         dist = self.map_x_to_distribution(y_pred)
-        return dist.sample_n(samples)
+        return dist.sample_n(n_samples)
 
-    def to_quantiles(self, y_pred: torch.Tensor, samples: int = 100) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
         Args:
-            y_pred: prediction output of network
-            samples: number of samples to draw for calculating quantiles. Defaults to 100.
+            y_pred: prediction output of network (with ``output_type = samples``)
 
         Returns:
             torch.Tensor: prediction quantiles (last dimension)
         """
-        values = self.sample_n(y_pred, samples=samples)
-        # todo: replace with torch.quantile in torch>=1.7
-        quantiles = torch.stack([torch.kthvalue(values, int(samples * q), dim=0)[0] for q in self.quantiles], dim=-1)
+        samples = y_pred.size(-1)
+        quantiles = torch.stack(
+            [
+                torch.kthvalue(y_pred, int(samples * q), dim=-1)[0] if samples > 1 else y_pred[..., 0]
+                for q in self.quantiles
+            ],
+            dim=-1,
+        )
         return quantiles
 
 
 class NormalDistributionLoss(DistributionLoss):
+    """
+    Normal distribution loss.
+
+    Requirements for original target normalizer:
+        * not normalized in log space (use :py:class:`~LogNormalDistributionLoss`)
+        * not coerced to be positive
+    """
 
     distribution_class = distributions.Normal
     distribution_arguments = ["loc", "scale"]
+
+    def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
+        return self.distribution_class(loc=x[..., 0], scale=x[..., 1])
+
+    def transform_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
+    ) -> torch.Tensor:
+        assert not transformer.coerce_positive, "Normal distribution is not compatible with strictly positive data"
+        assert (
+            not transformer.log_scale
+        ), "Normal distribution is not compatible with log transformation - use LogNormal"
+
+        loc = transformer(dict(prediction=parameters[..., 0], target_scale=target_scale))
+        scale = F.softplus(parameters[..., 1]) * target_scale[..., 0].unsqueeze(1)
+        if transformer.center:
+            scale = scale * target_scale[..., 1].unsqueeze(1)
+        return torch.stack([loc, scale], dim=-1)
+
+
+class NegativeBinomialDistributionLoss(DistributionLoss):
+    """
+    Negative binomial loss, e.g. for count data.
+
+    Requirements for original target normalizer:
+        * not centered normalization (only rescaled)
+    """
+
+    distribution_class = distributions.NegativeBinomial
+    distribution_arguments = ["mean", "shape"]
+
+    def map_x_to_distribution(self, x: torch.Tensor) -> distributions.NegativeBinomial:
+        mean = x[:, 0]
+        shape = x[:, 1]
+        r = 1.0 / shape
+        p = mean / (mean + r)
+        return self.distribution_class(total_count=r, probs=p)
+
+    def transform_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
+    ) -> torch.Tensor:
+        assert (
+            not transformer.center
+        ), "NegativeBinomialDistributionLoss is not compatible with `center=True` normalization"
+        if transformer.log_scale:
+            mean = parameters[..., 0] = torch.exp(parameters[..., 0] * target_scale[..., 0])
+            shape = parameters[..., 1] = (
+                F.softplus(prediction=parameters[..., 1])
+                / torch.exp(target_scale[..., 0]).sqrt()  # todo: is this correct?
+            )
+        else:
+            mean = parameters[..., 0] = F.softplus(parameters[..., 0]) * target_scale[..., 0]
+            shape = parameters[..., 1] = F.softplus(parameters[..., 1]) / target_scale[..., 0].sqrt()
+        return torch.stack([mean, shape], dim=-1)
+
+
+class LogNormalDistributionLoss(DistributionLoss):
+    """
+    Log-normal loss.
+
+    Requirements for original target normalizer:
+        * normalized target in log space
+    """
+
+    distribution_class = distributions.LogNormal
+    distribution_arguments = ["loc", "scale"]
+
+    def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
+        return self.distribution_class(loc=x[:, 0], scale=x[:, 1])
+
+    def transform_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
+    ) -> torch.Tensor:
+        assert transformer.log_scale, "Log distribution requires log scaling"
+
+        scale = parameters[..., 1] * target_scale[..., 0]
+        if transformer.center:
+            loc = (parameters[..., 0] * target_scale[:, 1, None] + 1) * target_scale[:, 0, None]
+            scale = scale * target_scale[..., 1]
+        else:
+            loc = parameters[..., 0] * target_scale[:, 0, None]
+
+        return torch.stack([loc, scale], dim=-1)
