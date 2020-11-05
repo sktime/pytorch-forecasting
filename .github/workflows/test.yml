@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, macOS-10.15] # add windows-2019 when poetry allows installation with `-f` flag
-        python-version: [3.6, 3.7, 3.8]  # todo: add 3.9 to test matrix
+        python-version: [3.6, 3.7, 3.8] # python 3.9 is not supported by all dependencies yet
 
     steps:
       - uses: actions/checkout@v2

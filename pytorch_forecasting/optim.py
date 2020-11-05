@@ -128,6 +128,7 @@ class Ranger(Optimizer):
         Arguments:
             closure: A closure that reevaluates the model and returns the loss.
         """
+        _ = closure()
         loss = None
         # note - below is commented out b/c I have other work that passes back
         # the loss as a float, and thus not a callable closure.
