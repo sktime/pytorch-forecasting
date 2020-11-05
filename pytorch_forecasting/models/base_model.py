@@ -144,7 +144,7 @@ class BaseModel(LightningModule):
     def validation_epoch_end(self, outputs):
         self.epoch_end(outputs, label="val")
 
-    def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train"):
+    def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train", **kwargs):
         """
         Run for each train/val step.
         """
@@ -159,7 +159,7 @@ class BaseModel(LightningModule):
                 "To use monotone constraints, wrap model and training in context "
                 "`torch.backends.cudnn.flags(enable=False)`"
             )
-            out = self(x)
+            out = self(x, **kwargs)
             out["prediction"] = self.transform_output(out)
             prediction = out["prediction"]
 
@@ -193,7 +193,7 @@ class BaseModel(LightningModule):
 
             loss = loss * (1 + monotinicity_loss)
         else:
-            out = self(x)
+            out = self(x, **kwargs)
             out["prediction"] = self.transform_output(out)
 
             # calculate loss
@@ -205,8 +205,30 @@ class BaseModel(LightningModule):
             else:
                 loss = self.loss(prediction, y)
 
+        # log
+        self._log_metrics(x, y, out, label=label)
+        if self.log_interval(label == "train") > 0:
+            self._log_prediction(x, out, batch_idx, label=label)
+        log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
+
+        return log, out
+
+    def _log_metrics(
+        self, x: Dict[str, torch.Tensor], y: torch.Tensor, out: Dict[str, torch.Tensor], label: str = "train"
+    ) -> None:
+        """
+        Log metrics every training/validation step
+
+        [extended_summary]
+
+        Args:
+            x (Dict[str, torch.Tensor]): [description]
+            y (torch.Tensor): [description]
+            out (Dict[str, torch.Tensor]): [description]
+            label (str, optional): [description]. Defaults to "train".
+        """
         # logging losses
-        y_hat_detached = prediction.detach()
+        y_hat_detached = out["prediction"].detach()
         y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
         for metric in self.logging_metrics:
             if isinstance(metric, MASE):
@@ -216,10 +238,6 @@ class BaseModel(LightningModule):
             else:
                 loss_value = metric(y_hat_point_detached, y)
             self.log(f"{label}_{metric.name}", loss_value, on_step=label == "train", on_epoch=True)
-        log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
-        if self.log_interval(label == "train") > 0:
-            self._log_prediction(x, out, batch_idx, label=label)
-        return log, out
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
@@ -248,7 +266,7 @@ class BaseModel(LightningModule):
         else:
             return self.hparams.log_val_interval
 
-    def _log_prediction(self, x, out, batch_idx, label="train"):
+    def _log_prediction(self, x, out, batch_idx, label="train") -> None:
         # log single prediction figure
         log_interval = self.log_interval(label == "train")
         if (batch_idx % log_interval == 0 or log_interval < 1.0) and log_interval > 0:
@@ -276,7 +294,7 @@ class BaseModel(LightningModule):
         x: Dict[str, torch.Tensor],
         out: Dict[str, torch.Tensor],
         idx: int = 0,
-        add_loss_to_title: Union[Metric, bool] = False,
+        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
     ) -> plt.Figure:
@@ -287,7 +305,8 @@ class BaseModel(LightningModule):
             x: network input
             out: network output
             idx: index of prediction to plot
-            add_loss_to_title: if to add loss to title or loss function to calculate. Default to False.
+            add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
+                bool indicating if to use loss metric or tensor which contains losses for all samples. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
 
@@ -356,16 +375,22 @@ class BaseModel(LightningModule):
                     c=pred_color,
                     capsize=1.0,
                 )
-        if add_loss_to_title:
+        if add_loss_to_title is not False:
             if isinstance(add_loss_to_title, bool):
                 loss = self.loss
-            else:
+            elif isinstance(add_loss_to_title, torch.Tensor):
+                loss = add_loss_to_title.detach()[idx].item()
+            elif isinstance(add_loss_to_title, Metric):
                 loss = add_loss_to_title
                 loss.quantiles = self.loss.quantiles
+            else:
+                raise ValueError(f"add_loss_to_title '{add_loss_to_title}'' is unkown")
             if isinstance(loss, MASE):
                 loss_value = loss(y_hat[None], y[-n_pred:][None], y[:n_pred][None])
-            else:
+            elif isinstance(loss, Metric):
                 loss_value = loss(y_hat[None], y[-n_pred:][None])
+            else:
+                loss_value = loss
             ax.set_title(f"Loss {loss_value:.3g}")
         ax.set_xlabel("Time index")
         fig.legend()
@@ -510,6 +535,7 @@ class BaseModel(LightningModule):
         fast_dev_run: bool = False,
         show_progress_bar: bool = False,
         return_x: bool = False,
+        **kwargs,
     ):
         """
         predict dataloader
@@ -525,6 +551,7 @@ class BaseModel(LightningModule):
             fast_dev_run: if to only return results of first batch
             show_progress_bar: if to show progress bar. Defaults to False.
             return_x: if to return network inputs
+            **kwargs: additional arguments to network's forward method
 
         Returns:
             output, x, index, decoder_lengths: some elements might not be present depending on what is configured
@@ -558,7 +585,7 @@ class BaseModel(LightningModule):
                         x[name].to(self.device)
 
                 # make prediction
-                out = self(x)  # raw output is dictionary
+                out = self(x, **kwargs)  # raw output is dictionary
                 out["prediction"] = self.transform_output(out)
 
                 lengths = x["decoder_lengths"]
@@ -847,7 +874,7 @@ class BaseModelWithCovariates(BaseModel):
 
         Args:
             x: input as ``forward()``
-            y_pred: predictions obtained by ``self.transform_output(self(x))``
+            y_pred: predictions obtained by ``self.transform_output(self(x, **kwargs))``
             normalize: if to return normalized averages, i.e. mean or sum of ``y``
             bins: number of bins to calculate
             std: number of standard deviations for standard scaled continuous variables
