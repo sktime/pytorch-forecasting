@@ -4,11 +4,11 @@ Implementation of metrics for (mulit-horizon) timeseries forecasting.
 from typing import Dict, List, Union
 import warnings
 
+import numpy as np
 from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 from sklearn.base import BaseEstimator
 import torch
-import numpy as np
 from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn

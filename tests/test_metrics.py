@@ -1,19 +1,19 @@
 import itertools
-from pytorch_forecasting.data.encoders import TorchNormalizer
 
+import numpy as np
 import pytest
 import torch
-import numpy as np
 from torch.nn.utils import rnn
 
+from pytorch_forecasting.data.encoders import TorchNormalizer
 from pytorch_forecasting.metrics import (
-    LogNormalDistributionLoss,
-    NegativeBinomialDistributionLoss,
     MAE,
-    NormalDistributionLoss,
     SMAPE,
     AggregationMetric,
     CompositeMetric,
+    LogNormalDistributionLoss,
+    NegativeBinomialDistributionLoss,
+    NormalDistributionLoss,
 )
 
 

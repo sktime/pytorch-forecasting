@@ -236,7 +236,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         n_samples: int = None,
     ) -> Tuple[torch.Tensor, bool]:
         """
-        Decode hidden state of RNN into prediction. If n_smaples is given, decode not by using actual values but rather by
+        Decode hidden state of RNN into prediction. If n_smaples is given,
+        decode not by using actual values but rather by
         sampling new targets from past predictions iteratively
         """
         if n_samples is None:
@@ -279,7 +280,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 # sample value(s) from distribution
                 prediction = self.loss.sample_n(prediction_parameters, 1)[0]  # select first sample
                 # normalize prediction prediction
-                # todo: how to handle lags (-> need list of lags and positions -> then if prediction lenght larger than lag start imputing -> before that let timeseriesdataset take care)?
+                # todo: how to handle lags (-> need list of lags and positions
+                #   -> then if prediction lenght larger than lag start imputing ->
+                #   before that let timeseriesdataset take care)?
                 normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
                 input_target = normalized_prediction[:, 0]  # set next input target to normalized prediction
 

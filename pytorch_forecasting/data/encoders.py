@@ -173,7 +173,8 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 * True, i.e. output is clamped at 0.
                 * False, i.e. values are not coerced
                 * float, i.e. softmax is applied with beta = coerce_positive.
-            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8. For count data, 1.0 is recommended.
+            eps (float, optional): Number for numerical stability of calcualtions.
+                Defaults to 1e-8. For count data, 1.0 is recommended.
         """
         self.method = method
         assert method in ["standard", "robust"], f"method has invalid value {method}"
@@ -400,7 +401,8 @@ class GroupNormalizer(TorchNormalizer):
                 * True, i.e. output is clamped at 0.
                 * False, i.e. values are not coerced
                 * float, i.e. softmax is applied with beta = coerce_positive.
-            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8. For count data, 1.0 is recommended.
+            eps (float, optional): Number for numerical stability of calcualtions.
+                Defaults to 1e-8. For count data, 1.0 is recommended.
         """
         self.groups = groups
         self.scale_by_group = scale_by_group
