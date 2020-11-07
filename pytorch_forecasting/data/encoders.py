@@ -155,7 +155,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         method: str = "standard",
         center: bool = True,
         log_scale: Union[bool, float] = False,
-        log_zero_value: float = 0.0,
+        log_zero_value: float = -np.inf,
         coerce_positive: Union[float, bool] = None,
         eps: float = 1e-8,
     ):
@@ -167,13 +167,13 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 (scale using quantiles 0.25-0.75). Defaults to "standard".
             center (bool, optional): If to center the output to zero. Defaults to True.
             log_scale (bool, optional): If to take log of values. Defaults to False. Defaults to False.
-            log_zero_value (float, optional): Value to map 0 to for ``log_scale=True`` or in softplus. Defaults to 0.0
+            log_zero_value (float, optional): Value to map 0 to for ``log_scale=True`` or in softplus. Defaults to -inf.
             coerce_positive (Union[bool, float, str], optional): If to coerce output to positive. Valid values:
                 * None, i.e. is automatically determined and might change to True if all values are >= 0 (Default).
                 * True, i.e. output is clamped at 0.
                 * False, i.e. values are not coerced
                 * float, i.e. softmax is applied with beta = coerce_positive.
-            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8.
+            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8. For count data, 1.0 is recommended.
         """
         self.method = method
         assert method in ["standard", "robust"], f"method has invalid value {method}"
@@ -202,7 +202,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             torch.Tensor: First element is center of data and second is scale
         """
-        return torch.tensor([self.center_, self.scale_])
+        return torch.stack([torch.as_tensor(self.center_), torch.as_tensor(self.scale_)], dim=-1)
 
     def _preprocess_y(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
         """
@@ -236,29 +236,35 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
 
         if self.method == "standard":
             if isinstance(y, torch.Tensor):
-                self.center_ = torch.mean(y, dim=-1)
-                self.scale_ = torch.std(y, dim=-1) / (self.center_ + self.eps)
+                self.center_ = torch.mean(y, dim=-1) + self.eps
+                self.scale_ = torch.std(y, dim=-1) + self.eps
             elif isinstance(y, np.ndarray):
-                self.center_ = np.mean(y, axis=-1)
-                self.scale_ = np.std(y, axis=-1) / (self.center_ + self.eps)
+                self.center_ = np.mean(y, axis=-1) + self.eps
+                self.scale_ = np.std(y, axis=-1) + self.eps
             else:
-                self.center_ = np.mean(y)
-                self.scale_ = np.std(y)
+                self.center_ = np.mean(y) + self.eps
+                self.scale_ = np.std(y) + self.eps
 
         elif self.method == "robust":
             if isinstance(y, torch.Tensor):
-                self.center_ = torch.median(y, dim=-1).values
+                self.center_ = torch.median(y, dim=-1).values + self.eps
                 q_75 = y.kthvalue(int(len(y) * 0.75), dim=-1).values
                 q_25 = y.kthvalue(int(len(y) * 0.25), dim=-1).values
             elif isinstance(y, np.ndarray):
-                self.center_ = np.median(y, axis=-1)
+                self.center_ = np.median(y, axis=-1) + self.eps
                 q_75 = np.percentiley(y, 75, axis=-1)
                 q_25 = np.percentiley(y, 25, axis=-1)
             else:
-                self.center_ = np.median(y)
+                self.center_ = np.median(y) + self.eps
                 q_75 = np.percentiley(y, 75)
                 q_25 = np.percentiley(y, 25)
-            self.scale_ = (q_75 - q_25) / (self.center_ + self.eps) / 2.0
+            self.scale_ = (q_75 - q_25) / 2.0 + self.eps
+        if not self.center:
+            self.scale_ = self.center_
+            if isinstance(y, torch.Tensor):
+                self.center_ = torch.zeros_like(self.center_)
+            else:
+                self.center_ = np.zeros_like(self.center_)
         return self
 
     def transform(
@@ -290,10 +296,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
         # transform
-        if self.center:
-            y = (y / (center + self.eps) - 1) / (scale + self.eps)
-        else:
-            y = y / (center + self.eps)
+        y = (y - center) / scale
 
         # return with center and scale or without
         if return_norm:
@@ -335,10 +338,8 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             norm = norm.unsqueeze(-1)
 
         # transform
-        if self.center:
-            y_normed = (data["prediction"] * norm[:, 1, None] + 1) * norm[:, 0, None]
-        else:
-            y_normed = data["prediction"] * norm[:, 0, None]
+        y_normed = data["prediction"] * norm[:, 1, None] + norm[:, 0, None]
+
         if self.log_scale:
             y_normed = (y_normed.exp() - self.log_zero_value).clamp_min(0.0)
         elif isinstance(self.coerce_positive, bool) and self.coerce_positive:
@@ -399,7 +400,7 @@ class GroupNormalizer(TorchNormalizer):
                 * True, i.e. output is clamped at 0.
                 * False, i.e. values are not coerced
                 * float, i.e. softmax is applied with beta = coerce_positive.
-            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8.
+            eps (float, optional): Number for numerical stability of calcualtions. Defaults to 1e-8. For count data, 1.0 is recommended.
         """
         self.groups = groups
         self.scale_by_group = scale_by_group
@@ -429,11 +430,16 @@ class GroupNormalizer(TorchNormalizer):
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
-                mean = np.mean(y)
-                self.norm_ = mean, np.std(y) / (mean + self.eps)
+                self.norm_ = [np.mean(y) + self.eps, np.std(y) + self.eps]  # center and scale
             else:
                 quantiles = np.quantile(y, [0.25, 0.5, 0.75])
-                self.norm_ = quantiles[1], (quantiles[2] - quantiles[0]) / (quantiles[1] + self.eps)
+                self.norm_ = [
+                    quantiles[1] + self.eps,
+                    (quantiles[2] - quantiles[0]) / 2.0 + self.eps,
+                ]  # center and scale
+            if not self.center:
+                self.norm_[1] = self.norm_[0]
+                self.norm_[0] = 0.0
 
         elif self.scale_by_group:
             if self.method == "standard":
@@ -441,8 +447,8 @@ class GroupNormalizer(TorchNormalizer):
                     g: X[[g]]
                     .assign(y=y)
                     .groupby(g, observed=True)
-                    .agg(mean=("y", "mean"), scale=("y", "std"))
-                    .assign(scale=lambda x: x.scale / (x["mean"] + self.eps))
+                    .agg(center=("y", "mean"), scale=("y", "std"))
+                    .assign(center=lambda x: x["center"] + self.eps, scale=lambda x: x.scale + self.eps)
                     for g in self.groups
                 }
             else:
@@ -453,12 +459,20 @@ class GroupNormalizer(TorchNormalizer):
                     .y.quantile([0.25, 0.5, 0.75])
                     .unstack(-1)
                     .assign(
-                        median=lambda x: x[0.5] + self.eps,
-                        scale=lambda x: (x[0.75] - x[0.25] + self.eps) / (x[0.5] + self.eps),
-                    )[["median", "scale"]]
+                        center=lambda x: x[0.5] + self.eps,
+                        scale=lambda x: (x[0.75] - x[0.25]) / 2.0 + self.eps,
+                    )[["center", "scale"]]
                     for g in self.groups
                 }
             # calculate missings
+            if not self.center:  # swap center and scale
+
+                def swap_parameters(norm):
+                    norm["scale"] = norm["center"]
+                    norm["center"] = 0.0
+                    return norm
+
+                self.norm = {g: swap_parameters(norm) for g, norm in self.norm_.items()}
             self.missing_ = {group: scales.median().to_dict() for group, scales in self.norm_.items()}
 
         else:
@@ -467,8 +481,8 @@ class GroupNormalizer(TorchNormalizer):
                     X[self.groups]
                     .assign(y=y)
                     .groupby(self.groups, observed=True)
-                    .agg(mean=("y", "mean"), scale=("y", "std"))
-                    .assign(scale=lambda x: x.scale / (x["mean"] + self.eps))
+                    .agg(center=("y", "mean"), scale=("y", "std"))
+                    .assign(center=lambda x: x["center"] + self.eps, scale=lambda x: x.scale + self.eps)
                 )
             else:
                 self.norm_ = (
@@ -478,10 +492,13 @@ class GroupNormalizer(TorchNormalizer):
                     .y.quantile([0.25, 0.5, 0.75])
                     .unstack(-1)
                     .assign(
-                        median=lambda x: x[0.5] + self.eps,
-                        scale=lambda x: (x[0.75] - x[0.25] + self.eps) / (x[0.5] + self.eps) / 2.0,
-                    )[["median", "scale"]]
+                        center=lambda x: x[0.5] + self.eps,
+                        scale=lambda x: (x[0.75] - x[0.25]) / 2.0 + self.eps,
+                    )[["center", "scale"]]
                 )
+            if not self.center:  # swap center and scale
+                self.norm_["scale"] = self.norm_["center"]
+                self.norm_["center"] = 0.0
             self.missing_ = self.norm_.median().to_dict()
         return self
 
@@ -493,10 +510,7 @@ class GroupNormalizer(TorchNormalizer):
         Returns:
             List[str]: list of names
         """
-        if self.method == "standard":
-            return ["mean", "scale"]
-        else:
-            return ["median", "scale"]
+        return ["center", "scale"]
 
     def fit_transform(
         self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False

@@ -8,7 +8,8 @@ from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 from sklearn.base import BaseEstimator
 import torch
-from torch import distributions, nn
+import numpy as np
+from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -630,16 +631,12 @@ class DistributionLoss(MultiHorizonMetric):
         distribution_class (distributions.Distribution): torch probability distribution
         distribution_arguments (List[str]): list of parameter names for the distribution
 
-    Further, implement the methods :py:meth:`~map_x_to_distribution` and :py:meth:`~transform_parameters`.
+    Further, implement the methods :py:meth:`~map_x_to_distribution` and :py:meth:`~rescale_parameters`.
 
     """
 
     distribution_class: distributions.Distribution
     distribution_arguments: List[str]
-
-    def __init__(self, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98], reduction: str = "mean"):
-        name = self.distribution_class.__name__
-        super().__init__(name=name, reduction=reduction, quantiles=quantiles)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
         """
@@ -669,11 +666,11 @@ class DistributionLoss(MultiHorizonMetric):
         loss = -distribution.log_prob(y_actual)
         return loss
 
-    def transform_parameters(
+    def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
         """
-        Transform normalized parameters into the scale required for the distribution.
+        Rescale normalized parameters into the scale required for the distribution.
 
         [extended_summary]
 
@@ -749,7 +746,7 @@ class NormalDistributionLoss(DistributionLoss):
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
         return self.distribution_class(loc=x[..., 0], scale=x[..., 1])
 
-    def transform_parameters(
+    def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
         assert not transformer.coerce_positive, "Normal distribution is not compatible with strictly positive data"
@@ -758,9 +755,7 @@ class NormalDistributionLoss(DistributionLoss):
         ), "Normal distribution is not compatible with log transformation - use LogNormal"
 
         loc = transformer(dict(prediction=parameters[..., 0], target_scale=target_scale))
-        scale = F.softplus(parameters[..., 1]) * target_scale[..., 0].unsqueeze(1)
-        if transformer.center:
-            scale = scale * target_scale[..., 1].unsqueeze(1)
+        scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(1)
         return torch.stack([loc, scale], dim=-1)
 
 
@@ -770,33 +765,34 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
 
     Requirements for original target normalizer:
         * not centered normalization (only rescaled)
+        * Optional: Use ``eps=1`` if you are dealing with count data
     """
 
     distribution_class = distributions.NegativeBinomial
     distribution_arguments = ["mean", "shape"]
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.NegativeBinomial:
-        mean = x[:, 0]
-        shape = x[:, 1]
+        mean = x[..., 0]
+        shape = x[..., 1]
         r = 1.0 / shape
         p = mean / (mean + r)
         return self.distribution_class(total_count=r, probs=p)
 
-    def transform_parameters(
+    def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
         assert (
             not transformer.center
         ), "NegativeBinomialDistributionLoss is not compatible with `center=True` normalization"
         if transformer.log_scale:
-            mean = parameters[..., 0] = torch.exp(parameters[..., 0] * target_scale[..., 0])
-            shape = parameters[..., 1] = (
-                F.softplus(prediction=parameters[..., 1])
-                / torch.exp(target_scale[..., 0]).sqrt()  # todo: is this correct?
+            mean = torch.exp(parameters[..., 0] * target_scale[..., 1].unsqueeze(-1))
+            shape = (
+                F.softplus(torch.exp(parameters[..., 1]))
+                / torch.exp(target_scale[..., 1].unsqueeze(-1)).sqrt()  # todo: is this correct?
             )
         else:
-            mean = parameters[..., 0] = F.softplus(parameters[..., 0]) * target_scale[..., 0]
-            shape = parameters[..., 1] = F.softplus(parameters[..., 1]) / target_scale[..., 0].sqrt()
+            mean = F.softplus(parameters[..., 0]) * target_scale[..., 1].unsqueeze(-1)
+            shape = F.softplus(parameters[..., 1]) / target_scale[..., 1].unsqueeze(-1).sqrt()
         return torch.stack([mean, shape], dim=-1)
 
 
@@ -812,18 +808,17 @@ class LogNormalDistributionLoss(DistributionLoss):
     distribution_arguments = ["loc", "scale"]
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
-        return self.distribution_class(loc=x[:, 0], scale=x[:, 1])
+        return self.distribution_class(loc=x[..., 0], scale=x[..., 1])
 
-    def transform_parameters(
+    def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
         assert transformer.log_scale, "Log distribution requires log scaling"
+        assert np.isclose(
+            transformer.log_zero_value, 0.0
+        ), f"Log scaling should be done with log_zero_value = -np.inf but found {np.log(transformer.log_zero_value)}"
 
-        scale = parameters[..., 1] * target_scale[..., 0]
-        if transformer.center:
-            loc = (parameters[..., 0] * target_scale[:, 1, None] + 1) * target_scale[:, 0, None]
-            scale = scale * target_scale[..., 1]
-        else:
-            loc = parameters[..., 0] * target_scale[:, 0, None]
+        scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(-1)
+        loc = parameters[..., 0] * target_scale[..., 1].unsqueeze(-1) + target_scale[..., 0].unsqueeze(-1)
 
         return torch.stack([loc, scale], dim=-1)

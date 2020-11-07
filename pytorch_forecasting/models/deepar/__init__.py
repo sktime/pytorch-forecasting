@@ -379,7 +379,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             if out["prediction_type"] == "samples":  # samples are already rescaled
                 out = out["prediction"]
             elif out["prediction_type"] == "parameters":  # parameters need to be rescaled
-                out = self.loss.transform_parameters(
+                out = self.loss.rescale_parameters(
                     out["prediction"], target_scale=out["target_scale"], transformer=self.output_transformer
                 )
             else:
