@@ -1,10 +1,20 @@
 import itertools
 
+import numpy as np
 import pytest
 import torch
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.metrics import MAE, SMAPE, AggregationMetric, CompositeMetric
+from pytorch_forecasting.data.encoders import TorchNormalizer
+from pytorch_forecasting.metrics import (
+    MAE,
+    SMAPE,
+    AggregationMetric,
+    CompositeMetric,
+    LogNormalDistributionLoss,
+    NegativeBinomialDistributionLoss,
+    NormalDistributionLoss,
+)
 
 
 def test_composite_metric():
@@ -59,3 +69,100 @@ def test_none_reduction():
 
     mae = MAE(reduction="none")(pred, target)
     assert mae.size() == pred.size(), "dimension should not change if reduction is none"
+
+
+@pytest.mark.parametrize(
+    ["log_scale", "center", "coerce_positive"],
+    itertools.product([True, False], [True, False], [True, False]),
+)
+def test_NormalDistributionLoss(log_scale, center, coerce_positive):
+    mean = 1000.0
+    std = 200.0
+    n = 100000
+    target = NormalDistributionLoss.distribution_class(loc=mean, scale=std).sample_n(n)
+    if log_scale or coerce_positive:
+        target = target.abs()
+    if log_scale and coerce_positive:
+        return  # combination invalid for normalizer (tested somewhere else)
+    normalizer = TorchNormalizer(log_scale=log_scale, center=center, coerce_positive=coerce_positive)
+    normalized_target = normalizer.fit_transform(target).view(1, -1)
+    target_scale = normalizer.get_parameters().unsqueeze(0)
+    scale = torch.ones_like(normalized_target) * normalized_target.std()
+    parameters = torch.stack(
+        [normalized_target, scale],
+        dim=-1,
+    )
+    loss = NormalDistributionLoss()
+    if log_scale or coerce_positive:
+        with pytest.raises(AssertionError):
+            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+    else:
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+        samples = loss.sample_n(rescaled_parameters, 1)
+        assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.2)
+        if center:  # if not centered, softplus distorts std too much for testing
+            assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.7)
+
+
+@pytest.mark.parametrize(
+    ["log_scale", "center", "coerce_positive", "log_zero_value"],
+    itertools.product([True, False], [True, False], [True, False], [-np.inf, 0.0]),
+)
+def test_LogNormalDistributionLoss(log_scale, center, coerce_positive, log_zero_value):
+    mean = 2.0
+    std = 0.2
+    n = 100000
+    target = LogNormalDistributionLoss.distribution_class(loc=mean, scale=std).sample_n(n)
+    if log_scale and coerce_positive:
+        return  # combination invalid for normalizer (tested somewhere else)
+    normalizer = TorchNormalizer(
+        log_scale=log_scale, center=center, coerce_positive=coerce_positive, log_zero_value=log_zero_value
+    )
+    normalized_target = normalizer.fit_transform(target).view(1, -1)
+    target_scale = normalizer.get_parameters().unsqueeze(0)
+    scale = torch.ones_like(normalized_target) * normalized_target.std()
+    parameters = torch.stack(
+        [normalized_target, scale],
+        dim=-1,
+    )
+    loss = LogNormalDistributionLoss()
+
+    if not log_scale or log_zero_value > -1e9:
+        with pytest.raises(AssertionError):
+            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+    else:
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+        samples = loss.sample_n(rescaled_parameters, 1)
+        assert torch.isclose(torch.as_tensor(mean), samples.log().mean(), atol=0.1, rtol=0.2)
+        if center:  # if not centered, softplus distorts std too much for testing
+            assert torch.isclose(torch.as_tensor(std), samples.log().std(), atol=0.1, rtol=0.7)
+
+
+@pytest.mark.parametrize(
+    ["log_scale", "center", "coerce_positive", "log_zero_value"],
+    itertools.product([True, False], [True, False], [True, False], [-np.inf, 0.0]),
+)
+def test_NegativeBinomialDistributionLoss(log_scale, center, coerce_positive, log_zero_value):
+    mean = 100.0
+    shape = 1.0
+    n = 100000
+    target = NegativeBinomialDistributionLoss().map_x_to_distribution(torch.tensor([mean, shape])).sample_n(n)
+    std = target.std()
+    if log_scale and coerce_positive:
+        return  # combination invalid for normalizer (tested somewhere else)
+    normalizer = TorchNormalizer(
+        log_scale=log_scale, center=center, coerce_positive=coerce_positive, log_zero_value=log_zero_value
+    )
+    normalized_target = normalizer.fit_transform(target).view(1, -1)
+    target_scale = normalizer.get_parameters().unsqueeze(0)
+    parameters = torch.stack([normalized_target, 1.0 * torch.ones_like(normalized_target)], dim=-1)
+    loss = NegativeBinomialDistributionLoss()
+
+    if center:
+        with pytest.raises(AssertionError):
+            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+    else:
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+        samples = loss.sample_n(rescaled_parameters, 1)
+        assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.5)
+        assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.5)

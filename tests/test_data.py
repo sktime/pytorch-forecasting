@@ -347,7 +347,7 @@ def test_find_end_indices():
 
 
 def test_raise_short_encoder_length(test_data):
-    with pytest.raises(ValueError):
+    with pytest.warns(UserWarning):
         test_data = test_data[lambda x: ~((x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3))]
         TimeSeriesDataSet(
             test_data,
