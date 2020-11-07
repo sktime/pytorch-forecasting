@@ -442,7 +442,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # # run local encoder
         encoder_output, (hidden, cell) = self.lstm_encoder(
             rnn.pack_padded_sequence(
-                embeddings_varying_encoder, lstm_encoder_lengths, enforce_sorted=False, batch_first=True
+                embeddings_varying_encoder, lstm_encoder_lengths.cpu(), enforce_sorted=False, batch_first=True
             ),
             (input_hidden, input_cell),
         )
@@ -455,7 +455,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # run local decoder
         decoder_output, _ = self.lstm_decoder(
             rnn.pack_padded_sequence(
-                embeddings_varying_decoder, decoder_lengths, enforce_sorted=False, batch_first=True
+                embeddings_varying_decoder, decoder_lengths.cpu(), enforce_sorted=False, batch_first=True
             ),
             (hidden, cell),
         )
@@ -510,7 +510,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             target_scale=x["target_scale"],
         )
 
-    def on_train_end(self):
+    def on_fit_end(self):
         if self.log_interval(train=True) > 0:
             self._log_embeddings()
 

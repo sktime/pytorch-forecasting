@@ -207,7 +207,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             rnn_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
             input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
             _, (hidden, cell) = self.rnn(
-                rnn.pack_padded_sequence(input_vector, rnn_encoder_lengths, enforce_sorted=False, batch_first=True)
+                rnn.pack_padded_sequence(
+                    input_vector, rnn_encoder_lengths.cpu(), enforce_sorted=False, batch_first=True
+                )
             )  # second ouput is not needed (hidden state)
             # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
             no_encoding = (encoder_lengths == 0)[None, :, None]  # shape: n_lstm_layers x batch_size x hidden_size
@@ -242,7 +244,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         if n_samples is None:
             input_vector = rnn.pack_padded_sequence(
-                input_vector, decoder_lengths, enforce_sorted=False, batch_first=True
+                input_vector, decoder_lengths.cpu(), enforce_sorted=False, batch_first=True
             )
             decoder_output, _ = self.rnn(
                 input_vector,
