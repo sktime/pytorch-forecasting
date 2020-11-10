@@ -58,8 +58,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         Args:
             cell_type (str, optional): Recurrent cell type. Currently only "LSTM" is supported. Defaults to "LSTM".
-            hidden_size (int, optional): hidden recurrent size. Defaults to 10.
-            rnn_layers (int, optional): Number of RNN layers. Defaults to 2.
+            hidden_size (int, optional): hidden recurrent size - the most important hyperparameter along with
+                ``rnn_layers``. Defaults to 10.
+            rnn_layers (int, optional): Number of RNN layers - important hyperparameter. Defaults to 2.
             dropout (float, optional): Dropout in RNN layers. Defaults to 0.1.
             static_categoricals: integer of positions of static categorical variables
             static_reals: integer of positions of static continuous variables
