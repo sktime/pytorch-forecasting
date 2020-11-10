@@ -33,6 +33,29 @@ class BaseModel(LightningModule):
     The ``forward()`` method should return a dictionary with at least the entry ``prediction`` and
     ``target_scale`` that contains the network's output.
 
+    The idea of the base model is that common methods do not have to be re-implemented for every new architecture.
+    The class is a [LightningModule](https://pytorch-lightning.readthedocs.io/en/latest/lightning_module.html)
+    and follows its conventions. However, there are important additions:
+
+        * You need to specify a ``loss`` attribute that stores the function to calculate the
+          :py:class:`~pytorch_forecasting.metrics.MultiHorizonLoss` for backpropagation.
+        * The :py:meth:`~BaseModel.from_dataset` method can be used to initialize a network using the specifications
+          of a dataset. Often, parameters such as the number of features can be easily deduced from the dataset.
+          Further, the method will also store how to rescale normalized predictions into the unnormalized prediction
+          space. Override it to pass additional arguments to the __init__ method of your network that depend on your
+          dataset.
+        * The :py:meth:`~BaseModel.transform_output` method rescales the network output using the target normalizer
+          from thedataset.
+        * The :py:meth:`~BaseModel.step` method takes care of calculating the loss, logging additional metrics defined
+          in the ``logging_metrics`` attribute and plots of sample predictions. You can override this method to add
+          custom interpretations or pass extra arguments to the networks forward method.
+        * The :py:meth:`~BaseModel.epoch_end` method can be used to calculate summaries of each epoch such as
+          statistics on the encoder length, etc.
+        * The :py:meth:`~BaseModel.predict` method makes predictions using a dataloader or dataset. Override it if you
+          need to pass additional arguments to ``forward`` by default.
+
+    To implement your own architecture, it is best to look at existing ones to understand what might be a good approach.
+
     Example:
 
         .. code-block:: python
@@ -807,7 +830,7 @@ class BaseModelWithCovariates(BaseModel):
         **kwargs,
     ) -> LightningModule:
         """
-        Create model from dataset.
+        Create model from dataset and set parameters related to covariates.
 
         Args:
             dataset: timeseries dataset
