@@ -122,19 +122,41 @@ class TimeSeriesDataSet(Dataset):
         predict_mode: bool = False,
     ):
         """
-        Timeseries dataset
+        Timeseries dataset holding data for models.
+
+        Each sample is a subsequence of a full time series. The subsequence consists of encoder and decoder/prediction
+        timepoints for a given time series. This class constructs an index which defined which subsequences exists and
+        can be samples from (``index`` attribute). The samples in the index are defined by by the various parameters.
+        to the class (encoder and prediction lengths, minimum prediction length, randomize length and predict keywords).
+        How samples are
+        sampled into batches for training, is determined by the DataLoader. The class provides the
+        :py:meth:`~TimeSeriesDataSet.to_dataloader` method to convert the dataset into a dataloader.
+
+        Large datasets:
+
+            Currently the class is limited to in-memory operations. If you have extremely large data,
+            however, you can pass prefitted encoders and and scalers to it and a subset of sequences to the class to
+            construct a valid dataset (plus, likely the EncoderNormalizer should be used to normalize targets).
+            when fitting a network, you would then to create a custom DataLoader that rotates through the datasets.
+            There is currently no in-built methods to do this.
 
         Args:
             data: dataframe with sequence data - each row can be identified with ``time_idx`` and the ``group_ids``
-            time_idx: integer column denoting the time index
+            time_idx: integer column denoting the time index. This columns is used to determine the sequence of samples.
+                If there no missings observations, the time index should increase by ``+1`` for each subsequent sample.
+                The first time_idx for each series does not necessarily have to be ``0`` but any value is allowed.
             target: column denoting the target or list of columns denoting the target - categorical or continous.
-            group_ids: list of column names identifying a timeseries
+            group_ids: list of column names identifying a time series. This means that the ``group_ids`` identify
+                a sample together with the ``time_idx``. If you have only one timeseries, set this to the
+                name of column that is constant.
             weight: column name for weights or list of column names corresponding to each target
             max_encoder_length: maximum length to encode
             min_encoder_length: minimum allowed length to encode. Defaults to max_encoder_length.
-            min_prediction_idx: minimum time index from where to start predictions
-            max_prediction_length: maximum prediction length (choose this not too short as it can help convergence)
-            min_prediction_length: minimum prediction length. Defaults to max_prediction_length
+            min_prediction_idx: minimum ``time_idx`` from where to start predictions. This parameter can be useful to
+                create a validation or test set.
+            max_prediction_length: maximum prediction/decoder length (choose this not too short as it can help
+                convergence)
+            min_prediction_length: minimum prediction/decoder length. Defaults to max_prediction_length
             static_categoricals: list of categorical variables that do not change over time,
                 entries can be also lists which are then encoded together
                 (e.g. useful for product categories)
@@ -154,23 +176,39 @@ class TimeSeriesDataSet(Dataset):
             dropout_categoricals: list of categorical variables that are unknown when making a forecast without
                 observed history
             constant_fill_strategy: dictionary of column names with constants to fill in missing values if there are
-                gaps in the sequence
-                (otherwise forward fill strategy is used)
-            allow_missings: if to allow missing timesteps that are automatically filled up
-            add_relative_time_idx: if to add a relative time index as feature
-            add_target_scales: if to add scales for target to static real features
+                gaps in the sequence (by default forward fill strategy is used). The values will be only used if
+                ``allow_missings=True``. A common use case is to denote that demand was 0 if the sample is not in
+                the dataset.
+            allow_missings: if to allow missing timesteps that are automatically filled up. Missing values
+                refer to gaps in the ``time_idx``, e.g. if a specific timeseries has only samples for
+                1, 2, 4, 5, the sample for 3 will be generated on-the-fly.
+                Allow missings does not deal with ``NA`` values. You should fill NA values before
+                passing the dataframe to the TimeSeriesDataSet.
+            add_relative_time_idx: if to add a relative time index as feature (i.e. for each sampled sequence, the index
+                will range from -encoder_length to prediction_length)
+            add_target_scales: if to add scales for target to static real features (i.e. add the center and scale
+                of the unnormalized timeseries as features)
             add_encoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
                 i.e. yes if ``min_encoder_length != max_encoder_length``.
-            target_normalizer: transformer that takes group_ids, target and time_idx to return normalized target
-            categorical_encoders: dictionary of scikit learn label transformers or None
-            scalers: dictionary of scikit learn scalers or None
+            target_normalizer: transformer that takes group_ids, target and time_idx to return normalized targets.
+                You can choose from the classes in :py:mod:`~pytorch_forecasting.encoders`.
+                By default an appropriate normalizer is chosen automatically.
+            categorical_encoders: dictionary of scikit learn label transformers. If you have unobserved categories in
+                the future, you can use the :py:class:`~pytorch_forecasting.encoders.NaNLabelEncoder` with
+                ``add_nan=True``. Defaults effectively to sklearn's ``LabelEncoder()``. Prefittet encoders will not
+                be fit again.
+            scalers: dictionary of scikit learn scalers. Defaults to sklearn's ``StandardScaler()``.
+                Prefittet encoders will not be fit again.
             randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
                 from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial
                 distribution.
                 If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples around minimum encoder length.
                 Defaults to False otherwise.
-            predict_mode: if to only iterate over each timeseries once (only the last provided samples)
+            predict_mode: if to only iterate over each timeseries once (only the last provided samples).
+                Effectively, this will take choose for each time series identified by ``group_ids``
+                the last ``max_prediction_length`` samples of each time series as
+                prediction samples and everthing previous up to ``max_encoder_length`` samples as encoder samples.
         """
         super().__init__()
         self.max_encoder_length = max_encoder_length
@@ -1090,6 +1128,8 @@ class TimeSeriesDataSet(Dataset):
         """
         Get dataloader from dataset.
 
+        The
+
         Args:
             train (bool, optional): if dataloader is used for training or prediction
                 Will shuffle and drop last batch if True. Defaults to True.
@@ -1097,7 +1137,10 @@ class TimeSeriesDataSet(Dataset):
             batch_sampler (Union[Sampler, str]): batch sampler or string. One of
 
                 * "synchronized": ensure that samples in decoder are aligned in time. Does not support missing
-                  values in dataset.
+                  values in dataset. This makes only sense if the underlying algorithm makes use of values aligned
+                  in time.
+                * PyTorch Sampler instance: any PyTorch sampler, e.g. the WeightedRandomSampler()
+                * None: samples are taken randomly from times series.
 
             **kwargs: additional arguments to ``DataLoader()``
 
