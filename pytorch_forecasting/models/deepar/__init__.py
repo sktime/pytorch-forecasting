@@ -1,5 +1,5 @@
 """
-`DeepAR: Probabilistic forecasting with autoregressive recurrent networks`
+`DeepAR: Probabilistic forecasting with autoregressive recurrent networks
 <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_
 which is the one of the most popular forecasting algorithms and is often used as a baseline
 """
@@ -53,7 +53,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         DeepAR Network.
 
-        The code is based on the article `DeepAR: Probabilistic forecasting with autoregressive recurrent networks`
+        The code is based on the article `DeepAR: Probabilistic forecasting with autoregressive recurrent networks
         <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_.
 
         Args:
