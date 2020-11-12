@@ -11,6 +11,17 @@ or test dataset from a training dataset using the same label encoders and data n
 Further, timeseries have to be (almost always) normalized for a neural network to learn efficiently. PyTorch Forecasting
 provides multiple such target normalizers (some of which can also be used for normalizing covariates).
 
+
+Time series data set
+---------------------
+
+The time series dataset is the central data-holding object in PyTorch Forecasting. It primarily takes
+a pandas DataFrame along with some metadata.
+
+.. autoclass:: pytorch_forecasting.data.timeseries.TimeSeriesDataSet
+   :noindex:
+   :members: __init__
+
 Details
 --------
 
@@ -22,7 +33,5 @@ See the API documentation for further details on available data encoders and the
    :toctree: api/
    :template: custom-module-template.rst
    :recursive:
-   
+
    pytorch_forecasting.data
-
-
