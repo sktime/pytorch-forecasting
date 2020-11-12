@@ -88,7 +88,7 @@ class BaseModel(LightningModule):
                 This constraint significantly slows down training. Defaults to {}.
             output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
-            optimizer (str): optimizer
+            optimizer (str): Optimizer, "ranger", "adam" or "adamw". Defaults to "ranger".
         """
         super().__init__()
         # update hparams
