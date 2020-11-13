@@ -53,6 +53,8 @@ documentation with detailed tutorials.
 - [N-BEATS: Neural basis expansion analysis for interpretable time series forecasting](http://arxiv.org/abs/1905.10437)
   which has (if used as ensemble) outperformed all other methods including ensembles of traditional statical
   methods in the M4 competition. The M4 competition is arguably the most important benchmark for univariate time series forecasting.
+- [DeepAR: Probabilistic forecasting with autoregressive recurrent networks](https://www.sciencedirect.com/science/article/pii/S0169207019301888)
+  which is the one of the most popular forecasting algorithms and is often used as a baseline
 
 # Usage
 
