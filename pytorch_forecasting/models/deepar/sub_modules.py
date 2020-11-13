@@ -1,3 +1,6 @@
+"""
+Implementations of ``nn.RNNBase`` for DeepAR.
+"""
 from abc import ABC, abstractmethod
 from typing import Type, Tuple, Union
 
@@ -9,23 +12,31 @@ HiddenState = Union[Tuple[torch.Tensor, torch.Tensor], torch.Tensor]
 
 
 class TimeSeriesRNN(ABC, nn.RNNBase):
+    """
+    Base class for implementations of RNN modules compatible with DeepAR.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     @abstractmethod
     def handle_no_encoding(self, out, no_encoding) -> HiddenState:
+        """Mask the hidden_state where there is no encoding."""
         pass
 
     @abstractmethod
     def init_hidden_state(self, x, hidden_size) -> HiddenState:
+        """Initialise a hidden_state"""
         pass
 
     @abstractmethod
     def repeat_interleave(self, hidden_state, n_samples: int) -> HiddenState:
+        """Duplicate the hidden_state n_samples times."""
         pass
 
 
 class TimeSeriesLSTM(TimeSeriesRNN, nn.LSTM):
+    """Implementation of LSTM module compatible with DeepAR."""
+
     def handle_no_encoding(self, hidden_state, no_encoding) -> HiddenState:
         hidden, cell = hidden_state
         hidden = hidden.masked_fill(no_encoding, 0.0)
@@ -53,6 +64,8 @@ class TimeSeriesLSTM(TimeSeriesRNN, nn.LSTM):
 
 
 class TimeSeriesGRU(TimeSeriesRNN, nn.GRU):
+    """Implementation of GRU module compatible with DeepAR."""
+
     def handle_no_encoding(self, hidden_state, no_encoding) -> HiddenState:
         return hidden_state.masked_fill(no_encoding, 0.0)
 
