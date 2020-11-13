@@ -78,9 +78,3 @@ def get_cell(cell_type: str) -> Type[TimeSeriesRNN]:
     else:
         raise ValueError(f"DeepAR does not support {cell_type}. supported: [LSTM, GRU]")
     return rnn
-
-
-if __name__ == "__main__":
-    import torch
-
-    lstm = TimeSeriesLSTM(10, 10)
