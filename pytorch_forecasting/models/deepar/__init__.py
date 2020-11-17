@@ -22,6 +22,7 @@ from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, DistributionLoss, Metric, NormalDistributionLoss
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.models.deepar.sub_modules import get_cell, HiddenState
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
@@ -57,7 +58,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_.
 
         Args:
-            cell_type (str, optional): Recurrent cell type. Currently only "LSTM" is supported. Defaults to "LSTM".
+            cell_type (str, optional): Recurrent cell type ["LSTM", "GRU"]. Defaults to "LSTM".
             hidden_size (int, optional): hidden recurrent size - the most important hyperparameter along with
                 ``rnn_layers``. Defaults to 10.
             rnn_layers (int, optional): Number of RNN layers - important hyperparameter. Defaults to 2.
@@ -114,8 +115,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         ), "Encoder and decoder variables have to be the same apart from target variable"
         assert target in time_varying_reals_encoder, "target has to be real"  # todo: remove this restriction
 
-        rnn = getattr(nn, cell_type)
-        self.rnn = rnn(
+        time_series_rnn = get_cell(cell_type)
+        self.rnn = time_series_rnn(
             input_size=self.input_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.rnn_layers,
@@ -196,7 +197,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         pos = variables.index(self.hparams.target)
         return pos
 
-    def encode(self, x: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def encode(self, x: Dict[str, torch.Tensor]) -> HiddenState:
         """
         Encode sequence into hidden state
         """
@@ -207,35 +208,24 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             encoder_lengths = x["encoder_lengths"] - 1
             rnn_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
             input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
-            _, (hidden, cell) = self.rnn(
+            _, hidden_state = self.rnn(
                 rnn.pack_padded_sequence(
                     input_vector, rnn_encoder_lengths.cpu(), enforce_sorted=False, batch_first=True
                 )
             )  # second ouput is not needed (hidden state)
             # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
             no_encoding = (encoder_lengths == 0)[None, :, None]  # shape: n_lstm_layers x batch_size x hidden_size
-            hidden = hidden.masked_fill(no_encoding, 0.0)
-            cell = cell.masked_fill(no_encoding, 0.0)
+            hidden_state = self.rnn.handle_no_encoding(hidden_state, no_encoding)
         else:
-            hidden = torch.zeros(
-                (x["encoder_cont"].size(0), self.hparams.hidden_size),
-                device=x["decoder_cont"].device,
-                dtype=torch.float,
-            )
-            cell = torch.zeros(
-                (x["encoder_cont"].size(0), self.hparams.hidden_size),
-                device=x["decoder_cont"].device,
-                dtype=torch.float,
-            )
-        return hidden, cell
+            hidden_state = self.rnn.init_hidden_state(x, self.hparam.hidden_size)
+        return hidden_state
 
     def decode(
         self,
         input_vector: torch.Tensor,
         target_scale: torch.Tensor,
         decoder_lengths: torch.Tensor,
-        hidden: torch.Tensor,
-        cell: torch.Tensor,
+        hidden_state: HiddenState,
         n_samples: int = None,
     ) -> Tuple[torch.Tensor, bool]:
         """
@@ -249,7 +239,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             )
             decoder_output, _ = self.rnn(
                 input_vector,
-                (hidden, cell),
+                hidden_state,
             )
             decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
             output = self.distribution_projector(decoder_output)
@@ -260,8 +250,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             target_pos = self.target_position
             # repeat for n_samples
             input_vector = input_vector.repeat_interleave(n_samples, 0)
-            hidden = hidden.repeat_interleave(n_samples, 1)
-            cell = cell.repeat_interleave(n_samples, 1)
+            hidden_state = self.rnn.repeat_interleave(hidden_state, n_samples)
             target_scale = target_scale.repeat_interleave(n_samples, 0)
 
             # make predictions which are fed into next step
@@ -270,7 +259,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             for idx in range(input_vector.size(1)):
                 x = input_vector[:, [idx]]
                 x[:, 0, target_pos] = input_target
-                decoder_output, (hidden, cell) = self.rnn(x, (hidden, cell))
+                decoder_output, hidden_state = self.rnn(x, hidden_state)
                 normalized_prediction_parameters = self.distribution_projector(decoder_output)
                 # transform into real space
                 prediction_parameters = self.transform_output(
@@ -299,7 +288,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         Forward network
         """
-        hidden, cell = self.encode(x)
+        hidden_state = self.encode(x)
         # decode
         input_vector = self.construct_input_vector(
             x["decoder_cat"], x["decoder_cont"], one_off_target=x["encoder_cont"][:, -1, self.target_position]
@@ -311,8 +300,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             input_vector,
             decoder_lengths=x["decoder_lengths"],
             target_scale=x["target_scale"],
-            hidden=hidden,
-            cell=cell,
+            hidden_state=hidden_state,
             n_samples=n_samples,
         )
         # return relevant part
