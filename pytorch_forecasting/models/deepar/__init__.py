@@ -21,8 +21,8 @@ from pytorch_forecasting.data.encoders import EncoderNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, DistributionLoss, Metric, NormalDistributionLoss
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
+from pytorch_forecasting.models.deepar.sub_modules import HiddenState, get_cell
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.models.deepar.sub_modules import get_cell, HiddenState
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):

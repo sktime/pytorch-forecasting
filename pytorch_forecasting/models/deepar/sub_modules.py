@@ -2,11 +2,10 @@
 Implementations of ``nn.RNNBase`` for DeepAR.
 """
 from abc import ABC, abstractmethod
-from typing import Type, Tuple, Union
+from typing import Tuple, Type, Union
 
 import torch
 from torch import nn
-
 
 HiddenState = Union[Tuple[torch.Tensor, torch.Tensor], torch.Tensor]
 
@@ -15,6 +14,7 @@ class TimeSeriesRNN(ABC, nn.RNNBase):
     """
     Base class for implementations of RNN modules compatible with DeepAR.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

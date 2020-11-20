@@ -802,12 +802,10 @@ class TimeSeriesDataSet(Dataset):
             for name in missing_groups.columns:
                 missing_groups[name] = self.transform_values(name, missing_groups[name], inverse=True)
             warnings.warn(
-                (
-                    "Min encoder length and/or min_prediction_idx and/or min prediction length is too large for "
-                    f"{len(missing_groups)} series/groups which therefore are not present in the dataset index. "
-                    "This means no predictions can be made for those series",
-                    f"First 10 removed groups: {list(missing_groups.iloc[:10].to_dict(orient='index').values())}",
-                ),
+                "Min encoder length and/or min_prediction_idx and/or min prediction length is too large for "
+                f"{len(missing_groups)} series/groups which therefore are not present in the dataset index. "
+                "This means no predictions can be made for those series"
+                f"First 10 removed groups: {list(missing_groups.iloc[:10].to_dict(orient='index').values())}",
                 UserWarning,
             )
         assert len(df_index) > 0, "filters should not remove entries"
