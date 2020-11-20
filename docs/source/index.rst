@@ -9,7 +9,7 @@ PyTorch Forecasting Documentation
 Our article on `Towards Data Science <https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46>`_
 introduces the package and provides background information.
 
-Pytorch Forecasting aims to ease timeseries forecasting with neural networks for both real-world cases and 
+Pytorch Forecasting aims to ease timeseries forecasting with neural networks for both real-world cases and
 research alike. Specifically, the package provides
 
 * A timeseries dataset class which abstracts handling variable transformations, missing values,
@@ -22,7 +22,7 @@ research alike. Specifically, the package provides
 * Ranger optimizer for faster model training
 * Hyperparameter tuning with `optuna <https://optuna.readthedocs.io/>`_
 
-The package is built on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ to allow 
+The package is built on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ to allow
 training on CPUs, single and multiple GPUs out-of-the-box.
 
 If you do not have pytorch already installed, follow the :ref:`detailed installation instructions<install>`.
@@ -37,7 +37,7 @@ or to install via conda
 
 .. code-block::
 
-   conda install pytorch-forecasting -c conda-forge
+   conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
 
 Vist :ref:`Getting started<getting-started>` to learn more about the package and detailled installation instruction.
 
