@@ -8,8 +8,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch import nn
 
 from pytorch_forecasting.models import DeepAR
-from pytorch_forecasting.models.deepar.sub_modules import get_cell, TimeSeriesLSTM, TimeSeriesGRU
-
+from pytorch_forecasting.models.deepar.sub_modules import TimeSeriesGRU, TimeSeriesLSTM, get_cell
 
 
 def _integration(dataloaders_with_covariates, tmp_path, gpus, cell_type="LSTM"):
