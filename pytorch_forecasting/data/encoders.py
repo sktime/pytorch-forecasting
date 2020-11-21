@@ -102,7 +102,12 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
             encoded = [self.classes_.get(v, 0) for v in y]
 
         else:
-            encoded = [self.classes_[v] for v in y]
+            try:
+                encoded = [self.classes_[v] for v in y]
+            except KeyError as e:
+                raise KeyError(
+                    f"Unknown category '{e.args[0]}' encountered. Set `add_nan=True` to allow unknown categories"
+                )
 
         if isinstance(y, torch.Tensor):
             encoded = torch.tensor(encoded, dtype=torch.long, device=y.device)
