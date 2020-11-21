@@ -176,7 +176,7 @@ class BaseModel(LightningModule):
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
-            y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"], batch_first=True, enforce_sorted=False)
+            y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False)
 
         if label == "train" and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
