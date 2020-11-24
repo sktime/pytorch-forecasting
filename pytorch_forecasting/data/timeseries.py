@@ -353,6 +353,24 @@ class TimeSeriesDataSet(Dataset):
             self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)
         ), f"target_normalizer has to be either None or of class TorchNormalizer but found {self.target_normalizer}"
 
+    @property
+    def _group_ids_mapping(self) -> Dict[str, str]:
+        """
+        Mapping of group id names to group ids used to identify series in dataset -
+        group ids can also be used for target normalizer.
+        The former can change from training to validation and test dataset while the later must not.
+        """
+        return {name: f"__group_id__{name}" for name in self.group_ids}
+
+    @property
+    def _group_ids(self) -> List[str]:
+        """
+        Group ids used to identify series in dataset.
+
+        See :py:meth:`~TimeSeriesDataSet._group_ids_mapping` for details.
+        """
+        return list(self._group_ids_mapping.values())
+
     def _validate_data(self, data: pd.DataFrame):
         """
         Validate that data will not cause hick-ups later on.
@@ -403,9 +421,13 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             pd.DataFrame: pre-processed dataframe
         """
+        # encode group ids - this encoding
+        for name, group_name in self._group_ids_mapping.items():
+            self.categorical_encoders[group_name] = NaNLabelEncoder().fit(data[name].to_numpy().reshape(-1))
+            data[group_name] = self.transform_values(name, data[name], inverse=False, group_id=True)
 
         # encode categoricals
-        for name in set(self.categoricals + self.group_ids):
+        for name in set(self.group_ids + self.categoricals):
             allow_nans = name in self.dropout_categoricals
             if name in self.variable_groups:  # fit groups
                 columns = self.variable_groups[name]
@@ -430,7 +452,7 @@ class TimeSeriesDataSet(Dataset):
                         self.categorical_encoders[name] = self.categorical_encoders[name].fit(data[name])
 
         # encode them
-        for name in set(self.flat_categoricals + self.group_ids):
+        for name in set(self.group_ids + self.flat_categoricals):
             data[name] = self.transform_values(name, data[name], inverse=False)
 
         # save special variables
@@ -515,7 +537,12 @@ class TimeSeriesDataSet(Dataset):
         return data
 
     def transform_values(
-        self, name: str, values: Union[pd.Series, torch.Tensor, np.ndarray], data: pd.DataFrame = None, inverse=False
+        self,
+        name: str,
+        values: Union[pd.Series, torch.Tensor, np.ndarray],
+        data: pd.DataFrame = None,
+        inverse=False,
+        group_id: bool = False,
     ) -> np.ndarray:
         """
         Scale and encode values.
@@ -526,12 +553,16 @@ class TimeSeriesDataSet(Dataset):
             data (pd.DataFrame, optional): extra data used for scaling (e.g. dataframe with groups columns).
                 Defaults to None.
             inverse (bool, optional): if to conduct inverse transformation. Defaults to False.
+            group_id (bool, optional): If the passed name refers to a group id (different encoders are used for these).
+                Defaults to False.
 
         Returns:
             np.ndarray: (de/en)coded/(de)scaled values
         """
+        if group_id:
+            name = self._group_ids_mapping[name]
         # remaining categories
-        if name in set(self.flat_categoricals + self.group_ids):
+        if name in set(self.flat_categoricals + self.group_ids + self._group_ids):
             name = self.variable_to_group_mapping.get(name, name)  # map name to encoder
             encoder = self.categorical_encoders[name]
             if encoder is None:
@@ -575,7 +606,7 @@ class TimeSeriesDataSet(Dataset):
                 time index
         """
 
-        index = torch.tensor(data[self.group_ids].to_numpy(np.long), dtype=torch.long)
+        index = torch.tensor(data[self._group_ids].to_numpy(np.long), dtype=torch.long)
         time = torch.tensor(data["__time_idx__"].to_numpy(np.long), dtype=torch.long)
 
         categorical = torch.tensor(data[self.flat_categoricals].to_numpy(np.long), dtype=torch.long)
@@ -735,7 +766,7 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             pd.DataFrame: index dataframe
         """
-        g = data.groupby(self.group_ids, observed=True)
+        g = data.groupby(self._group_ids, observed=True)
 
         df_index_first = g["__time_idx__"].transform("nth", 0).to_frame("time_first")
         df_index_last = g["__time_idx__"].transform("nth", -1).to_frame("time_last")
@@ -797,10 +828,10 @@ class TimeSeriesDataSet(Dataset):
 
         # check that all groups/series have at least one entry in the index
         if not group_ids.isin(df_index.group_id).all():
-            missing_groups = data.loc[~group_ids.isin(df_index.group_id), self.group_ids].drop_duplicates()
+            missing_groups = data.loc[~group_ids.isin(df_index.group_id), self._group_ids].drop_duplicates()
             # decode values
             for name in missing_groups.columns:
-                missing_groups[name] = self.transform_values(name, missing_groups[name], inverse=True)
+                missing_groups[name] = self.transform_values(name, missing_groups[name], inverse=True, group_id=True)
             warnings.warn(
                 "Min encoder length and/or min_prediction_idx and/or min prediction length is too large for "
                 f"{len(missing_groups)} series/groups which therefore are not present in the dataset index. "
@@ -1210,7 +1241,7 @@ class TimeSeriesDataSet(Dataset):
         for id in self.group_ids:
             index_data[id] = x["groups"][:, self.group_ids.index(id)].cpu()
             # decode if possible
-            index_data[id] = self.transform_values(id, index_data[id], inverse=True)
+            index_data[id] = self.transform_values(id, index_data[id], inverse=True, group_id=True)
         index = pd.DataFrame(index_data)
         return index
 
