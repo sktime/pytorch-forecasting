@@ -427,7 +427,13 @@ class TimeSeriesDataSet(Dataset):
             data[group_name] = self.transform_values(name, data[name], inverse=False, group_id=True)
 
         # encode categoricals
-        for name in set(self.group_ids + self.categoricals):
+        if isinstance(
+            self.target_normalizer, GroupNormalizer
+        ):  # if we use a group normalizer, group_ids must be encoded as well
+            group_ids_to_encode = self.group_ids
+        else:
+            group_ids_to_encode = []
+        for name in set(group_ids_to_encode + self.categoricals):
             allow_nans = name in self.dropout_categoricals
             if name in self.variable_groups:  # fit groups
                 columns = self.variable_groups[name]
@@ -452,7 +458,7 @@ class TimeSeriesDataSet(Dataset):
                         self.categorical_encoders[name] = self.categorical_encoders[name].fit(data[name])
 
         # encode them
-        for name in set(self.group_ids + self.flat_categoricals):
+        for name in set(group_ids_to_encode + self.flat_categoricals):
             data[name] = self.transform_values(name, data[name], inverse=False)
 
         # save special variables
@@ -494,6 +500,10 @@ class TimeSeriesDataSet(Dataset):
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
             elif isinstance(self.target_normalizer, NaNLabelEncoder):
                 data[self.target] = self.target_normalizer.transform(data[self.target])
+                data["__target__"] = data[
+                    self.target
+                ]  # overwrite target because it requires encoding (continuous targets should not be normalized)
+                scales = "no target scales available for categorical target"
             else:
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], return_norm=True)
 
@@ -510,6 +520,8 @@ class TimeSeriesDataSet(Dataset):
 
         if self.target in self.reals:
             self.scalers[self.target] = self.target_normalizer
+        else:
+            self.categorical_encoders[self.target] = self.target_normalizer
 
         # rescale continuous variables apart from target
         for name in self.reals:
@@ -830,8 +842,8 @@ class TimeSeriesDataSet(Dataset):
         if not group_ids.isin(df_index.group_id).all():
             missing_groups = data.loc[~group_ids.isin(df_index.group_id), self._group_ids].drop_duplicates()
             # decode values
-            for name in missing_groups.columns:
-                missing_groups[name] = self.transform_values(name, missing_groups[name], inverse=True, group_id=True)
+            for name, id in self._group_ids_mapping.items():
+                missing_groups[id] = self.transform_values(name, missing_groups[id], inverse=True, group_id=True)
             warnings.warn(
                 "Min encoder length and/or min_prediction_idx and/or min prediction length is too large for "
                 f"{len(missing_groups)} series/groups which therefore are not present in the dataset index. "
