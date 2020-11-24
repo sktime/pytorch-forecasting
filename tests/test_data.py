@@ -373,10 +373,48 @@ def test_categorical_target(test_data):
         min_encoder_length=1,
     )
 
-    x, y = next(iter(dataset.to_dataloader()))
+    _, y = next(iter(dataset.to_dataloader()))
     assert y.dtype is torch.long, "target must be of type long"
 
 
 def test_pickle(test_dataset):
     pickle.dumps(test_dataset)
     pickle.dumps(test_dataset.to_dataloader())
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        dict(
+            target_normalizer=GroupNormalizer(
+                groups=["agency", "sku"], log_scale=True, scale_by_group=True, log_zero_value=1.0
+            ),
+        ),
+    ],
+)
+def test_new_group_ids(test_data, kwargs):
+    """Test for new group ids in dataset"""
+    train_agency = test_data["agency"].iloc[0]
+    train_dataset = TimeSeriesDataSet(
+        test_data[lambda x: x.agency == train_agency],
+        time_idx="time_idx",
+        target="volume",
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=1,
+        categorical_encoders=dict(agency=NaNLabelEncoder(add_nan=True), sku=NaNLabelEncoder(add_nan=True)),
+        **kwargs,
+    )
+
+    # test sampling from training dataset
+    next(iter(train_dataset.to_dataloader()))
+
+    # create test dataset with group ids that have not been observed before
+    test_dataset = TimeSeriesDataSet.from_dataset(train_dataset, test_data)
+
+    # check that we can iterate through dataset without error
+    for _ in iter(test_dataset.to_dataloader()):
+        pass
