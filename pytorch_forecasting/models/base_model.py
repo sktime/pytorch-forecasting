@@ -653,9 +653,15 @@ class BaseModel(LightningModule):
             output = torch.cat(output, dim=0)
         elif mode == "raw":
             output_cat = {}
-            tensor_keys = [key for key, item in output[0].items() if isinstance(item, torch.Tensor)]
-            for name in tensor_keys:
-                output_cat[name] = torch.cat([out[name] for out in output], dim=0)
+            for name in output[0].keys():
+                v0 = output[0][name]
+                if isinstance(v0, torch.Tensor):
+                    output_cat[name] = torch.cat([out[name] for out in output], dim=0)
+                else:
+                    try:
+                        output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
+                    except ValueError:
+                        output_cat[name] = [out[name] for out in output]
             output = output_cat
 
         # generate output
