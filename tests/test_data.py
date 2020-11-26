@@ -418,3 +418,17 @@ def test_new_group_ids(test_data, kwargs):
     # check that we can iterate through dataset without error
     for _ in iter(test_dataset.to_dataloader()):
         pass
+
+
+def test_timeseries_columns_naming(test_data):
+    with pytest.raises(ValueError):
+        TimeSeriesDataSet(
+            test_data.rename(columns=dict(agency="agency.2")),
+            time_idx="time_idx",
+            target="volume",
+            group_ids=["agency.2", "sku"],
+            max_encoder_length=5,
+            max_prediction_length=2,
+            min_prediction_length=1,
+            min_encoder_length=1,
+        )
