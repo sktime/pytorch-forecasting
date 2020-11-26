@@ -386,6 +386,12 @@ class TimeSeriesDataSet(Dataset):
                 raise ValueError(
                     f"Data type of category {name} was found to be numeric - use a string type / categorified string"
                 )
+        # check for "." in column names
+        columns_with_dot = data.columns[data.columns.str.contains(r"\.")]
+        if len(columns_with_dot) > 0:
+            raise ValueError(
+                f"column names must not contain '.' characters. Names {columns_with_dot.tolist()} are invalid"
+            )
 
     def save(self, fname: str) -> None:
         """
