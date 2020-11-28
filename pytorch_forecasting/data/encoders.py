@@ -363,7 +363,8 @@ class EncoderNormalizer(TorchNormalizer):
     """
     Special Normalizer that is fit on each encoding sequence.
 
-    If passed as target normalizer, this transformer will be fitted on each encoder sequence separately.
+    If used, this transformer will be fitted on each encoder sequence separately.
+    This normalizer can be particularly useful as target normalizer.
     """
 
     pass
