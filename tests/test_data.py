@@ -432,3 +432,19 @@ def test_timeseries_columns_naming(test_data):
             min_prediction_length=1,
             min_encoder_length=1,
         )
+
+
+def test_encoder_normalizer_for_covariates(test_data):
+    dataset = TimeSeriesDataSet(
+        test_data,
+        time_idx="time_idx",
+        target="volume",
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=1,
+        time_varying_known_reals=["price_regular"],
+        scalers={"price_regular": EncoderNormalizer()},
+    )
+    next(iter(dataset.to_dataloader()))

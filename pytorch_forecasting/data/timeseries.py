@@ -115,7 +115,7 @@ class TimeSeriesDataSet(Dataset):
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[TorchNormalizer, NaNLabelEncoder, str] = "auto",
+        target_normalizer: Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str] = "auto",
         categorical_encoders={},
         scalers={},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
@@ -191,14 +191,19 @@ class TimeSeriesDataSet(Dataset):
             add_encoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
                 i.e. yes if ``min_encoder_length != max_encoder_length``.
             target_normalizer: transformer that takes group_ids, target and time_idx to return normalized targets.
-                You can choose from the classes in :py:mod:`~pytorch_forecasting.encoders`.
+                You can choose from :py:class:`~TorchNormalizer`, :py:class:`~NaNLabelEncoder`
+                and :py:class:`~EncoderNormalizer`.
                 By default an appropriate normalizer is chosen automatically.
             categorical_encoders: dictionary of scikit learn label transformers. If you have unobserved categories in
                 the future, you can use the :py:class:`~pytorch_forecasting.encoders.NaNLabelEncoder` with
                 ``add_nan=True``. Defaults effectively to sklearn's ``LabelEncoder()``. Prefittet encoders will not
                 be fit again.
             scalers: dictionary of scikit learn scalers. Defaults to sklearn's ``StandardScaler()``.
-                Prefittet encoders will not be fit again.
+                Other options are :py:class:`~pytorch_forecasting.data.EncoderNormalizer`,
+                :py:class:`~pytorch_forecasting.data.GroupNormalizer` or scikit-learn's ``StandarScaler()``
+                or ``RobustScaler()``.
+                Prefittet encoders will not be fit again (with the exception of the
+                :py:class:`~pytorch_forecasting.data.EncoderNormalizer`).
             randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
                 from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial
@@ -601,14 +606,15 @@ class TimeSeriesDataSet(Dataset):
                 transform = scaler.transform
             if isinstance(scaler, GroupNormalizer):
                 return transform(values, data)
-            elif isinstance(scaler, EncoderNormalizer):
+            elif isinstance(scaler, EncoderNormalizer) and name == self.target:
                 return transform(values)
             else:
                 if isinstance(values, pd.Series):
                     values = values.to_frame()
+                    return np.asarray(transform(values)).reshape(-1)
                 else:
                     values = values.reshape(-1, 1)
-                return transform(values).reshape(-1)
+                    return transform(values).reshape(-1)
 
         return values  # fallback
 
@@ -1054,6 +1060,14 @@ class TimeSeriesDataSet(Dataset):
             data_cont[:, self.reals.index("encoder_length")] = (
                 (encoder_length - 0.5 * self.max_encoder_length) / self.max_encoder_length * 2.0
             )
+
+        # rescale covariates
+        for name, scaler in self.scalers.items():
+            if name != self.target and name in self.reals and isinstance(scaler, EncoderNormalizer):
+                # fit and transform
+                pos = self.reals.index(name)
+                scaler.fit(data_cont[:encoder_length, pos])
+                data_cont[:, pos] = scaler.transform(data_cont[:, pos])
 
         # rescale target
         if self.target_normalizer is not None and isinstance(self.target_normalizer, EncoderNormalizer):
