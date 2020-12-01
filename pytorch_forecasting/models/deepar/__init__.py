@@ -194,7 +194,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
     @property
     def target_position(self):
         variables = self.hparams.time_varying_reals_encoder  # todo: support categorical targets
-        pos = variables.index(self.hparams.target)
+        pos = variables.index(self.hparams.target) + len(self.hparams.static_reals)
         return pos
 
     def encode(self, x: Dict[str, torch.Tensor]) -> HiddenState:
