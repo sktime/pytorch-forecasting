@@ -14,6 +14,7 @@ from pytorch_forecasting.metrics import (
     LogNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
+    BetaDistributionLoss,
 )
 
 
@@ -156,3 +157,46 @@ def test_NegativeBinomialDistributionLoss(center, transformation):
         samples = loss.sample_n(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.5)
         assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.5)
+
+
+@pytest.mark.parametrize(
+    ["log_scale", "center", "coerce_positive"],
+    itertools.product([True, False], [True, False], [True, False]),
+)
+def test_BetaDistributionLoss(log_scale, center, coerce_positive):
+    if log_scale and coerce_positive:
+        return  # combination invalid for normalizer (tested somewhere else)
+
+    concentration0 = 5.0
+    concentration1 = 0.5
+    n = 100000
+    target = BetaDistributionLoss()\
+        .map_x_to_distribution(torch.tensor([concentration0, concentration1]))\
+        .sample_n(n)
+
+    mean = target.mean()
+    std = target.std()
+
+    normalizer = TorchNormalizer(
+        log_scale=log_scale, center=center, coerce_positive=coerce_positive
+    )
+    normalized_target = normalizer.fit_transform(target).view(1, -1)
+    target_scale = normalizer.get_parameters()
+    parameters = torch.stack([
+        torch.full_like(normalized_target, concentration0),
+        torch.full_like(normalized_target, concentration1)
+    ], dim=-1)
+    loss = BetaDistributionLoss()
+
+    if center or log_scale or not coerce_positive:
+        with pytest.raises(AssertionError):
+            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+    else:
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+        print(rescaled_parameters)
+        samples = loss.sample_n(rescaled_parameters, 1)
+        print(samples.mean())
+        print(mean)
+
+        assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.01, rtol=0.01)
+        assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.01, rtol=0.01)
