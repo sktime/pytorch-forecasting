@@ -344,15 +344,15 @@ class TimeSeriesDataSet(Dataset):
                 data_positive = (data[self.target] > 0).all()
                 if data_positive:
                     if data[self.target].skew() > 2.5:
-                        transform = "log"
+                        transformer = "log"
                     else:
-                        transform = "positive"
+                        transformer = "positive"
                 else:
-                    transform = None
+                    transformer = None
                 if self.max_encoder_length > 20 and self.min_encoder_length > 1:
-                    self.target_normalizer = EncoderNormalizer(transform=transform)
+                    self.target_normalizer = EncoderNormalizer(transformer=transformer)
                 else:
-                    self.target_normalizer = GroupNormalizer(transform=transform)
+                    self.target_normalizer = GroupNormalizer(transformer=transformer)
         elif self.target_normalizer is None:
             self.target_normalizer = TorchNormalizer(method="identity")
         assert self.min_encoder_length > 1 or not isinstance(

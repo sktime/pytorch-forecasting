@@ -170,7 +170,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
     # transformation and inverse transformation
     TRANSFORMERS = {
         "log": (torch.log, torch.exp),
-        "log1p": (torch.logp1, torch.expm1),
+        "log1p": (torch.log1p, torch.expm1),
         "logit": (torch.logit, torch.sigmoid),
         "softplus": (_plus_one, F.softplus),
         "positive": (_identity, _clamp_zero),
@@ -180,7 +180,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         self,
         method: str = "standard",
         center: bool = True,
-        transform: Union[str, Tuple[Callable, Callable]] = None,
+        transformer: Union[str, Tuple[Callable, Callable]] = None,
         eps: float = 1e-8,
     ):
         """
@@ -190,7 +190,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
                 or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
             center (bool, optional): If to center the output to zero. Defaults to True.
-            transform (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
+            transformer (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
                 Available options are amongst others "log", "logp1", "logit", None or a tuple of PyTorch functions that
                 transforms and inversely transforms values.
                 All values at :py:attr:`~TorchNormalizer.TRANSFORMERS`. Defaults to None.
@@ -201,7 +201,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.eps = eps
-        self.transform = transform
+        self.transformer = transformer
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -222,7 +222,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
         """
         y = y + self.eps
-        if self.transform is None:
+        if self.transformer is None:
             pass
         elif isinstance(y, torch.Tensor):
             y = self.TRANSFORMERS.get(self.transformer, self.transformer)[0](y)
@@ -242,7 +242,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
         """
-        if self.transform is None:
+        if self.transformer is None:
             pass
         elif isinstance(y, torch.Tensor):
             y = self.TRANSFORMERS.get(self.transformer, self.transformer)[1](y)
@@ -327,7 +327,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             Union[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray], Union[np.ndarray, torch.Tensor]]: rescaled
                 data with type depending on input type. returns second element if ``return_norm=True``
         """
-        y = self._preprocess_y(y)
+        y = self.preprocess_y(y)
         # get center and scale
         if target_scale is None:
             target_scale = self.get_parameters().numpy()[None, :]
@@ -415,7 +415,7 @@ class GroupNormalizer(TorchNormalizer):
         groups: List[str] = [],
         center: bool = True,
         scale_by_group: bool = False,
-        transform: Union[str, Tuple[Callable, Callable]] = None,
+        transformer: Union[str, Tuple[Callable, Callable]] = None,
         eps: float = 1e-8,
     ):
         """
@@ -428,7 +428,7 @@ class GroupNormalizer(TorchNormalizer):
             center (bool, optional): If to center the output to zero. Defaults to True.
             scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as
                 ``(group1_norm * group2_norm * ...) ^ (1 / n_groups)``. Defaults to False.
-            transform (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
+            transformer (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
                 Available options are amongst others "log", "logp1", "logit", None or a tuple of PyTorch functions that
                 transforms and inversely transforms values.
                 All values at :py:attr:`~TorchNormalizer.TRANSFORMERS`. Defaults to None.
@@ -440,7 +440,7 @@ class GroupNormalizer(TorchNormalizer):
         super().__init__(
             method=method,
             center=center,
-            transform=transform,
+            transformer=transformer,
             eps=eps,
         )
 

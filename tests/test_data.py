@@ -52,8 +52,7 @@ def test_NaNLabelEncoder(data, allow_nan):
     "kwargs",
     [
         dict(method="robust"),
-        dict(transform="log"),
-        dict(transform="log"),
+        dict(transformer="log"),
         dict(center=False),
     ],
 )

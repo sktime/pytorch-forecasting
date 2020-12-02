@@ -792,11 +792,11 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
         assert (
             not transformer.center
         ), "NegativeBinomialDistributionLoss is not compatible with `center=True` normalization"
-        assert transformer.transform is not None and transformer.transform in ["log", "log1p", "softplus"], (
+        assert transformer.transformer is not None and transformer.transformer in ["log", "log1p", "softplus"], (
             "`transform` of target transformer has to be either 'log', 'log1p' or "
-            f"'softplus' but found `transform={transformer.transform}`"
+            f"'softplus' but found `transformer={transformer.transform}`"
         )
-        if transformer.transform in ["log", "log1p"]:
+        if transformer.transformer in ["log", "log1p"]:
             mean = torch.exp(parameters[..., 0] * target_scale[..., 1].unsqueeze(-1))
             shape = (
                 F.softplus(torch.exp(parameters[..., 1]))
@@ -826,8 +826,8 @@ class LogNormalDistributionLoss(DistributionLoss):
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
         assert (
-            isinstance(transformer.transform, str) and transformer.transform == "log"
-        ), f"Log distribution requires log scaling but found `transform={transformer.transform}`"
+            isinstance(transformer.transformer, str) and transformer.transformer == "log"
+        ), f"Log distribution requires log scaling but found `transformer={transformer.transform}`"
 
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(-1)
         loc = parameters[..., 0] * target_scale[..., 1].unsqueeze(-1) + target_scale[..., 0].unsqueeze(-1)
