@@ -837,7 +837,14 @@ class LogNormalDistributionLoss(DistributionLoss):
 
 
 class BetaDistributionLoss(DistributionLoss):
-    """Loss function for DeepAR"""
+    """
+    Beta distribution loss for unit interval data.
+
+    Requirements for original target normalizer:
+        * coerced to be positive
+        * not centered normalization (only rescaled)
+        * normalized target not in log space
+    """
     distribution_class = distributions.Beta
     distribution_arguments = ["mean", "shape"]
 
@@ -849,11 +856,11 @@ class BetaDistributionLoss(DistributionLoss):
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
-        # assert transformer.coerce_positive, "Beta distribution is only compatible with strictly positive data"
+        assert transformer.coerce_positive, "Beta distribution is only compatible with strictly positive data"
         assert (
             not transformer.log_scale
         ), "Beta distribution is not compatible with log transformation - use LogNormal"
-        # assert not transformer.center, "Beta distribution is not compatible with centered data"
+        assert not transformer.center, "Beta distribution is not compatible with centered data"
 
         scaled_mean = torch.sigmoid(parameters[..., 0] + target_scale[..., 0].unsqueeze(1))
         return torch.stack([
