@@ -78,7 +78,7 @@ def data_with_covariates():
         dict(randomize_length=True, min_encoder_length=2),
         dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
         dict(target_normalizer=GroupNormalizer(log_scale=True)),
-        dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=1.0)),
+        dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformer="softplus", center=False)),
         dict(target="agency"),
     ]
 )
@@ -129,7 +129,7 @@ def dataloaders_with_covariates(data_with_covariates):
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
         add_relative_time_idx=True,
-        target_normalizer=GroupNormalizer(groups=["agency", "sku"], coerce_positive=False),
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformer="relu"),
     )
 
     validation = TimeSeriesDataSet.from_dataset(

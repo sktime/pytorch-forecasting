@@ -74,7 +74,7 @@ training = TimeSeriesDataSet(
         "avg_volume_by_sku",
     ],
     target_normalizer=GroupNormalizer(
-        groups=["agency", "sku"], coerce_positive=1.0
+        groups=["agency", "sku"], transformer="softplus", center=False
     ),  # use softplus with beta=1.0 and normalize by group
     add_relative_time_idx=True,
     add_target_scales=True,

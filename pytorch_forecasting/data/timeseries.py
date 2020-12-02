@@ -346,7 +346,7 @@ class TimeSeriesDataSet(Dataset):
                     if data[self.target].skew() > 2.5:
                         transformer = "log"
                     else:
-                        transformer = "positive"
+                        transformer = "relu"
                 else:
                     transformer = None
                 if self.max_encoder_length > 20 and self.min_encoder_length > 1:

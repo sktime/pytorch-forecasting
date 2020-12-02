@@ -762,6 +762,12 @@ class NormalDistributionLoss(DistributionLoss):
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
+        assert transformer.transformer not in ["log", "log1p"], "Use LogNormalDistributionLoss for log scaled data"
+        assert transformer.transformer not in [
+            "softplus",
+            "relu",
+        ], "Cannot use NormalDistributionLoss for positive data"
+        assert transformer.transformer not in ["logit"], "Cannot use bound transformation such as 'logit'"
         loc = transformer(dict(prediction=parameters[..., 0], target_scale=target_scale))
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(1)
         return torch.stack([loc, scale], dim=-1)
@@ -773,7 +779,6 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
 
     Requirements for original target normalizer:
         * not centered normalization (only rescaled)
-        * Optional: Use ``eps=1`` if you are dealing with count data
     """
 
     distribution_class = distributions.NegativeBinomial
@@ -792,10 +797,7 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
         assert (
             not transformer.center
         ), "NegativeBinomialDistributionLoss is not compatible with `center=True` normalization"
-        assert transformer.transformer is not None and transformer.transformer in ["log", "log1p", "softplus"], (
-            "`transform` of target transformer has to be either 'log', 'log1p' or "
-            f"'softplus' but found `transformer={transformer.transform}`"
-        )
+        assert transformer.transformer not in ["logit"], "Cannot use bound transformation such as 'logit'"
         if transformer.transformer in ["log", "log1p"]:
             mean = torch.exp(parameters[..., 0] * target_scale[..., 1].unsqueeze(-1))
             shape = (
@@ -825,9 +827,12 @@ class LogNormalDistributionLoss(DistributionLoss):
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
-        assert (
-            isinstance(transformer.transformer, str) and transformer.transformer == "log"
-        ), f"Log distribution requires log scaling but found `transformer={transformer.transform}`"
+        assert isinstance(transformer.transformer, str) and transformer.transformer in [
+            "log",
+            "log1p",
+        ], f"Log distribution requires log scaling but found `transformer={transformer.transform}`"
+
+        assert transformer.transformer not in ["logit"], "Cannot use bound transformation such as 'logit'"
 
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(-1)
         loc = parameters[..., 0] * target_scale[..., 1].unsqueeze(-1) + target_scale[..., 0].unsqueeze(-1)

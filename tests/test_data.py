@@ -53,6 +53,9 @@ def test_NaNLabelEncoder(data, allow_nan):
     [
         dict(method="robust"),
         dict(transformer="log"),
+        dict(transformer="softplus"),
+        dict(transformer="log1p"),
+        dict(transformer="relu"),
         dict(center=False),
     ],
 )
@@ -61,22 +64,18 @@ def test_EncoderNormalizer(kwargs):
     defaults = dict(method="standard", center=True)
     defaults.update(kwargs)
     kwargs = defaults
-    if kwargs["coerce_positive"] and kwargs["log_scale"]:
-        with pytest.raises(AssertionError):
-            normalizer = EncoderNormalizer(**kwargs)
-    else:
-        normalizer = EncoderNormalizer(**kwargs)
-        if kwargs["coerce_positive"]:
-            data = data - 0.5
+    normalizer = EncoderNormalizer(**kwargs)
+    if kwargs["transformer"] == "relu":
+        data = data - 0.5
 
-        if kwargs["coerce_positive"]:
-            assert (
-                normalizer.inverse_transform(normalizer.fit_transform(data)) >= 0
-            ).all(), "Inverse transform should yield only positive values"
-        else:
-            assert torch.isclose(
-                normalizer.inverse_transform(normalizer.fit_transform(data)), data, atol=1e-5
-            ).all(), "Inverse transform should reverse transform"
+    if kwargs["transformer"] == "relu":
+        assert (
+            normalizer.inverse_transform(normalizer.fit_transform(data)) >= 0
+        ).all(), "Inverse transform should yield only positive values"
+    else:
+        assert torch.isclose(
+            normalizer.inverse_transform(normalizer.fit_transform(data)), data, atol=1e-5
+        ).all(), "Inverse transform should reverse transform"
 
 
 @pytest.mark.parametrize(
@@ -84,10 +83,12 @@ def test_EncoderNormalizer(kwargs):
     itertools.product(
         [
             dict(method="robust"),
-            dict(log_scale=True),
-            dict(coerce_positive=True),
+            dict(transformer="log"),
+            dict(transformer="relu"),
             dict(center=False),
-            dict(log_zero_value=0.0),
+            dict(transformer="log1p"),
+            dict(transformer="softplus"),
+            dict(transformer="log1p"),
             dict(scale_by_group=True),
         ],
         [[], ["a"]],
@@ -95,34 +96,28 @@ def test_EncoderNormalizer(kwargs):
 )
 def test_GroupNormalizer(kwargs, groups):
     data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1]))
-    defaults = dict(
-        method="standard", log_scale=False, coerce_positive=False, center=True, log_zero_value=0.0, scale_by_group=False
-    )
+    defaults = dict(method="standard", transformer=None, center=True, scale_by_group=False)
     defaults.update(kwargs)
     kwargs = defaults
     kwargs["groups"] = groups
     kwargs["scale_by_group"] = kwargs["scale_by_group"] and len(kwargs["groups"]) > 0
 
-    if kwargs["coerce_positive"] and kwargs["log_scale"]:
-        with pytest.raises(AssertionError):
-            normalizer = GroupNormalizer(**kwargs)
+    if kwargs["transformer"] in ["relu", "softplus"]:
+        data.b = data.b - 2.0
+    normalizer = GroupNormalizer(**kwargs)
+    encoded = normalizer.fit_transform(data["b"], data)
+
+    test_data = dict(
+        prediction=torch.tensor([encoded.iloc[0]]),
+        target_scale=torch.tensor(normalizer.get_parameters([1])).unsqueeze(0),
+    )
+
+    if kwargs["transformer"] in ["relu", "softplus"]:
+        assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
     else:
-        if kwargs["coerce_positive"]:
-            data.b = data.b - 2.0
-        normalizer = GroupNormalizer(**kwargs)
-        encoded = normalizer.fit_transform(data["b"], data)
-
-        test_data = dict(
-            prediction=torch.tensor([encoded.iloc[0]]),
-            target_scale=torch.tensor(normalizer.get_parameters([1])).unsqueeze(0),
-        )
-
-        if kwargs["coerce_positive"]:
-            assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
-        else:
-            assert torch.isclose(
-                normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5
-            ).all(), "Inverse transform should reverse transform"
+        assert torch.isclose(
+            normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5
+        ).all(), "Inverse transform should reverse transform"
 
 
 def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):

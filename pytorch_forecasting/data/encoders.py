@@ -170,10 +170,10 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
     # transformation and inverse transformation
     TRANSFORMERS = {
         "log": (torch.log, torch.exp),
-        "log1p": (torch.log1p, torch.expm1),
+        "log1p": (torch.log1p, torch.exp),
         "logit": (torch.logit, torch.sigmoid),
         "softplus": (_plus_one, F.softplus),
-        "positive": (_identity, _clamp_zero),
+        "relu": (_identity, _clamp_zero),
     }
 
     def __init__(
@@ -190,10 +190,19 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
                 or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
             center (bool, optional): If to center the output to zero. Defaults to True.
-            transformer (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
-                Available options are amongst others "log", "logp1", "logit", None or a tuple of PyTorch functions that
-                transforms and inversely transforms values.
-                All values at :py:attr:`~TorchNormalizer.TRANSFORMERS`. Defaults to None.
+            transformer (Union[str, Tuple[Callable, Callable]] optional): Transform values before applying normalizer.
+                Available options are
+
+                * None (default): No transformation of values
+                * log: Estimate in log-space leading to a multiplicative model
+                * logp1: Estimate in log-space but add 1 to values before transforming for stability
+                    (e.g. if many small values <<1 are present).
+                    Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
+                * logit: Apply logit transformation on values that are between 0 and 1
+                * softplus: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
+                * relu: Apply max(0, x) to output
+                * Tuple[Callable, Callable] of PyTorch functions that transforms and inversely transforms values.
+
             eps (float, optional): Number for numerical stability of calculations.
                 Defaults to 1e-8.
         """
