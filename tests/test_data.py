@@ -52,10 +52,10 @@ def test_NaNLabelEncoder(data, allow_nan):
     "kwargs",
     [
         dict(method="robust"),
-        dict(transformer="log"),
-        dict(transformer="softplus"),
-        dict(transformer="log1p"),
-        dict(transformer="relu"),
+        dict(transformation="log"),
+        dict(transformation="softplus"),
+        dict(transformation="log1p"),
+        dict(transformation="relu"),
         dict(center=False),
     ],
 )
@@ -65,10 +65,10 @@ def test_EncoderNormalizer(kwargs):
     defaults.update(kwargs)
     kwargs = defaults
     normalizer = EncoderNormalizer(**kwargs)
-    if kwargs["transformer"] == "relu":
+    if kwargs.get("transformation") in ["relu", "softplus"]:
         data = data - 0.5
 
-    if kwargs["transformer"] == "relu":
+    if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
         assert (
             normalizer.inverse_transform(normalizer.fit_transform(data)) >= 0
         ).all(), "Inverse transform should yield only positive values"
@@ -83,12 +83,11 @@ def test_EncoderNormalizer(kwargs):
     itertools.product(
         [
             dict(method="robust"),
-            dict(transformer="log"),
-            dict(transformer="relu"),
+            dict(transformation="log"),
+            dict(transformation="relu"),
             dict(center=False),
-            dict(transformer="log1p"),
-            dict(transformer="softplus"),
-            dict(transformer="log1p"),
+            dict(transformation="log1p"),
+            dict(transformation="softplus"),
             dict(scale_by_group=True),
         ],
         [[], ["a"]],
@@ -96,23 +95,23 @@ def test_EncoderNormalizer(kwargs):
 )
 def test_GroupNormalizer(kwargs, groups):
     data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1]))
-    defaults = dict(method="standard", transformer=None, center=True, scale_by_group=False)
+    defaults = dict(method="standard", transformation=None, center=True, scale_by_group=False)
     defaults.update(kwargs)
     kwargs = defaults
     kwargs["groups"] = groups
     kwargs["scale_by_group"] = kwargs["scale_by_group"] and len(kwargs["groups"]) > 0
 
-    if kwargs["transformer"] in ["relu", "softplus"]:
+    if kwargs.get("transformation") in ["relu", "softplus"]:
         data.b = data.b - 2.0
     normalizer = GroupNormalizer(**kwargs)
     encoded = normalizer.fit_transform(data["b"], data)
 
     test_data = dict(
-        prediction=torch.tensor([encoded.iloc[0]]),
+        prediction=torch.tensor([encoded[0]]),
         target_scale=torch.tensor(normalizer.get_parameters([1])).unsqueeze(0),
     )
 
-    if kwargs["transformer"] in ["relu", "softplus"]:
+    if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
         assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
     else:
         assert torch.isclose(
@@ -165,7 +164,9 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
         dict(time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"]),
         dict(
             target_normalizer=GroupNormalizer(
-                groups=["agency", "sku"], log_scale=True, scale_by_group=True, log_zero_value=1.0
+                groups=["agency", "sku"],
+                transformation="log1p",
+                scale_by_group=True,
             )
         ),
         dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
@@ -381,9 +382,7 @@ def test_pickle(test_dataset):
     [
         {},
         dict(
-            target_normalizer=GroupNormalizer(
-                groups=["agency", "sku"], log_scale=True, scale_by_group=True, log_zero_value=1.0
-            ),
+            target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log1p", scale_by_group=True),
         ),
     ],
 )

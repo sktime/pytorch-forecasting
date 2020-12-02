@@ -168,7 +168,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
     """
 
     # transformation and inverse transformation
-    TRANSFORMERS = {
+    TRANSFORMATIONS = {
         "log": (torch.log, torch.exp),
         "log1p": (torch.log1p, torch.exp),
         "logit": (torch.logit, torch.sigmoid),
@@ -180,7 +180,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         self,
         method: str = "standard",
         center: bool = True,
-        transformer: Union[str, Tuple[Callable, Callable]] = None,
+        transformation: Union[str, Tuple[Callable, Callable]] = None,
         eps: float = 1e-8,
     ):
         """
@@ -190,8 +190,8 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
                 or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
             center (bool, optional): If to center the output to zero. Defaults to True.
-            transformer (Union[str, Tuple[Callable, Callable]] optional): Transform values before applying normalizer.
-                Available options are
+            transformation (Union[str, Tuple[Callable, Callable]] optional): Transform values before
+                applying normalizer. Available options are
 
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
@@ -210,7 +210,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.eps = eps
-        self.transformer = transformer
+        self.transformation = transformation
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -221,7 +221,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         """
         return torch.stack([torch.as_tensor(self.center_), torch.as_tensor(self.scale_)], dim=-1)
 
-    def preprocess_y(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    def preprocess(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
         """
         Preprocess input data (e.g. take log).
 
@@ -231,18 +231,20 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
         """
         y = y + self.eps
-        if self.transformer is None:
+        if self.transformation is None:
             pass
         elif isinstance(y, torch.Tensor):
-            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[0](y)
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[0](y)
         else:
             # convert first to tensor, then transform and then convert to numpy array
+            if isinstance(y, pd.Series):
+                y = y.to_numpy()
             y = torch.as_tensor(y)
-            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[0](y)
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[0](y)
             y = np.asarray(y)
         return y
 
-    def inverse_preprocess_y(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    def inverse_preprocess(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
         """
         Inverse preprocess re-scaled data (e.g. take exp).
 
@@ -251,14 +253,14 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
         """
-        if self.transformer is None:
+        if self.transformation is None:
             pass
         elif isinstance(y, torch.Tensor):
-            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[1](y)
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[1](y)
         else:
             # convert first to tensor, then transform and then convert to numpy array
             y = torch.as_tensor(y)
-            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[1](y)
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[1](y)
             y = np.asarray(y)
         return y
 
@@ -272,7 +274,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             TorchNormalizer: self
         """
-        y = self.preprocess_y(y)
+        y = self.preprocess(y)
 
         if self.method == "identity":
             if isinstance(y, torch.Tensor):
@@ -336,7 +338,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             Union[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray], Union[np.ndarray, torch.Tensor]]: rescaled
                 data with type depending on input type. returns second element if ``return_norm=True``
         """
-        y = self.preprocess_y(y)
+        y = self.preprocess(y)
         # get center and scale
         if target_scale is None:
             target_scale = self.get_parameters().numpy()[None, :]
@@ -391,7 +393,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         # transform
         y = data["prediction"] * norm[:, 1, None] + norm[:, 0, None]
 
-        y = self.inverse_preprocess_y(y)
+        y = self.inverse_preprocess(y)
 
         # return correct shape
         if data["prediction"].ndim == 1 and y.ndim > 1:
@@ -424,7 +426,7 @@ class GroupNormalizer(TorchNormalizer):
         groups: List[str] = [],
         center: bool = True,
         scale_by_group: bool = False,
-        transformer: Union[str, Tuple[Callable, Callable]] = None,
+        transformation: Union[str, Tuple[Callable, Callable]] = None,
         eps: float = 1e-8,
     ):
         """
@@ -437,10 +439,19 @@ class GroupNormalizer(TorchNormalizer):
             center (bool, optional): If to center the output to zero. Defaults to True.
             scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as
                 ``(group1_norm * group2_norm * ...) ^ (1 / n_groups)``. Defaults to False.
-            transformer (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
-                Available options are amongst others "log", "logp1", "logit", None or a tuple of PyTorch functions that
-                transforms and inversely transforms values.
-                All values at :py:attr:`~TorchNormalizer.TRANSFORMERS`. Defaults to None.
+            transformation (Union[str, Tuple[Callable, Callable]] optional): Transform values before
+                applying normalizer. Available options are
+
+                * None (default): No transformation of values
+                * log: Estimate in log-space leading to a multiplicative model
+                * logp1: Estimate in log-space but add 1 to values before transforming for stability
+                    (e.g. if many small values <<1 are present).
+                    Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
+                * logit: Apply logit transformation on values that are between 0 and 1
+                * softplus: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
+                * relu: Apply max(0, x) to output
+                * Tuple[Callable, Callable] of PyTorch functions that transforms and inversely transforms values.
+
             eps (float, optional): Number for numerical stability of calcualtions.
                 Defaults to 1e-8. For count data, 1.0 is recommended.
         """
@@ -449,7 +460,7 @@ class GroupNormalizer(TorchNormalizer):
         super().__init__(
             method=method,
             center=center,
-            transformer=transformer,
+            transformation=transformation,
             eps=eps,
         )
 
@@ -464,7 +475,7 @@ class GroupNormalizer(TorchNormalizer):
         Returns:
             self
         """
-        y = self.preprocess_y(y)
+        y = self.preprocess(y)
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":

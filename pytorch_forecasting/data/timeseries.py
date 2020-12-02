@@ -350,9 +350,9 @@ class TimeSeriesDataSet(Dataset):
                 else:
                     transformer = None
                 if self.max_encoder_length > 20 and self.min_encoder_length > 1:
-                    self.target_normalizer = EncoderNormalizer(transformer=transformer)
+                    self.target_normalizer = EncoderNormalizer(transformation=transformer)
                 else:
-                    self.target_normalizer = GroupNormalizer(transformer=transformer)
+                    self.target_normalizer = GroupNormalizer(transformation=transformer)
         elif self.target_normalizer is None:
             self.target_normalizer = TorchNormalizer(method="identity")
         assert self.min_encoder_length > 1 or not isinstance(
