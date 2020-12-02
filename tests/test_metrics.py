@@ -10,11 +10,11 @@ from pytorch_forecasting.metrics import (
     MAE,
     SMAPE,
     AggregationMetric,
+    BetaDistributionLoss,
     CompositeMetric,
     LogNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
-    BetaDistributionLoss,
 )
 
 
@@ -159,13 +159,26 @@ def test_NegativeBinomialDistributionLoss(center, transformation):
         assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.5)
 
 
-def test_BetaDistributionLoss():
+@pytest.mark.parametrize(
+    ["center", "transformation"],
+    itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
+)
+def test_BetaDistributionLoss(center, transformation):
     initial_mean = 0.1
     initial_shape = 10
     n = 100000
-    target = BetaDistributionLoss()\
-        .map_x_to_distribution(torch.tensor([initial_mean, initial_shape]))\
-        .sample_n(n)
+    target = BetaDistributionLoss().map_x_to_distribution(torch.tensor([initial_mean, initial_shape])).sample_n(n)
+    normalizer = TorchNormalizer(center=center, transformation=transformation)
+    normalized_target = normalizer.fit_transform(target).view(1, -1)
+    target_scale = normalizer.get_parameters().unsqueeze(0)
+    parameters = torch.stack([normalized_target, 1.0 * torch.ones_like(normalized_target)], dim=-1)
+    loss = BetaDistributionLoss()
 
-    mean = target.mean()
-    assert torch.isclose(torch.as_tensor(initial_mean), mean, atol=0.01, rtol=0.01)
+    if transformation not in ["logit"] or not center:
+        with pytest.raises(AssertionError):
+            loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+    else:
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+        samples = loss.sample_n(rescaled_parameters, 1)
+        assert torch.isclose(torch.as_tensor(initial_mean), samples.mean(), atol=0.01, rtol=0.01)  # mean=0.1
+        assert torch.isclose(target.std(), samples.std(), atol=0.02, rtol=0.3)  # std=0.09

@@ -230,10 +230,17 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
         """
-        y = y + self.eps
         if self.transformation is None:
-            pass
-        elif isinstance(y, torch.Tensor):
+            return y
+
+        # protect against numerical instabilities
+        if isinstance(self.transformation, str) and self.transformation == "logit":
+            # need to apply eps slightly differently
+            y = y / (1 + 2 * self.eps) + self.eps
+        else:
+            y = y + self.eps
+
+        if isinstance(y, torch.Tensor):
             y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[0](y)
         else:
             # convert first to tensor, then transform and then convert to numpy array

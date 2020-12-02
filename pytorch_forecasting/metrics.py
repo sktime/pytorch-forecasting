@@ -841,10 +841,9 @@ class BetaDistributionLoss(DistributionLoss):
     Beta distribution loss for unit interval data.
 
     Requirements for original target normalizer:
-        * coerced to be positive
-        * not centered normalization (only rescaled)
-        * normalized target not in log space
+        * logit transformation
     """
+
     distribution_class = distributions.Beta
     distribution_arguments = ["mean", "shape"]
 
@@ -854,17 +853,20 @@ class BetaDistributionLoss(DistributionLoss):
         return self.distribution_class(concentration0=(1 - mean) * shape, concentration1=mean * shape)
 
     def rescale_parameters(
-        self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
-        assert transformer.coerce_positive, "Beta distribution is only compatible with strictly positive data"
-        assert (
-            not transformer.log_scale
-        ), "Beta distribution is not compatible with log transformation - use LogNormal"
-        assert not transformer.center, "Beta distribution is not compatible with centered data"
+        assert encoder.transformation in ["logit"], "Beta distribution is only compatible with logit transformation"
+        assert encoder.center, "Beta distribution requires normalizer to center data"
 
-        scaled_mean = torch.sigmoid(parameters[..., 0] + target_scale[..., 0].unsqueeze(1))
-        return torch.stack([
-            scaled_mean,
-            F.softplus(parameters[..., 1]) * scaled_mean * (1 - scaled_mean)
-            / torch.pow(target_scale[..., 1].unsqueeze(1), 2)
-        ], dim=-1)
+        scaled_mean = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale))
+        # need to first transform target scale standard deviation in logit space to real space
+        # we assume a normal distribution in logit space (we used a logit transform and a standard scaler)
+        # and know that the variance of the beta distribution is limited by `scaled_mean * (1 - scaled_mean)`
+        mean_derivative = scaled_mean * (1 - scaled_mean)
+
+        # we can approximate variance as
+        # torch.pow(torch.tanh(target_scale[..., 1].unsqueeze(1) * torch.sqrt(mean_derivative)), 2) * mean_derivative
+        # shape is (positive) parameter * mean_derivative / var
+        shape_scaler = torch.pow(torch.tanh(target_scale[..., 1].unsqueeze(1) * torch.sqrt(mean_derivative)), 2)
+        scaled_shape = F.softplus(parameters[..., 1]) / shape_scaler
+        return torch.stack([scaled_mean, scaled_shape], dim=-1)
