@@ -372,7 +372,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 out = out["prediction"]
             elif out["prediction_type"] == "parameters":  # parameters need to be rescaled
                 out = self.loss.rescale_parameters(
-                    out["prediction"], target_scale=out["target_scale"], transformer=self.output_transformer
+                    out["prediction"], target_scale=out["target_scale"], encoder=self.output_transformer
                 )
             else:
                 raise ValueError(f"Unknown output type {out['prediction_type']}")

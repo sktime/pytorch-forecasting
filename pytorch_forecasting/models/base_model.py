@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
 from pytorch_lightning.utilities.parsing import get_init_args
+import scipy.stats
 import torch
 import torch.nn as nn
 from torch.nn.utils import rnn
@@ -902,6 +903,7 @@ class BaseModelWithCovariates(BaseModel):
         normalize: bool = True,
         bins: int = 95,
         std: float = 2.0,
+        log_scale: bool = None,
     ) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Calculate predictions and actuals by variable averaged by ``bins`` bins spanning from ``-std`` to ``+std``
@@ -912,6 +914,8 @@ class BaseModelWithCovariates(BaseModel):
             normalize: if to return normalized averages, i.e. mean or sum of ``y``
             bins: number of bins to calculate
             std: number of standard deviations for standard scaled continuous variables
+            log_scale (str, optional): if to plot in log space. If None, determined based on skew of values.
+                Defaults to None.
 
         Returns:
             dictionary that can be used to plot averages with :py:meth:`~plot_prediction_actual_by_variable`
@@ -927,10 +931,13 @@ class BaseModelWithCovariates(BaseModel):
         # select valid y values
         y_flat = x["decoder_target"][mask]
         y_pred_flat = y_pred[mask]
-        log_y = self.dataset_parameters["target_normalizer"] is not None and getattr(
-            self.dataset_parameters["target_normalizer"], "log_scale", False
-        )
-        if log_y:
+
+        # determine in which average in log-space to transform data
+        if log_scale is None:
+            skew = torch.mean(((y_flat - torch.mean(y_flat)) / torch.std(y_flat)) ** 3)
+            log_scale = skew > 1.6
+
+        if log_scale:
             y_flat = torch.log(y_flat + 1e-8)
             y_pred_flat = torch.log(y_pred_flat + 1e-8)
 
@@ -997,7 +1004,7 @@ class BaseModelWithCovariates(BaseModel):
                 averages_actual[name] /= support[name].clamp(min=1)
                 averages_prediction[name] /= support[name].clamp(min=1)
 
-        if log_y:  # reverse log scaling
+        if log_scale:
             for name in support.keys():
                 averages_actual[name] = torch.exp(averages_actual[name])
                 averages_prediction[name] = torch.exp(averages_prediction[name])
@@ -1009,7 +1016,7 @@ class BaseModelWithCovariates(BaseModel):
         }
 
     def plot_prediction_actual_by_variable(
-        self, data: Dict[str, Dict[str, torch.Tensor]], name: str = None, ax=None
+        self, data: Dict[str, Dict[str, torch.Tensor]], name: str = None, ax=None, log_scale: bool = None
     ) -> Union[Dict[str, plt.Figure], plt.Figure]:
         """
         Plot predicions and actual averages by variables
@@ -1019,6 +1026,8 @@ class BaseModelWithCovariates(BaseModel):
                 :py:meth:`~calculate_prediction_actual_by_variable`
             name (str, optional): name of variable for which to plot actuals vs predictions. Defaults to None which
                 means returning a dictionary of plots for all variables.
+            log_scale (str, optional): if to plot in log space. If None, determined based on skew of values.
+                Defaults to None.
 
         Raises:
             ValueError: if the variable name is unkown
@@ -1052,16 +1061,18 @@ class BaseModelWithCovariates(BaseModel):
             bins = values_actual.size
             support = data["support"][name].cpu().numpy()
 
-            if self.dataset_parameters["target_normalizer"] is not None and getattr(
-                self.dataset_parameters["target_normalizer"], "log_scale", False
-            ):
-                ax.set_yscale("log")
-
             # only display values where samples were observed
             support_non_zero = support > 0
             support = support[support_non_zero]
             values_actual = values_actual[support_non_zero]
             values_prediction = values_prediction[support_non_zero]
+
+            # determine if to display results in log space
+            if log_scale is None:
+                log_scale = scipy.stats.skew(values_actual) > 1.6
+
+            if log_scale:
+                ax.set_yscale("log")
 
             # plot averages
             if name in self.hparams.x_reals:
