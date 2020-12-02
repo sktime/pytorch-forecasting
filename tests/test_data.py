@@ -52,15 +52,14 @@ def test_NaNLabelEncoder(data, allow_nan):
     "kwargs",
     [
         dict(method="robust"),
-        dict(log_scale=True),
-        dict(coerce_positive=True),
+        dict(transform="log"),
+        dict(transform="log"),
         dict(center=False),
-        dict(log_zero_value=0.0),
     ],
 )
 def test_EncoderNormalizer(kwargs):
     data = torch.rand(100)
-    defaults = dict(method="standard", log_scale=False, coerce_positive=False, center=True, log_zero_value=0.0)
+    defaults = dict(method="standard", center=True)
     defaults.update(kwargs)
     kwargs = defaults
     if kwargs["coerce_positive"] and kwargs["log_scale"]:
@@ -191,6 +190,7 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
         ),
         dict(dropout_categoricals=["month"], time_varying_known_categoricals=["month"]),
         dict(constant_fill_strategy=dict(volume=0.0), allow_missings=True),
+        dict(target_normalizer=None),
     ],
 )
 def test_TimeSeriesDataSet(test_data, kwargs):

@@ -21,7 +21,7 @@ single and multiple GPUs out-of-the-box.
 
 # Installation
 
-If you are working windows, you need to first install PyTorch with
+If you are working on windows, you need to first install PyTorch with
 
 `pip install torch -f https://download.pytorch.org/whl/torch_stable.html`.
 

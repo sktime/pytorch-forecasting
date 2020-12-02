@@ -191,8 +191,8 @@ class TimeSeriesDataSet(Dataset):
             add_encoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
                 i.e. yes if ``min_encoder_length != max_encoder_length``.
             target_normalizer: transformer that takes group_ids, target and time_idx to return normalized targets.
-                You can choose from :py:class:`~TorchNormalizer`, :py:class:`~NaNLabelEncoder`
-                and :py:class:`~EncoderNormalizer`.
+                You can choose from :py:class:`~TorchNormalizer`, :py:class:`~NaNLabelEncoder`,
+                :py:class:`~EncoderNormalizer` or `None` for using not normalizer.
                 By default an appropriate normalizer is chosen automatically.
             categorical_encoders: dictionary of scikit learn label transformers. If you have unobserved categories in
                 the future, you can use the :py:class:`~pytorch_forecasting.encoders.NaNLabelEncoder` with
@@ -200,8 +200,8 @@ class TimeSeriesDataSet(Dataset):
                 be fit again.
             scalers: dictionary of scikit learn scalers. Defaults to sklearn's ``StandardScaler()``.
                 Other options are :py:class:`~pytorch_forecasting.data.EncoderNormalizer`,
-                :py:class:`~pytorch_forecasting.data.GroupNormalizer` or scikit-learn's ``StandarScaler()``
-                or ``RobustScaler()``.
+                :py:class:`~pytorch_forecasting.data.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
+                ``RobustScaler()`` or `None` for using not normalizer.
                 Prefittet encoders will not be fit again (with the exception of the
                 :py:class:`~pytorch_forecasting.data.EncoderNormalizer`).
             randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
@@ -341,16 +341,20 @@ class TimeSeriesDataSet(Dataset):
                 self.target_normalizer = NaNLabelEncoder()
                 assert not self.add_target_scales, "Target scales can be only added for continous targets"
             else:
-                coerce_positive = (data[self.target] >= 0).all()
-                if coerce_positive:
-                    log_scale = data[self.target].skew() > 2.5
-                    coerce_positive = False
+                data_positive = (data[self.target] > 0).all()
+                if data_positive:
+                    if data[self.target].skew() > 2.5:
+                        transform = "log"
+                    else:
+                        transform = "positive"
                 else:
-                    log_scale = False
+                    transform = None
                 if self.max_encoder_length > 20 and self.min_encoder_length > 1:
-                    self.target_normalizer = EncoderNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
+                    self.target_normalizer = EncoderNormalizer(transform=transform)
                 else:
-                    self.target_normalizer = GroupNormalizer(coerce_positive=coerce_positive, log_scale=log_scale)
+                    self.target_normalizer = GroupNormalizer(transform=transform)
+        elif self.target_normalizer is None:
+            self.target_normalizer = TorchNormalizer(method="identity")
         assert self.min_encoder_length > 1 or not isinstance(
             self.target_normalizer, EncoderNormalizer
         ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
@@ -1164,7 +1168,10 @@ class TimeSeriesDataSet(Dataset):
 
         # target
         target = rnn.pad_sequence([batch[1] for batch in batches], batch_first=True)
-        target_scale = torch.tensor([batch[0]["target_scale"] for batch in batches], dtype=torch.float)
+        if isinstance(batches[0][0]["target_scale"], torch.Tensor):  # stack tensor
+            target_scale = torch.stack([batch[0]["target_scale"] for batch in batches])
+        else:  # convert to tensor
+            target_scale = torch.tensor([batch[0]["target_scale"] for batch in batches], dtype=torch.float)
 
         return (
             dict(

@@ -762,11 +762,6 @@ class NormalDistributionLoss(DistributionLoss):
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
-        assert not transformer.coerce_positive, "Normal distribution is not compatible with strictly positive data"
-        assert (
-            not transformer.log_scale
-        ), "Normal distribution is not compatible with log transformation - use LogNormal"
-
         loc = transformer(dict(prediction=parameters[..., 0], target_scale=target_scale))
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(1)
         return torch.stack([loc, scale], dim=-1)
@@ -797,7 +792,11 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
         assert (
             not transformer.center
         ), "NegativeBinomialDistributionLoss is not compatible with `center=True` normalization"
-        if transformer.log_scale:
+        assert transformer.transform is not None and transformer.transform in ["log", "log1p", "softplus"], (
+            "`transform` of target transformer has to be either 'log', 'log1p' or "
+            f"'softplus' but found `transform={transformer.transform}`"
+        )
+        if transformer.transform in ["log", "log1p"]:
             mean = torch.exp(parameters[..., 0] * target_scale[..., 1].unsqueeze(-1))
             shape = (
                 F.softplus(torch.exp(parameters[..., 1]))
@@ -820,16 +819,15 @@ class LogNormalDistributionLoss(DistributionLoss):
     distribution_class = distributions.LogNormal
     distribution_arguments = ["loc", "scale"]
 
-    def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
+    def map_x_to_distribution(self, x: torch.Tensor) -> distributions.LogNormal:
         return self.distribution_class(loc=x[..., 0], scale=x[..., 1])
 
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
-        assert transformer.log_scale, "Log distribution requires log scaling"
-        assert np.isclose(
-            transformer.log_zero_value, 0.0
-        ), f"Log scaling should be done with log_zero_value = -np.inf but found {np.log(transformer.log_zero_value)}"
+        assert (
+            isinstance(transformer.transform, str) and transformer.transform == "log"
+        ), f"Log distribution requires log scaling but found `transform={transformer.transform}`"
 
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(-1)
         loc = parameters[..., 0] * target_scale[..., 1].unsqueeze(-1) + target_scale[..., 0].unsqueeze(-1)

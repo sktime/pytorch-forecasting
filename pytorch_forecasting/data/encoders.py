@@ -1,7 +1,7 @@
 """
 Encoders for encoding categorical variables and scaling continuous data.
 """
-from typing import Dict, Iterable, List, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Tuple, Union
 import warnings
 
 import numpy as np
@@ -150,56 +150,58 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         return data["prediction"]
 
 
+def _plus_one(x):
+    return x + 1
+
+
+def _identity(x):
+    return x
+
+
+def _clamp_zero(x):
+    return x.clamp(0.0)
+
+
 class TorchNormalizer(BaseEstimator, TransformerMixin):
     """
     Basic target transformer that can be fit also on torch tensors.
     """
 
+    # transformation and inverse transformation
+    TRANSFORMERS = {
+        "log": (torch.log, torch.exp),
+        "log1p": (torch.logp1, torch.expm1),
+        "logit": (torch.logit, torch.sigmoid),
+        "softplus": (_plus_one, F.softplus),
+        "positive": (_identity, _clamp_zero),
+    }
+
     def __init__(
         self,
         method: str = "standard",
         center: bool = True,
-        log_scale: Union[bool, float] = False,
-        log_zero_value: float = -np.inf,
-        coerce_positive: Union[float, bool] = None,
+        transform: Union[str, Tuple[Callable, Callable]] = None,
         eps: float = 1e-8,
     ):
         """
         Initialize
 
         Args:
-            method (str, optional): method to rescale series. Either "standard" (standard scaling) or "robust"
-                (scale using quantiles 0.25-0.75). Defaults to "standard".
+            method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
+                or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
             center (bool, optional): If to center the output to zero. Defaults to True.
-            log_scale (bool, optional): If to take log of values. Defaults to False. Defaults to False.
-            log_zero_value (float, optional): Value to map 0 to for ``log_scale=True`` or in softplus. Defaults to -inf.
-            coerce_positive (Union[bool, float, str], optional): If to coerce output to positive. Valid values:
-                * None, i.e. is automatically determined and might change to True if all values are >= 0 (Default).
-                * True, i.e. output is clamped at 0.
-                * False, i.e. values are not coerced
-                * float, i.e. softmax is applied with beta = coerce_positive.
-            eps (float, optional): Number for numerical stability of calcualtions.
-                Defaults to 1e-8. For count data, 1.0 is recommended.
+            transform (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
+                Available options are amongst others "log", "logp1", "logit", None or a tuple of PyTorch functions that
+                transforms and inversely transforms values.
+                All values at :py:attr:`~TorchNormalizer.TRANSFORMERS`. Defaults to None.
+            eps (float, optional): Number for numerical stability of calculations.
+                Defaults to 1e-8.
         """
         self.method = method
-        assert method in ["standard", "robust"], f"method has invalid value {method}"
+        assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.eps = eps
-
-        # set log scale
-        self.log_zero_value = np.exp(log_zero_value)
-        self.log_scale = log_scale
-
-        # check if coerce positive should be determined automatically
-        if coerce_positive is None:
-            if log_scale:
-                coerce_positive = False
-        else:
-            assert not (self.log_scale and coerce_positive), (
-                "log scale means that output is transformed to a positive number by default while coercing positive"
-                " will apply softmax function - decide for either one or the other"
-            )
-        self.coerce_positive = coerce_positive
+        self.transform = transform
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -210,20 +212,45 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         """
         return torch.stack([torch.as_tensor(self.center_), torch.as_tensor(self.scale_)], dim=-1)
 
-    def _preprocess_y(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    def preprocess_y(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
         """
         Preprocess input data (e.g. take log).
 
-        Can set coerce positive to a value if it was set to None and log_scale to False.
+        Uses ``transform`` attribute to determine how to apply transform.
 
         Returns:
             Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
         """
-        if self.log_scale:
-            if isinstance(y, torch.Tensor):
-                y = torch.log(y + self.log_zero_value + self.eps)
-            else:
-                y = np.log(y + self.log_zero_value + self.eps)
+        y = y + self.eps
+        if self.transform is None:
+            pass
+        elif isinstance(y, torch.Tensor):
+            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[0](y)
+        else:
+            # convert first to tensor, then transform and then convert to numpy array
+            y = torch.as_tensor(y)
+            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[0](y)
+            y = np.asarray(y)
+        return y
+
+    def inverse_preprocess_y(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Inverse preprocess re-scaled data (e.g. take exp).
+
+        Uses ``transform`` attribute to determine how to apply inverse transform.
+
+        Returns:
+            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
+        """
+        if self.transform is None:
+            pass
+        elif isinstance(y, torch.Tensor):
+            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[1](y)
+        else:
+            # convert first to tensor, then transform and then convert to numpy array
+            y = torch.as_tensor(y)
+            y = self.TRANSFORMERS.get(self.transformer, self.transformer)[1](y)
+            y = np.asarray(y)
         return y
 
     def fit(self, y: Union[pd.Series, np.ndarray, torch.Tensor]):
@@ -236,32 +263,41 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             TorchNormalizer: self
         """
-        if self.coerce_positive is None and not self.log_scale:
-            self.coerce_positive = (y >= 0).all()
-        y = self._preprocess_y(y)
+        y = self.preprocess_y(y)
 
-        if self.method == "standard":
+        if self.method == "identity":
             if isinstance(y, torch.Tensor):
-                self.center_ = torch.mean(y, dim=-1) + self.eps
+                self.center_ = torch.zeros(y.size()[:-1])
+                self.scale_ = torch.ones(y.size()[:-1])
+            elif isinstance(y, (np.ndarray, pd.Series, pd.DataFrame)):
+                self.center_ = np.zeros(y.shape[:-1])
+                self.scale_ = np.ones(y.shape[:-1])
+            else:
+                self.center_ = 0.0
+                self.scale_ = 1.0
+
+        elif self.method == "standard":
+            if isinstance(y, torch.Tensor):
+                self.center_ = torch.mean(y, dim=-1)
                 self.scale_ = torch.std(y, dim=-1) + self.eps
             elif isinstance(y, np.ndarray):
-                self.center_ = np.mean(y, axis=-1) + self.eps
+                self.center_ = np.mean(y, axis=-1)
                 self.scale_ = np.std(y, axis=-1) + self.eps
             else:
-                self.center_ = np.mean(y) + self.eps
+                self.center_ = np.mean(y)
                 self.scale_ = np.std(y) + self.eps
 
         elif self.method == "robust":
             if isinstance(y, torch.Tensor):
-                self.center_ = torch.median(y, dim=-1).values + self.eps
+                self.center_ = torch.median(y, dim=-1).values
                 q_75 = y.kthvalue(int(len(y) * 0.75), dim=-1).values
                 q_25 = y.kthvalue(int(len(y) * 0.25), dim=-1).values
             elif isinstance(y, np.ndarray):
-                self.center_ = np.median(y, axis=-1) + self.eps
+                self.center_ = np.median(y, axis=-1)
                 q_75 = np.percentiley(y, 75, axis=-1)
                 q_25 = np.percentiley(y, 25, axis=-1)
             else:
-                self.center_ = np.median(y) + self.eps
+                self.center_ = np.median(y)
                 q_75 = np.percentiley(y, 75)
                 q_25 = np.percentiley(y, 25)
             self.scale_ = (q_75 - q_25) / 2.0 + self.eps
@@ -344,19 +380,14 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             norm = norm.unsqueeze(-1)
 
         # transform
-        y_normed = data["prediction"] * norm[:, 1, None] + norm[:, 0, None]
+        y = data["prediction"] * norm[:, 1, None] + norm[:, 0, None]
 
-        if self.log_scale:
-            y_normed = (y_normed.exp() - self.log_zero_value).clamp_min(0.0)
-        elif isinstance(self.coerce_positive, bool) and self.coerce_positive:
-            y_normed = y_normed.clamp_min(0.0)
-        elif isinstance(self.coerce_positive, float):
-            y_normed = F.softplus(y_normed, beta=float(self.coerce_positive))
+        y = self.inverse_preprocess_y(y)
 
         # return correct shape
-        if data["prediction"].ndim == 1 and y_normed.ndim > 1:
-            y_normed = y_normed.squeeze(0)
-        return y_normed
+        if data["prediction"].ndim == 1 and y.ndim > 1:
+            y = y.squeeze(0)
+        return y
 
 
 class EncoderNormalizer(TorchNormalizer):
@@ -378,16 +409,13 @@ class GroupNormalizer(TorchNormalizer):
     also to normalize any other variable.
     """
 
-    # todo: allow window (exp weighted), different methods such as quantile for robust scaling
     def __init__(
         self,
         method: str = "standard",
         groups: List[str] = [],
         center: bool = True,
         scale_by_group: bool = False,
-        log_scale: Union[bool, float] = False,
-        log_zero_value: float = 0.0,
-        coerce_positive: Union[float, bool] = None,
+        transform: Union[str, Tuple[Callable, Callable]] = None,
         eps: float = 1e-8,
     ):
         """
@@ -400,13 +428,10 @@ class GroupNormalizer(TorchNormalizer):
             center (bool, optional): If to center the output to zero. Defaults to True.
             scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as
                 ``(group1_norm * group2_norm * ...) ^ (1 / n_groups)``. Defaults to False.
-            log_scale (bool, optional): If to take log of values. Defaults to False. Defaults to False.
-            log_zero_value (float, optional): Value to map 0 to for ``log_scale=True`` or in softplus. Defaults to 0.0
-            coerce_positive (Union[bool, float, str], optional): If to coerce output to positive. Valid values:
-                * None, i.e. is automatically determined and might change to True if all values are >= 0 (Default).
-                * True, i.e. output is clamped at 0.
-                * False, i.e. values are not coerced
-                * float, i.e. softmax is applied with beta = coerce_positive.
+            transform (Union[str, Tuple[Callable, Callable]] optional): Transform target before applying normalizer.
+                Available options are amongst others "log", "logp1", "logit", None or a tuple of PyTorch functions that
+                transforms and inversely transforms values.
+                All values at :py:attr:`~TorchNormalizer.TRANSFORMERS`. Defaults to None.
             eps (float, optional): Number for numerical stability of calcualtions.
                 Defaults to 1e-8. For count data, 1.0 is recommended.
         """
@@ -415,9 +440,7 @@ class GroupNormalizer(TorchNormalizer):
         super().__init__(
             method=method,
             center=center,
-            log_scale=log_scale,
-            log_zero_value=log_zero_value,
-            coerce_positive=coerce_positive,
+            transform=transform,
             eps=eps,
         )
 
@@ -432,17 +455,15 @@ class GroupNormalizer(TorchNormalizer):
         Returns:
             self
         """
-        if self.coerce_positive is None and not self.log_scale:
-            self.coerce_positive = (y >= 0).all()
-        y = self._preprocess_y(y)
+        y = self.preprocess_y(y)
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
-                self.norm_ = [np.mean(y) + self.eps, np.std(y) + self.eps]  # center and scale
+                self.norm_ = [np.mean(y), np.std(y) + self.eps]  # center and scale
             else:
                 quantiles = np.quantile(y, [0.25, 0.5, 0.75])
                 self.norm_ = [
-                    quantiles[1] + self.eps,
+                    quantiles[1],
                     (quantiles[2] - quantiles[0]) / 2.0 + self.eps,
                 ]  # center and scale
             if not self.center:
@@ -456,7 +477,7 @@ class GroupNormalizer(TorchNormalizer):
                     .assign(y=y)
                     .groupby(g, observed=True)
                     .agg(center=("y", "mean"), scale=("y", "std"))
-                    .assign(center=lambda x: x["center"] + self.eps, scale=lambda x: x.scale + self.eps)
+                    .assign(center=lambda x: x["center"], scale=lambda x: x.scale + self.eps)
                     for g in self.groups
                 }
             else:
@@ -467,7 +488,7 @@ class GroupNormalizer(TorchNormalizer):
                     .y.quantile([0.25, 0.5, 0.75])
                     .unstack(-1)
                     .assign(
-                        center=lambda x: x[0.5] + self.eps,
+                        center=lambda x: x[0.5],
                         scale=lambda x: (x[0.75] - x[0.25]) / 2.0 + self.eps,
                     )[["center", "scale"]]
                     for g in self.groups
@@ -490,7 +511,7 @@ class GroupNormalizer(TorchNormalizer):
                     .assign(y=y)
                     .groupby(self.groups, observed=True)
                     .agg(center=("y", "mean"), scale=("y", "std"))
-                    .assign(center=lambda x: x["center"] + self.eps, scale=lambda x: x.scale + self.eps)
+                    .assign(center=lambda x: x["center"], scale=lambda x: x.scale + self.eps)
                 )
             else:
                 self.norm_ = (
@@ -500,7 +521,7 @@ class GroupNormalizer(TorchNormalizer):
                     .y.quantile([0.25, 0.5, 0.75])
                     .unstack(-1)
                     .assign(
-                        center=lambda x: x[0.5] + self.eps,
+                        center=lambda x: x[0.5],
                         scale=lambda x: (x[0.75] - x[0.25]) / 2.0 + self.eps,
                     )[["center", "scale"]]
                 )
