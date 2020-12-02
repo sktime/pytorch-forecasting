@@ -837,32 +837,27 @@ class LogNormalDistributionLoss(DistributionLoss):
 
 
 class BetaDistributionLoss(DistributionLoss):
-    """
-    Log-normal loss, e.g. for data in the range [0.0, 1.0]
-
-    Requirements for original target normalizer:
-        * not centered normalization
-        * coerced to be positive
-        * not normalized in log space
-    """
-
+    """Loss function for DeepAR"""
     distribution_class = distributions.Beta
-    distribution_arguments = ["concentration0", "concentration1"]
+    distribution_arguments = ["mean", "shape"]
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Beta:
-        return self.distribution_class(concentration0=x[..., 0], concentration1=x[..., 1])
+        mean = x[..., 0]
+        shape = x[..., 1]
+        return self.distribution_class(concentration0=(1 - mean) * shape, concentration1=mean * shape)
 
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, transformer: BaseEstimator
     ) -> torch.Tensor:
-        assert transformer.coerce_positive, "Beta distribution is only compatible with strictly positive data"
+        # assert transformer.coerce_positive, "Beta distribution is only compatible with strictly positive data"
         assert (
             not transformer.log_scale
         ), "Beta distribution is not compatible with log transformation - use LogNormal"
-        assert not transformer.center, "Beta distribution is not compatible with centered data"
+        # assert not transformer.center, "Beta distribution is not compatible with centered data"
 
-        eps = 1e-6
-        concentration0 = F.softplus(parameters[..., 0]) + eps
-        concentration1 = F.softplus(parameters[..., 1]) + eps
-
-        return torch.stack([concentration0, concentration1], dim=-1)
+        scaled_mean = torch.sigmoid(parameters[..., 0] + target_scale[..., 0].unsqueeze(1))
+        return torch.stack([
+            scaled_mean,
+            F.softplus(parameters[..., 1]) * scaled_mean * (1 - scaled_mean)
+            / torch.pow(target_scale[..., 1].unsqueeze(1), 2)
+        ], dim=-1)
