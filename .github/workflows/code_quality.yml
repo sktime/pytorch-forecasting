@@ -76,5 +76,22 @@ jobs:
 
       - name: Install dependencies
         run: pip install flake8
-      - name: Run checking
+      - name: Run checks
         run: flake8
+
+
+  pre-commit-hooks:
+    name: Check that pre-commit hooks pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: pip install pre-commit
+
+      - name: Run checks
+        run: pre-commit run --all-files
