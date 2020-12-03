@@ -25,3 +25,12 @@ repos:
     - id: tartufo
       language: python
       args: [--pre-commit, --cleanup]
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 0.5.2
+    hooks:
+      - id: nbqa-black
+        additional_dependencies: [black==20.8b1]
+      - id: nbqa-isort
+        additional_dependencies: [isort==5.6.4]
+      - id: nbqa-flake8
+      - id: nbqa-check-ast

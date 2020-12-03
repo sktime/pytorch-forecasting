@@ -22,6 +22,10 @@ exclude = '''
 )
 '''
 
+[tool.nbqa.mutate]
+isort = 1
+black = 1
+
 [tool.poetry]
 name = "pytorch_forecasting"
 readme = 'README.md'  # Markdown files are supported
