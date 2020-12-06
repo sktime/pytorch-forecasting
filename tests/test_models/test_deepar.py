@@ -35,6 +35,7 @@ def _integration(dataloaders_with_covariates, tmp_path, gpus, cell_type="LSTM"):
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
+        n_plotting_samples=100,
     )
     net.size()
     try:

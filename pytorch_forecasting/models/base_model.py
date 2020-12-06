@@ -782,21 +782,27 @@ class BaseModelWithCovariates(BaseModel):
     Assumes the following hyperparameters:
 
     Args:
-        x_reals: order of continuous variables in tensor passed to forward function
-        x_categoricals: order of categorical variables in tensor passed to forward function
-        embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
-            embedding size
-        embedding_labels: dictionary mapping (string) indices to list of categorical labels
-        static_categoricals: integer of positions of static categorical variables
-        static_reals: integer of positions of static continuous variables
-        time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
-        time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
-        time_varying_reals_encoder: integer of positions of continuous variables for encoder
-        time_varying_reals_decoder: integer of positions of continuous variables for decoder
+        static_categoricals (List[str]): names of static categorical variables
+        static_reals (List[str]): names of static continuous variables
+        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
+        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
+        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
+        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
+        x_reals (List[str]): order of continuous variables in tensor passed to forward function
+        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
+        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
+            where the first integer denotes the number of categorical classes and the second the embedding size
+        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
+        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
+             embedding vector filled with zeros
+        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
+            can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
+            as bag of embeddings
     """
 
     @property
     def reals(self) -> List[str]:
+        """List of all continuous variables in model"""
         return list(
             set(
                 self.hparams.static_reals
@@ -807,6 +813,7 @@ class BaseModelWithCovariates(BaseModel):
 
     @property
     def categoricals(self) -> List[str]:
+        """List of all categorical variables in model"""
         return list(
             set(
                 self.hparams.static_categoricals
@@ -817,18 +824,22 @@ class BaseModelWithCovariates(BaseModel):
 
     @property
     def static_variables(self) -> List[str]:
+        """List of all static variables in model"""
         return self.hparams.static_categoricals + self.hparams.static_reals
 
     @property
     def encoder_variables(self) -> List[str]:
+        """List of all encoder variables in model"""
         return self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
 
     @property
     def decoder_variables(self) -> List[str]:
+        """List of all decoder variables in model"""
         return self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
 
     @property
     def categorical_groups_mapping(self) -> Dict[str, str]:
+        """Mapping of categorical variables to categorical groups"""
         groups = {}
         for group_name, sublist in self.hparams.categorical_groups.items():
             groups.update({name: group_name for name in sublist})

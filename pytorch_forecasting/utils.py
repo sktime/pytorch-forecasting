@@ -96,9 +96,19 @@ def profile(function: Callable, profile_fname: str, filter: str = "", period=0.0
                 LinesPrinter(filter=filter).show(profile_fname)
 
 
-def get_embedding_size(n: int) -> int:
+def get_embedding_size(n: int, max_size: int = 100) -> int:
+    """
+    Determine empirically good embedding sizes (formula taken from fastai).
+
+    Args:
+        n (int): number of classes
+        max_size (int, optional): maximum embedding size. Defaults to 100.
+
+    Returns:
+        int: embedding size
+    """
     if n > 2:
-        return round(1.6 * n ** 0.56)
+        return min(round(1.6 * n ** 0.56), max_size)
     else:
         return 1
 

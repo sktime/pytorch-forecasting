@@ -90,12 +90,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
             max_encoder_length: length to encode (can be far longer than the decoder length but does not have to be)
-            static_categoricals: integer of positions of static categorical variables
-            static_reals: integer of positions of static continuous variables
-            time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
-            time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
-            time_varying_reals_encoder: integer of positions of continuous variables for encoder
-            time_varying_reals_decoder: integer of positions of continuous variables for decoder
+            static_categoricals: names of static categorical variables
+            static_reals: names of static continuous variables
+            time_varying_categoricals_encoder: names of categorical variables for encoder
+            time_varying_categoricals_decoder: names of categorical variables for decoder
+            time_varying_reals_encoder: names of continuous variables for encoder
+            time_varying_reals_decoder: names of continuous variables for decoder
             categorical_groups: dictionary where values
                 are list of categorical variables that are forming together a new categorical
                 variable which is the key in the dictionary

@@ -19,12 +19,6 @@ repos:
     rev: 20.8b1
     hooks:
     - id: black
-  - repo: https://github.com/godaddy/tartufo
-    rev: v1.1.2
-    hooks:
-    - id: tartufo
-      language: python
-      args: [--pre-commit, --cleanup]
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 0.5.2
     hooks:
