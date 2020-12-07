@@ -135,6 +135,15 @@ class BaseModel(LightningModule):
             self.output_transformer = output_transformer
 
     def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """
+        Extract prediction from network output and rescale it to real space / de-normalize it.
+
+        Args:
+            out (Dict[str, torch.Tensor]): Network output with "prediction" and "target_scale" entries.
+
+        Returns:
+            torch.Tensor: rescaled prediction
+        """
         if isinstance(out, torch.Tensor):
             return out
         elif self.output_transformer is None:
