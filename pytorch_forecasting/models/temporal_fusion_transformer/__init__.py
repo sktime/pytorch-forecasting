@@ -511,17 +511,17 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
     def on_fit_end(self):
-        if self.log_interval(train=True) > 0:
+        if self.log_interval > 0:
             self._log_embeddings()
 
-    def step(self, x, y, batch_idx, label="train"):
+    def step(self, x, y, batch_idx):
         """
         run at each step for training or validation
         """
         # extract data and run model
-        log, out = super().step(x, y, batch_idx, label=label)
+        log, out = super().step(x, y, batch_idx)
         # calculate interpretations etc for latter logging
-        if self.log_interval(label == "train") > 0:
+        if self.log_interval > 0:
             detached_output = {name: tensor.detach() for name, tensor in out.items()}
             interpretation = self.interpret_output(
                 detached_output,
@@ -531,12 +531,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             log["interpretation"] = interpretation
         return log, out
 
-    def epoch_end(self, outputs, label="train"):
+    def epoch_end(self, outputs):
         """
         run at epoch end for training or validation
         """
-        if self.log_interval(label == "train") > 0:
-            self._log_interpretation(outputs, label=label)
+        if self.log_interval > 0:
+            self._log_interpretation(outputs)
 
     def interpret_output(
         self,
@@ -737,7 +737,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         return figs
 
-    def _log_interpretation(self, outputs, label="train"):
+    def _log_interpretation(self, outputs):
         """
         Log interpretation metrics to tensorboard.
         """
@@ -766,6 +766,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
+        label = ["val", "train"][self.training]
         # log to tensorboard
         for name, fig in figs.items():
             self.logger.experiment.add_figure(

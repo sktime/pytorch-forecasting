@@ -154,24 +154,24 @@ class BaseModel(LightningModule):
         Train on batch.
         """
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="train")
+        log, _ = self.step(x, y, batch_idx)
         # log loss
         self.log("train_loss", log["loss"], on_step=True, on_epoch=True, prog_bar=True)
         return log
 
     def training_epoch_end(self, outputs):
-        self.epoch_end(outputs, label="train")
+        self.epoch_end(outputs)
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="val")  # log loss
+        log, _ = self.step(x, y, batch_idx)  # log loss
         self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 
     def validation_epoch_end(self, outputs):
-        self.epoch_end(outputs, label="val")
+        self.epoch_end(outputs)
 
-    def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train", **kwargs):
+    def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, **kwargs):
         """
         Run for each train/val step.
         """
@@ -179,7 +179,7 @@ class BaseModel(LightningModule):
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
             y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False)
 
-        if label == "train" and len(self.hparams.monotone_constaints) > 0:
+        if self.training and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
             assert not torch._C._get_cudnn_enabled(), (
@@ -233,26 +233,26 @@ class BaseModel(LightningModule):
                 loss = self.loss(prediction, y)
 
         # log
-        self._log_metrics(x, y, out, label=label)
-        if self.log_interval(label == "train") > 0:
-            self._log_prediction(x, out, batch_idx, label=label)
+        self._log_metrics(x, y, out)
+        if self.log_interval > 0:
+            self._log_prediction(x, out, batch_idx)
         log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
 
         return log, out
 
     def _log_metrics(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, out: Dict[str, torch.Tensor], label: str = "train"
+        self,
+        x: Dict[str, torch.Tensor],
+        y: torch.Tensor,
+        out: Dict[str, torch.Tensor],
     ) -> None:
         """
-        Log metrics every training/validation step
-
-        [extended_summary]
+        Log metrics every training/validation step.
 
         Args:
             x (Dict[str, torch.Tensor]): [description]
             y (torch.Tensor): [description]
             out (Dict[str, torch.Tensor]): [description]
-            label (str, optional): [description]. Defaults to "train".
         """
         # logging losses
         y_hat_detached = out["prediction"].detach()
@@ -264,7 +264,9 @@ class BaseModel(LightningModule):
                 )
             else:
                 loss_value = metric(y_hat_point_detached, y)
-            self.log(f"{label}_{metric.name}", loss_value, on_step=label == "train", on_epoch=True)
+            self.log(
+                f"{['val', 'train'][self.training]}_{metric.name}", loss_value, on_step=self.training, on_epoch=True
+            )
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
@@ -278,35 +280,35 @@ class BaseModel(LightningModule):
         """
         raise NotImplementedError()
 
-    def epoch_end(self, outputs, label="train"):
+    def epoch_end(self, outputs):
         """
         Run at epoch end for training or validation. Can be overriden in models.
         """
         pass
 
-    def log_interval(self, train: bool):
+    @property
+    def log_interval(self):
         """
         Log interval depending if training or validating
         """
-        if train:
+        if self.training:
             return self.hparams.log_interval
         else:
             return self.hparams.log_val_interval
 
-    def _log_prediction(self, x, out, batch_idx, label="train") -> None:
+    def _log_prediction(self, x, out, batch_idx) -> None:
         # log single prediction figure
-        log_interval = self.log_interval(label == "train")
-        if (batch_idx % log_interval == 0 or log_interval < 1.0) and log_interval > 0:
-            if log_interval < 1.0:  # log multiple steps
+        if (batch_idx % self.log_interval == 0 or self.log_interval < 1.0) and self.log_interval > 0:
+            if self.log_interval < 1.0:  # log multiple steps
                 log_indices = torch.arange(
-                    0, len(x["encoder_lengths"]), max(1, round(log_interval * len(x["encoder_lengths"])))
+                    0, len(x["encoder_lengths"]), max(1, round(self.log_interval * len(x["encoder_lengths"])))
                 )
             else:
                 log_indices = [0]
             for idx in log_indices:
                 fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True)
-                tag = f"{label.capitalize()} prediction"
-                if label == "train":
+                tag = f"{['Val', 'Train'][self.training]} prediction"
+                if self.training:
                     tag += f" of item {idx} in global batch {self.global_step}"
                 else:
                     tag += f" of item {idx} in batch {batch_idx}"
