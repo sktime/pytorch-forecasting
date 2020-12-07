@@ -320,7 +320,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 
-    def _log_metrics(
+    def log_metrics(
         self,
         x: Dict[str, torch.Tensor],
         y: torch.Tensor,
@@ -334,9 +334,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             y_hat_point_detached = self.loss.map_x_to_distribution(y_hat_detached).mean.unsqueeze(-1)
             out["prediction"] = y_hat_point_detached
             out["prediction_type"] = "samples"
-        super()._log_metrics(x, y, out)
+        super().log_metrics(x, y, out)
 
-    def _log_prediction(self, x, out, batch_idx) -> None:
+    def log_prediction(self, x, out, batch_idx) -> None:
         if (
             out["prediction_type"] == "parameters"
             and (batch_idx % self.log_interval == 0 or self.log_interval < 1.0)
@@ -351,7 +351,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 y_hat_samples = self.loss.sample(y_hat_detached, self.hparams.n_plotting_samples)
             out["prediction"] = y_hat_samples
             out["prediction_type"] = "samples"
-        super()._log_prediction(x, out, batch_idx=batch_idx)
+        super().log_prediction(x, out, batch_idx=batch_idx)
 
     def plot_prediction(
         self,

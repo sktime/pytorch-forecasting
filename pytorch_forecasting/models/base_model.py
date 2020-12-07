@@ -233,14 +233,14 @@ class BaseModel(LightningModule):
                 loss = self.loss(prediction, y)
 
         # log
-        self._log_metrics(x, y, out)
+        self.log_metrics(x, y, out)
         if self.log_interval > 0:
-            self._log_prediction(x, out, batch_idx)
+            self.log_prediction(x, out, batch_idx)
         log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
 
         return log, out
 
-    def _log_metrics(
+    def log_metrics(
         self,
         x: Dict[str, torch.Tensor],
         y: torch.Tensor,
@@ -296,7 +296,7 @@ class BaseModel(LightningModule):
         else:
             return self.hparams.log_val_interval
 
-    def _log_prediction(self, x, out, batch_idx) -> None:
+    def log_prediction(self, x, out, batch_idx) -> None:
         # log single prediction figure
         if (batch_idx % self.log_interval == 0 or self.log_interval < 1.0) and self.log_interval > 0:
             if self.log_interval < 1.0:  # log multiple steps
@@ -425,7 +425,7 @@ class BaseModel(LightningModule):
         fig.legend()
         return fig
 
-    def _log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor]) -> None:
+    def log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor]) -> None:
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """
@@ -453,7 +453,7 @@ class BaseModel(LightningModule):
             and self.global_step % self.hparams.log_interval == 0
             and self.hparams.log_gradient_flow
         ):
-            self._log_gradient_flow(self.named_parameters())
+            self.log_gradient_flow(self.named_parameters())
 
     def configure_optimizers(self):
         """
@@ -515,7 +515,7 @@ class BaseModel(LightningModule):
             ]
         return [optimizer], schedulers
 
-    def _get_mask(self, size, lengths, inverse=False):
+    def get_mask(self, size, lengths, inverse=False):
         if inverse:  # return where values are
             return torch.arange(size, device=self.device).unsqueeze(0) < lengths.unsqueeze(-1)
         else:  # return where no values are
@@ -621,7 +621,7 @@ class BaseModel(LightningModule):
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
                     decode_lenghts.append(lengths)
-                nan_mask = self._get_mask(out["prediction"].size(1), lengths)
+                nan_mask = self.get_mask(out["prediction"].size(1), lengths)
                 if isinstance(mode, (tuple, list)):
                     if mode[0] == "raw":
                         out = out[mode[1]]
@@ -940,7 +940,7 @@ class BaseModelWithCovariates(BaseModel):
 
         # mask values and transform to log space
         max_encoder_length = x["decoder_lengths"].max()
-        mask = self._get_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
+        mask = self.get_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
         # select valid y values
         y_flat = x["decoder_target"][mask]
         y_pred_flat = y_pred[mask]
