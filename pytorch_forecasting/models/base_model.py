@@ -566,7 +566,7 @@ class BaseModel(LightningModule):
         **kwargs,
     ):
         """
-        predict dataloader
+        Run inference / prediction.
 
         Args:
             dataloader: dataloader, dataframe or dataset
@@ -829,12 +829,12 @@ class BaseModelWithCovariates(BaseModel):
 
     @property
     def encoder_variables(self) -> List[str]:
-        """List of all encoder variables in model"""
+        """List of all encoder variables in model (excluding static variables)"""
         return self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
 
     @property
     def decoder_variables(self) -> List[str]:
-        """List of all decoder variables in model"""
+        """List of all decoder variables in model (excluding static variables)"""
         return self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
 
     @property
@@ -1140,6 +1140,15 @@ class BaseModelWithCovariates(BaseModel):
 
 
 class AutoRegressiveBaseModel(BaseModel):
+    """
+    Model with additional methods for autoregressive models.
+
+    Assumes the following hyperparameters:
+
+    Args:
+        target (str): name of target variable
+    """
+
     @classmethod
     def from_dataset(
         cls,
@@ -1161,4 +1170,29 @@ class AutoRegressiveBaseModel(BaseModel):
 
 
 class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegressiveBaseModel):
+    """
+    Model with additional methods for autoregressive models with covariates.
+
+    Assumes the following hyperparameters:
+
+    Args:
+        target (str): name of target variable
+        static_categoricals (List[str]): names of static categorical variables
+        static_reals (List[str]): names of static continuous variables
+        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
+        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
+        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
+        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
+        x_reals (List[str]): order of continuous variables in tensor passed to forward function
+        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
+        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
+            where the first integer denotes the number of categorical classes and the second the embedding size
+        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
+        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
+             embedding vector filled with zeros
+        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
+            can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
+            as bag of embeddings
+    """
+
     pass

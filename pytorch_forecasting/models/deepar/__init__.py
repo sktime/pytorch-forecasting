@@ -268,9 +268,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                     )
                 )
                 # sample value(s) from distribution
-                prediction = self.loss.sample_n(prediction_parameters, 1)[0]  # select first sample
+                prediction = self.loss.sample(prediction_parameters, 1)[-1]  # select first sample
                 # normalize prediction prediction
-                # todo: how to handle lags (-> need list of lags and positions
+                # todo: how to handle lags (-> need list of lags and positions)
                 #   -> then if prediction lenght larger than lag start imputing ->
                 #   before that let timeseriesdataset take care)?
                 normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
@@ -289,7 +289,11 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         hidden_state = self.encode(x)
         # decode
         input_vector = self.construct_input_vector(
-            x["decoder_cat"], x["decoder_cont"], one_off_target=x["encoder_cont"][:, -1, self.target_position]
+            x["decoder_cat"],
+            x["decoder_cont"],
+            one_off_target=x["encoder_cont"][
+                torch.arange(x["encoder_cont"].size(0)), x["encoder_lengths"] - 1, self.target_position
+            ],
         )
 
         if self.training:
@@ -342,7 +346,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             if self.hparams.n_plotting_samples is None:
                 y_hat_samples = self.loss.map_x_to_distribution(y_hat_detached).mean.unsqueeze(-1)
             else:
-                y_hat_samples = self.loss.sample_n(y_hat_detached, self.hparams.n_plotting_samples).permute(1, 2, 0)
+                y_hat_samples = self.loss.sample(y_hat_detached, self.hparams.n_plotting_samples)
             out["prediction"] = y_hat_samples
             out["prediction_type"] = "samples"
         super()._log_prediction(x, out, batch_idx=batch_idx, label=label)

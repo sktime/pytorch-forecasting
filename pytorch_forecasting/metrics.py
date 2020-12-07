@@ -708,19 +708,19 @@ class DistributionLoss(MultiHorizonMetric):
         """
         return y_pred.mean(-1)
 
-    def sample_n(self, y_pred, n_samples: int) -> torch.Tensor:
+    def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         """
         Sample from distribution.
 
         Args:
-            y_pred: prediction output of network
+            y_pred: prediction output of network (shape batch_size x n_timesteps x n_paramters)
             n_samples (int): number of samples to draw
 
         Returns:
-            torch.Tensor: tensor where first dimensionare samples
+            torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
         """
         dist = self.map_x_to_distribution(y_pred)
-        return dist.sample_n(n_samples)
+        return dist.sample((n_samples,)).permute(1, 2, 0)
 
     def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
         """
