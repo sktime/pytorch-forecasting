@@ -96,11 +96,42 @@ def profile(function: Callable, profile_fname: str, filter: str = "", period=0.0
                 LinesPrinter(filter=filter).show(profile_fname)
 
 
-def get_embedding_size(n: int) -> int:
+def get_embedding_size(n: int, max_size: int = 100) -> int:
+    """
+    Determine empirically good embedding sizes (formula taken from fastai).
+
+    Args:
+        n (int): number of classes
+        max_size (int, optional): maximum embedding size. Defaults to 100.
+
+    Returns:
+        int: embedding size
+    """
     if n > 2:
-        return round(1.6 * n ** 0.56)
+        return min(round(1.6 * n ** 0.56), max_size)
     else:
         return 1
+
+
+def create_mask(size: int, lengths: torch.LongTensor, inverse: bool = False) -> torch.BoolTensor:
+    """
+    Create boolean masks of shape len(lenghts) x size.
+
+    An entry at (i, j) is True if lengths[i] > j.
+
+    Args:
+        size (int): size of second dimension
+        lengths (torch.LongTensor): tensor of lengths
+        inverse (bool, optional): If true, boolean mask is inverted. Defaults to False.
+
+    Returns:
+        torch.BoolTensor: mask
+    """
+
+    if inverse:  # return where values are
+        return torch.arange(size, device=lengths.device).unsqueeze(0) < lengths.unsqueeze(-1)
+    else:  # return where no values are
+        return torch.arange(size, device=lengths.device).unsqueeze(0) >= lengths.unsqueeze(-1)
 
 
 _NEXT_FAST_LEN = {}

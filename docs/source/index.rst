@@ -39,7 +39,8 @@ or to install via conda
 
    conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
 
-Vist :ref:`Getting started<getting-started>` to learn more about the package and detailled installation instruction.
+Vist :ref:`Getting started <getting-started>` to learn more about the package and detailled installation instruction.
+The :ref:`Tutorials <tutorials>` section provides guidance on how to use models and implement new ones.
 
 .. toctree::
    :titlesonly:

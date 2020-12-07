@@ -23,7 +23,7 @@ from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer
 from pytorch_forecasting.metrics import MASE, SMAPE, Metric
 from pytorch_forecasting.optim import Ranger
-from pytorch_forecasting.utils import get_embedding_size, groupby_apply
+from pytorch_forecasting.utils import create_mask, get_embedding_size, groupby_apply
 
 
 class BaseModel(LightningModule):
@@ -135,6 +135,15 @@ class BaseModel(LightningModule):
             self.output_transformer = output_transformer
 
     def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
+        """
+        Extract prediction from network output and rescale it to real space / de-normalize it.
+
+        Args:
+            out (Dict[str, torch.Tensor]): Network output with "prediction" and "target_scale" entries.
+
+        Returns:
+            torch.Tensor: rescaled prediction
+        """
         if isinstance(out, torch.Tensor):
             return out
         elif self.output_transformer is None:
@@ -154,32 +163,45 @@ class BaseModel(LightningModule):
         Train on batch.
         """
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="train")
+        log, _ = self.step(x, y, batch_idx)
         # log loss
         self.log("train_loss", log["loss"], on_step=True, on_epoch=True, prog_bar=True)
         return log
 
     def training_epoch_end(self, outputs):
-        self.epoch_end(outputs, label="train")
+        self.epoch_end(outputs)
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="val")  # log loss
+        log, _ = self.step(x, y, batch_idx)  # log loss
         self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 
     def validation_epoch_end(self, outputs):
-        self.epoch_end(outputs, label="val")
+        self.epoch_end(outputs)
 
-    def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, label="train", **kwargs):
+    def step(
+        self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, **kwargs
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """
         Run for each train/val step.
+
+        Args:
+            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
+            y (torch.Tensor): y as passed to the loss function by the dataloader
+            batch_idx (int): batch number
+            **kwargs: additional arguments to pass to the network apart from ``x``
+
+        Returns:
+            Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]: tuple where the first
+                entry is a dictionary to which additional logging results can be added for consumption in the
+                ``epoch_end`` hook and the second entry is the model's output.
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
             y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False)
 
-        if label == "train" and len(self.hparams.monotone_constaints) > 0:
+        if self.training and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
             assert not torch._C._get_cudnn_enabled(), (
@@ -233,26 +255,26 @@ class BaseModel(LightningModule):
                 loss = self.loss(prediction, y)
 
         # log
-        self._log_metrics(x, y, out, label=label)
-        if self.log_interval(label == "train") > 0:
-            self._log_prediction(x, out, batch_idx, label=label)
+        self.log_metrics(x, y, out)
+        if self.log_interval > 0:
+            self.log_prediction(x, out, batch_idx)
         log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
 
         return log, out
 
-    def _log_metrics(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, out: Dict[str, torch.Tensor], label: str = "train"
+    def log_metrics(
+        self,
+        x: Dict[str, torch.Tensor],
+        y: torch.Tensor,
+        out: Dict[str, torch.Tensor],
     ) -> None:
         """
-        Log metrics every training/validation step
-
-        [extended_summary]
+        Log metrics every training/validation step.
 
         Args:
-            x (Dict[str, torch.Tensor]): [description]
-            y (torch.Tensor): [description]
-            out (Dict[str, torch.Tensor]): [description]
-            label (str, optional): [description]. Defaults to "train".
+            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
+            y (torch.Tensor): y as passed to the loss function by the dataloader
+            out (Dict[str, torch.Tensor]): output of the network
         """
         # logging losses
         y_hat_detached = out["prediction"].detach()
@@ -264,49 +286,59 @@ class BaseModel(LightningModule):
                 )
             else:
                 loss_value = metric(y_hat_point_detached, y)
-            self.log(f"{label}_{metric.name}", loss_value, on_step=label == "train", on_epoch=True)
+            self.log(
+                f"{['val', 'train'][self.training]}_{metric.name}", loss_value, on_step=self.training, on_epoch=True
+            )
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
         Network forward pass.
 
         Args:
-            x (Dict[str, torch.Tensor]): network input
+            x (Dict[str, torch.Tensor]): network input (x as returned by the dataloader)
 
         Returns:
-            Dict[str, torch.Tensor]: netowrk outputs
+            Dict[str, torch.Tensor]: network outputs - includes at entries for ``prediction`` and ``target_scale``
         """
         raise NotImplementedError()
 
-    def epoch_end(self, outputs, label="train"):
+    def epoch_end(self, outputs):
         """
         Run at epoch end for training or validation. Can be overriden in models.
         """
         pass
 
-    def log_interval(self, train: bool):
+    @property
+    def log_interval(self) -> float:
         """
         Log interval depending if training or validating
         """
-        if train:
+        if self.training:
             return self.hparams.log_interval
         else:
             return self.hparams.log_val_interval
 
-    def _log_prediction(self, x, out, batch_idx, label="train") -> None:
+    def log_prediction(self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], batch_idx: int) -> None:
+        """
+        Log metrics every training/validation step.
+
+        Args:
+            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
+            out (Dict[str, torch.Tensor]): output of the network
+            batch_idx (int): current batch index
+        """
         # log single prediction figure
-        log_interval = self.log_interval(label == "train")
-        if (batch_idx % log_interval == 0 or log_interval < 1.0) and log_interval > 0:
-            if log_interval < 1.0:  # log multiple steps
+        if (batch_idx % self.log_interval == 0 or self.log_interval < 1.0) and self.log_interval > 0:
+            if self.log_interval < 1.0:  # log multiple steps
                 log_indices = torch.arange(
-                    0, len(x["encoder_lengths"]), max(1, round(log_interval * len(x["encoder_lengths"])))
+                    0, len(x["encoder_lengths"]), max(1, round(self.log_interval * len(x["encoder_lengths"])))
                 )
             else:
                 log_indices = [0]
             for idx in log_indices:
                 fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True)
-                tag = f"{label.capitalize()} prediction"
-                if label == "train":
+                tag = f"{['Val', 'Train'][self.training]} prediction"
+                if self.training:
                     tag += f" of item {idx} in global batch {self.global_step}"
                 else:
                     tag += f" of item {idx} in batch {batch_idx}"
@@ -423,7 +455,7 @@ class BaseModel(LightningModule):
         fig.legend()
         return fig
 
-    def _log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor]) -> None:
+    def log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor]) -> None:
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """
@@ -451,7 +483,7 @@ class BaseModel(LightningModule):
             and self.global_step % self.hparams.log_interval == 0
             and self.hparams.log_gradient_flow
         ):
-            self._log_gradient_flow(self.named_parameters())
+            self.log_gradient_flow(self.named_parameters())
 
     def configure_optimizers(self):
         """
@@ -513,12 +545,6 @@ class BaseModel(LightningModule):
             ]
         return [optimizer], schedulers
 
-    def _get_mask(self, size, lengths, inverse=False):
-        if inverse:  # return where values are
-            return torch.arange(size, device=self.device).unsqueeze(0) < lengths.unsqueeze(-1)
-        else:  # return where no values are
-            return torch.arange(size, device=self.device).unsqueeze(0) >= lengths.unsqueeze(-1)
-
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs) -> LightningModule:
         """
@@ -566,7 +592,7 @@ class BaseModel(LightningModule):
         **kwargs,
     ):
         """
-        predict dataloader
+        Run inference / prediction.
 
         Args:
             dataloader: dataloader, dataframe or dataset
@@ -619,7 +645,7 @@ class BaseModel(LightningModule):
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
                     decode_lenghts.append(lengths)
-                nan_mask = self._get_mask(out["prediction"].size(1), lengths)
+                nan_mask = create_mask(out["prediction"].size(1), lengths)
                 if isinstance(mode, (tuple, list)):
                     if mode[0] == "raw":
                         out = out[mode[1]]
@@ -782,21 +808,27 @@ class BaseModelWithCovariates(BaseModel):
     Assumes the following hyperparameters:
 
     Args:
-        x_reals: order of continuous variables in tensor passed to forward function
-        x_categoricals: order of categorical variables in tensor passed to forward function
-        embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
-            embedding size
-        embedding_labels: dictionary mapping (string) indices to list of categorical labels
-        static_categoricals: integer of positions of static categorical variables
-        static_reals: integer of positions of static continuous variables
-        time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
-        time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
-        time_varying_reals_encoder: integer of positions of continuous variables for encoder
-        time_varying_reals_decoder: integer of positions of continuous variables for decoder
+        static_categoricals (List[str]): names of static categorical variables
+        static_reals (List[str]): names of static continuous variables
+        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
+        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
+        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
+        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
+        x_reals (List[str]): order of continuous variables in tensor passed to forward function
+        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
+        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
+            where the first integer denotes the number of categorical classes and the second the embedding size
+        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
+        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
+             embedding vector filled with zeros
+        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
+            can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
+            as bag of embeddings
     """
 
     @property
     def reals(self) -> List[str]:
+        """List of all continuous variables in model"""
         return list(
             set(
                 self.hparams.static_reals
@@ -807,6 +839,7 @@ class BaseModelWithCovariates(BaseModel):
 
     @property
     def categoricals(self) -> List[str]:
+        """List of all categorical variables in model"""
         return list(
             set(
                 self.hparams.static_categoricals
@@ -817,18 +850,22 @@ class BaseModelWithCovariates(BaseModel):
 
     @property
     def static_variables(self) -> List[str]:
+        """List of all static variables in model"""
         return self.hparams.static_categoricals + self.hparams.static_reals
 
     @property
     def encoder_variables(self) -> List[str]:
+        """List of all encoder variables in model (excluding static variables)"""
         return self.hparams.time_varying_categoricals_encoder + self.hparams.time_varying_reals_encoder
 
     @property
     def decoder_variables(self) -> List[str]:
+        """List of all decoder variables in model (excluding static variables)"""
         return self.hparams.time_varying_categoricals_decoder + self.hparams.time_varying_reals_decoder
 
     @property
     def categorical_groups_mapping(self) -> Dict[str, str]:
+        """Mapping of categorical variables to categorical groups"""
         groups = {}
         for group_name, sublist in self.hparams.categorical_groups.items():
             groups.update({name: group_name for name in sublist})
@@ -927,7 +964,7 @@ class BaseModelWithCovariates(BaseModel):
 
         # mask values and transform to log space
         max_encoder_length = x["decoder_lengths"].max()
-        mask = self._get_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
+        mask = create_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
         # select valid y values
         y_flat = x["decoder_target"][mask]
         y_pred_flat = y_pred[mask]
@@ -1129,6 +1166,15 @@ class BaseModelWithCovariates(BaseModel):
 
 
 class AutoRegressiveBaseModel(BaseModel):
+    """
+    Model with additional methods for autoregressive models.
+
+    Assumes the following hyperparameters:
+
+    Args:
+        target (str): name of target variable
+    """
+
     @classmethod
     def from_dataset(
         cls,
@@ -1150,4 +1196,29 @@ class AutoRegressiveBaseModel(BaseModel):
 
 
 class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegressiveBaseModel):
+    """
+    Model with additional methods for autoregressive models with covariates.
+
+    Assumes the following hyperparameters:
+
+    Args:
+        target (str): name of target variable
+        static_categoricals (List[str]): names of static categorical variables
+        static_reals (List[str]): names of static continuous variables
+        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
+        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
+        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
+        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
+        x_reals (List[str]): order of continuous variables in tensor passed to forward function
+        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
+        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
+            where the first integer denotes the number of categorical classes and the second the embedding size
+        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
+        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
+             embedding vector filled with zeros
+        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
+            can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
+            as bag of embeddings
+    """
+
     pass

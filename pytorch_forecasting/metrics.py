@@ -646,7 +646,8 @@ class DistributionLoss(MultiHorizonMetric):
 
         Args:
             name (str): metric name. Defaults to class name.
-            quantiles (List[float], optional): quantiles for probability range. Defaults to None.
+            quantiles (List[float], optional): quantiles for probability range.
+                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
         """
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
@@ -707,36 +708,38 @@ class DistributionLoss(MultiHorizonMetric):
         """
         return y_pred.mean(-1)
 
-    def sample_n(self, y_pred, n_samples: int) -> torch.Tensor:
+    def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         """
         Sample from distribution.
 
         Args:
-            y_pred: prediction output of network
+            y_pred: prediction output of network (shape batch_size x n_timesteps x n_paramters)
             n_samples (int): number of samples to draw
 
         Returns:
-            torch.Tensor: tensor where first dimensionare samples
+            torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
         """
         dist = self.map_x_to_distribution(y_pred)
-        return dist.sample_n(n_samples)
+        return dist.sample((n_samples,)).permute(1, 2, 0)
 
-    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
         Args:
             y_pred: prediction output of network (with ``output_type = samples``)
+            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+                as defined in the class initialization.
 
         Returns:
             torch.Tensor: prediction quantiles (last dimension)
         """
+        if quantiles is None:
+            quantiles = self.quantiles
+
         samples = y_pred.size(-1)
         quantiles = torch.stack(
-            [
-                torch.kthvalue(y_pred, int(samples * q), dim=-1)[0] if samples > 1 else y_pred[..., 0]
-                for q in self.quantiles
-            ],
+            [torch.kthvalue(y_pred, int(samples * q), dim=-1)[0] if samples > 1 else y_pred[..., 0] for q in quantiles],
             dim=-1,
         )
         return quantiles

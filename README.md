@@ -50,6 +50,9 @@ documentation with detailed tutorials.
 - [DeepAR: Probabilistic forecasting with autoregressive recurrent networks](https://www.sciencedirect.com/science/article/pii/S0169207019301888)
   which is the one of the most popular forecasting algorithms and is often used as a baseline
 
+To implement new models, see the [How to implement new models tutorial](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/building.html).
+It covers basic as well as advanced architectures.
+
 # Usage
 
 ```python

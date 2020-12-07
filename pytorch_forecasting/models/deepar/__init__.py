@@ -268,9 +268,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                     )
                 )
                 # sample value(s) from distribution
-                prediction = self.loss.sample_n(prediction_parameters, 1)[0]  # select first sample
+                prediction = self.loss.sample(prediction_parameters, 1)[..., -1]  # select first sample
                 # normalize prediction prediction
-                # todo: how to handle lags (-> need list of lags and positions
+                # todo: how to handle lags (-> need list of lags and positions)
                 #   -> then if prediction lenght larger than lag start imputing ->
                 #   before that let timeseriesdataset take care)?
                 normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
@@ -289,7 +289,11 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         hidden_state = self.encode(x)
         # decode
         input_vector = self.construct_input_vector(
-            x["decoder_cat"], x["decoder_cont"], one_off_target=x["encoder_cont"][:, -1, self.target_position]
+            x["decoder_cat"],
+            x["decoder_cont"],
+            one_off_target=x["encoder_cont"][
+                torch.arange(x["encoder_cont"].size(0)), x["encoder_lengths"] - 1, self.target_position
+            ],
         )
 
         if self.training:
@@ -312,12 +316,15 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="val", n_samples=self.hparams.n_validation_samples)  # log loss
+        log, _ = self.step(x, y, batch_idx, n_samples=self.hparams.n_validation_samples)  # log loss
         self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 
-    def _log_metrics(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, out: Dict[str, torch.Tensor], label: str = "train"
+    def log_metrics(
+        self,
+        x: Dict[str, torch.Tensor],
+        y: torch.Tensor,
+        out: Dict[str, torch.Tensor],
     ) -> None:
 
         if out["prediction_type"] == "parameters":
@@ -327,14 +334,13 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             y_hat_point_detached = self.loss.map_x_to_distribution(y_hat_detached).mean.unsqueeze(-1)
             out["prediction"] = y_hat_point_detached
             out["prediction_type"] = "samples"
-        super()._log_metrics(x, y, out, label=label)
+        super().log_metrics(x, y, out)
 
-    def _log_prediction(self, x, out, batch_idx, label) -> None:
-        log_interval = self.log_interval(label == "train")
+    def log_prediction(self, x, out, batch_idx) -> None:
         if (
             out["prediction_type"] == "parameters"
-            and (batch_idx % log_interval == 0 or log_interval < 1.0)
-            and log_interval > 0
+            and (batch_idx % self.log_interval == 0 or self.log_interval < 1.0)
+            and self.log_interval > 0
         ):
             out = copy(out)  # copy to avoid side-effects but do not deep copy to re-use references
             # sample from distribution to create valid prediction
@@ -342,10 +348,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             if self.hparams.n_plotting_samples is None:
                 y_hat_samples = self.loss.map_x_to_distribution(y_hat_detached).mean.unsqueeze(-1)
             else:
-                y_hat_samples = self.loss.sample_n(y_hat_detached, self.hparams.n_plotting_samples).permute(1, 2, 0)
+                y_hat_samples = self.loss.sample(y_hat_detached, self.hparams.n_plotting_samples)
             out["prediction"] = y_hat_samples
             out["prediction_type"] = "samples"
-        super()._log_prediction(x, out, batch_idx=batch_idx, label=label)
+        super().log_prediction(x, out, batch_idx=batch_idx)
 
     def plot_prediction(
         self,

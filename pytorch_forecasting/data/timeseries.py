@@ -199,11 +199,11 @@ class TimeSeriesDataSet(Dataset):
                 ``add_nan=True``. Defaults effectively to sklearn's ``LabelEncoder()``. Prefittet encoders will not
                 be fit again.
             scalers: dictionary of scikit learn scalers. Defaults to sklearn's ``StandardScaler()``.
-                Other options are :py:class:`~pytorch_forecasting.data.EncoderNormalizer`,
-                :py:class:`~pytorch_forecasting.data.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
+                Other options are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
+                :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
                 ``RobustScaler()`` or `None` for using not normalizer.
                 Prefittet encoders will not be fit again (with the exception of the
-                :py:class:`~pytorch_forecasting.data.EncoderNormalizer`).
+                :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`).
             randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
                 from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial
@@ -1228,18 +1228,29 @@ class TimeSeriesDataSet(Dataset):
 
         Returns:
             DataLoader: dataloader that returns Tuple.
-                First entry is a dictionary with the entries
+                First entry is ``x``, a dictionary of tensors with the entries (and shapes in brackets)
 
-                    * encoder_cat
-                    * encoder_cont
-                    * encoder_target
-                    * encoder_lengths
-                    * decoder_cat
-                    * decoder_cont
-                    * decoder_target
-                    * decoder_lengths
+                * encoder_cat (batch_size x n_encoder_time_steps x n_features): long tensor of encoded
+                    categoricals for encoder
+                * encoder_cont (batch_size x n_encoder_time_steps x n_features): float tensor of scaled continuous
+                    variables for encoder
+                * encoder_target (batch_size x n_encoder_time_steps): float tensor with unscaled continous target
+                    or encoded categorical target
+                * encoder_lengths (batch_size): long tensor with lengths of the encoder time series. No entry will
+                    be greater than n_encoder_time_steps
+                * decoder_cat (batch_size x n_decoder_time_steps x n_features): long tensor of encoded
+                    categoricals for decoder
+                * decoder_cont (batch_size x n_decoder_time_steps x n_features): float tensor of scaled continuous
+                    variables for decoder
+                * decoder_target (batch_size x n_decoder_time_steps): float tensor with unscaled continous target
+                    or encoded categorical target for decoder - this corresponds to ``y``
+                * decoder_lengths (batch_size): long tensor with lengths of the decoder time series. No entry will
+                        be greater than n_decoder_time_steps
+                * group_ids (batch_size x number_of_ids): encoded group ids that identify a time series in the dataset
+                * target_scale (batch_size x scale_size): parameters used to normalize the target.
+                    Typically these are mean and standard deviation
 
-                Second entry is target
+                Second entry is ``y``, a scaled target of shape (batch_size x n_decoder_time_steps)
         )
         """
         default_kwargs = dict(

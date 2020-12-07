@@ -21,7 +21,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import autocorrelation, integer_histogram, padded_stack
+from pytorch_forecasting.utils import autocorrelation, create_mask, integer_histogram, padded_stack
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
@@ -90,12 +90,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
             max_encoder_length: length to encode (can be far longer than the decoder length but does not have to be)
-            static_categoricals: integer of positions of static categorical variables
-            static_reals: integer of positions of static continuous variables
-            time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
-            time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
-            time_varying_reals_encoder: integer of positions of continuous variables for encoder
-            time_varying_reals_decoder: integer of positions of continuous variables for decoder
+            static_categoricals: names of static categorical variables
+            static_reals: names of static continuous variables
+            time_varying_categoricals_encoder: names of categorical variables for encoder
+            time_varying_categoricals_decoder: names of categorical variables for decoder
+            time_varying_reals_encoder: names of continuous variables for encoder
+            time_varying_reals_decoder: names of continuous variables for decoder
             categorical_groups: dictionary where values
                 are list of categorical variables that are forming together a new categorical
                 variable which is the key in the dictionary
@@ -369,7 +369,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         #   data and self
         decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
-        encoder_mask = self._get_mask(encoder_lengths.max(), encoder_lengths)
+        encoder_mask = create_mask(encoder_lengths.max(), encoder_lengths)
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
@@ -511,17 +511,17 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
     def on_fit_end(self):
-        if self.log_interval(train=True) > 0:
-            self._log_embeddings()
+        if self.log_interval > 0:
+            self.log_embeddings()
 
-    def step(self, x, y, batch_idx, label="train"):
+    def step(self, x, y, batch_idx):
         """
         run at each step for training or validation
         """
         # extract data and run model
-        log, out = super().step(x, y, batch_idx, label=label)
+        log, out = super().step(x, y, batch_idx)
         # calculate interpretations etc for latter logging
-        if self.log_interval(label == "train") > 0:
+        if self.log_interval > 0:
             detached_output = {name: tensor.detach() for name, tensor in out.items()}
             interpretation = self.interpret_output(
                 detached_output,
@@ -531,12 +531,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             log["interpretation"] = interpretation
         return log, out
 
-    def epoch_end(self, outputs, label="train"):
+    def epoch_end(self, outputs):
         """
         run at epoch end for training or validation
         """
-        if self.log_interval(label == "train") > 0:
-            self._log_interpretation(outputs, label=label)
+        if self.log_interval > 0:
+            self.log_interpretation(outputs)
 
     def interpret_output(
         self,
@@ -568,7 +568,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze(-2)
-        encode_mask = self._get_mask(encoder_variables.size(1), out["encoder_lengths"])
+        encode_mask = create_mask(encoder_variables.size(1), out["encoder_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
             out["encoder_lengths"]
@@ -577,7 +577,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         decoder_variables = out["decoder_variables"].squeeze(-2)
-        decode_mask = self._get_mask(decoder_variables.size(1), out["decoder_lengths"])
+        decode_mask = create_mask(decoder_variables.size(1), out["decoder_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
 
@@ -737,7 +737,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         return figs
 
-    def _log_interpretation(self, outputs, label="train"):
+    def log_interpretation(self, outputs):
         """
         Log interpretation metrics to tensorboard.
         """
@@ -766,6 +766,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
+        label = ["val", "train"][self.training]
         # log to tensorboard
         for name, fig in figs.items():
             self.logger.experiment.add_figure(
@@ -789,7 +790,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
             )
 
-    def _log_embeddings(self):
+    def log_embeddings(self):
         """
         Log embeddings to tensorboard
         """

@@ -80,7 +80,7 @@ def test_NormalDistributionLoss(center, transformation):
     mean = 1000.0
     std = 200.0
     n = 100000
-    target = NormalDistributionLoss.distribution_class(loc=mean, scale=std).sample_n(n)
+    target = NormalDistributionLoss.distribution_class(loc=mean, scale=std).sample((n,))
     if transformation in ["log", "log1p", "relu", "softplus"]:
         target = target.abs()
     normalizer = TorchNormalizer(center=center, transformation=transformation)
@@ -97,7 +97,7 @@ def test_NormalDistributionLoss(center, transformation):
             rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
         rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
-        samples = loss.sample_n(rescaled_parameters, 1)
+        samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.2)
         if center:  # if not centered, softplus distorts std too much for testing
             assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.7)
@@ -111,7 +111,7 @@ def test_LogNormalDistributionLoss(center, transformation):
     mean = 2.0
     std = 0.2
     n = 100000
-    target = LogNormalDistributionLoss.distribution_class(loc=mean, scale=std).sample_n(n)
+    target = LogNormalDistributionLoss.distribution_class(loc=mean, scale=std).sample((n,))
     normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
     target_scale = normalizer.get_parameters().unsqueeze(0)
@@ -127,7 +127,7 @@ def test_LogNormalDistributionLoss(center, transformation):
             rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
         rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
-        samples = loss.sample_n(rescaled_parameters, 1)
+        samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(mean), samples.log().mean(), atol=0.1, rtol=0.2)
         if center:  # if not centered, softplus distorts std too much for testing
             assert torch.isclose(torch.as_tensor(std), samples.log().std(), atol=0.1, rtol=0.7)
@@ -141,7 +141,7 @@ def test_NegativeBinomialDistributionLoss(center, transformation):
     mean = 100.0
     shape = 1.0
     n = 100000
-    target = NegativeBinomialDistributionLoss().map_x_to_distribution(torch.tensor([mean, shape])).sample_n(n)
+    target = NegativeBinomialDistributionLoss().map_x_to_distribution(torch.tensor([mean, shape])).sample((n,))
     std = target.std()
     normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
@@ -154,7 +154,7 @@ def test_NegativeBinomialDistributionLoss(center, transformation):
             rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
         rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
-        samples = loss.sample_n(rescaled_parameters, 1)
+        samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.5)
         assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.5)
 
@@ -167,7 +167,7 @@ def test_BetaDistributionLoss(center, transformation):
     initial_mean = 0.1
     initial_shape = 10
     n = 100000
-    target = BetaDistributionLoss().map_x_to_distribution(torch.tensor([initial_mean, initial_shape])).sample_n(n)
+    target = BetaDistributionLoss().map_x_to_distribution(torch.tensor([initial_mean, initial_shape])).sample((n,))
     normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
     target_scale = normalizer.get_parameters().unsqueeze(0)
@@ -179,6 +179,6 @@ def test_BetaDistributionLoss(center, transformation):
             loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
         rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
-        samples = loss.sample_n(rescaled_parameters, 1)
+        samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(initial_mean), samples.mean(), atol=0.01, rtol=0.01)  # mean=0.1
         assert torch.isclose(target.std(), samples.std(), atol=0.02, rtol=0.3)  # std=0.09

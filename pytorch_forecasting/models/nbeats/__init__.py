@@ -212,11 +212,11 @@ class NBeats(BaseModel):
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
 
-    def step(self, x, y, batch_idx, label) -> Dict[str, torch.Tensor]:
+    def step(self, x, y, batch_idx) -> Dict[str, torch.Tensor]:
         """
         Take training / validation step.
         """
-        log, out = super().step(x, y, batch_idx=batch_idx, label=label)
+        log, out = super().step(x, y, batch_idx=batch_idx)
 
         if self.hparams.backcast_loss_ratio > 0:  # add loss from backcast
             backcast = self.transform_output(dict(prediction=out["backcast"], target_scale=out["target_scale"]))
@@ -229,21 +229,23 @@ class NBeats(BaseModel):
                 backcast_loss = self.loss(backcast, x["encoder_target"], x["decoder_target"]) * backcast_weight
             else:
                 backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
-            self.log(f"{label}_backcast_loss", backcast_loss, on_epoch=True, on_step=label == "train")
-            self.log(f"{label}_forecast_loss", log["loss"], on_epoch=True, on_step=label == "train")
+            label = ["val", "train"][self.training]
+            self.log(f"{label}_backcast_loss", backcast_loss, on_epoch=True, on_step=self.training)
+            self.log(f"{label}_forecast_loss", log["loss"], on_epoch=True, on_step=self.training)
             log["loss"] = log["loss"] * forecast_weight + backcast_loss
 
-        self._log_interpretation(x, out, batch_idx=batch_idx, label=label)
+        self._log_interpretation(x, out, batch_idx=batch_idx)
         return log, out
 
-    def _log_interpretation(self, x, out, batch_idx, label="train"):
+    def _log_interpretation(self, x, out, batch_idx):
         """
         Log interpretation of network predictions in tensorboard.
         """
-        if self.log_interval(label == "train") > 0 and batch_idx % self.log_interval(label == "train") == 0:
+        label = ["val", "train"][self.training]
+        if self.log_interval > 0 and batch_idx % self.log_interval == 0:
             fig = self.plot_interpretation(x, out, idx=0)
             name = f"{label.capitalize()} interpretation of item 0 in "
-            if label == "train":
+            if self.training:
                 name += f"step {self.global_step}"
             else:
                 name += f"batch {batch_idx}"
