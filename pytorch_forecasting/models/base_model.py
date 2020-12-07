@@ -23,7 +23,7 @@ from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer
 from pytorch_forecasting.metrics import MASE, SMAPE, Metric
 from pytorch_forecasting.optim import Ranger
-from pytorch_forecasting.utils import get_embedding_size, groupby_apply
+from pytorch_forecasting.utils import create_mask, get_embedding_size, groupby_apply
 
 
 class BaseModel(LightningModule):
@@ -174,6 +174,12 @@ class BaseModel(LightningModule):
     def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, **kwargs):
         """
         Run for each train/val step.
+
+        Args:
+            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
+            y (torch.Tensor): y as passed to the loss function by the dataloader
+            batch_idx (int): batch number
+            **kwargs: additional arguments to pass to the network apart from ``x``
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
@@ -250,9 +256,9 @@ class BaseModel(LightningModule):
         Log metrics every training/validation step.
 
         Args:
-            x (Dict[str, torch.Tensor]): [description]
-            y (torch.Tensor): [description]
-            out (Dict[str, torch.Tensor]): [description]
+            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
+            y (torch.Tensor): y as passed to the loss function by the dataloader
+            out (Dict[str, torch.Tensor]): output of the network
         """
         # logging losses
         y_hat_detached = out["prediction"].detach()
@@ -273,10 +279,10 @@ class BaseModel(LightningModule):
         Network forward pass.
 
         Args:
-            x (Dict[str, torch.Tensor]): network input
+            x (Dict[str, torch.Tensor]): network input (x as returned by the dataloader)
 
         Returns:
-            Dict[str, torch.Tensor]: netowrk outputs
+            Dict[str, torch.Tensor]: network outputs - includes at entries for ``prediction`` and ``target_scale``
         """
         raise NotImplementedError()
 
@@ -296,7 +302,18 @@ class BaseModel(LightningModule):
         else:
             return self.hparams.log_val_interval
 
-    def log_prediction(self, x, out, batch_idx) -> None:
+    def log_prediction(
+        self, x: Dict[str, torch.Tensor], y: torch.Tensor, out: Dict[str, torch.Tensor], batch_idx: int
+    ) -> None:
+        """
+        Log metrics every training/validation step.
+
+        Args:
+            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
+            y (torch.Tensor): y as passed to the loss function by the dataloader
+            out (Dict[str, torch.Tensor]): output of the network
+            batch_idx (int): current batch index
+        """
         # log single prediction figure
         if (batch_idx % self.log_interval == 0 or self.log_interval < 1.0) and self.log_interval > 0:
             if self.log_interval < 1.0:  # log multiple steps
@@ -515,12 +532,6 @@ class BaseModel(LightningModule):
             ]
         return [optimizer], schedulers
 
-    def get_mask(self, size, lengths, inverse=False):
-        if inverse:  # return where values are
-            return torch.arange(size, device=self.device).unsqueeze(0) < lengths.unsqueeze(-1)
-        else:  # return where no values are
-            return torch.arange(size, device=self.device).unsqueeze(0) >= lengths.unsqueeze(-1)
-
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs) -> LightningModule:
         """
@@ -621,7 +632,7 @@ class BaseModel(LightningModule):
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
                     decode_lenghts.append(lengths)
-                nan_mask = self.get_mask(out["prediction"].size(1), lengths)
+                nan_mask = create_mask(out["prediction"].size(1), lengths)
                 if isinstance(mode, (tuple, list)):
                     if mode[0] == "raw":
                         out = out[mode[1]]
@@ -940,7 +951,7 @@ class BaseModelWithCovariates(BaseModel):
 
         # mask values and transform to log space
         max_encoder_length = x["decoder_lengths"].max()
-        mask = self.get_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
+        mask = create_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
         # select valid y values
         y_flat = x["decoder_target"][mask]
         y_pred_flat = y_pred[mask]

@@ -21,7 +21,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import autocorrelation, integer_histogram, padded_stack
+from pytorch_forecasting.utils import autocorrelation, create_mask, integer_histogram, padded_stack
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
@@ -369,7 +369,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         #   data and self
         decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
-        encoder_mask = self.get_mask(encoder_lengths.max(), encoder_lengths)
+        encoder_mask = create_mask(encoder_lengths.max(), encoder_lengths)
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
@@ -568,7 +568,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze(-2)
-        encode_mask = self.get_mask(encoder_variables.size(1), out["encoder_lengths"])
+        encode_mask = create_mask(encoder_variables.size(1), out["encoder_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
             out["encoder_lengths"]
@@ -577,7 +577,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         decoder_variables = out["decoder_variables"].squeeze(-2)
-        decode_mask = self.get_mask(decoder_variables.size(1), out["decoder_lengths"])
+        decode_mask = create_mask(decoder_variables.size(1), out["decoder_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
 
