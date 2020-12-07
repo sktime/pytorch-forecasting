@@ -171,7 +171,9 @@ class BaseModel(LightningModule):
     def validation_epoch_end(self, outputs):
         self.epoch_end(outputs)
 
-    def step(self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, **kwargs):
+    def step(
+        self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, **kwargs
+    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """
         Run for each train/val step.
 
@@ -180,6 +182,11 @@ class BaseModel(LightningModule):
             y (torch.Tensor): y as passed to the loss function by the dataloader
             batch_idx (int): batch number
             **kwargs: additional arguments to pass to the network apart from ``x``
+
+        Returns:
+            Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]: tuple where the first
+                entry is a dictionary to which additional logging results can be added for consumption in the
+                ``epoch_end`` hook and the second entry is the model's output.
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
@@ -293,7 +300,7 @@ class BaseModel(LightningModule):
         pass
 
     @property
-    def log_interval(self):
+    def log_interval(self) -> float:
         """
         Log interval depending if training or validating
         """
@@ -302,15 +309,12 @@ class BaseModel(LightningModule):
         else:
             return self.hparams.log_val_interval
 
-    def log_prediction(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, out: Dict[str, torch.Tensor], batch_idx: int
-    ) -> None:
+    def log_prediction(self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], batch_idx: int) -> None:
         """
         Log metrics every training/validation step.
 
         Args:
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
-            y (torch.Tensor): y as passed to the loss function by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): current batch index
         """

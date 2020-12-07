@@ -512,7 +512,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
     def on_fit_end(self):
         if self.log_interval > 0:
-            self._log_embeddings()
+            self.log_embeddings()
 
     def step(self, x, y, batch_idx):
         """
@@ -536,7 +536,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         run at epoch end for training or validation
         """
         if self.log_interval > 0:
-            self._log_interpretation(outputs)
+            self.log_interpretation(outputs)
 
     def interpret_output(
         self,
@@ -737,7 +737,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         return figs
 
-    def _log_interpretation(self, outputs):
+    def log_interpretation(self, outputs):
         """
         Log interpretation metrics to tensorboard.
         """
@@ -790,7 +790,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
             )
 
-    def _log_embeddings(self):
+    def log_embeddings(self):
         """
         Log embeddings to tensorboard
         """
