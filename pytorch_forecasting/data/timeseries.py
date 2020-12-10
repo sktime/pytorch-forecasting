@@ -124,6 +124,9 @@ class TimeSeriesDataSet(Dataset):
         """
         Timeseries dataset holding data for models.
 
+        The :ref:`tutorial on passing data to models <passing-data>` is helpful to understand the output of the dataset
+        and how it is coupled to models.
+
         Each sample is a subsequence of a full time series. The subsequence consists of encoder and decoder/prediction
         timepoints for a given time series. This class constructs an index which defined which subsequences exists and
         can be samples from (``index`` attribute). The samples in the index are defined by by the various parameters.
