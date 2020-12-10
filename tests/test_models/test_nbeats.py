@@ -43,8 +43,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
             val_dataloaders=val_dataloader,
         )
         # check loading
-        fname = f"{trainer.checkpoint_callback.dirpath}/epoch=0.ckpt"
-        net = NBeats.load_from_checkpoint(fname)
+        net = NBeats.load_from_checkpoint(checkpoint.best_model_path)
 
         # check prediction
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
