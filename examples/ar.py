@@ -11,10 +11,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 
 from pytorch_forecasting import EncoderNormalizer, GroupNormalizer, TimeSeriesDataSet
-from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.examples import generate_ar_data
 from pytorch_forecasting.metrics import NormalDistributionLoss
+from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.utils import profile
 
 warnings.simplefilter("error", category=SettingWithCopyWarning)
