@@ -1306,7 +1306,7 @@ python-versions = "*"
 
 [[package]]
 name = "pytorch-lightning"
-version = "1.1.0"
+version = "1.1.1"
 description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 category = "main"
 optional = false
@@ -2582,8 +2582,8 @@ python-editor = [
     {file = "python_editor-1.0.4-py3.5.egg", hash = "sha256:c3da2053dbab6b29c94e43c486ff67206eafbe7eb52dbec7390b5e2fb05aac77"},
 ]
 pytorch-lightning = [
-    {file = "pytorch-lightning-1.1.0.tar.gz", hash = "sha256:851fdc5de1a6652ba6dc923222b1dd8ca53b33eefeb4d8a4973c8a99d40ee60c"},
-    {file = "pytorch_lightning-1.1.0-py3-none-any.whl", hash = "sha256:1a220e005cd0b60e95d29857259eab2af0ace728dcc0879a967d554eb137abce"},
+    {file = "pytorch-lightning-1.1.1.tar.gz", hash = "sha256:9f7c03812d82fd0f7ae2998692fa2f1846a2d8eb593085c6a8320b1168cef4c4"},
+    {file = "pytorch_lightning-1.1.1-py3-none-any.whl", hash = "sha256:d894078f513007fe805f7fec03331b6ed69da094ccee804fa5ec2d858fb22760"},
 ]
 pytz = [
     {file = "pytz-2020.4-py2.py3-none-any.whl", hash = "sha256:5c55e189b682d420be27c6995ba6edce0c0a77dd67bfbe2ae6607134d5851ffd"},
@@ -2846,6 +2846,11 @@ statsmodels = [
     {file = "statsmodels-0.12.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:02679bf39d35a2aceb2d9f6d332b4e1cda1797157df792fe867b45f2a14d20d3"},
     {file = "statsmodels-0.12.1-cp38-none-win32.whl", hash = "sha256:a652d8bfb4ec430b706a69e3fcbdac1cdf930823e3f9b8468e3e179d47097bbb"},
     {file = "statsmodels-0.12.1-cp38-none-win_amd64.whl", hash = "sha256:74c6c863d6f8a1f021d42f965b1b97eeea05293d3b18e3690c46eac0cf6d64d9"},
+    {file = "statsmodels-0.12.1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:62be4dd5b4a254d59b7feb8093623ba6158080aa6758c2eb19105609da4b40fb"},
+    {file = "statsmodels-0.12.1-cp39-cp39-manylinux1_i686.whl", hash = "sha256:630b9d938b0388488c66394597500dfba877e3b53da536369393a9a840b8f2a0"},
+    {file = "statsmodels-0.12.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:f585c02b716c161f00e6a2d10f9f3497f57191183dbd6ae7eaa988707023b1ee"},
+    {file = "statsmodels-0.12.1-cp39-none-win32.whl", hash = "sha256:3dd59b7cd35843f4764b8a1476be20cf959d3da700327975f7cd2bf2a1b630b2"},
+    {file = "statsmodels-0.12.1-cp39-none-win_amd64.whl", hash = "sha256:78813784f5fa612b4399c4963414799fbbb031188f1ad630a501c6b2af7e94e0"},
     {file = "statsmodels-0.12.1.tar.gz", hash = "sha256:a271b4ccec190148dccda25f0cbdcbf871f408fc1394a10a7dc1af4a62b91c8e"},
 ]
 stevedore = [
