@@ -19,6 +19,7 @@ from pytorch_forecasting.data import (
 from pytorch_forecasting.data.encoders import MultiNormalizer, TorchNormalizer
 from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data.timeseries import _find_end_indices
+from pytorch_forecasting.utils import to_list
 
 torch.manual_seed(23)
 
@@ -123,12 +124,24 @@ def test_GroupNormalizer(kwargs, groups):
 def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):
     x, y = out
 
+    assert isinstance(y, tuple), "y output should be tuple of wegith and target"
+
     # check for nans and finite
     for k, v in x.items():
-        assert torch.isfinite(v).all(), f"Values for {k} should be finite"
-        assert not torch.isnan(v).any(), f"Values for {k} should not be nan"
-    assert torch.isfinite(y).all(), "Values for target should be finite"
-    assert not torch.isnan(y).any(), "Values for target should not be nan"
+        for vi in to_list(v):
+            assert torch.isfinite(vi).all(), f"Values for {k} should be finite"
+            assert not torch.isnan(vi).any(), f"Values for {k} should not be nan"
+
+    # check weight
+    assert y[1] is None or isinstance(y[1], torch.Tensor), "weights should be none or tensor"
+    if isinstance(y[1], torch.Tensor):
+        assert torch.isfinite(y[1]).all(), "Values for weight should be finite"
+        assert not torch.isnan(y[1]).any(), "Values for weight should not be nan"
+
+    # check target
+    for targeti in to_list(y[0]):
+        assert torch.isfinite(targeti).all(), "Values for target should be finite"
+        assert not torch.isnan(targeti).any(), "Values for target should not be nan"
 
     # check shape
     assert x["encoder_cont"].size(2) == len(dataset.reals)
@@ -243,8 +256,13 @@ def test_from_dataset_equivalence(test_data):
     # ensure validation1 and validation2 datasets are exactly the same despite different data inputs
     for v1, v2 in zip(iter(validation1.to_dataloader(train=False)), iter(validation2.to_dataloader(train=False))):
         for k in v1[0].keys():
-            assert torch.isclose(v1[0][k], v2[0][k]).all()
-        assert torch.isclose(v1[1], v2[1]).all()
+            if isinstance(v1[0][k], (tuple, list)):
+                assert len(v1[0][k]) == len(v2[0][k])
+                for idx in range(len(v1[0][k])):
+                    assert torch.isclose(v1[0][k][idx], v2[0][k][idx]).all()
+            else:
+                assert torch.isclose(v1[0][k], v2[0][k]).all()
+        assert torch.isclose(v1[1][0], v2[1][0]).all()
 
 
 def test_dataset_index(test_dataset):
@@ -301,7 +319,7 @@ def test_overwrite_values(test_dataset, value, variable, target):
     for name in outputs[0].keys():
         changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
         assert changed, f"Output {name} should be reset"
-    assert torch.isclose(outputs[1], control_outputs[1]).all(), "Target should be reset"
+    assert torch.isclose(outputs[1][0], control_outputs[1][0]).all(), "Target should be reset"
 
 
 @pytest.mark.parametrize(
@@ -370,7 +388,7 @@ def test_categorical_target(test_data):
     )
 
     _, y = next(iter(dataset.to_dataloader()))
-    assert y.dtype is torch.long, "target must be of type long"
+    assert y[0].dtype is torch.long, "target must be of type long"
 
 
 def test_pickle(test_dataset):

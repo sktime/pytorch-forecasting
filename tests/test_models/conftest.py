@@ -80,6 +80,11 @@ def data_with_covariates():
         dict(target_normalizer=GroupNormalizer(transformation="log")),
         dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="softplus", center=False)),
         dict(target="agency"),
+        # test multiple targets
+        dict(target=["agency", "volume"]),
+        dict(target=["agency", "volume"], weight="volume"),
+        # test weights
+        dict(target="volume", weight="volume"),
     ]
 )
 def multiple_dataloaders_with_covariates(data_with_covariates, request):

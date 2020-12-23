@@ -3,7 +3,7 @@ Helper functions for PyTorch forecasting
 """
 from contextlib import redirect_stdout
 import os
-from typing import Callable, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -266,3 +266,37 @@ def padded_stack(
         dim=0,
     )
     return out
+
+
+def to_list(value: Any) -> List[Any]:
+    """
+    Convert value or list to list of values.
+    If already list, return object directly
+
+    Args:
+        value (Any): value to convert
+
+    Returns:
+        List[Any]: list of values
+    """
+    if isinstance(value, (tuple, list)):
+        return value
+    else:
+        return [value]
+
+
+def unsqueeze_like(tensor: torch.Tensor, like: torch.Tensor):
+    """
+    Unsqueeze last dimensions of tensor to match another tensor's number of dimensions.
+
+    Args:
+        tensor (torch.Tensor): tensor to unsqueeze
+        like (torch.Tensor): tensor whose dimensions to match
+    """
+    n_unsqueezes = like.ndim - tensor.ndim
+    if n_unsqueezes < 0:
+        raise ValueError(f"tensor.ndim={tensor.ndim} > like.ndim={like.ndim}")
+    elif n_unsqueezes == 0:
+        return tensor
+    else:
+        return tensor[(...,) + (None,) * n_unsqueezes]

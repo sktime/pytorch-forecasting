@@ -5,6 +5,7 @@ Timeseries data is special and has to be processed and fed to algorithms in a sp
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
 from copy import deepcopy
+from functools import lru_cache
 import inspect
 from typing import Any, Dict, List, Tuple, Union
 import warnings
@@ -31,13 +32,6 @@ from pytorch_forecasting.data.encoders import (
     NaNLabelEncoder,
     TorchNormalizer,
 )
-
-
-def _to_list(value):
-    if isinstance(value, (tuple, list)):
-        return value
-    else:
-        return [value]
 
 
 def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -110,7 +104,7 @@ class TimeSeriesDataSet(Dataset):
         time_idx: str,
         target: Union[str, List[str]],
         group_ids: List[str],
-        weight: Union[str, List[str], None] = None,
+        weight: Union[str, None] = None,
         max_encoder_length: int = 30,
         min_encoder_length: int = None,
         min_prediction_idx: int = None,
@@ -166,7 +160,7 @@ class TimeSeriesDataSet(Dataset):
             group_ids: list of column names identifying a time series. This means that the ``group_ids`` identify
                 a sample together with the ``time_idx``. If you have only one timeseries, set this to the
                 name of column that is constant.
-            weight: column name for weights or list of column names corresponding to each target
+            weight: column name for weights. Defaults to None.
             max_encoder_length: maximum length to encode
             min_encoder_length: minimum allowed length to encode. Defaults to max_encoder_length.
             min_prediction_idx: minimum ``time_idx`` from where to start predictions. This parameter can be useful to
@@ -253,11 +247,6 @@ class TimeSeriesDataSet(Dataset):
         assert self.min_prediction_length > 0, "min prediction length must be larger than 0"
         assert isinstance(self.min_prediction_length, int), "min prediction length must be integer"
         self.target = target
-        if isinstance(target, list) and weight is not None:
-            assert isinstance(weight, list) and len(target) == len(weight), (
-                "if target is a list, then weights should "
-                "be either None or also a list of the same length corresponding to targets"
-            )
         self.weight = weight
         self.time_idx = time_idx
         self.group_ids = [] + group_ids
@@ -306,7 +295,7 @@ class TimeSeriesDataSet(Dataset):
         # overwrite values
         self.reset_overwrite_values()
 
-        for target in _to_list(self.target):
+        for target in self.target_names:
             assert (
                 target not in self.time_varying_known_reals
             ), f"target {target} should be an unknown continuous variable in the future"
@@ -356,10 +345,11 @@ class TimeSeriesDataSet(Dataset):
         """
         if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
             normalizers = []
-            for target in _to_list(self.target):
+            for target in self.target_names:
                 if data[target].dtype.kind != "f":  # category
                     normalizers.append(NaNLabelEncoder())
-                    assert not self.add_target_scales, "Target scales can be only added for continous targets"
+                    if self.add_target_scales:
+                        warnings.warn("Target scales will be only added for continous targets", UserWarning)
                 else:
                     data_positive = (data[target] > 0).all()
                     if data_positive:
@@ -373,7 +363,10 @@ class TimeSeriesDataSet(Dataset):
                         normalizers.append(EncoderNormalizer(transformation=transformer))
                     else:
                         normalizers.append(GroupNormalizer(transformation=transformer))
-                self.target_normalizer = MultiNormalizer(normalizers)
+                if self.multi_target:
+                    self.target_normalizer = MultiNormalizer(normalizers)
+                else:
+                    self.target_normalizer = normalizers[0]
         elif self.target_normalizer is None:
             self.target_normalizer = TorchNormalizer(method="identity")
         assert self.min_encoder_length > 1 or not isinstance(
@@ -487,25 +480,21 @@ class TimeSeriesDataSet(Dataset):
             else:
                 if name not in self.categorical_encoders:
                     self.categorical_encoders[name] = NaNLabelEncoder(add_nan=allow_nans).fit(data[name])
-                elif self.categorical_encoders[name] is not None and name not in _to_list(
-                    self.target
-                ):  # todo: should we ensure that name is not in target?
+                elif self.categorical_encoders[name] is not None and name not in self.target_names:
                     try:
                         check_is_fitted(self.categorical_encoders[name])
                     except NotFittedError:
                         self.categorical_encoders[name] = self.categorical_encoders[name].fit(data[name])
 
         # encode them
-        for name in set(
-            group_ids_to_encode + self.flat_categoricals
-        ):  # todo: should we not check that name is not in target?
-            if name not in _to_list(self.target):
+        for name in set(group_ids_to_encode + self.flat_categoricals):
+            if name not in self.target_names:
                 data[name] = self.transform_values(name, data[name], inverse=False)
 
         # save special variables
         assert "__time_idx__" not in data.columns, "__time_idx__ is a protected column and must not be present in data"
         data["__time_idx__"] = data[self.time_idx]  # save unscaled
-        for target in _to_list(self.target):
+        for target in self.target_names:
             assert (
                 f"__target__{target}" not in data.columns
             ), f"__target__{target} is a protected column and must not be present in data"
@@ -544,46 +533,38 @@ class TimeSeriesDataSet(Dataset):
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
             elif isinstance(self.target_normalizer, MultiNormalizer):
                 transformed, scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
-                for idx, target in enumerate(_to_list(self.target)):
+                for idx, target in enumerate(self.target_names):
                     data[target] = transformed[idx]
             elif isinstance(self.target_normalizer, NaNLabelEncoder):
                 data[self.target] = self.target_normalizer.transform(data[self.target])
                 data[f"__target__{self.target}"] = data[
                     self.target
                 ]  # overwrite target because it requires encoding (continuous targets should not be normalized)
-                scales = "no target scales available for categorical target"
+                scales = None
             else:
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], return_norm=True)
 
             # add target scales
-            if self.add_target_scales:  # todo: fix for MultiNormalizer
-                for idx, name in enumerate(["center", "scale"]):
-                    feature_name = f"{self.target}_{name}"
-                    assert (
-                        feature_name not in data.columns
-                    ), f"{feature_name} is a protected column and must not be present in data"
-                    data[feature_name] = scales[:, idx].squeeze()
-                    if feature_name not in self.reals:
-                        self.static_reals.append(feature_name)
-
-        # add normalizer to scalers
-        if isinstance(self.target_normalizer, MultiNormalizer):
-            target_normalizers = self.target_normalizer.normalizers
-        else:
-            target_normalizers = [self.target_normalizer]
-        for target, normalizer in zip(_to_list(self.target), target_normalizers):
-            if target in self.reals:
-                self.scalers[target] = normalizer
-            else:
-                self.categorical_encoders[target] = normalizer
-
+            if self.add_target_scales:
+                if not isinstance(self.target_normalizer, MultiNormalizer):
+                    scales = [scales]
+                for target_idx, target in enumerate(self.target_names):
+                    if not isinstance(self.target_normalizers[target_idx], NaNLabelEncoder):
+                        for scale_idx, name in enumerate(["center", "scale"]):
+                            feature_name = f"{target}_{name}"
+                            assert (
+                                feature_name not in data.columns
+                            ), f"{feature_name} is a protected column and must not be present in data"
+                            data[feature_name] = scales[target_idx][:, scale_idx].squeeze()
+                            if feature_name not in self.reals:
+                                self.static_reals.append(feature_name)
         # rescale continuous variables apart from target
         for name in self.reals:
+            if name in self.target_names:
+                continue
             if name not in self.scalers:
                 self.scalers[name] = StandardScaler().fit(data[[name]])
-            elif self.scalers[name] is not None and name not in _to_list(
-                self.target
-            ):  # todo: check if we should also check that name is not in targets
+            elif self.scalers[name] is not None:
                 try:
                     check_is_fitted(self.scalers[name])
                 except NotFittedError:
@@ -591,18 +572,52 @@ class TimeSeriesDataSet(Dataset):
                         self.scalers[name] = self.scalers[name].fit(data[[name]], data)
                     else:
                         self.scalers[name] = self.scalers[name].fit(data[[name]])
-            if self.scalers[name] is not None and name not in _to_list(self.target):
+            if self.scalers[name] is not None and not isinstance(self.scalers[name], EncoderNormalizer):
                 data[name] = self.transform_values(name, data[name], data=data, inverse=False)
 
         # encode constant values
         self.encoded_constant_fill_strategy = {}
         for name, value in self.constant_fill_strategy.items():
-            if name in _to_list(self.target):
+            if name in self.target_names:
                 self.encoded_constant_fill_strategy[f"__target__{name}"] = value
             self.encoded_constant_fill_strategy[name] = self.transform_values(
                 name, np.array([value]), data=data, inverse=False
             )[0]
         return data
+
+    def get_transformer(self, name: str, group_id: bool = False):
+        """
+        Get transformer for variable.
+
+        Args:
+            name (str): variable name
+            group_id (bool, optional): If the passed name refers to a group id (different encoders are used for these).
+                Defaults to False.
+
+        Returns:
+            transformer
+        """
+        if group_id:
+            name = self._group_ids_mapping[name]
+        if name in set(self.flat_categoricals + self.group_ids + self._group_ids):
+            name = self.variable_to_group_mapping.get(name, name)  # map name to encoder
+
+            # take target normalizer if required
+            if name in self.target_names:
+                transformer = self.target_normalizers[self.target_names.index(name)]
+            else:
+                transformer = self.categorical_encoders[name]
+            return transformer
+
+        elif name in self.reals:
+            # take target normalizer if required
+            if name in self.target_names:
+                transformer = self.target_normalizers[self.target_names.index(name)]
+            else:
+                transformer = self.scalers[name]
+            return transformer
+        else:
+            return None
 
     def transform_values(
         self,
@@ -627,31 +642,25 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             np.ndarray: (de/en)coded/(de)scaled values
         """
+        transformer = self.get_transformer(name, group_id=group_id)
+        if transformer is None:
+            return values
+        if inverse:
+            transform = transformer.inverse_transform
+        else:
+            transform = transformer.transform
+
         if group_id:
             name = self._group_ids_mapping[name]
         # remaining categories
         if name in set(self.flat_categoricals + self.group_ids + self._group_ids):
-            name = self.variable_to_group_mapping.get(name, name)  # map name to encoder
-            encoder = self.categorical_encoders[name]
-            if encoder is None:
-                return values
-            elif inverse:
-                return encoder.inverse_transform(values)
-            else:
-                return encoder.transform(values)
+            return transform(values)
 
         # reals
-        if name in self.scalers:
-            scaler = self.scalers[name]
-            if scaler is None:
-                return values
-            if inverse:
-                transform = scaler.inverse_transform
-            else:
-                transform = scaler.transform
-            if isinstance(scaler, GroupNormalizer):
+        elif name in self.reals:
+            if isinstance(transformer, GroupNormalizer):
                 return transform(values, data)
-            elif isinstance(scaler, EncoderNormalizer) and name == self.target:
+            elif isinstance(transformer, EncoderNormalizer):
                 return transform(values)
             else:
                 if isinstance(values, pd.Series):
@@ -660,8 +669,8 @@ class TimeSeriesDataSet(Dataset):
                 else:
                     values = values.reshape(-1, 1)
                     return transform(values).reshape(-1)
-
-        return values  # fallback
+        else:
+            return values
 
     def _data_to_tensors(self, data: pd.DataFrame) -> Dict[str, torch.Tensor]:
         """
@@ -691,20 +700,19 @@ class TimeSeriesDataSet(Dataset):
             weight = None
 
         # get target
-        target_names = [f"__target__{target}" for target in _to_list(self.target)]
         if isinstance(self.target_normalizer, NaNLabelEncoder):
-            target = [torch.tensor(data[target_names].to_numpy(dtype=np.long), dtype=torch.long)]
+            target = [torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.long), dtype=torch.long)]
         else:
-            if len(target_names) > 1:
+            if len(self.target_names) > 1:
                 target = [
                     torch.tensor(
                         data[name].to_numpy(dtype=[np.float, np.long][data[name].dtype.kind in "bi"]),
                         dtype=[torch.float, torch.long][data[name].dtype.kind in "bi"],
                     )
-                    for name in target_names
+                    for name in self.target_names
                 ]
             else:
-                target = [torch.tensor(data[target_names].to_numpy(dtype=np.float), dtype=torch.float)]
+                target = [torch.tensor(data[self.target].to_numpy(dtype=np.float), dtype=torch.float)]
 
         # continuous covariates
         continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float), dtype=torch.float)
@@ -763,6 +771,44 @@ class TimeSeriesDataSet(Dataset):
             List[str]: list of variables
         """
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
+
+    @property
+    @lru_cache(None)
+    def target_names(self) -> List[str]:
+        """
+        List of targets.
+
+        Returns:
+            List[str]: list of targets
+        """
+        if self.multi_target:
+            return self.target
+        else:
+            return [self.target]
+
+    @property
+    def multi_target(self) -> bool:
+        """
+        If dataset encodes one or multiple targets.
+
+        Returns:
+            bool: true if multiple targets
+        """
+        return isinstance(self.target, (list, tuple))
+
+    @property
+    def target_normalizers(self) -> List[TorchNormalizer]:
+        """
+        List of target normalizers aligned with ``target_names``.
+
+        Returns:
+            List[TorchNormalizer]: list of target normalizers
+        """
+        if isinstance(self.target_normalizer, MultiNormalizer):
+            target_normalizers = self.target_normalizer.normalizers
+        else:
+            target_normalizers = [self.target_normalizer]
+        return target_normalizers
 
     def get_parameters(self) -> Dict[str, Any]:
         """
@@ -994,7 +1040,7 @@ class TimeSeriesDataSet(Dataset):
         if variable in self.static_categoricals or variable in self.static_categoricals:
             target = "all"
 
-        if variable in _to_list(self.target):
+        if variable in self.target_names:
             raise NotImplementedError("Target variable is not supported")
         if self.weight is not None and self.weight == variable:
             raise NotImplementedError("Weight variable is not supported")
@@ -1031,11 +1077,12 @@ class TimeSeriesDataSet(Dataset):
         if self.data["weight"] is None:
             weight = None
         else:
-            weight = self.data["weight"][index.index_start].clone()
-        if isinstance(self.target_normalizer, NaNLabelEncoder):
-            target_scale = np.zeros(2, dtype=float)
-        else:
-            target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
+            weight = self.data["weight"][index.index_start : index.index_end + 1].clone()
+
+        # get target scale in the form of a list
+        target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
+        if not isinstance(self.target_normalizer, MultiNormalizer):
+            target_scale = [target_scale]
 
         # fill in missing values (if not all time indices are specified
         sequence_length = len(time)
@@ -1063,11 +1110,12 @@ class TimeSeriesDataSet(Dataset):
             for name, value in self.encoded_constant_fill_strategy.items():
                 if name in self.reals:
                     data_cont[repetition_indices, self.reals.index(name)] = value
-                elif name in [f"__target__{target}" for target in _to_list(self.target)]:
-                    target[repetition_indices] = value
+                elif name in [f"__target__{target_name}" for target_name in self.target_names]:
+                    target_pos = self.target_names.index(name[len("__target__") :])
+                    target[target_pos][repetition_indices] = value
                 elif name in self.flat_categoricals:
                     data_cat[repetition_indices, self.flat_categoricals.index(name)] = value
-                elif name in _to_list(self.target):  # target is just not an input value
+                elif name in self.target_names:  # target is just not an input value
                     pass
                 else:
                     raise KeyError(f"Variable {name} is not known and thus cannot be filled in")
@@ -1104,10 +1152,10 @@ class TimeSeriesDataSet(Dataset):
             new_decoder_length = min(decoder_length + (encoder_length - new_encoder_length), self.max_prediction_length)
 
             # select subset of sequence of new sequence
-            if new_encoder_length + new_decoder_length < len(target):
+            if new_encoder_length + new_decoder_length < len(target[0]):
                 data_cat = data_cat[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 data_cont = data_cont[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
-                target = target[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
+                target = [t[encoder_length - new_encoder_length : encoder_length + new_decoder_length] for t in target]
                 encoder_length = new_encoder_length
                 decoder_length = new_decoder_length
 
@@ -1132,31 +1180,32 @@ class TimeSeriesDataSet(Dataset):
 
         # rescale covariates
         for name, scaler in self.scalers.items():
-            if name not in _to_list(self.target) and name in self.reals and isinstance(scaler, EncoderNormalizer):
+            if name in self.reals and isinstance(scaler, EncoderNormalizer):
                 # fit and transform
                 pos = self.reals.index(name)
                 scaler.fit(data_cont[:encoder_length, pos])
                 data_cont[:, pos] = scaler.transform(data_cont[:, pos])
 
         # rescale target
-        if self.target_normalizer is not None and isinstance(self.target_normalizer, EncoderNormalizer):
-            # fit and transform
-            self.target_normalizer.fit(target[:encoder_length])
-            # get new scale
-            target_scale = self.target_normalizer.get_parameters()
-            # modify input data
-            if self.target in self.reals:
-                data_cont[:, self.reals.index(self.target)] = self.target_normalizer.transform(target)
-            if self.add_target_scales:  # todo: fix for multinormalizer
-                data_cont[:, self.reals.index(f"{self.target}_center")] = self.transform_values(
-                    f"{self.target}_center", target_scale[0]
-                )[0]
-                data_cont[:, self.reals.index(f"{self.target}_scale")] = self.transform_values(
-                    f"{self.target}_scale", target_scale[1]
-                )[0]
-            target_scale = (
-                target_scale.numpy()
-            )  # scale needs to be numpy to be consistent with GroupNormalizer  # todo: fix for multinormalizer
+        for idx, target_normalizer in enumerate(self.target_normalizers):
+            if isinstance(target_normalizer, EncoderNormalizer):
+                target_name = self.target_names[idx]
+                # fit and transform
+                target_normalizer.fit(target[idx][:encoder_length])
+                # get new scale
+                single_target_scale = target_normalizer.get_parameters()
+                # modify input data
+                if target_name in self.reals:
+                    data_cont[:, self.reals.index(target_name)] = target_normalizer.transform(target[idx])
+                if self.add_target_scales:
+                    data_cont[:, self.reals.index(f"{target_name}_center")] = self.transform_values(
+                        f"{target_name}_center", single_target_scale[0]
+                    )[0]
+                    data_cont[:, self.reals.index(f"{target_name}_scale")] = self.transform_values(
+                        f"{target_name}_scale", single_target_scale[1]
+                    )[0]
+                # scale needs to be numpy to be consistent with GroupNormalizer
+                target_scale[idx] = single_target_scale.numpy()
 
         # overwrite values
         if self._overwrite_values is not None:
@@ -1179,21 +1228,25 @@ class TimeSeriesDataSet(Dataset):
                 idx = self.flat_categoricals.index(self._overwrite_values["variable"])
                 data_cat[positions, idx] = self._overwrite_values["values"]
 
+        # weight is only required for decoder
         if weight is not None:
             weight = weight[encoder_length:]
 
-        if isinstance(self.target, (tuple, list)):
-            target = target[0][encoder_length:]
-            encoder_target = target[:encoder_length]
-        else:
+        # if user defined target as list, output should be list, otherwise tensor
+        if self.multi_target:
+            encoder_target = [t[:encoder_length] for t in target]
             target = [t[encoder_length:] for t in target]
-            encoder_target = [target[:encoder_length] for t in target]
+        else:
+            encoder_target = target[0][:encoder_length]
+            target = target[0][encoder_length:]
+            target_scale = target_scale[0]
 
         return (
             dict(
                 x_cat=data_cat,
                 x_cont=data_cont,
                 encoder_length=encoder_length,
+                decoder_length=decoder_length,
                 encoder_target=encoder_target,
                 encoder_time_idx_start=time[0],
                 groups=groups,
@@ -1218,7 +1271,7 @@ class TimeSeriesDataSet(Dataset):
         # collate function for dataloader
         # lengths
         encoder_lengths = torch.tensor([batch[0]["encoder_length"] for batch in batches], dtype=torch.long)
-        decoder_lengths = torch.tensor([len(batch[1]) for batch in batches], dtype=torch.long)
+        decoder_lengths = torch.tensor([batch[0]["decoder_length"] for batch in batches], dtype=torch.long)
 
         # ids
         decoder_time_idx_start = (
@@ -1360,7 +1413,6 @@ class TimeSeriesDataSet(Dataset):
                 * targets (batch_size x n_decoder_time_steps or n_targets x batch_size x scale_size): scaled/encoded
                   targets, list of tensors for multiple targets
                 * weight (None or batch_size x n_decoder_time_steps): weight
-        )
         """
         default_kwargs = dict(
             shuffle=train,

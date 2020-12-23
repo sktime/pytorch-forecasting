@@ -81,12 +81,14 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         self.classes_vector_ = np.array(list(self.classes_.keys()))
         return self
 
-    def transform(self, y: Iterable) -> Union[torch.Tensor, np.ndarray]:
+    def transform(self, y: Iterable, return_norm: bool = False, target_scale=None) -> Union[torch.Tensor, np.ndarray]:
         """
         Encode iterable with integers.
 
         Args:
             y (Iterable): iterable to encode
+            return_norm: only exists for compatability with other encoders - returns a tuple if true.
+            target_scale: only exists for compatability with other encoders - has no effect.
 
         Returns:
             Union[torch.Tensor, np.ndarray]: returns encoded data as torch tensor or numpy array depending on input type
@@ -114,7 +116,11 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
             encoded = torch.tensor(encoded, dtype=torch.long, device=y.device)
         else:
             encoded = np.array(encoded)
-        return encoded
+
+        if return_norm:
+            return encoded, self.get_parameters()
+        else:
+            return encoded
 
     def inverse_transform(self, y: Union[torch.Tensor, np.ndarray]) -> np.ndarray:
         """
@@ -149,6 +155,17 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
             torch.Tensor: prediction
         """
         return data["prediction"]
+
+    def get_parameters(self, groups=None, group_names=None) -> np.ndarray:
+        """
+        Get fitted scaling parameters for a given group.
+
+        All parameters are unused - exists for compatability.
+
+        Returns:
+            np.ndarray: zero array.
+        """
+        return np.zeros(2, dtype=np.float)
 
 
 def _plus_one(x):
@@ -741,7 +758,7 @@ class MultiNormalizer(TorchNormalizer):
 
     def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
         denormalized = [
-            normalizer(dict(prediction=data[idx]["prediction"], target_scale=data["target_scale"][idx, ...]))
+            normalizer(dict(prediction=data["prediction"][idx], target_scale=data["target_scale"][idx]))
             for idx, normalizer in enumerate(self.normalizers)
         ]
         return denormalized
