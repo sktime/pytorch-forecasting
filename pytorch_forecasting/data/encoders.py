@@ -6,6 +6,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from pandas.core.algorithms import isin
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 import torch.nn.functional as F
@@ -221,7 +222,9 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         """
         return torch.stack([torch.as_tensor(self.center_), torch.as_tensor(self.scale_)], dim=-1)
 
-    def preprocess(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    def preprocess(
+        self, y: Union[pd.Series, pd.DataFrame, np.ndarray, torch.Tensor]
+    ) -> Union[np.ndarray, torch.Tensor]:
         """
         Preprocess input data (e.g. take log).
 
@@ -244,7 +247,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[0](y)
         else:
             # convert first to tensor, then transform and then convert to numpy array
-            if isinstance(y, pd.Series):
+            if isinstance(y, (pd.Series, pd.DataFrame)):
                 y = y.to_numpy()
             y = torch.as_tensor(y)
             y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[0](y)
@@ -384,8 +387,6 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             data (Dict[str, torch.Tensor]): Dictionary with entries
                 * prediction: data to de-scale
                 * target_scale: center and scale of data
-            scale_only (bool): if to only scale prediction and not center it (even if `self.center is True`).
-                Defaults to False.
 
         Returns:
             torch.Tensor: de-scaled data
@@ -683,3 +684,73 @@ class GroupNormalizer(TorchNormalizer):
         else:
             norm = X[self.groups].set_index(self.groups).join(self.norm_).fillna(self.missing_).to_numpy()
         return norm
+
+
+class MultiNormalizer(TorchNormalizer):
+    def __init__(self, normalizers):
+        self.normalizers = normalizers
+
+    def fit(self, y: Union[pd.DataFrame, np.ndarray, torch.Tensor], X: pd.DataFrame = None):
+        """
+        Fit transformer, i.e. determine center and scale of data
+
+        Args:
+            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
+
+        Returns:
+            MultiNormalizer: self
+        """
+        if isinstance(y, pd.DataFrame):
+            y = y.to_numpy()
+
+        for idx, normalizer in enumerate(self.normalizers):
+            if isinstance(normalizer, GroupNormalizer):
+                normalizer.fit(y[:, idx], X=X)
+            else:
+                normalizer.fit(y[:, idx])
+
+        return self
+
+    def transform(
+        self,
+        y: Union[pd.DataFrame, np.ndarray, torch.Tensor],
+        X: pd.DataFrame = None,
+        return_norm: bool = False,
+        target_scale: List[torch.Tensor] = None,
+    ) -> Union[List[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray]], List[Union[np.ndarray, torch.Tensor]]]:
+        if isinstance(y, pd.DataFrame):
+            y = y.to_numpy().transpose()
+
+        res = []
+        for idx, normalizer in enumerate(self.normalizers):
+            if target_scale is not None:
+
+                scale = target_scale[idx, ...]
+            else:
+                scale = None
+            if isinstance(normalizer, GroupNormalizer):
+                r = normalizer.transform(y[idx, :], X=X, return_norm=return_norm, target_scale=scale)
+            else:
+                r = normalizer.transform(y[idx, :], return_norm=return_norm, target_scale=scale)
+            res.append(r)
+
+        if return_norm:
+            return [r[0] for r in res], [r[1] for r in res]
+        else:
+            return res
+
+    def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
+        denormalized = [
+            normalizer(dict(prediction=data[idx]["prediction"], target_scale=data["target_scale"][idx, ...]))
+            for idx, normalizer in enumerate(self.normalizers)
+        ]
+        return denormalized
+
+    def get_parameters(self, *args, **kwargs) -> List[torch.Tensor]:
+        """
+        Returns parameters that were used for encoding.
+
+        Returns:
+            List[torch.Tensor]: First element is center of data and second is scale
+        """
+        return [normalizer.get_parameters(*args, **kwargs) for normalizer in self.normalizers]

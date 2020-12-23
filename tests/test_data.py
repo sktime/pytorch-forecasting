@@ -16,6 +16,7 @@ from pytorch_forecasting.data import (
     TimeSeriesDataSet,
     TimeSynchronizedBatchSampler,
 )
+from pytorch_forecasting.data.encoders import MultiNormalizer, TorchNormalizer
 from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data.timeseries import _find_end_indices
 
@@ -439,5 +440,33 @@ def test_encoder_normalizer_for_covariates(test_data):
         min_encoder_length=1,
         time_varying_known_reals=["price_regular"],
         scalers={"price_regular": EncoderNormalizer()},
+    )
+    next(iter(dataset.to_dataloader()))
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        dict(
+            target_normalizer=MultiNormalizer(normalizers=[TorchNormalizer(), EncoderNormalizer()]),
+        ),
+        dict(add_target_scales=True),
+        dict(weight="volume"),
+    ],
+)
+def test_multitarget(test_data, kwargs):
+    dataset = TimeSeriesDataSet(
+        test_data.assign(volume1=lambda x: x.volume),
+        time_idx="time_idx",
+        target=["volume", "volume1"],
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=1,
+        time_varying_known_reals=["price_regular"],
+        scalers={"price_regular": EncoderNormalizer()},
+        **kwargs,
     )
     next(iter(dataset.to_dataloader()))

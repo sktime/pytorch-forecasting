@@ -238,8 +238,8 @@ class AggregationMetric(Metric):
             torch.Tensor: metric value on which backpropagation can be applied
         """
         y_pred_mean = y_pred.mean(0).unsqueeze(0)
-        if isinstance(y_actual, rnn.PackedSequence):
-            target, lengths = rnn.pad_packed_sequence(y_actual, batch_first=True)
+        if isinstance(y_actual[0], rnn.PackedSequence):
+            target, lengths = rnn.pad_packed_sequence(y_actual[0], batch_first=True)
             # batch sizes reside on the CPU by default -> we need to bring them to GPU
             lengths = lengths.to(target.device)
 
@@ -262,7 +262,10 @@ class AggregationMetric(Metric):
                 y_mean = torch.stack((y_mean, weight), dim=-1)
 
         else:
-            y_mean = y_actual.mean(0).unsqueeze(0)
+            if y_actual[1] is None:
+                y_mean = y_actual[0].mean(0).unsqueeze(0)
+            else:
+                y_mean = y_actual[0].sum(0).unsqueeze(0) / y_actual[1].sum(0).unsqueeze(0)  # todo: think about it
         self.metric.update(y_pred_mean, y_mean)
 
     def compute(self):
@@ -309,11 +312,8 @@ class MultiHorizonMetric(Metric):
         assert not target.requires_grad
 
         # calculate loss with "none" reduction
-        if target.ndim == 3:
-            weight = target[..., 1]
-            target = target[..., 0]
-        else:
-            weight = None
+        weight = target[1]
+        target = target[0]
 
         losses = self.loss(y_pred, target)
         # weight samples
@@ -560,11 +560,8 @@ class MASE(MultiHorizonMetric):
         assert not target.requires_grad
 
         # calculate loss with "none" reduction
-        if target.ndim == 3:
-            weight = target[..., 1]
-            target = target[..., 0]
-        else:
-            weight = None
+        weight = target[1]
+        target = target[0]
 
         scaling = self.calculate_scaling(target, lengths, encoder_target, encoder_lengths)
         losses = self.loss(y_pred, target, scaling)
