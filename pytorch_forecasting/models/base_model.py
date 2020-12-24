@@ -333,7 +333,8 @@ class BaseModel(LightningModule):
 
         Returns:
             Dict[str, Union[torch.Tensor, List[torch.Tensor]]]: network outputs / dictionary of tensors or list
-                 of tensors. The minimal required entries in the dictionary are (and shapes in brackets):
+                of tensors. The minimal required entries in the dictionary are (and shapes in brackets):
+
                 * ``prediction`` (batch_size x n_decoder_time_steps x n_outputs or list thereof with each
                   entry for a different target): unscaled predictions that can be fed to metric. List of tensors
                   if multiple targets are predicted at the same time.

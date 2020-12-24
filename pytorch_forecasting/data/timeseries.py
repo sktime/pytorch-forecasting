@@ -1410,6 +1410,7 @@ class TimeSeriesDataSet(Dataset):
                   parameters used to normalize the target.
                   Typically these are mean and standard deviation. Is list of tensors for multiple targets.
 
+
                 Second entry is ``y``, a tuple of the form (``target``, `weight`)
 
                 * target (batch_size x n_decoder_time_steps or list thereof with each entry for a different target):

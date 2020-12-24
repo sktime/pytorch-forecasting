@@ -8,6 +8,7 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
@@ -192,6 +193,9 @@ class NBeats(BaseModel):
 
         # validate arguments
         assert isinstance(dataset.target, str), "only one target is allowed (passed as string to dataset)"
+        assert not isinstance(
+            dataset.target_normalizer, NaNLabelEncoder
+        ), "only regression tasks are supported - target must not be categorical"
         assert (
             dataset.min_encoder_length == dataset.max_encoder_length
         ), "only fixed encoder length is allowed, but min_encoder_length != max_encoder_length"
