@@ -22,7 +22,7 @@ from tqdm.notebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, MultiNormalizer, NaNLabelEncoder
-from pytorch_forecasting.metrics import MASE, SMAPE, Metric, MultiTargetMetric
+from pytorch_forecasting.metrics import MASE, SMAPE, Metric, MultiLoss
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import create_mask, get_embedding_size, groupby_apply, to_list
 
@@ -32,8 +32,8 @@ class BaseModel(LightningModule):
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
 
-    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` and
-    ``target_scale`` that contains the network's output.
+    The :py:meth:`~BaseModel.forward` method should return a dictionary with at least the entry ``prediction`` and
+    ``target_scale`` that contains the network's output. See the function's documentation for more details.
 
     The idea of the base model is that common methods do not have to be re-implemented for every new architecture.
     The class is a [LightningModule](https://pytorch-lightning.readthedocs.io/en/latest/lightning_module.html)
@@ -56,7 +56,9 @@ class BaseModel(LightningModule):
         * The :py:meth:`~BaseModel.predict` method makes predictions using a dataloader or dataset. Override it if you
           need to pass additional arguments to ``forward`` by default.
 
-    To implement your own architecture, it is best to look at existing ones to understand what might be a good approach.
+    To implement your own architecture, it is best to
+    go throught the :ref:`Using custom data and implementing custom models <new-model-tutorial>` and
+    to look at existing ones to understand what might be a good approach.
 
     Example:
 
@@ -287,7 +289,7 @@ class BaseModel(LightningModule):
             out (Dict[str, torch.Tensor]): output of the network
         """
         # logging losses - for each target
-        if isinstance(self.loss, MultiTargetMetric):
+        if isinstance(self.loss, MultiLoss):
             y_hat_detached = [p.detach() for p in out["prediction"]]
             y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
         else:
@@ -318,15 +320,26 @@ class BaseModel(LightningModule):
                     on_epoch=True,
                 )
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x: Dict[str, Union[torch.Tensor, List[torch.Tensor]]]
+    ) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
         """
         Network forward pass.
 
         Args:
-            x (Dict[str, torch.Tensor]): network input (x as returned by the dataloader)
+            x (Dict[str, Union[torch.Tensor, List[torch.Tensor]]]): network input (x as returned by the dataloader).
+                See :py:meth:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet.to_dataloader` method that
+                returns a tuple of ``x`` and ``y``. This function expects ``x``.
 
         Returns:
-            Dict[str, torch.Tensor]: network outputs - includes at entries for ``prediction`` and ``target_scale``
+            Dict[str, Union[torch.Tensor, List[torch.Tensor]]]: network outputs / dictionary of tensors or list
+                 of tensors. The minimal required entries in the dictionary are (and shapes in brackets):
+                * ``prediction`` (batch_size x n_decoder_time_steps x n_outputs or list thereof with each
+                  entry for a different target): unscaled predictions that can be fed to metric. List of tensors
+                  if multiple targets are predicted at the same time.
+                * ``target_scale`` (batch_size x scale_size or list thereof with each entry for a different target):
+                  target scales that allow rescaling the predictions into the real space.
+                  The scale can mostly be directly taken from ``x``, i.e. ``target_scale=x["target_scale"]``
         """
         raise NotImplementedError()
 

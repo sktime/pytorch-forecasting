@@ -11,7 +11,7 @@ import torch
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import MultiNormalizer
-from pytorch_forecasting.metrics import CrossEntropy, MultiTargetMetric, PoissonLoss, QuantileLoss
+from pytorch_forecasting.metrics import CrossEntropy, MultiLoss, PoissonLoss, QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
@@ -57,7 +57,7 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
         if isinstance(train_dataloader.dataset.target_normalizer, NaNLabelEncoder):
             loss = CrossEntropy()
         elif isinstance(train_dataloader.dataset.target_normalizer, MultiNormalizer):
-            loss = MultiTargetMetric(
+            loss = MultiLoss(
                 [
                     CrossEntropy() if isinstance(normalizer, NaNLabelEncoder) else QuantileLoss()
                     for normalizer in train_dataloader.dataset.target_normalizer.normalizers

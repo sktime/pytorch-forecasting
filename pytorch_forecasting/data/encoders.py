@@ -704,7 +704,17 @@ class GroupNormalizer(TorchNormalizer):
 
 
 class MultiNormalizer(TorchNormalizer):
-    def __init__(self, normalizers):
+    """
+    Normalizer for multiple targets.
+
+    This normalizers wraps multiple other normalizers.
+    """
+
+    def __init__(self, normalizers: List[TorchNormalizer]):
+        """
+        Args:
+            normalizers (List[TorchNormalizer]): list of normalizers to apply to targets
+        """
         self.normalizers = normalizers
 
     def fit(self, y: Union[pd.DataFrame, np.ndarray, torch.Tensor], X: pd.DataFrame = None):
@@ -735,6 +745,20 @@ class MultiNormalizer(TorchNormalizer):
         return_norm: bool = False,
         target_scale: List[torch.Tensor] = None,
     ) -> Union[List[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray]], List[Union[np.ndarray, torch.Tensor]]]:
+        """
+        Scale input data.
+
+        Args:
+            y (Union[pd.DataFrame, np.ndarray, torch.Tensor]): data to scale
+            X (pd.DataFrame): dataframe with ``groups`` columns. Only necessary if :py:class:`~GroupNormalizer`
+                is among normalizers
+            return_norm (bool, optional): If to return . Defaults to False.
+            target_scale (List[torch.Tensor]): target scale to use instead of fitted center and scale
+
+        Returns:
+            Union[List[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray]], List[Union[np.ndarray, torch.Tensor]]]:
+                List of scaled data, if ``return_norm=True``, returns also scales as second element
+        """
         if isinstance(y, pd.DataFrame):
             y = y.to_numpy().transpose()
 
@@ -756,7 +780,18 @@ class MultiNormalizer(TorchNormalizer):
         else:
             return res
 
-    def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def __call__(self, data: Dict[str, Union[List[torch.Tensor], torch.Tensor]]) -> List[torch.Tensor]:
+        """
+        Inverse transformation but with network output as input.
+
+        Args:
+            data (Dict[str, Union[List[torch.Tensor], torch.Tensor]]): Dictionary with entries
+                * prediction: list of data to de-scale
+                * target_scale: list of center and scale of data
+
+        Returns:
+            List[torch.Tensor]: list of de-scaled data
+        """
         denormalized = [
             normalizer(dict(prediction=data["prediction"][idx], target_scale=data["target_scale"][idx]))
             for idx, normalizer in enumerate(self.normalizers)

@@ -712,7 +712,7 @@ class TimeSeriesDataSet(Dataset):
                     for name in self.target_names
                 ]
             else:
-                target = [torch.tensor(data[self.target].to_numpy(dtype=np.float), dtype=torch.float)]
+                target = [torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.float), dtype=torch.float)]
 
         # continuous covariates
         continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float), dtype=torch.float)
@@ -1389,7 +1389,8 @@ class TimeSeriesDataSet(Dataset):
                   categoricals for encoder
                 * encoder_cont (batch_size x n_encoder_time_steps x n_features): float tensor of scaled continuous
                   variables for encoder
-                * encoder_target (batch_size x n_encoder_time_steps or n_targets x batch_size x n_encoder_time_steps):
+                * encoder_target (batch_size x n_encoder_time_steps or list thereof with each entry for a different
+                  target):
                   float tensor with unscaled continous target or encoded categorical target,
                   list of tensors for multiple targets
                 * encoder_lengths (batch_size): long tensor with lengths of the encoder time series. No entry will
@@ -1398,20 +1399,21 @@ class TimeSeriesDataSet(Dataset):
                   categoricals for decoder
                 * decoder_cont (batch_size x n_decoder_time_steps x n_features): float tensor of scaled continuous
                   variables for decoder
-                * decoder_target (batch_size x n_decoder_time_steps or n_targets x batch_size x n_decoder_time_steps):
+                * decoder_target (batch_size x n_decoder_time_steps or list thereof with each entry for a different
+                  target):
                   float tensor with unscaled continous target or encoded categorical target for decoder
                   - this corresponds to first entry of ``y``, list of tensors for multiple targets
                 * decoder_lengths (batch_size): long tensor with lengths of the decoder time series. No entry will
                   be greater than n_decoder_time_steps
                 * group_ids (batch_size x number_of_ids): encoded group ids that identify a time series in the dataset
-                * target_scale (batch_size x scale_size or n_targets x batch_size x scale_size): parameters used
-                  to normalize the target.
+                * target_scale (batch_size x scale_size or list thereof with each entry for a different target):
+                  parameters used to normalize the target.
                   Typically these are mean and standard deviation. Is list of tensors for multiple targets.
 
-                Second entry is ``y``, a tuple of the form
+                Second entry is ``y``, a tuple of the form (``target``, `weight`)
 
-                * targets (batch_size x n_decoder_time_steps or n_targets x batch_size x scale_size): scaled/encoded
-                  targets, list of tensors for multiple targets
+                * target (batch_size x n_decoder_time_steps or list thereof with each entry for a different target):
+                  unscaled (continuous) or encoded (categories) targets, list of tensors for multiple targets
                 * weight (None or batch_size x n_decoder_time_steps): weight
         """
         default_kwargs = dict(

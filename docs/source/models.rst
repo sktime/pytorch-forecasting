@@ -112,7 +112,7 @@ number of samples.
 Implementing new architectures
 -------------------------------
 
-Please see the :ref:`How to implement custom models <new-model-tutorial>` tutorial on how implement basic and more advanced models.
+Please see the :ref:`Using custom data and implementing custom models <new-model-tutorial>` tutorial on how implement basic and more advanced models.
 
 Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base_model`.
 

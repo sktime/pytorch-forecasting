@@ -13,16 +13,7 @@ from torch.nn.utils import rnn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
-from pytorch_forecasting.metrics import (
-    MAE,
-    MAPE,
-    MASE,
-    RMSE,
-    SMAPE,
-    MultiHorizonMetric,
-    MultiTargetMetric,
-    QuantileLoss,
-)
+from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, MultiLoss, QuantileLoss
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nn import MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
@@ -373,8 +364,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 get_output_size(normalizer, l)
                 for normalizer, l in zip(dataset.target_normalizer.normalizers, loss.metrics)
             ]
-            if not isinstance(loss, MultiTargetMetric):
-                loss = MultiTargetMetric([deepcopy(loss)] * new_kwargs["n_targets"])
+            if not isinstance(loss, MultiLoss):
+                loss = MultiLoss([deepcopy(loss)] * new_kwargs["n_targets"])
             new_kwargs["loss"] = loss
         else:
             new_kwargs["output_size"] = get_output_size(dataset.target_normalizer, loss)

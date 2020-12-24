@@ -12,7 +12,7 @@ from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.utils import create_mask, integer_histogram, unpack_sequence, unsqueeze_like
+from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
 
 class Metric(LightningMetric):
@@ -103,7 +103,7 @@ class Metric(LightningMetric):
     __rmul__ = __mul__
 
 
-class MultiTargetMetric(LightningMetric):
+class MultiLoss(LightningMetric):
     """
     Metric that can be used with muliple metrics.
     """
