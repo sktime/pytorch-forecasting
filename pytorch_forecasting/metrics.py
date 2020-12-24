@@ -4,6 +4,7 @@ Implementation of metrics for (mulit-horizon) timeseries forecasting.
 from typing import Dict, List, Tuple, Union
 import warnings
 
+from pandas.core.algorithms import isin
 from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 from sklearn.base import BaseEstimator
@@ -114,6 +115,7 @@ class MultiLoss(LightningMetric):
             metrics (List[LightningMetric], optional): list of metrics to combine.
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """
+        assert len(metrics) > 0, "at least one metric has to be specified"
         if weights is None:
             weights = [1.0 for _ in metrics]
         assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
@@ -189,6 +191,60 @@ class MultiLoss(LightningMetric):
             torch.Tensor: prediction quantiles
         """
         return [metric.to_quantiles(y_pred[idx]) for idx, metric in enumerate(self.metrics)]
+
+    def __getattr__(self, name: str):
+        """
+        Return dynamically attributes.
+
+        Return attributes if defined in this class. If not, create dynamically attributes based on
+        attributes of underlying metrics that are lists. Create functions if necessary.
+        Arguments to functions are distributed to the functions if they are lists and their length
+        matches the number of metrics. Otherwise, they are directly passed to each callable of the
+        metrics
+
+        Args:
+            name (str): name of attribute
+
+        Returns:
+            attributes of this class or list of attributes of underlying class
+        """
+        try:
+            return super().__getattr__(name)
+        except AttributeError as e:
+            attribute_exists = all([hasattr(metric, name) for metric in self.metrics])
+            if attribute_exists:
+                # check if to return callable or not and return function if yes
+                if callable(self.metrics[name]):
+                    n = len(self.metrics)
+
+                    def func(*args, **kwargs):
+                        # if arg/kwarg is list and of length metric, then apply each part to a metric. otherwise
+                        # pass it directly to all metrics
+                        results = []
+                        for idx, m in enumerate(self.metrics):
+                            new_args = [
+                                arg[idx]
+                                if isinstance(arg, (list, tuple))
+                                and not isin(arg, rnn.PackedSequence)
+                                and len(arg) == n
+                                else arg
+                                for arg in args
+                            ]
+                            new_kwargs = {
+                                name: val[idx]
+                                if isinstance(val, list) and not isin(val, rnn.PackedSequence) and len(val) == n
+                                else val
+                                for name, val in kwargs.items()
+                            }
+                            results.append(m(*new_args, **new_kwargs))
+                        return results
+
+                    return func
+                else:
+                    # else return list of attributes
+                    return [getattr(metric, name) for metric in self.metrics]
+            else:  # attribute does not exist for all metrics
+                raise e
 
 
 class CompositeMetric(LightningMetric):

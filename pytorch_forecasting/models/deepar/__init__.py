@@ -46,7 +46,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         x_categoricals: List[str] = [],
         n_validation_samples: int = None,
         n_plotting_samples: int = None,
-        target: str = None,
+        target: Union[str, List[str]] = None,
         loss: DistributionLoss = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -83,7 +83,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 metrics calculation.
             n_plotting_samples (int, optional): Number of samples to generate for plotting predictions
                 during training. Defaults to ``n_validation_samples`` if not None or 100 otherwise.
-            target (str, optional): Target variable. Defaults to None.
+            target (str, optional): Target variable or list of target variables. Defaults to None.
             loss (DistributionLoss, optional): Distribution loss function. Keep in mind that each distribution
                 loss function might have specific requirements for target normalization.
                 Defaults to :py:class:`~pytorch_forecasting.metrics.NormalDistributionLoss`.

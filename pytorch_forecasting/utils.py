@@ -279,7 +279,7 @@ def to_list(value: Any) -> List[Any]:
     Returns:
         List[Any]: list of values
     """
-    if isinstance(value, (tuple, list)):
+    if isinstance(value, (tuple, list)) and not isinstance(value, rnn.PackedSequence):
         return value
     else:
         return [value]
