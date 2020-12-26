@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
+from pytorch_lightning.metrics import Metric as LightningMetric
 from pytorch_lightning.utilities.parsing import get_init_args
 import scipy.stats
 import torch
@@ -20,10 +21,10 @@ from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer
-from pytorch_forecasting.metrics import MASE, SMAPE, Metric
+from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, MultiNormalizer, NaNLabelEncoder
+from pytorch_forecasting.metrics import MASE, SMAPE, Metric, MultiLoss
 from pytorch_forecasting.optim import Ranger
-from pytorch_forecasting.utils import create_mask, get_embedding_size, groupby_apply
+from pytorch_forecasting.utils import create_mask, get_embedding_size, groupby_apply, to_list
 
 
 class BaseModel(LightningModule):
@@ -31,8 +32,8 @@ class BaseModel(LightningModule):
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
 
-    The ``forward()`` method should return a dictionary with at least the entry ``prediction`` and
-    ``target_scale`` that contains the network's output.
+    The :py:meth:`~BaseModel.forward` method should return a dictionary with at least the entry ``prediction`` and
+    ``target_scale`` that contains the network's output. See the function's documentation for more details.
 
     The idea of the base model is that common methods do not have to be re-implemented for every new architecture.
     The class is a [LightningModule](https://pytorch-lightning.readthedocs.io/en/latest/lightning_module.html)
@@ -55,7 +56,9 @@ class BaseModel(LightningModule):
         * The :py:meth:`~BaseModel.predict` method makes predictions using a dataloader or dataset. Override it if you
           need to pass additional arguments to ``forward`` by default.
 
-    To implement your own architecture, it is best to look at existing ones to understand what might be a good approach.
+    To implement your own architecture, it is best to
+    go throught the :ref:`Using custom data and implementing custom models <new-model-tutorial>` and
+    to look at existing ones to understand what might be a good approach.
 
     Example:
 
@@ -181,14 +184,14 @@ class BaseModel(LightningModule):
         self.epoch_end(outputs)
 
     def step(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, batch_idx: int, **kwargs
+        self, x: Dict[str, torch.Tensor], y: Tuple[torch.Tensor, torch.Tensor], batch_idx: int, **kwargs
     ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
         """
         Run for each train/val step.
 
         Args:
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
-            y (torch.Tensor): y as passed to the loss function by the dataloader
+            y (Tuple[torch.Tensor, torch.Tensor]): y as passed to the loss function by the dataloader
             batch_idx (int): batch number
             **kwargs: additional arguments to pass to the network apart from ``x``
 
@@ -199,7 +202,12 @@ class BaseModel(LightningModule):
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
-            y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False)
+            y = (
+                rnn.pack_padded_sequence(
+                    y[0], lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False
+                ),
+                y[1],
+            )
 
         if self.training and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
@@ -212,13 +220,17 @@ class BaseModel(LightningModule):
             out["prediction"] = self.transform_output(out)
             prediction = out["prediction"]
 
-            gradient = torch.autograd.grad(
-                outputs=prediction,
-                inputs=x["decoder_cont"],
-                grad_outputs=torch.ones_like(prediction),  # t
-                create_graph=True,  # allows usage in graph
-                allow_unused=True,
-            )[0]
+            # handle multiple targets
+            prediction_list = to_list(prediction)
+            gradient = 0
+            for pred in prediction_list:
+                gradient = gradient + torch.autograd.grad(
+                    outputs=pred,
+                    inputs=x["decoder_cont"],
+                    grad_outputs=torch.ones_like(pred),  # t
+                    create_graph=True,  # allows usage in graph
+                    allow_unused=True,
+                )[0]
 
             # select relevant features
             indices = torch.tensor(
@@ -276,29 +288,59 @@ class BaseModel(LightningModule):
             y (torch.Tensor): y as passed to the loss function by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
         """
-        # logging losses
-        y_hat_detached = out["prediction"].detach()
-        y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
-        for metric in self.logging_metrics:
-            if isinstance(metric, MASE):
-                loss_value = metric(
-                    y_hat_point_detached, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
-                )
-            else:
-                loss_value = metric(y_hat_point_detached, y)
-            self.log(
-                f"{['val', 'train'][self.training]}_{metric.name}", loss_value, on_step=self.training, on_epoch=True
-            )
+        # logging losses - for each target
+        if isinstance(self.loss, MultiLoss):
+            y_hat_detached = [p.detach() for p in out["prediction"]]
+            y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
+        else:
+            y_hat_point_detached = [self.loss.to_prediction(out["prediction"].detach())]
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        for metric in self.logging_metrics:
+            for idx, y_point, y_part, encoder_target in zip(
+                list(range(len(y_hat_point_detached))),
+                y_hat_point_detached,
+                to_list(y[0]),
+                to_list(x["encoder_target"]),
+            ):
+                y_true = (y_part, y[1])
+                if isinstance(metric, MASE):
+                    loss_value = metric(
+                        y_point, y_true, encoder_target=encoder_target, encoder_lengths=x["encoder_lengths"]
+                    )
+                else:
+                    loss_value = metric(y_point, y_true)
+                if len(y_hat_point_detached) > 1:
+                    target_tag = f"Target {idx}"
+                else:
+                    target_tag = ""
+                self.log(
+                    f"{target_tag}_{['val', 'train'][self.training]}_{metric.name}",
+                    loss_value,
+                    on_step=self.training,
+                    on_epoch=True,
+                )
+
+    def forward(
+        self, x: Dict[str, Union[torch.Tensor, List[torch.Tensor]]]
+    ) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
         """
         Network forward pass.
 
         Args:
-            x (Dict[str, torch.Tensor]): network input (x as returned by the dataloader)
+            x (Dict[str, Union[torch.Tensor, List[torch.Tensor]]]): network input (x as returned by the dataloader).
+                See :py:meth:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet.to_dataloader` method that
+                returns a tuple of ``x`` and ``y``. This function expects ``x``.
 
         Returns:
-            Dict[str, torch.Tensor]: network outputs - includes at entries for ``prediction`` and ``target_scale``
+            Dict[str, Union[torch.Tensor, List[torch.Tensor]]]: network outputs / dictionary of tensors or list
+                of tensors. The minimal required entries in the dictionary are (and shapes in brackets):
+
+                * ``prediction`` (batch_size x n_decoder_time_steps x n_outputs or list thereof with each
+                  entry for a different target): unscaled predictions that can be fed to metric. List of tensors
+                  if multiple targets are predicted at the same time.
+                * ``target_scale`` (batch_size x scale_size or list thereof with each entry for a different target):
+                  target scales that allow rescaling the predictions into the real space.
+                  The scale can mostly be directly taken from ``x``, i.e. ``target_scale=x["target_scale"]``
         """
         raise NotImplementedError()
 
@@ -342,11 +384,19 @@ class BaseModel(LightningModule):
                     tag += f" of item {idx} in global batch {self.global_step}"
                 else:
                     tag += f" of item {idx} in batch {batch_idx}"
-                self.logger.experiment.add_figure(
-                    tag,
-                    fig,
-                    global_step=self.global_step,
-                )
+                if isinstance(fig, (list, tuple)):
+                    for idx, f in enumerate(fig):
+                        self.logger.experiment.add_figure(
+                            f"Target {idx} {tag}",
+                            f,
+                            global_step=self.global_step,
+                        )
+                else:
+                    self.logger.experiment.add_figure(
+                        tag,
+                        fig,
+                        global_step=self.global_step,
+                    )
 
     def plot_prediction(
         self,
@@ -365,7 +415,8 @@ class BaseModel(LightningModule):
             out: network output
             idx: index of prediction to plot
             add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
-                bool indicating if to use loss metric or tensor which contains losses for all samples. Default to False.
+                bool indicating if to use loss metric or tensor which contains losses for all samples.
+                Calcualted losses are determined without weights. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
 
@@ -373,87 +424,105 @@ class BaseModel(LightningModule):
             matplotlib figure
         """
         # all true values for y of the first sample in batch
-        y_all = torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]])
-        if y_all.ndim == 2:  # timesteps, (target, weight), i.e. weight is included
-            y_all = y_all[:, 0]
-        max_encoder_length = x["encoder_lengths"].max()
-        y = torch.cat(
-            (
-                y_all[: x["encoder_lengths"][idx]],
-                y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][idx])],
-            ),
-        )
-        # get predictions
-        y_pred = out["prediction"].detach().cpu()
-        y_hat = y_pred[idx, : x["decoder_lengths"][idx]]
+        encoder_targets = to_list(x["encoder_target"])
+        decoder_targets = to_list(x["decoder_target"])
 
-        # move to cpu
-        y = y.detach().cpu()
-        # create figure
-        if ax is None:
-            fig, ax = plt.subplots()
-        else:
-            fig = ax.get_figure()
-        n_pred = y_hat.shape[0]
-        x_obs = np.arange(-(y.shape[0] - n_pred), 0)
-        x_pred = np.arange(n_pred)
-        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
-        obs_color = next(prop_cycle)["color"]
-        pred_color = next(prop_cycle)["color"]
-        # plot observed history
-        if len(x_obs) > 0:
-            if len(x_obs) > 1:
+        # get predictions
+        y_raws = to_list(out["prediction"])
+        y_hats = to_list(self.loss.to_prediction(out["prediction"]))
+        y_quantiles = to_list(self.loss.to_quantiles(out["prediction"]))
+
+        # for each target, plot
+        figs = []
+        for y_raw, y_hat, y_quantile, encoder_target, decoder_target in zip(
+            y_raws, y_hats, y_quantiles, encoder_targets, decoder_targets
+        ):
+
+            y_all = torch.cat([encoder_target[idx], decoder_target[idx]])
+            max_encoder_length = x["encoder_lengths"].max()
+            y = torch.cat(
+                (
+                    y_all[: x["encoder_lengths"][idx]],
+                    y_all[max_encoder_length : (max_encoder_length + x["decoder_lengths"][idx])],
+                ),
+            )
+            # move predictions to cpu
+            y_hat = y_hat.detach().cpu()[idx, : x["decoder_lengths"][idx]]
+            y_quantile = y_quantile.detach().cpu()[idx, : x["decoder_lengths"][idx]]
+            y_raw = y_raw.detach().cpu()[idx, : x["decoder_lengths"][idx]]
+
+            # move to cpu
+            y = y.detach().cpu()
+            # create figure
+            if ax is None:
+                fig, ax = plt.subplots()
+            else:
+                fig = ax.get_figure()
+            n_pred = y_hat.shape[0]
+            x_obs = np.arange(-(y.shape[0] - n_pred), 0)
+            x_pred = np.arange(n_pred)
+            prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
+            obs_color = next(prop_cycle)["color"]
+            pred_color = next(prop_cycle)["color"]
+            # plot observed history
+            if len(x_obs) > 0:
+                if len(x_obs) > 1:
+                    plotter = ax.plot
+                else:
+                    plotter = ax.scatter
+                plotter(x_obs, y[:-n_pred], label="observed", c=obs_color)
+            if len(x_pred) > 1:
                 plotter = ax.plot
             else:
                 plotter = ax.scatter
-            plotter(x_obs, y[:-n_pred], label="observed", c=obs_color)
-        if len(x_pred) > 1:
-            plotter = ax.plot
+
+            # plot observed prediction
+            if show_future_observed:
+                plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
+
+            # plot prediction
+            plotter(x_pred, y_hat, label="predicted", c=pred_color)
+
+            # plot predicted quantiles
+            plotter(x_pred, y_quantile[:, y_quantile.shape[1] // 2], c=pred_color, alpha=0.15)
+            for i in range(y_quantile.shape[1] // 2):
+                if len(x_pred) > 1:
+                    ax.fill_between(x_pred, y_quantile[:, i], y_quantile[:, -i - 1], alpha=0.15, fc=pred_color)
+                else:
+                    quantiles = torch.tensor([[y_quantile[0, i]], [y_quantile[0, -i - 1]]])
+                    ax.errorbar(
+                        x_pred,
+                        y[[-n_pred]],
+                        yerr=quantiles - y[-n_pred],
+                        c=pred_color,
+                        capsize=1.0,
+                    )
+            if add_loss_to_title is not False:
+                if isinstance(add_loss_to_title, bool):
+                    loss = self.loss
+                elif isinstance(add_loss_to_title, torch.Tensor):
+                    loss = add_loss_to_title.detach()[idx].item()
+                elif isinstance(add_loss_to_title, Metric):
+                    loss = add_loss_to_title
+                    loss.quantiles = self.loss.quantiles
+                else:
+                    raise ValueError(f"add_loss_to_title '{add_loss_to_title}'' is unkown")
+                if isinstance(loss, MASE):
+                    loss_value = loss(y_raw[None], (y[-n_pred:][None], None), y[:n_pred][None])
+                elif isinstance(loss, Metric):
+                    loss_value = loss(y_raw[None], (y[-n_pred:][None], None))
+                else:
+                    loss_value = loss
+                ax.set_title(f"Loss {loss_value}")
+            ax.set_xlabel("Time index")
+            fig.legend()
+            figs.append(fig)
+
+        # return multiple of target is a list, otherwise return single figure
+        if isinstance(x["encoder_target"], (tuple, list)):
+            return figs
         else:
-            plotter = ax.scatter
-
-        # plot observed prediction
-        if show_future_observed:
-            plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
-
-        # plot prediction
-        plotter(x_pred, self.loss.to_prediction(y_hat.unsqueeze(0))[0], label="predicted", c=pred_color)
-
-        # plot predicted quantiles
-        y_quantiles = self.loss.to_quantiles(y_hat.unsqueeze(0))[0]
-        plotter(x_pred, y_quantiles[:, y_quantiles.shape[1] // 2], c=pred_color, alpha=0.15)
-        for i in range(y_quantiles.shape[1] // 2):
-            if len(x_pred) > 1:
-                ax.fill_between(x_pred, y_quantiles[:, i], y_quantiles[:, -i - 1], alpha=0.15, fc=pred_color)
-            else:
-                quantiles = torch.tensor([[y_quantiles[0, i]], [y_quantiles[0, -i - 1]]])
-                ax.errorbar(
-                    x_pred,
-                    y[[-n_pred]],
-                    yerr=quantiles - y[-n_pred],
-                    c=pred_color,
-                    capsize=1.0,
-                )
-        if add_loss_to_title is not False:
-            if isinstance(add_loss_to_title, bool):
-                loss = self.loss
-            elif isinstance(add_loss_to_title, torch.Tensor):
-                loss = add_loss_to_title.detach()[idx].item()
-            elif isinstance(add_loss_to_title, Metric):
-                loss = add_loss_to_title
-                loss.quantiles = self.loss.quantiles
-            else:
-                raise ValueError(f"add_loss_to_title '{add_loss_to_title}'' is unkown")
-            if isinstance(loss, MASE):
-                loss_value = loss(y_hat[None], y[-n_pred:][None], y[:n_pred][None])
-            elif isinstance(loss, Metric):
-                loss_value = loss(y_hat[None], y[-n_pred:][None])
-            else:
-                loss_value = loss
-            ax.set_title(f"Loss {loss_value:.3g}")
-        ax.set_xlabel("Time index")
-        fig.legend()
-        return fig
+            return fig
 
     def log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor]) -> None:
         """
@@ -634,9 +703,13 @@ class BaseModel(LightningModule):
         with torch.no_grad():
             for x, _ in dataloader:
                 # move data to appropriate device
-                for name in x.keys():
-                    if x[name].device != self.device:
-                        x[name] = x[name].to(self.device)
+                data_device = x["encoder_cont"].device
+                if data_device != self.device:
+                    for name in x.keys():
+                        if isinstance(x[name], (tuple, list)):
+                            x[name] = [xi.to(self.device) for xi in x[name]]
+                        else:
+                            x[name] = x[name].to(self.device)
 
                 # make prediction
                 out = self(x, **kwargs)  # raw output is dictionary
@@ -645,7 +718,7 @@ class BaseModel(LightningModule):
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
                     decode_lenghts.append(lengths)
-                nan_mask = create_mask(out["prediction"].size(1), lengths)
+                nan_mask = create_mask(lengths.max(), lengths)
                 if isinstance(mode, (tuple, list)):
                     if mode[0] == "raw":
                         out = out[mode[1]]
@@ -656,11 +729,25 @@ class BaseModel(LightningModule):
                 elif mode == "prediction":
                     out = self.loss.to_prediction(out["prediction"])
                     # mask non-predictions
-                    out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
+                    if isinstance(out, (list, tuple)):
+                        out = [
+                            o.masked_fill(nan_mask, torch.tensor(float("nan"))) if o.dtype == torch.float else o
+                            for o in out
+                        ]
+                    elif out.dtype == torch.float:  # only floats can be filled with nans
+                        out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
                 elif mode == "quantiles":
                     out = self.loss.to_quantiles(out["prediction"])
                     # mask non-predictions
-                    out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
+                    if isinstance(out, (list, tuple)):
+                        out = [
+                            o.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
+                            if o.dtype == torch.float
+                            else o
+                            for o in out
+                        ]
+                    elif out.dtype == torch.float:
+                        out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
                 elif mode == "raw":
                     pass
                 else:
@@ -675,15 +762,20 @@ class BaseModel(LightningModule):
                 if fast_dev_run:
                     break
 
-        # concatenate
+        # concatenate output (of different batches)
         if isinstance(mode, (tuple, list)) or mode != "raw":
-            output = torch.cat(output, dim=0)
+            if isinstance(output[0], (tuple, list)) and len(output[0]) > 0 and isinstance(output[0][0], torch.Tensor):
+                output = [torch.cat(out, dim=0) for out in output]
+            else:
+                output = torch.cat(output, dim=0)
         elif mode == "raw":
             output_cat = {}
             for name in output[0].keys():
                 v0 = output[0][name]
                 if isinstance(v0, torch.Tensor):
                     output_cat[name] = torch.cat([out[name] for out in output], dim=0)
+                elif isinstance(v0, (tuple, list)) and len(v0) > 0 and isinstance(v0[0], torch.Tensor):
+                    output_cat[name] = [torch.cat(out[name], dim=0) for out in output]
                 else:
                     try:
                         output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
@@ -1114,7 +1206,13 @@ class BaseModelWithCovariates(BaseModel):
             # plot averages
             if name in self.hparams.x_reals:
                 # create x
-                scaler = self.dataset_parameters["scalers"][name]
+                if name in to_list(self.dataset_parameters["target"]):
+                    if isinstance(self.output_transformer, MultiNormalizer):
+                        scaler = self.output_transformer.normalizers[self.dataset_parameters["target"].index(name)]
+                    else:
+                        scaler = self.output_transformer
+                else:
+                    scaler = self.dataset_parameters["scalers"][name]
                 x = np.linspace(-data["std"], data["std"], bins)
                 # reversing normalization for group normalizer is not possible without sample level information
                 if not isinstance(scaler, (GroupNormalizer, EncoderNormalizer)):

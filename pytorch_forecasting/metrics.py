@@ -1,10 +1,10 @@
 """
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 import warnings
 
-import numpy as np
+from pandas.core.algorithms import isin
 from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 from sklearn.base import BaseEstimator
@@ -13,7 +13,7 @@ from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.utils import integer_histogram, unpack_sequence
+from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
 
 class Metric(LightningMetric):
@@ -70,11 +70,12 @@ class Metric(LightningMetric):
             torch.Tensor: point prediction
         """
         if y_pred.ndim == 3:
-            if self.quantiles is None:
-                idx = y_pred.size(-1) // 2
-            else:
+            if self.quantiles is not None:
                 idx = self.quantiles.index(0.5)
-            y_pred = y_pred[..., idx]
+                y_pred = y_pred[..., idx]
+            else:
+                assert y_pred.size(-1) == 1, "Prediction should only have one extra dimension"
+                y_pred = y_pred[..., 0]
         return y_pred
 
     def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
@@ -103,6 +104,164 @@ class Metric(LightningMetric):
     __rmul__ = __mul__
 
 
+class MultiLoss(LightningMetric):
+    """
+    Metric that can be used with muliple metrics.
+    """
+
+    def __init__(self, metrics: List[LightningMetric], weights: List[float] = None):
+        """
+        Args:
+            metrics (List[LightningMetric], optional): list of metrics to combine.
+            weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
+        """
+        assert len(metrics) > 0, "at least one metric has to be specified"
+        if weights is None:
+            weights = [1.0 for _ in metrics]
+        assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
+
+        self.metrics = metrics
+        self.weights = weights
+
+        super().__init__()
+
+    def __repr__(self):
+        name = (
+            f"{self.__class__.__name__}("
+            + ", ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
+            + ")"
+        )
+        return name
+
+    def __iter__(self):
+        """
+        Iterate over metrics.
+        """
+        return iter(self.metrics)
+
+    def __len__(self) -> int:
+        """
+        Number of metrics.
+
+        Returns:
+            int: number of metrics
+        """
+        return len(self.metrics)
+
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
+        """
+        Update composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        for idx, metric in enumerate(self.metrics):
+            metric.update(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+
+    def compute(self) -> torch.Tensor:
+        """
+        Get metric
+
+        Returns:
+            torch.Tensor: metric
+        """
+        results = []
+        for weight, metric in zip(self.weights, self.metrics):
+            results.append(metric.compute() * weight)
+
+        if len(results) == 1:
+            results = results[0]
+        else:
+            results = torch.stack(results, dim=0).sum(0)
+        return results
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Will use first metric in ``metrics`` attribute to calculate result.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: point prediction
+        """
+        return [metric.to_prediction(y_pred[idx]) for idx, metric in enumerate(self.metrics)]
+
+    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Will use first metric in ``metrics`` attribute to calculate result.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: prediction quantiles
+        """
+        return [metric.to_quantiles(y_pred[idx]) for idx, metric in enumerate(self.metrics)]
+
+    def __getattr__(self, name: str):
+        """
+        Return dynamically attributes.
+
+        Return attributes if defined in this class. If not, create dynamically attributes based on
+        attributes of underlying metrics that are lists. Create functions if necessary.
+        Arguments to functions are distributed to the functions if they are lists and their length
+        matches the number of metrics. Otherwise, they are directly passed to each callable of the
+        metrics
+
+        Args:
+            name (str): name of attribute
+
+        Returns:
+            attributes of this class or list of attributes of underlying class
+        """
+        try:
+            return super().__getattr__(name)
+        except AttributeError as e:
+            attribute_exists = all([hasattr(metric, name) for metric in self.metrics])
+            if attribute_exists:
+                # check if to return callable or not and return function if yes
+                if callable(getattr(self.metrics[0], name)):
+                    n = len(self.metrics)
+
+                    def func(*args, **kwargs):
+                        # if arg/kwarg is list and of length metric, then apply each part to a metric. otherwise
+                        # pass it directly to all metrics
+                        results = []
+                        for idx, m in enumerate(self.metrics):
+                            new_args = [
+                                arg[idx]
+                                if isinstance(arg, (list, tuple))
+                                and not isinstance(arg, rnn.PackedSequence)
+                                and len(arg) == n
+                                else arg
+                                for arg in args
+                            ]
+                            new_kwargs = {
+                                key: val[idx]
+                                if isinstance(val, list) and not isinstance(val, rnn.PackedSequence) and len(val) == n
+                                else val
+                                for key, val in kwargs.items()
+                            }
+                            results.append(getattr(m, name)(*new_args, **new_kwargs))
+                        return results
+
+                    return func
+                else:
+                    # else return list of attributes
+                    return [getattr(metric, name) for metric in self.metrics]
+            else:  # attribute does not exist for all metrics
+                raise e
+
+
 class CompositeMetric(LightningMetric):
     """
     Metric that combines multiple metrics.
@@ -120,7 +279,6 @@ class CompositeMetric(LightningMetric):
     def __init__(self, metrics: List[LightningMetric] = [], weights: List[float] = None):
         """
         Args:
-            name (str, optional): name of composite metric. Defaults to "composite".
             metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to [].
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """
@@ -237,33 +395,41 @@ class AggregationMetric(Metric):
         Returns:
             torch.Tensor: metric value on which backpropagation can be applied
         """
-        y_pred_mean = y_pred.mean(0).unsqueeze(0)
-        if isinstance(y_actual, rnn.PackedSequence):
-            target, lengths = rnn.pad_packed_sequence(y_actual, batch_first=True)
+        # extract target and weight
+        if isinstance(y_actual, (tuple, list)) and not isinstance(y_actual, rnn.PackedSequence):
+            target, weight = y_actual
+        else:
+            target = y_actual
+            weight = None
+
+        # handle rnn sequence as target
+        if isinstance(target, rnn.PackedSequence):
+            target, lengths = rnn.pad_packed_sequence(target, batch_first=True)
             # batch sizes reside on the CPU by default -> we need to bring them to GPU
             lengths = lengths.to(target.device)
 
-            # calculate mean for all time steps
-            tmask = torch.arange(target.size(1), device=target.device).unsqueeze(0) >= lengths.unsqueeze(-1)
-            if target.ndim > 2:
-                tmask = tmask.unsqueeze(-1)
-                lengths = lengths.unsqueeze(-1)
-            target = target.masked_fill(tmask, 0.0)
-            y_mean = target.sum(0).unsqueeze(0) / lengths.sum()
-
-            # calculate weight as length
-            decoder_length_histogram = integer_histogram(lengths, min=1, max=target.size(1))
-            weight = decoder_length_histogram.flip(0).cumsum(0).flip(0).float().unsqueeze(0)
+            # calculate mask for time steps
+            length_mask = create_mask(target.size(1), lengths, inverse=True)
 
             # modify weight
-            if y_mean.ndim == 3:
-                y_mean[..., 1] = y_mean[..., 1] * weight
+            if weight is None:
+                weight = length_mask
             else:
-                y_mean = torch.stack((y_mean, weight), dim=-1)
+                weight = weight * length_mask
 
+        if weight is None:
+            y_mean = target.mean(0)
+            y_pred_mean = y_pred.mean(0)
         else:
-            y_mean = y_actual.mean(0).unsqueeze(0)
-        self.metric.update(y_pred_mean, y_mean)
+
+            # calculate weighted sums
+            y_mean = (target * unsqueeze_like(weight, y_pred)).sum(0) / weight.sum(0)
+
+            y_pred_sum = (y_pred * unsqueeze_like(weight, y_pred)).sum(0)
+            y_pred_mean = y_pred_sum / unsqueeze_like(weight.sum(0), y_pred_sum)
+
+        # update metric. unsqueeze first batch dimension (as batches are collapsed)
+        self.metric.update(y_pred_mean.unsqueeze(0), y_mean.unsqueeze(0))
 
     def compute(self):
         return self.metric.compute()
@@ -305,20 +471,22 @@ class MultiHorizonMetric(Metric):
         Returns:
             torch.Tensor: loss as a single number for backpropagation
         """
-        target, lengths = unpack_sequence(target)
-        assert not target.requires_grad
-
-        # calculate loss with "none" reduction
-        if target.ndim == 3:
-            weight = target[..., 1]
-            target = target[..., 0]
+        # unpack weight
+        if isinstance(target, (list, tuple)) and not isinstance(target, rnn.PackedSequence):
+            target, weight = target
         else:
             weight = None
+
+        # unpack target
+        if isinstance(target, rnn.PackedSequence):
+            target, lengths = unpack_sequence(target)
+        else:
+            lengths = torch.full((target.size(0),), fill_value=target.size(1), dtype=torch.long, device=target.device)
 
         losses = self.loss(y_pred, target)
         # weight samples
         if weight is not None:
-            losses = losses * weight.unsqueeze(-1)
+            losses = losses * unsqueeze_like(weight, losses)
         self._update_losses_and_lengths(losses, lengths)
 
     def _update_losses_and_lengths(self, losses: torch.Tensor, lengths: torch.Tensor):
@@ -326,7 +494,7 @@ class MultiHorizonMetric(Metric):
         if self.reduction == "none":
             if self.losses.ndim == 0:
                 self.losses = losses
-                self.lengths = self.lengths
+                self.lengths = lengths
             else:
                 self.losses = torch.cat([self.losses, losses], dim=0)
                 self.lengths = torch.cat([self.lengths, lengths], dim=0)
@@ -508,6 +676,20 @@ class CrossEntropy(MultiHorizonMetric):
         )
         return loss
 
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Returns best label
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: point prediction
+        """
+        return y_pred.argmax(dim=-1)
+
 
 class RMSE(MultiHorizonMetric):
     """
@@ -535,7 +717,7 @@ class MASE(MultiHorizonMetric):
     def update(
         self,
         y_pred: Dict[str, torch.Tensor],
-        target: Union[torch.Tensor, rnn.PackedSequence],
+        target: Tuple[Union[torch.Tensor, rnn.PackedSequence], torch.Tensor],
         encoder_target: Union[torch.Tensor, rnn.PackedSequence],
         encoder_lengths: torch.Tensor = None,
     ) -> torch.Tensor:
@@ -544,7 +726,7 @@ class MASE(MultiHorizonMetric):
 
         Args:
             y_pred (Dict[str, torch.Tensor]): network output
-            target (Union[torch.Tensor, rnn.PackedSequence]): actual values
+            target (Tuple[Union[torch.Tensor, rnn.PackedSequence], torch.Tensor]): tuple of actual values and weights
             encoder_target (Union[torch.Tensor, rnn.PackedSequence]): historic actual values
             encoder_lengths (torch.Tensor): optional encoder lengths, not necessary if encoder_target
                 is rnn.PackedSequence. Assumed encoder_target is torch.Tensor
@@ -552,7 +734,20 @@ class MASE(MultiHorizonMetric):
         Returns:
             torch.Tensor: loss as a single number for backpropagation
         """
-        target, lengths = unpack_sequence(target)
+        # unpack weight
+        if isinstance(target, (list, tuple)):
+            weight = target[1]
+            target = target[0]
+        else:
+            weight = None
+
+        # unpack target
+        if isinstance(target, rnn.PackedSequence):
+            target, lengths = unpack_sequence(target)
+        else:
+            lengths = torch.full((target.size(0),), fill_value=target.size(1), dtype=torch.long, device=target.device)
+
+        # determine lengths for encoder
         if encoder_lengths is None:
             encoder_target, encoder_lengths = unpack_sequence(target)
         else:
@@ -560,14 +755,9 @@ class MASE(MultiHorizonMetric):
         assert not target.requires_grad
 
         # calculate loss with "none" reduction
-        if target.ndim == 3:
-            weight = target[..., 1]
-            target = target[..., 0]
-        else:
-            weight = None
-
         scaling = self.calculate_scaling(target, lengths, encoder_target, encoder_lengths)
         losses = self.loss(y_pred, target, scaling)
+
         # weight samples
         if weight is not None:
             losses = losses * weight.unsqueeze(-1)

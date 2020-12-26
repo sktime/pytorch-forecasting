@@ -3,7 +3,7 @@ Helper functions for PyTorch forecasting
 """
 from contextlib import redirect_stdout
 import os
-from typing import Callable, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -266,3 +266,59 @@ def padded_stack(
         dim=0,
     )
     return out
+
+
+def to_list(value: Any) -> List[Any]:
+    """
+    Convert value or list to list of values.
+    If already list, return object directly
+
+    Args:
+        value (Any): value to convert
+
+    Returns:
+        List[Any]: list of values
+    """
+    if isinstance(value, (tuple, list)) and not isinstance(value, rnn.PackedSequence):
+        return value
+    else:
+        return [value]
+
+
+def unsqueeze_like(tensor: torch.Tensor, like: torch.Tensor):
+    """
+    Unsqueeze last dimensions of tensor to match another tensor's number of dimensions.
+
+    Args:
+        tensor (torch.Tensor): tensor to unsqueeze
+        like (torch.Tensor): tensor whose dimensions to match
+    """
+    n_unsqueezes = like.ndim - tensor.ndim
+    if n_unsqueezes < 0:
+        raise ValueError(f"tensor.ndim={tensor.ndim} > like.ndim={like.ndim}")
+    elif n_unsqueezes == 0:
+        return tensor
+    else:
+        return tensor[(...,) + (None,) * n_unsqueezes]
+
+
+def apply_to_list(obj: Union[List[Any], Any], func: Callable) -> Union[List[Any], Any]:
+    """
+    Apply function to a list of objects or directly if passed value is not a list.
+
+    This is useful if the passed object could be either a list to whose elements
+    a function needs to be applied or just an object to whicht to apply the function.
+
+    Args:
+        obj (Union[List[Any], Any]): list/tuple on whose elements to apply function,
+            otherwise object to whom to apply function
+        func (Callable): function to apply
+
+    Returns:
+        Union[List[Any], Any]: list of objects or object depending on function output and
+            if input ``obj`` is of type list/tuple
+    """
+    if isinstance(obj, (list, tuple)) and not isinstance(obj, rnn.PackedSequence):
+        return [func(o) for o in obj]
+    else:
+        return func(obj)

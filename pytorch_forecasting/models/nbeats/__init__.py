@@ -8,6 +8,7 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
@@ -21,7 +22,7 @@ class NBeats(BaseModel):
         num_block_layers=[3, 3],
         widths=[32, 512],
         sharing: List[int] = [True, True],
-        expansion_coefficient_lengths: List[int] = [5, 7],
+        expansion_coefficient_lengths: List[int] = [3, 7],
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,
@@ -191,6 +192,10 @@ class NBeats(BaseModel):
         new_kwargs.update(kwargs)
 
         # validate arguments
+        assert isinstance(dataset.target, str), "only one target is allowed (passed as string to dataset)"
+        assert not isinstance(
+            dataset.target_normalizer, NaNLabelEncoder
+        ), "only regression tasks are supported - target must not be categorical"
         assert (
             dataset.min_encoder_length == dataset.max_encoder_length
         ), "only fixed encoder length is allowed, but min_encoder_length != max_encoder_length"
@@ -221,7 +226,7 @@ class NBeats(BaseModel):
         if self.hparams.backcast_loss_ratio > 0:  # add loss from backcast
             backcast = self.transform_output(dict(prediction=out["backcast"], target_scale=out["target_scale"]))
             backcast_weight = (
-                self.hparams.backcast_loss_ratio * self.hparams.context_length / self.hparams.prediction_length
+                self.hparams.backcast_loss_ratio * self.hparams.prediction_length / self.hparams.context_length
             )
             backcast_weight = backcast_weight / (backcast_weight + 1)  # normalize
             forecast_weight = 1 - backcast_weight
