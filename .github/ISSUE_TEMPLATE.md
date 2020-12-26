@@ -17,5 +17,6 @@ However, result was .... I think it has to do with ... because of ...
 
 ```
 
-Paste the command(s) you ran and the output.
+Paste the command(s) you ran and the output. Including a link to a colab notebook will speed up issue resolution.
 If there was a crash, please include the traceback here.
+The code used to initialize the TimeSeriesDataSet and model should be also included.
