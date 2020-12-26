@@ -5,7 +5,7 @@
 ### Added
 
 - Adding support for multiple targets in the TimeSeriesDataSet (#199) and amended tutorials.
-- Temporal fusion transformer with support for multiple tagets (#199)
+- Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
 
 ### Changed
 
