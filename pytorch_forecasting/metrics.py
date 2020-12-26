@@ -133,6 +133,21 @@ class MultiLoss(LightningMetric):
         )
         return name
 
+    def __iter__(self):
+        """
+        Iterate over metrics.
+        """
+        return iter(self.metrics)
+
+    def __len__(self) -> int:
+        """
+        Number of metrics.
+
+        Returns:
+            int: number of metrics
+        """
+        return len(self.metrics)
+
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
         """
         Update composite metric
@@ -214,7 +229,7 @@ class MultiLoss(LightningMetric):
             attribute_exists = all([hasattr(metric, name) for metric in self.metrics])
             if attribute_exists:
                 # check if to return callable or not and return function if yes
-                if callable(self.metrics[name]):
+                if callable(getattr(self.metrics[0], name)):
                     n = len(self.metrics)
 
                     def func(*args, **kwargs):
@@ -225,18 +240,18 @@ class MultiLoss(LightningMetric):
                             new_args = [
                                 arg[idx]
                                 if isinstance(arg, (list, tuple))
-                                and not isin(arg, rnn.PackedSequence)
+                                and not isinstance(arg, rnn.PackedSequence)
                                 and len(arg) == n
                                 else arg
                                 for arg in args
                             ]
                             new_kwargs = {
-                                name: val[idx]
-                                if isinstance(val, list) and not isin(val, rnn.PackedSequence) and len(val) == n
+                                key: val[idx]
+                                if isinstance(val, list) and not isinstance(val, rnn.PackedSequence) and len(val) == n
                                 else val
-                                for name, val in kwargs.items()
+                                for key, val in kwargs.items()
                             }
-                            results.append(m(*new_args, **new_kwargs))
+                            results.append(getattr(m, name)(*new_args, **new_kwargs))
                         return results
 
                     return func

@@ -10,6 +10,7 @@ from pandas.core.algorithms import isin
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 import torch.nn.functional as F
+from torch.nn.utils import rnn
 
 
 class NaNLabelEncoder(BaseEstimator, TransformerMixin):
@@ -738,6 +739,18 @@ class MultiNormalizer(TorchNormalizer):
 
         return self
 
+    def __iter__(self):
+        """
+        Iter over normalizers.
+        """
+        return iter(self.normalizers)
+
+    def __len__(self) -> int:
+        """
+        Number of normalizers.
+        """
+        return len(self.normalizers)
+
     def transform(
         self,
         y: Union[pd.DataFrame, np.ndarray, torch.Tensor],
@@ -765,14 +778,13 @@ class MultiNormalizer(TorchNormalizer):
         res = []
         for idx, normalizer in enumerate(self.normalizers):
             if target_scale is not None:
-
-                scale = target_scale[idx, ...]
+                scale = target_scale[idx]
             else:
                 scale = None
             if isinstance(normalizer, GroupNormalizer):
-                r = normalizer.transform(y[idx, :], X=X, return_norm=return_norm, target_scale=scale)
+                r = normalizer.transform(y[idx], X=X, return_norm=return_norm, target_scale=scale)
             else:
-                r = normalizer.transform(y[idx, :], return_norm=return_norm, target_scale=scale)
+                r = normalizer.transform(y[idx], return_norm=return_norm, target_scale=scale)
             res.append(r)
 
         if return_norm:
@@ -806,3 +818,57 @@ class MultiNormalizer(TorchNormalizer):
             List[torch.Tensor]: First element is center of data and second is scale
         """
         return [normalizer.get_parameters(*args, **kwargs) for normalizer in self.normalizers]
+
+    def __getattr__(self, name: str):
+        """
+        Return dynamically attributes.
+
+        Return attributes if defined in this class. If not, create dynamically attributes based on
+        attributes of underlying normalizers that are lists. Create functions if necessary.
+        Arguments to functions are distributed to the functions if they are lists and their length
+        matches the number of normalizers. Otherwise, they are directly passed to each callable of the
+        normalizers.
+
+        Args:
+            name (str): name of attribute
+
+        Returns:
+            attributes of this class or list of attributes of underlying class
+        """
+        try:
+            return super().__getattr__(name)
+        except AttributeError as e:
+            attribute_exists = all([hasattr(norm, name) for norm in self.normalizers])
+            if attribute_exists:
+                # check if to return callable or not and return function if yes
+                if callable(getattr(self.normalizers[0], name)):
+                    n = len(self.normalizers)
+
+                    def func(*args, **kwargs):
+                        # if arg/kwarg is list and of length normalizers, then apply each part to a normalizer.
+                        #  otherwise pass it directly to all normalizers
+                        results = []
+                        for idx, norm in enumerate(self.normalizers):
+                            new_args = [
+                                arg[idx]
+                                if isinstance(arg, (list, tuple))
+                                and not isinstance(arg, rnn.PackedSequence)
+                                and len(arg) == n
+                                else arg
+                                for arg in args
+                            ]
+                            new_kwargs = {
+                                key: val[idx]
+                                if isinstance(val, list) and not isinstance(val, rnn.PackedSequence) and len(val) == n
+                                else val
+                                for key, val in kwargs.items()
+                            }
+                            results.append(getattr(norm, name)(*new_args, **new_kwargs))
+                        return results
+
+                    return func
+                else:
+                    # else return list of attributes
+                    return [getattr(norm, name) for norm in self.normalizers]
+            else:  # attribute does not exist for all normalizers
+                raise e

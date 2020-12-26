@@ -300,3 +300,25 @@ def unsqueeze_like(tensor: torch.Tensor, like: torch.Tensor):
         return tensor
     else:
         return tensor[(...,) + (None,) * n_unsqueezes]
+
+
+def apply_to_list(obj: Union[List[Any], Any], func: Callable) -> Union[List[Any], Any]:
+    """
+    Apply function to a list of objects or directly if passed value is not a list.
+
+    This is useful if the passed object could be either a list to whose elements
+    a function needs to be applied or just an object to whicht to apply the function.
+
+    Args:
+        obj (Union[List[Any], Any]): list/tuple on whose elements to apply function,
+            otherwise object to whom to apply function
+        func (Callable): function to apply
+
+    Returns:
+        Union[List[Any], Any]: list of objects or object depending on function output and
+            if input ``obj`` is of type list/tuple
+    """
+    if isinstance(obj, (list, tuple)) and not isinstance(obj, rnn.PackedSequence):
+        return [func(o) for o in obj]
+    else:
+        return func(obj)

@@ -5,6 +5,7 @@ import pytest
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+from test_models.conftest import make_dataloaders
 from torch import nn
 
 from pytorch_forecasting.models import DeepAR
@@ -61,6 +62,18 @@ def test_integration(dataloaders_with_covariates, tmp_path, gpus):
 
 def test_integration_with_gru(dataloaders_with_covariates, tmp_path, gpus):
     _integration(dataloaders_with_covariates, tmp_path, gpus, "GRU")
+
+
+def test_integration_for_multiple_targets(data_with_covariates, tmp_path, gpus):
+    _integration(
+        make_dataloaders(
+            data_with_covariates,
+            time_varying_unknown_reals=["volume", "discount"],
+            target=["volume", "discount"],
+        ),
+        tmp_path,
+        gpus,
+    )
 
 
 def test_get_lstm_cell():
