@@ -497,7 +497,7 @@ class TimeSeriesDataSet(Dataset):
             group_ids_to_encode = self.group_ids
         else:
             group_ids_to_encode = []
-        for name in set(group_ids_to_encode + self.categoricals):
+        for name in dict.fromkeys(group_ids_to_encode + self.categoricals):
             allow_nans = name in self.dropout_categoricals
             if name in self.variable_groups:  # fit groups
                 columns = self.variable_groups[name]
@@ -522,7 +522,7 @@ class TimeSeriesDataSet(Dataset):
                         self.categorical_encoders[name] = self.categorical_encoders[name].fit(data[name])
 
         # encode them
-        for name in set(group_ids_to_encode + self.flat_categoricals):
+        for name in dict.fromkeys(group_ids_to_encode + self.flat_categoricals):
             if name not in self.target_names:
                 data[name] = self.transform_values(name, data[name], inverse=False)
 
@@ -642,7 +642,7 @@ class TimeSeriesDataSet(Dataset):
         """
         if group_id:
             name = self._group_ids_mapping[name]
-        if name in set(self.flat_categoricals + self.group_ids + self._group_ids):
+        if name in self.flat_categoricals + self.group_ids + self._group_ids:
             name = self.variable_to_group_mapping.get(name, name)  # map name to encoder
 
             # take target normalizer if required
@@ -696,7 +696,7 @@ class TimeSeriesDataSet(Dataset):
         if group_id:
             name = self._group_ids_mapping[name]
         # remaining categories
-        if name in set(self.flat_categoricals + self.group_ids + self._group_ids):
+        if name in self.flat_categoricals + self.group_ids + self._group_ids:
             return transform(values)
 
         # reals
