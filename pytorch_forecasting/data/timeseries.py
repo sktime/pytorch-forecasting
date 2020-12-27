@@ -244,9 +244,10 @@ class TimeSeriesDataSet(Dataset):
             scalers: dictionary of scikit learn scalers. Defaults to sklearn's ``StandardScaler()``.
                 Other options are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
                 :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
-                ``RobustScaler()`` or `None` for using not normalizer.
+                ``RobustScaler()`` or `None` for using no normalizer / normalizer with `center=0` and `scale=1`
+                (`method="identity"`).
                 Prefittet encoders will not be fit again (with the exception of the
-                :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`).
+                :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` that is fit on every encoder sequence).
             randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
                 from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial
@@ -361,6 +362,8 @@ class TimeSeriesDataSet(Dataset):
 
         # preprocess data
         data = self._preprocess_data(data)
+        for target in self.target_names:
+            assert target not in self.scalers, "Target normalizer is separate and not in scalers."
 
         # create index
         self.index = self._construct_index(data, predict_mode=predict_mode)
