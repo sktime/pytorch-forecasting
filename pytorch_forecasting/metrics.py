@@ -207,6 +207,15 @@ class MultiLoss(LightningMetric):
         """
         return [metric.to_quantiles(y_pred[idx]) for idx, metric in enumerate(self.metrics)]
 
+    def __getitem__(self, idx: int):
+        """
+        Return metric.
+
+        Args:
+            idx (int): metric index
+        """
+        return self.metrics[idx]
+
     def __getattr__(self, name: str):
         """
         Return dynamically attributes.

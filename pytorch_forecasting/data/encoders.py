@@ -739,6 +739,15 @@ class MultiNormalizer(TorchNormalizer):
 
         return self
 
+    def __getitem__(self, idx: int):
+        """
+        Return normalizer.
+
+        Args:
+            idx (int): metric index
+        """
+        return self.normalizers[idx]
+
     def __iter__(self):
         """
         Iter over normalizers.

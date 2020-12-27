@@ -561,18 +561,26 @@ class TimeSeriesDataSet(Dataset):
                 copy_kwargs = {name: getattr(self.target_normalizer, name) for name in common_init_args}
                 normalizer = GroupNormalizer(groups=self.group_ids, **copy_kwargs)
                 data[self.target], scales = normalizer.fit_transform(data[self.target], data, return_norm=True)
+
             elif isinstance(self.target_normalizer, GroupNormalizer):
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+
             elif isinstance(self.target_normalizer, MultiNormalizer):
                 transformed, scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+
                 for idx, target in enumerate(self.target_names):
                     data[target] = transformed[idx]
+
+                    if isinstance(self.target_normalizer[idx], NaNLabelEncoder):
+                        # overwrite target because it requires encoding (continuous targets should not be normalized)
+                        data[f"__target__{target}"] = data[target]
+
             elif isinstance(self.target_normalizer, NaNLabelEncoder):
                 data[self.target] = self.target_normalizer.transform(data[self.target])
-                data[f"__target__{self.target}"] = data[
-                    self.target
-                ]  # overwrite target because it requires encoding (continuous targets should not be normalized)
+                # overwrite target because it requires encoding (continuous targets should not be normalized)
+                data[f"__target__{self.target}"] = data[self.target]
                 scales = None
+
             else:
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], return_norm=True)
 
