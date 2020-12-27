@@ -16,6 +16,7 @@
 ### Fixed
 
 - Fixed autocorrelation for pytorch 1.7 (#220)
+- Ensure reproducibility by replacing python `set()` with `dict.fromkeys()` (#221)
 
 ### Contributors
 

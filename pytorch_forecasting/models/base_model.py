@@ -922,7 +922,7 @@ class BaseModelWithCovariates(BaseModel):
     def reals(self) -> List[str]:
         """List of all continuous variables in model"""
         return list(
-            set(
+            dict.fromkeys(
                 self.hparams.static_reals
                 + self.hparams.time_varying_reals_encoder
                 + self.hparams.time_varying_reals_decoder
@@ -933,7 +933,7 @@ class BaseModelWithCovariates(BaseModel):
     def categoricals(self) -> List[str]:
         """List of all categorical variables in model"""
         return list(
-            set(
+            dict.fromkeys(
                 self.hparams.static_categoricals
                 + self.hparams.time_varying_categoricals_encoder
                 + self.hparams.time_varying_categoricals_decoder
