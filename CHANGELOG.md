@@ -6,11 +6,16 @@
 
 - Adding support for multiple targets in the TimeSeriesDataSet (#199) and amended tutorials.
 - Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
+- Check for non-finite values in TimeSeriesDataSet and better validate scaler argument (#220)
 
 ### Changed
 
 - TimeSeriesDataSet's `y` of the dataloader is a tuple of (target(s), weight) - potentially breaking for model or metrics implementation
   Most implementations will not be affected as hooks in BaseModel and MultiHorizonMetric were modified.
+
+### Fixed
+
+- Fixed autocorrelation for pytorch 1.7 (#220)
 
 ### Contributors
 

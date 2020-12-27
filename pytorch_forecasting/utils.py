@@ -9,6 +9,30 @@ import torch
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
+try:
+    # This works in PyTorch 1.7+
+    # taken from https://github.com/pyro-ppl/pyro/blob/dev/pyro/ops/fft.py
+    from torch.fft import irfft, rfft
+except ModuleNotFoundError:
+    # This works in PyTorch 1.6
+    def rfft(input, n=None):
+        if n is not None:
+            m = input.size(-1)
+            if n > m:
+                input = torch.nn.functional.pad(input, (0, n - m))
+            elif n < m:
+                input = input[..., :n]
+        return torch.view_as_complex(torch.rfft(input, 1))
+
+    def irfft(input, n=None):
+        if torch.is_complex(input):
+            input = torch.view_as_real(input)
+        else:
+            input = torch.nn.functional.pad(input[..., None], (0, 1))
+        if n is None:
+            n = 2 * (input.size(-1) - 1)
+        return torch.irfft(input, 1, signal_sizes=(n,))
+
 
 def integer_histogram(
     data: torch.LongTensor, min: Union[None, int] = None, max: Union[None, int] = None
@@ -173,15 +197,12 @@ def autocorrelation(input, dim=0):
 
     Reference: https://en.wikipedia.org/wiki/Autocorrelation#Efficient_computation
 
-    Implementation copied form ``pyro``.
+    Implementation copied form `pyro <https://github.com/pyro-ppl/pyro/blob/dev/pyro/ops/stats.py>`_.
 
     :param torch.Tensor input: the input tensor.
     :param int dim: the dimension to calculate autocorrelation.
     :returns torch.Tensor: autocorrelation of ``input``.
     """
-    if (not input.is_cuda) and (not torch.backends.mkl.is_available()):
-        raise NotImplementedError("For CPU tensor, this method is only supported " "with MKL installed.")
-
     # Adapted from Stan implementation
     # https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/autocorrelation.hpp
     N = input.size(dim)
@@ -193,18 +214,13 @@ def autocorrelation(input, dim=0):
 
     # centering and padding x
     centered_signal = input - input.mean(dim=-1, keepdim=True)
-    pad = torch.zeros(input.shape[:-1] + (M2 - N,), dtype=input.dtype, device=input.device)
-    centered_signal = torch.cat([centered_signal, pad], dim=-1)
 
     # Fourier transform
-    freqvec = torch.rfft(centered_signal, signal_ndim=1, onesided=False)
+    freqvec = torch.view_as_real(rfft(centered_signal, n=M2))
     # take square of magnitude of freqvec (or freqvec x freqvec*)
-    freqvec_gram = freqvec.pow(2).sum(-1, keepdim=True)
-    freqvec_gram = torch.cat(
-        [freqvec_gram, torch.zeros(freqvec_gram.shape, dtype=input.dtype, device=input.device)], dim=-1
-    )
+    freqvec_gram = freqvec.pow(2).sum(-1)
     # inverse Fourier transform
-    autocorr = torch.irfft(freqvec_gram, signal_ndim=1, onesided=False)
+    autocorr = irfft(freqvec_gram, n=M2)
 
     # truncate and normalize the result, then transpose back to original shape
     autocorr = autocorr[..., :N]

@@ -82,6 +82,37 @@ except ImportError:
     pass
 
 
+def check_for_nonfinite(tensor: torch.Tensor, names: Union[str, List[str]]) -> torch.Tensor:
+    """
+    Check if 2D tensor contains NAs or inifinite values.
+
+    Args:
+        names (Union[str, List[str]]): name(s) of column(s) (used for error messages)
+        tensor (torch.Tensor): tensor to check
+
+    Returns:
+        torch.Tensor: returns tensor if checks yield no issues
+    """
+    if isinstance(names, str):
+        names = [names]
+        assert tensor.ndim == 1
+        nans = (~torch.isfinite(tensor).unsqueeze(-1)).sum(0)
+    else:
+        assert tensor.ndim == 2
+        nans = (~torch.isfinite(tensor)).sum(0)
+    for name, na in zip(names, nans):
+        if na > 0:
+            raise ValueError(
+                f"{na} ({na/tensor.size(0):.2%}) of {name} "
+                "values were found to be NA or infinite (even after encoding). NA values are not allowed "
+                "`allow_missings` refers to missing rows, not to missing values. Possible strategies to "
+                f"fix the issue are (a) dropping the variable {name}, "
+                "(b) using `NaNLabelEncoder(add_nan=True)` for categorical variables, "
+                "(c) filling missing values and/or (d) optionally adding a variable indicating filled values"
+            )
+    return tensor
+
+
 class TimeSeriesDataSet(Dataset):
     """
     PyTorch Dataset for fitting timeseries models.
@@ -145,7 +176,8 @@ class TimeSeriesDataSet(Dataset):
 
         Large datasets:
 
-            Currently the class is limited to in-memory operations. If you have extremely large data,
+            Currently the class is limited to in-memory operations (that can be sped up by an
+            existing installation of `numba <https://pypi.org/project/numba/>`_). If you have extremely large data,
             however, you can pass prefitted encoders and and scalers to it and a subset of sequences to the class to
             construct a valid dataset (plus, likely the EncoderNormalizer should be used to normalize targets).
             when fitting a network, you would then to create a custom DataLoader that rotates through the datasets.
@@ -212,9 +244,10 @@ class TimeSeriesDataSet(Dataset):
             scalers: dictionary of scikit learn scalers. Defaults to sklearn's ``StandardScaler()``.
                 Other options are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
                 :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
-                ``RobustScaler()`` or `None` for using not normalizer.
+                ``RobustScaler()`` or `None` for using no normalizer / normalizer with `center=0` and `scale=1`
+                (`method="identity"`).
                 Prefittet encoders will not be fit again (with the exception of the
-                :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`).
+                :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` that is fit on every encoder sequence).
             randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
                 from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial
@@ -329,6 +362,8 @@ class TimeSeriesDataSet(Dataset):
 
         # preprocess data
         data = self._preprocess_data(data)
+        for target in self.target_names:
+            assert target not in self.scalers, "Target normalizer is separate and not in scalers."
 
         # create index
         self.index = self._construct_index(data, predict_mode=predict_mode)
@@ -529,18 +564,26 @@ class TimeSeriesDataSet(Dataset):
                 copy_kwargs = {name: getattr(self.target_normalizer, name) for name in common_init_args}
                 normalizer = GroupNormalizer(groups=self.group_ids, **copy_kwargs)
                 data[self.target], scales = normalizer.fit_transform(data[self.target], data, return_norm=True)
+
             elif isinstance(self.target_normalizer, GroupNormalizer):
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+
             elif isinstance(self.target_normalizer, MultiNormalizer):
                 transformed, scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+
                 for idx, target in enumerate(self.target_names):
                     data[target] = transformed[idx]
+
+                    if isinstance(self.target_normalizer[idx], NaNLabelEncoder):
+                        # overwrite target because it requires encoding (continuous targets should not be normalized)
+                        data[f"__target__{target}"] = data[target]
+
             elif isinstance(self.target_normalizer, NaNLabelEncoder):
                 data[self.target] = self.target_normalizer.transform(data[self.target])
-                data[f"__target__{self.target}"] = data[
-                    self.target
-                ]  # overwrite target because it requires encoding (continuous targets should not be normalized)
+                # overwrite target because it requires encoding (continuous targets should not be normalized)
+                data[f"__target__{self.target}"] = data[self.target]
                 scales = None
+
             else:
                 data[self.target], scales = self.target_normalizer.transform(data[self.target], return_norm=True)
 
@@ -684,38 +727,64 @@ class TimeSeriesDataSet(Dataset):
                 time index
         """
 
-        index = torch.tensor(data[self._group_ids].to_numpy(np.long), dtype=torch.long)
-        time = torch.tensor(data["__time_idx__"].to_numpy(np.long), dtype=torch.long)
+        index = check_for_nonfinite(
+            torch.tensor(data[self._group_ids].to_numpy(np.long), dtype=torch.long), self.group_ids
+        )
+        time = check_for_nonfinite(
+            torch.tensor(data["__time_idx__"].to_numpy(np.long), dtype=torch.long), self.time_idx
+        )
 
         # categorical covariates
-        categorical = torch.tensor(data[self.flat_categoricals].to_numpy(np.long), dtype=torch.long)
+        categorical = check_for_nonfinite(
+            torch.tensor(data[self.flat_categoricals].to_numpy(np.long), dtype=torch.long), self.flat_categoricals
+        )
 
         # get weight
         if self.weight is not None:
-            weight = torch.tensor(
-                data["__weight__"].to_numpy(dtype=np.float),
-                dtype=torch.float,
+            weight = check_for_nonfinite(
+                torch.tensor(
+                    data["__weight__"].to_numpy(dtype=np.float),
+                    dtype=torch.float,
+                ),
+                self.weight,
             )
         else:
             weight = None
 
         # get target
         if isinstance(self.target_normalizer, NaNLabelEncoder):
-            target = [torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.long), dtype=torch.long)]
+            target = [
+                check_for_nonfinite(
+                    torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.long), dtype=torch.long),
+                    self.target,
+                )
+            ]
         else:
-            if len(self.target_names) > 1:
+            if not isinstance(self.target, str):  # multi-target
                 target = [
-                    torch.tensor(
-                        data[name].to_numpy(dtype=[np.float, np.long][data[name].dtype.kind in "bi"]),
-                        dtype=[torch.float, torch.long][data[name].dtype.kind in "bi"],
+                    check_for_nonfinite(
+                        torch.tensor(
+                            data[f"__target__{name}"].to_numpy(
+                                dtype=[np.float, np.long][data[name].dtype.kind in "bi"]
+                            ),
+                            dtype=[torch.float, torch.long][data[name].dtype.kind in "bi"],
+                        ),
+                        name,
                     )
                     for name in self.target_names
                 ]
             else:
-                target = [torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.float), dtype=torch.float)]
+                target = [
+                    check_for_nonfinite(
+                        torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.float), dtype=torch.float),
+                        self.target,
+                    )
+                ]
 
         # continuous covariates
-        continuous = torch.tensor(data[self.reals].to_numpy(dtype=np.float), dtype=torch.float)
+        continuous = check_for_nonfinite(
+            torch.tensor(data[self.reals].to_numpy(dtype=np.float), dtype=torch.float), self.reals
+        )
 
         tensors = dict(
             reals=continuous, categoricals=categorical, groups=index, target=target, weight=weight, time=time

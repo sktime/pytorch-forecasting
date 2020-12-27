@@ -488,3 +488,19 @@ def test_multitarget(test_data, kwargs):
         **kwargs,
     )
     next(iter(dataset.to_dataloader()))
+
+
+def test_check_nas(test_data):
+    data = test_data.copy()
+    data.loc[0, "volume"] = np.nan
+    with pytest.raises(ValueError, match=r"1 \(.*infinite"):
+        TimeSeriesDataSet(
+            data,
+            time_idx="time_idx",
+            target=["volume"],
+            group_ids=["agency", "sku"],
+            max_encoder_length=5,
+            max_prediction_length=2,
+            min_prediction_length=1,
+            min_encoder_length=1,
+        )
