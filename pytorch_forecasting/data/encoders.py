@@ -547,7 +547,7 @@ class GroupNormalizer(TorchNormalizer):
                     norm["center"] = 0.0
                     return norm
 
-                self.norm = {g: swap_parameters(norm) for g, norm in self.norm_.items()}
+                self.norm_ = {g: swap_parameters(norm) for g, norm in self.norm_.items()}
             self.missing_ = {group: scales.median().to_dict() for group, scales in self.norm_.items()}
 
         else:
