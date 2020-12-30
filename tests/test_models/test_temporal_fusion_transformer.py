@@ -119,9 +119,9 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@pytest.mark.parametrize("distributed_backend", ["ddp", "dp", "ddp2"])
-def test_distribution(dataloaders_with_covariates, tmp_path, distributed_backend, gpus):
-    if gpus == 0:  # only run test on GPU
+@pytest.mark.parametrize("accelerator", ["ddp", "dp", "ddp2"])
+def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
+    if isinstance(gpus, int) and gpus == 0:  # only run test on GPU
         return
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
@@ -133,12 +133,12 @@ def test_distribution(dataloaders_with_covariates, tmp_path, distributed_backend
     trainer = pl.Trainer(
         checkpoint_callback=checkpoint,
         max_epochs=3,
-        gpus=gpus,
+        gpus=list(range(torch.cuda.device_count())),
         weights_summary="top",
         gradient_clip_val=0.1,
         fast_dev_run=True,
         logger=logger,
-        distributed_backend=distributed_backend,
+        accelerator=accelerator,
     )
     try:
         trainer.fit(
