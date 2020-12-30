@@ -336,7 +336,7 @@ class TimeSeriesDataSet(Dataset):
         # set data
         assert data.index.is_unique, "data index has to be unique"
         if min_prediction_idx is not None:
-            data = data[lambda x: data[self.time_idx] >= self.min_prediction_idx - self.max_encoder_length]
+            data = data[lambda x: data[self.time_idx] >= self.min_prediction_idx - self.min_encoder_length]
         data = data.sort_values(self.group_ids + [self.time_idx])
 
         # add time index relative to prediction position
@@ -398,10 +398,10 @@ class TimeSeriesDataSet(Dataset):
                         normalizers.append(EncoderNormalizer(transformation=transformer))
                     else:
                         normalizers.append(GroupNormalizer(transformation=transformer))
-                if self.multi_target:
-                    self.target_normalizer = MultiNormalizer(normalizers)
-                else:
-                    self.target_normalizer = normalizers[0]
+            if self.multi_target:
+                self.target_normalizer = MultiNormalizer(normalizers)
+            else:
+                self.target_normalizer = normalizers[0]
         elif self.target_normalizer is None:
             self.target_normalizer = TorchNormalizer(method="identity")
         assert self.min_encoder_length > 1 or not isinstance(
