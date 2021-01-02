@@ -7,6 +7,7 @@
 - Adding support for multiple targets in the TimeSeriesDataSet (#199) and amended tutorials.
 - Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
 - Check for non-finite values in TimeSeriesDataSet and better validate scaler argument (#220)
+- LSTM and GRU implementations that can handle zero-length sequences (#235)
 
 ### Changed
 
@@ -26,6 +27,7 @@
 - jdb78
 - JustinNeumann
 - reumar
+- rustyconover
 
 ## v0.7.1 Tutorial on how to implement a new architecture (07/12/2020)
 

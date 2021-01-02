@@ -31,8 +31,7 @@ from pytorch_forecasting.metrics import (
     NormalDistributionLoss,
 )
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
-from pytorch_forecasting.models.deepar.sub_modules import HiddenState, get_cell
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.models.nn import HiddenState, MultiEmbedding, get_rnn
 from pytorch_forecasting.utils import apply_to_list, to_list
 
 
@@ -132,9 +131,12 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             isinstance(target, (list, tuple)) and isinstance(loss, MultiLoss) and len(loss) == len(target)
         ), "number of targets should be equivalent to number of loss metrics"
 
-        time_series_rnn = get_cell(cell_type)
+        time_series_rnn = get_rnn(cell_type)
+        cont_size = len(self.reals)
+        cat_size = sum([size[1] for size in self.hparams.embedding_sizes.values()])
+        input_size = cont_size + cat_size
         self.rnn = time_series_rnn(
-            input_size=self.input_size,
+            input_size=input_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.rnn_layers,
             dropout=self.hparams.dropout if self.hparams.rnn_layers > 1 else 0,
@@ -142,19 +144,12 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         )
 
         # add linear layers for argument projects
-        if isinstance(loss, MultiLoss):  # multi target
+        if isinstance(target, str):  # single target
+            self.distribution_projector = nn.Linear(self.hparams.hidden_size, len(self.loss.distribution_arguments))
+        else:  # multi target
             self.distribution_projector = nn.ModuleList(
                 [nn.Linear(self.hparams.hidden_size, len(args)) for args in self.loss.distribution_arguments]
             )
-        else:
-            self.distribution_projector = nn.Linear(self.hparams.hidden_size, len(self.loss.distribution_arguments))
-
-    @property
-    def input_size(self):
-        """Input vector size: length of embeddings and real-values variables."""
-        cont_size = len(self.reals)
-        cat_size = sum([size[1] for size in self.hparams.embedding_sizes.values()])
-        return cont_size + cat_size
 
     @classmethod
     def from_dataset(
@@ -232,22 +227,12 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         Encode sequence into hidden state
         """
         # encode using rnn
-        max_encoder_length = x["encoder_lengths"].max()
         assert x["encoder_lengths"].min() > 0
-        if max_encoder_length > 1:
-            encoder_lengths = x["encoder_lengths"] - 1
-            rnn_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
-            input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
-            _, hidden_state = self.rnn(
-                rnn.pack_padded_sequence(
-                    input_vector, rnn_encoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-                )
-            )  # second ouput is not needed (hidden state)
-            # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
-            no_encoding = (encoder_lengths == 0)[None, :, None]  # shape: n_lstm_layers x batch_size x hidden_size
-            hidden_state = self.rnn.handle_no_encoding(hidden_state, no_encoding)
-        else:
-            hidden_state = self.rnn.init_hidden_state(x, self.hparam.hidden_size)
+        encoder_lengths = x["encoder_lengths"] - 1
+        input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
+        _, hidden_state = self.rnn(
+            input_vector, lengths=encoder_lengths, enforce_sorted=False
+        )  # second ouput is not needed (hidden state)
         return hidden_state
 
     def decode(
@@ -264,14 +249,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         sampling new targets from past predictions iteratively
         """
         if n_samples is None:
-            input_vector = rnn.pack_padded_sequence(
-                input_vector, decoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-            )
-            decoder_output, _ = self.rnn(
-                input_vector,
-                hidden_state,
-            )
-            decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
+            decoder_output, _ = self.rnn(input_vector, hidden_state, lengths=decoder_lengths, enforce_sorted=False)
             if isinstance(self.hparams.target, str):
                 output = self.distribution_projector(decoder_output)
             else:

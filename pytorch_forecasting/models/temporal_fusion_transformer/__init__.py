@@ -9,13 +9,12 @@ import numpy as np
 from pytorch_lightning.metrics import Metric as LightningMetric
 import torch
 from torch import nn
-from torch.nn.utils import rnn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, MultiLoss, QuantileLoss
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
-from pytorch_forecasting.models.nn import MultiEmbedding
+from pytorch_forecasting.models.nn import LSTM, MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,
     GateAddNorm,
@@ -272,7 +271,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # lstm encoder (history) and decoder (future) for local processing
-        self.lstm_encoder = nn.LSTM(
+        self.lstm_encoder = LSTM(
             input_size=self.hparams.hidden_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.lstm_layers,
@@ -280,7 +279,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             batch_first=True,
         )
 
-        self.lstm_decoder = nn.LSTM(
+        self.lstm_decoder = LSTM(
             input_size=self.hparams.hidden_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.lstm_layers,
@@ -466,36 +465,24 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # LSTM
-        # run lstm at least once, i.e. encode length has to be > 0
-        lstm_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
         # calculate initial state
         input_hidden = self.static_context_initial_hidden_lstm(static_embedding).expand(
             self.hparams.lstm_layers, -1, -1
         )
         input_cell = self.static_context_initial_cell_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1)
 
-        # # run local encoder
+        # run local encoder
         encoder_output, (hidden, cell) = self.lstm_encoder(
-            rnn.pack_padded_sequence(
-                embeddings_varying_encoder, lstm_encoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-            ),
-            (input_hidden, input_cell),
+            embeddings_varying_encoder, (input_hidden, input_cell), lengths=encoder_lengths, enforce_sorted=False
         )
-        encoder_output, _ = rnn.pad_packed_sequence(encoder_output, batch_first=True)
-        # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
-        no_encoding = (encoder_lengths == 0)[None, :, None]  # shape: n_lstm_layers x batch_size x hidden_size
-        hidden = hidden.masked_scatter(no_encoding, input_hidden)
-        cell = cell.masked_scatter(no_encoding, input_cell)
 
         # run local decoder
         decoder_output, _ = self.lstm_decoder(
-            rnn.pack_padded_sequence(
-                embeddings_varying_decoder, decoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-            ),
+            embeddings_varying_decoder,
             (hidden, cell),
+            lengths=decoder_lengths,
+            enforce_sorted=False,
         )
-
-        decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)
