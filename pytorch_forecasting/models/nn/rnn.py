@@ -36,13 +36,12 @@ class RNN(ABC, nn.RNNBase):
         pass
 
     @abstractmethod
-    def init_hidden_state(self, x: torch.Tensor, batch_size: int) -> HiddenState:
+    def init_hidden_state(self, x: torch.Tensor) -> HiddenState:
         """
         Initialise a hidden_state.
 
         Args:
             x (torch.Tensor): network input
-            batch_size (int): batch size
 
         Returns:
             HiddenState: default (zero-like) hidden state
@@ -97,7 +96,7 @@ class RNN(ABC, nn.RNNBase):
             assert min_length >= 0, "sequence lengths must be great equals 0"
 
             if max_length == 0:
-                hidden_state = self.init_hidden_state(x, lengths.size(0))
+                hidden_state = self.init_hidden_state(x)
                 if self.batch_first:
                     out = torch.zeros(lengths.size(0), x.size(1), self.hidden_size, dtype=x.dtype, device=x.device)
                 else:
@@ -117,7 +116,7 @@ class RNN(ABC, nn.RNNBase):
                         None, :, None
                     ]  # shape: n_layers * n_directions x batch_size x hidden_size
                     if hx is None:
-                        initial_hidden_state = self.init_hidden_state(x, lengths.size(0))
+                        initial_hidden_state = self.init_hidden_state(x)
                     else:
                         initial_hidden_state = hx
                     # propagate initial hidden state when sequence length was 0
@@ -135,12 +134,16 @@ class LSTM(RNN, nn.LSTM):
         self, hidden_state: HiddenState, no_encoding: torch.BoolTensor, initial_hidden_state: HiddenState
     ) -> HiddenState:
         hidden, cell = hidden_state
-        hidden = hidden.masked_fill(no_encoding, initial_hidden_state[0])
-        cell = cell.masked_fill(no_encoding, initial_hidden_state[0])
+        hidden = hidden.masked_scatter(no_encoding, initial_hidden_state[0])
+        cell = cell.masked_scatter(no_encoding, initial_hidden_state[0])
         return hidden, cell
 
-    def init_hidden_state(self, x: torch.Tensor, batch_size: int) -> HiddenState:
+    def init_hidden_state(self, x: torch.Tensor) -> HiddenState:
         num_directions = 2 if self.bidirectional else 1
+        if self.batch_first:
+            batch_size = x.size(0)
+        else:
+            batch_size = x.size(1)
         hidden = torch.zeros(
             (self.num_layers * num_directions, batch_size, self.hidden_size),
             device=x.device,
@@ -166,9 +169,13 @@ class GRU(RNN, nn.GRU):
     def handle_no_encoding(
         self, hidden_state: HiddenState, no_encoding: torch.BoolTensor, initial_hidden_state: HiddenState
     ) -> HiddenState:
-        return hidden_state.masked_fill(no_encoding, initial_hidden_state)
+        return hidden_state.masked_scatter(no_encoding, initial_hidden_state)
 
-    def init_hidden_state(self, x: torch.Tensor, batch_size: int) -> HiddenState:
+    def init_hidden_state(self, x: torch.Tensor) -> HiddenState:
+        if self.batch_first:
+            batch_size = x.size(0)
+        else:
+            batch_size = x.size(1)
         num_directions = 2 if self.bidirectional else 1
         hidden = torch.zeros(
             (self.num_layers * num_directions, batch_size, self.hidden_size),

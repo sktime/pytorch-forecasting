@@ -131,11 +131,11 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             isinstance(target, (list, tuple)) and isinstance(loss, MultiLoss) and len(loss) == len(target)
         ), "number of targets should be equivalent to number of loss metrics"
 
-        time_series_rnn = get_rnn(cell_type)
+        rnn_class = get_rnn(cell_type)
         cont_size = len(self.reals)
         cat_size = sum([size[1] for size in self.hparams.embedding_sizes.values()])
         input_size = cont_size + cat_size
-        self.rnn = time_series_rnn(
+        self.rnn = rnn_class(
             input_size=input_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.rnn_layers,

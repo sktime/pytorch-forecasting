@@ -15,7 +15,6 @@ from pytorch_forecasting.metrics import (
     NegativeBinomialDistributionLoss,
 )
 from pytorch_forecasting.models import DeepAR
-from pytorch_forecasting.models.nn import GRU, LSTM, get_rnn
 
 
 def _integration(
@@ -113,22 +112,6 @@ def test_integration_for_multiple_targets(data_with_covariates, tmp_path, gpus):
         gpus,
         data_loader_kwargs=dict(time_varying_unknown_reals=["volume", "discount"], target=["volume", "discount"]),
     )
-
-
-def test_get_lstm_cell():
-    cell = get_rnn("LSTM")(10, 10)
-    assert isinstance(cell, LSTM)
-    assert isinstance(cell, nn.LSTM)
-
-
-def test_get_gru_cell():
-    cell = get_rnn("GRU")(10, 10)
-    assert isinstance(cell, GRU)
-    assert isinstance(cell, nn.GRU)
-
-
-def test_get_cell_raises_value_error():
-    pytest.raises(ValueError, lambda: get_rnn("ABCDEF"))
 
 
 @pytest.fixture

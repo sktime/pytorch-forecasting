@@ -119,6 +119,12 @@ def model(dataloaders_with_covariates):
     return net
 
 
+def test_init_shared_network(dataloaders_with_covariates):
+    dataset = dataloaders_with_covariates["train"].dataset
+    net = TemporalFusionTransformer.from_dataset(dataset, share_single_variable_networks=True)
+    net.predict(dataset)
+
+
 @pytest.mark.parametrize("accelerator", ["ddp", "dp", "ddp2"])
 def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
     if isinstance(gpus, int) and gpus == 0:  # only run test on GPU
