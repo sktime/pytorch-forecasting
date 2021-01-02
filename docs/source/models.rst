@@ -90,7 +90,7 @@ be adversely impacted. In this case, a non-parameteric model will do much better
 :py:class:`~pytorch_forecasting.models.deepar.DeepAR` is an example for a parameteric model while
 the :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`
 can output quantile forecasts that can fit any distribution.
-Models based on normalizing flows merry the two worlds by providing a non-parameteric estimate
+Models based on normalizing flows marry the two worlds by providing a non-parameteric estimate
 of a full probability distribution. PyTorch Forecasting currently does not provide
 support for these but
 `Pyro, a package for probabilistic programming <https://pyro.ai/examples/normalizing_flows_i.html>`_ does
