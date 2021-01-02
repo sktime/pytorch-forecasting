@@ -1048,7 +1048,7 @@ class BetaDistributionLoss(DistributionLoss):
 
     distribution_class = distributions.Beta
     distribution_arguments = ["mean", "shape"]
-    eps = 1e-3
+    eps = 1e-4
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Beta:
         mean = x[..., 0]
