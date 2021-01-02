@@ -182,13 +182,17 @@ def optimize_hyperparameters(
             )
 
             loss_finite = np.isfinite(res.results["loss"])
-            lr_smoothed, loss_smoothed = sm.nonparametric.lowess(
-                np.asarray(res.results["loss"])[loss_finite],
-                np.asarray(res.results["lr"])[loss_finite],
-                frac=1.0 / 10.0,
-            )[10:-1].T
-            optimal_idx = np.gradient(loss_smoothed).argmin()
-            optimal_lr = lr_smoothed[optimal_idx]
+            if loss_finite.sum() > 3:  # at least 3 valid values required for learning rate finder
+                lr_smoothed, loss_smoothed = sm.nonparametric.lowess(
+                    np.asarray(res.results["loss"])[loss_finite],
+                    np.asarray(res.results["lr"])[loss_finite],
+                    frac=1.0 / 10.0,
+                )[min(loss_finite.sum() - 3, 10) : -1].T
+                optimal_idx = np.gradient(loss_smoothed).argmin()
+                optimal_lr = lr_smoothed[optimal_idx]
+            else:
+                optimal_idx = np.asarray(res.results["loss"]).argmin()
+                optimal_lr = res.results["lr"][optimal_idx]
             optuna_logger.info(f"Using learning rate of {optimal_lr:.3g}")
             # add learning rate artificially
             model.hparams.learning_rate = trial.suggest_uniform("learning_rate", optimal_lr, optimal_lr)
