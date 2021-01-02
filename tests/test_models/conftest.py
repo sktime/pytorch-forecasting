@@ -120,10 +120,12 @@ def multiple_dataloaders_with_covariates(data_with_covariates, request):
 
 @pytest.fixture
 def dataloaders_with_covariates(data_with_covariates):
+    data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
     return make_dataloaders(
         data_with_covariates,
+        target="target",
         time_varying_known_reals=["discount"],
-        time_varying_unknown_reals=["volume"],
+        time_varying_unknown_reals=["target"],
         static_categoricals=["agency"],
         add_relative_time_idx=True,
         target_normalizer=GroupNormalizer(groups=["agency", "sku"]),

@@ -16,12 +16,16 @@
 ### Fixed
 
 - Fixed autocorrelation for pytorch 1.7 (#220)
-- Ensure reproducibility by replacing python `set()` with `dict.fromkeys()` (#221)
+- Ensure reproducibility by replacing python `set()` with `dict.fromkeys()` (mostly TimeSeriesDataSet) (#221)
+- Ensures BetaDistributionLoss does not lead to infinite loss if actuals are 0 or 1 (#233)
+- Fix for GroupNormalizer if scaling by group (#223)
+- Fix for TimeSeriesDataSet when using `min_prediction_idx` (#226)
 
 ### Contributors
 
 - jdb78
 - JustinNeumann
+- reumar
 
 ## v0.7.1 Tutorial on how to implement a new architecture (07/12/2020)
 
