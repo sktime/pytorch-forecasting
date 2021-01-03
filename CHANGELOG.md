@@ -1,6 +1,6 @@
-# Changelog
+# Release notes
 
-## v0.8.0 Adding multi-target support (03/01/2020)
+## v0.8.0 Adding multi-target support (03/01/2021)
 
 ### Added
 
@@ -13,7 +13,7 @@
 ### Changed
 
 - TimeSeriesDataSet's `y` of the dataloader is a tuple of (target(s), weight) - potentially breaking for model or metrics implementation
-  Most implementations will not be affected as hooks in BaseModel and MultiHorizonMetric were modified.
+  Most implementations will not be affected as hooks in BaseModel and MultiHorizonMetric were modified. (#199)
 
 ### Fixed
 
