@@ -13,10 +13,9 @@
 import os
 from pathlib import Path
 import shutil
-import subprocess
 import sys
 
-from sphinx.ext import apidoc
+from recommonmark.parser import CommonMarkParser
 
 SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
@@ -40,6 +39,7 @@ author = "Jan Beitner"
 # ones.
 extensions = [
     "nbsphinx",
+    "recommonmark",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
@@ -49,6 +49,12 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
 ]
+
+source_parsers = {
+    ".md": CommonMarkParser,
+}
+
+source_suffix = [".rst", ".md"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -107,3 +113,9 @@ autoclass_content = "both"
 # autosummary
 autosummary_generate = True
 shutil.rmtree(SOURCE_PATH.joinpath("api"), ignore_errors=True)
+
+# copy changelog
+shutil.copy(
+    "../../CHANGELOG.md",
+    "CHANGELOG.md",
+)

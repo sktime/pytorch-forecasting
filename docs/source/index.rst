@@ -58,6 +58,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    faq
    contribute
    api
+   CHANGELOG
 
 
 Indices and tables

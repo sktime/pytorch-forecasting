@@ -1,6 +1,14 @@
-# Changelog
+# Release Notes
 
-## v0.8.0 Adding multi-target support (03/01/2020)
+## v0.8.1 UNRELEASED
+
+### Added
+
+- Add "Release Notes" section to docs (#237)
+
+---
+
+## v0.8.0 Adding multi-target support (03/01/2021)
 
 ### Added
 
@@ -13,7 +21,7 @@
 ### Changed
 
 - TimeSeriesDataSet's `y` of the dataloader is a tuple of (target(s), weight) - potentially breaking for model or metrics implementation
-  Most implementations will not be affected as hooks in BaseModel and MultiHorizonMetric were modified.
+  Most implementations will not be affected as hooks in BaseModel and MultiHorizonMetric were modified. (#199)
 
 ### Fixed
 
@@ -29,6 +37,8 @@
 - JustinNeumann
 - reumar
 - rustyconover
+
+---
 
 ## v0.7.1 Tutorial on how to implement a new architecture (07/12/2020)
 
@@ -245,7 +255,7 @@ This release has only one purpose: Allow usage of PyTorch Lightning 1.0 - all te
 
 ### Changes
 
-- **BREAKING**: Fix typo “add_decoder_length” to “add_encoder_length” in TimeSeriesDataSet
+- **BREAKING**: Fix typo "add_decoder_length" to "add_encoder_length" in TimeSeriesDataSet
 
 ### Bugfixes
 
@@ -283,15 +293,14 @@ Update build system requirements to be parsed correctly when installing with `pi
 
 This release improves robustness of the code.
 
-Fixing bug across code, in particularly
+- Fixing bug across code, in particularly
 
-- Ensuring that code works on GPUs
-- Adding tests for models, dataset and normalisers
-- Test using GitHub Actions (tests on GPU are still missing)
+  - Ensuring that code works on GPUs
+  - Adding tests for models, dataset and normalisers
+  - Test using GitHub Actions (tests on GPU are still missing)
 
-Extend documentation by improving docstrings and adding two tutorials.
-
-## Improving default arguments for TimeSeriesDataSet to avoid surprises
+- Extend documentation by improving docstrings and adding two tutorials.
+- Improving default arguments for TimeSeriesDataSet to avoid surprises
 
 ---
 

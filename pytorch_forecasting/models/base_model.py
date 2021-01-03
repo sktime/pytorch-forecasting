@@ -143,6 +143,7 @@ class BaseModel(LightningModule):
         Args:
             out (Dict[str, torch.Tensor]): Network output with "prediction" and "target_scale" entries.
                 the output will be either
+
                 * The input if the input is a tensor
                 * ``out["prediction"]`` if there is no ``output_transformer``
                   (which is a :py:class:`~pytorch_forecasting.data.encoders.TorchNormalizer`) defined or

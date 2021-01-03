@@ -91,6 +91,7 @@ sphinx = "^3.4"
 pydata-sphinx-theme = "*"
 nbsphinx = "*"
 pandoc = "*"
+recommonmark = "^0.7.1"
 
 
 [tool.poetry.extras]  # extras
