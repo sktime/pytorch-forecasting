@@ -271,6 +271,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 x = input_vector[:, [idx]]
                 x[:, 0, target_pos] = target
                 prediction, hidden_state = self.decode_all(x, hidden_state)
+                prediction = apply_to_list(prediction, lambda x: x[:, 0])  # select first time step
                 return prediction, hidden_state
 
             # make predictions which are fed into next step

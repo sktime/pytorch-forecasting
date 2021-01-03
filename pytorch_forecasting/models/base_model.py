@@ -171,7 +171,7 @@ class BaseModel(LightningModule):
                 out = self.loss.rescale_parameters(
                     out["prediction"],
                     target_scale=out["target_scale"],
-                    encoder=self.output_transformer,  # need to use normalizer per encoder
+                    encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder
                 )
             else:
                 out = self.loss.rescale_parameters(
@@ -1351,7 +1351,7 @@ class AutoRegressiveBaseModel(BaseModel):
             isinstance(self.loss, MultiLoss) and isinstance(self.loss[0], DistributionLoss)
         ):
             # todo: handle mixed losses
-            prediction = apply_to_list(self.loss.sample(prediction_parameters, 1), lambda x: x[..., -1])
+            prediction = self.loss.sample(prediction_parameters, 1)
         else:
             prediction = prediction_parameters
         # normalize prediction prediction
@@ -1404,15 +1404,48 @@ class AutoRegressiveBaseModel(BaseModel):
 
             .. code-block:: python
 
-                def decode(self, x, hidden_state, autoregressive=False):
-                    input_vector = x["decoder_cont"]
-                    if autoregressive:  # prediction mode
+                def decode(self, x, hidden_state):
+                    # create input vector
+                    input_vector = x["decoder_cont"].clone()
+                    input_vector[..., self.target_positions] = torch.roll(
+                        input_vector[..., self.target_positions],
+                        shifts=1,
+                        dims=1,
+                    )
+                    # but this time fill in missing target from encoder_cont at the first time step instead of
+                    # throwing it away
+                    last_encoder_target = x["encoder_cont"][
+                        torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
+                        x["encoder_lengths"] - 1,
+                        self.target_positions.unsqueeze(-1)
+                    ].T
+                    input_vector[:, 0, self.target_positions] = last_encoder_target
+
+                    if self.training:  # training mode
+                        decoder_output, _ = self.rnn(
+                            x,
+                            hidden_state,
+                            lengths=x["decoder_lengths"],
+                            enforce_sorted=False,
+                        )
+
+                        # from hidden state size to outputs
+                        if isinstance(self.hparams.target, str):  # single target
+                            output = self.distribution_projector(decoder_output)
+                        else:
+                            output = [projector(decoder_output) for projector in self.distribution_projector]
+
+                        # predictions are not yet rescaled
+                        return return dict(prediction=output, target_scale=x["target_scale"])
+
+                    else:  # prediction mode
                         target_pos = self.target_positions
 
                         def decode_one(idx, target, hidden_state):
                             x = input_vector[:, [idx]]
                             x[:, 0, target_pos] = target  # overwrite at target positions
                             decoder_output, hidden_state = self.rnn(x, hidden_state)
+                            decoder_output = decoder_output[:, 0]  # take first timestep
                             # from hidden state size to outputs
                             if isinstance(self.hparams.target, str):  # single target
                                 output = self.distribution_projector(decoder_output)
@@ -1431,18 +1464,6 @@ class AutoRegressiveBaseModel(BaseModel):
 
                         # predictions are already rescaled
                         return dict(prediction=output, output_transformation=None, target_scale=x["target_scale"])
-
-                    else:  # training mode
-                        decoder_output, _ = self.rnn(x, hidden_state)
-
-                        # from hidden state size to outputs
-                        if isinstance(self.hparams.target, str):  # single target
-                            output = self.distribution_projector(decoder_output)
-                        else:
-                            output = [projector(decoder_output) for projector in self.distribution_projector]
-
-                        # predictions are not yet rescaled
-                        return return dict(prediction=output, target_scale=x["target_scale"])
 
         """
         # make predictions which are fed into next step
