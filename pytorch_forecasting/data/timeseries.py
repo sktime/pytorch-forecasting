@@ -1436,20 +1436,6 @@ class TimeSeriesDataSet(Dataset):
 
             **kwargs: additional arguments to ``DataLoader()``
 
-
-        Examples:
-
-            To samples for training:
-
-            .. code-block:: python
-
-                from torch.utils.data import WeightedRandomSampler
-
-                # length of probabilties for sampler have to be equal to the length of the index
-                probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
-                sampler = WeightedRandomSampler(probabilities, len(probabilities))
-                dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)
-
         Returns:
             DataLoader: dataloader that returns Tuple.
                 First entry is ``x``, a dictionary of tensors with the entries (and shapes in brackets)
@@ -1485,6 +1471,19 @@ class TimeSeriesDataSet(Dataset):
                 * target (batch_size x n_decoder_time_steps or list thereof with each entry for a different target):
                   unscaled (continuous) or encoded (categories) targets, list of tensors for multiple targets
                 * weight (None or batch_size x n_decoder_time_steps): weight
+
+        Example:
+
+            Weight by samples for training:
+
+            .. code-block:: python
+
+                from torch.utils.data import WeightedRandomSampler
+
+                # length of probabilties for sampler have to be equal to the length of the index
+                probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
+                sampler = WeightedRandomSampler(probabilities, len(probabilities))
+                dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)
         """
         default_kwargs = dict(
             shuffle=train,

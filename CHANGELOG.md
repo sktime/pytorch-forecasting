@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.8.0 Unreleased
+## v0.8.0 Adding multi-target support (03/01/2020)
 
 ### Added
 
@@ -8,6 +8,7 @@
 - Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
 - Check for non-finite values in TimeSeriesDataSet and better validate scaler argument (#220)
 - LSTM and GRU implementations that can handle zero-length sequences (#235)
+- Helpers for implementing auto-regressive models (#236)
 
 ### Changed
 

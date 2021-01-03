@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
-from pytorch_lightning.metrics import Metric as LightningMetric
 from pytorch_lightning.utilities.parsing import get_init_args
 import scipy.stats
 import torch
@@ -22,9 +21,9 @@ from tqdm.notebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, MultiNormalizer, NaNLabelEncoder
-from pytorch_forecasting.metrics import MASE, SMAPE, Metric, MultiLoss
+from pytorch_forecasting.metrics import MASE, SMAPE, DistributionLoss, Metric, MultiLoss
 from pytorch_forecasting.optim import Ranger
-from pytorch_forecasting.utils import create_mask, get_embedding_size, groupby_apply, to_list
+from pytorch_forecasting.utils import apply_to_list, create_mask, get_embedding_size, groupby_apply, to_list
 
 
 class BaseModel(LightningModule):
@@ -143,14 +142,43 @@ class BaseModel(LightningModule):
 
         Args:
             out (Dict[str, torch.Tensor]): Network output with "prediction" and "target_scale" entries.
+                the output will be either
+                * The input if the input is a tensor
+                * ``out["prediction"]`` if there is no ``output_transformer``
+                  (which is a :py:class:`~pytorch_forecasting.data.encoders.TorchNormalizer`) defined or
+                  ``out["output_transformation"] is None``
+                * transformed output - this is either the ``output_transformer`` applied to the input
+                  or, in case of :py:class:`~pytorch_forecasting.metrics.DistributionLoss` as loss module,
+                  the loss module is used together with the ``output_transformer``
 
         Returns:
             torch.Tensor: rescaled prediction
         """
+        # no transformation possible
         if isinstance(out, torch.Tensor):
             return out
-        elif self.output_transformer is None:
+
+        # no transformation logic
+        elif self.output_transformer is None or out.get("output_transformation", None) is None:
             out = out["prediction"]
+
+        # distribution transformation
+        elif isinstance(self.loss, DistributionLoss) or (
+            isinstance(self.loss, MultiLoss) and isinstance(self.loss[0], DistributionLoss)
+        ):
+            if isinstance(self.loss, MultiLoss):
+                # todo: handle mixed losses
+                out = self.loss.rescale_parameters(
+                    out["prediction"],
+                    target_scale=out["target_scale"],
+                    encoder=self.output_transformer,  # need to use normalizer per encoder
+                )
+            else:
+                out = self.loss.rescale_parameters(
+                    out["prediction"], target_scale=out["target_scale"], encoder=self.output_transformer
+                )
+
+        # normal output transformation
         else:
             out = self.output_transformer(out)
         return out
@@ -1267,6 +1295,8 @@ class AutoRegressiveBaseModel(BaseModel):
     """
     Model with additional methods for autoregressive models.
 
+    Adds in particular the :py:meth:`~decode_autoregressive` method for making auto-regressive predictions.
+
     Assumes the following hyperparameters:
 
     Args:
@@ -1291,6 +1321,164 @@ class AutoRegressiveBaseModel(BaseModel):
         """
         kwargs.setdefault("target", dataset.target)
         return super().from_dataset(dataset, **kwargs)
+
+    def output_to_prediction(
+        self, normalized_prediction_parameters: torch.Tensor, target_scale: Union[List[torch.Tensor], torch.Tensor]
+    ) -> Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]:
+        """
+        Convert network output to rescaled and normalized prediction.
+
+        Function is typically not called directly but via :py:meth:`~decode_autoregressive`.
+
+        Args:
+            normalized_prediction_parameters (torch.Tensor): network prediction output
+            target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale to rescale network output
+
+        Returns:
+            Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]: tuple of rescaled prediction and
+                normalized prediction (e.g. for input into next auto-regressive step)
+        """
+        # transform into real space
+        prediction_parameters = self.transform_output(
+            dict(
+                prediction=normalized_prediction_parameters,
+                target_scale=target_scale,
+            )
+        )
+        # todo: handle classification
+        # sample value(s) from distribution and  select first sample
+        if isinstance(self.loss, DistributionLoss) or (
+            isinstance(self.loss, MultiLoss) and isinstance(self.loss[0], DistributionLoss)
+        ):
+            # todo: handle mixed losses
+            prediction = apply_to_list(self.loss.sample(prediction_parameters, 1), lambda x: x[..., -1])
+        else:
+            prediction = prediction_parameters
+        # normalize prediction prediction
+        # todo: how to handle lags (-> need list of lags and positions)
+        #   -> then if prediction lenght larger than lag start imputing ->
+        #   before that let timeseriesdataset take care)?
+        normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
+        if isinstance(normalized_prediction, list):
+            input_target = torch.cat(normalized_prediction, dim=-1)
+        else:
+            input_target = normalized_prediction  # set next input target to normalized prediction
+        return prediction, input_target
+
+    def decode_autoregressive(
+        self,
+        decode_one: Callable,
+        first_target: Union[List[torch.Tensor], torch.Tensor],
+        first_hidden_state: Any,
+        target_scale: Union[List[torch.Tensor], torch.Tensor],
+        n_decoder_steps: int,
+    ) -> Union[List[torch.Tensor], torch.Tensor]:
+        """
+        Make predictions in auto-regressive manner.
+
+        Supports only continuous targets.
+
+        Args:
+            decode_one (Callable): function that takes the following arguments:
+
+                * ``idx`` (int): index of decoding step (from 0 to n_decoder_steps-1)
+                * ``current_target`` (Union[List[torch.Tensor], torch.Tensor]): target to use as input
+                  for decoding/predicting
+                * ``current_hidden_state`` (Any): hidden state required for prediction
+
+                And returns tuple of (not rescaled) network prediction output and hidden state for next
+                auto-regressive step.
+
+            first_target (Union[List[torch.Tensor], torch.Tensor]): first target value to use for decoding
+            first_hidden_state (Any): first hidden state used for decoding
+            target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale as in ``x``
+            n_decoder_steps (int): number of decoding/prediction steps
+
+        Returns:
+            Union[List[torch.Tensor], torch.Tensor]: re-scaled prediction (i.e. use ``output_transformation = None``
+                when passing on - see :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.transform_output`)
+
+        Example:
+
+            LSTM/GRU decoder
+
+            .. code-block:: python
+
+                def decode(self, x, hidden_state, autoregressive=False):
+                    input_vector = x["decoder_cont"]
+                    if autoregressive:  # prediction mode
+                        target_pos = self.target_positions
+
+                        def decode_one(idx, target, hidden_state):
+                            x = input_vector[:, [idx]]
+                            x[:, 0, target_pos] = target  # overwrite at target positions
+                            decoder_output, hidden_state = self.rnn(x, hidden_state)
+                            # from hidden state size to outputs
+                            if isinstance(self.hparams.target, str):  # single target
+                                output = self.distribution_projector(decoder_output)
+                            else:
+                                output = [projector(decoder_output) for projector in self.distribution_projector]
+                            return output, hidden_state
+
+                        # make predictions which are fed into next step
+                        output = self.decode_autoregressive(
+                            decode_one,
+                            first_target=input_vector[:, 0, target_pos],
+                            first_hidden_state=hidden_state,
+                            target_scale=x["target_scale"],
+                            n_decoder_steps=input_vector.size(1),
+                        )
+
+                        # predictions are already rescaled
+                        return dict(prediction=output, output_transformation=None, target_scale=x["target_scale"])
+
+                    else:  # training mode
+                        decoder_output, _ = self.rnn(x, hidden_state)
+
+                        # from hidden state size to outputs
+                        if isinstance(self.hparams.target, str):  # single target
+                            output = self.distribution_projector(decoder_output)
+                        else:
+                            output = [projector(decoder_output) for projector in self.distribution_projector]
+
+                        # predictions are not yet rescaled
+                        return return dict(prediction=output, target_scale=x["target_scale"])
+
+        """
+        # make predictions which are fed into next step
+        output = []
+        current_target = first_target
+        current_hidden_state = first_hidden_state
+
+        for idx in range(n_decoder_steps):
+            current_target, current_hidden_state = decode_one(idx, current_target, current_hidden_state)
+
+            # get prediction and its normalized version for the next step
+            prediction, current_target = self.output_to_prediction(current_target, target_scale=target_scale)
+            # set output to unnormalized samples, append each target as n_batch_samples x n_random_samples
+
+            output.append(prediction)
+        if isinstance(self.hparams.target, str):
+            output = torch.stack(output, dim=1)
+        else:
+            # for multi-targets
+            output = [torch.stack([out[idx] for out in output], dim=1) for idx in range(len(self.target_positions))]
+        return output
+
+    @property
+    def target_positions(self) -> torch.LongTensor:
+        """
+        Positions of target variable(s) in covariates.
+
+        Returns:
+            torch.LongTensor: tensor of positions.
+        """
+        # todo: expand for categorical targets
+        return torch.tensor(
+            [0],
+            device=self.device,
+            dtype=torch.long,
+        )
 
 
 class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegressiveBaseModel):
@@ -1319,4 +1507,17 @@ class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegress
             as bag of embeddings
     """
 
-    pass
+    @property
+    def target_positions(self) -> torch.LongTensor:
+        """
+        Positions of target variable(s) in covariates.
+
+        Returns:
+            torch.LongTensor: tensor of positions.
+        """
+        # todo: expand for categorical targets
+        return torch.tensor(
+            [self.hparams.x_reals.index(name) for name in to_list(self.hparams.target)],
+            device=self.device,
+            dtype=torch.long,
+        )

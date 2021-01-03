@@ -900,7 +900,7 @@ class DistributionLoss(MultiHorizonMetric):
         Convert network prediction into a point prediction.
 
         Args:
-            y_pred: prediction output of network (with ``output_type = samples``)
+            y_pred: prediction output of network (with ``output_transformation = None``)
 
         Returns:
             torch.Tensor: mean prediction
@@ -926,7 +926,7 @@ class DistributionLoss(MultiHorizonMetric):
         Convert network prediction into a quantile prediction.
 
         Args:
-            y_pred: prediction output of network (with ``output_type = samples``)
+            y_pred: prediction output of network (with ``output_transformation = None``)
             quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
                 as defined in the class initialization.
 

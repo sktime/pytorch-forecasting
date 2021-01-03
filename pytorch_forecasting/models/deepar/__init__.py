@@ -216,12 +216,6 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         # shift target
         return input_vector
 
-    @property
-    def target_positions(self):
-        return torch.tensor(
-            [self.hparams.x_reals.index(name) for name in to_list(self.hparams.target)], device=self.device
-        )
-
     def encode(self, x: Dict[str, torch.Tensor]) -> HiddenState:
         """
         Encode sequence into hidden state
@@ -234,6 +228,19 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             input_vector, lengths=encoder_lengths, enforce_sorted=False
         )  # second ouput is not needed (hidden state)
         return hidden_state
+
+    def decode_all(
+        self,
+        x: torch.Tensor,
+        hidden_state: HiddenState,
+        lengths: torch.Tensor = None,
+    ):
+        decoder_output, hidden_state = self.rnn(x, hidden_state, lengths=lengths, enforce_sorted=False)
+        if isinstance(self.hparams.target, str):  # single target
+            output = self.distribution_projector(decoder_output)
+        else:
+            output = [projector(decoder_output) for projector in self.distribution_projector]
+        return output, hidden_state
 
     def decode(
         self,
@@ -249,13 +256,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         sampling new targets from past predictions iteratively
         """
         if n_samples is None:
-            decoder_output, _ = self.rnn(input_vector, hidden_state, lengths=decoder_lengths, enforce_sorted=False)
-            if isinstance(self.hparams.target, str):
-                output = self.distribution_projector(decoder_output)
-            else:
-                output = [projector(decoder_output) for projector in self.distribution_projector]
-            output_type = "parameters"
-
+            output, _ = self.decode_all(input_vector, hidden_state, lengths=decoder_lengths)
+            output_transformation = True
         else:
             # run in eval, i.e. simulation mode
             target_pos = self.target_positions
@@ -264,48 +266,26 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             hidden_state = self.rnn.repeat_interleave(hidden_state, n_samples)
             target_scale = apply_to_list(target_scale, lambda x: x.repeat_interleave(n_samples, 0))
 
-            # make predictions which are fed into next step
-            input_target = input_vector[:, 0, target_pos]
-            output = []
-            for idx in range(input_vector.size(1)):
+            # define function to run at every decoding step
+            def decode_one(idx, target, hidden_state):
                 x = input_vector[:, [idx]]
-                x[:, 0, target_pos] = input_target
-                decoder_output, hidden_state = self.rnn(x, hidden_state)
-                if isinstance(self.hparams.target, str):  # single target
-                    normalized_prediction_parameters = self.distribution_projector(decoder_output)
-                else:
-                    normalized_prediction_parameters = [
-                        projector(decoder_output) for projector in self.distribution_projector
-                    ]
-                # transform into real space
-                prediction_parameters = self.transform_output(
-                    dict(
-                        prediction=normalized_prediction_parameters,
-                        target_scale=target_scale,
-                        prediction_type="parameters",
-                    )
-                )
-                # sample value(s) from distribution and  select first sample
-                prediction = apply_to_list(self.loss.sample(prediction_parameters, 1), lambda x: x[..., -1])
-                # normalize prediction prediction
-                # todo: how to handle lags (-> need list of lags and positions)
-                #   -> then if prediction lenght larger than lag start imputing ->
-                #   before that let timeseriesdataset take care)?
-                normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
-                if isinstance(normalized_prediction, list):
-                    input_target = torch.cat(normalized_prediction, dim=-1)
-                else:
-                    input_target = normalized_prediction  # set next input target to normalized prediction
+                x[:, 0, target_pos] = target
+                prediction, hidden_state = self.decode_all(x, hidden_state)
+                return prediction, hidden_state
 
-                # set output to unnormalized samples, append each target as n_batch_samples x n_random_samples
-                output.append(apply_to_list(prediction, lambda x: x.view(-1, n_samples)))
-            if isinstance(self.hparams.target, str):
-                output = torch.stack(output, dim=1)
-            else:
-                # for multi-targets
-                output = [torch.stack([out[idx] for out in output], dim=1) for idx in range(len(self.target_positions))]
-            output_type = "samples"
-        return output, output_type
+            # make predictions which are fed into next step
+            output = self.decode_autoregressive(
+                decode_one,
+                first_target=input_vector[:, 0, target_pos],
+                first_hidden_state=hidden_state,
+                target_scale=target_scale,
+                n_decoder_steps=input_vector.size(1),
+            )
+            # reshape predictions for n_samples:
+            # from n_samples * batch_size x time steps to batch_size x time steps x n_samples
+            output = apply_to_list(output, lambda x: x.reshape(-1, n_samples, input_vector.size(1)).permute(0, 2, 1))
+            output_transformation = None
+        return output, output_transformation
 
     def forward(self, x: Dict[str, torch.Tensor], n_samples: int = None) -> Dict[str, torch.Tensor]:
         """
@@ -325,7 +305,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         if self.training:
             assert n_samples is None, "cannot sample from decoder when training"
-        output, output_type = self.decode(
+        output, output_transformation = self.decode(
             input_vector,
             decoder_lengths=x["decoder_lengths"],
             target_scale=x["target_scale"],
@@ -335,7 +315,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         # return relevant part
         return dict(
             prediction=output,
-            prediction_type=output_type,
+            output_transformation=output_transformation,
             groups=x["groups"],
             decoder_time_idx=x["decoder_time_idx"],
             target_scale=x["target_scale"],
@@ -354,7 +334,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         out: Dict[str, torch.Tensor],
     ) -> None:
 
-        if out["prediction_type"] == "parameters":
+        if out.get("output_transformation", True) is not None:
             # use distribution properties to create point prediction
             out = copy(out)  # copy to avoid side-effects but do not deep copy to re-use references
             y_hat_detached = apply_to_list(out["prediction"], lambda x: x.detach())
@@ -362,12 +342,12 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 self.loss.map_x_to_distribution(y_hat_detached), lambda x: x.mean.unsqueeze(-1)
             )
             out["prediction"] = y_hat_point_detached
-            out["prediction_type"] = "samples"
+            out["output_transformation"] = None
         super().log_metrics(x, y, out)
 
     def log_prediction(self, x, out, batch_idx) -> None:
         if (
-            out["prediction_type"] == "parameters"
+            out.get("output_transformation", True) is not None
             and (batch_idx % self.log_interval == 0 or self.log_interval < 1.0)
             and self.log_interval > 0
         ):
@@ -381,7 +361,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             else:
                 y_hat_samples = self.loss.sample(y_hat_detached, self.hparams.n_plotting_samples)
             out["prediction"] = y_hat_samples
-            out["prediction_type"] = "samples"
+            out["output_transformation"] = None
         super().log_prediction(x, out, batch_idx=batch_idx)
 
     def plot_prediction(
@@ -397,30 +377,6 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         return super().plot_prediction(
             x, out, idx=idx, add_loss_to_title=False, show_future_observed=show_future_observed, ax=ax
         )
-
-    def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
-        if isinstance(out, torch.Tensor):
-            return out
-        elif self.output_transformer is None:
-            out = out["prediction"]
-        else:
-            # depending on output, transform differently
-            if out["prediction_type"] == "samples":  # samples are already rescaled
-                out = out["prediction"]
-            elif out["prediction_type"] == "parameters":  # parameters need to be rescaled
-                if isinstance(self.loss, MultiLoss):
-                    out = self.loss.rescale_parameters(
-                        out["prediction"],
-                        target_scale=out["target_scale"],
-                        encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder
-                    )
-                else:
-                    out = self.loss.rescale_parameters(
-                        out["prediction"], target_scale=out["target_scale"], encoder=self.output_transformer
-                    )
-            else:
-                raise ValueError(f"Unknown output type {out['prediction_type']}")
-        return out
 
     def predict(
         self,
