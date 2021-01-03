@@ -115,4 +115,7 @@ autosummary_generate = True
 shutil.rmtree(SOURCE_PATH.joinpath("api"), ignore_errors=True)
 
 # copy changelog
-shutil.copy2("../../CHANGELOG.md", "CHANGELOG.md")
+shutil.copy(
+    "../../CHANGELOG.md",
+    "CHANGELOG.md",
+)
