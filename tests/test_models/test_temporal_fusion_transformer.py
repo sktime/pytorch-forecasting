@@ -34,15 +34,16 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
 
     # check training
     logger = TensorBoardLogger(tmp_path)
-    checkpoint = ModelCheckpoint(filepath=tmp_path)
     trainer = pl.Trainer(
-        checkpoint_callback=checkpoint,
         max_epochs=3,
         gpus=gpus,
         weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        fast_dev_run=True,
+        checkpoint_callback=True,
+        default_root_dir=tmp_path,
+        limit_train_batches=2,
+        limit_val_batches=2,
         logger=logger,
     )
     # test monotone constraints automatically
@@ -87,7 +88,7 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
             )
 
             # check loading
-            net = TemporalFusionTransformer.load_from_checkpoint(checkpoint.best_model_path)
+            net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
             # check prediction
             net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)

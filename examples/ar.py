@@ -113,7 +113,7 @@ trainer.fit(
 )
 
 # calcualte mean absolute error on validation set
-actuals = torch.cat([y for x, y in iter(val_dataloader)])
+actuals = torch.cat([y for x, (y, weight) in iter(val_dataloader)])
 predictions = deepar.predict(val_dataloader)
 print(f"Mean absolute error of model: {(actuals - predictions).abs().mean()}")
 
