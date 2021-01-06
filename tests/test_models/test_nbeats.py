@@ -15,15 +15,16 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
-    checkpoint = ModelCheckpoint(filepath=tmp_path)
     trainer = pl.Trainer(
-        checkpoint_callback=checkpoint,
-        max_epochs=3,
+        max_epochs=2,
         gpus=gpus,
         weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        fast_dev_run=True,
+        checkpoint_callback=True,
+        default_root_dir=tmp_path,
+        limit_train_batches=2,
+        limit_val_batches=2,
         logger=logger,
     )
 
@@ -43,7 +44,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
             val_dataloaders=val_dataloader,
         )
         # check loading
-        net = NBeats.load_from_checkpoint(checkpoint.best_model_path)
+        net = NBeats.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         # check prediction
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)

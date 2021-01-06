@@ -119,7 +119,7 @@ def optimize_hyperparameters(
     def objective(trial: optuna.Trial) -> float:
         # Filenames for each trial must be made unique in order to access each checkpoint.
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            os.path.join(model_path, "trial_{}".format(trial.number), "{epoch}"), monitor="val_loss"
+            dirpath=os.path.join(model_path, "trial_{}".format(trial.number)), filename="{epoch}", monitor="val_loss"
         )
 
         # The default logger in PyTorch Lightning writes to event files to be consumed by
@@ -131,12 +131,12 @@ def optimize_hyperparameters(
         gradient_clip_val = trial.suggest_loguniform("gradient_clip_val", *gradient_clip_val_range)
         trainer_kwargs.setdefault("gpus", [0] if torch.cuda.is_available() else None)
         trainer = pl.Trainer(
-            checkpoint_callback=checkpoint_callback,
             max_epochs=max_epochs,
             gradient_clip_val=gradient_clip_val,
             callbacks=[
                 metrics_callback,
                 learning_rate_callback,
+                checkpoint_callback,
                 PyTorchLightningPruningCallback(trial, monitor="val_loss"),
             ],
             logger=logger,
