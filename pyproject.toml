@@ -65,6 +65,7 @@ cloudpickle = "*"
 statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
+fsspec = "^0.8.5"
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
