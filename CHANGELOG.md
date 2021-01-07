@@ -13,6 +13,7 @@
 ### Fixed
 
 - Fix issue for multi-target forecasting when decoder length varies in single batch (#249)
+- Enable longer subsequences for min_prediction_idx that were previously wrongfully excluded (#250)
 
 ---
 

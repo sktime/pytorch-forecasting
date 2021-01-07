@@ -340,6 +340,8 @@ class TimeSeriesDataSet(Dataset):
         # set data
         assert data.index.is_unique, "data index has to be unique"
         if min_prediction_idx is not None:
+            # filtering for min_prediction_idx will be done on subsequence level ensuring
+            # minimal decoder index is always >= min_prediction_idx
             data = data[lambda x: data[self.time_idx] >= self.min_prediction_idx - self.max_encoder_length]
         data = data.sort_values(self.group_ids + [self.time_idx])
 
