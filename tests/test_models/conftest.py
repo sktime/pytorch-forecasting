@@ -109,6 +109,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
         dict(target="agency"),
         # test multiple targets
         dict(target=["agency", "volume"]),
+        dict(target=["agency", "volume"], min_encoder_length=1, min_prediction_length=1),
         dict(target=["agency", "volume"], weight="volume"),
         # test weights
         dict(target="volume", weight="volume"),

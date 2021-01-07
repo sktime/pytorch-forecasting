@@ -231,12 +231,23 @@ class BaseModel(LightningModule):
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
-            y = (
-                rnn.pack_padded_sequence(
-                    y[0], lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False
-                ),
-                y[1],
-            )
+            if isinstance(y[0], (list, tuple)):
+                y = (
+                    [
+                        rnn.pack_padded_sequence(
+                            y_part, lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False
+                        )
+                        for y_part in y[0]
+                    ],
+                    y[1],
+                )
+            else:
+                y = (
+                    rnn.pack_padded_sequence(
+                        y[0], lengths=x["decoder_lengths"].cpu(), batch_first=True, enforce_sorted=False
+                    ),
+                    y[1],
+                )
 
         if self.training and len(self.hparams.monotone_constaints) > 0:
             # calculate gradient with respect to continous decoder features
@@ -252,6 +263,7 @@ class BaseModel(LightningModule):
             # handle multiple targets
             prediction_list = to_list(prediction)
             gradient = 0
+            # todo: should monotone constrains be applicable to certain targets?
             for pred in prediction_list:
                 gradient = gradient + torch.autograd.grad(
                     outputs=pred,
