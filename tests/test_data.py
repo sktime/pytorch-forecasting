@@ -273,6 +273,16 @@ def test_dataset_index(test_dataset):
     assert len(index) <= len(test_dataset), "Index can only be subset of dataset"
 
 
+@pytest.mark.parametrize("min_prediction_idx", [0, 1, 3, 7])
+def test_min_prediction_idx(test_dataset, test_data, min_prediction_idx):
+    dataset = TimeSeriesDataSet.from_dataset(
+        test_dataset, test_data, min_prediction_idx=min_prediction_idx, min_encoder_length=1, max_prediction_length=10
+    )
+
+    for x, _ in iter(dataset.to_dataloader(num_workers=0, batch_size=1000)):
+        assert x["decoder_time_idx"].min() >= min_prediction_idx
+
+
 @pytest.mark.parametrize(
     "value,variable,target",
     [
