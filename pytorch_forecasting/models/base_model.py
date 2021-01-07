@@ -231,7 +231,7 @@ class BaseModel(LightningModule):
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
-            if isinstance(y[1], (list, tuple)):
+            if isinstance(y[0], (list, tuple)):
                 y = (
                     [
                         rnn.pack_padded_sequence(

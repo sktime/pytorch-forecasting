@@ -6,6 +6,14 @@
 
 - Add "Release Notes" section to docs (#237)
 
+### Changed
+
+- Require PyTorch>=1.7 (#245)
+
+### Fixed
+
+- Fix issue for multi-target forecasting when decoder length varies in single batch (#249)
+
 ---
 
 ## v0.8.0 Adding multi-target support (03/01/2021)
