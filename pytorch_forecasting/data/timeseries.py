@@ -151,6 +151,7 @@ class TimeSeriesDataSet(Dataset):
         dropout_categoricals: List[str] = [],
         constant_fill_strategy={},
         allow_missings: bool = False,
+        add_lags: Dict[str, List[int]] = {},
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
@@ -227,6 +228,8 @@ class TimeSeriesDataSet(Dataset):
                 1, 2, 4, 5, the sample for 3 will be generated on-the-fly.
                 Allow missings does not deal with ``NA`` values. You should fill NA values before
                 passing the dataframe to the TimeSeriesDataSet.
+            add_lags: dictionary of variable names mapped to list of time steps by which the variable should be lagged.
+                Defaults to no lags.
             add_relative_time_idx: if to add a relative time index as feature (i.e. for each sampled sequence, the index
                 will range from -encoder_length to prediction_length)
             add_target_scales: if to add scales for target to static real features (i.e. add the center and scale
@@ -321,6 +324,7 @@ class TimeSeriesDataSet(Dataset):
             add_encoder_length, bool
         ), f"add_encoder_length should be boolean or 'auto' but found {add_encoder_length}"
         self.add_encoder_length = add_encoder_length
+        self.add_lags = add_lags
 
         # target normalizer
         self._set_target_normalizer(data)
@@ -336,7 +340,7 @@ class TimeSeriesDataSet(Dataset):
         # set data
         assert data.index.is_unique, "data index has to be unique"
         if min_prediction_idx is not None:
-            data = data[lambda x: data[self.time_idx] >= self.min_prediction_idx - self.min_encoder_length]
+            data = data[lambda x: data[self.time_idx] >= self.min_prediction_idx - self.max_encoder_length]
         data = data.sort_values(self.group_ids + [self.time_idx])
 
         # add time index relative to prediction position
