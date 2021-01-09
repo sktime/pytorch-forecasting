@@ -16,7 +16,7 @@ from numpy.lib.type_check import nan_to_num
 import pandas as pd
 from pandas.core.algorithms import isin
 from sklearn.exceptions import NotFittedError
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.utils import shuffle
 from sklearn.utils.validation import check_is_fitted
 import torch
@@ -149,15 +149,15 @@ class TimeSeriesDataSet(Dataset):
         time_varying_unknown_reals: List[str] = [],
         variable_groups: Dict[str, List[int]] = {},
         dropout_categoricals: List[str] = [],
-        constant_fill_strategy={},
+        constant_fill_strategy: Dict[str, Union[str, float, int, bool]] = {},
         allow_missings: bool = False,
         lags: Dict[str, List[int]] = {},
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str] = "auto",
-        categorical_encoders={},
-        scalers={},
+        categorical_encoders: Dict[str, NaNLabelEncoder] = {},
+        scalers: Dict[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer] = {},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
         predict_mode: bool = False,
     ):
@@ -185,80 +185,92 @@ class TimeSeriesDataSet(Dataset):
             There is currently no in-built methods to do this.
 
         Args:
-            data: dataframe with sequence data - each row can be identified with ``time_idx`` and the ``group_ids``
-            time_idx: integer column denoting the time index. This columns is used to determine the sequence of samples.
+            data (pd.DataFrame): dataframe with sequence data - each row can be identified with
+                ``time_idx`` and the ``group_ids``
+            time_idx (str): integer column denoting the time index. This columns is used to determine
+                the sequence of samples.
                 If there no missings observations, the time index should increase by ``+1`` for each subsequent sample.
                 The first time_idx for each series does not necessarily have to be ``0`` but any value is allowed.
-            target: column denoting the target or list of columns denoting the target - categorical or continous.
-            group_ids: list of column names identifying a time series. This means that the ``group_ids`` identify
-                a sample together with the ``time_idx``. If you have only one timeseries, set this to the
+            target (Union[str, List[str]]): column denoting the target or list of columns denoting the target -
+                categorical or continous.
+            group_ids (List[str]): list of column names identifying a time series. This means that the ``group_ids``
+                identify a sample together with the ``time_idx``. If you have only one timeseries, set this to the
                 name of column that is constant.
-            weight: column name for weights. Defaults to None.
-            max_encoder_length: maximum length to encode
-            min_encoder_length: minimum allowed length to encode. Defaults to max_encoder_length.
-            min_prediction_idx: minimum ``time_idx`` from where to start predictions. This parameter can be useful to
-                create a validation or test set.
-            max_prediction_length: maximum prediction/decoder length (choose this not too short as it can help
+            weight (str): column name for weights. Defaults to None.
+            max_encoder_length (int): maximum length to encode
+            min_encoder_length (int): minimum allowed length to encode. Defaults to max_encoder_length.
+            min_prediction_idx (int): minimum ``time_idx`` from where to start predictions. This parameter
+                can be useful to create a validation or test set.
+            max_prediction_length (int): maximum prediction/decoder length (choose this not too short as it can help
                 convergence)
-            min_prediction_length: minimum prediction/decoder length. Defaults to max_prediction_length
-            static_categoricals: list of categorical variables that do not change over time,
+            min_prediction_length (int): minimum prediction/decoder length. Defaults to max_prediction_length
+            static_categoricals (List[str]): list of categorical variables that do not change over time,
                 entries can be also lists which are then encoded together
                 (e.g. useful for product categories)
-            static_reals: list of continuous variables that do not change over time
-            time_varying_known_categoricals: list of categorical variables that change over
+            static_reals (List[str]): list of continuous variables that do not change over time
+            time_varying_known_categoricals (List[str]): list of categorical variables that change over
                 time and are know in the future, entries can be also lists which are then encoded together
                 (e.g. useful for special days or promotion categories)
-            time_varying_known_reals: list of continuous variables that change over
+            time_varying_known_reals (List[str]): list of continuous variables that change over
                 time and are know in the future
-            time_varying_unknown_categoricals: list of categorical variables that change over
+            time_varying_unknown_categoricals (List[str]): list of categorical variables that change over
                 time and are not know in the future, entries can be also lists which are then encoded together
                 (e.g. useful for weather categories)
-            time_varying_unknown_reals: list of continuous variables that change over
+            time_varying_unknown_reals (List[str]): list of continuous variables that change over
                 time and are not know in the future
-            variable_groups: dictionary mapping a name to a list of columns in the data. The name should be present
+            variable_groups (Dict[str, List[str]]): dictionary mapping a name to a list of columns in the data.
+                The name should be present
                 in a categorical or real class argument, to be able to encode or scale the columns by group.
-            dropout_categoricals: list of categorical variables that are unknown when making a forecast without
-                observed history
-            constant_fill_strategy: dictionary of column names with constants to fill in missing values if there are
+            dropout_categoricals (List[str]): list of categorical variables that are unknown when making a
+                forecast without observed history
+            constant_fill_strategy (Dict[str, Union[str, float, int, bool]]): dictionary of column names with
+                constants to fill in missing values if there are
                 gaps in the sequence (by default forward fill strategy is used). The values will be only used if
                 ``allow_missings=True``. A common use case is to denote that demand was 0 if the sample is not in
                 the dataset.
-            allow_missings: if to allow missing timesteps that are automatically filled up. Missing values
+            allow_missings (bool): if to allow missing timesteps that are automatically filled up. Missing values
                 refer to gaps in the ``time_idx``, e.g. if a specific timeseries has only samples for
                 1, 2, 4, 5, the sample for 3 will be generated on-the-fly.
                 Allow missings does not deal with ``NA`` values. You should fill NA values before
                 passing the dataframe to the TimeSeriesDataSet.
-            lags: dictionary of variable names mapped to list of time steps by which the variable should be lagged.
-                Lags must be at not larger than the shortest time series as those will be removed to prevent NA values.
+            lags (Dict[str, List[int]]): dictionary of variable names mapped to list of time steps by
+                which the variable should be lagged.
+                Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
+                add at least the target variables with the corresponding lags to improve performance.
+                Lags must be at not larger than the shortest time series as all time series will be cut by the largest
+                lag value to prevent NA values.
                 Defaults to no lags.
-            add_relative_time_idx: if to add a relative time index as feature (i.e. for each sampled sequence, the index
-                will range from -encoder_length to prediction_length)
-            add_target_scales: if to add scales for target to static real features (i.e. add the center and scale
+            add_relative_time_idx (bool): if to add a relative time index as feature (i.e. for each sampled sequence,
+                the index will range from -encoder_length to prediction_length)
+            add_target_scales (bool): if to add scales for target to static real features (i.e. add the center and scale
                 of the unnormalized timeseries as features)
-            add_encoder_length: if to add decoder length to list of static real variables. Defaults to "auto",
-                i.e. yes if ``min_encoder_length != max_encoder_length``.
-            target_normalizer: transformer that takes group_ids, target and time_idx to return normalized targets.
+            add_encoder_length (bool): if to add decoder length to list of static real variables.
+                Defaults to "auto", i.e. yes if ``min_encoder_length != max_encoder_length``.
+            target_normalizer (Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str]): transformer that take
+                group_ids, target and time_idx to return normalized targets.
                 You can choose from :py:class:`~TorchNormalizer`, :py:class:`~NaNLabelEncoder`,
                 :py:class:`~EncoderNormalizer` or `None` for using not normalizer.
                 By default an appropriate normalizer is chosen automatically.
-            categorical_encoders: dictionary of scikit learn label transformers. If you have unobserved categories in
+            categorical_encoders (Dict[str, NaNLabelEncoder]): dictionary of scikit learn label transformers.
+                If you have unobserved categories in
                 the future, you can use the :py:class:`~pytorch_forecasting.encoders.NaNLabelEncoder` with
                 ``add_nan=True``. Defaults effectively to sklearn's ``LabelEncoder()``. Prefittet encoders will not
                 be fit again.
-            scalers: dictionary of scikit learn scalers. Defaults to sklearn's ``StandardScaler()``.
+            scalers (Dict[StandardScaler, RobustScaler,TorchNormalizer, EncoderNormalizer]): dictionary of
+                scikit-learn scalers. Defaults to sklearn's ``StandardScaler()``.
                 Other options are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
                 :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
                 ``RobustScaler()`` or `None` for using no normalizer / normalizer with `center=0` and `scale=1`
                 (`method="identity"`).
                 Prefittet encoders will not be fit again (with the exception of the
                 :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` that is fit on every encoder sequence).
-            randomize_length: None or False if not to randomize lengths. Tuple of beta distribution concentrations
-                from which
+            randomize_length (Union[None, Tuple[float, float], bool]): None or False if not to randomize lengths.
+                Tuple of beta distribution concentrations from which
                 probabilities are sampled that are used to sample new sequence lengths with a binomial
                 distribution.
                 If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples around minimum encoder length.
                 Defaults to False otherwise.
-            predict_mode: if to only iterate over each timeseries once (only the last provided samples).
+            predict_mode (bool): if to only iterate over each timeseries once (only the last provided samples).
                 Effectively, this will take choose for each time series identified by ``group_ids``
                 the last ``max_prediction_length`` samples of each time series as
                 prediction samples and everthing previous up to ``max_encoder_length`` samples as encoder samples.
