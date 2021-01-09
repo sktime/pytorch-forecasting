@@ -514,3 +514,45 @@ def test_check_nas(test_data):
             min_prediction_length=1,
             min_encoder_length=1,
         )
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(target="volume"),
+        dict(target="agency", scalers={"volume": EncoderNormalizer()}),
+        dict(target="volume", target_normalizer=EncoderNormalizer()),
+        dict(target=["volume", "agency"]),
+    ],
+)
+def test_lagged_variables(test_data, kwargs):
+    dataset = TimeSeriesDataSet(
+        test_data.copy(),
+        time_idx="time_idx",
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=3,  # one more than max lag for validation
+        time_varying_unknown_reals=["volume"],
+        time_varying_unknown_categoricals=["agency"],
+        lags={"volume": [1, 2], "agency": [1, 2]},
+        add_encoder_length=False,
+        **kwargs,
+    )
+
+    x_all, _ = next(iter(dataset.to_dataloader()))
+
+    for name in ["volume", "agency"]:
+        if name in dataset.reals:
+            vars = dataset.reals
+            x = x_all["encoder_cont"]
+        else:
+            vars = dataset.flat_categoricals
+            x = x_all["encoder_cat"]
+        target_idx = vars.index(name)
+        for lag in [1, 2]:
+            lag_idx = vars.index(f"{name}_lagged_by_{lag}")
+            target = x[..., target_idx][:, 0]
+            lagged_target = torch.roll(x[..., lag_idx], -lag, dims=1)[:, 0]
+            assert torch.isclose(target, lagged_target).all(), "lagged target must be the same as non-lagged target"
