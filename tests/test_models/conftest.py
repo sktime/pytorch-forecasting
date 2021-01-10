@@ -53,6 +53,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
     kwargs.setdefault("target", "volume")
     kwargs.setdefault("group_ids", ["agency", "sku"])
     kwargs.setdefault("add_relative_time_idx", True)
+    kwargs.setdefault("time_varying_unknown_reals", ["volume"])
 
     training = TimeSeriesDataSet(
         data_with_covariates[lambda x: x.date < training_cutoff],
@@ -63,7 +64,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
     )
 
     validation = TimeSeriesDataSet.from_dataset(
-        training, data_with_covariates, min_prediction_idx=training.index.time.max() + 1
+        training, data_with_covariates.copy(), min_prediction_idx=training.index.time.max() + 1
     )
     batch_size = 4
     train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)

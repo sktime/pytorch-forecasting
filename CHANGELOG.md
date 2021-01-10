@@ -1,10 +1,11 @@
 # Release Notes
 
-## v0.8.1 UNRELEASED
+## v0.8.1
 
 ### Added
 
 - Add "Release Notes" section to docs (#237)
+- Enable usage of lag variables for any model (#252)
 
 ### Changed
 
@@ -13,6 +14,7 @@
 ### Fixed
 
 - Fix issue for multi-target forecasting when decoder length varies in single batch (#249)
+- Enable longer subsequences for min_prediction_idx that were previously wrongfully excluded (#250)
 
 ---
 

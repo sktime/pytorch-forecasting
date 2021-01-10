@@ -57,6 +57,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         n_validation_samples: int = None,
         n_plotting_samples: int = None,
         target: Union[str, List[str]] = None,
+        target_lags: Dict[str, List[int]] = {},
         loss: DistributionLoss = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -94,6 +95,11 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             n_plotting_samples (int, optional): Number of samples to generate for plotting predictions
                 during training. Defaults to ``n_validation_samples`` if not None or 100 otherwise.
             target (str, optional): Target variable or list of target variables. Defaults to None.
+            target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped to list of time steps by
+                which the variable should be lagged.
+                Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
+                add at least the target variables with the corresponding lags to improve performance.
+                Defaults to no lags, i.e. an empty dictionary.
             loss (DistributionLoss, optional): Distribution loss function. Keep in mind that each distribution
                 loss function might have specific requirements for target normalization.
                 Defaults to :py:class:`~pytorch_forecasting.metrics.NormalDistributionLoss`.
@@ -120,7 +126,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             x_categoricals=x_categoricals,
         )
 
-        assert set(self.encoder_variables) - set(to_list(target)) == set(
+        lagged_target_names = [l for lags in target_lags.values() for l in lags]
+        assert set(self.encoder_variables) - set(to_list(target)) - set(lagged_target_names) == set(
             self.decoder_variables
         ), "Encoder and decoder variables have to be the same apart from target variable"
         for targeti in to_list(target):
@@ -261,15 +268,23 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         else:
             # run in eval, i.e. simulation mode
             target_pos = self.target_positions
+            lagged_target_positions = self.lagged_target_positions
             # repeat for n_samples
             input_vector = input_vector.repeat_interleave(n_samples, 0)
             hidden_state = self.rnn.repeat_interleave(hidden_state, n_samples)
             target_scale = apply_to_list(target_scale, lambda x: x.repeat_interleave(n_samples, 0))
 
             # define function to run at every decoding step
-            def decode_one(idx, target, hidden_state):
+            def decode_one(
+                idx,
+                lagged_targets,
+                hidden_state,
+            ):
                 x = input_vector[:, [idx]]
-                x[:, 0, target_pos] = target
+                x[:, 0, target_pos] = lagged_targets[-1]
+                for lag, lag_positions in lagged_target_positions.items():
+                    if idx > lag:
+                        x[:, 0, lag_positions] = lagged_targets[-lag]
                 prediction, hidden_state = self.decode_all(x, hidden_state)
                 prediction = apply_to_list(prediction, lambda x: x[:, 0])  # select first time step
                 return prediction, hidden_state

@@ -1314,6 +1314,11 @@ class AutoRegressiveBaseModel(BaseModel):
 
     Args:
         target (str): name of target variable
+        target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped each to a dictionary of corresponding
+            lagged variables and their lags.
+            Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
+            add at least the target variables with the corresponding lags to improve performance.
+            Defaults to no lags, i.e. an empty dictionary.
     """
 
     @classmethod
@@ -1333,6 +1338,14 @@ class AutoRegressiveBaseModel(BaseModel):
             LightningModule
         """
         kwargs.setdefault("target", dataset.target)
+        # check that lags for targets are the same
+        lags = {name: lag for name, lag in dataset.lags.items() if name in dataset.target_names}  # filter for targets
+        target0 = dataset.target_names[0]
+        lag = set(lags.get(target0, []))
+        for target in dataset.target_names:
+            assert lag == set(lags.get(target, [])), f"all target lags in dataset must be the same but found {lags}"
+
+        kwargs.setdefault("target_lags", {name: dataset._get_lagged_names(name) for name in lags})
         return super().from_dataset(dataset, **kwargs)
 
     def output_to_prediction(
@@ -1368,9 +1381,6 @@ class AutoRegressiveBaseModel(BaseModel):
         else:
             prediction = prediction_parameters
         # normalize prediction prediction
-        # todo: how to handle lags (-> need list of lags and positions)
-        #   -> then if prediction lenght larger than lag start imputing ->
-        #   before that let timeseriesdataset take care)?
         normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
         if isinstance(normalized_prediction, list):
             input_target = torch.cat(normalized_prediction, dim=-1)
@@ -1385,6 +1395,7 @@ class AutoRegressiveBaseModel(BaseModel):
         first_hidden_state: Any,
         target_scale: Union[List[torch.Tensor], torch.Tensor],
         n_decoder_steps: int,
+        **kwargs,
     ) -> Union[List[torch.Tensor], torch.Tensor]:
         """
         Make predictions in auto-regressive manner.
@@ -1392,12 +1403,15 @@ class AutoRegressiveBaseModel(BaseModel):
         Supports only continuous targets.
 
         Args:
-            decode_one (Callable): function that takes the following arguments:
+            decode_one (Callable): function that takes at least the following arguments:
 
                 * ``idx`` (int): index of decoding step (from 0 to n_decoder_steps-1)
-                * ``current_target`` (Union[List[torch.Tensor], torch.Tensor]): target to use as input
-                  for decoding/predicting
-                * ``current_hidden_state`` (Any): hidden state required for prediction
+                * ``lagged_targets`` (List[torch.Tensor]): list of normalized targets.
+                  List is ``idx + 1`` elements long with the most recent entry at the end, i.e.
+                  ``previous_target = lagged_targets[-1]`` and in general ``lagged_targets[-lag]``.
+                * ``hidden_state`` (Any): Current hidden state required for prediction.
+                  Keys are variable names. Only lags that are greater than ``idx`` are included.
+                * additional arguments are not dynamic but can be passed via the ``**kwargs`` argument
 
                 And returns tuple of (not rescaled) network prediction output and hidden state for next
                 auto-regressive step.
@@ -1406,6 +1420,7 @@ class AutoRegressiveBaseModel(BaseModel):
             first_hidden_state (Any): first hidden state used for decoding
             target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale as in ``x``
             n_decoder_steps (int): number of decoding/prediction steps
+            **kwargs: additional arguments that are passed to the decode_one function.
 
         Returns:
             Union[List[torch.Tensor], torch.Tensor]: re-scaled prediction (i.e. use ``output_transformation = None``
@@ -1454,9 +1469,15 @@ class AutoRegressiveBaseModel(BaseModel):
                     else:  # prediction mode
                         target_pos = self.target_positions
 
-                        def decode_one(idx, target, hidden_state):
+                        def decode_one(idx, lagged_targets, hidden_state):
                             x = input_vector[:, [idx]]
-                            x[:, 0, target_pos] = target  # overwrite at target positions
+                            x[:, 0, target_pos] = lagged_targets[-1]  # overwrite at target positions
+
+                            # overwrite at lagged targets positions
+                            for lag, lag_positions in lagged_target_positions.items():
+                                if idx > lag:  # only overwrite if target has been generated
+                                    x[:, 0, lag_positions] = lagged_targets[-lag]
+
                             decoder_output, hidden_state = self.rnn(x, hidden_state)
                             decoder_output = decoder_output[:, 0]  # take first timestep
                             # from hidden state size to outputs
@@ -1484,11 +1505,18 @@ class AutoRegressiveBaseModel(BaseModel):
         current_target = first_target
         current_hidden_state = first_hidden_state
 
+        normalized_output = [first_target]
+
         for idx in range(n_decoder_steps):
-            current_target, current_hidden_state = decode_one(idx, current_target, current_hidden_state)
+            # get lagged targets
+            current_target, current_hidden_state = decode_one(
+                idx, lagged_targets=normalized_output, hidden_state=current_hidden_state, **kwargs
+            )
 
             # get prediction and its normalized version for the next step
             prediction, current_target = self.output_to_prediction(current_target, target_scale=target_scale)
+            # save normalized output for lagged targets
+            normalized_output.append(current_target)
             # set output to unnormalized samples, append each target as n_batch_samples x n_random_samples
 
             output.append(prediction)
@@ -1514,6 +1542,19 @@ class AutoRegressiveBaseModel(BaseModel):
             dtype=torch.long,
         )
 
+    @property
+    def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:
+        """
+        Positions of lagged target variable(s) in covariates.
+
+        Returns:
+            Dict[int, torch.LongTensor]: dictionary mapping integer lags to tensor of variable positions.
+        """
+        raise Exception(
+            "lagged targets can only be used with class inheriting "
+            "from AutoRegressiveBaseModelWithCovariates but not from AutoRegressiveBaseModel"
+        )
+
 
 class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegressiveBaseModel):
     """
@@ -1523,6 +1564,11 @@ class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegress
 
     Args:
         target (str): name of target variable
+        target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped each to a dictionary of corresponding
+            lagged variables and their lags.
+            Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
+            add at least the target variables with the corresponding lags to improve performance.
+            Defaults to no lags, i.e. an empty dictionary.
         static_categoricals (List[str]): names of static categorical variables
         static_reals (List[str]): names of static continuous variables
         time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
@@ -1555,3 +1601,32 @@ class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegress
             device=self.device,
             dtype=torch.long,
         )
+
+    @property
+    def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:
+        """
+        Positions of lagged target variable(s) in covariates.
+
+        Returns:
+            Dict[int, torch.LongTensor]: dictionary mapping integer lags to tensor of variable positions.
+        """
+        # todo: expand for categorical targets
+        if len(self.hparams.target_lags) == 0:
+            return {}
+        else:
+            # extract lags which are the same across all targets
+            lags = list(next(iter(self.hparams.target_lags.values())).values())
+            lag_names = {l: [] for l in lags}
+            for targeti_lags in self.hparams.target_lags.values():
+                for name, l in targeti_lags.items():
+                    lag_names[l].append(name)
+
+            lag_pos = {
+                lag: torch.tensor(
+                    [self.hparams.x_reals.index(name) for name in to_list(names)],
+                    device=self.device,
+                    dtype=torch.long,
+                )
+                for lag, names in lag_names.items()
+            }
+            return lag_pos
