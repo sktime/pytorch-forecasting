@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.8.1 Adding supports for lag variables (10/01/2021)
+## v0.8.1 Adding support for lag variables (10/01/2021)
 
 ### Added
 
@@ -15,6 +15,10 @@
 
 - Fix issue for multi-target forecasting when decoder length varies in single batch (#249)
 - Enable longer subsequences for min_prediction_idx that were previously wrongfully excluded (#250)
+
+### Contributors
+
+- jdb78
 
 ---
 
