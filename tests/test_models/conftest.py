@@ -53,6 +53,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
     kwargs.setdefault("target", "volume")
     kwargs.setdefault("group_ids", ["agency", "sku"])
     kwargs.setdefault("add_relative_time_idx", True)
+    kwargs.setdefault("time_varying_unknown_reals", ["volume"])
 
     training = TimeSeriesDataSet(
         data_with_covariates[lambda x: x.date < training_cutoff],

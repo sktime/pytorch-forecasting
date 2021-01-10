@@ -157,7 +157,7 @@ class TimeSeriesDataSet(Dataset):
         add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str] = "auto",
         categorical_encoders: Dict[str, NaNLabelEncoder] = {},
-        scalers: Dict[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer] = {},
+        scalers: Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]] = {},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
         predict_mode: bool = False,
     ):
@@ -256,7 +256,7 @@ class TimeSeriesDataSet(Dataset):
                 the future, you can use the :py:class:`~pytorch_forecasting.encoders.NaNLabelEncoder` with
                 ``add_nan=True``. Defaults effectively to sklearn's ``LabelEncoder()``. Prefittet encoders will not
                 be fit again.
-            scalers (Dict[StandardScaler, RobustScaler,TorchNormalizer, EncoderNormalizer]): dictionary of
+            scalers (Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]]): dictionary of
                 scikit-learn scalers. Defaults to sklearn's ``StandardScaler()``.
                 Other options are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
                 :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
@@ -452,7 +452,7 @@ class TimeSeriesDataSet(Dataset):
         return {f"{name}_lagged_by_{lag}": lag for lag in self.lags.get(name, [])}
 
     @property
-    @lru_cache
+    @lru_cache(None)
     def lagged_variables(self) -> Dict[str, str]:
         """
         Lagged variables.
@@ -467,7 +467,7 @@ class TimeSeriesDataSet(Dataset):
         return vars
 
     @property
-    @lru_cache
+    @lru_cache(None)
     def lagged_targets(self) -> Dict[str, str]:
         """Subset of `lagged_variables` but only includes variables that are lagged targets."""
         vars = {}
@@ -476,7 +476,7 @@ class TimeSeriesDataSet(Dataset):
         return vars
 
     @property
-    @lru_cache
+    @lru_cache(None)
     def min_lag(self) -> int:
         """
         Minimum number of time steps variables are lagged.
@@ -490,7 +490,7 @@ class TimeSeriesDataSet(Dataset):
             return min([min(lag) for lag in self.lags.values()])
 
     @property
-    @lru_cache
+    @lru_cache(None)
     def max_lag(self) -> int:
         """
         Maximum number of time steps variables are lagged.
@@ -544,7 +544,7 @@ class TimeSeriesDataSet(Dataset):
         ), f"target_normalizer has to be either None or of class TorchNormalizer but found {self.target_normalizer}"
 
     @property
-    @lru_cache
+    @lru_cache(None)
     def _group_ids_mapping(self) -> Dict[str, str]:
         """
         Mapping of group id names to group ids used to identify series in dataset -
@@ -554,7 +554,7 @@ class TimeSeriesDataSet(Dataset):
         return {name: f"__group_id__{name}" for name in self.group_ids}
 
     @property
-    @lru_cache
+    @lru_cache(None)
     def _group_ids(self) -> List[str]:
         """
         Group ids used to identify series in dataset.
@@ -1018,7 +1018,7 @@ class TimeSeriesDataSet(Dataset):
         return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
 
     @property
-    @lru_cache
+    @lru_cache(None)
     def target_names(self) -> List[str]:
         """
         List of targets.
@@ -1214,13 +1214,16 @@ class TimeSeriesDataSet(Dataset):
             for name, id in self._group_ids_mapping.items():
                 missing_groups[id] = self.transform_values(name, missing_groups[id], inverse=True, group_id=True)
             warnings.warn(
-                "Min encoder length and/or min_prediction_idx and/or min prediction length is too large for "
+                "Min encoder length and/or min_prediction_idx and/or min prediction length and/or lags are "
+                "too large for "
                 f"{len(missing_groups)} series/groups which therefore are not present in the dataset index. "
-                "This means no predictions can be made for those series"
+                "This means no predictions can be made for those series. "
                 f"First 10 removed groups: {list(missing_groups.iloc[:10].to_dict(orient='index').values())}",
                 UserWarning,
             )
-        assert len(df_index) > 0, "filters should not remove entries"
+        assert (
+            len(df_index) > 0
+        ), "filters should not remove entries all entries - check encoder/decoder lengths and lags"
 
         return df_index
 

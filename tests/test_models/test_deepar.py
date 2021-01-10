@@ -100,19 +100,22 @@ def _integration(
                 target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="logit")
             ),
         ),
+        dict(
+            data_loader_kwargs=dict(
+                lags={"volume": [2, 5]}, target="volume", time_varying_unknown_reals=["volume"], min_encoder_length=10
+            )
+        ),
+        dict(
+            data_loader_kwargs=dict(
+                time_varying_unknown_reals=["volume", "discount"],
+                target=["volume", "discount"],
+                lags={"volume": [2], "discount": [2]},
+            )
+        ),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
     _integration(data_with_covariates, tmp_path, gpus, **kwargs)
-
-
-def test_integration_for_multiple_targets(data_with_covariates, tmp_path, gpus):
-    _integration(
-        data_with_covariates,
-        tmp_path,
-        gpus,
-        data_loader_kwargs=dict(time_varying_unknown_reals=["volume", "discount"], target=["volume", "discount"]),
-    )
 
 
 @pytest.fixture
