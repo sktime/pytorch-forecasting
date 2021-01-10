@@ -56,7 +56,7 @@ def test_data():
 @pytest.fixture
 def test_dataset(test_data):
     training = TimeSeriesDataSet(
-        test_data,
+        test_data.copy(),
         time_idx="time_idx",
         target="volume",
         time_varying_known_reals=["price_regular", "time_idx"],

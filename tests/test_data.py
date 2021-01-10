@@ -247,7 +247,7 @@ def test_from_dataset_equivalence(test_data):
         add_relative_time_idx=True,
         add_target_scales=True,
     )
-    validation1 = TimeSeriesDataSet.from_dataset(training, test_data, predict=True)
+    validation1 = TimeSeriesDataSet.from_dataset(training, test_data.copy(), predict=True)
     validation2 = TimeSeriesDataSet.from_dataset(
         training,
         test_data[lambda x: x.time_idx > x.time_idx.min() + 2],
