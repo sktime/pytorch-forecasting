@@ -1408,10 +1408,10 @@ class AutoRegressiveBaseModel(BaseModel):
                 * ``idx`` (int): index of decoding step (from 0 to n_decoder_steps-1)
                 * ``lagged_targets`` (List[torch.Tensor]): list of normalized targets.
                   List is ``idx + 1`` elements long with the most recent entry at the end, i.e.
-                  ``previous_target=lagged_targets[-1]`` and in general ``lagged_targets[-lag]``.
-                * ``hidden_state`` (Any): current hidden state required for prediction
+                  ``previous_target = lagged_targets[-1]`` and in general ``lagged_targets[-lag]``.
+                * ``hidden_state`` (Any): Current hidden state required for prediction.
                   Keys are variable names. Only lags that are greater than ``idx`` are included.
-                * additional arguments are not dynamic but can be passed via the **kwargs argument
+                * additional arguments are not dynamic but can be passed via the ``**kwargs`` argument
 
                 And returns tuple of (not rescaled) network prediction output and hidden state for next
                 auto-regressive step.
