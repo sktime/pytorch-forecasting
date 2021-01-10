@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.8.1
+## v0.8.1 Adding supports for lag variables (10/01/2021)
 
 ### Added
 
