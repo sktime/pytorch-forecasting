@@ -160,7 +160,7 @@ class BaseModel(LightningModule):
             return out
 
         # no transformation logic
-        elif self.output_transformer is None or out.get("output_transformation", None) is None:
+        elif self.output_transformer is None and out.get("output_transformation", None) is None:
             out = out["prediction"]
 
         # distribution transformation
