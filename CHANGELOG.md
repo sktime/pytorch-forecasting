@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.8.2 Fix for output transformer
+
+- Added missing output transformation which was switched off by default (#260)
+
 ## v0.8.1 Adding support for lag variables (10/01/2021)
 
 ### Added
