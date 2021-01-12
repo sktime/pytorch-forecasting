@@ -1349,7 +1349,10 @@ class AutoRegressiveBaseModel(BaseModel):
         return super().from_dataset(dataset, **kwargs)
 
     def output_to_prediction(
-        self, normalized_prediction_parameters: torch.Tensor, target_scale: Union[List[torch.Tensor], torch.Tensor]
+        self,
+        normalized_prediction_parameters: torch.Tensor,
+        target_scale: Union[List[torch.Tensor], torch.Tensor],
+        **kwargs,
     ) -> Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]:
         """
         Convert network output to rescaled and normalized prediction.
@@ -1359,17 +1362,18 @@ class AutoRegressiveBaseModel(BaseModel):
         Args:
             normalized_prediction_parameters (torch.Tensor): network prediction output
             target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale to rescale network output
+            **kwargs: extra arguments for dictionary passed to :py:meth:`~transform_output` method.
 
         Returns:
             Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]: tuple of rescaled prediction and
                 normalized prediction (e.g. for input into next auto-regressive step)
         """
+        single_prediction = normalized_prediction_parameters.ndim == 2
+        if single_prediction:  # add time dimension as it is expected
+            normalized_prediction_parameters = normalized_prediction_parameters.unsqueeze(1)
         # transform into real space
         prediction_parameters = self.transform_output(
-            dict(
-                prediction=normalized_prediction_parameters,
-                target_scale=target_scale,
-            )
+            dict(prediction=normalized_prediction_parameters, target_scale=target_scale, **kwargs)
         )
         # todo: handle classification
         # sample value(s) from distribution and  select first sample
@@ -1386,6 +1390,11 @@ class AutoRegressiveBaseModel(BaseModel):
             input_target = torch.cat(normalized_prediction, dim=-1)
         else:
             input_target = normalized_prediction  # set next input target to normalized prediction
+
+        # remove time dimension
+        if single_prediction:
+            prediction = apply_to_list(prediction, lambda x: x.squeeze(1))
+            input_target = input_target.squeeze(1)
         return prediction, input_target
 
     def decode_autoregressive(
