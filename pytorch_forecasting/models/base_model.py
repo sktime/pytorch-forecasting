@@ -1368,9 +1368,9 @@ class AutoRegressiveBaseModel(BaseModel):
             Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]: tuple of rescaled prediction and
                 normalized prediction (e.g. for input into next auto-regressive step)
         """
-        single_prediction = normalized_prediction_parameters.ndim == 2
+        single_prediction = to_list(normalized_prediction_parameters)[0].ndim == 2
         if single_prediction:  # add time dimension as it is expected
-            normalized_prediction_parameters = normalized_prediction_parameters.unsqueeze(1)
+            normalized_prediction_parameters = apply_to_list(normalized_prediction_parameters, lambda x: x.unsqueeze(1))
         # transform into real space
         prediction_parameters = self.transform_output(
             dict(prediction=normalized_prediction_parameters, target_scale=target_scale, **kwargs)
