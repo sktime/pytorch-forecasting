@@ -355,13 +355,15 @@ class TimeSeriesDataSet(Dataset):
         assert data.index.is_unique, "data index has to be unique"
 
         # add time index relative to prediction position
+        if self.add_relative_time_idx or self.add_encoder_length:
+            data = data.copy()  # only copies indices (underlying data is NOT copied)
         if self.add_relative_time_idx:
             assert (
                 "relative_time_idx" not in data.columns
             ), "relative_time_idx is a protected column and must not be present in data"
             if "relative_time_idx" not in self.time_varying_known_reals and "relative_time_idx" not in self.reals:
                 self.time_varying_known_reals.append("relative_time_idx")
-            data["relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
+            data.loc[:, "relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # add decoder length to static real variables
         if self.add_encoder_length:
@@ -370,7 +372,7 @@ class TimeSeriesDataSet(Dataset):
             ), "encoder_length is a protected column and must not be present in data"
             if "encoder_length" not in self.time_varying_known_reals and "encoder_length" not in self.reals:
                 self.static_reals.append("encoder_length")
-            data["encoder_length"] = 0  # dummy - real value will be set dynamiclly in __getitem__()
+            data.loc[:, "encoder_length"] = 0  # dummy - real value will be set dynamiclly in __getitem__()
 
         # add lags
         assert self.min_lag > 0, "lags should be positive"
