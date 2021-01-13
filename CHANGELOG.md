@@ -6,6 +6,10 @@
 
 - Underlying data is copied if modified. Original data is not modified inplace (#263)
 
+### Contributors
+
+- jdb78
+
 ## v0.8.2 Fix for output transformer (12/01/2021)
 
 - Added missing output transformation which was switched off by default (#260)
