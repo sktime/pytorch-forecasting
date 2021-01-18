@@ -818,11 +818,13 @@ class BaseModel(LightningModule):
                 elif isinstance(v0, (tuple, list)) and len(v0) > 0 and isinstance(v0[0], torch.Tensor):
 
                     output_cat[name] = []
-                    for k in range(len(v0)):
-                        output_cat[name].append(torch.cat([out[name][k] for out in output], dim=0))
+                    for target_id in range(len(v0)):
+                        output_cat[name].append(torch.cat([out[name][target_id] for out in output], dim=0))
                 else:
                     try:
-                        output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
+                        output_cat[name] = []
+                        for target_id in range(len(v0)):
+                            output_cat[name].append(np.concatenate([out[name][target_id] for out in output], axis=0))
                     except ValueError:
                         output_cat[name] = [out[name] for out in output]
             output = output_cat
@@ -835,16 +837,18 @@ class BaseModel(LightningModule):
             for name in x_list[0].keys():
                 v0 = x_list[0][name]
                 if isinstance(v0, torch.Tensor):
-                    x_cat[name] = torch.cat([out[name] for out in x_list], dim=0)
+                    x_cat[name] = torch.cat([x_values[name] for x_values in x_list], dim=0)
                 elif isinstance(v0, (tuple, list)) and len(v0) > 0 and isinstance(v0[0], torch.Tensor):
                     x_cat[name] = []
-                    for k in range(len(v0)):
-                        x_cat[name].append(torch.cat([out[name][k] for out in x_list], dim=0))
+                    for target_id in range(len(v0)):
+                        x_cat[name].append(torch.cat([x_values[name][target_id] for x_values in x_list], dim=0))
                 else:
                     try:
-                        x_cat[name] = np.concatenate([out[name] for out in x_list], axis=0)
+                        x_cat[name] = []
+                        for target_id in range(len(v0)):
+                            x_cat[name].append(np.concatenate([x_values[name][target_id] for x_values in x_list], axis=0))
                     except ValueError:
-                        x_cat[name] = [out[name] for out in x_list]
+                        x_cat[name] = [x_values[name] for x_values in x_list]
             x_cat = x_cat
             output.append(x_cat)
         if return_index:
