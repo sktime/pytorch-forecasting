@@ -816,7 +816,10 @@ class BaseModel(LightningModule):
                 if isinstance(v0, torch.Tensor):
                     output_cat[name] = torch.cat([out[name] for out in output], dim=0)
                 elif isinstance(v0, (tuple, list)) and len(v0) > 0 and isinstance(v0[0], torch.Tensor):
-                    output_cat[name] = [torch.cat(out[name], dim=0) for out in output]
+
+                    output_cat[name] = []
+                    for k in range(len(v0)):
+                        output_cat[name].append(torch.cat([out[name][k] for out in output], dim=0))
                 else:
                     try:
                         output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
@@ -830,7 +833,18 @@ class BaseModel(LightningModule):
         if return_x:
             x_cat = {}
             for name in x_list[0].keys():
-                x_cat[name] = torch.cat([x[name] for x in x_list], dim=0)
+                v0 = x_list[0][name]
+                if isinstance(v0, torch.Tensor):
+                    x_cat[name] = torch.cat([out[name] for out in x_list], dim=0)
+                elif isinstance(v0, (tuple, list)) and len(v0) > 0 and isinstance(v0[0], torch.Tensor):
+                    x_cat[name] = []
+                    for k in range(len(v0)):
+                        x_cat[name].append(torch.cat([out[name][k] for out in x_list], dim=0))
+                else:
+                    try:
+                        x_cat[name] = np.concatenate([out[name] for out in x_list], axis=0)
+                    except ValueError:
+                        x_cat[name] = [out[name] for out in x_list]
             x_cat = x_cat
             output.append(x_cat)
         if return_index:
