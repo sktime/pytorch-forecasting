@@ -896,7 +896,7 @@ test = ["fastjsonschema", "testpath", "pytest", "pytest-cov"]
 
 [[package]]
 name = "nbsphinx"
-version = "0.8.0"
+version = "0.8.1"
 description = "Jupyter Notebook Tools for Sphinx"
 category = "dev"
 optional = false
@@ -2508,8 +2508,8 @@ nbformat = [
     {file = "nbformat-5.0.8.tar.gz", hash = "sha256:f545b22138865bfbcc6b1ffe89ed5a2b8e2dc5d4fe876f2ca60d8e6f702a30f8"},
 ]
 nbsphinx = [
-    {file = "nbsphinx-0.8.0-py3-none-any.whl", hash = "sha256:14ccbbd3d5944fd7e14087f67b83ea75cd41c9eb679561258237987d322e9381"},
-    {file = "nbsphinx-0.8.0.tar.gz", hash = "sha256:369c16fe93af14c878d61fb3e81d838196fb35b27deade2cd7b95efe1fe56ea0"},
+    {file = "nbsphinx-0.8.1-py3-none-any.whl", hash = "sha256:ef75e15047e36faa9741267286b9dc7d5a0d16302f65adee73885e8949ec6f75"},
+    {file = "nbsphinx-0.8.1.tar.gz", hash = "sha256:24d59aa3a1077ba58d9769c64c38fb05b761a1af21c1ac15f6393500cd008ea6"},
 ]
 nest-asyncio = [
     {file = "nest_asyncio-1.4.3-py3-none-any.whl", hash = "sha256:dbe032f3e9ff7f120e76be22bf6e7958e867aed1743e6894b8a9585fe8495cc9"},
