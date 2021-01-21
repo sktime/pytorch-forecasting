@@ -5,6 +5,7 @@
 ### Fixed
 
 - Underlying data is copied if modified. Original data is not modified inplace (#263)
+- Allow plotting of interpretation on passed figure for NBEATS (#280)
 
 ### Contributors
 
