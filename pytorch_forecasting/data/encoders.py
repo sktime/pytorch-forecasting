@@ -30,20 +30,19 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         self.warn = warn
         super().__init__()
 
-    def fit_transform(self, y: pd.Series) -> np.ndarray:
+    def fit_transform(self, y: pd.Series, overwrite: bool = False) -> np.ndarray:
         """
         Fit and transform data.
 
         Args:
             y (pd.Series): input data
+            overwrite (bool): if to overwrite current mappings or if to add to it.
 
         Returns:
             np.ndarray: encoded data
         """
-        if self.add_nan:
-            self.fit(y)
-            return self.transform(y)
-        return super().transform(y)
+        self.fit(y, overwrite=overwrite)
+        return self.transform(y)
 
     @staticmethod
     def is_numeric(y: pd.Series) -> bool:
@@ -59,26 +58,40 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         """
         return y.dtype.kind in "bcif" or (isinstance(y, pd.CategoricalDtype) and y.cat.categories.dtype.kind in "bcif")
 
-    def fit(self, y: pd.Series):
+    def fit(self, y: pd.Series, overwrite: bool = False):
         """
         Fit transformer
 
         Args:
             y (pd.Series): input data to fit on
+            overwrite (bool): if to overwrite current mappings or if to add to it.
 
         Returns:
             NaNLabelEncoder: self
         """
+        if not overwrite and hasattr(self, "classes_"):
+            offset = len(self.classes_)
+        else:
+            offset = 0
+            self.classes_ = {}
+
+        # determine new classes
         if self.add_nan:
             if self.is_numeric(y):
                 nan = np.nan
             else:
                 nan = "nan"
-            self.classes_ = {nan: 0}
-            for idx, val in enumerate(np.unique(y)):
-                self.classes_[val] = idx + 1
+            self.classes_[nan] = 0
+            idx = 1
         else:
-            self.classes_ = {val: idx for idx, val in enumerate(np.unique(y))}
+            idx = 0
+
+        idx += offset
+        for val in np.unique(y):
+            if val not in self.classes_:
+                self.classes_[val] = idx
+                idx += 1
+
         self.classes_vector_ = np.array(list(self.classes_.keys()))
         return self
 
