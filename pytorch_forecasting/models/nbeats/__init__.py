@@ -293,7 +293,7 @@ class NBeats(BaseModel):
             return self.transform_output(dict(prediction=y[[idx]], target_scale=x["target_scale"][[idx]]))[0]
 
         # plot target vs prediction
-        ax[0].plot(time, torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]]).cpu(), label="target")
+        ax[0].plot(time, torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]]).detach().cpu(), label="target")
         ax[0].plot(
             time,
             torch.cat(
@@ -321,11 +321,17 @@ class NBeats(BaseModel):
                 continue
             if title == "trend":
                 ax[1].plot(
-                    time, to_prediction(output[title]).cpu(), label=title.capitalize(), c=next(prop_cycle)["color"]
+                    time,
+                    to_prediction(output[title]).detach().cpu(),
+                    label=title.capitalize(),
+                    c=next(prop_cycle)["color"],
                 )
             else:
                 ax2.plot(
-                    time, to_prediction(output[title]).cpu(), label=title.capitalize(), c=next(prop_cycle)["color"]
+                    time,
+                    to_prediction(output[title]).detach().cpu(),
+                    label=title.capitalize(),
+                    c=next(prop_cycle)["color"],
                 )
         ax[1].set_xlabel("Time")
         ax[1].set_ylabel("Decomposition")

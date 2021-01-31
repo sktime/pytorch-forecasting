@@ -739,7 +739,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # attention
         fig, ax = plt.subplots()
-        attention = interpretation["attention"].cpu()
+        attention = interpretation["attention"].detach().cpu()
         attention = attention / attention.sum(-1).unsqueeze(-1)
         ax.plot(
             np.arange(-self.hparams.max_encoder_length, attention.size(0) - self.hparams.max_encoder_length), attention
@@ -761,13 +761,13 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             return fig
 
         figs["static_variables"] = make_selection_plot(
-            "Static variables importance", interpretation["static_variables"].cpu(), self.static_variables
+            "Static variables importance", interpretation["static_variables"].detach().cpu(), self.static_variables
         )
         figs["encoder_variables"] = make_selection_plot(
-            "Encoder variables importance", interpretation["encoder_variables"].cpu(), self.encoder_variables
+            "Encoder variables importance", interpretation["encoder_variables"].detach().cpu(), self.encoder_variables
         )
         figs["decoder_variables"] = make_selection_plot(
-            "Decoder variables importance", interpretation["decoder_variables"].cpu(), self.decoder_variables
+            "Decoder variables importance", interpretation["decoder_variables"].detach().cpu(), self.decoder_variables
         )
 
         return figs
@@ -779,7 +779,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # extract interpretations
         interpretation = {
             # use padded_stack because decoder length histogram can be of different length
-            name: padded_stack([x["interpretation"][name] for x in outputs], side="right", value=0).sum(0)
+            name: padded_stack([x["interpretation"][name].detach() for x in outputs], side="right", value=0).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
         # normalize attention with length histogram squared to account for: 1. zeros in attention and
@@ -811,7 +811,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # log lengths of encoder/decoder
         for type in ["encoder", "decoder"]:
             fig, ax = plt.subplots()
-            lengths = padded_stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
+            lengths = (
+                padded_stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs])
+                .sum(0)
+                .detach()
+                .cpu()
+            )
             if type == "decoder":
                 start = 1
             else:
@@ -832,5 +837,5 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         for name, emb in self.input_embeddings.items():
             labels = self.hparams.embedding_labels[name]
             self.logger.experiment.add_embedding(
-                emb.weight.data.cpu(), metadata=labels, tag=name, global_step=self.global_step
+                emb.weight.data.detach().cpu(), metadata=labels, tag=name, global_step=self.global_step
             )
