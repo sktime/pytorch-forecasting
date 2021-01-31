@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.8.3 UNRELEASED
+## v0.8.3 Bugfix release (31/01/2021)
 
 ### Added
 
@@ -13,6 +13,7 @@
 - Allow plotting of interpretation on passed figure for NBEATS (#280)
 - Fix memory leak for plotting and logging interpretation (#311)
 - Correct shape of `predict()` method output for multi-targets (#268)
+- Remove cloudpickle to allow GPU trained models to be loaded on CPU devices from checkpoints (#314)
 
 ### Contributors
 
