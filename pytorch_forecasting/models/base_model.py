@@ -75,18 +75,22 @@ def _concatenate_output(
         if isinstance(v0, torch.Tensor):
             output_cat[name] = _torch_cat_na([out[name] for out in output])
         # concatenate list of tensors
-        elif isinstance(v0, (tuple, list)) and len(v0) > 0 and isinstance(v0[0], torch.Tensor):
+        elif isinstance(v0, (tuple, list)) and len(v0) > 0:
             output_cat[name] = []
             for target_id in range(len(v0)):
-                output_cat[name].append(_torch_cat_na([out[name][target_id] for out in output]))
-        # concatenate everything else
+                if isinstance(v0[target_id], torch.Tensor):
+                    output_cat[name].append(_torch_cat_na([out[name][target_id] for out in output]))
+                else:
+                    try:
+                        output_cat[name].append(np.concatenate([out[name][target_id] for out in output], axis=0))
+                    except ValueError:
+                        output_cat[name] = [item for out in output for item in out[name][target_id]]
+        # flatten list for everything else
         else:
-            output_cat[name] = []
-            for target_id in range(len(v0)):
-                try:
-                    output_cat[name].append(np.concatenate([out[name][target_id] for out in output], axis=0))
-                except ValueError:
-                    output_cat[name] = [item for out in output for item in out[name][target_id]]
+            try:
+                output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
+            except ValueError:
+                output_cat[name] = [item for out in output for item in out[name]]
     return output_cat
 
 
