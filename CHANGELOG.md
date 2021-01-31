@@ -13,6 +13,7 @@
 - Allow plotting of interpretation on passed figure for NBEATS (#280)
 - Fix memory leak for plotting and logging interpretation (#311)
 - Correct shape of `predict()` method output for multi-targets (#268)
+- Remove cloudpickle to allow GPU trained models to be loaded on CPU devices from checkpoints (#314)
 
 ### Contributors
 
