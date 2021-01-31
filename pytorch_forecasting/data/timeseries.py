@@ -542,6 +542,10 @@ class TimeSeriesDataSet(Dataset):
         assert isinstance(
             self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)
         ), f"target_normalizer has to be either None or of class TorchNormalizer but found {self.target_normalizer}"
+        assert not self.multi_target or isinstance(self.target_normalizer, MultiNormalizer), (
+            "multiple targets / list of targets requires MultiNormalizer as target_normalizer "
+            f"but found {self.target_normalizer}"
+        )
 
     @property
     @lru_cache(None)

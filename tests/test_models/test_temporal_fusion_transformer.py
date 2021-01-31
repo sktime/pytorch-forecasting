@@ -35,7 +35,7 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
     # check training
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
-        max_epochs=3,
+        max_epochs=2,
         gpus=gpus,
         weights_summary="top",
         gradient_clip_val=0.1,
@@ -91,7 +91,24 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
             net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
             # check prediction
-            net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+            predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True)
+            pred_len = len(multiple_dataloaders_with_covariates["val"].dataset)
+
+            # check that output is of correct shape
+            def check(x):
+                if isinstance(x, (tuple, list)):
+                    for xi in x:
+                        check(xi)
+                elif isinstance(x, dict):
+                    for xi in x.values():
+                        check(xi)
+                else:
+                    assert pred_len == x.shape[0], "first dimension should be prediction length"
+
+            check(predictions)
+            check(x)
+            check(index)
+
             # check prediction on gpu
             if not (isinstance(gpus, int) and gpus == 0):
                 net.to("cuda")

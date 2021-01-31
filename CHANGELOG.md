@@ -12,11 +12,13 @@
 - Underlying data is copied if modified. Original data is not modified inplace (#263)
 - Allow plotting of interpretation on passed figure for NBEATS (#280)
 - Fix memory leak for plotting and logging interpretation (#311)
+- Correct shape of `predict()` method output for multi-targets (#268)
 
 ### Contributors
 
 - jdb78
 - kigawas
+- snumumrik
 
 ## v0.8.2 Fix for output transformer (12/01/2021)
 

@@ -26,6 +26,74 @@ from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import apply_to_list, create_mask, get_embedding_size, groupby_apply, to_list
 
 
+def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
+    """
+    Concatenate tensor along ``dim=0`` and add nans along ``dim=1`` if necessary.
+
+    Allows concatenation of tensors where ``dim=1`` are not equal.
+    Missing values are filled up with ``nan``.
+
+    Args:
+        x (List[torch.Tensor]): list of tensors to concatenate along dimension 0
+
+    Returns:
+        torch.Tensor: concatenated tensor
+    """
+    if x[0].ndim > 1:
+        first_lens = [xi.shape[1] for xi in x]
+        max_first_len = max(first_lens)
+        if max_first_len > min(first_lens):
+            x = [
+                xi
+                if xi.shape[1] == max_first_len
+                else torch.cat(
+                    [xi, torch.full((xi.shape[0], max_first_len - xi.shape[1], *xi.shape[2:]), float("nan"))], dim=1
+                )
+                for xi in x
+            ]
+    return torch.cat(x, dim=0)
+
+
+def _concatenate_output(
+    output: List[Dict[str, List[Union[List[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]]]]
+) -> Dict[str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]]:
+    """
+    Concatenate multiple batches of output dictionary.
+
+    Args:
+        output (List[Dict[str, List[Union[List[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]]]]):
+            list of outputs to concatenate. Each entry corresponds to a batch.
+
+    Returns:
+        Dict[str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]]:
+            concatenated output
+    """
+    output_cat = {}
+    for name in output[0].keys():
+        v0 = output[0][name]
+        # concatenate simple tensors
+        if isinstance(v0, torch.Tensor):
+            output_cat[name] = _torch_cat_na([out[name] for out in output])
+        # concatenate list of tensors
+        elif isinstance(v0, (tuple, list)) and len(v0) > 0:
+            output_cat[name] = []
+            for target_id in range(len(v0)):
+                if isinstance(v0[target_id], torch.Tensor):
+                    output_cat[name].append(_torch_cat_na([out[name][target_id] for out in output]))
+                else:
+                    try:
+                        output_cat[name].append(np.concatenate([out[name][target_id] for out in output], axis=0))
+                    except ValueError:
+                        output_cat[name] = [item for out in output for item in out[name][target_id]]
+        # flatten list for everything else
+        else:
+            try:
+                output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
+            except ValueError:
+                output_cat[name] = [item for out in output for item in out[name]]
+    return output_cat
+
+
 class BaseModel(LightningModule):
     """
     BaseModel from which new timeseries models should inherit from.
@@ -672,6 +740,13 @@ class BaseModel(LightningModule):
             kwargs["output_transformer"] = dataset.target_normalizer
         net = cls(**kwargs)
         net.dataset_parameters = dataset.get_parameters()
+        if dataset.multi_target:
+            assert isinstance(
+                net.loss, MultiLoss
+            ), f"multiple targets require loss to be MultiLoss but found {net.loss}"
+        else:
+            assert not isinstance(net.loss, MultiLoss), "MultiLoss not compatible with single target"
+
         return net
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
@@ -806,33 +881,17 @@ class BaseModel(LightningModule):
         # concatenate output (of different batches)
         if isinstance(mode, (tuple, list)) or mode != "raw":
             if isinstance(output[0], (tuple, list)) and len(output[0]) > 0 and isinstance(output[0][0], torch.Tensor):
-                output = [torch.cat(out, dim=0) for out in output]
+                output = [_torch_cat_na([out[idx] for out in output]) for idx in range(len(output[0]))]
             else:
-                output = torch.cat(output, dim=0)
+                output = _torch_cat_na(output)
         elif mode == "raw":
-            output_cat = {}
-            for name in output[0].keys():
-                v0 = output[0][name]
-                if isinstance(v0, torch.Tensor):
-                    output_cat[name] = torch.cat([out[name] for out in output], dim=0)
-                elif isinstance(v0, (tuple, list)) and len(v0) > 0 and isinstance(v0[0], torch.Tensor):
-                    output_cat[name] = [torch.cat(out[name], dim=0) for out in output]
-                else:
-                    try:
-                        output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
-                    except ValueError:
-                        output_cat[name] = [out[name] for out in output]
-            output = output_cat
+            output = _concatenate_output(output)
 
         # generate output
         if return_x or return_index or return_decoder_lengths:
             output = [output]
         if return_x:
-            x_cat = {}
-            for name in x_list[0].keys():
-                x_cat[name] = torch.cat([x[name] for x in x_list], dim=0)
-            x_cat = x_cat
-            output.append(x_cat)
+            output.append(_concatenate_output(x_list))
         if return_index:
             output.append(pd.concat(index, axis=0, ignore_index=True))
         if return_decoder_lengths:
@@ -851,7 +910,6 @@ class BaseModel(LightningModule):
     ) -> Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]:
         """
         Predict partial dependency.
-
 
         Args:
             data (Union[DataLoader, pd.DataFrame, TimeSeriesDataSet]): data
