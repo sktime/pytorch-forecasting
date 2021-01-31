@@ -11,6 +11,7 @@
 
 - Underlying data is copied if modified. Original data is not modified inplace (#263)
 - Allow plotting of interpretation on passed figure for NBEATS (#280)
+- Fix memory leak for plotting and logging interpretation (#311)
 
 ### Contributors
 
