@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.8.3 UNRELEASED
+## v0.8.3 Bugfix release (31/01/2021)
 
 ### Added
 
