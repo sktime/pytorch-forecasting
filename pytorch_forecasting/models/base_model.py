@@ -419,11 +419,11 @@ class BaseModel(LightningModule):
                 else:
                     loss_value = metric(y_point, y_true)
                 if len(y_hat_point_detached) > 1:
-                    target_tag = f"Target {idx}"
+                    target_tag = f"Target {idx}_"
                 else:
                     target_tag = ""
                 self.log(
-                    f"{target_tag}_{['val', 'train'][self.training]}_{metric.name}",
+                    f"{target_tag}{['val', 'train'][self.training]}_{metric.name}",
                     loss_value,
                     on_step=self.training,
                     on_epoch=True,
