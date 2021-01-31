@@ -5,7 +5,6 @@ from copy import deepcopy
 import inspect
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
-import cloudpickle
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -753,15 +752,11 @@ class BaseModel(LightningModule):
         checkpoint["dataset_parameters"] = getattr(
             self, "dataset_parameters", None
         )  # add dataset parameters for making fast predictions
-        checkpoint["loss"] = cloudpickle.dumps(self.loss)  # restore loss
-        checkpoint["output_transformer"] = cloudpickle.dumps(self.output_transformer)  # restore output transformer
         # hyper parameters are passed as arguments directly and not as single dictionary
         checkpoint["hparams_name"] = "kwargs"
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
-        self.loss = cloudpickle.loads(checkpoint["loss"])
-        self.output_transformer = cloudpickle.loads(checkpoint["output_transformer"])
 
     def predict(
         self,
