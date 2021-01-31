@@ -638,7 +638,7 @@ class QuantileLoss(MultiHorizonMetric):
 
 class SMAPE(MultiHorizonMetric):
     """
-    Symmetric mean average percentage. Assumes ``y >= 0``.
+    Symmetric mean absolute percentage. Assumes ``y >= 0``.
 
     Defined as ``2*(y - y_pred).abs() / (y.abs() + y_pred.abs())``
     """
@@ -651,7 +651,7 @@ class SMAPE(MultiHorizonMetric):
 
 class MAPE(MultiHorizonMetric):
     """
-    Mean average percentage. Assumes ``y >= 0``.
+    Mean absolute percentage. Assumes ``y >= 0``.
 
     Defined as ``(y - y_pred).abs() / y.abs()``
     """
