@@ -2,13 +2,20 @@
 
 ## v0.8.3 UNRELEASED
 
+### Added
+
+- Make tuning trainer kwargs overwritable (#300)
+- Allow adding categories to NaNEncoder (#303)
+
 ### Fixed
 
 - Underlying data is copied if modified. Original data is not modified inplace (#263)
+- Allow plotting of interpretation on passed figure for NBEATS (#280)
 
 ### Contributors
 
 - jdb78
+- kigawas
 
 ## v0.8.2 Fix for output transformer (12/01/2021)
 

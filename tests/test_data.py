@@ -50,6 +50,15 @@ def test_NaNLabelEncoder(data, allow_nan):
         assert encoder.transform(fit_data)[0] > 0, "First value should not be 0 if not nan"
 
 
+def test_NaNLabelEncoder_add():
+    encoder = NaNLabelEncoder(add_nan=False)
+    encoder.fit(np.array(["a", "b", "c"]))
+    encoder2 = deepcopy(encoder)
+    encoder2.fit(np.array(["d"]))
+    assert encoder2.transform(np.array(["a"]))[0] == 0, "a must be encoded as 0"
+    assert encoder2.transform(np.array(["d"]))[0] == 3, "d must be encoded as 3"
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

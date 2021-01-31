@@ -634,7 +634,9 @@ class TimeSeriesDataSet(Dataset):
 
         # encode group ids - this encoding
         for name, group_name in self._group_ids_mapping.items():
-            self.categorical_encoders[group_name] = NaNLabelEncoder().fit(data[name].to_numpy().reshape(-1))
+            # use existing encoder - but a copy of it not too loose current encodings
+            encoder = deepcopy(self.categorical_encoders.get(group_name, NaNLabelEncoder()))
+            self.categorical_encoders[group_name] = encoder.fit(data[name].to_numpy().reshape(-1), overwrite=False)
             data[group_name] = self.transform_values(name, data[name], inverse=False, group_id=True)
 
         # encode categoricals first to ensure that group normalizer for relies on encoded categories
@@ -1105,7 +1107,7 @@ class TimeSeriesDataSet(Dataset):
         cls,
         parameters: Dict[str, Any],
         data: pd.DataFrame,
-        stop_randomization: bool = False,
+        stop_randomization: bool = None,
         predict: bool = False,
         **update_kwargs,
     ):
@@ -1126,13 +1128,18 @@ class TimeSeriesDataSet(Dataset):
         """
         parameters = deepcopy(parameters)
         if predict:
-            if not stop_randomization:
+            if stop_randomization is None:
+                stop_randomization = True
+            elif not stop_randomization:
                 warnings.warn(
                     "If predicting, no randomization should be possible - setting stop_randomization=True", UserWarning
                 )
                 stop_randomization = True
             parameters["min_prediction_length"] = parameters["max_prediction_length"]
             parameters["predict_mode"] = True
+        elif stop_randomization is None:
+            stop_randomization = False
+
         if stop_randomization:
             parameters["randomize_length"] = None
         parameters.update(update_kwargs)

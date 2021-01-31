@@ -103,9 +103,24 @@ def setup(app):
 # extension configuration
 mathjax_path = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"
 
+# theme options
 html_theme_options = {
     "github_url": "https://github.com/jdb78/pytorch-forecasting",
 }
+
+html_theme_options = {"search_bar_position": "navbar"}
+
+html_sidebars = {
+    "index": [],
+    "getting_started": [],
+    "data": [],
+    "models": [],
+    "metrics": [],
+    "faq": [],
+    "contribute": [],
+    "CHANGELOG": [],
+}
+
 
 autodoc_member_order = "groupwise"
 autoclass_content = "both"

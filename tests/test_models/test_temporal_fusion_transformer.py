@@ -232,7 +232,12 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
             max_epochs=1,
             n_trials=3,
             log_dir=tmp_path,
-            trainer_kwargs=dict(fast_dev_run=True, limit_train_batches=5),
+            trainer_kwargs=dict(
+                fast_dev_run=True,
+                limit_train_batches=5,
+                # overwrite default trainer kwargs
+                progress_bar_refresh_rate=20,
+            ),
             use_learning_rate_finder=use_learning_rate_finder,
         )
     finally:

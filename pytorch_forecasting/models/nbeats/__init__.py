@@ -285,7 +285,7 @@ class NBeats(BaseModel):
         if ax is None:
             fig, ax = plt.subplots(2, 1, figsize=(6, 8))
         else:
-            fig = ax.get_figure()
+            fig = ax[0].get_figure()
 
         time = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
 
