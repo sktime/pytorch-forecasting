@@ -65,7 +65,7 @@ from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 data = ...
 
 # define dataset
-max_encode_length = 36
+max_encoder_length = 36
 max_prediction_length = 6
 training_cutoff = "YYYY-MM-DD"  # day for cutoff
 
@@ -74,7 +74,7 @@ training = TimeSeriesDataSet(
     time_idx= ...,
     target= ...,
     group_ids=[ ... ],
-    max_encode_length=max_encode_length,
+    max_encoder_length=max_encoder_length,
     max_prediction_length=max_prediction_length,
     static_categoricals=[ ... ],
     static_reals=[ ... ],
