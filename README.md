@@ -58,7 +58,7 @@ It covers basic as well as advanced architectures.
 ```python
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
-
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 
 # load data
