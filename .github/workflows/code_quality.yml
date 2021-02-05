@@ -3,11 +3,11 @@ name: Code quality
 on:
   push:
     branches: [master]
-  pull_request_target:
+  pull_request:
     branches: [master]
 
 jobs:
-  run-linters:
+  annotation-linters:
     name: Run linters
     runs-on: ubuntu-latest
 
@@ -15,8 +15,8 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v1
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
         with:
           python-version: 3.8
 
@@ -25,6 +25,7 @@ jobs:
 
       - name: Run style linters
         uses: wearerequired/lint-action@v1
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.owner.login == github.repository_owner }}
         with:
           github_token: ${{ secrets.github_token }}
           # Enable linters
@@ -32,13 +33,65 @@ jobs:
           flake8: true
           # mypy: true
 
-      - name: Run additional linters
-        uses: ricardochaves/python-lint@v1.3.0
+  linter-black:
+      name: Check code formatting with Black
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v2
+        - name: Set up Python 3.8
+          uses: actions/setup-python@v2
+          with:
+            python-version: 3.8
+        - name: Install Black
+          run: pip install black
+        - name: Run Black
+          run: black --check .
+
+  imports-check-isort:
+    name: Check valid import formatting with isort
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
         with:
-          python-root-list: "pytorch_forecasting examples tests"
-          use-pylint: false
-          use-pycodestyle: false
-          use-flake8: false
-          use-black: false
-          use-mypy: false
-          use-isort: true
+          python-version: 3.8
+      - name: Install isort
+        run: pip install isort==5.6.4
+      - name: Run isort
+        run: isort --check-only --diff .
+
+  linter-flake8:
+    name: Check valid formatting with flake8
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: pip install flake8
+      - name: Run checks
+        run: flake8
+
+
+  pre-commit-hooks:
+    name: Check that pre-commit hooks pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: pip install pre-commit
+
+      - name: Run checks
+        run: pre-commit run --all-files

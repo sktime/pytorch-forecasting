@@ -10,7 +10,8 @@ import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
-from pytorch_forecasting.metrics import CrossEntropy, PoissonLoss, QuantileLoss
+from pytorch_forecasting.data.encoders import MultiNormalizer
+from pytorch_forecasting.metrics import CrossEntropy, MultiLoss, PoissonLoss, QuantileLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
@@ -33,15 +34,16 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
 
     # check training
     logger = TensorBoardLogger(tmp_path)
-    checkpoint = ModelCheckpoint(filepath=tmp_path)
     trainer = pl.Trainer(
-        checkpoint_callback=checkpoint,
-        max_epochs=3,
+        max_epochs=2,
         gpus=gpus,
         weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        fast_dev_run=True,
+        checkpoint_callback=True,
+        default_root_dir=tmp_path,
+        limit_train_batches=2,
+        limit_val_batches=2,
         logger=logger,
     )
     # test monotone constraints automatically
@@ -54,10 +56,15 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
 
     with cuda_context:
         if isinstance(train_dataloader.dataset.target_normalizer, NaNLabelEncoder):
-            output_size = len(train_dataloader.dataset.target_normalizer.classes_)
             loss = CrossEntropy()
+        elif isinstance(train_dataloader.dataset.target_normalizer, MultiNormalizer):
+            loss = MultiLoss(
+                [
+                    CrossEntropy() if isinstance(normalizer, NaNLabelEncoder) else QuantileLoss()
+                    for normalizer in train_dataloader.dataset.target_normalizer.normalizers
+                ]
+            )
         else:
-            output_size = 7
             loss = QuantileLoss()
         net = TemporalFusionTransformer.from_dataset(
             train_dataloader.dataset,
@@ -70,7 +77,6 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
             log_interval=5,
             log_val_interval=1,
             log_gradient_flow=True,
-            output_size=output_size,
             monotone_constaints=monotone_constaints,
         )
         net.size()
@@ -82,11 +88,27 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
             )
 
             # check loading
-            fname = f"{trainer.checkpoint_callback.dirpath}/epoch=0.ckpt"
-            net = TemporalFusionTransformer.load_from_checkpoint(fname)
+            net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
             # check prediction
-            net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+            predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True)
+            pred_len = len(multiple_dataloaders_with_covariates["val"].dataset)
+
+            # check that output is of correct shape
+            def check(x):
+                if isinstance(x, (tuple, list)):
+                    for xi in x:
+                        check(xi)
+                elif isinstance(x, dict):
+                    for xi in x.values():
+                        check(xi)
+                else:
+                    assert pred_len == x.shape[0], "first dimension should be prediction length"
+
+            check(predictions)
+            check(x)
+            check(index)
+
             # check prediction on gpu
             if not (isinstance(gpus, int) and gpus == 0):
                 net.to("cuda")
@@ -115,9 +137,15 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@pytest.mark.parametrize("distributed_backend", ["ddp", "dp", "ddp2"])
-def test_distribution(dataloaders_with_covariates, tmp_path, distributed_backend, gpus):
-    if gpus == 0:  # only run test on GPU
+def test_init_shared_network(dataloaders_with_covariates):
+    dataset = dataloaders_with_covariates["train"].dataset
+    net = TemporalFusionTransformer.from_dataset(dataset, share_single_variable_networks=True)
+    net.predict(dataset)
+
+
+@pytest.mark.parametrize("accelerator", ["ddp", "dp", "ddp2"])
+def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
+    if isinstance(gpus, int) and gpus == 0:  # only run test on GPU
         return
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
@@ -129,12 +157,12 @@ def test_distribution(dataloaders_with_covariates, tmp_path, distributed_backend
     trainer = pl.Trainer(
         checkpoint_callback=checkpoint,
         max_epochs=3,
-        gpus=gpus,
+        gpus=list(range(torch.cuda.device_count())),
         weights_summary="top",
         gradient_clip_val=0.1,
         fast_dev_run=True,
         logger=logger,
-        distributed_backend=distributed_backend,
+        accelerator=accelerator,
     )
     try:
         trainer.fit(
@@ -204,7 +232,12 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
             max_epochs=1,
             n_trials=3,
             log_dir=tmp_path,
-            trainer_kwargs=dict(fast_dev_run=True, limit_train_batches=5),
+            trainer_kwargs=dict(
+                fast_dev_run=True,
+                limit_train_batches=5,
+                # overwrite default trainer kwargs
+                progress_bar_refresh_rate=20,
+            ),
             use_learning_rate_finder=use_learning_rate_finder,
         )
     finally:

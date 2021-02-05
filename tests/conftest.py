@@ -11,6 +11,18 @@ from pytorch_forecasting import TimeSeriesDataSet  # isort:skip
 from pytorch_forecasting.data.examples import get_stallion_data  # isort:skip
 
 
+# for vscode debugging: https://stackoverflow.com/a/62563106/14121677
+if os.getenv("_PYTEST_RAISE", "0") != "0":
+
+    @pytest.hookimpl(tryfirst=True)
+    def pytest_exception_interact(call):
+        raise call.excinfo.value
+
+    @pytest.hookimpl(tryfirst=True)
+    def pytest_internalerror(excinfo):
+        raise excinfo.value
+
+
 @pytest.fixture
 def test_data():
     data = get_stallion_data()
@@ -44,7 +56,7 @@ def test_data():
 @pytest.fixture
 def test_dataset(test_data):
     training = TimeSeriesDataSet(
-        test_data,
+        test_data.copy(),
         time_idx="time_idx",
         target="volume",
         time_varying_known_reals=["price_regular", "time_idx"],

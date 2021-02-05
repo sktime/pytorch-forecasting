@@ -10,6 +10,7 @@ from pytorch_forecasting.metrics import (
     MAE,
     SMAPE,
     AggregationMetric,
+    BetaDistributionLoss,
     CompositeMetric,
     LogNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
@@ -72,19 +73,17 @@ def test_none_reduction():
 
 
 @pytest.mark.parametrize(
-    ["log_scale", "center", "coerce_positive"],
-    itertools.product([True, False], [True, False], [True, False]),
+    ["center", "transformation"],
+    itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-def test_NormalDistributionLoss(log_scale, center, coerce_positive):
+def test_NormalDistributionLoss(center, transformation):
     mean = 1000.0
     std = 200.0
     n = 100000
-    target = NormalDistributionLoss.distribution_class(loc=mean, scale=std).sample_n(n)
-    if log_scale or coerce_positive:
+    target = NormalDistributionLoss.distribution_class(loc=mean, scale=std).sample((n,))
+    if transformation in ["log", "log1p", "relu", "softplus"]:
         target = target.abs()
-    if log_scale and coerce_positive:
-        return  # combination invalid for normalizer (tested somewhere else)
-    normalizer = TorchNormalizer(log_scale=log_scale, center=center, coerce_positive=coerce_positive)
+    normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
     target_scale = normalizer.get_parameters().unsqueeze(0)
     scale = torch.ones_like(normalized_target) * normalized_target.std()
@@ -93,31 +92,27 @@ def test_NormalDistributionLoss(log_scale, center, coerce_positive):
         dim=-1,
     )
     loss = NormalDistributionLoss()
-    if log_scale or coerce_positive:
+    if transformation in ["logit", "log", "log1p", "softplus", "relu", "logit"]:
         with pytest.raises(AssertionError):
-            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
-        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
-        samples = loss.sample_n(rescaled_parameters, 1)
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+        samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.2)
         if center:  # if not centered, softplus distorts std too much for testing
             assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.7)
 
 
 @pytest.mark.parametrize(
-    ["log_scale", "center", "coerce_positive", "log_zero_value"],
-    itertools.product([True, False], [True, False], [True, False], [-np.inf, 0.0]),
+    ["center", "transformation"],
+    itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-def test_LogNormalDistributionLoss(log_scale, center, coerce_positive, log_zero_value):
+def test_LogNormalDistributionLoss(center, transformation):
     mean = 2.0
     std = 0.2
     n = 100000
-    target = LogNormalDistributionLoss.distribution_class(loc=mean, scale=std).sample_n(n)
-    if log_scale and coerce_positive:
-        return  # combination invalid for normalizer (tested somewhere else)
-    normalizer = TorchNormalizer(
-        log_scale=log_scale, center=center, coerce_positive=coerce_positive, log_zero_value=log_zero_value
-    )
+    target = LogNormalDistributionLoss.distribution_class(loc=mean, scale=std).sample((n,))
+    normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
     target_scale = normalizer.get_parameters().unsqueeze(0)
     scale = torch.ones_like(normalized_target) * normalized_target.std()
@@ -127,42 +122,63 @@ def test_LogNormalDistributionLoss(log_scale, center, coerce_positive, log_zero_
     )
     loss = LogNormalDistributionLoss()
 
-    if not log_scale or log_zero_value > -1e9:
+    if transformation not in ["log", "log1p"]:
         with pytest.raises(AssertionError):
-            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
-        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
-        samples = loss.sample_n(rescaled_parameters, 1)
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+        samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(mean), samples.log().mean(), atol=0.1, rtol=0.2)
         if center:  # if not centered, softplus distorts std too much for testing
             assert torch.isclose(torch.as_tensor(std), samples.log().std(), atol=0.1, rtol=0.7)
 
 
 @pytest.mark.parametrize(
-    ["log_scale", "center", "coerce_positive", "log_zero_value"],
-    itertools.product([True, False], [True, False], [True, False], [-np.inf, 0.0]),
+    ["center", "transformation"],
+    itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-def test_NegativeBinomialDistributionLoss(log_scale, center, coerce_positive, log_zero_value):
+def test_NegativeBinomialDistributionLoss(center, transformation):
     mean = 100.0
     shape = 1.0
     n = 100000
-    target = NegativeBinomialDistributionLoss().map_x_to_distribution(torch.tensor([mean, shape])).sample_n(n)
+    target = NegativeBinomialDistributionLoss().map_x_to_distribution(torch.tensor([mean, shape])).sample((n,))
     std = target.std()
-    if log_scale and coerce_positive:
-        return  # combination invalid for normalizer (tested somewhere else)
-    normalizer = TorchNormalizer(
-        log_scale=log_scale, center=center, coerce_positive=coerce_positive, log_zero_value=log_zero_value
-    )
+    normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
     target_scale = normalizer.get_parameters().unsqueeze(0)
     parameters = torch.stack([normalized_target, 1.0 * torch.ones_like(normalized_target)], dim=-1)
     loss = NegativeBinomialDistributionLoss()
 
-    if center:
+    if center or transformation in ["logit"]:
         with pytest.raises(AssertionError):
-            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
+            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
-        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, transformer=normalizer)
-        samples = loss.sample_n(rescaled_parameters, 1)
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+        samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.5)
         assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.5)
+
+
+@pytest.mark.parametrize(
+    ["center", "transformation"],
+    itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
+)
+def test_BetaDistributionLoss(center, transformation):
+    initial_mean = 0.1
+    initial_shape = 10
+    n = 100000
+    target = BetaDistributionLoss().map_x_to_distribution(torch.tensor([initial_mean, initial_shape])).sample((n,))
+    normalizer = TorchNormalizer(center=center, transformation=transformation)
+    normalized_target = normalizer.fit_transform(target).view(1, -1)
+    target_scale = normalizer.get_parameters().unsqueeze(0)
+    parameters = torch.stack([normalized_target, 1.0 * torch.ones_like(normalized_target)], dim=-1)
+    loss = BetaDistributionLoss()
+
+    if transformation not in ["logit"] or not center:
+        with pytest.raises(AssertionError):
+            loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+    else:
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+        samples = loss.sample(rescaled_parameters, 1)
+        assert torch.isclose(torch.as_tensor(initial_mean), samples.mean(), atol=0.01, rtol=0.01)  # mean=0.1
+        assert torch.isclose(target.std(), samples.std(), atol=0.02, rtol=0.3)  # std=0.09

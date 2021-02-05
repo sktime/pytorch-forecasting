@@ -6,7 +6,7 @@ name: Test
 on:
   push:
     branches: [master]
-  pull_request_target:
+  pull_request:
     branches: [master]
 
 jobs:
@@ -86,6 +86,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         if: always()
+        continue-on-error: true
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: coverage.xml

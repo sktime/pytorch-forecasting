@@ -16,7 +16,7 @@ Time series data set
 ---------------------
 
 The time series dataset is the central data-holding object in PyTorch Forecasting. It primarily takes
-a pandas DataFrame along with some metadata.
+a pandas DataFrame along with some metadata. See the :ref:`tutorial on passing data to models <passing-data>` to learn more it is coupled to models.
 
 .. autoclass:: pytorch_forecasting.data.timeseries.TimeSeriesDataSet
    :noindex:

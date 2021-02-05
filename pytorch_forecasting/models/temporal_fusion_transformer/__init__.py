@@ -1,18 +1,20 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
+from copy import deepcopy
 from typing import Callable, Dict, List, Tuple, Union
 
 from matplotlib import pyplot as plt
 import numpy as np
+from pytorch_lightning.metrics import Metric as LightningMetric
 import torch
 from torch import nn
-from torch.nn.utils import rnn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
+from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, MultiLoss, QuantileLoss
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
-from pytorch_forecasting.models.nn import MultiEmbedding
+from pytorch_forecasting.models.nn import LSTM, MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,
     GateAddNorm,
@@ -21,7 +23,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import autocorrelation, integer_histogram, padded_stack
+from pytorch_forecasting.utils import autocorrelation, create_mask, integer_histogram, padded_stack, to_list
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
@@ -30,7 +32,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         hidden_size: int = 16,
         lstm_layers: int = 1,
         dropout: float = 0.1,
-        output_size: int = 7,
+        output_size: Union[int, List[int]] = 7,
+        n_targets: int = 1,
         loss: MultiHorizonMetric = None,
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
@@ -86,16 +89,18 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             hidden_size: hidden size of network which is its main hyperparameter and can range from 8 to 512
             lstm_layers: number of LSTM layers (2 is mostly optimal)
             dropout: dropout rate
-            output_size: number of outputs (e.g. number of quantiles for QuantileLoss)
+            output_size: number of outputs (e.g. number of quantiles for QuantileLoss and one target or list
+                of output sizes).
+            n_targets: number of targets. Defaults to 1.
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
             max_encoder_length: length to encode (can be far longer than the decoder length but does not have to be)
-            static_categoricals: integer of positions of static categorical variables
-            static_reals: integer of positions of static continuous variables
-            time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
-            time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
-            time_varying_reals_encoder: integer of positions of continuous variables for encoder
-            time_varying_reals_decoder: integer of positions of continuous variables for decoder
+            static_categoricals: names of static categorical variables
+            static_reals: names of static continuous variables
+            time_varying_categoricals_encoder: names of categorical variables for encoder
+            time_varying_categoricals_decoder: names of categorical variables for decoder
+            time_varying_reals_encoder: names of continuous variables for encoder
+            time_varying_reals_decoder: names of continuous variables for decoder
             categorical_groups: dictionary where values
                 are list of categorical variables that are forming together a new categorical
                 variable which is the key in the dictionary
@@ -123,7 +128,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 This constraint significantly slows down training. Defaults to {}.
             share_single_variable_networks (bool): if to share the single variable networks between the encoder and
                 decoder. Defaults to False.
-            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+            logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are logged during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
@@ -133,7 +138,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             loss = QuantileLoss()
         self.save_hyperparameters()
         # store loss function separately as it is a module
-        assert isinstance(loss, MultiHorizonMetric), "Loss has to of class `MultiHorizonMetric`"
+        assert isinstance(loss, LightningMetric), "Loss has to be a PyTorch Lightning `Metric`"
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # processing inputs
@@ -266,7 +271,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # lstm encoder (history) and decoder (future) for local processing
-        self.lstm_encoder = nn.LSTM(
+        self.lstm_encoder = LSTM(
             input_size=self.hparams.hidden_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.lstm_layers,
@@ -274,7 +279,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             batch_first=True,
         )
 
-        self.lstm_decoder = nn.LSTM(
+        self.lstm_decoder = LSTM(
             input_size=self.hparams.hidden_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.lstm_layers,
@@ -313,7 +318,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # output processing -> no dropout at this late stage
         self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=None, trainable_add=False)
 
-        self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
+        if self.hparams.n_targets > 1:  # if to run with multiple targets
+            self.output_layer = nn.ModuleList(
+                [nn.Linear(self.hparams.hidden_size, output_size) for output_size in self.hparams.output_size]
+            )
+        else:
+            self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
 
     @classmethod
     def from_dataset(
@@ -333,9 +343,33 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             TemporalFusionTransformer
         """
-        new_kwargs = dict(
-            max_encoder_length=dataset.max_encoder_length,
-        )
+        # add maximum encoder length
+        new_kwargs = dict(max_encoder_length=dataset.max_encoder_length)
+
+        # infer output size
+        def get_output_size(normalizer, loss):
+            if isinstance(loss, QuantileLoss):
+                return len(loss.quantiles)
+            elif isinstance(normalizer, NaNLabelEncoder):
+                return len(normalizer.classes_)
+            else:
+                return 1
+
+        loss = kwargs.get("loss", QuantileLoss())
+        # handle multiple targets
+        new_kwargs["n_targets"] = len(dataset.target_names)
+        if new_kwargs["n_targets"] > 1:  # try to infer number of ouput sizes
+            new_kwargs["output_size"] = [
+                get_output_size(normalizer, l)
+                for normalizer, l in zip(dataset.target_normalizer.normalizers, loss.metrics)
+            ]
+            if not isinstance(loss, MultiLoss):
+                loss = MultiLoss([deepcopy(loss)] * new_kwargs["n_targets"])
+            new_kwargs["loss"] = loss
+        else:
+            new_kwargs["output_size"] = get_output_size(dataset.target_normalizer, loss)
+
+        # update defaults
         new_kwargs.update(kwargs)
 
         # create class and return
@@ -369,7 +403,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         #   data and self
         decoder_mask = attend_step >= predict_step
         # do not attend to steps where data is padded
-        encoder_mask = self._get_mask(encoder_lengths.max(), encoder_lengths)
+        encoder_mask = create_mask(encoder_lengths.max(), encoder_lengths)
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
@@ -431,36 +465,24 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # LSTM
-        # run lstm at least once, i.e. encode length has to be > 0
-        lstm_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
         # calculate initial state
         input_hidden = self.static_context_initial_hidden_lstm(static_embedding).expand(
             self.hparams.lstm_layers, -1, -1
         )
         input_cell = self.static_context_initial_cell_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1)
 
-        # # run local encoder
+        # run local encoder
         encoder_output, (hidden, cell) = self.lstm_encoder(
-            rnn.pack_padded_sequence(
-                embeddings_varying_encoder, lstm_encoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-            ),
-            (input_hidden, input_cell),
+            embeddings_varying_encoder, (input_hidden, input_cell), lengths=encoder_lengths, enforce_sorted=False
         )
-        encoder_output, _ = rnn.pad_packed_sequence(encoder_output, batch_first=True)
-        # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
-        no_encoding = (encoder_lengths == 0)[None, :, None]  # shape: n_lstm_layers x batch_size x hidden_size
-        hidden = hidden.masked_scatter(no_encoding, input_hidden)
-        cell = cell.masked_scatter(no_encoding, input_cell)
 
         # run local decoder
         decoder_output, _ = self.lstm_decoder(
-            rnn.pack_padded_sequence(
-                embeddings_varying_decoder, decoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-            ),
+            embeddings_varying_decoder,
             (hidden, cell),
+            lengths=decoder_lengths,
+            enforce_sorted=False,
         )
-
-        decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)
@@ -495,7 +517,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # skip connection over temporal fusion decoder (not LSTM decoder despite the LSTM output contains
         # a skip from the variable selection network)
         output = self.pre_output_gate_norm(output, lstm_output[:, max_encoder_length:])
-        output = self.output_layer(output)
+        if self.hparams.n_targets > 1:  # if to use multi-target architecture
+            output = [output_layer(output) for output_layer in self.output_layer]
+        else:
+            output = self.output_layer(output)
 
         return dict(
             prediction=output,
@@ -511,18 +536,27 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
     def on_fit_end(self):
-        if self.log_interval(train=True) > 0:
-            self._log_embeddings()
+        if self.log_interval > 0:
+            self.log_embeddings()
 
-    def step(self, x, y, batch_idx, label="train"):
+    def step(self, x, y, batch_idx):
         """
         run at each step for training or validation
         """
         # extract data and run model
-        log, out = super().step(x, y, batch_idx, label=label)
+        log, out = super().step(x, y, batch_idx)
         # calculate interpretations etc for latter logging
-        if self.log_interval(label == "train") > 0:
-            detached_output = {name: tensor.detach() for name, tensor in out.items()}
+        if self.log_interval > 0:
+
+            def detach(v):
+                if isinstance(v, torch.Tensor):
+                    return v.detach()
+                elif isinstance(v, (list, tuple)) and len(v) > 0 and isinstance(v[0], torch.Tensor):
+                    return [vp.detach() for vp in v]
+                else:
+                    return v
+
+            detached_output = {name: detach(out_part) for name, out_part in out.items()}
             interpretation = self.interpret_output(
                 detached_output,
                 reduction="sum",
@@ -531,12 +565,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             log["interpretation"] = interpretation
         return log, out
 
-    def epoch_end(self, outputs, label="train"):
+    def epoch_end(self, outputs):
         """
         run at epoch end for training or validation
         """
-        if self.log_interval(label == "train") > 0:
-            self._log_interpretation(outputs, label=label)
+        if self.log_interval > 0:
+            self.log_interpretation(outputs)
 
     def interpret_output(
         self,
@@ -568,7 +602,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze(-2)
-        encode_mask = self._get_mask(encoder_variables.size(1), out["encoder_lengths"])
+        encode_mask = create_mask(encoder_variables.size(1), out["encoder_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
             out["encoder_lengths"]
@@ -577,7 +611,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         decoder_variables = out["decoder_variables"].squeeze(-2)
-        decode_mask = self._get_mask(decoder_variables.size(1), out["decoder_lengths"])
+        decode_mask = create_mask(decoder_variables.size(1), out["decoder_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
 
@@ -674,17 +708,18 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # add attention on secondary axis
         if plot_attention:
             interpretation = self.interpret_output(out)
-            ax = fig.axes[0]
-            ax2 = ax.twinx()
-            ax2.set_ylabel("Attention")
-            encoder_length = x["encoder_lengths"][idx]
-            ax2.plot(
-                torch.arange(-encoder_length, 0),
-                interpretation["attention"][idx, :encoder_length].detach().cpu(),
-                alpha=0.2,
-                color="k",
-            )
-        fig.tight_layout()
+            for f in to_list(fig):
+                ax = f.axes[0]
+                ax2 = ax.twinx()
+                ax2.set_ylabel("Attention")
+                encoder_length = x["encoder_lengths"][idx]
+                ax2.plot(
+                    torch.arange(-encoder_length, 0),
+                    interpretation["attention"][idx, :encoder_length].detach().cpu(),
+                    alpha=0.2,
+                    color="k",
+                )
+                f.tight_layout()
         return fig
 
     def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]) -> Dict[str, plt.Figure]:
@@ -704,7 +739,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # attention
         fig, ax = plt.subplots()
-        attention = interpretation["attention"].cpu()
+        attention = interpretation["attention"].detach().cpu()
         attention = attention / attention.sum(-1).unsqueeze(-1)
         ax.plot(
             np.arange(-self.hparams.max_encoder_length, attention.size(0) - self.hparams.max_encoder_length), attention
@@ -726,25 +761,25 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             return fig
 
         figs["static_variables"] = make_selection_plot(
-            "Static variables importance", interpretation["static_variables"].cpu(), self.static_variables
+            "Static variables importance", interpretation["static_variables"].detach().cpu(), self.static_variables
         )
         figs["encoder_variables"] = make_selection_plot(
-            "Encoder variables importance", interpretation["encoder_variables"].cpu(), self.encoder_variables
+            "Encoder variables importance", interpretation["encoder_variables"].detach().cpu(), self.encoder_variables
         )
         figs["decoder_variables"] = make_selection_plot(
-            "Decoder variables importance", interpretation["decoder_variables"].cpu(), self.decoder_variables
+            "Decoder variables importance", interpretation["decoder_variables"].detach().cpu(), self.decoder_variables
         )
 
         return figs
 
-    def _log_interpretation(self, outputs, label="train"):
+    def log_interpretation(self, outputs):
         """
         Log interpretation metrics to tensorboard.
         """
         # extract interpretations
         interpretation = {
             # use padded_stack because decoder length histogram can be of different length
-            name: padded_stack([x["interpretation"][name] for x in outputs], side="right", value=0).sum(0)
+            name: padded_stack([x["interpretation"][name].detach() for x in outputs], side="right", value=0).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
         # normalize attention with length histogram squared to account for: 1. zeros in attention and
@@ -766,6 +801,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
+        label = ["val", "train"][self.training]
         # log to tensorboard
         for name, fig in figs.items():
             self.logger.experiment.add_figure(
@@ -775,7 +811,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # log lengths of encoder/decoder
         for type in ["encoder", "decoder"]:
             fig, ax = plt.subplots()
-            lengths = padded_stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs]).sum(0).cpu()
+            lengths = (
+                padded_stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs])
+                .sum(0)
+                .detach()
+                .cpu()
+            )
             if type == "decoder":
                 start = 1
             else:
@@ -789,12 +830,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
             )
 
-    def _log_embeddings(self):
+    def log_embeddings(self):
         """
         Log embeddings to tensorboard
         """
         for name, emb in self.input_embeddings.items():
             labels = self.hparams.embedding_labels[name]
             self.logger.experiment.add_embedding(
-                emb.weight.data.cpu(), metadata=labels, tag=name, global_step=self.global_step
+                emb.weight.data.detach().cpu(), metadata=labels, tag=name, global_step=self.global_step
             )

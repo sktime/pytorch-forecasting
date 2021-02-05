@@ -64,6 +64,17 @@ If you have only one or very few timeseries,
 they should be very long in order for a deep learning approach to work well. Consider also
 more traditional approaches.
 
+Type of prediction task
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Not every can do regression, classification or handle multiple targets. Some are exclusively
+geared towards a single task. For example, :py:class:`~pytorch_forecasting.models.nbeats.NBeats`
+can only be used for regression on a single target without covariates while the
+:py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer` supports
+multiple targets and even hetrogeneous targets where some are continuous variables and others categorical,
+i.e. regression and classification at the same time. :py:class:`~pytorch_forecasting.models.deepar.DeepAR`
+can handle multiple targets but only works for regression tasks.
+
 Supporting uncertainty
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -79,7 +90,7 @@ be adversely impacted. In this case, a non-parameteric model will do much better
 :py:class:`~pytorch_forecasting.models.deepar.DeepAR` is an example for a parameteric model while
 the :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`
 can output quantile forecasts that can fit any distribution.
-Models based on normalizing flows merry the two worlds by providing a non-parameteric estimate
+Models based on normalizing flows marry the two worlds by providing a non-parameteric estimate
 of a full probability distribution. PyTorch Forecasting currently does not provide
 support for these but
 `Pyro, a package for probabilistic programming <https://pyro.ai/examples/normalizing_flows_i.html>`_ does
@@ -111,6 +122,8 @@ number of samples.
 
 Implementing new architectures
 -------------------------------
+
+Please see the :ref:`Using custom data and implementing custom models <new-model-tutorial>` tutorial on how implement basic and more advanced models.
 
 Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base_model`.
 

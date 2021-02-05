@@ -18,17 +18,11 @@ Otherwise, you can proceed with
 ``pip install pytorch-forecasting``
 
 
-Alternatively, to installl the package via conda: 
+Alternatively, to installl the package via conda:
 
-``conda install pytorch-forecasting -c conda-forge``
+``conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge``
 
-If you do not have pytorch installed, install it is recommended to install it first from the pytorch channel:
-
-``conda install pytorch -c pytorch``
-
-If you have installed a version below PyTorch 1.6, update it:
-
-``conda update pytorch -c pytorch``
+PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
 
 
 Usage
@@ -36,7 +30,7 @@ Usage
 
 .. currentmodule:: pytorch_forecasting
 
-The library builds strongly upon `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ which allows to train models with ease, 
+The library builds strongly upon `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ which allows to train models with ease,
 spot bugs quickly and train on multiple GPUs out-of-the-box.
 
 Further, we rely on `Tensorboard <https://pytorch.org/docs/stable/tensorboard.html>`_ for logging training progress.
@@ -57,6 +51,9 @@ The general setup for training and testing a model is
    `favourite package <https://pytorch-lightning.readthedocs.io/en/latest/hyperparameters.html#hyperparameter-optimization>`_.
 #. Train the model with the same learning rate schedule on the entire dataset.
 #. Load the model from the model checkpoint and apply it to new data.
+
+
+The :ref:`Tutorials <tutorials>` section provides detailled guidance and examples on how to use models and implement new ones.
 
 
 Example

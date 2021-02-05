@@ -16,8 +16,10 @@ from pytorch_forecasting.data import (
     TimeSeriesDataSet,
     TimeSynchronizedBatchSampler,
 )
+from pytorch_forecasting.data.encoders import MultiNormalizer, TorchNormalizer
 from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data.timeseries import _find_end_indices
+from pytorch_forecasting.utils import to_list
 
 torch.manual_seed(23)
 
@@ -48,37 +50,43 @@ def test_NaNLabelEncoder(data, allow_nan):
         assert encoder.transform(fit_data)[0] > 0, "First value should not be 0 if not nan"
 
 
+def test_NaNLabelEncoder_add():
+    encoder = NaNLabelEncoder(add_nan=False)
+    encoder.fit(np.array(["a", "b", "c"]))
+    encoder2 = deepcopy(encoder)
+    encoder2.fit(np.array(["d"]))
+    assert encoder2.transform(np.array(["a"]))[0] == 0, "a must be encoded as 0"
+    assert encoder2.transform(np.array(["d"]))[0] == 3, "d must be encoded as 3"
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
         dict(method="robust"),
-        dict(log_scale=True),
-        dict(coerce_positive=True),
+        dict(transformation="log"),
+        dict(transformation="softplus"),
+        dict(transformation="log1p"),
+        dict(transformation="relu"),
         dict(center=False),
-        dict(log_zero_value=0.0),
     ],
 )
 def test_EncoderNormalizer(kwargs):
     data = torch.rand(100)
-    defaults = dict(method="standard", log_scale=False, coerce_positive=False, center=True, log_zero_value=0.0)
+    defaults = dict(method="standard", center=True)
     defaults.update(kwargs)
     kwargs = defaults
-    if kwargs["coerce_positive"] and kwargs["log_scale"]:
-        with pytest.raises(AssertionError):
-            normalizer = EncoderNormalizer(**kwargs)
-    else:
-        normalizer = EncoderNormalizer(**kwargs)
-        if kwargs["coerce_positive"]:
-            data = data - 0.5
+    normalizer = EncoderNormalizer(**kwargs)
+    if kwargs.get("transformation") in ["relu", "softplus"]:
+        data = data - 0.5
 
-        if kwargs["coerce_positive"]:
-            assert (
-                normalizer.inverse_transform(normalizer.fit_transform(data)) >= 0
-            ).all(), "Inverse transform should yield only positive values"
-        else:
-            assert torch.isclose(
-                normalizer.inverse_transform(normalizer.fit_transform(data)), data, atol=1e-5
-            ).all(), "Inverse transform should reverse transform"
+    if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
+        assert (
+            normalizer.inverse_transform(normalizer.fit_transform(data)) >= 0
+        ).all(), "Inverse transform should yield only positive values"
+    else:
+        assert torch.isclose(
+            normalizer.inverse_transform(normalizer.fit_transform(data)), data, atol=1e-5
+        ).all(), "Inverse transform should reverse transform"
 
 
 @pytest.mark.parametrize(
@@ -86,10 +94,11 @@ def test_EncoderNormalizer(kwargs):
     itertools.product(
         [
             dict(method="robust"),
-            dict(log_scale=True),
-            dict(coerce_positive=True),
+            dict(transformation="log"),
+            dict(transformation="relu"),
             dict(center=False),
-            dict(log_zero_value=0.0),
+            dict(transformation="log1p"),
+            dict(transformation="softplus"),
             dict(scale_by_group=True),
         ],
         [[], ["a"]],
@@ -97,45 +106,51 @@ def test_EncoderNormalizer(kwargs):
 )
 def test_GroupNormalizer(kwargs, groups):
     data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1]))
-    defaults = dict(
-        method="standard", log_scale=False, coerce_positive=False, center=True, log_zero_value=0.0, scale_by_group=False
-    )
+    defaults = dict(method="standard", transformation=None, center=True, scale_by_group=False)
     defaults.update(kwargs)
     kwargs = defaults
     kwargs["groups"] = groups
     kwargs["scale_by_group"] = kwargs["scale_by_group"] and len(kwargs["groups"]) > 0
 
-    if kwargs["coerce_positive"] and kwargs["log_scale"]:
-        with pytest.raises(AssertionError):
-            normalizer = GroupNormalizer(**kwargs)
+    if kwargs.get("transformation") in ["relu", "softplus"]:
+        data.b = data.b - 2.0
+    normalizer = GroupNormalizer(**kwargs)
+    encoded = normalizer.fit_transform(data["b"], data)
+
+    test_data = dict(
+        prediction=torch.tensor([encoded[0]]),
+        target_scale=torch.tensor(normalizer.get_parameters([1])).unsqueeze(0),
+    )
+
+    if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
+        assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
     else:
-        if kwargs["coerce_positive"]:
-            data.b = data.b - 2.0
-        normalizer = GroupNormalizer(**kwargs)
-        encoded = normalizer.fit_transform(data["b"], data)
-
-        test_data = dict(
-            prediction=torch.tensor([encoded.iloc[0]]),
-            target_scale=torch.tensor(normalizer.get_parameters([1])).unsqueeze(0),
-        )
-
-        if kwargs["coerce_positive"]:
-            assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
-        else:
-            assert torch.isclose(
-                normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5
-            ).all(), "Inverse transform should reverse transform"
+        assert torch.isclose(
+            normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5
+        ).all(), "Inverse transform should reverse transform"
 
 
 def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):
     x, y = out
 
+    assert isinstance(y, tuple), "y output should be tuple of wegith and target"
+
     # check for nans and finite
     for k, v in x.items():
-        assert torch.isfinite(v).all(), f"Values for {k} should be finite"
-        assert not torch.isnan(v).any(), f"Values for {k} should not be nan"
-    assert torch.isfinite(y).all(), "Values for target should be finite"
-    assert not torch.isnan(y).any(), "Values for target should not be nan"
+        for vi in to_list(v):
+            assert torch.isfinite(vi).all(), f"Values for {k} should be finite"
+            assert not torch.isnan(vi).any(), f"Values for {k} should not be nan"
+
+    # check weight
+    assert y[1] is None or isinstance(y[1], torch.Tensor), "weights should be none or tensor"
+    if isinstance(y[1], torch.Tensor):
+        assert torch.isfinite(y[1]).all(), "Values for weight should be finite"
+        assert not torch.isnan(y[1]).any(), "Values for weight should not be nan"
+
+    # check target
+    for targeti in to_list(y[0]):
+        assert torch.isfinite(targeti).all(), "Values for target should be finite"
+        assert not torch.isnan(targeti).any(), "Values for target should not be nan"
 
     # check shape
     assert x["encoder_cont"].size(2) == len(dataset.reals)
@@ -172,7 +187,9 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
         dict(time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"]),
         dict(
             target_normalizer=GroupNormalizer(
-                groups=["agency", "sku"], log_scale=True, scale_by_group=True, log_zero_value=1.0
+                groups=["agency", "sku"],
+                transformation="log1p",
+                scale_by_group=True,
             )
         ),
         dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
@@ -191,6 +208,7 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
         ),
         dict(dropout_categoricals=["month"], time_varying_known_categoricals=["month"]),
         dict(constant_fill_strategy=dict(volume=0.0), allow_missings=True),
+        dict(target_normalizer=None),
     ],
 )
 def test_TimeSeriesDataSet(test_data, kwargs):
@@ -247,8 +265,13 @@ def test_from_dataset_equivalence(test_data):
     # ensure validation1 and validation2 datasets are exactly the same despite different data inputs
     for v1, v2 in zip(iter(validation1.to_dataloader(train=False)), iter(validation2.to_dataloader(train=False))):
         for k in v1[0].keys():
-            assert torch.isclose(v1[0][k], v2[0][k]).all()
-        assert torch.isclose(v1[1], v2[1]).all()
+            if isinstance(v1[0][k], (tuple, list)):
+                assert len(v1[0][k]) == len(v2[0][k])
+                for idx in range(len(v1[0][k])):
+                    assert torch.isclose(v1[0][k][idx], v2[0][k][idx]).all()
+            else:
+                assert torch.isclose(v1[0][k], v2[0][k]).all()
+        assert torch.isclose(v1[1][0], v2[1][0]).all()
 
 
 def test_dataset_index(test_dataset):
@@ -257,6 +280,16 @@ def test_dataset_index(test_dataset):
         index.append(test_dataset.x_to_index(x))
     index = pd.concat(index, axis=0, ignore_index=True)
     assert len(index) <= len(test_dataset), "Index can only be subset of dataset"
+
+
+@pytest.mark.parametrize("min_prediction_idx", [0, 1, 3, 7])
+def test_min_prediction_idx(test_dataset, test_data, min_prediction_idx):
+    dataset = TimeSeriesDataSet.from_dataset(
+        test_dataset, test_data, min_prediction_idx=min_prediction_idx, min_encoder_length=1, max_prediction_length=10
+    )
+
+    for x, _ in iter(dataset.to_dataloader(num_workers=0, batch_size=1000)):
+        assert x["decoder_time_idx"].min() >= min_prediction_idx
 
 
 @pytest.mark.parametrize(
@@ -305,7 +338,7 @@ def test_overwrite_values(test_dataset, value, variable, target):
     for name in outputs[0].keys():
         changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
         assert changed, f"Output {name} should be reset"
-    assert torch.isclose(outputs[1], control_outputs[1]).all(), "Target should be reset"
+    assert torch.isclose(outputs[1][0], control_outputs[1][0]).all(), "Target should be reset"
 
 
 @pytest.mark.parametrize(
@@ -373,10 +406,162 @@ def test_categorical_target(test_data):
         min_encoder_length=1,
     )
 
-    x, y = next(iter(dataset.to_dataloader()))
-    assert y.dtype is torch.long, "target must be of type long"
+    _, y = next(iter(dataset.to_dataloader()))
+    assert y[0].dtype is torch.long, "target must be of type long"
 
 
 def test_pickle(test_dataset):
     pickle.dumps(test_dataset)
     pickle.dumps(test_dataset.to_dataloader())
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        dict(
+            target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log1p", scale_by_group=True),
+        ),
+    ],
+)
+def test_new_group_ids(test_data, kwargs):
+    """Test for new group ids in dataset"""
+    train_agency = test_data["agency"].iloc[0]
+    train_dataset = TimeSeriesDataSet(
+        test_data[lambda x: x.agency == train_agency],
+        time_idx="time_idx",
+        target="volume",
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=1,
+        categorical_encoders=dict(agency=NaNLabelEncoder(add_nan=True), sku=NaNLabelEncoder(add_nan=True)),
+        **kwargs,
+    )
+
+    # test sampling from training dataset
+    next(iter(train_dataset.to_dataloader()))
+
+    # create test dataset with group ids that have not been observed before
+    test_dataset = TimeSeriesDataSet.from_dataset(train_dataset, test_data)
+
+    # check that we can iterate through dataset without error
+    for _ in iter(test_dataset.to_dataloader()):
+        pass
+
+
+def test_timeseries_columns_naming(test_data):
+    with pytest.raises(ValueError):
+        TimeSeriesDataSet(
+            test_data.rename(columns=dict(agency="agency.2")),
+            time_idx="time_idx",
+            target="volume",
+            group_ids=["agency.2", "sku"],
+            max_encoder_length=5,
+            max_prediction_length=2,
+            min_prediction_length=1,
+            min_encoder_length=1,
+        )
+
+
+def test_encoder_normalizer_for_covariates(test_data):
+    dataset = TimeSeriesDataSet(
+        test_data,
+        time_idx="time_idx",
+        target="volume",
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=1,
+        time_varying_known_reals=["price_regular"],
+        scalers={"price_regular": EncoderNormalizer()},
+    )
+    next(iter(dataset.to_dataloader()))
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        dict(
+            target_normalizer=MultiNormalizer(normalizers=[TorchNormalizer(), EncoderNormalizer()]),
+        ),
+        dict(add_target_scales=True),
+        dict(weight="volume"),
+    ],
+)
+def test_multitarget(test_data, kwargs):
+    dataset = TimeSeriesDataSet(
+        test_data.assign(volume1=lambda x: x.volume),
+        time_idx="time_idx",
+        target=["volume", "volume1"],
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=1,
+        time_varying_known_reals=["price_regular"],
+        scalers={"price_regular": EncoderNormalizer()},
+        **kwargs,
+    )
+    next(iter(dataset.to_dataloader()))
+
+
+def test_check_nas(test_data):
+    data = test_data.copy()
+    data.loc[0, "volume"] = np.nan
+    with pytest.raises(ValueError, match=r"1 \(.*infinite"):
+        TimeSeriesDataSet(
+            data,
+            time_idx="time_idx",
+            target=["volume"],
+            group_ids=["agency", "sku"],
+            max_encoder_length=5,
+            max_prediction_length=2,
+            min_prediction_length=1,
+            min_encoder_length=1,
+        )
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(target="volume"),
+        dict(target="agency", scalers={"volume": EncoderNormalizer()}),
+        dict(target="volume", target_normalizer=EncoderNormalizer()),
+        dict(target=["volume", "agency"]),
+    ],
+)
+def test_lagged_variables(test_data, kwargs):
+    dataset = TimeSeriesDataSet(
+        test_data.copy(),
+        time_idx="time_idx",
+        group_ids=["agency", "sku"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        min_prediction_length=1,
+        min_encoder_length=3,  # one more than max lag for validation
+        time_varying_unknown_reals=["volume"],
+        time_varying_unknown_categoricals=["agency"],
+        lags={"volume": [1, 2], "agency": [1, 2]},
+        add_encoder_length=False,
+        **kwargs,
+    )
+
+    x_all, _ = next(iter(dataset.to_dataloader()))
+
+    for name in ["volume", "agency"]:
+        if name in dataset.reals:
+            vars = dataset.reals
+            x = x_all["encoder_cont"]
+        else:
+            vars = dataset.flat_categoricals
+            x = x_all["encoder_cat"]
+        target_idx = vars.index(name)
+        for lag in [1, 2]:
+            lag_idx = vars.index(f"{name}_lagged_by_{lag}")
+            target = x[..., target_idx][:, 0]
+            lagged_target = torch.roll(x[..., lag_idx], -lag, dims=1)[:, 0]
+            assert torch.isclose(target, lagged_target).all(), "lagged target must be the same as non-lagged target"

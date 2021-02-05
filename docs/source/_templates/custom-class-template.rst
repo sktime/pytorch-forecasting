@@ -4,7 +4,7 @@
 
 
 .. autoclass:: {{ objname }}
-   :members:                                    
+   :members:
    :show-inheritance:
    :exclude-members: __init__
    {% set allow_inherited = "zero_grad" not in inherited_members %}  {# no inheritance for torch.nn.Modules #}

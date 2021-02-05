@@ -17,12 +17,22 @@ import torch.nn as nn
 from torch.nn.utils import rnn
 from torch.utils.data.dataloader import DataLoader
 
-from pytorch_forecasting.data.encoders import EncoderNormalizer
+from pytorch_forecasting.data.encoders import EncoderNormalizer, MultiNormalizer, NaNLabelEncoder
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, DistributionLoss, Metric, NormalDistributionLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    MASE,
+    RMSE,
+    SMAPE,
+    DistributionLoss,
+    Metric,
+    MultiLoss,
+    NormalDistributionLoss,
+)
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.models.deepar.sub_modules import get_cell, HiddenState
+from pytorch_forecasting.models.nn import HiddenState, MultiEmbedding, get_rnn
+from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
@@ -46,7 +56,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         x_categoricals: List[str] = [],
         n_validation_samples: int = None,
         n_plotting_samples: int = None,
-        target: str = None,
+        target: Union[str, List[str]] = None,
+        target_lags: Dict[str, List[int]] = {},
         loss: DistributionLoss = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -83,7 +94,12 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 metrics calculation.
             n_plotting_samples (int, optional): Number of samples to generate for plotting predictions
                 during training. Defaults to ``n_validation_samples`` if not None or 100 otherwise.
-            target (str, optional): Target variable. Defaults to None.
+            target (str, optional): Target variable or list of target variables. Defaults to None.
+            target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped to list of time steps by
+                which the variable should be lagged.
+                Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
+                add at least the target variables with the corresponding lags to improve performance.
+                Defaults to no lags, i.e. an empty dictionary.
             loss (DistributionLoss, optional): Distribution loss function. Keep in mind that each distribution
                 loss function might have specific requirements for target normalization.
                 Defaults to :py:class:`~pytorch_forecasting.metrics.NormalDistributionLoss`.
@@ -110,14 +126,24 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             x_categoricals=x_categoricals,
         )
 
-        assert set(self.encoder_variables) - {target} == set(
+        lagged_target_names = [l for lags in target_lags.values() for l in lags]
+        assert set(self.encoder_variables) - set(to_list(target)) - set(lagged_target_names) == set(
             self.decoder_variables
         ), "Encoder and decoder variables have to be the same apart from target variable"
-        assert target in time_varying_reals_encoder, "target has to be real"  # todo: remove this restriction
+        for targeti in to_list(target):
+            assert (
+                targeti in time_varying_reals_encoder
+            ), f"target {targeti} has to be real"  # todo: remove this restriction
+        assert (isinstance(target, str) and isinstance(loss, DistributionLoss)) or (
+            isinstance(target, (list, tuple)) and isinstance(loss, MultiLoss) and len(loss) == len(target)
+        ), "number of targets should be equivalent to number of loss metrics"
 
-        time_series_rnn = get_cell(cell_type)
-        self.rnn = time_series_rnn(
-            input_size=self.input_size,
+        rnn_class = get_rnn(cell_type)
+        cont_size = len(self.reals)
+        cat_size = sum([size[1] for size in self.hparams.embedding_sizes.values()])
+        input_size = cont_size + cat_size
+        self.rnn = rnn_class(
+            input_size=input_size,
             hidden_size=self.hparams.hidden_size,
             num_layers=self.hparams.rnn_layers,
             dropout=self.hparams.dropout if self.hparams.rnn_layers > 1 else 0,
@@ -125,14 +151,12 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         )
 
         # add linear layers for argument projects
-        self.distribution_projector = nn.Linear(self.hparams.hidden_size, len(self.loss.distribution_arguments))
-
-    @property
-    def input_size(self):
-        """Input vector size: length of embeddings and real-values variables."""
-        cont_size = len(self.reals)
-        cat_size = sum([size[1] for size in self.hparams.embedding_sizes.values()])
-        return cont_size + cat_size
+        if isinstance(target, str):  # single target
+            self.distribution_projector = nn.Linear(self.hparams.hidden_size, len(self.loss.distribution_arguments))
+        else:  # multi target
+            self.distribution_projector = nn.ModuleList(
+                [nn.Linear(self.hparams.hidden_size, len(args)) for args in self.loss.distribution_arguments]
+            )
 
     @classmethod
     def from_dataset(
@@ -154,7 +178,13 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         # assert fixed encoder and decoder length for the moment
         new_kwargs = {}
+        if dataset.multi_target:
+            new_kwargs.setdefault("loss", MultiLoss([NormalDistributionLoss()] * len(dataset.target_names)))
         new_kwargs.update(kwargs)
+        assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
+            not isinstance(dataset.target_normalizer, MultiNormalizer)
+            or all([not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer])
+        ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
         return super().from_dataset(
             dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
         )
@@ -181,44 +211,43 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             input_vector = torch.cat([x_cont, flat_embeddings], dim=-1)
 
         # shift target by one
-        input_vector[..., self.target_position] = torch.roll(input_vector[..., self.target_position], shifts=1, dims=1)
+        input_vector[..., self.target_positions] = torch.roll(
+            input_vector[..., self.target_positions], shifts=1, dims=1
+        )
 
         if one_off_target is not None:  # set first target input (which is rolled over)
-            input_vector[:, 0, self.target_position] = one_off_target
+            input_vector[:, 0, self.target_positions] = one_off_target
         else:
             input_vector = input_vector[:, 1:]
 
         # shift target
         return input_vector
 
-    @property
-    def target_position(self):
-        variables = self.hparams.time_varying_reals_encoder  # todo: support categorical targets
-        pos = variables.index(self.hparams.target)
-        return pos
-
     def encode(self, x: Dict[str, torch.Tensor]) -> HiddenState:
         """
         Encode sequence into hidden state
         """
         # encode using rnn
-        max_encoder_length = x["encoder_lengths"].max()
         assert x["encoder_lengths"].min() > 0
-        if max_encoder_length > 1:
-            encoder_lengths = x["encoder_lengths"] - 1
-            rnn_encoder_lengths = encoder_lengths.where(encoder_lengths > 0, torch.ones_like(encoder_lengths))
-            input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
-            _, hidden_state = self.rnn(
-                rnn.pack_padded_sequence(
-                    input_vector, rnn_encoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-                )
-            )  # second ouput is not needed (hidden state)
-            # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
-            no_encoding = (encoder_lengths == 0)[None, :, None]  # shape: n_lstm_layers x batch_size x hidden_size
-            hidden_state = self.rnn.handle_no_encoding(hidden_state, no_encoding)
-        else:
-            hidden_state = self.rnn.init_hidden_state(x, self.hparam.hidden_size)
+        encoder_lengths = x["encoder_lengths"] - 1
+        input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
+        _, hidden_state = self.rnn(
+            input_vector, lengths=encoder_lengths, enforce_sorted=False
+        )  # second ouput is not needed (hidden state)
         return hidden_state
+
+    def decode_all(
+        self,
+        x: torch.Tensor,
+        hidden_state: HiddenState,
+        lengths: torch.Tensor = None,
+    ):
+        decoder_output, hidden_state = self.rnn(x, hidden_state, lengths=lengths, enforce_sorted=False)
+        if isinstance(self.hparams.target, str):  # single target
+            output = self.distribution_projector(decoder_output)
+        else:
+            output = [projector(decoder_output) for projector in self.distribution_projector]
+        return output, hidden_state
 
     def decode(
         self,
@@ -234,55 +263,45 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         sampling new targets from past predictions iteratively
         """
         if n_samples is None:
-            input_vector = rnn.pack_padded_sequence(
-                input_vector, decoder_lengths.cpu(), enforce_sorted=False, batch_first=True
-            )
-            decoder_output, _ = self.rnn(
-                input_vector,
-                hidden_state,
-            )
-            decoder_output, _ = rnn.pad_packed_sequence(decoder_output, batch_first=True)
-            output = self.distribution_projector(decoder_output)
-            output_type = "parameters"
-
+            output, _ = self.decode_all(input_vector, hidden_state, lengths=decoder_lengths)
+            output_transformation = True
         else:
             # run in eval, i.e. simulation mode
-            target_pos = self.target_position
+            target_pos = self.target_positions
+            lagged_target_positions = self.lagged_target_positions
             # repeat for n_samples
             input_vector = input_vector.repeat_interleave(n_samples, 0)
             hidden_state = self.rnn.repeat_interleave(hidden_state, n_samples)
-            target_scale = target_scale.repeat_interleave(n_samples, 0)
+            target_scale = apply_to_list(target_scale, lambda x: x.repeat_interleave(n_samples, 0))
+
+            # define function to run at every decoding step
+            def decode_one(
+                idx,
+                lagged_targets,
+                hidden_state,
+            ):
+                x = input_vector[:, [idx]]
+                x[:, 0, target_pos] = lagged_targets[-1]
+                for lag, lag_positions in lagged_target_positions.items():
+                    if idx > lag:
+                        x[:, 0, lag_positions] = lagged_targets[-lag]
+                prediction, hidden_state = self.decode_all(x, hidden_state)
+                prediction = apply_to_list(prediction, lambda x: x[:, 0])  # select first time step
+                return prediction, hidden_state
 
             # make predictions which are fed into next step
-            input_target = input_vector[:, 0, target_pos]
-            output = []
-            for idx in range(input_vector.size(1)):
-                x = input_vector[:, [idx]]
-                x[:, 0, target_pos] = input_target
-                decoder_output, hidden_state = self.rnn(x, hidden_state)
-                normalized_prediction_parameters = self.distribution_projector(decoder_output)
-                # transform into real space
-                prediction_parameters = self.transform_output(
-                    dict(
-                        prediction=normalized_prediction_parameters,
-                        target_scale=target_scale,
-                        prediction_type="parameters",
-                    )
-                )
-                # sample value(s) from distribution
-                prediction = self.loss.sample_n(prediction_parameters, 1)[0]  # select first sample
-                # normalize prediction prediction
-                # todo: how to handle lags (-> need list of lags and positions
-                #   -> then if prediction lenght larger than lag start imputing ->
-                #   before that let timeseriesdataset take care)?
-                normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
-                input_target = normalized_prediction[:, 0]  # set next input target to normalized prediction
-
-                # set output to unnormalized samples
-                output.append(prediction[:, 0].view(-1, n_samples))  # append as n_batch_samples x n_random_samples
-            output = torch.stack(output, dim=1)  # samples at > 0
-            output_type = "samples"
-        return output, output_type
+            output = self.decode_autoregressive(
+                decode_one,
+                first_target=input_vector[:, 0, target_pos],
+                first_hidden_state=hidden_state,
+                target_scale=target_scale,
+                n_decoder_steps=input_vector.size(1),
+            )
+            # reshape predictions for n_samples:
+            # from n_samples * batch_size x time steps to batch_size x time steps x n_samples
+            output = apply_to_list(output, lambda x: x.reshape(-1, n_samples, input_vector.size(1)).permute(0, 2, 1))
+            output_transformation = None
+        return output, output_transformation
 
     def forward(self, x: Dict[str, torch.Tensor], n_samples: int = None) -> Dict[str, torch.Tensor]:
         """
@@ -291,12 +310,18 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         hidden_state = self.encode(x)
         # decode
         input_vector = self.construct_input_vector(
-            x["decoder_cat"], x["decoder_cont"], one_off_target=x["encoder_cont"][:, -1, self.target_position]
+            x["decoder_cat"],
+            x["decoder_cont"],
+            one_off_target=x["encoder_cont"][
+                torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
+                x["encoder_lengths"] - 1,
+                self.target_positions.unsqueeze(-1),
+            ].T,
         )
 
         if self.training:
             assert n_samples is None, "cannot sample from decoder when training"
-        output, output_type = self.decode(
+        output, output_transformation = self.decode(
             input_vector,
             decoder_lengths=x["decoder_lengths"],
             target_scale=x["target_scale"],
@@ -306,7 +331,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         # return relevant part
         return dict(
             prediction=output,
-            prediction_type=output_type,
+            output_transformation=output_transformation,
             groups=x["groups"],
             decoder_time_idx=x["decoder_time_idx"],
             target_scale=x["target_scale"],
@@ -314,40 +339,46 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        log, _ = self.step(x, y, batch_idx, label="val", n_samples=self.hparams.n_validation_samples)  # log loss
+        log, _ = self.step(x, y, batch_idx, n_samples=self.hparams.n_validation_samples)  # log loss
         self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 
-    def _log_metrics(
-        self, x: Dict[str, torch.Tensor], y: torch.Tensor, out: Dict[str, torch.Tensor], label: str = "train"
+    def log_metrics(
+        self,
+        x: Dict[str, torch.Tensor],
+        y: torch.Tensor,
+        out: Dict[str, torch.Tensor],
     ) -> None:
 
-        if out["prediction_type"] == "parameters":
+        if out.get("output_transformation", True) is not None:
             # use distribution properties to create point prediction
             out = copy(out)  # copy to avoid side-effects but do not deep copy to re-use references
-            y_hat_detached = out["prediction"].detach()
-            y_hat_point_detached = self.loss.map_x_to_distribution(y_hat_detached).mean.unsqueeze(-1)
+            y_hat_detached = apply_to_list(out["prediction"], lambda x: x.detach())
+            y_hat_point_detached = apply_to_list(
+                self.loss.map_x_to_distribution(y_hat_detached), lambda x: x.mean.unsqueeze(-1)
+            )
             out["prediction"] = y_hat_point_detached
-            out["prediction_type"] = "samples"
-        super()._log_metrics(x, y, out, label=label)
+            out["output_transformation"] = None
+        super().log_metrics(x, y, out)
 
-    def _log_prediction(self, x, out, batch_idx, label) -> None:
-        log_interval = self.log_interval(label == "train")
+    def log_prediction(self, x, out, batch_idx) -> None:
         if (
-            out["prediction_type"] == "parameters"
-            and (batch_idx % log_interval == 0 or log_interval < 1.0)
-            and log_interval > 0
+            out.get("output_transformation", True) is not None
+            and (batch_idx % self.log_interval == 0 or self.log_interval < 1.0)
+            and self.log_interval > 0
         ):
             out = copy(out)  # copy to avoid side-effects but do not deep copy to re-use references
             # sample from distribution to create valid prediction
-            y_hat_detached = out["prediction"].detach()
+            y_hat_detached = apply_to_list(out["prediction"], lambda x: x.detach())
             if self.hparams.n_plotting_samples is None:
-                y_hat_samples = self.loss.map_x_to_distribution(y_hat_detached).mean.unsqueeze(-1)
+                y_hat_samples = apply_to_list(
+                    self.loss.map_x_to_distribution(y_hat_detached), lambda x: x.mean.unsqueeze(-1)
+                )
             else:
-                y_hat_samples = self.loss.sample_n(y_hat_detached, self.hparams.n_plotting_samples).permute(1, 2, 0)
+                y_hat_samples = self.loss.sample(y_hat_detached, self.hparams.n_plotting_samples)
             out["prediction"] = y_hat_samples
-            out["prediction_type"] = "samples"
-        super()._log_prediction(x, out, batch_idx=batch_idx, label=label)
+            out["output_transformation"] = None
+        super().log_prediction(x, out, batch_idx=batch_idx)
 
     def plot_prediction(
         self,
@@ -362,23 +393,6 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         return super().plot_prediction(
             x, out, idx=idx, add_loss_to_title=False, show_future_observed=show_future_observed, ax=ax
         )
-
-    def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
-        if isinstance(out, torch.Tensor):
-            return out
-        elif self.output_transformer is None:
-            out = out["prediction"]
-        else:
-            # depending on output, transform differently
-            if out["prediction_type"] == "samples":  # samples are already rescaled
-                out = out["prediction"]
-            elif out["prediction_type"] == "parameters":  # parameters need to be rescaled
-                out = self.loss.rescale_parameters(
-                    out["prediction"], target_scale=out["target_scale"], transformer=self.output_transformer
-                )
-            else:
-                raise ValueError(f"Unknown output type {out['prediction_type']}")
-        return out
 
     def predict(
         self,

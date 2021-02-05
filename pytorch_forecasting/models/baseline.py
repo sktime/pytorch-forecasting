@@ -36,12 +36,12 @@ class Baseline(BaseModel):
         prediction = last_values[:, None, None].expand(-1, max_prediction_length, self.hparams.output_size)
         return dict(prediction=prediction)
 
-    def _step(self, batch, batch_idx, label="train"):
+    def _step(self, batch, batch_idx):
         """
         run at each step for training or validation
         """
         # extract data and run model
         x, y = batch
         y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"], batch_first=True, enforce_sorted=False)
-        log, _ = super()._step(x, y, batch_idx, label=label)
+        log, _ = super()._step(x, y, batch_idx)
         return log

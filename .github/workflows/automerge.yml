@@ -1,0 +1,26 @@
+name: automerge
+on:
+  check_suite:
+    types:
+      - completed
+jobs:
+  autoapprove:
+    name: Auto Approve a PR by dependabot
+    runs-on: ubuntu-latest
+    steps:
+    - uses: hmarr/auto-approve-action@v2.0.0
+      if: github.actor == 'dependabot[bot]' || github.actor == 'dependabot-preview[bot]'
+      with:
+        github-token: "${{ secrets.GITHUB_TOKEN }}"
+  automerge:
+    name: Auto merge after successful checks
+    runs-on: ubuntu-latest
+    needs: autoapprove
+    steps:
+      - name: automerge
+        uses: "pascalgn/automerge-action@v0.13.0"
+        if: github.actor == 'dependabot[bot]' || github.actor == 'dependabot-preview[bot]'
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          MERGE_LABELS: dependencies
+          MERGE_METHOD: rebase

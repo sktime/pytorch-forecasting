@@ -3,9 +3,10 @@ Helper functions for PyTorch forecasting
 """
 from contextlib import redirect_stdout
 import os
-from typing import Callable, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 import torch
+from torch.fft import irfft, rfft
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -96,11 +97,42 @@ def profile(function: Callable, profile_fname: str, filter: str = "", period=0.0
                 LinesPrinter(filter=filter).show(profile_fname)
 
 
-def get_embedding_size(n: int) -> int:
+def get_embedding_size(n: int, max_size: int = 100) -> int:
+    """
+    Determine empirically good embedding sizes (formula taken from fastai).
+
+    Args:
+        n (int): number of classes
+        max_size (int, optional): maximum embedding size. Defaults to 100.
+
+    Returns:
+        int: embedding size
+    """
     if n > 2:
-        return round(1.6 * n ** 0.56)
+        return min(round(1.6 * n ** 0.56), max_size)
     else:
         return 1
+
+
+def create_mask(size: int, lengths: torch.LongTensor, inverse: bool = False) -> torch.BoolTensor:
+    """
+    Create boolean masks of shape len(lenghts) x size.
+
+    An entry at (i, j) is True if lengths[i] > j.
+
+    Args:
+        size (int): size of second dimension
+        lengths (torch.LongTensor): tensor of lengths
+        inverse (bool, optional): If true, boolean mask is inverted. Defaults to False.
+
+    Returns:
+        torch.BoolTensor: mask
+    """
+
+    if inverse:  # return where values are
+        return torch.arange(size, device=lengths.device).unsqueeze(0) < lengths.unsqueeze(-1)
+    else:  # return where no values are
+        return torch.arange(size, device=lengths.device).unsqueeze(0) >= lengths.unsqueeze(-1)
 
 
 _NEXT_FAST_LEN = {}
@@ -142,15 +174,12 @@ def autocorrelation(input, dim=0):
 
     Reference: https://en.wikipedia.org/wiki/Autocorrelation#Efficient_computation
 
-    Implementation copied form ``pyro``.
+    Implementation copied form `pyro <https://github.com/pyro-ppl/pyro/blob/dev/pyro/ops/stats.py>`_.
 
     :param torch.Tensor input: the input tensor.
     :param int dim: the dimension to calculate autocorrelation.
     :returns torch.Tensor: autocorrelation of ``input``.
     """
-    if (not input.is_cuda) and (not torch.backends.mkl.is_available()):
-        raise NotImplementedError("For CPU tensor, this method is only supported " "with MKL installed.")
-
     # Adapted from Stan implementation
     # https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/autocorrelation.hpp
     N = input.size(dim)
@@ -162,18 +191,13 @@ def autocorrelation(input, dim=0):
 
     # centering and padding x
     centered_signal = input - input.mean(dim=-1, keepdim=True)
-    pad = torch.zeros(input.shape[:-1] + (M2 - N,), dtype=input.dtype, device=input.device)
-    centered_signal = torch.cat([centered_signal, pad], dim=-1)
 
     # Fourier transform
-    freqvec = torch.rfft(centered_signal, signal_ndim=1, onesided=False)
+    freqvec = torch.view_as_real(rfft(centered_signal, n=M2))
     # take square of magnitude of freqvec (or freqvec x freqvec*)
-    freqvec_gram = freqvec.pow(2).sum(-1, keepdim=True)
-    freqvec_gram = torch.cat(
-        [freqvec_gram, torch.zeros(freqvec_gram.shape, dtype=input.dtype, device=input.device)], dim=-1
-    )
+    freqvec_gram = freqvec.pow(2).sum(-1)
     # inverse Fourier transform
-    autocorr = torch.irfft(freqvec_gram, signal_ndim=1, onesided=False)
+    autocorr = irfft(freqvec_gram, n=M2)
 
     # truncate and normalize the result, then transpose back to original shape
     autocorr = autocorr[..., :N]
@@ -235,3 +259,59 @@ def padded_stack(
         dim=0,
     )
     return out
+
+
+def to_list(value: Any) -> List[Any]:
+    """
+    Convert value or list to list of values.
+    If already list, return object directly
+
+    Args:
+        value (Any): value to convert
+
+    Returns:
+        List[Any]: list of values
+    """
+    if isinstance(value, (tuple, list)) and not isinstance(value, rnn.PackedSequence):
+        return value
+    else:
+        return [value]
+
+
+def unsqueeze_like(tensor: torch.Tensor, like: torch.Tensor):
+    """
+    Unsqueeze last dimensions of tensor to match another tensor's number of dimensions.
+
+    Args:
+        tensor (torch.Tensor): tensor to unsqueeze
+        like (torch.Tensor): tensor whose dimensions to match
+    """
+    n_unsqueezes = like.ndim - tensor.ndim
+    if n_unsqueezes < 0:
+        raise ValueError(f"tensor.ndim={tensor.ndim} > like.ndim={like.ndim}")
+    elif n_unsqueezes == 0:
+        return tensor
+    else:
+        return tensor[(...,) + (None,) * n_unsqueezes]
+
+
+def apply_to_list(obj: Union[List[Any], Any], func: Callable) -> Union[List[Any], Any]:
+    """
+    Apply function to a list of objects or directly if passed value is not a list.
+
+    This is useful if the passed object could be either a list to whose elements
+    a function needs to be applied or just an object to whicht to apply the function.
+
+    Args:
+        obj (Union[List[Any], Any]): list/tuple on whose elements to apply function,
+            otherwise object to whom to apply function
+        func (Callable): function to apply
+
+    Returns:
+        Union[List[Any], Any]: list of objects or object depending on function output and
+            if input ``obj`` is of type list/tuple
+    """
+    if isinstance(obj, (list, tuple)) and not isinstance(obj, rnn.PackedSequence):
+        return [func(o) for o in obj]
+    else:
+        return func(obj)

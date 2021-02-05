@@ -8,6 +8,7 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
@@ -21,7 +22,7 @@ class NBeats(BaseModel):
         num_block_layers=[3, 3],
         widths=[32, 512],
         sharing: List[int] = [True, True],
-        expansion_coefficient_lengths: List[int] = [5, 7],
+        expansion_coefficient_lengths: List[int] = [3, 7],
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,
@@ -191,6 +192,10 @@ class NBeats(BaseModel):
         new_kwargs.update(kwargs)
 
         # validate arguments
+        assert isinstance(dataset.target, str), "only one target is allowed (passed as string to dataset)"
+        assert not isinstance(
+            dataset.target_normalizer, NaNLabelEncoder
+        ), "only regression tasks are supported - target must not be categorical"
         assert (
             dataset.min_encoder_length == dataset.max_encoder_length
         ), "only fixed encoder length is allowed, but min_encoder_length != max_encoder_length"
@@ -212,16 +217,16 @@ class NBeats(BaseModel):
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
 
-    def step(self, x, y, batch_idx, label) -> Dict[str, torch.Tensor]:
+    def step(self, x, y, batch_idx) -> Dict[str, torch.Tensor]:
         """
         Take training / validation step.
         """
-        log, out = super().step(x, y, batch_idx=batch_idx, label=label)
+        log, out = super().step(x, y, batch_idx=batch_idx)
 
         if self.hparams.backcast_loss_ratio > 0:  # add loss from backcast
             backcast = self.transform_output(dict(prediction=out["backcast"], target_scale=out["target_scale"]))
             backcast_weight = (
-                self.hparams.backcast_loss_ratio * self.hparams.context_length / self.hparams.prediction_length
+                self.hparams.backcast_loss_ratio * self.hparams.prediction_length / self.hparams.context_length
             )
             backcast_weight = backcast_weight / (backcast_weight + 1)  # normalize
             forecast_weight = 1 - backcast_weight
@@ -229,21 +234,23 @@ class NBeats(BaseModel):
                 backcast_loss = self.loss(backcast, x["encoder_target"], x["decoder_target"]) * backcast_weight
             else:
                 backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
-            self.log(f"{label}_backcast_loss", backcast_loss, on_epoch=True, on_step=label == "train")
-            self.log(f"{label}_forecast_loss", log["loss"], on_epoch=True, on_step=label == "train")
+            label = ["val", "train"][self.training]
+            self.log(f"{label}_backcast_loss", backcast_loss, on_epoch=True, on_step=self.training)
+            self.log(f"{label}_forecast_loss", log["loss"], on_epoch=True, on_step=self.training)
             log["loss"] = log["loss"] * forecast_weight + backcast_loss
 
-        self._log_interpretation(x, out, batch_idx=batch_idx, label=label)
+        self._log_interpretation(x, out, batch_idx=batch_idx)
         return log, out
 
-    def _log_interpretation(self, x, out, batch_idx, label="train"):
+    def _log_interpretation(self, x, out, batch_idx):
         """
         Log interpretation of network predictions in tensorboard.
         """
-        if self.log_interval(label == "train") > 0 and batch_idx % self.log_interval(label == "train") == 0:
+        label = ["val", "train"][self.training]
+        if self.log_interval > 0 and batch_idx % self.log_interval == 0:
             fig = self.plot_interpretation(x, out, idx=0)
             name = f"{label.capitalize()} interpretation of item 0 in "
-            if label == "train":
+            if self.training:
                 name += f"step {self.global_step}"
             else:
                 name += f"batch {batch_idx}"
@@ -278,7 +285,7 @@ class NBeats(BaseModel):
         if ax is None:
             fig, ax = plt.subplots(2, 1, figsize=(6, 8))
         else:
-            fig = ax.get_figure()
+            fig = ax[0].get_figure()
 
         time = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
 
@@ -286,7 +293,7 @@ class NBeats(BaseModel):
             return self.transform_output(dict(prediction=y[[idx]], target_scale=x["target_scale"][[idx]]))[0]
 
         # plot target vs prediction
-        ax[0].plot(time, torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]]).cpu(), label="target")
+        ax[0].plot(time, torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]]).detach().cpu(), label="target")
         ax[0].plot(
             time,
             torch.cat(
@@ -314,11 +321,17 @@ class NBeats(BaseModel):
                 continue
             if title == "trend":
                 ax[1].plot(
-                    time, to_prediction(output[title]).cpu(), label=title.capitalize(), c=next(prop_cycle)["color"]
+                    time,
+                    to_prediction(output[title]).detach().cpu(),
+                    label=title.capitalize(),
+                    c=next(prop_cycle)["color"],
                 )
             else:
                 ax2.plot(
-                    time, to_prediction(output[title]).cpu(), label=title.capitalize(), c=next(prop_cycle)["color"]
+                    time,
+                    to_prediction(output[title]).detach().cpu(),
+                    label=title.capitalize(),
+                    c=next(prop_cycle)["color"],
                 )
         ax[1].set_xlabel("Time")
         ax[1].set_ylabel("Decomposition")

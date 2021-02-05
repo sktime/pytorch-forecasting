@@ -3,7 +3,7 @@
 Our article on [Towards Data Science](https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46)
 introduces the package and provides background information.
 
-Pytorch Forecasting aims to ease timeseries forecasting with neural networks for real-world cases and research alike.
+Pytorch Forecasting aims to ease state-of-the-art timeseries forecasting with neural networks for real-world cases and research alike. The goal is to provide a high-level API with maximum flexibility for professionals and reasonable defaults for beginners.
 Specifically, the package provides
 
 - A timeseries dataset class which abstracts handling variable transformations, missing values,
@@ -21,7 +21,7 @@ single and multiple GPUs out-of-the-box.
 
 # Installation
 
-If you are working windows, you need to first install PyTorch with
+If you are working on windows, you need to first install PyTorch with
 
 `pip install torch -f https://download.pytorch.org/whl/torch_stable.html`.
 
@@ -31,15 +31,9 @@ Otherwise, you can proceed with
 
 Alternatively, you can install the package via conda
 
-`conda install pytorch-forecasting -c conda-forge`
+`conda install pytorch-forecasting pytorch -c pytorch>=1.7 -c conda-forge`
 
-If you do not have pytorch installed, install it is recommended to install it first from the pytorch channel.
-
-`conda install pytorch -c pytorch`
-
-If you have installed a version below PyTorch 1.6, update it:
-
-`conda update pytorch -c pytorch`
+PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
 
 # Documentation
 
@@ -56,19 +50,22 @@ documentation with detailed tutorials.
 - [DeepAR: Probabilistic forecasting with autoregressive recurrent networks](https://www.sciencedirect.com/science/article/pii/S0169207019301888)
   which is the one of the most popular forecasting algorithms and is often used as a baseline
 
+To implement new models, see the [How to implement new models tutorial](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/building.html).
+It covers basic as well as advanced architectures.
+
 # Usage
 
 ```python
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
-
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 
 # load data
 data = ...
 
 # define dataset
-max_encode_length = 36
+max_encoder_length = 36
 max_prediction_length = 6
 training_cutoff = "YYYY-MM-DD"  # day for cutoff
 
@@ -77,7 +74,7 @@ training = TimeSeriesDataSet(
     time_idx= ...,
     target= ...,
     group_ids=[ ... ],
-    max_encode_length=max_encode_length,
+    max_encoder_length=max_encoder_length,
     max_prediction_length=max_prediction_length,
     static_categoricals=[ ... ],
     static_reals=[ ... ],
