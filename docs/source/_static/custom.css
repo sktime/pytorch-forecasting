@@ -12,6 +12,10 @@ h6,
 .navbar-nav > .active > a.nav-link {
   color: #ee4c2c !important;
 }
+a.nav-link[href="https://github.com/jdb78/pytorch-forecasting"]
+{
+  color: #ee4c2c !important;
+}
 
 code {
   color: #d14 !important;
