@@ -360,8 +360,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         new_kwargs["n_targets"] = len(dataset.target_names)
         if new_kwargs["n_targets"] > 1:  # try to infer number of ouput sizes
             new_kwargs["output_size"] = [
-                get_output_size(normalizer, l)
-                for normalizer, l in zip(dataset.target_normalizer.normalizers, loss.metrics)
+                get_output_size(normalizer, loss)
+                for normalizer in dataset.target_normalizer.normalizers
             ]
             if not isinstance(loss, MultiLoss):
                 loss = MultiLoss([deepcopy(loss)] * new_kwargs["n_targets"])
