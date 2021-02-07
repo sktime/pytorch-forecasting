@@ -4,17 +4,15 @@ Timeseries datasets.
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
-from copy import deepcopy
+from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.lib.type_check import nan_to_num
 import pandas as pd
-from pandas.core.algorithms import isin
 from sklearn.exceptions import NotFittedError
 from sklearn.preprocessing import RobustScaler, StandardScaler
 from sklearn.utils import shuffle
@@ -1238,6 +1236,73 @@ class TimeSeriesDataSet(Dataset):
 
         return df_index
 
+    def filter(self, filter_func: Callable, copy: bool = True) -> "TimeSeriesDataSet":
+        """
+        Filter subsequences in dataset.
+
+        Uses interpretable version of index :py:meth:`~decoded_index`
+        to filter subsequences in dataset.
+
+        Args:
+            filter_func (Callable): function to filter. Should take :py:meth:`~decoded_index`
+                dataframe as only argument which contains group ids and time index columns.
+            copy (bool): if to return copy of dataset or filter inplace.
+
+        Returns:
+            TimeSeriesDataSet: filtered dataset
+        """
+        # calculate filter
+        filtered_index = self.index[np.asarray(filter_func(self.decoded_index))]
+        # raise error if filter removes all entries
+        if len(filtered_index) == 0:
+            raise ValueError("After applying filter no sub-sequences left in dataset")
+        if copy:
+            dataset = _copy(self)
+            dataset.index = filtered_index
+            return dataset
+        else:
+            self.index = filtered_index
+            return self
+
+    @property
+    def decoded_index(self) -> pd.DataFrame:
+        """
+        Get interpretable version of index.
+
+        DataFrame contains
+        - group_id columns in original encoding
+        - time_idx_first column: first time index of subsequence
+        - time_idx_last columns: last time index of subsequence
+        - time_idx_first_prediction columns: first time index which is in decoder
+
+        Returns:
+            pd.DataFrame: index that can be understood in terms of original data
+        """
+        # get dataframe to filter
+        index_start = self.index["index_start"].to_numpy()
+        index_last = self.index["index_end"].to_numpy()
+        index = (
+            # get group ids in order of index
+            pd.DataFrame(self.data["groups"][index_start].numpy(), columns=self.group_ids)
+            # to original values
+            .apply(lambda x: self.transform_values(name=x.name, values=x, group_id=True, inverse=True))
+            # add time index
+            .assign(
+                time_idx_first=self.data["time"][index_start].numpy(),
+                time_idx_last=self.data["time"][index_last].numpy(),
+                # prediction index is last time index - decoder length + 1
+                time_idx_first_prediction=lambda x: x.time_idx_last
+                # decoder length is minimum of
+                - (
+                    x.time_idx_last - x.time_idx_first + 1 - self.min_encoder_length
+                )  # sequence lenght - min decoder length
+                .clip(upper=self.max_prediction_length)  # maximum prediction length
+                .clip(upper=x.time_idx_last - (self.min_prediction_idx - 1))  # not going beyond min prediction idx
+                + 1,
+            )
+        )
+        return index
+
     def plot_randomization(
         self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None
     ) -> Tuple[plt.Figure, torch.Tensor]:
@@ -1337,7 +1402,6 @@ class TimeSeriesDataSet(Dataset):
             weight = None
         else:
             weight = self.data["weight"][index.index_start : index.index_end + 1].clone()
-
         # get target scale in the form of a list
         target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
         if not isinstance(self.target_normalizer, MultiNormalizer):

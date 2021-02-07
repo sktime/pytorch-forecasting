@@ -565,3 +565,23 @@ def test_lagged_variables(test_data, kwargs):
             target = x[..., target_idx][:, 0]
             lagged_target = torch.roll(x[..., lag_idx], -lag, dims=1)[:, 0]
             assert torch.isclose(target, lagged_target).all(), "lagged target must be the same as non-lagged target"
+
+
+@pytest.mark.parametrize(
+    "agency,first_prediction_idx,should_raise",
+    [("Agency_01", 0, False), ("xxxxx", 0, True), ("Agency_01", 100, True), ("Agency_01", 4, False)],
+)
+def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
+    func = lambda x: (x.agency == agency) & (x.time_idx_first_prediction >= first_prediction_idx)
+    if should_raise:
+        with pytest.raises(ValueError):
+            test_dataset.filter(func)
+    else:
+        filtered_dataset = test_dataset.filter(func)
+        assert len(test_dataset.index) > len(
+            filtered_dataset.index
+        ), "filtered dataset should have less entries than original dataset"
+        for x, _ in iter(filtered_dataset.to_dataloader()):
+            index = test_dataset.x_to_index(x)
+            assert (index["agency"] == agency).all(), "Agency filter has failed"
+            assert index["time_idx"].min() == first_prediction_idx, "First prediction filter has failed"

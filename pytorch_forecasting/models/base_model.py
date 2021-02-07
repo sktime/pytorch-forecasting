@@ -824,6 +824,7 @@ class BaseModel(LightningModule):
 
                 # make prediction
                 out = self(x, **kwargs)  # raw output is dictionary
+
                 out["prediction"] = self.transform_output(out)
 
                 lengths = x["decoder_lengths"]
@@ -863,6 +864,18 @@ class BaseModel(LightningModule):
                     pass
                 else:
                     raise ValueError(f"Unknown mode {mode} - see docs for valid arguments")
+
+                # move back to CPU
+                if isinstance(out, dict):
+                    for name in out.keys():
+                        if isinstance(out[name], (tuple, list)) and out[name][0].device != torch.device("cpu"):
+                            out[name] = [oi.to("cpu") for oi in out[name]]
+                        elif out[name].device != torch.device("cpu"):
+                            out[name] = out[name].to("cpu")
+                elif isinstance(out, torch.Tensor) and out.device != torch.device("cpu"):
+                    out = out.to("cpu")
+                elif isinstance(out, (list, tuple)) and out[0].device != torch.device("cpu"):
+                    out = [o.to("cpu") for o in out]
 
                 output.append(out)
                 if return_x:
