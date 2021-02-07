@@ -1,5 +1,19 @@
 # Release Notes
 
+## v0.8.4 UNRELEASED
+
+### Added
+
+- Adding a filter functionality to the timeseries datasset (#329)
+
+### Fixed
+
+- Moving predictions to CPU to avoid running out of memory (#329)
+
+### Contributors
+
+- jdb78
+
 ## v0.8.3 Bugfix release (31/01/2021)
 
 ### Added
