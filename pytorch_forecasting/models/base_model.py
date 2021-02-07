@@ -876,8 +876,6 @@ class BaseModel(LightningModule):
                     out = out.to("cpu")
                 elif isinstance(out, (list, tuple)) and out[0].device != torch.device("cpu"):
                     out = [o.to("cpu") for o in out]
-                else:
-                    raise ValueError("Cannot move output to CPU - format cannot be detected")
 
                 output.append(out)
                 if return_x:
