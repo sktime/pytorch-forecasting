@@ -941,11 +941,8 @@ class DistributionLoss(MultiHorizonMetric):
         if quantiles is None:
             quantiles = self.quantiles
 
-        samples = y_pred.size(-1)
-        quantiles = torch.stack(
-            [torch.kthvalue(y_pred, int(samples * q), dim=-1)[0] if samples > 1 else y_pred[..., 0] for q in quantiles],
-            dim=-1,
-        )
+        samples = torch.sort(self.sample(y_pred, 1000), -1).values
+        quantiles = torch.quantile(samples, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
         return quantiles
 
 
@@ -976,6 +973,7 @@ class NormalDistributionLoss(DistributionLoss):
         loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale))
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(1)
         return torch.stack([loc, scale], dim=-1)
+
 
 
 class NegativeBinomialDistributionLoss(DistributionLoss):
@@ -1011,6 +1009,20 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
             mean = F.softplus(parameters[..., 0]) * target_scale[..., 1].unsqueeze(-1)
             shape = F.softplus(parameters[..., 1]) / target_scale[..., 1].unsqueeze(-1).sqrt()
         return torch.stack([mean, shape], dim=-1)
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction. In the case of this distribution prediction we
+        need to derive the mean (as a point prediction) from the distribution parameters
+
+        Args:
+            y_pred: prediction output of network (with ``output_transformation = None``)
+            in this case the two parameters for the negative binomial
+
+        Returns:
+            torch.Tensor: mean prediction
+        """
+        return y_pred[:, :, 0]
 
 
 class LogNormalDistributionLoss(DistributionLoss):
