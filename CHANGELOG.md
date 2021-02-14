@@ -10,11 +10,13 @@
 
 - Moving predictions to CPU to avoid running out of memory (#329)
 - Correct determination of `output_size` for multi-target forecasting with the TemporalFusionTransformer (#328)
+- Tqdm autonotebook fix to work outside of Jupyter (#338)
 
 ### Contributors
 
 - jdb78
 - JakeForsey
+- vakker
 
 ## v0.8.3 Bugfix release (31/01/2021)
 
