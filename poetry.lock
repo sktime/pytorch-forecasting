@@ -1550,7 +1550,7 @@ python-versions = "*"
 
 [[package]]
 name = "sphinx"
-version = "3.4.3"
+version = "3.5.0"
 description = "Python documentation generator"
 category = "dev"
 optional = false
@@ -1575,9 +1575,9 @@ sphinxcontrib-qthelp = "*"
 sphinxcontrib-serializinghtml = "*"
 
 [package.extras]
-docs = ["sphinxcontrib-websupport"]
-lint = ["flake8 (>=3.5.0)", "isort", "mypy (>=0.790)", "docutils-stubs"]
+lint = ["docutils-stubs", "flake8 (>=3.5.0)", "isort", "mypy (>=0.800)"]
 test = ["pytest", "pytest-cov", "html5lib", "cython", "typed-ast"]
+docs = ["sphinxcontrib-websupport"]
 
 [[package]]
 name = "sphinxcontrib-applehelp"
@@ -1911,7 +1911,7 @@ github-actions = ["pytest-github-actions-annotate-failures"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.1"
-content-hash = "9172675447bde2d7d3199b872c6706dab101cba686ac89d623575d2c7379a90b"
+content-hash = "734b77e76158eab33813c3718a1e996fd43198005b24aa08eec54431871cc9f4"
 
 [metadata.files]
 absl-py = [
@@ -3033,8 +3033,8 @@ snowballstemmer = [
     {file = "snowballstemmer-2.0.0.tar.gz", hash = "sha256:df3bac3df4c2c01363f3dd2cfa78cce2840a79b9f1c2d2de9ce8d31683992f52"},
 ]
 sphinx = [
-    {file = "Sphinx-3.4.3-py3-none-any.whl", hash = "sha256:c314c857e7cd47c856d2c5adff514ac2e6495f8b8e0f886a8a37e9305dfea0d8"},
-    {file = "Sphinx-3.4.3.tar.gz", hash = "sha256:41cad293f954f7d37f803d97eb184158cfd90f51195131e94875bc07cd08b93c"},
+    {file = "Sphinx-3.5.0-py3-none-any.whl", hash = "sha256:68da66ca3d6b35b22bea5c53d938d5f8988663dca042f0a46429a1eba1010051"},
+    {file = "Sphinx-3.5.0.tar.gz", hash = "sha256:deb468efb3abaa70d790add4147d18782d86fdeacf648d6e8afb7a99807f1546"},
 ]
 sphinxcontrib-applehelp = [
     {file = "sphinxcontrib-applehelp-1.0.2.tar.gz", hash = "sha256:a072735ec80e7675e3f432fcae8610ecf509c5f1869d17e2eecff44389cdbc58"},

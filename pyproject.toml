@@ -87,7 +87,7 @@ ipykernel = "*"
 black = { version = "*", allow-prereleases = true }
 
 # documentatation
-sphinx = "^3.4"
+sphinx = "^3.5"
 pydata-sphinx-theme = "*"
 nbsphinx = "*"
 pandoc = "*"
