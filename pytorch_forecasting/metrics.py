@@ -975,7 +975,6 @@ class NormalDistributionLoss(DistributionLoss):
         return torch.stack([loc, scale], dim=-1)
 
 
-
 class NegativeBinomialDistributionLoss(DistributionLoss):
     """
     Negative binomial loss, e.g. for count data.
