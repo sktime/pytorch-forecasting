@@ -355,12 +355,12 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 q_25 = y.kthvalue(int(len(y) * 0.25), dim=-1).values
             elif isinstance(y, np.ndarray):
                 self.center_ = np.median(y, axis=-1)
-                q_75 = np.percentiley(y, 75, axis=-1)
-                q_25 = np.percentiley(y, 25, axis=-1)
+                q_75 = np.percentile(y, 75, axis=-1)
+                q_25 = np.percentile(y, 25, axis=-1)
             else:
                 self.center_ = np.median(y)
-                q_75 = np.percentiley(y, 75)
-                q_25 = np.percentiley(y, 25)
+                q_75 = np.percentile(y, 75)
+                q_25 = np.percentile(y, 25)
             self.scale_ = (q_75 - q_25) / 2.0 + self.eps
         if not self.center:
             self.scale_ = self.center_
