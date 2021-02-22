@@ -905,7 +905,9 @@ class DistributionLoss(MultiHorizonMetric):
         Returns:
             torch.Tensor: mean prediction
         """
-        return y_pred.mean(-1)
+        distribution = self.map_x_to_distribution(y_pred)
+
+        return distribution.mean
 
     def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         """
@@ -941,8 +943,13 @@ class DistributionLoss(MultiHorizonMetric):
         if quantiles is None:
             quantiles = self.quantiles
 
-        samples = torch.sort(self.sample(y_pred, 1000), -1).values
-        quantiles = torch.quantile(samples, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
+        # better: derive analytically
+        try:
+            distribution = self.map_x_to_distribution(y_pred)
+            quantiles = [distribution.icdf(quantile) for quantile in quantiles]
+        except NotImplementedError:  # resort to derive quantiles empirically
+            samples = torch.sort(self.sample(y_pred, 1000), -1).values
+            quantiles = torch.quantile(samples, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
         return quantiles
 
 
