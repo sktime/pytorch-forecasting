@@ -11,9 +11,10 @@ import torch
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import MultiNormalizer
-from pytorch_forecasting.metrics import CrossEntropy, MultiLoss, PoissonLoss, QuantileLoss
+from pytorch_forecasting.metrics import CrossEntropy, MultiLoss, PoissonLoss, QuantileLoss, NegativeBinomialDistributionLoss
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+from tests.test_models.conftest import dataloaders_with_covariates_not_centered
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -93,6 +94,88 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
             # check prediction
             predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True)
             pred_len = len(multiple_dataloaders_with_covariates["val"].dataset)
+
+            # check that output is of correct shape
+            def check(x):
+                if isinstance(x, (tuple, list)):
+                    for xi in x:
+                        check(xi)
+                elif isinstance(x, dict):
+                    for xi in x.values():
+                        check(xi)
+                else:
+                    assert pred_len == x.shape[0], "first dimension should be prediction length"
+
+            check(predictions)
+            check(x)
+            check(index)
+
+            # check prediction on gpu
+            if not (isinstance(gpus, int) and gpus == 0):
+                net.to("cuda")
+                net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+
+        finally:
+            shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+@pytest.mark.parametrize("loss", [NegativeBinomialDistributionLoss])
+def test_distribution_loss(dataloaders_with_covariates_not_centered, tmp_path, loss, gpus):
+    train_dataloader = dataloaders_with_covariates_not_centered["train"]
+    val_dataloader = dataloaders_with_covariates_not_centered["val"]
+    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+
+    # check training
+    logger = TensorBoardLogger(tmp_path)
+    trainer = pl.Trainer(
+        max_epochs=2,
+        gpus=gpus,
+        weights_summary="top",
+        gradient_clip_val=0.1,
+        callbacks=[early_stop_callback],
+        checkpoint_callback=True,
+        default_root_dir=tmp_path,
+        limit_train_batches=2,
+        limit_val_batches=2,
+        logger=logger,
+    )
+    # test monotone constraints automatically
+    if "discount_in_percent" in train_dataloader.dataset.reals:
+        monotone_constaints = {"discount_in_percent": +1}
+        cuda_context = torch.backends.cudnn.flags(enabled=False)
+    else:
+        monotone_constaints = {}
+        cuda_context = nullcontext()
+
+    with cuda_context:
+        net = TemporalFusionTransformer.from_dataset(
+            train_dataloader.dataset,
+            learning_rate=0.15,
+            hidden_size=4,
+            attention_head_size=1,
+            dropout=0.2,
+            hidden_continuous_size=2,
+            output_size=len(loss.distribution_arguments),
+            loss=loss(),
+            log_interval=5,
+            log_val_interval=1,
+            log_gradient_flow=True,
+            monotone_constaints=monotone_constaints,
+        )
+        net.size()
+        try:
+            trainer.fit(
+                net,
+                train_dataloader=train_dataloader,
+                val_dataloaders=val_dataloader,
+            )
+
+            # check loading
+            net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+
+            # check prediction
+            predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True)
+            pred_len = len(val_dataloader.dataset)
 
             # check that output is of correct shape
             def check(x):

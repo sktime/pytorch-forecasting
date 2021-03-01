@@ -12,7 +12,7 @@ import torch
 
 from pytorch_forecasting import GroupNormalizer, TemporalFusionTransformer, TimeSeriesDataSet
 from pytorch_forecasting.data.examples import get_stallion_data
-from pytorch_forecasting.metrics import MAE, RMSE, SMAPE, PoissonLoss, QuantileLoss
+from pytorch_forecasting.metrics import MAE, RMSE, SMAPE, PoissonLoss, QuantileLoss, NegativeBinomialDistributionLoss
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_forecasting.utils import profile
 
@@ -103,7 +103,7 @@ trainer = pl.Trainer(
     limit_train_batches=30,
     # val_check_interval=20,
     # limit_val_batches=1,
-    # fast_dev_run=True,
+    fast_dev_run=True,
     # logger=logger,
     # profiler=True,
     callbacks=[lr_logger, early_stop_callback],
@@ -117,8 +117,8 @@ tft = TemporalFusionTransformer.from_dataset(
     attention_head_size=1,
     dropout=0.1,
     hidden_continuous_size=8,
-    output_size=7,
-    loss=QuantileLoss(),
+    output_size=2,
+    loss=NegativeBinomialDistributionLoss(),
     log_interval=10,
     log_val_interval=1,
     reduce_on_plateau_patience=3,
@@ -139,35 +139,36 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # fig.show()
 # tft.hparams.learning_rate = res.suggestion()
 
-# trainer.fit(
-#     tft,
-#     train_dataloader=train_dataloader,
-#     val_dataloaders=val_dataloader,
-# )
+trainer.fit(
+    tft,
+    train_dataloader=train_dataloader,
+    val_dataloaders=val_dataloader,
+)
 
 # # make a prediction on entire validation set
-# preds, index = tft.predict(val_dataloader, return_index=True, fast_dev_run=True)
+raw, index = tft.predict(val_dataloader, return_index=True, fast_dev_run=True, mode='raw')
+quants = tft.loss.to_quantiles(raw['prediction'], [0.1, 0.2, 0.5, 0.8, 0.9])
 
-
+print(quants)
 # tune
-study = optimize_hyperparameters(
-    train_dataloader,
-    val_dataloader,
-    model_path="optuna_test",
-    n_trials=200,
-    max_epochs=50,
-    gradient_clip_val_range=(0.01, 1.0),
-    hidden_size_range=(8, 128),
-    hidden_continuous_size_range=(8, 128),
-    attention_head_size_range=(1, 4),
-    learning_rate_range=(0.001, 0.1),
-    dropout_range=(0.1, 0.3),
-    trainer_kwargs=dict(limit_train_batches=30),
-    reduce_on_plateau_patience=4,
-    use_learning_rate_finder=False,
-)
-with open("test_study.pkl", "wb") as fout:
-    pickle.dump(study, fout)
+# study = optimize_hyperparameters(
+#     train_dataloader,
+#     val_dataloader,
+#     model_path="optuna_test",
+#     n_trials=200,
+#     max_epochs=50,
+#     gradient_clip_val_range=(0.01, 1.0),
+#     hidden_size_range=(8, 128),
+#     hidden_continuous_size_range=(8, 128),
+#     attention_head_size_range=(1, 4),
+#     learning_rate_range=(0.001, 0.1),
+#     dropout_range=(0.1, 0.3),
+#     trainer_kwargs=dict(limit_train_batches=30),
+#     reduce_on_plateau_patience=4,
+#     use_learning_rate_finder=False,
+# )
+# with open("test_study.pkl", "wb") as fout:
+#     pickle.dump(study, fout)
 
 
 # profile speed
