@@ -118,7 +118,7 @@ tft = TemporalFusionTransformer.from_dataset(
     dropout=0.1,
     hidden_continuous_size=8,
     output_size=2,
-    loss=NegativeBinomialDistributionLoss(),
+    loss=PoissonLoss(),
     log_interval=10,
     log_val_interval=1,
     reduce_on_plateau_patience=3,
@@ -147,9 +147,8 @@ trainer.fit(
 
 # # make a prediction on entire validation set
 raw, index = tft.predict(val_dataloader, return_index=True, fast_dev_run=True, mode='raw')
-quants = tft.loss.to_quantiles(raw['prediction'], [0.1, 0.2, 0.5, 0.8, 0.9])
+quants = tft.loss.to_quantiles(raw['prediction'], [0.2, 0.5, 0.8])
 
-print(quants)
 # tune
 # study = optimize_hyperparameters(
 #     train_dataloader,
