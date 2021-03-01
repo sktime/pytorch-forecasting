@@ -11,8 +11,13 @@ import torch
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import MultiNormalizer
-from pytorch_forecasting.metrics import CrossEntropy, MultiLoss, PoissonLoss, QuantileLoss, \
-    NegativeBinomialDistributionLoss
+from pytorch_forecasting.metrics import (
+    CrossEntropy,
+    MultiLoss,
+    PoissonLoss,
+    QuantileLoss,
+    NegativeBinomialDistributionLoss,
+)
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 

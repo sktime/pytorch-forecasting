@@ -146,8 +146,8 @@ trainer.fit(
 )
 
 # # make a prediction on entire validation set
-raw, index = tft.predict(val_dataloader, return_index=True, fast_dev_run=True, mode='raw')
-quants = tft.loss.to_quantiles(raw['prediction'], [0.2, 0.5, 0.8])
+raw, index = tft.predict(val_dataloader, return_index=True, fast_dev_run=True, mode="raw")
+quants = tft.loss.to_quantiles(raw["prediction"], [0.2, 0.5, 0.8])
 
 # tune
 # study = optimize_hyperparameters(
