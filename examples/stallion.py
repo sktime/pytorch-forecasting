@@ -12,7 +12,7 @@ import torch
 
 from pytorch_forecasting import GroupNormalizer, TemporalFusionTransformer, TimeSeriesDataSet
 from pytorch_forecasting.data.examples import get_stallion_data
-from pytorch_forecasting.metrics import MAE, RMSE, SMAPE, PoissonLoss, QuantileLoss, NegativeBinomialDistributionLoss
+from pytorch_forecasting.metrics import MAE, RMSE, SMAPE, NegativeBinomialDistributionLoss, PoissonLoss, QuantileLoss
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_forecasting.utils import profile
 
