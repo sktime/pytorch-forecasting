@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
-from pytorch_lightning.utilities.parsing import get_init_args
+from pytorch_lightning.utilities.parsing import AttributeDict, get_init_args
 import scipy.stats
 import torch
 import torch.nn as nn
@@ -202,6 +202,17 @@ class BaseModel(LightningModule):
             self.logging_metrics = nn.ModuleList([l for l in logging_metrics])
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
+
+        # ensure only params are saved that can be written to yml.
+        # nn.Modules have to be saved as attributes anyways.
+        self._hparams = AttributeDict(
+            {
+                name: val
+                for name, val in self.hparams.items()
+                if not isinstance(val, nn.Module) and name not in ["output_transformer"]
+            }
+        )
+        self._hparams_initial = deepcopy(self._hparams)
 
     def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
