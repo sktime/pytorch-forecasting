@@ -467,7 +467,7 @@ class MultiHorizonMetric(Metric):
         """
         raise NotImplementedError()
 
-    def update(self, y_pred: Dict[str, torch.Tensor], target: Union[torch.Tensor, rnn.PackedSequence]):
+    def update(self, y_pred, target):
         """
         Update method of metric that handles masking of values.
 
@@ -725,10 +725,10 @@ class MASE(MultiHorizonMetric):
 
     def update(
         self,
-        y_pred: Dict[str, torch.Tensor],
-        target: Tuple[Union[torch.Tensor, rnn.PackedSequence], torch.Tensor],
-        encoder_target: Union[torch.Tensor, rnn.PackedSequence],
-        encoder_lengths: torch.Tensor = None,
+        y_pred,
+        target,
+        encoder_target,
+        encoder_lengths=None,
     ) -> torch.Tensor:
         """
         Update metric that handles masking of values.

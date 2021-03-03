@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pytorch_lightning import LightningModule
-from pytorch_lightning.utilities.parsing import get_init_args
+from pytorch_lightning.utilities.parsing import AttributeDict, get_init_args
 import scipy.stats
 import torch
 import torch.nn as nn
