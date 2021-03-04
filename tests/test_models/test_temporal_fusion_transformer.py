@@ -153,9 +153,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
         train_dataloader.dataset,
     )
     logger = TensorBoardLogger(tmp_path)
-    checkpoint = ModelCheckpoint(filepath=tmp_path)
     trainer = pl.Trainer(
-        checkpoint_callback=checkpoint,
         max_epochs=3,
         gpus=list(range(torch.cuda.device_count())),
         weights_summary="top",
@@ -163,6 +161,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
         fast_dev_run=True,
         logger=logger,
         accelerator=accelerator,
+        checkpoint_callback=True,
     )
     try:
         trainer.fit(
