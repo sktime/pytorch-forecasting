@@ -19,7 +19,16 @@ Selecting an architecture
 --------------------------
 
 Criteria for selecting an architecture depend heavily on the use-case. There are multiple selection criteria
-and you should take into account.
+and you should take into account. Here is an overview over the pros and cons of the implemented models:
+
+.. csv-table:: Model comparison
+   :header: "Name",                                                                                        "Covariates", "Multiple targets", "Regression", "Classification", "Probabilistic", "Uncertainty", "Interactions between series", "Flexible history length", "Cold-start", "Required computational resources (1-5, 5=most)"
+
+   :py:class:`~pytorch_forecasting.models.nbeats.NBeats`,                                                  "",           "",                 "x",          "",               "",               "",           "",                            "",                        "",           1
+   :py:class:`~pytorch_forecasting.models.deepar.DeepAR`,                                                  "x",          "x",                "x",          "",               "x",              "x",          "",                            "x",                       "",           3
+   :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`,          "x",          "x",                "x",          "x",              "",               "x",          "",                            "x",                       "x",          4
+   :py:class:`~pytorch_forecasting.models.temporal_flow_transformer.TemporalFlowTransformer`,              "x",          "",                 "x",          "",               "x",              "x",          "x",                           "x",                       "x",          5
+
 
 Size and type of available data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +65,10 @@ Number of timeseries and their relation to each other
 If your time series are related to each other (e.g. all sales of products of the same company),
 a model that can learn relations between the timeseries can improve accuracy.
 Not that only :ref:`models that can process covariates <model-covariates>` can
-learn relationships between different timeseries.
+learn relationships between different timeseries. However, most models cannot model interactions between
+time series. We provide the
+:py:class:`~pytorch_forecasting.models.temporal_flow_transformer.TemporalFlowTransformer` that is able to
+model such interactions and also scales reasonably well.
 If the timeseries denote different entities or exhibit very similar patterns accross the board,
 a model such as :py:class:`~pytorch_forecasting.models.nbeats.NBeats` will work as well.
 

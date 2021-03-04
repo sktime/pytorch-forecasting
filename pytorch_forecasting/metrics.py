@@ -10,6 +10,7 @@ import scipy.stats
 from sklearn.base import BaseEstimator
 import torch
 from torch import distributions
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -1097,3 +1098,17 @@ class BetaDistributionLoss(DistributionLoss):
         )
         scaled_shape = F.softplus(parameters[..., 1]) / shape_scaler
         return torch.stack([scaled_mean, scaled_shape], dim=-1)
+
+
+class FlowDistributionLoss(DistributionLoss):
+    """
+    Loss for conditioned normalizing flow.
+    """
+
+    def map_x_to_distribution(self, flow: nn.Module) -> nn.Module:
+        return flow
+
+    def rescale_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
+    ) -> torch.Tensor:
+        return super().rescale_parameters(parameters, target_scale, encoder)

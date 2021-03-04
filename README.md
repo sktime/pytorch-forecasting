@@ -49,6 +49,8 @@ documentation with detailed tutorials.
   methods in the M4 competition. The M4 competition is arguably the most important benchmark for univariate time series forecasting.
 - [DeepAR: Probabilistic forecasting with autoregressive recurrent networks](https://www.sciencedirect.com/science/article/pii/S0169207019301888)
   which is the one of the most popular forecasting algorithms and is often used as a baseline
+- [TemporalFlowTransformer: Multi-variate Probabilistic Time Series Forecasting via Conditioned Normalizing Flows](https://arxiv.org/abs/2002.06103)
+  which is an architecture that can model interactions between time series via a conditioned normalizing flow.
 
 To implement new models, see the [How to implement new models tutorial](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/building.html).
 It covers basic as well as advanced architectures.
