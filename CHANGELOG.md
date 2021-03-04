@@ -25,6 +25,10 @@
 - Make tuning trainer kwargs overwritable (#300)
 - Allow adding categories to NaNEncoder (#303)
 
+### Added
+
+- Adding Temporal Flow Transformer which can model time series interactions (#238)
+
 ### Fixed
 
 - Underlying data is copied if modified. Original data is not modified inplace (#263)
