@@ -119,7 +119,7 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
 
 
 @pytest.fixture
-def model(dataloaders_with_covariates):
+def model(dataloaders_with_covariates, gpus):
     dataset = dataloaders_with_covariates["train"].dataset
     net = TemporalFusionTransformer.from_dataset(
         dataset,
@@ -134,6 +134,8 @@ def model(dataloaders_with_covariates):
         log_val_interval=1,
         log_gradient_flow=True,
     )
+    if isinstance(gpus, list) and len(gpus) > 0:  # only run test on GPU
+        net.to(gpus[0])
     return net
 
 
@@ -153,9 +155,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
         train_dataloader.dataset,
     )
     logger = TensorBoardLogger(tmp_path)
-    checkpoint = ModelCheckpoint(filepath=tmp_path)
     trainer = pl.Trainer(
-        checkpoint_callback=checkpoint,
         max_epochs=3,
         gpus=list(range(torch.cuda.device_count())),
         weights_summary="top",
@@ -163,6 +163,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
         fast_dev_run=True,
         logger=logger,
         accelerator=accelerator,
+        checkpoint_callback=True,
     )
     try:
         trainer.fit(
