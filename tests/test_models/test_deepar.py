@@ -90,7 +90,7 @@ def _integration(
         ),
         dict(
             loss=NegativeBinomialDistributionLoss(),
-            clip_target=True,
+            clip_target=False,
             data_loader_kwargs=dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False)),
         ),
         dict(
@@ -115,6 +115,8 @@ def _integration(
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
+    if "loss" in kwargs and isinstance(kwargs["loss"], NegativeBinomialDistributionLoss):
+        data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     _integration(data_with_covariates, tmp_path, gpus, **kwargs)
 
 
