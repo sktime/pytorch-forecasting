@@ -31,14 +31,17 @@ from pytorch_forecasting.metrics import (
 from pytorch_forecasting.models import (
     GRU,
     LSTM,
+    MLP,
     AutoRegressiveBaseModel,
     AutoRegressiveBaseModelWithCovariates,
     Baseline,
     BaseModel,
     BaseModelWithCovariates,
+    DecoderMLP,
     DeepAR,
     MultiEmbedding,
     NBeats,
+    RecurrentNetwork,
     TemporalFusionTransformer,
     get_rnn,
 )
@@ -85,6 +88,9 @@ __all__ = [
     "get_embedding_size",
     "create_mask",
     "to_list",
+    "RecurrentNetwork",
+    "MLP",
+    "DecoderMLP",
 ]
 
 __version__ = "0.0.0"

@@ -176,7 +176,6 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         Returns:
             DeepAR network
         """
-        # assert fixed encoder and decoder length for the moment
         new_kwargs = {}
         if dataset.multi_target:
             new_kwargs.setdefault("loss", MultiLoss([NormalDistributionLoss()] * len(dataset.target_names)))

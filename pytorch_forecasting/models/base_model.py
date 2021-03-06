@@ -20,7 +20,16 @@ from tqdm.autonotebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, MultiNormalizer, NaNLabelEncoder
-from pytorch_forecasting.metrics import MASE, SMAPE, DistributionLoss, Metric, MultiLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    MASE,
+    SMAPE,
+    DistributionLoss,
+    Metric,
+    MultiHorizonMetric,
+    MultiLoss,
+    QuantileLoss,
+)
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import apply_to_list, create_mask, get_embedding_size, groupby_apply, to_list
 
@@ -203,6 +212,21 @@ class BaseModel(LightningModule):
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
 
+    @property
+    def n_targets(self) -> int:
+        """
+        Number of targets to forecast.
+
+        Based on loss function.
+
+        Returns:
+            int: number of targets
+        """
+        if isinstance(self.loss, MultiLoss):
+            return len(self.loss.metrics)
+        else:
+            return 1
+
     def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
@@ -250,6 +274,52 @@ class BaseModel(LightningModule):
         else:
             out = self.output_transformer(out)
         return out
+
+    @staticmethod
+    def deduce_default_output_parameters(
+        dataset: TimeSeriesDataSet, kwargs: Dict[str, Any], default_loss: MultiHorizonMetric = None
+    ) -> Dict[str, Any]:
+        """
+        Deduce default parameters for output for `from_dataset()` method.
+
+        Determines ``output_size`` and ``loss`` parameters.
+
+        Args:
+            dataset (TimeSeriesDataSet): timeseries dataset
+            kwargs (Dict[str, Any]): current hyperparameters
+            default_loss (MultiHorizonMetric, optional): default loss function.
+                Defaults to :py:class:`~pytorch_forecasting.metrics.MAE`.
+
+        Returns:
+            Dict[str, Any]: dictionary with ``output_size`` and ``loss``.
+        """
+        # infer output size
+        def get_output_size(normalizer, loss):
+            if isinstance(loss, QuantileLoss):
+                return len(loss.quantiles)
+            elif isinstance(normalizer, NaNLabelEncoder):
+                return len(normalizer.classes_)
+            else:
+                return 1
+
+        # handle multiple targets
+        new_kwargs = {}
+        n_targets = len(dataset.target_names)
+        if default_loss is None:
+            default_loss = MAE()
+        loss = kwargs.get("loss", default_loss)
+        if n_targets > 1:  # try to infer number of ouput sizes
+            if not isinstance(loss, MultiLoss):
+                loss = MultiLoss([deepcopy(loss)] * n_targets)
+                new_kwargs["loss"] = loss
+            if isinstance(loss, MultiLoss) and "output_size" not in kwargs:
+                new_kwargs["output_size"] = [
+                    get_output_size(normalizer, l)
+                    for normalizer, l in zip(dataset.target_normalizer.normalizers, loss.metrics)
+                ]
+        elif "output_size" not in kwargs:
+            new_kwargs["output_size"] = get_output_size(dataset.target_normalizer, loss)
+        return new_kwargs
 
     def size(self) -> int:
         """
