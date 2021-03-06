@@ -163,6 +163,7 @@ class BaseModel(LightningModule):
         reduce_on_plateau_patience: int = 1000,
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
+        optimizer_params: Dict[str, Any] = None,
         monotone_constaints: Dict[str, int] = {},
         output_transformer: Callable = None,
         optimizer="ranger",
@@ -186,6 +187,7 @@ class BaseModel(LightningModule):
             reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
+            optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
             monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
@@ -193,7 +195,8 @@ class BaseModel(LightningModule):
                 This constraint significantly slows down training. Defaults to {}.
             output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
-            optimizer (str): Optimizer, "ranger", "adam" or "adamw". Defaults to "ranger".
+            optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``.
+                Defaults to "ranger".
         """
         super().__init__()
         # update hparams
@@ -743,6 +746,10 @@ class BaseModel(LightningModule):
             Tuple[List]: first entry is list of optimizers and second is list of schedulers
         """
         # either set a schedule of lrs or find it dynamically
+        if self.hparams.optimizer_params is None:
+            optimizer_params = {}
+        else:
+            optimizer_params = self.hparams.optimizer_params
         if isinstance(self.hparams.learning_rate, (list, tuple)):  # set schedule
             lrs = self.hparams.learning_rate
             if self.hparams.optimizer == "adam":
@@ -751,8 +758,17 @@ class BaseModel(LightningModule):
                 optimizer = torch.optim.AdamW(self.parameters(), lr=lrs[0])
             elif self.hparams.optimizer == "ranger":
                 optimizer = Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
+            elif self.hparams.optimizer == "sgd":
+                optimizer = torch.optim.SGD(
+                    self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay, **optimizer_params
+                )
             else:
-                raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
+                try:
+                    optimizer = getattr(torch.optim, self.hparams.optimizer)(
+                        self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay, **optimizer_params
+                    )
+                except AttributeError:
+                    raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             schedulers = [
