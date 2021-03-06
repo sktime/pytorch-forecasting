@@ -5,12 +5,14 @@
 ### Added
 
 - Adding a filter functionality to the timeseries datasset (#329)
+- Add simple models such as LSTM, GRU and MLPs (#380)
 
 ### Fixed
 
 - Moving predictions to CPU to avoid running out of memory (#329)
 - Correct determination of `output_size` for multi-target forecasting with the TemporalFusionTransformer (#328)
 - Tqdm autonotebook fix to work outside of Jupyter (#338)
+- Fix issue with yaml serialization for TensorboardLogger (#379)
 
 ### Contributors
 
