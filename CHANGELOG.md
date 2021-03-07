@@ -5,7 +5,8 @@
 ### Added
 
 - Adding a filter functionality to the timeseries datasset (#329)
-- Add simple models such as LSTM, GRU and MLPs (#380)
+- Add simple models such as LSTM, GRU and a MLP on the decoder (#380)
+- Allow usage of any torch optimizer such as SGD (#380)
 
 ### Fixed
 

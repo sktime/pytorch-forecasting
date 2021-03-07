@@ -9,7 +9,7 @@ from pytorch_forecasting.models.base_model import (
 )
 from pytorch_forecasting.models.baseline import Baseline
 from pytorch_forecasting.models.deepar import DeepAR
-from pytorch_forecasting.models.mlp import MLP, DecoderMLP
+from pytorch_forecasting.models.mlp import DecoderMLP
 from pytorch_forecasting.models.nbeats import NBeats
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.rnn import RecurrentNetwork
@@ -29,6 +29,5 @@ __all__ = [
     "LSTM",
     "GRU",
     "MultiEmbedding",
-    "MLP",
     "DecoderMLP",
 ]

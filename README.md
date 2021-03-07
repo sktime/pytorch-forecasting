@@ -50,8 +50,7 @@ documentation with detailed tutorials.
 - [DeepAR: Probabilistic forecasting with autoregressive recurrent networks](https://www.sciencedirect.com/science/article/pii/S0169207019301888)
   which is the one of the most popular forecasting algorithms and is often used as a baseline
 - A baseline model that always predicts the latest known value
-- Simple standard networks for baselining: LSTM and GRU networks as
-  well as a MLP only on the decoder and a MLP with a encoder-decoder architecture
+- Simple standard networks for baselining: LSTM and GRU networks as well as a MLP on the decoder
 
 To implement new models, see the [How to implement new models tutorial](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/building.html).
 It covers basic as well as advanced architectures.

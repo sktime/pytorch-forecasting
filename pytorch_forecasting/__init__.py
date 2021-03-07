@@ -31,7 +31,6 @@ from pytorch_forecasting.metrics import (
 from pytorch_forecasting.models import (
     GRU,
     LSTM,
-    MLP,
     AutoRegressiveBaseModel,
     AutoRegressiveBaseModelWithCovariates,
     Baseline,
@@ -89,7 +88,6 @@ __all__ = [
     "create_mask",
     "to_list",
     "RecurrentNetwork",
-    "MLP",
     "DecoderMLP",
 ]
 
