@@ -36,9 +36,11 @@ from pytorch_forecasting.models import (
     Baseline,
     BaseModel,
     BaseModelWithCovariates,
+    DecoderMLP,
     DeepAR,
     MultiEmbedding,
     NBeats,
+    RecurrentNetwork,
     TemporalFusionTransformer,
     get_rnn,
 )
@@ -85,6 +87,8 @@ __all__ = [
     "get_embedding_size",
     "create_mask",
     "to_list",
+    "RecurrentNetwork",
+    "DecoderMLP",
 ]
 
 __version__ = "0.0.0"

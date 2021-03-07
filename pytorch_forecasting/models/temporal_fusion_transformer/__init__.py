@@ -33,7 +33,6 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         lstm_layers: int = 1,
         dropout: float = 0.1,
         output_size: Union[int, List[int]] = 7,
-        n_targets: int = 1,
         loss: MultiHorizonMetric = None,
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
@@ -91,7 +90,6 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             dropout: dropout rate
             output_size: number of outputs (e.g. number of quantiles for QuantileLoss and one target or list
                 of output sizes).
-            n_targets: number of targets. Defaults to 1.
             loss: loss function taking prediction and targets
             attention_head_size: number of attention heads (4 is a good default)
             max_encoder_length: length to encode (can be far longer than the decoder length but does not have to be)
@@ -318,7 +316,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # output processing -> no dropout at this late stage
         self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=None, trainable_add=False)
 
-        if self.hparams.n_targets > 1:  # if to run with multiple targets
+        if self.n_targets > 1:  # if to run with multiple targets
             self.output_layer = nn.ModuleList(
                 [nn.Linear(self.hparams.hidden_size, output_size) for output_size in self.hparams.output_size]
             )
@@ -345,30 +343,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         # add maximum encoder length
         new_kwargs = dict(max_encoder_length=dataset.max_encoder_length)
-
-        # infer output size
-        def get_output_size(normalizer, loss):
-            if isinstance(loss, QuantileLoss):
-                return len(loss.quantiles)
-            elif isinstance(normalizer, NaNLabelEncoder):
-                return len(normalizer.classes_)
-            else:
-                return 1
-
-        loss = kwargs.get("loss", QuantileLoss())
-        # handle multiple targets
-        new_kwargs["n_targets"] = len(dataset.target_names)
-        if new_kwargs["n_targets"] > 1:  # try to infer number of ouput sizes
-            if not isinstance(loss, MultiLoss):
-                loss = MultiLoss([deepcopy(loss)] * new_kwargs["n_targets"])
-                new_kwargs["loss"] = loss
-            if isinstance(loss, MultiLoss) and "output_size" not in kwargs:
-                new_kwargs["output_size"] = [
-                    get_output_size(normalizer, l)
-                    for normalizer, l in zip(dataset.target_normalizer.normalizers, loss.metrics)
-                ]
-        elif "output_size" not in kwargs:
-            new_kwargs["output_size"] = get_output_size(dataset.target_normalizer, loss)
+        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss()))
 
         # update defaults
         new_kwargs.update(kwargs)
@@ -518,7 +493,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # skip connection over temporal fusion decoder (not LSTM decoder despite the LSTM output contains
         # a skip from the variable selection network)
         output = self.pre_output_gate_norm(output, lstm_output[:, max_encoder_length:])
-        if self.hparams.n_targets > 1:  # if to use multi-target architecture
+        if self.n_targets > 1:  # if to use multi-target architecture
             output = [output_layer(output) for output_layer in self.output_layer]
         else:
             output = self.output_layer(output)

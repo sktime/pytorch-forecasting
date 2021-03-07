@@ -20,7 +20,16 @@ from tqdm.autonotebook import tqdm
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, MultiNormalizer, NaNLabelEncoder
-from pytorch_forecasting.metrics import MASE, SMAPE, DistributionLoss, Metric, MultiLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    MASE,
+    SMAPE,
+    DistributionLoss,
+    Metric,
+    MultiHorizonMetric,
+    MultiLoss,
+    QuantileLoss,
+)
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import apply_to_list, create_mask, get_embedding_size, groupby_apply, to_list
 
@@ -154,6 +163,7 @@ class BaseModel(LightningModule):
         reduce_on_plateau_patience: int = 1000,
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
+        optimizer_params: Dict[str, Any] = None,
         monotone_constaints: Dict[str, int] = {},
         output_transformer: Callable = None,
         optimizer="ranger",
@@ -177,6 +187,7 @@ class BaseModel(LightningModule):
             reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
+            optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
             monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
@@ -184,7 +195,8 @@ class BaseModel(LightningModule):
                 This constraint significantly slows down training. Defaults to {}.
             output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
-            optimizer (str): Optimizer, "ranger", "adam" or "adamw". Defaults to "ranger".
+            optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``.
+                Defaults to "ranger".
         """
         super().__init__()
         # update hparams
@@ -202,6 +214,21 @@ class BaseModel(LightningModule):
             self.logging_metrics = nn.ModuleList([l for l in logging_metrics])
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
+
+    @property
+    def n_targets(self) -> int:
+        """
+        Number of targets to forecast.
+
+        Based on loss function.
+
+        Returns:
+            int: number of targets
+        """
+        if isinstance(self.loss, MultiLoss):
+            return len(self.loss.metrics)
+        else:
+            return 1
 
     def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
@@ -250,6 +277,52 @@ class BaseModel(LightningModule):
         else:
             out = self.output_transformer(out)
         return out
+
+    @staticmethod
+    def deduce_default_output_parameters(
+        dataset: TimeSeriesDataSet, kwargs: Dict[str, Any], default_loss: MultiHorizonMetric = None
+    ) -> Dict[str, Any]:
+        """
+        Deduce default parameters for output for `from_dataset()` method.
+
+        Determines ``output_size`` and ``loss`` parameters.
+
+        Args:
+            dataset (TimeSeriesDataSet): timeseries dataset
+            kwargs (Dict[str, Any]): current hyperparameters
+            default_loss (MultiHorizonMetric, optional): default loss function.
+                Defaults to :py:class:`~pytorch_forecasting.metrics.MAE`.
+
+        Returns:
+            Dict[str, Any]: dictionary with ``output_size`` and ``loss``.
+        """
+        # infer output size
+        def get_output_size(normalizer, loss):
+            if isinstance(loss, QuantileLoss):
+                return len(loss.quantiles)
+            elif isinstance(normalizer, NaNLabelEncoder):
+                return len(normalizer.classes_)
+            else:
+                return 1
+
+        # handle multiple targets
+        new_kwargs = {}
+        n_targets = len(dataset.target_names)
+        if default_loss is None:
+            default_loss = MAE()
+        loss = kwargs.get("loss", default_loss)
+        if n_targets > 1:  # try to infer number of ouput sizes
+            if not isinstance(loss, MultiLoss):
+                loss = MultiLoss([deepcopy(loss)] * n_targets)
+                new_kwargs["loss"] = loss
+            if isinstance(loss, MultiLoss) and "output_size" not in kwargs:
+                new_kwargs["output_size"] = [
+                    get_output_size(normalizer, l)
+                    for normalizer, l in zip(dataset.target_normalizer.normalizers, loss.metrics)
+                ]
+        elif "output_size" not in kwargs:
+            new_kwargs["output_size"] = get_output_size(dataset.target_normalizer, loss)
+        return new_kwargs
 
     def size(self) -> int:
         """
@@ -673,6 +746,10 @@ class BaseModel(LightningModule):
             Tuple[List]: first entry is list of optimizers and second is list of schedulers
         """
         # either set a schedule of lrs or find it dynamically
+        if self.hparams.optimizer_params is None:
+            optimizer_params = {}
+        else:
+            optimizer_params = self.hparams.optimizer_params
         if isinstance(self.hparams.learning_rate, (list, tuple)):  # set schedule
             lrs = self.hparams.learning_rate
             if self.hparams.optimizer == "adam":
@@ -681,8 +758,17 @@ class BaseModel(LightningModule):
                 optimizer = torch.optim.AdamW(self.parameters(), lr=lrs[0])
             elif self.hparams.optimizer == "ranger":
                 optimizer = Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
+            elif self.hparams.optimizer == "sgd":
+                optimizer = torch.optim.SGD(
+                    self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay, **optimizer_params
+                )
             else:
-                raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
+                try:
+                    optimizer = getattr(torch.optim, self.hparams.optimizer)(
+                        self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay, **optimizer_params
+                    )
+                except AttributeError:
+                    raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             schedulers = [
