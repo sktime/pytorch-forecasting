@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.8.4 UNRELEASED
+## v0.8.4 Simple models (07/03/2021)
 
 ### Added
 
