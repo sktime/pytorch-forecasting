@@ -15,7 +15,7 @@ from pathlib import Path
 import shutil
 import sys
 
-from recommonmark.parser import CommonMarkParser
+from sphinx.application import Sphinx
 
 SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
@@ -49,12 +49,6 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
 ]
-
-source_parsers = {
-    ".md": CommonMarkParser,
-}
-
-source_suffix = [".rst", ".md"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -95,7 +89,7 @@ apidoc_output_folder = SOURCE_PATH.joinpath("api")
 PACKAGES = [pytorch_forecasting.__name__]
 
 
-def setup(app):
+def setup(app: Sphinx):
     app.add_css_file("custom.css")
     app.connect("autodoc-skip-member", skip)
 
@@ -112,7 +106,7 @@ html_theme_options = {"search_bar_position": "navbar"}
 
 html_sidebars = {
     "index": [],
-    "getting_started": [],
+    "getting-started": [],
     "data": [],
     "models": [],
     "metrics": [],
