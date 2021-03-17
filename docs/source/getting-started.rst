@@ -136,3 +136,15 @@ Example
     trainer.fit(
         tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
     )
+
+Main API
+---------
+
+.. currentmodule:: pytorch_forecasting
+
+.. moduleautosummary::
+   :toctree: api
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting

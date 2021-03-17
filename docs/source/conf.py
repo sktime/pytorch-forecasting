@@ -16,6 +16,8 @@ import shutil
 import sys
 
 from sphinx.application import Sphinx
+from sphinx.ext.autosummary import Autosummary
+from sphinx.pycode import ModuleAnalyzer
 
 SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
@@ -89,9 +91,49 @@ apidoc_output_folder = SOURCE_PATH.joinpath("api")
 PACKAGES = [pytorch_forecasting.__name__]
 
 
+def get_by_name(string: str):
+    """
+    Import by name and return imported module/function/class
+
+    Args:
+        string (str): module/function/class to import, e.g. 'pandas.read_csv' will return read_csv function as
+        defined by pandas
+
+    Returns:
+        imported object
+    """
+    class_name = string.split(".")[-1]
+    module_name = ".".join(string.split(".")[:-1])
+
+    if module_name == "":
+        return getattr(sys.modules[__name__], class_name)
+
+    mod = __import__(module_name, fromlist=[class_name])
+    return getattr(mod, class_name)
+
+
+class ModuleAutoSummary(Autosummary):
+    def get_items(self, names):
+        new_names = []
+        for name in names:
+            mod = sys.modules[name]
+            mod_items = getattr(mod, "__all__", mod.__dict__)
+            for t in mod_items:
+                if "." not in t and not t.startswith("_"):
+                    obj = get_by_name(f"{name}.{t}")
+                    if hasattr(obj, "__module__"):
+                        mod_name = obj.__module__
+                        t = f"{mod_name}.{t}"
+                    if t.startswith("pytorch_forecasting"):
+                        new_names.append(t)
+        new_items = super().get_items(sorted(new_names))
+        return new_items
+
+
 def setup(app: Sphinx):
     app.add_css_file("custom.css")
     app.connect("autodoc-skip-member", skip)
+    app.add_directive("moduleautosummary", ModuleAutoSummary)
 
 
 # extension configuration
@@ -106,10 +148,10 @@ html_theme_options = {"search_bar_position": "navbar"}
 
 html_sidebars = {
     "index": [],
-    "getting-started": [],
-    "data": [],
-    "models": [],
-    "metrics": [],
+    # "getting-started": [],
+    # "data": [],
+    # "models": [],
+    # "metrics": [],
     "faq": [],
     "contribute": [],
     "CHANGELOG": [],
