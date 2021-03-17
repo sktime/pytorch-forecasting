@@ -41,7 +41,7 @@ See the API documentation for further details on available metrics:
 
 .. currentmodule:: pytorch_forecasting
 
-.. autosummary::
+.. moduleautosummary::
    :toctree: api
    :template: custom-module-template.rst
    :recursive:

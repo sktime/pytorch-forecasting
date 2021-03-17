@@ -29,7 +29,7 @@ See the API documentation for further details on available data encoders and the
 
 .. currentmodule:: pytorch_forecasting
 
-.. autosummary::
+.. moduleautosummary::
    :toctree: api/
    :template: custom-module-template.rst
    :recursive:

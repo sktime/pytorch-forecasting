@@ -1,6 +1,10 @@
 .container-xl {
   max-width: 4000px;
 }
+a.reference.internal.nav-link {
+  color: #727991 !important;
+}
+
 h1,
 h2,
 h3,
@@ -9,6 +13,7 @@ h5,
 h6,
 .active > a,
 .active .nav-link,
+.nav-link,
 .navbar-nav > .active > a.nav-link {
   color: #ee4c2c !important;
 }
@@ -24,7 +29,7 @@ code {
 pre code,
 a > code,
 .reference {
-  color: #4974d1 !important;
+  color: #647db6 !important;
 }
 
 dt:target,
@@ -41,5 +46,5 @@ span.highlighted {
 }
 
 .highlight > pre > .s2 {
-  color: #4974d1 !important;
+  color: #647db6 !important;
 }

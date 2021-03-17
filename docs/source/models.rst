@@ -150,9 +150,9 @@ See the API documentation for further details on available models:
 
 .. currentmodule:: pytorch_forecasting
 
-.. autosummary::
+.. moduleautosummary::
    :toctree: api/
    :template: custom-module-template.rst
    :recursive:
 
-   models
+   pytorch_forecasting.models
