@@ -3,7 +3,7 @@ Helper functions for PyTorch forecasting
 """
 from contextlib import redirect_stdout
 import os
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import torch
 from torch.fft import irfft, rfft
@@ -315,3 +315,43 @@ def apply_to_list(obj: Union[List[Any], Any], func: Callable) -> Union[List[Any]
         return [func(o) for o in obj]
     else:
         return func(obj)
+
+
+def move_to_device(
+    x: Union[
+        Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+        torch.Tensor,
+        List[torch.Tensor, Tuple[torch.Tensor]],
+    ],
+    device: Union[str, torch.DeviceObjType],
+) -> Union[
+    Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+    torch.Tensor,
+    List[torch.Tensor, Tuple[torch.Tensor]],
+]:
+    """
+    Move object to device.
+
+    Args:
+        x (Union[Dict[str, Union[torch.Tensor, List[torch.Tensor],
+            Tuple[torch.Tensor]]], torch.Tensor, List[torch.Tensor,
+            Tuple[torch.Tensor]]]): object (e.g. dictionary) of tensors to move to device
+        device (Union[str, torch.DeviceObjType]): device, e.g. "cpu"
+
+    Returns:
+        x on targeted device
+    """
+    if isinstance(device, str):
+        device = torch.device(device)
+    # move back to CPU
+    if isinstance(x, dict):
+        for name in x.keys():
+            if isinstance(x[name], (tuple, list)) and x[name][0].device != device:
+                x[name] = [xi.to(device) for xi in x[name]]
+            elif x[name].device != device:
+                x[name] = x[name].to(device)
+    elif isinstance(x, torch.Tensor) and x.device != device:
+        x = x.to(device)
+    elif isinstance(x, (list, tuple)) and x[0].device != device:
+        x = [xi.to(device) for xi in x]
+    return x

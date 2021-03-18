@@ -145,7 +145,7 @@ def test_init_shared_network(dataloaders_with_covariates):
     net.predict(dataset)
 
 
-@pytest.mark.parametrize("accelerator", ["ddp", "dp", "ddp2"])
+@pytest.mark.parametrize("accelerator", ["ddp", "dp"])
 def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
     if isinstance(gpus, int) and gpus == 0:  # only run test on GPU
         return
