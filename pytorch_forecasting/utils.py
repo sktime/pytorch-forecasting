@@ -343,12 +343,11 @@ def move_to_device(
     """
     if isinstance(device, str):
         device = torch.device(device)
-    # move back to CPU
     if isinstance(x, dict):
         for name in x.keys():
             if isinstance(x[name], (tuple, list)) and x[name][0].device != device:
                 x[name] = [xi.to(device) for xi in x[name]]
-            elif x[name].device != device:
+            elif isinstance(x[name], torch.Tensor) and x[name].device != device:
                 x[name] = x[name].to(device)
     elif isinstance(x, torch.Tensor) and x.device != device:
         x = x.to(device)
