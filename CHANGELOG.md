@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fix issue when predicting and data is on different devices (#402)
+- Fix non-iterable output (#404)
 
 ### Contributors
 
