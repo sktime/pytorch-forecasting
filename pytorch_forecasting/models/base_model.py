@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.lib.function_base import iterable
 import pandas as pd
 from pytorch_lightning import LightningModule
 from pytorch_lightning.utilities.parsing import AttributeDict, get_init_args
@@ -105,7 +106,10 @@ def _concatenate_output(
             try:
                 output_cat[name] = np.concatenate([out[name] for out in output], axis=0)
             except ValueError:
-                output_cat[name] = [item for out in output for item in out[name]]
+                if iterable(output[0][name]):
+                    output_cat[name] = [item for out in output for item in out[name]]
+                else:
+                    output_cat[name] = [out[name] for out in output]
     return output_cat
 
 
