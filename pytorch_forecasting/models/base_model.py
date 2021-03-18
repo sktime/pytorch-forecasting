@@ -190,7 +190,7 @@ class BaseModel(LightningModule):
             learning_rate (float, optional): Learning rate. Defaults to 1e-3.
             log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose
                 training failures. Defaults to False.
-            loss (Metric, optional): metric to optimize. Defaults to SMAPE().
+            loss (Metric, optional): metric to optimize, can also be list of metrics. Defaults to SMAPE().
             logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
                 Defaults to [].
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
@@ -220,7 +220,10 @@ class BaseModel(LightningModule):
             self.hparams.log_val_interval = self.hparams.log_interval
 
         if not hasattr(self, "loss"):
-            self.loss = loss
+            if isinstance(loss, (tuple, list)):
+                self.loss = MultiLoss(metrics=loss)
+            else:
+                self.loss = loss
         if not hasattr(self, "logging_metrics"):
             self.logging_metrics = nn.ModuleList([l for l in logging_metrics])
         if not hasattr(self, "output_transformer"):
