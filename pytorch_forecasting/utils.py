@@ -335,9 +335,7 @@ def move_to_device(
     Move object to device.
 
     Args:
-        x (Union[Dict[str, Union[torch.Tensor, List[torch.Tensor],
-            Tuple[torch.Tensor]]], torch.Tensor,
-            List[torch.Tensor], Tuple[torch.Tensor]]): object (e.g. dictionary) of tensors to move to device
+        x (dictionary of list of tensors): object (e.g. dictionary) of tensors to move to device
         device (Union[str, torch.DeviceObjType]): device, e.g. "cpu"
 
     Returns:
