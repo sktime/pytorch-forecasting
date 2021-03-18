@@ -2,6 +2,10 @@
 
 ## UNRELEASED
 
+### Added
+
+- Allow lists for multiple losses and normalizers (#405)
+
 ### Fixed
 
 - Fix issue when predicting and data is on different devices (#402)
