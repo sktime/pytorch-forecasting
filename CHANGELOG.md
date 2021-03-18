@@ -1,5 +1,15 @@
 # Release Notes
 
+## UNRELEASED
+
+### Fixed
+
+- Fix issue when predicting and data is on different devices (#402)
+
+### Contributors
+
+- jdb78
+
 ## v0.8.4 Simple models (07/03/2021)
 
 ### Added

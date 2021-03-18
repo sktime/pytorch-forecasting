@@ -31,7 +31,14 @@ from pytorch_forecasting.metrics import (
     QuantileLoss,
 )
 from pytorch_forecasting.optim import Ranger
-from pytorch_forecasting.utils import apply_to_list, create_mask, get_embedding_size, groupby_apply, to_list
+from pytorch_forecasting.utils import (
+    apply_to_list,
+    create_mask,
+    get_embedding_size,
+    groupby_apply,
+    move_to_device,
+    to_list,
+)
 
 
 def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
@@ -951,20 +958,11 @@ class BaseModel(LightningModule):
                 else:
                     raise ValueError(f"Unknown mode {mode} - see docs for valid arguments")
 
-                # move back to CPU
-                if isinstance(out, dict):
-                    for name in out.keys():
-                        if isinstance(out[name], (tuple, list)) and out[name][0].device != torch.device("cpu"):
-                            out[name] = [oi.to("cpu") for oi in out[name]]
-                        elif out[name].device != torch.device("cpu"):
-                            out[name] = out[name].to("cpu")
-                elif isinstance(out, torch.Tensor) and out.device != torch.device("cpu"):
-                    out = out.to("cpu")
-                elif isinstance(out, (list, tuple)) and out[0].device != torch.device("cpu"):
-                    out = [o.to("cpu") for o in out]
+                out = move_to_device(out, device="cpu")
 
                 output.append(out)
                 if return_x:
+                    x = move_to_device(x, "cpu")
                     x_list.append(x)
                 if return_index:
                     index.append(dataloader.dataset.x_to_index(x))
