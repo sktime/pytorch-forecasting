@@ -111,6 +111,9 @@ def check_for_nonfinite(tensor: torch.Tensor, names: Union[str, List[str]]) -> t
     return tensor
 
 
+NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
+
+
 class TimeSeriesDataSet(Dataset):
     """
     PyTorch Dataset for fitting timeseries models.
@@ -153,7 +156,7 @@ class TimeSeriesDataSet(Dataset):
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str] = "auto",
+        target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER]] = "auto",
         categorical_encoders: Dict[str, NaNLabelEncoder] = {},
         scalers: Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]] = {},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
@@ -244,8 +247,8 @@ class TimeSeriesDataSet(Dataset):
                 of the unnormalized timeseries as features)
             add_encoder_length (bool): if to add decoder length to list of static real variables.
                 Defaults to "auto", i.e. yes if ``min_encoder_length != max_encoder_length``.
-            target_normalizer (Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str]): transformer that take
-                group_ids, target and time_idx to return normalized targets.
+            target_normalizer (Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str, list, tuple]):
+                transformer that take group_ids, target and time_idx to return normalized targets.
                 You can choose from :py:class:`~TorchNormalizer`, :py:class:`~NaNLabelEncoder`,
                 :py:class:`~EncoderNormalizer` or `None` for using not normalizer.
                 By default an appropriate normalizer is chosen automatically.
@@ -532,6 +535,8 @@ class TimeSeriesDataSet(Dataset):
                 self.target_normalizer = MultiNormalizer(normalizers)
             else:
                 self.target_normalizer = normalizers[0]
+        elif isinstance(self.target_normalizer, (tuple, list)):
+            self.target_normalizer = MultiNormalizer(self.target_normalizer)
         elif self.target_normalizer is None:
             self.target_normalizer = TorchNormalizer(method="identity")
         assert self.min_encoder_length > 1 or not isinstance(
