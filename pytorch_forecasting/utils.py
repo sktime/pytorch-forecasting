@@ -321,21 +321,23 @@ def move_to_device(
     x: Union[
         Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
         torch.Tensor,
-        List[torch.Tensor, Tuple[torch.Tensor]],
+        List[torch.Tensor],
+        Tuple[torch.Tensor],
     ],
     device: Union[str, torch.DeviceObjType],
 ) -> Union[
     Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
     torch.Tensor,
-    List[torch.Tensor, Tuple[torch.Tensor]],
+    List[torch.Tensor],
+    Tuple[torch.Tensor],
 ]:
     """
     Move object to device.
 
     Args:
         x (Union[Dict[str, Union[torch.Tensor, List[torch.Tensor],
-            Tuple[torch.Tensor]]], torch.Tensor, List[torch.Tensor,
-            Tuple[torch.Tensor]]]): object (e.g. dictionary) of tensors to move to device
+            Tuple[torch.Tensor]]], torch.Tensor,
+            List[torch.Tensor], Tuple[torch.Tensor]]): object (e.g. dictionary) of tensors to move to device
         device (Union[str, torch.DeviceObjType]): device, e.g. "cpu"
 
     Returns:
