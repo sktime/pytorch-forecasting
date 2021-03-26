@@ -1225,7 +1225,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pydata-sphinx-theme"
-version = "0.5.1"
+version = "0.5.2"
 description = "Bootstrap-based Sphinx theme from the PyData community"
 category = "dev"
 optional = false
@@ -2924,8 +2924,8 @@ pycparser = [
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
 ]
 pydata-sphinx-theme = [
-    {file = "pydata-sphinx-theme-0.5.1.tar.gz", hash = "sha256:367ecfb4478e7e6f45ae776a1bca8c2c436fd3d942933a6ef7f2b7e9286a9aaf"},
-    {file = "pydata_sphinx_theme-0.5.1-py3-none-any.whl", hash = "sha256:38d579ae14cd0ac8c8a61e82afc405ea9cbc69cefc55db66114145e815fa016b"},
+    {file = "pydata-sphinx-theme-0.5.2.tar.gz", hash = "sha256:3433ab90eb4c689deeedc6c4828c548e68d7555740e8edfa5807c01f49f63a1d"},
+    {file = "pydata_sphinx_theme-0.5.2-py3-none-any.whl", hash = "sha256:bbdae0f3fd17924cc1a90192de121dae6c5e1b40c959d65be09811139bd11bd0"},
 ]
 pyflakes = [
     {file = "pyflakes-2.3.0-py2.py3-none-any.whl", hash = "sha256:910208209dcea632721cb58363d0f72913d9e8cf64dc6f8ae2e02a3609aba40d"},
