@@ -1253,7 +1253,7 @@ python-versions = ">=3.5"
 
 [[package]]
 name = "pylint"
-version = "2.7.3"
+version = "2.7.4"
 description = "python code static checker"
 category = "dev"
 optional = false
@@ -2936,8 +2936,8 @@ pygments = [
     {file = "Pygments-2.8.1.tar.gz", hash = "sha256:2656e1a6edcdabf4275f9a3640db59fd5de107d88e8663c5d4e9a0fa62f77f94"},
 ]
 pylint = [
-    {file = "pylint-2.7.3-py3-none-any.whl", hash = "sha256:d29e1140d96362eb0b68fa0fb1a6192532f586886d6c52db79872a906a50be58"},
-    {file = "pylint-2.7.3.tar.gz", hash = "sha256:466e067526b609c1f22b97895e2a64e5fc3d897016b91ef0f4f80480e89a1ef9"},
+    {file = "pylint-2.7.4-py3-none-any.whl", hash = "sha256:209d712ec870a0182df034ae19f347e725c1e615b2269519ab58a35b3fcbbe7a"},
+    {file = "pylint-2.7.4.tar.gz", hash = "sha256:bd38914c7731cdc518634a8d3c5585951302b6e2b6de60fbb3f7a0220e21eeee"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},
