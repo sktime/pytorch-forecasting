@@ -368,6 +368,13 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 self.center_ = torch.zeros_like(self.center_)
             else:
                 self.center_ = np.zeros_like(self.center_)
+        if self.scale_ < 1e-7:
+            warnings.warn(
+                "scale is below 1e-7 - consider not centering "
+                "the data or using data with higher variance for numerical stability",
+                UserWarning,
+            )
+
         return self
 
     def transform(
@@ -597,6 +604,14 @@ class GroupNormalizer(TorchNormalizer):
                 self.norm_["scale"] = self.norm_["center"] + self.eps
                 self.norm_["center"] = 0.0
             self.missing_ = self.norm_.median().to_dict()
+
+        if (self.norm_["scale"] < 1e-7).any():
+            warnings.warn(
+                "scale is below 1e-7 - consider not centering "
+                "the data or using data with higher variance for numerical stability",
+                UserWarning,
+            )
+
         return self
 
     @property

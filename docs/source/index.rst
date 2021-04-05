@@ -6,6 +6,11 @@
 PyTorch Forecasting Documentation
 ==================================
 
+.. raw:: html
+
+   <a class="github-button" href="https://github.com/jdb78/pytorch-forecasting" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star jdb78/pytorch-forecasting on GitHub">GitHub</a>
+
+
 Our article on `Towards Data Science <https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46>`_
 introduces the package and provides background information.
 
