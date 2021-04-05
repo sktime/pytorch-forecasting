@@ -5,6 +5,7 @@
 ### Added
 
 - Allow lists for multiple losses and normalizers (#405)
+- Warn if normalization is with scale `< 1e-7` (#429)
 
 ### Fixed
 
