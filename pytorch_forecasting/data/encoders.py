@@ -605,8 +605,10 @@ class GroupNormalizer(TorchNormalizer):
                 self.norm_["center"] = 0.0
             self.missing_ = self.norm_.median().to_dict()
 
-        if (isinstance(self.norm_["scale"], float) and self.norm_["scale"] < 1e-7) or (
-            not isinstance(self.norm_["scale"], float) and (self.norm_["scale"] < 1e-7).any()
+        if (
+            (self.scale_by_group and any([(self.norm_[group]["scale"] < 1e-7).any() for group in self.groups]))
+            or (isinstance(self.norm_["scale"], float) and self.norm_["scale"] < 1e-7)
+            or (not isinstance(self.norm_["scale"], float) and (self.norm_["scale"] < 1e-7).any())
         ):
             warnings.warn(
                 "scale is below 1e-7 - consider not centering "
