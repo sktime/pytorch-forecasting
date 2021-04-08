@@ -26,7 +26,6 @@ sys.path.insert(0, str(PROJECT_PATH))  # noqa
 
 import pytorch_forecasting  # isort:skip
 
-
 # -- Project information -----------------------------------------------------
 
 project = "pytorch-forecasting"
@@ -134,6 +133,7 @@ def setup(app: Sphinx):
     app.add_css_file("custom.css")
     app.connect("autodoc-skip-member", skip)
     app.add_directive("moduleautosummary", ModuleAutoSummary)
+    app.add_js_file("https://buttons.github.io/buttons.js", **{"async": "async"})
 
 
 # extension configuration

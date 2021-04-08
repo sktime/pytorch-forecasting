@@ -130,7 +130,7 @@ def dataloaders_with_covariates(data_with_covariates):
         time_varying_unknown_reals=["target"],
         static_categoricals=["agency"],
         add_relative_time_idx=True,
-        target_normalizer=GroupNormalizer(groups=["agency", "sku"]),
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
     )
 
 

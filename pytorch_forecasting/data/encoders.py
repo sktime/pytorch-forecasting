@@ -368,6 +368,14 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 self.center_ = torch.zeros_like(self.center_)
             else:
                 self.center_ = np.zeros_like(self.center_)
+
+        if (np.asarray(self.scale_) < 1e-7).any():
+            warnings.warn(
+                "scale is below 1e-7 - consider not centering "
+                "the data or using data with higher variance for numerical stability",
+                UserWarning,
+            )
+
         return self
 
     def transform(
@@ -527,16 +535,16 @@ class GroupNormalizer(TorchNormalizer):
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
-                self.norm_ = [np.mean(y), np.std(y) + self.eps]  # center and scale
+                self.norm_ = {"center": np.mean(y), "scale": np.std(y) + self.eps}  # center and scale
             else:
                 quantiles = np.quantile(y, [0.25, 0.5, 0.75])
-                self.norm_ = [
-                    quantiles[1],
-                    (quantiles[2] - quantiles[0]) / 2.0 + self.eps,
-                ]  # center and scale
+                self.norm_ = {
+                    "center": quantiles[1],
+                    "scale": (quantiles[2] - quantiles[0]) / 2.0 + self.eps,
+                }  # center and scale
             if not self.center:
-                self.norm_[1] = self.norm_[0] + self.eps
-                self.norm_[0] = 0.0
+                self.norm_["scale"] = self.norm_["center"] + self.eps
+                self.norm_["center"] = 0.0
 
         elif self.scale_by_group:
             if self.method == "standard":
@@ -597,6 +605,22 @@ class GroupNormalizer(TorchNormalizer):
                 self.norm_["scale"] = self.norm_["center"] + self.eps
                 self.norm_["center"] = 0.0
             self.missing_ = self.norm_.median().to_dict()
+
+        if (
+            (self.scale_by_group and any([(self.norm_[group]["scale"] < 1e-7).any() for group in self.groups]))
+            or (not self.scale_by_group and isinstance(self.norm_["scale"], float) and self.norm_["scale"] < 1e-7)
+            or (
+                not self.scale_by_group
+                and not isinstance(self.norm_["scale"], float)
+                and (self.norm_["scale"] < 1e-7).any()
+            )
+        ):
+            warnings.warn(
+                "scale is below 1e-7 - consider not centering "
+                "the data or using data with higher variance for numerical stability",
+                UserWarning,
+            )
+
         return self
 
     @property
@@ -677,7 +701,7 @@ class GroupNormalizer(TorchNormalizer):
         assert len(group_names) == len(self.groups), "Passed groups and fitted do not match"
 
         if len(self.groups) == 0:
-            params = np.asarray(self.norm_).squeeze()
+            params = np.array([self.norm_["center"], self.norm_["scale"]])
         elif self.scale_by_group:
             norm = np.array([1.0, 1.0])
             for group, group_name in zip(groups, group_names):
@@ -705,7 +729,7 @@ class GroupNormalizer(TorchNormalizer):
             pd.DataFrame: dataframe with scaling parameterswhere each row corresponds to the input dataframe
         """
         if len(self.groups) == 0:
-            norm = np.asarray(self.norm_).reshape(1, -1)
+            norm = np.asarray([self.norm_["center"], self.norm_["scale"]]).reshape(1, -1)
         elif self.scale_by_group:
             norm = [
                 np.prod(
