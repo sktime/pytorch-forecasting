@@ -608,8 +608,12 @@ class GroupNormalizer(TorchNormalizer):
 
         if (
             (self.scale_by_group and any([(self.norm_[group]["scale"] < 1e-7).any() for group in self.groups]))
-            or (isinstance(self.norm_["scale"], float) and self.norm_["scale"] < 1e-7)
-            or (not isinstance(self.norm_["scale"], float) and (self.norm_["scale"] < 1e-7).any())
+            or (not self.scale_by_group and isinstance(self.norm_["scale"], float) and self.norm_["scale"] < 1e-7)
+            or (
+                not self.scale_by_group
+                and not isinstance(self.norm_["scale"], float)
+                and (self.norm_["scale"] < 1e-7).any()
+            )
         ):
             warnings.warn(
                 "scale is below 1e-7 - consider not centering "
