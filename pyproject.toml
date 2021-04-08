@@ -64,7 +64,7 @@ matplotlib = "*"
 statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
-fsspec = "^0.8.5"
+fsspec = ">=0.8.5,<0.10.0"
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
