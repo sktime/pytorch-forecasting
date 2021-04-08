@@ -64,7 +64,6 @@ matplotlib = "*"
 statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
-fsspec = "^0.8.5"
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
@@ -87,11 +86,11 @@ ipykernel = "*"
 black = { version = "*", allow-prereleases = true }
 
 # documentatation
-sphinx = "^3.5"
+sphinx = "*"
 pydata-sphinx-theme = "*"
 nbsphinx = "*"
 pandoc = "*"
-recommonmark = "^0.7.1"
+recommonmark = "*"
 
 
 [tool.poetry.extras]  # extras
