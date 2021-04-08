@@ -368,7 +368,8 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 self.center_ = torch.zeros_like(self.center_)
             else:
                 self.center_ = np.zeros_like(self.center_)
-        if self.scale_ < 1e-7:
+
+        if (np.asarray(self.scale_) < 1e-7).any():
             warnings.warn(
                 "scale is below 1e-7 - consider not centering "
                 "the data or using data with higher variance for numerical stability",
