@@ -6,6 +6,7 @@
 
 - Allow lists for multiple losses and normalizers (#405)
 - Warn if normalization is with scale `< 1e-7` (#429)
+- Allow usage of distribution losses in all settings (#434)
 
 ### Fixed
 
@@ -15,6 +16,7 @@
 ### Contributors
 
 - jdb78
+- domplexity
 
 ## v0.8.4 Simple models (07/03/2021)
 
