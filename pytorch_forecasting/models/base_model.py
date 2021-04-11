@@ -270,13 +270,8 @@ class BaseModel(LightningModule):
         # no transformation logic
         elif self.output_transformer is None or out.get("output_transformation", True) is None:
             out = out["prediction"]
-
-        # distribution transformation
-        elif isinstance(self.loss, DistributionLoss) or (
-            isinstance(self.loss, MultiLoss) and isinstance(self.loss[0], DistributionLoss)
-        ):
+        else:
             if isinstance(self.loss, MultiLoss):
-                # todo: handle mixed losses
                 out = self.loss.rescale_parameters(
                     out["prediction"],
                     target_scale=out["target_scale"],
@@ -286,10 +281,6 @@ class BaseModel(LightningModule):
                 out = self.loss.rescale_parameters(
                     out["prediction"], target_scale=out["target_scale"], encoder=self.output_transformer
                 )
-
-        # normal output transformation
-        else:
-            out = self.output_transformer(out)
         return out
 
     @staticmethod
@@ -557,7 +548,9 @@ class BaseModel(LightningModule):
         else:
             return self.hparams.log_val_interval
 
-    def log_prediction(self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], batch_idx: int) -> None:
+    def log_prediction(
+        self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], batch_idx: int, **kwargs
+    ) -> None:
         """
         Log metrics every training/validation step.
 
@@ -565,6 +558,7 @@ class BaseModel(LightningModule):
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): current batch index
+            **kwargs: paramters to pass to ``pot_prediction``
         """
         # log single prediction figure
         if (batch_idx % self.log_interval == 0 or self.log_interval < 1.0) and self.log_interval > 0:
@@ -575,7 +569,7 @@ class BaseModel(LightningModule):
             else:
                 log_indices = [0]
             for idx in log_indices:
-                fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True)
+                fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True, **kwargs)
                 tag = f"{['Val', 'Train'][self.training]} prediction"
                 if self.training:
                     tag += f" of item {idx} in global batch {self.global_step}"
@@ -603,6 +597,7 @@ class BaseModel(LightningModule):
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
+        **kwargs,
     ) -> plt.Figure:
         """
         Plot prediction of prediction vs actuals
@@ -616,6 +611,7 @@ class BaseModel(LightningModule):
                 Calcualted losses are determined without weights. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
+            **kwargs: parameters for ``to_prediction()`` and ``to_quantiles()`` of the loss metric.
 
         Returns:
             matplotlib figure
@@ -626,8 +622,8 @@ class BaseModel(LightningModule):
 
         # get predictions
         y_raws = to_list(out["prediction"])
-        y_hats = to_list(self.loss.to_prediction(out["prediction"]))
-        y_quantiles = to_list(self.loss.to_quantiles(out["prediction"]))
+        y_hats = to_list(self.loss.to_prediction(out["prediction"]))  # todo: fix
+        y_quantiles = to_list(self.loss.to_quantiles(out["prediction"], **kwargs))
 
         # for each target, plot
         figs = []
