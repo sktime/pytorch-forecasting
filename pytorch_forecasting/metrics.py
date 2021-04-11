@@ -4,14 +4,13 @@ Implementation of metrics for (mulit-horizon) timeseries forecasting.
 from typing import Dict, List, Tuple, Union
 import warnings
 
-from pandas.core.algorithms import isin
-from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 from sklearn.base import BaseEstimator
 import torch
 from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
+from torchmetrics import Metric as LightningMetric
 
 from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
@@ -907,7 +906,9 @@ class DistributionLoss(MultiHorizonMetric):
         Returns:
             torch.Tensor: mean prediction
         """
-        return y_pred.mean(-1)
+        distribution = self.map_x_to_distribution(y_pred)
+
+        return distribution.mean
 
     def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         """
@@ -943,11 +944,12 @@ class DistributionLoss(MultiHorizonMetric):
         if quantiles is None:
             quantiles = self.quantiles
 
-        samples = y_pred.size(-1)
-        quantiles = torch.stack(
-            [torch.kthvalue(y_pred, int(samples * q), dim=-1)[0] if samples > 1 else y_pred[..., 0] for q in quantiles],
-            dim=-1,
-        )
+        try:
+            distribution = self.map_x_to_distribution(y_pred)
+            quantiles = [distribution.icdf(quantile) for quantile in quantiles]
+        except NotImplementedError:  # resort to derive quantiles empirically
+            samples = torch.sort(self.sample(y_pred, 1000), -1).values
+            quantiles = torch.quantile(samples, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
         return quantiles
 
 
@@ -1013,6 +1015,20 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
             mean = F.softplus(parameters[..., 0]) * target_scale[..., 1].unsqueeze(-1)
             shape = F.softplus(parameters[..., 1]) / target_scale[..., 1].unsqueeze(-1).sqrt()
         return torch.stack([mean, shape], dim=-1)
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction. In the case of this distribution prediction we
+        need to derive the mean (as a point prediction) from the distribution parameters
+
+        Args:
+            y_pred: prediction output of network (with ``output_transformation = None``)
+            in this case the two parameters for the negative binomial
+
+        Returns:
+            torch.Tensor: mean prediction
+        """
+        return y_pred[..., 0]
 
 
 class LogNormalDistributionLoss(DistributionLoss):

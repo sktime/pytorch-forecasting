@@ -6,9 +6,9 @@ from typing import Callable, Dict, List, Tuple, Union
 
 from matplotlib import pyplot as plt
 import numpy as np
-from pytorch_lightning.metrics import Metric as LightningMetric
 import torch
 from torch import nn
+from torchmetrics import Metric as LightningMetric
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder

@@ -316,8 +316,10 @@ class BaseModel(LightningModule):
                 return len(loss.quantiles)
             elif isinstance(normalizer, NaNLabelEncoder):
                 return len(normalizer.classes_)
+            elif isinstance(loss, DistributionLoss):
+                return len(loss.distribution_arguments)
             else:
-                return 1
+                return 1  # default to 1
 
         # handle multiple targets
         new_kwargs = {}
