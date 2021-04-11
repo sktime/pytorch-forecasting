@@ -144,7 +144,7 @@ html_theme_options = {
     "github_url": "https://github.com/jdb78/pytorch-forecasting",
 }
 
-html_theme_options = {"search_bar_position": "navbar"}
+html_theme_options = {"navbar_end": ["navbar-icon-links.html", "search-field.html"]}
 
 html_sidebars = {
     "index": [],
