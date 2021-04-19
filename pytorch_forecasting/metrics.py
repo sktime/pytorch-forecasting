@@ -941,7 +941,7 @@ class DistributionLoss(MultiHorizonMetric):
             y_pred: prediction output of network (with ``output_transformation = None``)
             quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
                 as defined in the class initialization.
-            n_samples (int): number of samples to draw for quantiles
+            n_samples (int): number of samples to draw for quantiles. Defaults to 100.
 
         Returns:
             torch.Tensor: prediction quantiles (last dimension)

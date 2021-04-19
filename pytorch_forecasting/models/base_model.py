@@ -467,6 +467,7 @@ class BaseModel(LightningModule):
         x: Dict[str, torch.Tensor],
         y: torch.Tensor,
         out: Dict[str, torch.Tensor],
+        prediction_kwargs: Dict[str, Any] = None,
     ) -> None:
         """
         Log metrics every training/validation step.
@@ -475,13 +476,16 @@ class BaseModel(LightningModule):
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
             y (torch.Tensor): y as passed to the loss function by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
+            prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
         """
         # logging losses - for each target
+        if prediction_kwargs is None:
+            prediction_kwargs = {}
+        y_hat_point = self.to_prediction(out, **prediction_kwargs)
         if isinstance(self.loss, MultiLoss):
-            y_hat_detached = [p.detach() for p in out["prediction"]]
-            y_hat_point_detached = self.loss.to_prediction(y_hat_detached)
+            y_hat_point_detached = [p.detach() for p in y_hat_point]
         else:
-            y_hat_point_detached = [self.loss.to_prediction(out["prediction"].detach())]
+            y_hat_point_detached = [y_hat_point.detach()]
 
         for metric in self.logging_metrics:
             for idx, y_point, y_part, encoder_target in zip(
@@ -597,7 +601,8 @@ class BaseModel(LightningModule):
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        **kwargs,
+        quantiles_kwargs: Dict[str, Any] = None,
+        prediction_kwargs: Dict[str, Any] = None,
     ) -> plt.Figure:
         """
         Plot prediction of prediction vs actuals
@@ -611,7 +616,8 @@ class BaseModel(LightningModule):
                 Calcualted losses are determined without weights. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
-            **kwargs: parameters for ``to_prediction()`` and ``to_quantiles()`` of the loss metric.
+            quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
+            prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
 
         Returns:
             matplotlib figure
@@ -621,9 +627,15 @@ class BaseModel(LightningModule):
         decoder_targets = to_list(x["decoder_target"])
 
         # get predictions
-        y_raws = to_list(out["prediction"])
-        y_hats = to_list(self.loss.to_prediction(out["prediction"]))  # todo: fix
-        y_quantiles = to_list(self.loss.to_quantiles(out["prediction"], **kwargs))
+        if prediction_kwargs is None:
+            prediction_kwargs = {}
+
+        if quantiles_kwargs is None:
+            quantiles_kwargs = {}
+
+        y_raws = to_list(out["prediction"])  # raw predictions - used for calculating loss
+        y_hats = to_list(self.to_prediction(out, **prediction_kwargs))
+        y_quantiles = to_list(self.to_quantiles(out, **quantiles_kwargs))
 
         # for each target, plot
         figs = []
@@ -697,7 +709,6 @@ class BaseModel(LightningModule):
                     loss = add_loss_to_title.detach()[idx].item()
                 elif isinstance(add_loss_to_title, Metric):
                     loss = add_loss_to_title
-                    loss.quantiles = self.loss.quantiles
                 else:
                     raise ValueError(f"add_loss_to_title '{add_loss_to_title}'' is unkown")
                 if isinstance(loss, MASE):
@@ -856,6 +867,56 @@ class BaseModel(LightningModule):
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
 
+    def to_prediction(self, out: Dict[str, Any], **kwargs):
+        """
+        Convert output to prediction using the loss metric.
+
+        Args:
+            out (Dict[str, Any]): output of network where "prediction" has been
+                transformed with :py:meth:`~transform_output`
+            **kwargs: arguments to metric ``to_quantiles`` method
+
+        Returns:
+            torch.Tensor: predictions of shape batch_size x timesteps
+        """
+        # if samples were already drawn directly take mean
+        if isinstance(self.loss, DistributionLoss) and out.get("output_transformation", None) is None:
+            if out["prediction"].ndims == 3:
+                out = out["prediction"].mean(-1)
+            else:
+                out = out["prediction"]
+        else:
+            try:
+                out = self.loss.to_prediction(out["prediction"], **kwargs)
+            except TypeError:  # in case passed kwargs do not exist
+                out = self.loss.to_prediction(out["prediction"])
+        return out
+
+    def to_quantiles(self, out: Dict[str, Any], **kwargs):
+        """
+        Convert output to quantiles using the loss metric.
+
+        Args:
+            out (Dict[str, Any]): output of network where "prediction" has been
+                transformed with :py:meth:`~transform_output`
+            **kwargs: arguments to metric ``to_quantiles`` method
+
+        Returns:
+            torch.Tensor: quantiles of shape batch_size x timesteps x n_quantiles
+        """
+        # if samples are output directly take quantiles
+        if isinstance(self.loss, DistributionLoss) and out.get("output_transformation", None) is None:
+            if out["prediction"].ndims == 3:
+                out = torch.quantile(out["prediction"], torch.tensor(self.loss.quantiles), dim=2).permute(1, 2, 0)
+            else:
+                out = out["prediction"]
+        else:
+            try:
+                out = self.loss.to_quantiles(out["prediction"], **kwargs)
+            except TypeError:  # in case passed kwargs do not exist
+                out = self.loss.to_quantiles(out["prediction"])
+        return out
+
     def predict(
         self,
         data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
@@ -867,6 +928,7 @@ class BaseModel(LightningModule):
         fast_dev_run: bool = False,
         show_progress_bar: bool = False,
         return_x: bool = False,
+        mode_kwargs: Dict[str, Any] = None,
         **kwargs,
     ):
         """
@@ -883,6 +945,8 @@ class BaseModel(LightningModule):
             fast_dev_run: if to only return results of first batch
             show_progress_bar: if to show progress bar. Defaults to False.
             return_x: if to return network inputs
+            mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
+                for modes "prediction" and "quantiles"
             **kwargs: additional arguments to network's forward method
 
         Returns:
@@ -896,6 +960,10 @@ class BaseModel(LightningModule):
             dataloader = data.to_dataloader(batch_size=batch_size, train=False, num_workers=num_workers)
         else:
             dataloader = data
+
+        # mode kwargs default to None
+        if mode_kwargs is None:
+            mode_kwargs = {}
 
         # ensure passed dataloader is correct
         assert isinstance(dataloader.dataset, TimeSeriesDataSet), "dataset behind dataloader mut be TimeSeriesDataSet"
@@ -937,7 +1005,7 @@ class BaseModel(LightningModule):
                             f"If a tuple is specified, the first element must be 'raw' - got {mode[0]} instead"
                         )
                 elif mode == "prediction":
-                    out = self.loss.to_prediction(out["prediction"])
+                    out = self.to_prediction(out, **mode_kwargs)
                     # mask non-predictions
                     if isinstance(out, (list, tuple)):
                         out = [
@@ -947,7 +1015,7 @@ class BaseModel(LightningModule):
                     elif out.dtype == torch.float:  # only floats can be filled with nans
                         out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
                 elif mode == "quantiles":
-                    out = self.loss.to_quantiles(out["prediction"])
+                    out = self.to_quantiles(out, **mode_kwargs)
                     # mask non-predictions
                     if isinstance(out, (list, tuple)):
                         out = [

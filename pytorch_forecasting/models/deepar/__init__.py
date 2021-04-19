@@ -343,7 +343,26 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         return log
 
     def log_prediction(self, x, out, batch_idx) -> None:
-        super().log_prediction(x, out, batch_idx=batch_idx, n_samples=self.hparams.n_plotting_samples)
+        super().log_prediction(
+            x,
+            out,
+            batch_idx=batch_idx,
+            quantiles_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
+            prediction_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
+        )
+
+    def log_metrics(
+        self,
+        x: Dict[str, torch.Tensor],
+        y: torch.Tensor,
+        out: Dict[str, torch.Tensor],
+    ):
+        super().log_metrics(
+            x=x,
+            y=y,
+            out=out,
+            prediction_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
+        )
 
     def plot_prediction(
         self,
