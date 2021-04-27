@@ -85,27 +85,35 @@ class Metric(LightningMetric):
             torch.Tensor: point prediction
         """
         if y_pred.ndim == 3:
-            if self.quantiles is not None:
-                idx = self.quantiles.index(0.5)
-                y_pred = y_pred[..., idx]
-            else:
+            if self.quantiles is None:
                 assert y_pred.size(-1) == 1, "Prediction should only have one extra dimension"
                 y_pred = y_pred[..., 0]
+            else:
+                y_pred = y_pred.mean(-1)
         return y_pred
 
-    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
         Args:
             y_pred: prediction output of network
+            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+                as defined in the class initialization.
 
         Returns:
             torch.Tensor: prediction quantiles
         """
+        if quantiles is None:
+            quantiles = self.quantiles
+
         if y_pred.ndim == 2:
-            y_pred = y_pred.unsqueeze(-1)
-        return y_pred
+            return y_pred.unsqueeze(-1)
+        elif y_pred.ndim == 3:
+            y_pred = torch.quantile(y_pred, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
+            return y_pred
+        else:
+            raise ValueError(f"prediction has 1 or more than 3 dimensions: {y_pred.ndim}")
 
     def __add__(self, metric: LightningMetric):
         composite_metric = CompositeMetric(metrics=[self])
@@ -207,7 +215,13 @@ class MultiLoss(LightningMetric):
         Returns:
             torch.Tensor: point prediction
         """
-        return [metric.to_prediction(y_pred[idx], **kwargs) for idx, metric in enumerate(self.metrics)]
+        result = []
+        for idx, metric in enumerate(self.metrics):
+            try:
+                result.append(metric.to_prediction(y_pred[idx], **kwargs))
+            except TypeError:
+                result.append(metric.to_prediction(y_pred[idx]))
+        return result
 
     def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -222,7 +236,13 @@ class MultiLoss(LightningMetric):
         Returns:
             torch.Tensor: prediction quantiles
         """
-        return [metric.to_quantiles(y_pred[idx]) for idx, metric in enumerate(self.metrics)]
+        result = []
+        for idx, metric in enumerate(self.metrics):
+            try:
+                result.append(metric.to_quantiles(y_pred[idx], **kwargs))
+            except TypeError:
+                result.append(metric.to_quantiles(y_pred[idx]))
+        return result
 
     def __getitem__(self, idx: int):
         """
@@ -656,6 +676,33 @@ class QuantileLoss(MultiHorizonMetric):
 
         return losses
 
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: point prediction
+        """
+        if y_pred.ndim == 3:
+            idx = self.quantiles.index(0.5)
+            y_pred = y_pred[..., idx]
+        return y_pred
+
+    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: prediction quantiles
+        """
+        return y_pred
+
 
 class SMAPE(MultiHorizonMetric):
     """
@@ -852,7 +899,6 @@ class DistributionLoss(MultiHorizonMetric):
         distribution_arguments (List[str]): list of parameter names for the distribution
 
     Further, implement the methods :py:meth:`~map_x_to_distribution` and :py:meth:`~rescale_parameters`.
-
     """
 
     distribution_class: distributions.Distribution
@@ -948,7 +994,6 @@ class DistributionLoss(MultiHorizonMetric):
         """
         if quantiles is None:
             quantiles = self.quantiles
-
         try:
             distribution = self.map_x_to_distribution(y_pred)
             quantiles = distribution.icdf(torch.tensor(quantiles)[:, None, None]).permute(1, 2, 0)

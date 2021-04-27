@@ -880,11 +880,12 @@ class BaseModel(LightningModule):
             torch.Tensor: predictions of shape batch_size x timesteps
         """
         # if samples were already drawn directly take mean
-        if isinstance(self.loss, DistributionLoss) and out.get("output_transformation", None) is None:
-            if out["prediction"].ndims == 3:
-                out = out["prediction"].mean(-1)
+        if out.get("output_transformation", True) is None:
+            # todo: support classification
+            if isinstance(self.loss, MultiLoss):
+                out = [Metric.to_prediction(loss, out["prediction"][idx]) for idx, loss in enumerate(self.loss)]
             else:
-                out = out["prediction"]
+                out = Metric.to_prediction(self.loss, out["prediction"])
         else:
             try:
                 out = self.loss.to_prediction(out["prediction"], **kwargs)
@@ -905,11 +906,17 @@ class BaseModel(LightningModule):
             torch.Tensor: quantiles of shape batch_size x timesteps x n_quantiles
         """
         # if samples are output directly take quantiles
-        if isinstance(self.loss, DistributionLoss) and out.get("output_transformation", None) is None:
-            if out["prediction"].ndims == 3:
-                out = torch.quantile(out["prediction"], torch.tensor(self.loss.quantiles), dim=2).permute(1, 2, 0)
+        if isinstance(self.loss, DistributionLoss) and out.get("output_transformation", True) is None:
+            # todo: support classification
+            if isinstance(self.loss, MultiLoss):
+                out = [
+                    Metric.to_quantiles(loss, out["prediction"][idx], quantiles=kwargs.get("quantiles", loss.quantiles))
+                    for idx, loss in enumerate(self.loss)
+                ]
             else:
-                out = out["prediction"]
+                out = Metric.to_quantiles(
+                    self.loss, out["prediction"], quantiles=kwargs.get("quantiles", self.loss.quantiles)
+                )
         else:
             try:
                 out = self.loss.to_quantiles(out["prediction"], **kwargs)

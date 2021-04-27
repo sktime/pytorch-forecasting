@@ -134,7 +134,10 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
                     assert pred_len == x.shape[0], "first dimension should be prediction length"
 
             check(predictions)
-            assert predictions.ndim == 2, "shape of predictions should be batch_size x timesteps"
+            if isinstance(predictions, torch.Tensor):
+                assert predictions.ndim == 2, "shape of predictions should be batch_size x timesteps"
+            else:
+                assert all(p.ndim == 2 for p in predictions), "shape of predictions should be batch_size x timesteps"
             check(x)
             check(index)
 
