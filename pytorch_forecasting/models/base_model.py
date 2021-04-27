@@ -906,7 +906,7 @@ class BaseModel(LightningModule):
             torch.Tensor: quantiles of shape batch_size x timesteps x n_quantiles
         """
         # if samples are output directly take quantiles
-        if isinstance(self.loss, DistributionLoss) and out.get("output_transformation", True) is None:
+        if out.get("output_transformation", True) is None:
             # todo: support classification
             if isinstance(self.loss, MultiLoss):
                 out = [

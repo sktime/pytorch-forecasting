@@ -106,6 +106,7 @@ class Metric(LightningMetric):
         """
         if quantiles is None:
             quantiles = self.quantiles
+            assert quantiles is not None, "quantiles are not defined"
 
         if y_pred.ndim == 2:
             return y_pred.unsqueeze(-1)
@@ -766,6 +767,20 @@ class CrossEntropy(MultiHorizonMetric):
             torch.Tensor: point prediction
         """
         return y_pred.argmax(dim=-1)
+
+    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Args:
+            y_pred: prediction output of network
+            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+                as defined in the class initialization.
+
+        Returns:
+            torch.Tensor: prediction quantiles
+        """
+        return y_pred
 
 
 class RMSE(MultiHorizonMetric):
