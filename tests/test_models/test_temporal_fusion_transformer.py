@@ -10,8 +10,14 @@ import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
-from pytorch_forecasting.data.encoders import MultiNormalizer
-from pytorch_forecasting.metrics import CrossEntropy, MultiLoss, PoissonLoss, QuantileLoss
+from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
+from pytorch_forecasting.metrics import (
+    CrossEntropy,
+    MultiLoss,
+    NegativeBinomialDistributionLoss,
+    PoissonLoss,
+    QuantileLoss,
+)
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
@@ -26,10 +32,30 @@ if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
 else:
     from contextlib import nullcontext
 
+from test_models.conftest import make_dataloaders
+
 
 def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
-    train_dataloader = multiple_dataloaders_with_covariates["train"]
-    val_dataloader = multiple_dataloaders_with_covariates["val"]
+    _integration(multiple_dataloaders_with_covariates, tmp_path, gpus)
+
+
+def test_distribution_loss(data_with_covariates, tmp_path, gpus):
+    data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    dataloaders_with_covariates = make_dataloaders(
+        data_with_covariates,
+        target="volume",
+        time_varying_known_reals=["price_actual"],
+        time_varying_unknown_reals=["volume"],
+        static_categoricals=["agency"],
+        add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+    )
+    _integration(dataloaders_with_covariates, tmp_path, gpus, loss=NegativeBinomialDistributionLoss())
+
+
+def _integration(dataloader, tmp_path, gpus, loss=None):
+    train_dataloader = dataloader["train"]
+    val_dataloader = dataloader["val"]
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     # check training
@@ -55,7 +81,9 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
         cuda_context = nullcontext()
 
     with cuda_context:
-        if isinstance(train_dataloader.dataset.target_normalizer, NaNLabelEncoder):
+        if loss is not None:
+            pass
+        elif isinstance(train_dataloader.dataset.target_normalizer, NaNLabelEncoder):
             loss = CrossEntropy()
         elif isinstance(train_dataloader.dataset.target_normalizer, MultiNormalizer):
             loss = MultiLoss(
@@ -92,7 +120,7 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
 
             # check prediction
             predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True)
-            pred_len = len(multiple_dataloaders_with_covariates["val"].dataset)
+            pred_len = len(val_dataloader.dataset)
 
             # check that output is of correct shape
             def check(x):
@@ -106,6 +134,10 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
                     assert pred_len == x.shape[0], "first dimension should be prediction length"
 
             check(predictions)
+            if isinstance(predictions, torch.Tensor):
+                assert predictions.ndim == 2, "shape of predictions should be batch_size x timesteps"
+            else:
+                assert all(p.ndim == 2 for p in predictions), "shape of predictions should be batch_size x timesteps"
             check(x)
             check(index)
 
@@ -231,7 +263,7 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
             val_dataloader=val_dataloader,
             model_path=tmp_path,
             max_epochs=1,
-            n_trials=3,
+            n_trials=8,
             log_dir=tmp_path,
             trainer_kwargs=dict(
                 fast_dev_run=True,

@@ -4,14 +4,13 @@ Implementation of metrics for (mulit-horizon) timeseries forecasting.
 from typing import Dict, List, Tuple, Union
 import warnings
 
-from pandas.core.algorithms import isin
-from pytorch_lightning.metrics import Metric as LightningMetric
 import scipy.stats
 from sklearn.base import BaseEstimator
 import torch
 from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
+from torchmetrics import Metric as LightningMetric
 
 from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
@@ -59,6 +58,22 @@ class Metric(LightningMetric):
         """
         raise NotImplementedError()
 
+    def rescale_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
+    ) -> torch.Tensor:
+        """
+        Rescale normalized parameters into the scale required for the output.
+
+        Args:
+            parameters (torch.Tensor): normalized parameters (indexed by last dimension)
+            target_scale (torch.Tensor): scale of parameters (n_batch_samples x (center, scale))
+            encoder (BaseEstimator): original encoder that normalized the target in the first place
+
+        Returns:
+            torch.Tensor: parameters in real/not normalized space
+        """
+        return encoder(dict(prediction=parameters, target_scale=target_scale))
+
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
@@ -70,27 +85,37 @@ class Metric(LightningMetric):
             torch.Tensor: point prediction
         """
         if y_pred.ndim == 3:
-            if self.quantiles is not None:
-                idx = self.quantiles.index(0.5)
-                y_pred = y_pred[..., idx]
-            else:
+            if self.quantiles is None:
                 assert y_pred.size(-1) == 1, "Prediction should only have one extra dimension"
                 y_pred = y_pred[..., 0]
+            else:
+                y_pred = y_pred.mean(-1)
         return y_pred
 
-    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
         Args:
             y_pred: prediction output of network
+            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+                as defined in the class initialization.
 
         Returns:
             torch.Tensor: prediction quantiles
         """
+        if quantiles is None:
+            quantiles = self.quantiles
+
         if y_pred.ndim == 2:
-            y_pred = y_pred.unsqueeze(-1)
-        return y_pred
+            return y_pred.unsqueeze(-1)
+        elif y_pred.ndim == 3:
+            if y_pred.size(2) > 1:  # single dimension means all quantiles are the same
+                assert quantiles is not None, "quantiles are not defined"
+                y_pred = torch.quantile(y_pred, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
+            return y_pred
+        else:
+            raise ValueError(f"prediction has 1 or more than 3 dimensions: {y_pred.ndim}")
 
     def __add__(self, metric: LightningMetric):
         composite_metric = CompositeMetric(metrics=[self])
@@ -179,7 +204,7 @@ class MultiLoss(LightningMetric):
             results = torch.stack(results, dim=0).sum(0)
         return results
 
-    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
 
@@ -187,13 +212,20 @@ class MultiLoss(LightningMetric):
 
         Args:
             y_pred: prediction output of network
+            **kwargs: arguments for metrics
 
         Returns:
             torch.Tensor: point prediction
         """
-        return [metric.to_prediction(y_pred[idx]) for idx, metric in enumerate(self.metrics)]
+        result = []
+        for idx, metric in enumerate(self.metrics):
+            try:
+                result.append(metric.to_prediction(y_pred[idx], **kwargs))
+            except TypeError:
+                result.append(metric.to_prediction(y_pred[idx]))
+        return result
 
-    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
@@ -201,11 +233,18 @@ class MultiLoss(LightningMetric):
 
         Args:
             y_pred: prediction output of network
+            **kwargs: parameters to each metric's ``to_quantiles()`` method
 
         Returns:
             torch.Tensor: prediction quantiles
         """
-        return [metric.to_quantiles(y_pred[idx]) for idx, metric in enumerate(self.metrics)]
+        result = []
+        for idx, metric in enumerate(self.metrics):
+            try:
+                result.append(metric.to_quantiles(y_pred[idx], **kwargs))
+            except TypeError:
+                result.append(metric.to_quantiles(y_pred[idx]))
+        return result
 
     def __getitem__(self, idx: int):
         """
@@ -335,7 +374,7 @@ class CompositeMetric(LightningMetric):
             results = torch.stack(results, dim=0).sum(0)
         return results
 
-    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
 
@@ -343,13 +382,14 @@ class CompositeMetric(LightningMetric):
 
         Args:
             y_pred: prediction output of network
+            **kwargs: parameters to first metric `to_prediction` method
 
         Returns:
             torch.Tensor: point prediction
         """
-        return self.metrics[0].to_prediction(y_pred)
+        return self.metrics[0].to_prediction(y_pred, **kwargs)
 
-    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
@@ -357,11 +397,12 @@ class CompositeMetric(LightningMetric):
 
         Args:
             y_pred: prediction output of network
+            **kwargs: parameters to first metric's ``to_quantiles()`` method
 
         Returns:
             torch.Tensor: prediction quantiles
         """
-        return self.metrics[0].to_quantiles(y_pred)
+        return self.metrics[0].to_quantiles(y_pred, **kwargs)
 
     def __add__(self, metric: LightningMetric):
         if isinstance(metric, self.__class__):
@@ -637,6 +678,33 @@ class QuantileLoss(MultiHorizonMetric):
 
         return losses
 
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: point prediction
+        """
+        if y_pred.ndim == 3:
+            idx = self.quantiles.index(0.5)
+            y_pred = y_pred[..., idx]
+        return y_pred
+
+    def to_quantiles(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: prediction quantiles
+        """
+        return y_pred
+
 
 class SMAPE(MultiHorizonMetric):
     """
@@ -700,6 +768,20 @@ class CrossEntropy(MultiHorizonMetric):
             torch.Tensor: point prediction
         """
         return y_pred.argmax(dim=-1)
+
+    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Args:
+            y_pred: prediction output of network
+            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+                as defined in the class initialization.
+
+        Returns:
+            torch.Tensor: prediction quantiles
+        """
+        return y_pred
 
 
 class RMSE(MultiHorizonMetric):
@@ -833,7 +915,6 @@ class DistributionLoss(MultiHorizonMetric):
         distribution_arguments (List[str]): list of parameter names for the distribution
 
     Further, implement the methods :py:meth:`~map_x_to_distribution` and :py:meth:`~rescale_parameters`.
-
     """
 
     distribution_class: distributions.Distribution
@@ -881,22 +962,6 @@ class DistributionLoss(MultiHorizonMetric):
         loss = -distribution.log_prob(y_actual)
         return loss
 
-    def rescale_parameters(
-        self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
-    ) -> torch.Tensor:
-        """
-        Rescale normalized parameters into the scale required for the distribution.
-
-        Args:
-            parameters (torch.Tensor): normalized parameters (indexed by last dimension)
-            target_scale (torch.Tensor): scale of parameters (n_batch_samples x (center, scale))
-            encoder (BaseEstimator): original encoder that normalized the target in the first place
-
-        Returns:
-            torch.Tensor: parameters in real/not normalized space
-        """
-        return parameters
-
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
@@ -907,7 +972,9 @@ class DistributionLoss(MultiHorizonMetric):
         Returns:
             torch.Tensor: mean prediction
         """
-        return y_pred.mean(-1)
+        distribution = self.map_x_to_distribution(y_pred)
+
+        return distribution.mean
 
     def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         """
@@ -928,7 +995,7 @@ class DistributionLoss(MultiHorizonMetric):
             samples = samples.transpose(0, 1)
         return samples
 
-    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
+    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None, n_samples: int = 100) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
@@ -936,18 +1003,19 @@ class DistributionLoss(MultiHorizonMetric):
             y_pred: prediction output of network (with ``output_transformation = None``)
             quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
                 as defined in the class initialization.
+            n_samples (int): number of samples to draw for quantiles. Defaults to 100.
 
         Returns:
             torch.Tensor: prediction quantiles (last dimension)
         """
         if quantiles is None:
             quantiles = self.quantiles
-
-        samples = y_pred.size(-1)
-        quantiles = torch.stack(
-            [torch.kthvalue(y_pred, int(samples * q), dim=-1)[0] if samples > 1 else y_pred[..., 0] for q in quantiles],
-            dim=-1,
-        )
+        try:
+            distribution = self.map_x_to_distribution(y_pred)
+            quantiles = distribution.icdf(torch.tensor(quantiles)[:, None, None]).permute(1, 2, 0)
+        except NotImplementedError:  # resort to derive quantiles empirically
+            samples = torch.sort(self.sample(y_pred, n_samples), -1).values
+            quantiles = torch.quantile(samples, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
         return quantiles
 
 
@@ -1013,6 +1081,20 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
             mean = F.softplus(parameters[..., 0]) * target_scale[..., 1].unsqueeze(-1)
             shape = F.softplus(parameters[..., 1]) / target_scale[..., 1].unsqueeze(-1).sqrt()
         return torch.stack([mean, shape], dim=-1)
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction. In the case of this distribution prediction we
+        need to derive the mean (as a point prediction) from the distribution parameters
+
+        Args:
+            y_pred: prediction output of network (with ``output_transformation = None``)
+            in this case the two parameters for the negative binomial
+
+        Returns:
+            torch.Tensor: mean prediction
+        """
+        return y_pred[..., 0]
 
 
 class LogNormalDistributionLoss(DistributionLoss):

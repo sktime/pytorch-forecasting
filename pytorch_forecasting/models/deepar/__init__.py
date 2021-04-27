@@ -342,42 +342,27 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
         return log
 
+    def log_prediction(self, x, out, batch_idx) -> None:
+        super().log_prediction(
+            x,
+            out,
+            batch_idx=batch_idx,
+            quantiles_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
+            prediction_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
+        )
+
     def log_metrics(
         self,
         x: Dict[str, torch.Tensor],
         y: torch.Tensor,
         out: Dict[str, torch.Tensor],
-    ) -> None:
-
-        if out.get("output_transformation", True) is not None:
-            # use distribution properties to create point prediction
-            out = copy(out)  # copy to avoid side-effects but do not deep copy to re-use references
-            y_hat_detached = apply_to_list(out["prediction"], lambda x: x.detach())
-            y_hat_point_detached = apply_to_list(
-                self.loss.map_x_to_distribution(y_hat_detached), lambda x: x.mean.unsqueeze(-1)
-            )
-            out["prediction"] = y_hat_point_detached
-            out["output_transformation"] = None
-        super().log_metrics(x, y, out)
-
-    def log_prediction(self, x, out, batch_idx) -> None:
-        if (
-            out.get("output_transformation", True) is not None
-            and (batch_idx % self.log_interval == 0 or self.log_interval < 1.0)
-            and self.log_interval > 0
-        ):
-            out = copy(out)  # copy to avoid side-effects but do not deep copy to re-use references
-            # sample from distribution to create valid prediction
-            y_hat_detached = apply_to_list(out["prediction"], lambda x: x.detach())
-            if self.hparams.n_plotting_samples is None:
-                y_hat_samples = apply_to_list(
-                    self.loss.map_x_to_distribution(y_hat_detached), lambda x: x.mean.unsqueeze(-1)
-                )
-            else:
-                y_hat_samples = self.loss.sample(y_hat_detached, self.hparams.n_plotting_samples)
-            out["prediction"] = y_hat_samples
-            out["output_transformation"] = None
-        super().log_prediction(x, out, batch_idx=batch_idx)
+    ):
+        super().log_metrics(
+            x=x,
+            y=y,
+            out=out,
+            prediction_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
+        )
 
     def plot_prediction(
         self,
@@ -387,10 +372,11 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
+        **kwargs,
     ) -> plt.Figure:
         # workaround for not being able to compute loss for single sample without parameters of distribution
         return super().plot_prediction(
-            x, out, idx=idx, add_loss_to_title=False, show_future_observed=show_future_observed, ax=ax
+            x, out, idx=idx, add_loss_to_title=False, show_future_observed=show_future_observed, ax=ax, **kwargs
         )
 
     def predict(

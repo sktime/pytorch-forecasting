@@ -60,7 +60,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
         time_idx="time_idx",
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
-        **kwargs  # fixture parametrization
+        **kwargs,  # fixture parametrization
     )
 
     validation = TimeSeriesDataSet.from_dataset(

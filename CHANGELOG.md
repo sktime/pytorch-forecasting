@@ -1,20 +1,23 @@
 # Release Notes
 
-## UNRELEASED
+## v0.8.5 Generic distribution loss(es) (27/04/2021)
 
 ### Added
 
 - Allow lists for multiple losses and normalizers (#405)
 - Warn if normalization is with scale `< 1e-7` (#429)
+- Allow usage of distribution losses in all settings (#434)
 
 ### Fixed
 
 - Fix issue when predicting and data is on different devices (#402)
 - Fix non-iterable output (#404)
+- Fix problem with moving data to CPU for multiple targets (#434)
 
 ### Contributors
 
 - jdb78
+- domplexity
 
 ## v0.8.4 Simple models (07/03/2021)
 
