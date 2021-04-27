@@ -110,8 +110,9 @@ class Metric(LightningMetric):
         if y_pred.ndim == 2:
             return y_pred.unsqueeze(-1)
         elif y_pred.ndim == 3:
-            assert quantiles is not None, "quantiles are not defined"
-            y_pred = torch.quantile(y_pred, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
+            if y_pred.size(2) > 1:  # single dimension means all quantiles are the same
+                assert quantiles is not None, "quantiles are not defined"
+                y_pred = torch.quantile(y_pred, torch.tensor(quantiles), dim=2).permute(1, 2, 0)
             return y_pred
         else:
             raise ValueError(f"prediction has 1 or more than 3 dimensions: {y_pred.ndim}")
