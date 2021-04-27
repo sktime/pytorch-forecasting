@@ -1,6 +1,6 @@
 # Release Notes
 
-## UNRELEASED
+## v0.8.5 Generic distribution loss(es) (27/04/2021)
 
 ### Added
 
@@ -12,6 +12,7 @@
 
 - Fix issue when predicting and data is on different devices (#402)
 - Fix non-iterable output (#404)
+- Fix problem with moving data to CPU for multiple targets (#434)
 
 ### Contributors
 
