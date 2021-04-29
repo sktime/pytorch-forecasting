@@ -1,0 +1,39 @@
+version: 2
+updates:
+- package-ecosystem: pip
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  labels:
+  - dependencies
+  ignore:
+  - dependency-name: black
+    versions:
+    - 21.4b0
+    - 21.4b1
+  - dependency-name: pylint
+    versions:
+    - 2.7.1
+    - 2.8.1
+    - 2.8.2
+  - dependency-name: pyarrow
+    versions:
+    - 4.0.0
+  - dependency-name: nbsphinx
+    versions:
+    - 0.8.3
+  - dependency-name: pytorch-lightning
+    versions:
+    - 1.2.0
+    - 1.2.10
+    - 1.2.8
+    - 1.2.9
+  - dependency-name: flake8
+    versions:
+    - 3.9.1
+  - dependency-name: pydata-sphinx-theme
+    versions:
+    - 0.6.0
+    - 0.6.1
+    - 0.6.2
