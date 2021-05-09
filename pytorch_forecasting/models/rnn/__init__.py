@@ -276,7 +276,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
                 torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
                 x["encoder_lengths"] - 1,
                 self.target_positions.unsqueeze(-1),
-            ].T,
+            ].T.contiguous(),
         )
 
         output, output_transformation = self.decode(

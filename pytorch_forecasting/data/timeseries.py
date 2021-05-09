@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 from sklearn.exceptions import NotFittedError
 from sklearn.preprocessing import RobustScaler, StandardScaler
-from sklearn.utils import shuffle
 from sklearn.utils.validation import check_is_fitted
 import torch
 from torch.distributions import Beta
@@ -30,6 +29,7 @@ from pytorch_forecasting.data.encoders import (
     NaNLabelEncoder,
     TorchNormalizer,
 )
+from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
 
 
 def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -1796,106 +1796,3 @@ class TimeSeriesDataSet(Dataset):
             index_data[id] = self.transform_values(id, index_data[id], inverse=True, group_id=True)
         index = pd.DataFrame(index_data)
         return index
-
-
-class TimeSynchronizedBatchSampler(Sampler):
-    """
-    Samples mini-batches randomly but in a time-synchronised manner.
-
-    Time-synchornisation means that the time index of the first decoder samples are aligned across the batch.
-    This sampler does not support missing values in the dataset.
-    """
-
-    def __init__(
-        self,
-        data_source: TimeSeriesDataSet,
-        batch_size: int = 64,
-        shuffle: bool = False,
-        drop_last: bool = False,
-    ):
-        """
-        Initialize TimeSynchronizedBatchSampler.
-
-        Args:
-            data_source (TimeSeriesDataSet): timeseries dataset.
-            drop_last (bool): if to drop last mini-batch from a group if it is smaller than batch_size.
-                Defaults to False.
-            shuffle (bool): if to shuffle dataset. Defaults to False.
-            batch_size (int, optional): Number of samples in a mini-batch. This is rather the maximum number
-                of samples. Because mini-batches are grouped by prediction time, chances are that there
-                are multiple where batch size will be smaller than the maximum. Defaults to 64.
-        """
-        # Since collections.abc.Iterable does not check for `__getitem__`, which
-        # is one way for an object to be an iterable, we don't do an `isinstance`
-        # check here.
-        if not isinstance(batch_size, int) or isinstance(batch_size, bool) or batch_size <= 0:
-            raise ValueError(
-                "batch_size should be a positive integer value, " "but got batch_size={}".format(batch_size)
-            )
-        if not isinstance(drop_last, bool):
-            raise ValueError("drop_last should be a boolean value, but got " "drop_last={}".format(drop_last))
-        self.data_source = data_source
-        self.batch_size = batch_size
-        self.drop_last = drop_last
-        self.shuffle = shuffle
-        assert not self.data_source.allow_missings, "allow_missings should be False for time-synchronized mini-batches"
-
-        # construct index from which can be sampled
-        self.construct_batch_groups()
-
-    def construct_batch_groups(self):
-        """
-        Construct index of batches from which can be sampled
-        """
-        index = self.data_source.index
-        # get groups, i.e. group all samples by first predict time
-        decoder_lengths = np.min(
-            [
-                index.time_last - (self.data_source.min_prediction_idx - 1),
-                index.sequence_length - self.data_source.min_encoder_length,
-            ],
-            axis=0,
-        ).clip(max=self.data_source.max_prediction_length)
-        first_prediction_time = index.time + index.sequence_length - decoder_lengths + 1
-        self._groups = pd.RangeIndex(0, len(index.index)).groupby(first_prediction_time)
-
-        # calculate sizes of groups
-        self._group_sizes = {}
-        warns = []
-        for name, group in self._groups.items():  # iterate over groups
-            if self.drop_last:
-                self._group_sizes[name] = len(group) // self.batch_size
-            else:
-                self._group_sizes[name] = (len(group) + self.batch_size - 1) // self.batch_size
-            if self._group_sizes[name] == 0:
-                self._group_sizes[name] = 1
-                warns.append(name)
-        if len(warns) > 0:
-            warnings.warn(
-                f"Less than {self.batch_size} samples available for {len(warns)} prediction times. "
-                f"Use batch size smaller than {self.batch_size}. "
-                f"First 10 prediction times with small batch sizes: {warns[:10]}"
-            )
-        # create index from which can be sampled: index is equal to number of batches
-        # associate index with prediction time
-        self._group_index = np.repeat(list(self._group_sizes.keys()), list(self._group_sizes.values()))
-        # associate index with batch within prediction time group
-        self._sub_group_index = np.concatenate([np.arange(size) for size in self._group_sizes.values()])
-
-    def __iter__(self):
-        if self.shuffle:  # shuffle samples
-            groups = {name: shuffle(group) for name, group in self._groups.items()}
-        else:
-            groups = self._groups
-
-        batch_samples = np.random.permutation(len(self))
-        for idx in batch_samples:
-            name = self._group_index[idx]
-            sub_group = self._sub_group_index[idx]
-            sub_group_start = sub_group * self.batch_size
-            sub_group_end = sub_group_start + self.batch_size
-            batch = groups[name][sub_group_start:sub_group_end]
-            yield batch
-
-    def __len__(self):
-        return len(self._group_index)

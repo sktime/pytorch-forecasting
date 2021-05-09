@@ -1685,7 +1685,7 @@ class AutoRegressiveBaseModel(BaseModel):
                         torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
                         x["encoder_lengths"] - 1,
                         self.target_positions.unsqueeze(-1)
-                    ].T
+                    ].T.contiguous()
                     input_vector[:, 0, self.target_positions] = last_encoder_target
 
                     if self.training:  # training mode
