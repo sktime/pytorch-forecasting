@@ -1,5 +1,11 @@
 # Release Notes
 
+## UNRELEASED
+
+### Fixed
+
+- Fix quantile prediction for tensors on GPUs for distribution losses (#491)
+
 ## v0.8.5 Generic distribution loss(es) (27/04/2021)
 
 ### Added
