@@ -443,3 +443,66 @@ def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
             index = test_dataset.x_to_index(x)
             assert (index["agency"] == agency).all(), "Agency filter has failed"
             assert index["time_idx"].min() == first_prediction_idx, "First prediction filter has failed"
+
+
+def test_graph_sampler(test_dataset):
+    from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
+
+    class NeighborhoodSampler(TimeSynchronizedBatchSampler):
+        def construct_batch_groups(self, groups):
+            batch_size = self.batch_size
+            self.batch_size = 1
+            super().construct_batch_groups(groups)
+            self.batch_size = batch_size
+
+        def __iter__(self):
+            if self.shuffle:
+                batch_samples = np.random.permutation(len(self))
+            else:
+                batch_samples = np.arange(len(self))
+
+            def distance_to_weights(dist):
+                return 1 / (1e-2 + np.power(dist * 5, 2))
+
+            # for each point, sample the neighborhood
+            # get groups associated with chosen sample
+            data_groups = self.data_source.data["groups"].float()
+            n_groups = data_groups.size(1)  # number time series ids
+            for idx in batch_samples:
+                name = self._group_index[idx]  # time-synchronized group name
+                sub_group_idx = self._sub_group_index[idx]
+                selected_index = self._groups[name][sub_group_idx]
+                # select all other indices in same time group
+                indices = self.data_source.index.iloc[self._groups[name]]
+                selected_pos = indices["index_start"].iloc[sub_group_idx]
+                # remove selected sample
+                indices = indices[lambda x: x["group_id"] != indices["group_id"].iloc[sub_group_idx]]
+                # filter duplicate timeseries
+                # indices = indices.sort_values("sequence_length").drop_duplicates("group_id", keep="last")
+
+                # calculate distances for corresponding groups
+                group_distances = torch.cdist(
+                    data_groups[[selected_pos]],
+                    data_groups[indices["index_start"].to_numpy()],
+                    p=0,
+                )[0].numpy()
+                # filter out all samples without group-link but not itself
+                connected_samples = group_distances < n_groups
+                relevant_indices = indices.index[connected_samples]
+                sample_weights = distance_to_weights(
+                    group_distances[connected_samples]
+                )  # calculate weights for sampling neighborhood
+
+                # sample random subset of neighborhood
+                batch_size = min(len(relevant_indices), self.batch_size - 1)
+                batch_indices = [selected_index] + np.random.choice(
+                    relevant_indices, p=sample_weights / sample_weights.sum(), replace=False, size=batch_size
+                ).tolist()
+                yield batch_indices
+
+    dl = test_dataset.to_dataloader(batch_sampler=NeighborhoodSampler(test_dataset, batch_size=200, shuffle=True))
+    for idx, a in enumerate(dl):
+        print(a[0]["groups"].shape)
+        if idx > 100:
+            break
+    print(a)

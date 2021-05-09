@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.9.0 Graph networks (UNRELEASED)
+
+### Added
+
+- Added a sampler which uses Graphs to sample from
+
+### Fixed
+
+### Changed
+
+- Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
+
 ## v0.8.5 Generic distribution loss(es) (27/04/2021)
 
 ### Added

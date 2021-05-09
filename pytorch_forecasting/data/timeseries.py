@@ -1297,12 +1297,9 @@ class TimeSeriesDataSet(Dataset):
                 time_idx_last=self.data["time"][index_last].numpy(),
                 # prediction index is last time index - decoder length + 1
                 time_idx_first_prediction=lambda x: x.time_idx_last
-                # decoder length is minimum of
-                - (
-                    x.time_idx_last - x.time_idx_first + 1 - self.min_encoder_length
-                )  # sequence lenght - min decoder length
-                .clip(upper=self.max_prediction_length)  # maximum prediction length
-                .clip(upper=x.time_idx_last - (self.min_prediction_idx - 1))  # not going beyond min prediction idx
+                - self.calculate_decoder_length(
+                    time_last=x.time_idx_last, sequence_length=x.time_idx_last - x.time_idx_first + 1
+                )
                 + 1,
             )
         )
@@ -1386,6 +1383,38 @@ class TimeSeriesDataSet(Dataset):
         """
         self._overwrite_values = None
 
+    def calculate_decoder_length(
+        self,
+        time_last: Union[int, pd.Series, np.ndarray],
+        sequence_length: Union[int, pd.Series, np.ndarray],
+        sequence_end: Union[int, pd.Series, np.ndarray],
+    ) -> Union[int, pd.Series, np.ndarray]:
+        """
+        Calculate length of decoder.
+
+        Args:
+            time_last (Union[int, pd.Series, np.ndarray]): last time index of the sequence
+            sequence_length (Union[int, pd.Series, np.ndarray]): total length of the sequence
+
+        Returns:
+            Union[int, pd.Series, np.ndarray]: decoder length(s)
+        """
+        if isinstance(time_last, int):
+            decoder_length = min(
+                time_last - (self.min_prediction_idx - 1),  # not going beyond min prediction idx
+                self.max_prediction_length,  # maximum prediction length
+                sequence_length - self.min_encoder_length,  # sequence length - min decoder length
+            )
+        else:
+            decoder_length = np.min(
+                [
+                    time_last - (self.min_prediction_idx - 1),
+                    sequence_length - self.min_encoder_length,
+                ],
+                axis=0,
+            ).clip(max=self.max_prediction_length)
+        return decoder_length
+
     def __getitem__(self, idx: int) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
         """
         Get sample for model
@@ -1455,11 +1484,7 @@ class TimeSeriesDataSet(Dataset):
             sequence_length >= self.min_prediction_length
         ), "Sequence length should be at least minimum prediction length"
         # determine prediction/decode length and encode length
-        decoder_length = min(
-            time[-1] - (self.min_prediction_idx - 1),
-            self.max_prediction_length,
-            sequence_length - self.min_encoder_length,
-        )
+        decoder_length = self.calculate_decoder_length(time[-1], sequence_length)
         encoder_length = sequence_length - decoder_length
         assert (
             decoder_length >= self.min_prediction_length
@@ -1594,8 +1619,9 @@ class TimeSeriesDataSet(Dataset):
             (target, weight),
         )
 
+    @staticmethod
     def _collate_fn(
-        self, batches: List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]
+        batches: List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]
     ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
         """
         Collate function to combine items into mini-batch for dataloader.

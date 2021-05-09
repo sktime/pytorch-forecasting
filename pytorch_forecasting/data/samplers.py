@@ -97,10 +97,11 @@ class GroupedSampler(Sampler):
     def __iter__(self):
         if self.shuffle:  # shuffle samples
             groups = {name: shuffle(group) for name, group in self._groups.items()}
+            batch_samples = np.random.permutation(len(self))
         else:
             groups = self._groups
+            batch_samples = np.arange(len(self))
 
-        batch_samples = np.random.permutation(len(self))
         for idx in batch_samples:
             name = self._group_index[idx]
             sub_group = self._sub_group_index[idx]
@@ -124,13 +125,9 @@ class TimeSynchronizedBatchSampler(GroupedSampler):
     def get_groups(self, data_source):
         index = data_source.index
         # get groups, i.e. group all samples by first predict time
-        decoder_lengths = np.min(
-            [
-                index.time_last - (data_source.min_prediction_idx - 1),
-                index.sequence_length - data_source.min_encoder_length,
-            ],
-            axis=0,
-        ).clip(max=data_source.max_prediction_length)
+        decoder_lengths = data_source.calculate_decoder_length(
+            index["time"].iloc[index["index_end"]], index.sequence_length
+        )
         first_prediction_time = index.time + index.sequence_length - decoder_lengths + 1
         groups = pd.RangeIndex(0, len(index.index)).groupby(first_prediction_time)
         return groups
