@@ -1,8 +1,9 @@
 name: automerge
 on:
-  check_suite:
-    types:
-      - completed
+  workflow_run:
+    workflows: ["Test", "Code quality"]
+    types: [completed]
+
 jobs:
   autoapprove:
     name: Auto Approve a PR by dependabot
