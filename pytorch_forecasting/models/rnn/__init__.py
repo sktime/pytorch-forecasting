@@ -1,6 +1,7 @@
 """
 Simple recurrent model - either with LSTM or GRU cells.
 """
+from copy import copy
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
@@ -147,7 +148,8 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         Returns:
             Recurrent network
         """
-        new_kwargs = cls.deduce_default_output_parameters(dataset=dataset, kwargs=kwargs, default_loss=MAE())
+        new_kwargs = copy(kwargs)
+        new_kwargs.update(cls.deduce_default_output_parameters(dataset=dataset, kwargs=kwargs, default_loss=MAE()))
         assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
             not isinstance(dataset.target_normalizer, MultiNormalizer)
             or all([not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer])
