@@ -4,7 +4,9 @@ on:
   push:
     branches: [master]
   pull_request_target:
-    branches: [master]
+    types: [assigned, opened, synchronize, reopened]
+  pull_request:
+    types: [assigned, opened, synchronize, reopened]
 
 jobs:
   annotation-linters:
