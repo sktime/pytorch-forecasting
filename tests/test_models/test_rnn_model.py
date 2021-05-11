@@ -53,7 +53,6 @@ def _integration(
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
-        n_plotting_samples=100,
         **kwargs
     )
     net.size()
