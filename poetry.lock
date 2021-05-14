@@ -565,7 +565,7 @@ python-versions = "*"
 
 [[package]]
 name = "ipykernel"
-version = "5.5.4"
+version = "5.5.5"
 description = "IPython Kernel for Jupyter"
 category = "dev"
 optional = false
@@ -2413,8 +2413,8 @@ invoke = [
     {file = "invoke-1.5.0.tar.gz", hash = "sha256:f0c560075b5fb29ba14dad44a7185514e94970d1b9d57dcd3723bec5fed92650"},
 ]
 ipykernel = [
-    {file = "ipykernel-5.5.4-py3-none-any.whl", hash = "sha256:f57739bf26d7396549562c0c888b96be896385ce099fb34ca89af359b7436b25"},
-    {file = "ipykernel-5.5.4.tar.gz", hash = "sha256:1ce0e83672cc3bfdc1ffb5603e1d77ab125f24b41abc4612e22bfb3e994c0db2"},
+    {file = "ipykernel-5.5.5-py3-none-any.whl", hash = "sha256:29eee66548ee7c2edb7941de60c0ccf0a7a8dd957341db0a49c5e8e6a0fcb712"},
+    {file = "ipykernel-5.5.5.tar.gz", hash = "sha256:e976751336b51082a89fc2099fb7f96ef20f535837c398df6eab1283c2070884"},
 ]
 ipython = [
     {file = "ipython-7.16.1-py3-none-any.whl", hash = "sha256:2dbcc8c27ca7d3cfe4fcdff7f45b27f9a8d3edfa70ff8024a71c7a8eb5f09d64"},
