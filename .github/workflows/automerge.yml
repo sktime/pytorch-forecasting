@@ -1,8 +1,7 @@
-name: automerge
+name: Automerge dependabot
 on:
-  workflow_run:
-    workflows: ["Test", "Code quality"]
-    types: [completed]
+  pull_request_target:
+    branches: [master]
 
 jobs:
   autoapprove:

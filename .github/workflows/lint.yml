@@ -1,39 +1,12 @@
-name: Code quality
+name: Lint
 
 on:
   push:
     branches: [master]
-  pull_request_target:
-    types: [assigned, opened, synchronize, reopened]
   pull_request:
-    types: [assigned, opened, synchronize, reopened]
+    branches: [master]
 
 jobs:
-  annotation-linters:
-    name: Run linters
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v2
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
-      - name: Install Python dependencies
-        run: pip install -U black flake8 mypy isort
-
-      - name: Run style linters
-        uses: wearerequired/lint-action@v1
-        if: ${{ github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.owner.login == github.repository_owner }}
-        with:
-          # Enable linters
-          black: true
-          flake8: true
-          # mypy: true
-
   linter-black:
       name: Check code formatting with Black
       runs-on: ubuntu-latest
