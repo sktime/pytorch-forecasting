@@ -206,8 +206,8 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
             time_varying_known_categoricals=["month"],
             time_varying_known_reals=["time_idx", "price_regular"],
         ),
-        dict(dropout_categoricals=["month"], time_varying_known_categoricals=["month"]),
-        dict(constant_fill_strategy=dict(volume=0.0), allow_missings=True),
+        dict(categorical_encoders={"month": NaNLabelEncoder(add_nan=True)}, time_varying_known_categoricals=["month"]),
+        dict(constant_fill_strategy=dict(volume=0.0), allow_missing_timesteps=True),
         dict(target_normalizer=None),
     ],
 )
@@ -223,7 +223,7 @@ def test_TimeSeriesDataSet(test_data, kwargs):
     defaults.update(kwargs)
     kwargs = defaults
 
-    if kwargs.get("allow_missings", False):
+    if kwargs.get("allow_missing_timesteps", False):
         np.random.seed(2)
         test_data = test_data.sample(frac=0.5)
         defaults["min_encoder_length"] = 0

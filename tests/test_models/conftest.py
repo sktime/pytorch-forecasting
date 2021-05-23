@@ -100,7 +100,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
             time_varying_unknown_categoricals=[],
             time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
             constant_fill_strategy={"volume": 0},
-            dropout_categoricals=["sku"],
+            categorical_encoders={"sku": NaNLabelEncoder(add_nan=True)},
         ),
         dict(static_categoricals=["agency", "sku"]),
         dict(randomize_length=True, min_encoder_length=2),
