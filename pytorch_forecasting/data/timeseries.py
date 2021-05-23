@@ -305,7 +305,7 @@ class TimeSeriesDataSet(Dataset):
         ), "max prediction length has to be larger equals min prediction length"
         assert self.min_prediction_length > 0, "min prediction length must be larger than 0"
         assert isinstance(self.min_prediction_length, int), "min prediction length must be integer"
-        assert data[self.time_idx].dtype.kind == "i", "Timeseries index should be of type integer"
+        assert data[time_idx].dtype.kind == "i", "Timeseries index should be of type integer"
         self.target = target
         self.weight = weight
         self.time_idx = time_idx
