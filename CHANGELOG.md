@@ -1,6 +1,12 @@
 # Release Notes
 
-## UNRELEASED
+## v0.9.0 House keeping (UNRELEASED)
+
+### Breaking changes
+
+- Removed `dropout_categoricals` parameter from `TimeSeriesDataSet`.
+  Use `categorical_encoders=dict(<variable_name>=NaNLabelEncoder(add_nan=True)`) instead (#518)
+- Rename parameter `allow_missings` for `TimeSeriesDataSet` to `allow_missing_timesteps` (#518)
 
 ### Fixed
 
