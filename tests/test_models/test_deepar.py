@@ -58,7 +58,7 @@ def _integration(
         log_gradient_flow=True,
         log_interval=1000,
         n_plotting_samples=100,
-        **kwargs
+        **kwargs,
     )
     net.size()
     try:
@@ -130,6 +130,16 @@ def model(dataloaders_with_covariates):
         log_interval=1000,
     )
     return net
+
+
+def test_predict_average(model, dataloaders_with_covariates):
+    prediction = model.predict(dataloaders_with_covariates["val"], fast_dev_run=True, mode="prediction", n_samples=100)
+    assert prediction.ndim == 2, "expected averaging of samples"
+
+
+def test_predict_samples(model, dataloaders_with_covariates):
+    prediction = model.predict(dataloaders_with_covariates["val"], fast_dev_run=True, mode="samples", n_samples=100)
+    assert prediction.size()[-1] == 100, "expected raw samples"
 
 
 def test_pickle(model):

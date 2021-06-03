@@ -3,8 +3,8 @@
 <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_
 which is the one of the most popular forecasting algorithms and is often used as a baseline
 """
-from copy import copy
-from typing import Dict, List, Tuple, Union
+from copy import copy, deepcopy
+from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import plot_date
@@ -263,7 +263,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         if n_samples is None:
             output, _ = self.decode_all(input_vector, hidden_state, lengths=decoder_lengths)
-            output_transformation = True
+            output = self.transform_output(output, target_scale=target_scale)
         else:
             # run in eval, i.e. simulation mode
             target_pos = self.target_positions
@@ -299,8 +299,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             # reshape predictions for n_samples:
             # from n_samples * batch_size x time steps to batch_size x time steps x n_samples
             output = apply_to_list(output, lambda x: x.reshape(-1, n_samples, input_vector.size(1)).permute(0, 2, 1))
-            output_transformation = None
-        return output, output_transformation
+        return output
 
     def forward(self, x: Dict[str, torch.Tensor], n_samples: int = None) -> Dict[str, torch.Tensor]:
         """
@@ -320,7 +319,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         if self.training:
             assert n_samples is None, "cannot sample from decoder when training"
-        output, output_transformation = self.decode(
+        output = self.decode(
             input_vector,
             decoder_lengths=x["decoder_lengths"],
             target_scale=x["target_scale"],
@@ -328,41 +327,19 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             n_samples=n_samples,
         )
         # return relevant part
-        return dict(
-            prediction=output,
-            output_transformation=output_transformation,
-            groups=x["groups"],
-            decoder_time_idx=x["decoder_time_idx"],
-            target_scale=x["target_scale"],
-        )
+        return self.to_network_output(prediction=output)
 
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        log, _ = self.step(x, y, batch_idx, n_samples=self.hparams.n_validation_samples)  # log loss
-        self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
-        return log
-
-    def log_prediction(self, x, out, batch_idx) -> None:
-        super().log_prediction(
+    def create_log(self, x, y, out, batch_idx):
+        n_samples = [self.hparams.n_validation_samples, self.hparams.n_plotting_samples][self.training]
+        log = super().create_log(
             x,
+            y,
             out,
-            batch_idx=batch_idx,
-            quantiles_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
-            prediction_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
+            batch_idx,
+            prediction_kwargs=dict(n_samples=n_samples),
+            quantiles_kwargs=dict(n_samples=n_samples),
         )
-
-    def log_metrics(
-        self,
-        x: Dict[str, torch.Tensor],
-        y: torch.Tensor,
-        out: Dict[str, torch.Tensor],
-    ):
-        super().log_metrics(
-            x=x,
-            y=y,
-            out=out,
-            prediction_kwargs=dict(n_samples=self.hparams.n_plotting_samples),
-        )
+        return log
 
     def plot_prediction(
         self,
@@ -390,6 +367,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         fast_dev_run: bool = False,
         show_progress_bar: bool = False,
         return_x: bool = False,
+        mode_kwargs: Dict[str, Any] = None,
         n_samples: int = 100,
     ):
         """
@@ -397,21 +375,34 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         Args:
             dataloader: dataloader, dataframe or dataset
-            mode: one of "prediction", "quantiles" or "raw", or tuple ``("raw", output_name)`` where output_name is
-                a name in the dictionary returned by ``forward()``
-            return_index: if to return the prediction index
-            return_decoder_lengths: if to return decoder_lengths
+            mode: one of "prediction", "quantiles", "samples" or "raw", or tuple ``("raw", output_name)`` where
+                output_name is a name in the dictionary returned by ``forward()``
+            return_index: if to return the prediction index (in the same order as the output, i.e. the row of the
+                dataframe corresponds to the first dimension of the output and the given time index is the time index
+                of the first prediction)
+            return_decoder_lengths: if to return decoder_lengths (in the same order as the output
             batch_size: batch size for dataloader - only used if data is not a dataloader is passed
             num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
             fast_dev_run: if to only return results of first batch
             show_progress_bar: if to show progress bar. Defaults to False.
-            return_x: if to return network inputs
+            return_x: if to return network inputs (in the same order as prediction output)
+            mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
+                for modes "prediction" and "quantiles"
             n_samples: number of samples to draw. Defaults to 100.
 
         Returns:
             output, x, index, decoder_lengths: some elements might not be present depending on what is configured
                 to be returned
         """
+        if isinstance(mode, str):
+            if mode in ["prediction", "quantiles"]:
+                if mode_kwargs is None:
+                    mode_kwargs = dict(use_metric=False)
+                else:
+                    mode_kwargs = deepcopy(mode_kwargs)
+                    mode_kwargs["use_metric"] = False
+            elif mode == "samples":
+                mode = ("raw", "prediction")
         return super().predict(
             data=data,
             mode=mode,
@@ -423,4 +414,5 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             fast_dev_run=fast_dev_run,
             num_workers=num_workers,
             batch_size=batch_size,
+            mode_kwargs=mode_kwargs,
         )

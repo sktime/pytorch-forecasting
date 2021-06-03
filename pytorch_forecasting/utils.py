@@ -351,3 +351,35 @@ def move_to_device(
     elif isinstance(x, (list, tuple)) and x[0].device != device:
         x = [move_to_device(xi, device=device) for xi in x]
     return x
+
+
+def detach(
+    x: Union[
+        Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+        torch.Tensor,
+        List[torch.Tensor],
+        Tuple[torch.Tensor],
+    ],
+) -> Union[
+    Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+    torch.Tensor,
+    List[torch.Tensor],
+    Tuple[torch.Tensor],
+]:
+    """
+    Detach object
+
+    Args:
+        x: object to detach
+
+    Returns:
+        detached object
+    """
+    if isinstance(x, torch.Tensor):
+        return x.detach()
+    elif isinstance(x, (list, tuple)):
+        return [detach(xi) for xi in x]
+    elif isinstance(x, dict):
+        return {name: detach(xi) for name, xi in x.items()}
+    else:
+        return x

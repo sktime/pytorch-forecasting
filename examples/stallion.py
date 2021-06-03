@@ -94,6 +94,7 @@ validation.save("validation.pkl")
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
 lr_logger = LearningRateMonitor()
+logger = TensorBoardLogger(log_graph=True)
 
 trainer = pl.Trainer(
     max_epochs=100,
@@ -104,7 +105,7 @@ trainer = pl.Trainer(
     # val_check_interval=20,
     # limit_val_batches=1,
     # fast_dev_run=True,
-    # logger=logger,
+    logger=logger,
     # profiler=True,
     callbacks=[lr_logger, early_stop_callback],
 )
