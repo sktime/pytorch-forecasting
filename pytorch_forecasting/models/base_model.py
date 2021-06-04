@@ -159,8 +159,8 @@ class BaseModel(LightningModule):
                     super().__init__(loss=loss)
 
                 def forward(self, x):
-                    encoding_target = x["encoder_target"]
-                    prediction = self.transform_output(prediction=..., target_scale=x["target_scale"])
+                    normalized_prediction = self.module(x)
+                    prediction = self.transform_output(prediction=normalized_prediction, target_scale=x["target_scale"])
                     return self.to_network_output(prediction=prediction)
 
     """
