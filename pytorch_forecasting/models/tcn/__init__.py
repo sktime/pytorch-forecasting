@@ -1,12 +1,13 @@
-
+import torch
+import torch.nn as nn
 from torch.nn.utils import weight_norm
-from torch.nn import Module
-# This is an unofficial PyTorch implementation by Ignacio Oguiza - oguiza@gmail.com based on:
-# Bai, S., Kolter, J. Z., & Koltun, V. (2018). An empirical evaluation of generic convolutional and recurrent networks for sequence modeling. arXiv preprint arXiv:1803.01271.
-# Official TCN PyTorch implementation: https://github.com/locuslab/TCN
-from torch import nn
+from typing import Dict, List, Tuple
 
-class GAP1d(Module):
+from pytorch_forecasting.models.nn import MultiEmbedding
+from pytorch_forecasting.models import BaseModelWithCovariates
+
+
+class GAP1d(nn.Module):
     "Global Adaptive Pooling + Flatten"
     def __init__(self, output_size=1):
         super(GAP1d,self).__init__()
@@ -15,8 +16,7 @@ class GAP1d(Module):
         res=self.gap(x)
         return res.view(res.size(0), -1) ##fastai's layer has problems with latest torch
 
-
-class Chomp1d(Module):
+class Chomp1d(nn.Module):
     def __init__(self, chomp_size):
         super(Chomp1d, self).__init__()
         self.chomp_size = chomp_size
@@ -24,64 +24,65 @@ class Chomp1d(Module):
     def forward(self, x):
         return x[:, :, :-self.chomp_size].contiguous()
 
-class TemporalBlock(Module):
-    def __init__(self, ni, nf, ks, stride, dilation, padding, dropout=0.):
-        super(TemporalBlock,self).__init__()
-        self.conv1 = weight_norm(nn.Conv1d(ni,nf,ks,stride=stride,padding=padding,dilation=dilation))
+class Flatten(nn.Module):
+  def __init__(self,):
+    super(Flatten,self).__init__()
+  def forward(self,x):
+    return x.view(x.size(0),-1)
+
+
+class TemporalBlock(nn.Module):
+    def __init__(self, n_inputs, n_outputs, kernel_size, stride, dilation, padding, dropout=0.2):
+        super(TemporalBlock, self).__init__()
+        self.conv1 = weight_norm(nn.Conv1d(n_inputs, n_outputs, kernel_size,
+                                           stride=stride, padding=padding, dilation=dilation))
         self.chomp1 = Chomp1d(padding)
         self.relu1 = nn.ReLU()
         self.dropout1 = nn.Dropout(dropout)
-        self.conv2 = weight_norm(nn.Conv1d(nf,nf,ks,stride=stride,padding=padding,dilation=dilation))
+
+        self.conv2 = weight_norm(nn.Conv1d(n_outputs, n_outputs, kernel_size,
+                                           stride=stride, padding=padding, dilation=dilation))
         self.chomp2 = Chomp1d(padding)
         self.relu2 = nn.ReLU()
         self.dropout2 = nn.Dropout(dropout)
+
         self.net = nn.Sequential(self.conv1, self.chomp1, self.relu1, self.dropout1,
                                  self.conv2, self.chomp2, self.relu2, self.dropout2)
-        self.downsample = nn.Conv1d(ni,nf,1) if ni != nf else None
+        self.downsample = nn.Conv1d(n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
         self.relu = nn.ReLU()
         self.init_weights()
 
     def init_weights(self):
         self.conv1.weight.data.normal_(0, 0.01)
         self.conv2.weight.data.normal_(0, 0.01)
-        if self.downsample is not None: self.downsample.weight.data.normal_(0, 0.01)
+        if self.downsample is not None:
+            self.downsample.weight.data.normal_(0, 0.01)
 
     def forward(self, x):
         out = self.net(x)
-        res = x if self.downsample is None else self.downsample(x)
+        res = x if self.downsample is None else self.downsample(x) ##保持时序的长度不变，但是内部的特征会发生改变
         return self.relu(out + res)
 
-def TemporalConvNet(c_in, layers, ks=2, dropout=0.):
-    temp_layers = []
-    for i in range(len(layers)):
-        dilation_size = 2 ** i
-        ni = c_in if i == 0 else layers[i-1]
-        nf = layers[i]
-        temp_layers += [TemporalBlock(ni, nf, ks, stride=1, dilation=dilation_size, padding=(ks-1) * dilation_size, dropout=dropout)]
-    return nn.Sequential(*temp_layers)
 
-class Temporal_Convolutional_Networks(Module):
-    def __init__(self, c_in, c_out, layers=8*[25], ks=7, conv_dropout=0., fc_dropout=0.):
-        super(Temporal_Convolutional_Networks,self).__init__()
-        self.tcn = TemporalConvNet(c_in, layers, ks=ks, dropout=conv_dropout)
-        self.gap = GAP1d()
-        self.dropout = nn.Dropout(fc_dropout) if fc_dropout else None
-        self.linear = nn.Linear(layers[-1],c_out)
-        self.init_weights()
+class TemporalConvNet(nn.Module):
+    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2):
+        super(TemporalConvNet, self).__init__()
+        layers = []
+        num_levels = len(num_channels)
+        for i in range(num_levels):
+            dilation_size = 2 ** i
+            in_channels = num_inputs if i == 0 else num_channels[i-1]
+            out_channels = num_channels[i]
+            layers += [TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
+                                     padding=(kernel_size-1) * dilation_size, dropout=dropout)]
 
-    def init_weights(self):
-        self.linear.weight.data.normal_(0, 0.01)
+        self.network = nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.tcn(x)
-        x = self.gap(x)
-        if self.dropout is not None: x = self.dropout(x)
-        return self.linear(x)
+        return self.network(x)
 
-from typing import Dict, List, Tuple
 
-from pytorch_forecasting.models.nn import MultiEmbedding
-from pytorch_forecasting.models import BaseModelWithCovariates
+
 
 class TCN(BaseModelWithCovariates):
     def __init__(
@@ -104,6 +105,7 @@ class TCN(BaseModelWithCovariates):
         time_varying_reals_decoder: List[str],
         embedding_paddings: List[str],
         categorical_groups: Dict[str, List[str]],
+        training_windows=24,
         **kwargs,
     ):
         # saves arguments in signature to `.hparams` attribute, mandatory call - do not skip this
@@ -127,15 +129,18 @@ class TCN(BaseModelWithCovariates):
         ) + len(self.reals)
 
         # create network that will be fed with continious variables and embeddings
-        self.network = Temporal_Convolutional_Networks(
-            c_in=n_features,
-            c_out=self.hparams.output_size,
-            layers=self.hparams.n_hidden_layers,
-            ks=self.hparams.kernel_size,
-            conv_dropout=self.hparams.conv_dropout,
-            fc_dropout=self.hparams.fc_dropout
+        self.network = nn.Sequential(TemporalConvNet(
+            num_inputs=n_features,
+            num_channels=self.hparams.n_hidden_layers,
+            kernel_size=self.hparams.kernel_size,
+            dropout=self.hparams.conv_dropout),
 
+            Flatten(),
+            nn.Dropout(self.hparams.fc_dropout),
+            nn.Linear(25*24,self.hparams.output_size)
+            
         )
+
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         # x is a batch generated based on the TimeSeriesDataset
