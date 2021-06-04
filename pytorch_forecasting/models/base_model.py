@@ -34,6 +34,7 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
+    OutputMixIn,
     apply_to_list,
     create_mask,
     get_embedding_size,
@@ -535,28 +536,14 @@ class BaseModel(LightningModule):
         if hasattr(self, "_output_class"):
             Output = self._output_class
         else:
-
             OutputTuple = namedtuple("output", results)
 
-            class Output(OutputTuple):
-                def __getitem__(self, k):
-                    if isinstance(k, str):
-                        return getattr(self, k)
-                    else:
-                        return super().__getitem__(k)
-
-                def get(self, k, default=None):
-                    return getattr(self, k, default)
-
-                def items(self):
-                    return zip(self._fields, self)
-
-                def keys(self):
-                    return self._fields
+            class Output(OutputMixIn, OutputTuple):
+                pass
 
             self._output_class = Output
 
-        return Output(**results)
+        return self._output_class(**results)
 
     def forward(
         self, x: Dict[str, Union[torch.Tensor, List[torch.Tensor]]]
@@ -1066,11 +1053,7 @@ class BaseModel(LightningModule):
                 # move data to appropriate device
                 data_device = x["encoder_cont"].device
                 if data_device != self.device:
-                    for name in x.keys():
-                        if isinstance(x[name], (tuple, list)):
-                            x[name] = [xi.to(self.device) for xi in x[name]]
-                        else:
-                            x[name] = x[name].to(self.device)
+                    x = move_to_device(x, self.device)
 
                 # make prediction
                 out = self(x, **kwargs)  # raw output is dictionary

@@ -360,10 +360,6 @@ class TimeSeriesDataSet(Dataset):
                 target not in self.time_varying_known_reals
             ), f"target {target} should be an unknown continuous variable in the future"
 
-        # validate
-        self._validate_data(data)
-        assert data.index.is_unique, "data index has to be unique"
-
         # add time index relative to prediction position
         if self.add_relative_time_idx or self.add_encoder_length:
             data = data.copy()  # only copies indices (underlying data is NOT copied)
@@ -383,6 +379,10 @@ class TimeSeriesDataSet(Dataset):
             if "encoder_length" not in self.time_varying_known_reals and "encoder_length" not in self.reals:
                 self.static_reals.append("encoder_length")
             data.loc[:, "encoder_length"] = 0  # dummy - real value will be set dynamiclly in __getitem__()
+
+        # validate
+        self._validate_data(data)
+        assert data.index.is_unique, "data index has to be unique"
 
         # add lags
         assert self.min_lag > 0, "lags should be positive"
@@ -587,6 +587,8 @@ class TimeSeriesDataSet(Dataset):
         category_columns = data.head(1).select_dtypes("category").columns
         object_columns = data.head(1).select_dtypes(object).columns
         for name in self.flat_categoricals:
+            if name not in data.columns:
+                raise KeyError(f"variable {name} specified but not found in data")
             if not (
                 name in object_columns
                 or (name in category_columns and data[name].cat.categories.dtype.kind not in "bifc")
