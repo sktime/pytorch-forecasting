@@ -233,7 +233,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         """
         if self.training:
             output, _ = self.decode_all(input_vector, hidden_state, lengths=decoder_lengths)
-            output_transformation = True
+            output = self.transform_output(output, target_scale=target_scale)
         else:
             # run in eval, i.e. simulation mode
             target_pos = self.target_positions
@@ -262,8 +262,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
                 target_scale=target_scale,
                 n_decoder_steps=input_vector.size(1),
             )
-            output_transformation = None
-        return output, output_transformation
+        return output
 
     def forward(self, x: Dict[str, torch.Tensor], n_samples: int = None) -> Dict[str, torch.Tensor]:
         """
@@ -281,17 +280,11 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             ].T,
         )
 
-        output, output_transformation = self.decode(
+        output = self.decode(
             input_vector,
             decoder_lengths=x["decoder_lengths"],
             target_scale=x["target_scale"],
             hidden_state=hidden_state,
         )
         # return relevant part
-        return dict(
-            prediction=output,
-            output_transformation=output_transformation,
-            groups=x["groups"],
-            decoder_time_idx=x["decoder_time_idx"],
-            target_scale=x["target_scale"],
-        )
+        return self.to_network_output(prediction=output)

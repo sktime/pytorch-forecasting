@@ -167,13 +167,14 @@ class NBeats(BaseModel):
             )  # do not use backcast -= backcast_block as this signifies an inline operation
             forecast = forecast + forecast_block
 
-        return dict(
-            prediction=forecast,
-            target_scale=x["target_scale"],
-            backcast=target - backcast,
-            trend=torch.stack(trend_forecast, dim=0).sum(0),
-            seasonality=torch.stack(seasonal_forecast, dim=0).sum(0),
-            generic=torch.stack(generic_forecast, dim=0).sum(0),
+        return self.to_network_output(
+            prediction=self.transform_output(forecast, target_scale=x["target_scale"]),
+            backcast=self.transform_output(prediction=target - backcast, target_scale=x["target_scale"]),
+            trend=self.transform_output(torch.stack(trend_forecast, dim=0).sum(0), target_scale=x["target_scale"]),
+            seasonality=self.transform_output(
+                torch.stack(seasonal_forecast, dim=0).sum(0), target_scale=x["target_scale"]
+            ),
+            generic=self.transform_output(torch.stack(generic_forecast, dim=0).sum(0), target_scale=x["target_scale"]),
         )
 
     @classmethod
@@ -224,7 +225,7 @@ class NBeats(BaseModel):
         log, out = super().step(x, y, batch_idx=batch_idx)
 
         if self.hparams.backcast_loss_ratio > 0:  # add loss from backcast
-            backcast = self.transform_output(dict(prediction=out["backcast"], target_scale=out["target_scale"]))
+            backcast = out["backcast"]
             backcast_weight = (
                 self.hparams.backcast_loss_ratio * self.hparams.prediction_length / self.hparams.context_length
             )
@@ -239,10 +240,10 @@ class NBeats(BaseModel):
             self.log(f"{label}_forecast_loss", log["loss"], on_epoch=True, on_step=self.training)
             log["loss"] = log["loss"] * forecast_weight + backcast_loss
 
-        self._log_interpretation(x, out, batch_idx=batch_idx)
+        self.log_interpretation(x, out, batch_idx=batch_idx)
         return log, out
 
-    def _log_interpretation(self, x, out, batch_idx):
+    def log_interpretation(self, x, out, batch_idx):
         """
         Log interpretation of network predictions in tensorboard.
         """
@@ -289,16 +290,13 @@ class NBeats(BaseModel):
 
         time = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
 
-        def to_prediction(y):
-            return self.transform_output(dict(prediction=y[[idx]], target_scale=x["target_scale"][[idx]]))[0]
-
         # plot target vs prediction
         ax[0].plot(time, torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]]).detach().cpu(), label="target")
         ax[0].plot(
             time,
             torch.cat(
                 [
-                    to_prediction(output["backcast"].detach()),
+                    output["backcast"][idx].detach(),
                     output["prediction"][idx].detach(),
                 ],
                 dim=0,
@@ -322,14 +320,14 @@ class NBeats(BaseModel):
             if title == "trend":
                 ax[1].plot(
                     time,
-                    to_prediction(output[title]).detach().cpu(),
+                    output[title][idx].detach().cpu(),
                     label=title.capitalize(),
                     c=next(prop_cycle)["color"],
                 )
             else:
                 ax2.plot(
                     time,
-                    to_prediction(output[title]).detach().cpu(),
+                    output[title][idx].detach().cpu(),
                     label=title.capitalize(),
                     c=next(prop_cycle)["color"],
                 )

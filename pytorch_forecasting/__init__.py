@@ -44,7 +44,19 @@ from pytorch_forecasting.models import (
     TemporalFusionTransformer,
     get_rnn,
 )
-from pytorch_forecasting.utils import apply_to_list, autocorrelation, create_mask, get_embedding_size, to_list
+from pytorch_forecasting.utils import (
+    apply_to_list,
+    autocorrelation,
+    create_mask,
+    detach,
+    get_embedding_size,
+    groupby_apply,
+    integer_histogram,
+    move_to_device,
+    profile,
+    to_list,
+    unpack_sequence,
+)
 
 __all__ = [
     "TimeSeriesDataSet",
@@ -89,6 +101,12 @@ __all__ = [
     "to_list",
     "RecurrentNetwork",
     "DecoderMLP",
+    "detach",
+    "move_to_device",
+    "integer_histogram",
+    "groupby_apply",
+    "profile",
+    "unpack_sequence",
 ]
 
 __version__ = "0.0.0"

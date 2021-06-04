@@ -171,6 +171,12 @@ def model(dataloaders_with_covariates, gpus):
     return net
 
 
+def test_tensorboard_graph_log(dataloaders_with_covariates, model, tmp_path):
+    d = next(iter(dataloaders_with_covariates["train"]))
+    logger = TensorBoardLogger("test", str(tmp_path), log_graph=True)
+    logger.log_graph(model, d[0])
+
+
 def test_init_shared_network(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = TemporalFusionTransformer.from_dataset(dataset, share_single_variable_networks=True)

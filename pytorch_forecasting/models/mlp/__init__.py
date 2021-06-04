@@ -144,9 +144,9 @@ class DecoderMLP(BaseModelWithCovariates):
         if self.n_targets > 1:
             prediction = torch.split(prediction, self.hparams.output_size, dim=-1)
 
-        # We need to return a dictionary that at least contains the prediction and the target_scale.
+        # We need to return a dictionary that at least contains the prediction
         # The parameter can be directly forwarded from the input.
-        return dict(prediction=prediction, target_scale=x["target_scale"])
+        return self.to_network_output(prediction=prediction)
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):

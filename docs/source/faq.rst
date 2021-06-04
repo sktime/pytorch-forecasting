@@ -32,7 +32,7 @@ Creating datasets
 
 * **It takes very long to create the dataset. Why is that?**
 
-  If you set ``allow_missings=True`` in your dataset, the creation of an index
+  If you set ``allow_missing_timesteps=True`` in your dataset, the creation of an index
   might take far more time as all missing values in the timeseries have to be identified.
   The algorithm might be possible to speed up but currently, it might be faster for you to
   not allow missing values and fill them yourself.

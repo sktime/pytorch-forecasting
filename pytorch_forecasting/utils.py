@@ -317,6 +317,27 @@ def apply_to_list(obj: Union[List[Any], Any], func: Callable) -> Union[List[Any]
         return func(obj)
 
 
+class OutputMixIn:
+    """
+    MixIn to give namedtuple some access capabilities of a dictionary
+    """
+
+    def __getitem__(self, k):
+        if isinstance(k, str):
+            return getattr(self, k)
+        else:
+            return super().__getitem__(k)
+
+    def get(self, k, default=None):
+        return getattr(self, k, default)
+
+    def items(self):
+        return zip(self._fields, self)
+
+    def keys(self):
+        return self._fields
+
+
 def move_to_device(
     x: Union[
         Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
@@ -346,8 +367,44 @@ def move_to_device(
     if isinstance(x, dict):
         for name in x.keys():
             x[name] = move_to_device(x[name], device=device)
+    elif isinstance(x, OutputMixIn):
+        for xi in x:
+            move_to_device(xi, device=device)
+        return x
     elif isinstance(x, torch.Tensor) and x.device != device:
         x = x.to(device)
     elif isinstance(x, (list, tuple)) and x[0].device != device:
         x = [move_to_device(xi, device=device) for xi in x]
     return x
+
+
+def detach(
+    x: Union[
+        Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+        torch.Tensor,
+        List[torch.Tensor],
+        Tuple[torch.Tensor],
+    ],
+) -> Union[
+    Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+    torch.Tensor,
+    List[torch.Tensor],
+    Tuple[torch.Tensor],
+]:
+    """
+    Detach object
+
+    Args:
+        x: object to detach
+
+    Returns:
+        detached object
+    """
+    if isinstance(x, torch.Tensor):
+        return x.detach()
+    elif isinstance(x, (OutputMixIn, dict)):
+        return {name: detach(xi) for name, xi in x.items()}
+    elif isinstance(x, (list, tuple)):
+        return [detach(xi) for xi in x]
+    else:
+        return x
