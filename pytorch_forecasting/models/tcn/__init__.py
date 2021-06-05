@@ -95,7 +95,6 @@ class TCN(BaseModelWithCovariates):
         conv_dropout:float,
         fc_dropout:float,
         kernel_size:int,
-        fc_hidden_size:int,
         x_reals: List[str],
         x_categoricals: List[str],
         embedding_sizes: Dict[str, Tuple[int, int]],
@@ -137,10 +136,9 @@ class TCN(BaseModelWithCovariates):
             num_channels=self.hparams.n_hidden_layers,
             kernel_size=self.hparams.kernel_size,
             dropout=self.hparams.conv_dropout),
-
-            Flatten(),
+            GAP1d(),
             nn.Dropout(self.hparams.fc_dropout),
-            nn.Linear(self.hparams.fc_hidden_size,self.hparams.output_size)
+            nn.Linear(self.hparams.n_hidden_layers[-1],self.hparams.output_size)
             
             
         )
@@ -160,6 +158,7 @@ class TCN(BaseModelWithCovariates):
             dim=-1,
         )
         prediction = self.network(network_input.permute(0,2,1))
+        
 
         # We need to return a dictionary that at least contains the prediction and the target_scale.
         # The parameter can be directly forwarded from the input.
