@@ -89,12 +89,13 @@ class TemporalConvNet(nn.Module):
 class TCN(BaseModelWithCovariates):
     def __init__(
         self,
-        input_size: int,
+        input_size: int, 
         output_size: int,
         n_hidden_layers: List[int],
         conv_dropout:float,
         fc_dropout:float,
         kernel_size:int,
+        training_window：int,
         x_reals: List[str],
         x_categoricals: List[str],
         embedding_sizes: Dict[str, Tuple[int, int]],
@@ -107,7 +108,7 @@ class TCN(BaseModelWithCovariates):
         time_varying_reals_decoder: List[str],
         embedding_paddings: List[str],
         categorical_groups: Dict[str, List[str]],
-        training_windows=24,
+        
         **kwargs,
     ):
         # saves arguments in signature to `.hparams` attribute, mandatory call - do not skip this
@@ -139,7 +140,8 @@ class TCN(BaseModelWithCovariates):
 
             Flatten(),
             nn.Dropout(self.hparams.fc_dropout),
-            nn.Linear(25*24,self.hparams.output_size)
+            nn.Linear(self.hparams.training_window*self.hparams.n_hidden_layers[-1].,self.hparams.output_size)
+            
             
         )
 
