@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.9.1 UNRELEASED
+
+### Fixed
+
+- Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
+
 ## v0.9.0 Simplified API (04/06/2021)
 
 ### Breaking changes
