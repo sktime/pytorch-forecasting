@@ -95,7 +95,7 @@ class TCN(BaseModelWithCovariates):
         conv_dropout:float,
         fc_dropout:float,
         kernel_size:int,
-        training_window：int,
+        fc_hidden_size:int,
         x_reals: List[str],
         x_categoricals: List[str],
         embedding_sizes: Dict[str, Tuple[int, int]],
@@ -140,7 +140,7 @@ class TCN(BaseModelWithCovariates):
 
             Flatten(),
             nn.Dropout(self.hparams.fc_dropout),
-            nn.Linear(self.hparams.training_window*self.hparams.n_hidden_layers[-1].,self.hparams.output_size)
+            nn.Linear(self.hparams.fc_hidden_size,self.hparams.output_size)
             
             
         )
