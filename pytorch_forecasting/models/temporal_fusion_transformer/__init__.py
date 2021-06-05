@@ -1,6 +1,7 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
+from copy import copy
 from typing import Dict, List, Tuple, Union
 
 from matplotlib import pyplot as plt
@@ -341,11 +342,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             TemporalFusionTransformer
         """
         # add maximum encoder length
-        new_kwargs = dict(max_encoder_length=dataset.max_encoder_length)
-        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss()))
-
         # update defaults
-        new_kwargs.update(kwargs)
+        new_kwargs = copy(kwargs)
+        new_kwargs["max_encoder_length"] = dataset.max_encoder_length
+        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss()))
 
         # create class and return
         return super().from_dataset(
