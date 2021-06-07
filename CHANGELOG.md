@@ -1,4 +1,7 @@
 # Release Notes
+## Added
+- TCN of pytorch-forecasting
+- Tutorial of TCN in pytorch-forecasting
 
 ## v0.9.0 Simplified API (04/06/2021)
 

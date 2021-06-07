@@ -87,6 +87,7 @@ class TemporalConvNet(nn.Module):
 
 
 class TCN(BaseModelWithCovariates):
+
     def __init__(
         self,
         input_size: int, 
@@ -110,6 +111,34 @@ class TCN(BaseModelWithCovariates):
         
         **kwargs,
     ):
+        """
+        Initialize TCN Model - use its :py:meth:`~from_dataset` method if possible.
+
+        Based on the article
+        `TCN: An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling
+       <https://arxiv.org/abs/1803.01271>`_. TCN has a better performance than LSTM in time series forecasting with much faster training speed.
+
+        Args:
+            n_hidden_layers:the number of temporal block.In this implementation,every temporal block has fixed three casual dialation cnn kernel according to the original paper
+            conv_dropout: dropout rate for the output of every temporal block
+            fc_dropout: In this implementation,we use pooling and flatten(Gap1D) to make the output into 1-d dimension and use a linear layer to complete time series forecasting tasks 
+            fc_drouput is the droup out rate for the output of Gap1D
+            kernel_size: the kernel size of the cnn
+            prediction_length: Length of the prediction. Also known as 'horizon'.
+            context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
+                Should be between 1-10 times the prediction length.
+            backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.
+                A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
+                forecast lengths). Defaults to 0.0, i.e. no weight.
+            loss: loss to optimize. Defaults to MASE().
+            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
+                failures
+            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
+            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+            **kwargs: additional arguments to :py:class:`~BaseModel`.
+        """
+
         # saves arguments in signature to `.hparams` attribute, mandatory call - do not skip this
         self.save_hyperparameters()
         
@@ -162,7 +191,10 @@ class TCN(BaseModelWithCovariates):
 
         # We need to return a dictionary that at least contains the prediction and the target_scale.
         # The parameter can be directly forwarded from the input.
-        return dict(prediction=prediction, target_scale=x["target_scale"])
+        #return dict(prediction=prediction, target_scale=x["target_scale"])
+        prediction = self.transform_output(prediction, target_scale=x["target_scale"])
+        return self.to_network_output(prediction=prediction)
+
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
