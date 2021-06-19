@@ -405,7 +405,7 @@ def detach(
     elif isinstance(x, dict):
         return {name: detach(xi) for name, xi in x.items()}
     elif isinstance(x, OutputMixIn):
-        return x.__class__({name: detach(xi) for name, xi in x.items()})
+        return x.__class__(**{name: detach(xi) for name, xi in x.items()})
     elif isinstance(x, (list, tuple)):
         return [detach(xi) for xi in x]
     else:
