@@ -31,6 +31,7 @@ from pytorch_forecasting.metrics import (
 from pytorch_forecasting.models import (
     GRU,
     LSTM,
+    TCN,
     AutoRegressiveBaseModel,
     AutoRegressiveBaseModelWithCovariates,
     Baseline,

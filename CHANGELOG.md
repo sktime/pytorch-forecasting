@@ -1,7 +1,16 @@
 # Release Notes
-## Added
-- TCN of pytorch-forecasting
-- Tutorial of TCN in pytorch-forecasting
+
+## v0.9.1 Adding TCN architecture (UNRELEASED)
+
+### Added
+
+- [TCN](https://arxiv.org/abs/1803.01271) (#549)
+- Tutorial for TCN (#549)
+
+### Contributors
+
+- jdb78
+- wangbingnan136
 
 ## v0.9.0 Simplified API (04/06/2021)
 

@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from pytorch_forecasting.models import TCN
+from pytorch_forecasting import MAE, TCN
 
 
 def test_integration(dataloaders_fixed_window_with_covariates, tmp_path, gpus):
@@ -33,12 +33,11 @@ def test_integration(dataloaders_fixed_window_with_covariates, tmp_path, gpus):
         learning_rate=0.15,
         log_gradient_flow=True,
         conv_dropout=0.0,
-        n_hidden_layers=[64,32,16],
+        n_hidden_layers=[64, 32, 16],
         kernel_size=3,
         fc_dropout=0.0,
         loss=MAE(),
-        log_interval=1000,
-        backcast_loss_ratio=1.0,
+        log_interval=1,
     )
     net.size()
     try:
@@ -62,16 +61,15 @@ def test_integration(dataloaders_fixed_window_with_covariates, tmp_path, gpus):
 def model(dataloaders_fixed_window_with_covariates):
     dataset = dataloaders_fixed_window_with_covariates["train"].dataset
     net = TCN.from_dataset(
-        train_dataloader.dataset,
+        dataset,
         learning_rate=0.15,
         log_gradient_flow=True,
         conv_dropout=0.0,
-        n_hidden_layers=[64,32,16],
+        n_hidden_layers=[64, 32, 16],
         kernel_size=3,
         fc_dropout=0.0,
         loss=MAE(),
-        log_interval=1000,
-        backcast_loss_ratio=1.0,
+        log_interval=1,
     )
     return net
 

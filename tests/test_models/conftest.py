@@ -165,3 +165,19 @@ def dataloaders_fixed_window_without_covariates():
     val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
     return dict(train=train_dataloader, val=val_dataloader)
+
+
+@pytest.fixture
+def dataloaders_fixed_window_with_covariates(data_with_covariates):
+    data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
+    return make_dataloaders(
+        data_with_covariates,
+        target="target",
+        time_varying_known_reals=["discount"],
+        time_varying_unknown_reals=["target"],
+        static_categoricals=["agency"],
+        add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+        min_encoder_length=36,
+        min_prediction_length=6,
+    )
