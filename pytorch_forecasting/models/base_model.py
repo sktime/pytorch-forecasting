@@ -112,6 +112,9 @@ def _concatenate_output(
                     output_cat[name] = [item for out in output for item in out[name]]
                 else:
                     output_cat[name] = [out[name] for out in output]
+
+    if isinstance(output[0], OutputMixIn):
+        output_cat = output[0].__class__(**output_cat)
     return output_cat
 
 
