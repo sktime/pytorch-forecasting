@@ -41,6 +41,7 @@ def data_with_covariates():
         "music_fest",
     ]
     data[special_days] = data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
+    data = data.astype(dict(industry_volume=float))
 
     return data
 
@@ -109,6 +110,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
         dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="softplus", center=False)),
         dict(target="agency"),
         # test multiple targets
+        dict(target=["industry_volume", "volume"]),
         dict(target=["agency", "volume"]),
         dict(target=["agency", "volume"], min_encoder_length=1, min_prediction_length=1),
         dict(target=["agency", "volume"], weight="volume"),

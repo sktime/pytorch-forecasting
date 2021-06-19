@@ -7,10 +7,15 @@
 - [TCN](https://arxiv.org/abs/1803.01271) (#549)
 - Tutorial for TCN (#549)
 
+### Fixed
+
+- Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
+
 ### Contributors
 
 - jdb78
 - wangbingnan136
+
 
 ## v0.9.0 Simplified API (04/06/2021)
 
