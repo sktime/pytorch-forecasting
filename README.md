@@ -17,14 +17,14 @@
 
 **[Documentation](https://pytorch-forecasting.readthedocs.io)** | **[Tutorials](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials.html)** | **[Release Notes](https://pytorch-forecasting.readthedocs.io/en/latest/CHANGELOG.html)**
 
-_Pytorch Forecasting_ is a PyTorch-based package for forecasting time series with state-of-the-art network architectures. It provides a high-level API for training networks on pandas data frames and leverages
+_PyTorch Forecasting_ is a PyTorch-based package for forecasting time series with state-of-the-art network architectures. It provides a high-level API for training networks on pandas data frames and leverages
 [PyTorch Lightning](https://pytorch-lightning.readthedocs.io/) for scalable training on (multiple) GPUs, CPUs and for automatic logging.
 
 ---
 
 Our article on [Towards Data Science](https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46) introduces the package and provides background information.
 
-Pytorch Forecasting aims to ease state-of-the-art timeseries forecasting with neural networks for real-world cases and research alike. The goal is to provide a high-level API with maximum flexibility for professionals and reasonable defaults for beginners.
+PyTorch Forecasting aims to ease state-of-the-art timeseries forecasting with neural networks for real-world cases and research alike. The goal is to provide a high-level API with maximum flexibility for professionals and reasonable defaults for beginners.
 Specifically, the package provides
 
 - A timeseries dataset class which abstracts handling variable transformations, missing values,
