@@ -799,10 +799,9 @@ class RMSE(MultiHorizonMetric):
         return loss
 
 
-class MASE(MultiHorizonMetric):
+class CustomMASE(MultiHorizonMetric):
     """
     Mean absolute scaled error
-
     Defined as ``(y_pred - target).abs() / all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
     ``all_targets`` are here the concatenated encoder and decoder targets
     """
@@ -816,14 +815,12 @@ class MASE(MultiHorizonMetric):
     ) -> torch.Tensor:
         """
         Update metric that handles masking of values.
-
         Args:
             y_pred (Dict[str, torch.Tensor]): network output
             target (Tuple[Union[torch.Tensor, rnn.PackedSequence], torch.Tensor]): tuple of actual values and weights
             encoder_target (Union[torch.Tensor, rnn.PackedSequence]): historic actual values
             encoder_lengths (torch.Tensor): optional encoder lengths, not necessary if encoder_target
                 is rnn.PackedSequence. Assumed encoder_target is torch.Tensor
-
         Returns:
             torch.Tensor: loss as a single number for backpropagation
         """
@@ -857,8 +854,41 @@ class MASE(MultiHorizonMetric):
 
         self._update_losses_and_lengths(losses, lengths)
 
-    def loss(self, y_pred, target, scaling):
-        return (y_pred - target).abs() / scaling.unsqueeze(-1)
+    def loss(self, 
+            y_pred, 
+            y_true, 
+            scaling = None, 
+            baseline = 0.005):  
+        """
+        THIS IS THE MAIN THING CUSTOMIZED.
+
+            We intend to penalize more the errors on the
+            timeseries that varied the most (computed as
+            distances_from_first_value_predicted). 
+            
+            We set a "baseline" value (% change from the first value)
+            to which we normalize all distances.
+        """
+
+        # Regular MASE computation still needed
+        mase = (y_pred - y_true).abs() / scaling.unsqueeze(-1) # [batch_size, pred_len]
+
+        # Build the penalization factor
+        ## Compute the % distance from the first values
+        first_values = torch.Tensor(y_true[:, 0])  # [batch_size, 1]
+        first_values = torch.vstack([first_values]*y_true.shape[-1]).T   # [batch_size, pred_len]
+
+        ## % distance: normalize and substract baseline
+        distances = torch.add(y_true, - first_values)  # [batch_size, pred_len]
+        distances = torch.divide(distances, first_values)  # [batch_size, pred_len]
+        distances_norm_by_baseline = torch.divide(distances, baseline)  # [batch_size, pred_len]
+
+        ## Penalization factor / weight: punish more the errors around/greater than the baseline
+        penalization_factor = torch.exp(distances_norm_by_baseline)  # [batch_size, pred_len]
+
+        loss = torch.multiply(penalization_factor, mase) # [batch_size, pred_len]
+
+        return loss
 
     def calculate_scaling(self, target, lengths, encoder_target, encoder_lengths):
         # calcualte mean(abs(diff(targets)))
