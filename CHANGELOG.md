@@ -2,6 +2,10 @@
 
 ## v0.9.1 UNRELEASED
 
+### Added
+
+- Use target name instead of target number for logging metrics (#588)
+
 ### Fixed
 
 - Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
