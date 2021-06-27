@@ -1,12 +1,18 @@
-""" TCN With Covariates"""
+"""
+Temporal Convolutional Network (TCN): An Empirical Evaluation of Generic Convolutional and Recurrent Networks for
+Sequence Modeling <https://arxiv.org/abs/1803.01271>`_. TCNs have often a better performance than LSTMs in
+time series forecasting while training much faster.
+"""
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import torch
 import torch.nn as nn
 from torch.nn.utils import weight_norm
+from torchmetrics import Metric as LightningMetric
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
+from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models import BaseModelWithCovariates
 from pytorch_forecasting.models.nn import MultiEmbedding
 
@@ -105,36 +111,45 @@ class TemporalConvNet(nn.Module):
         return self.network(x)
 
 
-class TCN(BaseModelWithCovariates):
+class TemporalConvolutionalNetwork(BaseModelWithCovariates):
     def __init__(
         self,
-        input_size: int,
-        output_size: int,
-        n_hidden_layers: List[int],
-        conv_dropout: float,
-        fc_dropout: float,
-        kernel_size: int,
-        x_reals: List[str],
-        x_categoricals: List[str],
-        embedding_sizes: Dict[str, Tuple[int, int]],
-        embedding_labels: Dict[str, List[str]],
-        static_categoricals: List[str],
-        static_reals: List[str],
-        time_varying_categoricals_encoder: List[str],
-        time_varying_categoricals_decoder: List[str],
-        time_varying_reals_encoder: List[str],
-        time_varying_reals_decoder: List[str],
-        embedding_paddings: List[str],
-        categorical_groups: Dict[str, List[str]],
+        n_hidden_layers: List[int] = [128, 128],
+        conv_dropout: float = 0.1,
+        fc_dropout: float = 0.1,
+        kernel_size: int = 16,
+        loss: MultiHorizonMetric = None,
+        input_size: int = None,
+        output_size: int = None,
+        x_reals: List[str] = [],
+        x_categoricals: List[str] = [],
+        embedding_sizes: Dict[str, Tuple[int, int]] = {},
+        embedding_labels: Dict[str, List[str]] = {},
+        static_categoricals: List[str] = [],
+        static_reals: List[str] = [],
+        time_varying_categoricals_encoder: List[str] = [],
+        time_varying_categoricals_decoder: List[str] = [],
+        time_varying_reals_encoder: List[str] = [],
+        time_varying_reals_decoder: List[str] = [],
+        embedding_paddings: List[str] = [],
+        categorical_groups: Dict[str, List[str]] = {},
+        learning_rate: float = 1e-3,
+        log_interval: Union[int, float] = -1,
+        log_val_interval: Union[int, float] = None,
+        log_gradient_flow: bool = False,
+        reduce_on_plateau_patience: int = 1000,
+        monotone_constaints: Dict[str, int] = {},
+        logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
         """
-        Initialize TCN Model - use its :py:meth:`~from_dataset` method if possible.
+        Initialize Temporal Convolutional Network Model - use its :py:meth:`~from_dataset` method if possible.
 
         Based on the article
-        `TCN: An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling
-        <https://arxiv.org/abs/1803.01271>`_. TCN has a better performance than LSTM in time series forecasting
-        with much faster training speed.
+        `Temporal Convolutional Network (TCN): An Empirical Evaluation of Generic Convolutional and Recurrent Networks
+        for Sequence Modeling
+        <https://arxiv.org/abs/1803.01271>`_. TCNs have often a better performance than LSTMs in time series forecasting
+        while training much faster.
 
         Args:
             n_hidden_layers (int): the number of temporal blocks. In this implementation,every temporal block has fixe
@@ -144,6 +159,7 @@ class TCN(BaseModelWithCovariates):
                 dimension and use a linear layer to complete time series forecasting tasks
                 fc_drouput is the droup out rate for the output of Gap1D
             kernel_size (int): the kernel size of the cnn
+            loss: loss function taking prediction and targets. Defaults to SMAPE.
             prediction_length (int): Length of the prediction. Also known as 'horizon'.
             context_length (int): Number of time units that condition the predictions. Also known as 'lookback period'.
                 Should be between 1-10 times the prediction length.
@@ -155,9 +171,12 @@ class TCN(BaseModelWithCovariates):
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
-
-        # saves arguments in signature to `.hparams` attribute, mandatory call - do not skip this
-        self.save_hyperparameters()
+        if logging_metrics is None:
+            logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
+        if loss is None:
+            loss = SMAPE()
+        assert isinstance(loss, LightningMetric), "Loss has to be a PyTorch Lightning `Metric`"
+        super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # pass additional arguments to BaseModel.__init__, mandatory call - do not skip this
         super().__init__(**kwargs)
@@ -172,9 +191,9 @@ class TCN(BaseModelWithCovariates):
         )
 
         # calculate the size of all concatenated embeddings + continous variables
-        n_features = sum(
-            embedding_size for classes_size, embedding_size in self.hparams.embedding_sizes.values()
-        ) + len(self.reals)
+        n_features = sum(embedding_size for _, embedding_size in self.hparams.embedding_sizes.values()) + len(
+            self.reals
+        )
 
         # create network that will be fed with continious variables and embeddings
         self.network = nn.Sequential(

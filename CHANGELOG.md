@@ -4,8 +4,8 @@
 
 ### Added
 
-- [TCN](https://arxiv.org/abs/1803.01271) (#549)
-- Tutorial for TCN (#549)
+- Adding a new architecture: The [TemporalConvolutionalNetwork](https://arxiv.org/abs/1803.01271) (#549)
+- Tutorial for TemporalConvolutionalNetwork (#549)
 
 ### Fixed
 
