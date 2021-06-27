@@ -517,7 +517,7 @@ class BaseModel(LightningModule):
                 else:
                     loss_value = metric(y_point, y_true)
                 if len(y_hat_point_detached) > 1:
-                    target_tag = f"Target {idx}_"
+                    target_tag = self.target_names[idx] + " "
                 else:
                     target_tag = ""
                 self.log(
@@ -643,7 +643,7 @@ class BaseModel(LightningModule):
                 if isinstance(fig, (list, tuple)):
                     for idx, f in enumerate(fig):
                         self.logger.experiment.add_figure(
-                            f"Target {idx} {tag}",
+                            f"{self.target_names[idx]} {tag}",
                             f,
                             global_step=self.global_step,
                         )
@@ -924,6 +924,19 @@ class BaseModel(LightningModule):
         )  # add dataset parameters for making fast predictions
         # hyper parameters are passed as arguments directly and not as single dictionary
         checkpoint["hparams_name"] = "kwargs"
+
+    @property
+    def target_names(self) -> List[str]:
+        """
+        List of targets that are predicted.
+
+        Returns:
+            List[str]: list of target names
+        """
+        if hasattr(self, "dataset_parameters") and self.dataset_parameters is not None:
+            return to_list(self.dataset_parameters["target"])
+        else:
+            return [f"Target {idx + 1}" for idx in range(self.n_targets)]
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
