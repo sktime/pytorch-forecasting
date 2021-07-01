@@ -4,6 +4,7 @@ Sequence Modeling <https://arxiv.org/abs/1803.01271>`_. TCNs have often a better
 time series forecasting while training much faster.
 """
 
+from copy import copy
 from typing import Dict, List, Tuple, Union
 
 import torch
@@ -114,13 +115,13 @@ class TemporalConvNet(nn.Module):
 class TemporalConvolutionalNetwork(BaseModelWithCovariates):
     def __init__(
         self,
-        n_hidden_layers: List[int] = [128, 128],
+        hidden_layer_sizes: List[int] = [128, 128],
         conv_dropout: float = 0.1,
         fc_dropout: float = 0.1,
         kernel_size: int = 16,
         loss: MultiHorizonMetric = None,
-        input_size: int = None,
-        output_size: int = None,
+        prediction_length: int = 1,
+        output_size: Union[int, List[int]] = 1,
         x_reals: List[str] = [],
         x_categoricals: List[str] = [],
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
@@ -152,8 +153,8 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         while training much faster.
 
         Args:
-            n_hidden_layers (int): the number of temporal blocks. In this implementation,every temporal block has fixe
-                three casual dialation cnn kernel according to the original paper
+            hidden_layer_sizes (int): the number of temporal blocks. In this implementation every temporal block
+                has fixe three casual dialation cnn kernel according to the original paper
             conv_dropout (float): dropout rate for the output of every temporal block
             fc_dropout (float): In this implementation, we use pooling and flatten(Gap1D) to make the output into 1D
                 dimension and use a linear layer to complete time series forecasting tasks
@@ -161,9 +162,8 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
             kernel_size (int): the kernel size of the cnn
             loss: loss function taking prediction and targets. Defaults to SMAPE.
             prediction_length (int): Length of the prediction. Also known as 'horizon'.
-            context_length (int): Number of time units that condition the predictions. Also known as 'lookback period'.
-                Should be between 1-10 times the prediction length.
-            loss: loss to optimize. Defaults to MASE().
+            output_size: number of outputs (e.g. number of quantiles for QuantileLoss and one target or list
+                of output sizes).
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
@@ -175,11 +175,9 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
         if loss is None:
             loss = SMAPE()
+        self.save_hyperparameters()
         assert isinstance(loss, LightningMetric), "Loss has to be a PyTorch Lightning `Metric`"
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
-
-        # pass additional arguments to BaseModel.__init__, mandatory call - do not skip this
-        super().__init__(**kwargs)
 
         # create embedder - can be fed with x["encoder_cat"] or x["decoder_cat"] and will return
         # dictionary of category names mapped to embeddings
@@ -199,14 +197,25 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         self.network = nn.Sequential(
             TemporalConvNet(
                 num_inputs=n_features,
-                num_channels=self.hparams.n_hidden_layers,
+                num_channels=self.hparams.hidden_layer_sizes,
                 kernel_size=self.hparams.kernel_size,
                 dropout=self.hparams.conv_dropout,
             ),
             GAP1d(),
             nn.Dropout(self.hparams.fc_dropout),
-            nn.Linear(self.hparams.n_hidden_layers[-1], self.hparams.output_size),
         )
+
+        # final layer
+        last_layer_size = self.hparams.hidden_layer_sizes[-1]
+        if self.n_targets > 1:  # if to run with multiple targets
+            self.output_layer = nn.ModuleList(
+                [
+                    nn.Linear(last_layer_size, output_size * self.hparams.prediction_length)
+                    for output_size in self.hparams.output_size
+                ]
+            )
+        else:
+            self.output_layer = nn.Linear(last_layer_size, self.hparams.output_size * self.hparams.prediction_length)
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         # x is a batch generated based on the TimeSeriesDataset
@@ -220,21 +229,26 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
             ],
             dim=-1,
         )
-        prediction = self.network(network_input.permute(0, 2, 1))
+        output = self.network(network_input.permute(0, 2, 1))
 
+        if self.n_targets > 1:  # if to use multi-target architecture
+            output = [
+                output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size)
+                for output_layer in self.output_layer
+            ]
+        else:
+            output = self.output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size)
         # We need to return a dictionary that at least contains the prediction and the target_scale.
         # The parameter can be directly forwarded from the input.
-        # return dict(prediction=prediction, target_scale=x["target_scale"])
-        prediction = self.transform_output(prediction, target_scale=x["target_scale"])
-        return self.to_network_output(prediction=prediction)
+        output = self.transform_output(output, target_scale=x["target_scale"])
+        return self.to_network_output(prediction=output)
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
-        new_kwargs = {
-            "output_size": dataset.max_prediction_length,
-            "input_size": dataset.max_encoder_length,
-        }
-        new_kwargs.update(kwargs)  # use to pass real hyperparameters and override defaults set by dataset
+        new_kwargs = copy(kwargs)
+        new_kwargs["prediction_length"] = dataset.max_prediction_length
+
+        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, MAE()))
         # example for dataset validation
         assert dataset.max_prediction_length == dataset.min_prediction_length, "Decoder only supports a fixed length"
         assert dataset.min_encoder_length == dataset.max_encoder_length, "Encoder only supports a fixed length"
