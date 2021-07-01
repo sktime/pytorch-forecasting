@@ -231,6 +231,8 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         )
         output = self.network(network_input.permute(0, 2, 1))
 
+        # todo: how do we do multi-horizon predictions? Recurrent or in one go (but without covariates?)?
+
         if self.n_targets > 1:  # if to use multi-target architecture
             output = [
                 output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size)
