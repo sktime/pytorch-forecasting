@@ -15,7 +15,7 @@
 
 - jdb78
 - wangbingnan136
-
+- vds12
 
 ## v0.9.0 Simplified API (04/06/2021)
 

@@ -152,6 +152,9 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         <https://arxiv.org/abs/1803.01271>`_. TCNs have often a better performance than LSTMs in time series forecasting
         while training much faster.
 
+        Keep in mind that known time-dependent variables in the future are not used in the TCN as the decoder structure
+        is a single linear layer.
+
         Args:
             hidden_layer_sizes (int): the number of temporal blocks. In this implementation every temporal block
                 has fixe three casual dialation cnn kernel according to the original paper
@@ -231,15 +234,15 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         )
         output = self.network(network_input.permute(0, 2, 1))
 
-        # todo: how do we do multi-horizon predictions? Recurrent or in one go (but without covariates?)?
-
         if self.n_targets > 1:  # if to use multi-target architecture
             output = [
-                output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size)
+                output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size).squeeze(-1)
                 for output_layer in self.output_layer
             ]
         else:
-            output = self.output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size)
+            output = (
+                self.output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size).squeeze(-1)
+            )
         # We need to return a dictionary that at least contains the prediction and the target_scale.
         # The parameter can be directly forwarded from the input.
         output = self.transform_output(output, target_scale=x["target_scale"])
