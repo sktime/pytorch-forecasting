@@ -623,7 +623,7 @@ class BaseModel(LightningModule):
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): current batch index
-            **kwargs: paramters to pass to ``pot_prediction``
+            **kwargs: paramters to pass to ``plot_prediction``
         """
         # log single prediction figure
         if (batch_idx % self.log_interval == 0 or self.log_interval < 1.0) and self.log_interval > 0:
