@@ -65,7 +65,7 @@ def model(dataloaders_fixed_window_with_covariates):
         learning_rate=0.15,
         log_gradient_flow=True,
         conv_dropout=0.0,
-        n_hidden_layers=[64, 32, 16],
+        hidden_layer_sizes=[64, 32, 16],
         kernel_size=3,
         fc_dropout=0.0,
         loss=MAE(),
