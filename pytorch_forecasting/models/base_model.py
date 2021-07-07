@@ -212,6 +212,8 @@ class BaseModel(LightningModule):
             output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
             optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``.
+                Alternatively, a class or function can be passed which takes parameters as first argument and
+                a `lr` argument (optionally also `weight_decay`)
                 Defaults to "ranger".
         """
         super().__init__()

@@ -6,6 +6,7 @@
 
 - Use target name instead of target number for logging metrics (#588)
 - Optimizer can be initialized by passing string, class or function (#602)
+- Add support for multiple outputs in Baseline model (#603)
 
 ### Fixed
 
