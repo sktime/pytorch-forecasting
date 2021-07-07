@@ -146,6 +146,7 @@ class DecoderMLP(BaseModelWithCovariates):
 
         # We need to return a dictionary that at least contains the prediction
         # The parameter can be directly forwarded from the input.
+        prediction = self.transform_output(prediction, target_scale=x["target_scale"])
         return self.to_network_output(prediction=prediction)
 
     @classmethod
