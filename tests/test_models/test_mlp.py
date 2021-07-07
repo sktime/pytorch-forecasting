@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
+from torch.optim import AdamW
 
 from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss
 from pytorch_forecasting.models import DecoderMLP
@@ -77,6 +78,9 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
                 target="agency",
             ),
         ),
+        dict(optimizer="AdamW"),
+        dict(optimizer=lambda params, lr: AdamW(params, lr=lr)),
+        dict(optimizer=AdamW),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
