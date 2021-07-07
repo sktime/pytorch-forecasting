@@ -1,24 +1,34 @@
 """
 Baseline model.
 """
-from typing import Dict
+from typing import Any, Dict
 
 import torch
-from torch.nn.utils import rnn
 
-from pytorch_forecasting.metrics import MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.models import BaseModel
 
 
 class Baseline(BaseModel):
     """
     Baseline model that uses last known target value to make prediction.
-    """
 
-    def __init__(self, output_size: int = 7, loss: MultiHorizonMetric = QuantileLoss()):
-        self.save_hyperparameters()
-        super().__init__()
-        self.loss = loss
+    Example:
+
+    .. code-block:: python
+
+        from pytorch_forecasting import BaseModel, MAE
+
+        # generating predictions
+        predictions = Baseline().predict(dataloader)
+
+        # calculate baseline performance in terms of mean absolute error (MAE)
+        metric = MAE()
+        model = Baseline()
+        for x, y in dataloader:
+            metric.update(model(x), y)
+
+        metric.compute()
+    """
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
@@ -30,18 +40,34 @@ class Baseline(BaseModel):
         Returns:
             Dict[str, torch.Tensor]: netowrk outputs
         """
-        max_prediction_length = x["decoder_lengths"].max()
-        assert x["encoder_lengths"].min() > 0, "Encoder lengths of at least 1 required to obtain last value"
-        last_values = x["encoder_target"][torch.arange(x["encoder_target"].size(0)), x["encoder_lengths"] - 1]
-        prediction = last_values[:, None, None].expand(-1, max_prediction_length, self.hparams.output_size)
-        return dict(prediction=prediction)
+        if isinstance(x["encoder_target"], (list, tuple)):  # multiple targets
+            prediction = [
+                self.forward_one_target(
+                    encoder_lengths=x["encoder_lengths"],
+                    decoder_lengths=x["decoder_lengths"],
+                    encoder_target=encoder_target,
+                )
+                for encoder_target in x["encoder_target"]
+            ]
+        else:  # one target
+            prediction = self.forward_one_target(
+                encoder_lengths=x["encoder_lengths"],
+                decoder_lengths=x["decoder_lengths"],
+                encoder_target=x["encoder_target"],
+            )
+        return self.to_network_output(prediction=prediction)
 
-    def _step(self, batch, batch_idx):
-        """
-        run at each step for training or validation
-        """
-        # extract data and run model
-        x, y = batch
-        y = rnn.pack_padded_sequence(y, lengths=x["decoder_lengths"], batch_first=True, enforce_sorted=False)
-        log, _ = super()._step(x, y, batch_idx)
-        return log
+    def forward_one_target(
+        self, encoder_lengths: torch.Tensor, decoder_lengths: torch.Tensor, encoder_target: torch.Tensor
+    ):
+        max_prediction_length = decoder_lengths.max()
+        assert encoder_lengths.min() > 0, "Encoder lengths of at least 1 required to obtain last value"
+        last_values = encoder_target[torch.arange(encoder_target.size(0)), encoder_lengths - 1]
+        prediction = last_values[:, None].expand(-1, max_prediction_length)
+        return prediction
+
+    def to_prediction(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+        return out.prediction
+
+    def to_quantiles(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+        return out.prediction[..., None]
