@@ -5,10 +5,12 @@
 ### Added
 
 - Use target name instead of target number for logging metrics (#588)
+- Optimizer can be initialized by passing string, class or function (#602)
 
 ### Fixed
 
 - Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
+- Added missing transformation of prediction for MLP (#602)
 
 ## v0.9.0 Simplified API (04/06/2021)
 
