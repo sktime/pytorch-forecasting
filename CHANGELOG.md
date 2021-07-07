@@ -7,6 +7,10 @@
 - Adding a new architecture: The [TemporalConvolutionalNetwork](https://arxiv.org/abs/1803.01271) (#549)
 - Tutorial for TemporalConvolutionalNetwork (#549)
 
+### Added
+
+- Use target name instead of target number for logging metrics (#588)
+
 ### Fixed
 
 - Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
