@@ -62,7 +62,9 @@ class Baseline(BaseModel):
     ):
         max_prediction_length = decoder_lengths.max()
         assert encoder_lengths.min() > 0, "Encoder lengths of at least 1 required to obtain last value"
-        last_values = encoder_target[torch.arange(encoder_target.size(0)), encoder_lengths - 1]
+        last_values = encoder_target[
+            torch.arange(encoder_target.size(0), device=encoder_target.device), encoder_lengths - 1
+        ]
         prediction = last_values[:, None].expand(-1, max_prediction_length)
         return prediction
 

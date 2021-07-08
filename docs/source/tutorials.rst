@@ -9,7 +9,7 @@ The following tutorials can be also found as `notebooks on GitHub <https://githu
    :titlesonly:
    :maxdepth: 2
 
+   tutorials/building
    tutorials/stallion
    tutorials/ar
-   tutorials/building
    tutorials/tcn

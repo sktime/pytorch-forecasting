@@ -119,6 +119,7 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         conv_dropout: float = 0.1,
         fc_dropout: float = 0.1,
         kernel_size: int = 16,
+        skip_connection: bool = True,
         loss: MultiHorizonMetric = None,
         prediction_length: int = 1,
         output_size: Union[int, List[int]] = 1,
@@ -163,6 +164,7 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
                 dimension and use a linear layer to complete time series forecasting tasks
                 fc_drouput is the droup out rate for the output of Gap1D
             kernel_size (int): the kernel size of the cnn
+            skip_connection (bool): if to add a skip connection from the last observed value.
             loss: loss function taking prediction and targets. Defaults to SMAPE.
             prediction_length (int): Length of the prediction. Also known as 'horizon'.
             output_size: number of outputs (e.g. number of quantiles for QuantileLoss and one target or list
@@ -239,14 +241,56 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
                 output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size).squeeze(-1)
                 for output_layer in self.output_layer
             ]
+            if self.hparams.skip_connection:
+                # skip connection only implemented for regression targets
+                for name in self.target_names:
+                    assert name in self.hparams.time_varying_reals_encoder, (
+                        f"target {name} is not in `time_varying_reals_encoder` - "
+                        "only regression supported for skip_connection=True"
+                    )
+                output = [
+                    self.add_last_value(
+                        normalized_encoder_target=x["encoder_cont"][self.target_positions[idx]],
+                        network_output=o,
+                        encoder_lengths=x["encoder_lengths"],
+                    )
+                    for idx, o in enumerate(output)
+                ]
         else:
             output = (
                 self.output_layer(output).view(-1, self.hparams.prediction_length, self.hparams.output_size).squeeze(-1)
             )
+            if self.hparams.skip_connection:
+                # skip connection only implemented for regression targets
+                assert self.target_names[0] in self.hparams.time_varying_reals_encoder, (
+                    f"target {self.target_names[0]} is not in `time_varying_reals_encoder` - "
+                    "only regression supported for skip_connection=True"
+                )
+                output = self.add_last_value(
+                    normalized_encoder_target=x["encoder_cont"][..., self.target_positions[0]],
+                    encoder_lengths=x["encoder_lengths"],
+                    network_output=output,
+                )
         # We need to return a dictionary that at least contains the prediction and the target_scale.
         # The parameter can be directly forwarded from the input.
         output = self.transform_output(output, target_scale=x["target_scale"])
         return self.to_network_output(prediction=output)
+
+    def add_last_value(
+        self,
+        normalized_encoder_target: torch.Tensor,
+        network_output: torch.Tensor,
+        encoder_lengths: torch.Tensor,
+    ) -> torch.Tensor:
+        last_values = normalized_encoder_target[
+            torch.arange(normalized_encoder_target.size(0), device=normalized_encoder_target.device),
+            encoder_lengths - 1,
+        ]
+        if network_output.ndim == 3:
+            last_values = last_values[:, None, None].expand(-1, network_output.size(1), network_output.size(2))
+        else:
+            last_values = last_values[:, None].expand(-1, network_output.size(1))
+        return network_output + last_values
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
