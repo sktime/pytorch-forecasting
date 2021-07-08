@@ -89,9 +89,6 @@ docs = ["sphinx"]
 tests = ["coverage (>=5.0.2)", "hypothesis", "pytest"]
 
 [[package]]
-name = "astroid"
-version = "2.6.2"
-description = "An abstract syntax tree for Python with inference support."
 category = "dev"
 description = "An abstract syntax tree for Python with inference support."
 name = "astroid"
@@ -101,8 +98,6 @@ version = "2.6.2"
 
 [package.dependencies]
 lazy-object-proxy = ">=1.4.0"
-typed-ast = {version = ">=1.4.0,<1.5", markers = "implementation_name == \"cpython\" and python_version < \"3.8\""}
-typing-extensions = {version = ">=3.7.4", markers = "python_version < \"3.8\""}
 wrapt = ">=1.11,<1.13"
 
 [package.dependencies.typed-ast]
@@ -431,7 +426,7 @@ description = "Docutils -- Python Documentation Utilities"
 name = "docutils"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-version = "0.16"
+version = "0.17.1"
 
 [[package]]
 category = "dev"
@@ -470,9 +465,6 @@ python = "<3.8"
 version = "*"
 
 [[package]]
-name = "fsspec"
-version = "2021.6.1"
-description = "File-system specification"
 category = "main"
 description = "File-system specification"
 name = "fsspec"
@@ -727,22 +719,18 @@ version = ">=1.0.0"
 test = ["pytest (>=3.6.0)", "pytest-cov", "mock"]
 
 [[package]]
-name = "isort"
-version = "5.9.1"
-description = "A Python utility / library to sort Python imports."
 category = "dev"
 description = "A Python utility / library to sort Python imports."
 name = "isort"
 optional = false
 python-versions = ">=3.6.1,<4.0"
+version = "5.9.2"
 
 [package.extras]
 colors = ["colorama (>=0.4.3,<0.5.0)"]
 pipfile_deprecated_finder = ["pipreqs", "requirementslib"]
 plugins = ["setuptools"]
 requirements_deprecated_finder = ["pipreqs", "pip-api"]
-colors = ["colorama (>=0.4.3,<0.5.0)"]
-plugins = ["setuptools"]
 
 [[package]]
 category = "dev"
@@ -952,9 +940,6 @@ python-versions = ">=3.6"
 version = "5.1.0"
 
 [[package]]
-name = "mypy"
-version = "0.910"
-description = "Optional static typing for Python"
 category = "dev"
 description = "Optional static typing for Python"
 name = "mypy"
@@ -1184,9 +1169,6 @@ pytz = ">=2017.2"
 test = ["pytest (>=4.0.2)", "pytest-xdist", "hypothesis (>=3.58)"]
 
 [[package]]
-name = "pandoc"
-version = "1.1.0"
-description = "Pandoc Documents for Python"
 category = "dev"
 description = "Pandoc Documents for Python"
 name = "pandoc"
@@ -1293,25 +1275,6 @@ version = ">=0.12"
 dev = ["pre-commit", "tox"]
 
 [[package]]
-name = "plumbum"
-version = "1.7.0"
-description = "Plumbum: shell combinators library"
-category = "dev"
-optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4,>=2.7"
-
-[package.dependencies]
-pypiwin32 = {version = "*", markers = "platform_system == \"Windows\" and platform_python_implementation != \"PyPy\""}
-
-[package.extras]
-dev = ["pytest", "pytest-cov", "pytest-mock", "pytest-timeout", "paramiko", "psutil"]
-docs = ["recommonmark (>=0.5.0)", "Sphinx (>=3.0.0)", "sphinx-rtd-theme (>=0.5.0)"]
-ssh = ["paramiko"]
-
-[[package]]
-name = "ply"
-version = "3.11"
-description = "Python Lex & Yacc"
 category = "dev"
 description = "Plumbum: shell combinators library"
 name = "plumbum"
@@ -1456,16 +1419,11 @@ description = "Bootstrap-based Sphinx theme from the PyData community"
 name = "pydata-sphinx-theme"
 optional = false
 python-versions = ">=3.5"
-version = "0.6.3"
+version = "0.5.2"
 
 [package.dependencies]
 beautifulsoup4 = "*"
-docutils = "<0.17"
 sphinx = "*"
-
-[package.extras]
-coverage = ["pytest-cov", "codecov", "sphinx", "numpydoc", "recommonmark", "pandas", "pytest", "pytest-regressions", "beautifulsoup4", "jupyter-sphinx", "plotly", "numpy", "xarray", "docutils (0.16)"]
-test = ["sphinx", "numpydoc", "recommonmark", "pandas", "pytest", "pytest-regressions", "beautifulsoup4", "jupyter-sphinx", "plotly", "numpy", "xarray", "docutils (0.16)"]
 
 [[package]]
 category = "main"
@@ -1492,9 +1450,6 @@ python-versions = ">=3.5"
 version = "2.9.0"
 
 [[package]]
-name = "pylint"
-version = "2.9.3"
-description = "python code static checker"
 category = "dev"
 description = "python code static checker"
 name = "pylint"
@@ -1504,7 +1459,7 @@ version = "2.9.3"
 
 [package.dependencies]
 astroid = ">=2.6.2,<2.7"
-colorama = {version = "*", markers = "sys_platform == \"win32\""}
+colorama = "*"
 isort = ">=4.2.5,<6"
 mccabe = ">=0.6,<0.7"
 toml = ">=0.7.1"
@@ -1538,20 +1493,6 @@ version = "223"
 pywin32 = ">=223"
 
 [[package]]
-name = "pypiwin32"
-version = "223"
-description = ""
-category = "dev"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-pywin32 = ">=223"
-
-[[package]]
-name = "pyreadline"
-version = "2.1"
-description = "A python implmementation of GNU readline."
 category = "main"
 description = "A python implmementation of GNU readline."
 marker = "sys_platform == \"win32\" and python_version < \"3.8\""
@@ -1691,9 +1632,6 @@ python-versions = "*"
 version = "1.0.4"
 
 [[package]]
-name = "pytorch-lightning"
-version = "1.3.8"
-description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 category = "main"
 description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 name = "pytorch-lightning"
@@ -1907,9 +1845,6 @@ python-versions = ">=3.6"
 version = "2.2.1"
 
 [[package]]
-name = "sphinx"
-version = "4.0.3"
-description = "Python documentation generator"
 category = "dev"
 description = "Python documentation generator"
 name = "sphinx"
@@ -2639,8 +2574,8 @@ defusedxml = [
     {file = "defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69"},
 ]
 docutils = [
-    {file = "docutils-0.16-py2.py3-none-any.whl", hash = "sha256:0c5b78adfbf7762415433f5515cd5c9e762339e23369dbe8000d84a4bf4ab3af"},
-    {file = "docutils-0.16.tar.gz", hash = "sha256:c2de3a60e9e7d07be26b7f2b00ca0309c207e06c100f9cc2a94931fc75a478fc"},
+    {file = "docutils-0.17.1-py2.py3-none-any.whl", hash = "sha256:cf316c8370a737a022b72b56874f6602acf974a37a9fba42ec2876387549fc61"},
+    {file = "docutils-0.17.1.tar.gz", hash = "sha256:686577d2e4c32380bb50cbb22f575ed742d58168cee37e99117a854bcd88f125"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
@@ -2814,8 +2749,8 @@ ipywidgets = [
     {file = "ipywidgets-7.6.3.tar.gz", hash = "sha256:9f1a43e620530f9e570e4a493677d25f08310118d315b00e25a18f12913c41f0"},
 ]
 isort = [
-    {file = "isort-5.9.1-py3-none-any.whl", hash = "sha256:8e2c107091cfec7286bc0f68a547d0ba4c094d460b732075b6fba674f1035c0c"},
-    {file = "isort-5.9.1.tar.gz", hash = "sha256:83510593e07e433b77bd5bff0f6f607dbafa06d1a89022616f02d8b699cfcd56"},
+    {file = "isort-5.9.2-py3-none-any.whl", hash = "sha256:eed17b53c3e7912425579853d078a0832820f023191561fcee9d7cae424e0813"},
+    {file = "isort-5.9.2.tar.gz", hash = "sha256:f65ce5bd4cbc6abdfbe29afc2f0245538ab358c14590912df638033f157d555e"},
 ]
 jedi = [
     {file = "jedi-0.18.0-py2.py3-none-any.whl", hash = "sha256:18456d83f65f400ab0c2d3319e48520420ef43b23a086fdc05dff34132f0fb93"},
@@ -3342,8 +3277,8 @@ pycparser = [
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
 ]
 pydata-sphinx-theme = [
-    {file = "pydata-sphinx-theme-0.6.3.tar.gz", hash = "sha256:32e0580ef985734d652eec2bf25e0995a330a9d4f76deaa353571ce8e180ab14"},
-    {file = "pydata_sphinx_theme-0.6.3-py3-none-any.whl", hash = "sha256:f0fee20dc33fa5efa6b9be57368be760d236d8b9c1486b14ad1d17b7e7e0db04"},
+    {file = "pydata-sphinx-theme-0.5.2.tar.gz", hash = "sha256:3433ab90eb4c689deeedc6c4828c548e68d7555740e8edfa5807c01f49f63a1d"},
+    {file = "pydata_sphinx_theme-0.5.2-py3-none-any.whl", hash = "sha256:bbdae0f3fd17924cc1a90192de121dae6c5e1b40c959d65be09811139bd11bd0"},
 ]
 pydeprecate = [
     {file = "pyDeprecate-0.3.0-py3-none-any.whl", hash = "sha256:2497dd3a293eb62304ea28cacf5e4e58af8a773b4cefec8dc11a3121d06b8354"},
