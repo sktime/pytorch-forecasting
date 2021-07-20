@@ -28,8 +28,9 @@
    {% endblock %}
 
    {% block attributes %}
+   {% set dynamic_attributes = [] %} {# dynamic attributes are not documented #}
    {% set allowed_attributes = [] %}
-   {% for item in attributes %}{% if not item.startswith("_") and (item not in inherited_members or allow_inherited) %}
+   {% for item in attributes %}{% if not item.startswith("_") and (item not in inherited_members or allow_inherited) and (item not in dynamic_attributes) and allow_inherited %}
    {% set a=allowed_attributes.append(item) %}
    {% endif %}{%- endfor %}
    {% if allowed_attributes %}
