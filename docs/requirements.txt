@@ -8,7 +8,7 @@ cloudpickle
 torch>=1.6
 optuna>=2.0
 scipy
-pandas>=1.0
+pandas>=1.0,<=1.2.5
 scikit-learn>0.23
 matplotlib
 statsmodels
