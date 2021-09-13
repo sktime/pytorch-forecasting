@@ -11,7 +11,7 @@ class TimeDistributedEmbeddingBag(nn.EmbeddingBag):
     def forward(self, x):
 
         if len(x.size()) <= 2:
-            return self.forward(x)
+            return super().forward(x)
 
         # Squash samples and timesteps into a single axis
         x_reshape = x.contiguous().view(-1, x.size(-1))  # (samples * timesteps, input_size)
