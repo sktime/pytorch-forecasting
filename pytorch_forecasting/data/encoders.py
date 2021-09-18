@@ -783,6 +783,7 @@ class MultiNormalizer(TorchNormalizer):
             else:
                 normalizer.fit(y[:, idx])
 
+        self.fitted_ = True
         return self
 
     def __getitem__(self, idx: int):
