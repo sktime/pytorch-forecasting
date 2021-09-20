@@ -52,7 +52,7 @@ documentation = "https://pytorch-forecasting.readthedocs.io"
 homepage = "https://pytorch-forecasting.readthedocs.io"
 
 [tool.poetry.dependencies]
-python= "^3.7.1"
+python = "^3.7.1"
 
 torch = "^1.7"
 pytorch-lightning = "^1.2.4"

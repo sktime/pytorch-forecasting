@@ -8,7 +8,7 @@
 - Optimizer can be initialized by passing string, class or function (#602)
 - Add support for multiple outputs in Baseline model (#603)
 - Added Optuna pruner as optional parameter in `TemporalFusionTransformer.optimize_hyperparameters` (#619)
-
+- Dropping support for Python 3.6 and starting support for Python 3.9 (#639)
 
 ### Fixed
 
