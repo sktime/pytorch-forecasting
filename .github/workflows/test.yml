@@ -14,8 +14,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, macOS-10.15] # add windows-2019 when poetry allows installation with `-f` flag
-        python-version: [3.6, 3.7, 3.8] # python 3.9 is not supported by all dependencies yet
+        os: [ubuntu-latest, macOS-latest] # add windows-2019 when poetry allows installation with `-f` flag
+        python-version: [3.7, 3.8, 3.9] # python 3.9 is not supported by all dependencies yet
 
     steps:
       - uses: actions/checkout@v2
