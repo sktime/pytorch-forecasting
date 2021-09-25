@@ -26,7 +26,7 @@ def linspace(backcast_length: int, forecast_length: int, centered: bool = False)
         norm = backcast_length + forecast_length
         start = 0
         stop = backcast_length + forecast_length - 1
-    lin_space = np.linspace(start / norm, stop / norm, backcast_length + forecast_length, dtype=np.float6432)
+    lin_space = np.linspace(start / norm, stop / norm, backcast_length + forecast_length, dtype=np.float32)
     b_ls = lin_space[:backcast_length]
     f_ls = lin_space[backcast_length:]
     return b_ls, f_ls

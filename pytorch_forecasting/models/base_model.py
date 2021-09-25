@@ -244,7 +244,8 @@ class BaseModel(LightningModule):
         if not hasattr(self, "optimizer"):  # callables are removed from hyperparameters, so better to save them
             self.optimizer = self.hparams.optimizer
 
-        # delete everything from hparams that cannot be serialized with yaml dump
+        # delete everything from hparams that cannot be serialized with yaml.dump
+        # which is particularly important for tensorboard logging
         hparams_to_delete = []
         for k, v in self.hparams.items():
             try:
@@ -960,6 +961,8 @@ class BaseModel(LightningModule):
         checkpoint["hparams_name"] = "kwargs"
         # save specials
         checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY] = {k: getattr(self, k) for k in self.hparams_special}
+        # add special hparams them back to save the hparams correctly for checkpoint
+        checkpoint[self.CHECKPOINT_HYPER_PARAMS_KEY].update(checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY])
 
     @property
     def target_names(self) -> List[str]:
