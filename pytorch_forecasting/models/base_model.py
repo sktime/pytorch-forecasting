@@ -2,6 +2,7 @@
 Timeseries models share a number of common characteristics. This module implements these in a common base class.
 """
 from collections import namedtuple
+import copy
 from copy import deepcopy
 import inspect
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
@@ -19,6 +20,7 @@ from torch.nn.utils import rnn
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
+import yaml
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, MultiNormalizer, NaNLabelEncoder
@@ -168,6 +170,8 @@ class BaseModel(LightningModule):
 
     """
 
+    CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY = "__special_save__"
+
     def __init__(
         self,
         log_interval: Union[int, float] = -1,
@@ -220,7 +224,9 @@ class BaseModel(LightningModule):
         # update hparams
         frame = inspect.currentframe()
         init_args = get_init_args(frame)
-        self.save_hyperparameters({name: val for name, val in init_args.items() if name not in self.hparams})
+        self.save_hyperparameters(
+            {name: val for name, val in init_args.items() if name not in self.hparams and name not in ["self"]}
+        )
 
         # update log interval if not defined
         if self.hparams.log_val_interval is None:
@@ -236,7 +242,23 @@ class BaseModel(LightningModule):
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
         if not hasattr(self, "optimizer"):  # callables are removed from hyperparameters, so better to save them
-            self._optimizer = self.hparams.optimizer
+            self.optimizer = self.hparams.optimizer
+
+        # delete everything from hparams that cannot be serialized with yaml dump
+        hparams_to_delete = []
+        for k, v in self.hparams.items():
+            try:
+                yaml.dump(v)
+            except:  # noqa
+                hparams_to_delete.append(k)
+                if not hasattr(self, k):
+                    setattr(self, k, v)
+
+        self.hparams_special = getattr(self, "hparams_special", [])
+        self.hparams_special.extend(hparams_to_delete)
+        for k in hparams_to_delete:
+            del self._hparams[k]
+            del self._hparams_initial[k]
 
     @property
     def n_targets(self) -> int:
@@ -844,13 +866,13 @@ class BaseModel(LightningModule):
             lr = lrs[0]
         else:
             lr = lrs
-        if callable(self._optimizer):
+        if callable(self.optimizer):
             try:
-                optimizer = self._optimizer(
+                optimizer = self.optimizer(
                     self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
                 )
             except TypeError:  # in case there is no weight decay
-                optimizer = self._optimizer(self.parameters(), lr=lr, **optimizer_params)
+                optimizer = self.optimizer(self.parameters(), lr=lr, **optimizer_params)
         elif self.hparams.optimizer == "adam":
             optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         elif self.hparams.optimizer == "adamw":
@@ -936,6 +958,8 @@ class BaseModel(LightningModule):
         )  # add dataset parameters for making fast predictions
         # hyper parameters are passed as arguments directly and not as single dictionary
         checkpoint["hparams_name"] = "kwargs"
+        # save specials
+        checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY] = {k: getattr(self, k) for k in self.hparams_special}
 
     @property
     def target_names(self) -> List[str]:
@@ -952,6 +976,9 @@ class BaseModel(LightningModule):
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
+        # load specials
+        for k, v in checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY].items():
+            setattr(self, k, v)
 
     def to_prediction(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
         """
