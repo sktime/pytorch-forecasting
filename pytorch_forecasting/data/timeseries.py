@@ -921,22 +921,22 @@ class TimeSeriesDataSet(Dataset):
         """
 
         index = check_for_nonfinite(
-            torch.tensor(data[self._group_ids].to_numpy(np.long), dtype=torch.long), self.group_ids
+            torch.tensor(data[self._group_ids].to_numpy(np.int64), dtype=torch.int64), self.group_ids
         )
         time = check_for_nonfinite(
-            torch.tensor(data["__time_idx__"].to_numpy(np.long), dtype=torch.long), self.time_idx
+            torch.tensor(data["__time_idx__"].to_numpy(np.int64), dtype=torch.int64), self.time_idx
         )
 
         # categorical covariates
         categorical = check_for_nonfinite(
-            torch.tensor(data[self.flat_categoricals].to_numpy(np.long), dtype=torch.long), self.flat_categoricals
+            torch.tensor(data[self.flat_categoricals].to_numpy(np.int64), dtype=torch.int64), self.flat_categoricals
         )
 
         # get weight
         if self.weight is not None:
             weight = check_for_nonfinite(
                 torch.tensor(
-                    data["__weight__"].to_numpy(dtype=np.float),
+                    data["__weight__"].to_numpy(dtype=np.float64),
                     dtype=torch.float,
                 ),
                 self.weight,
@@ -948,7 +948,7 @@ class TimeSeriesDataSet(Dataset):
         if isinstance(self.target_normalizer, NaNLabelEncoder):
             target = [
                 check_for_nonfinite(
-                    torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.long), dtype=torch.long),
+                    torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.int64), dtype=torch.long),
                     self.target,
                 )
             ]
@@ -958,7 +958,7 @@ class TimeSeriesDataSet(Dataset):
                     check_for_nonfinite(
                         torch.tensor(
                             data[f"__target__{name}"].to_numpy(
-                                dtype=[np.float, np.long][data[name].dtype.kind in "bi"]
+                                dtype=[np.float64, np.int64][data[name].dtype.kind in "bi"]
                             ),
                             dtype=[torch.float, torch.long][data[name].dtype.kind in "bi"],
                         ),
@@ -969,14 +969,14 @@ class TimeSeriesDataSet(Dataset):
             else:
                 target = [
                     check_for_nonfinite(
-                        torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.float), dtype=torch.float),
+                        torch.tensor(data[f"__target__{self.target}"].to_numpy(dtype=np.float64), dtype=torch.float),
                         self.target,
                     )
                 ]
 
         # continuous covariates
         continuous = check_for_nonfinite(
-            torch.tensor(data[self.reals].to_numpy(dtype=np.float), dtype=torch.float), self.reals
+            torch.tensor(data[self.reals].to_numpy(dtype=np.float64), dtype=torch.float), self.reals
         )
 
         tensors = dict(

@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.9.1 UNRELEASED
+## v0.9.1 Maintenance Release (26/09/2021)
 
 ### Added
 
@@ -8,17 +8,23 @@
 - Optimizer can be initialized by passing string, class or function (#602)
 - Add support for multiple outputs in Baseline model (#603)
 - Added Optuna pruner as optional parameter in `TemporalFusionTransformer.optimize_hyperparameters` (#619)
-
+- Dropping support for Python 3.6 and starting support for Python 3.9 (#639)
 
 ### Fixed
 
 - Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
 - Added missing transformation of prediction for MLP (#602)
+- Fixed logging hyperparameters (#688)
+- Ensure MultiNormalizer fit state is detected (#681)
+- Fix infinite loop in TimeDistributedEmbeddingBag (#672)
 
 ### Contributors
 
 - jdb78
 - TKlerx
+- chefPony
+- eavae
+- L0Z1K
 
 ## v0.9.0 Simplified API (04/06/2021)
 
