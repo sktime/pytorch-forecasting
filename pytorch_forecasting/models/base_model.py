@@ -1603,7 +1603,7 @@ class BaseModelWithCovariates(BaseModel):
                 x = np.linspace(-data["std"], data["std"], bins)
                 # reversing normalization for group normalizer is not possible without sample level information
                 if not isinstance(scaler, (GroupNormalizer, EncoderNormalizer)):
-                    x = scaler.inverse_transform(x)
+                    x = scaler.inverse_transform(x.reshape(-1, 1)).reshape(-1)
                     ax.set_xlabel(f"Normalized {name}")
 
                 if len(x) > 0:
