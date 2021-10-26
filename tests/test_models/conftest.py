@@ -43,6 +43,7 @@ def data_with_covariates():
         "music_fest",
     ]
     data[special_days] = data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
+    data = data.astype(dict(industry_volume=float))
 
     return data
 
@@ -102,7 +103,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
             time_varying_unknown_categoricals=[],
             time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
             constant_fill_strategy={"volume": 0},
-            dropout_categoricals=["sku"],
+            categorical_encoders={"sku": NaNLabelEncoder(add_nan=True)},
         ),
         dict(static_categoricals=["agency", "sku"]),
         dict(randomize_length=True, min_encoder_length=2),
@@ -111,6 +112,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
         dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="softplus", center=False)),
         dict(target="agency"),
         # test multiple targets
+        dict(target=["industry_volume", "volume"]),
         dict(target=["agency", "volume"]),
         dict(target=["agency", "volume"], min_encoder_length=1, min_prediction_length=1),
         dict(target=["agency", "volume"], weight="volume"),

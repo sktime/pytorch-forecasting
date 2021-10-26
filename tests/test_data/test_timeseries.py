@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.validation import NotFittedError, check_is_fitted
 import torch
 
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TimeSeriesDataSet
@@ -60,6 +61,24 @@ def test_categorical_target(test_data):
 def test_pickle(test_dataset):
     pickle.dumps(test_dataset)
     pickle.dumps(test_dataset.to_dataloader())
+
+
+def test_MultiNormalizer_fitted():
+    data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1], c=[1.1, 1.1, 1.0, 5.0, 1.1]))
+
+    normalizer = MultiNormalizer([GroupNormalizer(groups=["a"]), TorchNormalizer()])
+
+    with pytest.raises(NotFittedError):
+        check_is_fitted(normalizer)
+
+    normalizer.fit(data, data)
+
+    try:
+        check_is_fitted(normalizer.normalizers[0])
+        check_is_fitted(normalizer.normalizers[1])
+        check_is_fitted(normalizer)
+    except NotFittedError:
+        pytest.fail(f"{NotFittedError}")
 
 
 def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):
@@ -138,8 +157,8 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
             time_varying_known_categoricals=["month"],
             time_varying_known_reals=["time_idx", "price_regular"],
         ),
-        dict(dropout_categoricals=["month"], time_varying_known_categoricals=["month"]),
-        dict(constant_fill_strategy=dict(volume=0.0), allow_missings=True),
+        dict(categorical_encoders={"month": NaNLabelEncoder(add_nan=True)}, time_varying_known_categoricals=["month"]),
+        dict(constant_fill_strategy=dict(volume=0.0), allow_missing_timesteps=True),
         dict(target_normalizer=None),
     ],
 )
@@ -155,7 +174,7 @@ def test_TimeSeriesDataSet(test_data, kwargs):
     defaults.update(kwargs)
     kwargs = defaults
 
-    if kwargs.get("allow_missings", False):
+    if kwargs.get("allow_missing_timesteps", False):
         np.random.seed(2)
         test_data = test_data.sample(frac=0.5)
         defaults["min_encoder_length"] = 0

@@ -188,7 +188,7 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         Returns:
             np.ndarray: zero array.
         """
-        return np.zeros(2, dtype=np.float)
+        return np.zeros(2, dtype=np.float64)
 
 
 def _plus_one(x):
@@ -783,6 +783,7 @@ class MultiNormalizer(TorchNormalizer):
             else:
                 normalizer.fit(y[:, idx])
 
+        self.fitted_ = True
         return self
 
     def __getitem__(self, idx: int):

@@ -192,7 +192,7 @@ class LSTMModel(AutoRegressiveBaseModelWithCovariates):
                 # The inverse transformation might be only approximately the inverse of the
                 # forward transformation making this step important.
                 rescaled_prediction = self.transform_output(
-                    dict(prediction=prediction, target_scale=x["target_scale"])
+                    prediction=prediction, target_scale=x["target_scale"]
                 )  # inverse transform
                 normalized_prediction = self.output_transformer.transform(
                     rescaled_prediction, target_scale=x["target_scale"]
@@ -208,4 +208,4 @@ class LSTMModel(AutoRegressiveBaseModelWithCovariates):
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         hidden_state = self.encode(x)  # encode to hidden state
         prediction = self.decode(x, hidden_state)  # decode leveraging hidden state
-        return dict(prediction=prediction, target_scale=x["target_scale"])
+        return self.to_network_output(prediction=prediction)

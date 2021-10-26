@@ -1,8 +1,12 @@
-name: automerge
+name: Automerge dependabot
 on:
+  pull_request_target:
+    branches: [master]
+
   check_suite:
     types:
       - completed
+
 jobs:
   autoapprove:
     name: Auto Approve a PR by dependabot
@@ -24,3 +28,5 @@ jobs:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           MERGE_LABELS: dependencies
           MERGE_METHOD: rebase
+          MERGE_RETRY_SLEEP: 600000
+          MERGE_RETRIES: 100

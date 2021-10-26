@@ -54,6 +54,7 @@ def optimize_hyperparameters(
     log_dir: str = "lightning_logs",
     study: optuna.Study = None,
     verbose: Union[int, bool] = None,
+    pruner: optuna.pruners.BasePruner = optuna.pruners.SuccessiveHalvingPruner(),
     **kwargs,
 ) -> optuna.Study:
     """
@@ -92,6 +93,8 @@ def optimize_hyperparameters(
             * 1 or True: log pruning events.
             * 2: optuna logging level at debug level.
             Defaults to None.
+        pruner (optuna.pruners.BasePruner, optional): The optuna pruner to use.
+            Defaults to optuna.pruners.SuccessiveHalvingPruner().
 
         **kwargs: Additional arguments for the :py:class:`~TemporalFusionTransformer`.
 
@@ -209,7 +212,6 @@ def optimize_hyperparameters(
         return metrics_callback.metrics[-1]["val_loss"].item()
 
     # setup optuna and run
-    pruner = optuna.pruners.SuccessiveHalvingPruner()
     if study is None:
         study = optuna.create_study(direction="minimize", pruner=pruner)
     study.optimize(objective, n_trials=n_trials, timeout=timeout)

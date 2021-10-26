@@ -1,6 +1,8 @@
 """
 Timeseries models share a number of common characteristics. This module implements these in a common base class.
 """
+from collections import namedtuple
+import copy
 from copy import deepcopy
 import inspect
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
@@ -18,6 +20,7 @@ from torch.nn.utils import rnn
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
+import yaml
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import EncoderNormalizer, GroupNormalizer, MultiNormalizer, NaNLabelEncoder
@@ -33,6 +36,7 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
+    OutputMixIn,
     apply_to_list,
     create_mask,
     get_embedding_size,
@@ -110,6 +114,9 @@ def _concatenate_output(
                     output_cat[name] = [item for out in output for item in out[name]]
                 else:
                     output_cat[name] = [out[name] for out in output]
+
+    if isinstance(output[0], OutputMixIn):
+        output_cat = output[0].__class__(**output_cat)
     return output_cat
 
 
@@ -118,8 +125,8 @@ class BaseModel(LightningModule):
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
 
-    The :py:meth:`~BaseModel.forward` method should return a dictionary with at least the entry ``prediction`` and
-    ``target_scale`` that contains the network's output. See the function's documentation for more details.
+    The :py:meth:`~BaseModel.forward` method should return a named tuple with at least the entry ``prediction``
+    that contains the network's output. See the function's documentation for more details.
 
     The idea of the base model is that common methods do not have to be re-implemented for every new architecture.
     The class is a [LightningModule](https://pytorch-lightning.readthedocs.io/en/latest/lightning_module.html)
@@ -154,14 +161,16 @@ class BaseModel(LightningModule):
 
                 def __init__(self, my_first_parameter: int=2, loss=SMAPE()):
                     self.save_hyperparameters()
-                    super().__init__()
-                    self.loss = loss
+                    super().__init__(loss=loss)
 
                 def forward(self, x):
-                    encoding_target = x["encoder_target"]
-                    return dict(prediction=..., target_scale=x["target_scale"])
+                    normalized_prediction = self.module(x)
+                    prediction = self.transform_output(prediction=normalized_prediction, target_scale=x["target_scale"])
+                    return self.to_network_output(prediction=prediction)
 
     """
+
+    CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY = "__special_save__"
 
     def __init__(
         self,
@@ -207,13 +216,17 @@ class BaseModel(LightningModule):
             output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
             optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``.
+                Alternatively, a class or function can be passed which takes parameters as first argument and
+                a `lr` argument (optionally also `weight_decay`)
                 Defaults to "ranger".
         """
         super().__init__()
         # update hparams
         frame = inspect.currentframe()
         init_args = get_init_args(frame)
-        self.save_hyperparameters({name: val for name, val in init_args.items() if name not in self.hparams})
+        self.save_hyperparameters(
+            {name: val for name, val in init_args.items() if name not in self.hparams and name not in ["self"]}
+        )
 
         # update log interval if not defined
         if self.hparams.log_val_interval is None:
@@ -228,6 +241,25 @@ class BaseModel(LightningModule):
             self.logging_metrics = nn.ModuleList([l for l in logging_metrics])
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
+        if not hasattr(self, "optimizer"):  # callables are removed from hyperparameters, so better to save them
+            self.optimizer = self.hparams.optimizer
+
+        # delete everything from hparams that cannot be serialized with yaml.dump
+        # which is particularly important for tensorboard logging
+        hparams_to_delete = []
+        for k, v in self.hparams.items():
+            try:
+                yaml.dump(v)
+            except:  # noqa
+                hparams_to_delete.append(k)
+                if not hasattr(self, k):
+                    setattr(self, k, v)
+
+        self.hparams_special = getattr(self, "hparams_special", [])
+        self.hparams_special.extend(hparams_to_delete)
+        for k in hparams_to_delete:
+            del self._hparams[k]
+            del self._hparams_initial[k]
 
     @property
     def n_targets(self) -> int:
@@ -244,43 +276,27 @@ class BaseModel(LightningModule):
         else:
             return 1
 
-    def transform_output(self, out: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def transform_output(
+        self, prediction: Union[torch.Tensor, List[torch.Tensor]], target_scale: Union[torch.Tensor, List[torch.Tensor]]
+    ) -> torch.Tensor:
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
 
         Args:
-            out (Dict[str, torch.Tensor]): Network output with "prediction" and "target_scale" entries.
-                the output will be either
-
-                * The input if the input is a tensor
-                * ``out["prediction"]`` if there is no ``output_transformer``
-                  (which is a :py:class:`~pytorch_forecasting.data.encoders.TorchNormalizer`) defined or
-                  ``out["output_transformation"] is None``
-                * transformed output - this is either the ``output_transformer`` applied to the input
-                  or, in case of :py:class:`~pytorch_forecasting.metrics.DistributionLoss` as loss module,
-                  the loss module is used together with the ``output_transformer``
+            prediction (Union[torch.Tensor, List[torch.Tensor]]): normalized prediction
+            target_scale (Union[torch.Tensor, List[torch.Tensor]]): scale to rescale prediction
 
         Returns:
             torch.Tensor: rescaled prediction
         """
-        # no transformation possible
-        if isinstance(out, torch.Tensor):
-            return out
-
-        # no transformation logic
-        elif self.output_transformer is None or out.get("output_transformation", True) is None:
-            out = out["prediction"]
+        if isinstance(self.loss, MultiLoss):
+            out = self.loss.rescale_parameters(
+                prediction,
+                target_scale=target_scale,
+                encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder
+            )
         else:
-            if isinstance(self.loss, MultiLoss):
-                out = self.loss.rescale_parameters(
-                    out["prediction"],
-                    target_scale=out["target_scale"],
-                    encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder
-                )
-            else:
-                out = self.loss.rescale_parameters(
-                    out["prediction"], target_scale=out["target_scale"], encoder=self.output_transformer
-                )
+            out = self.loss.rescale_parameters(prediction, target_scale=target_scale, encoder=self.output_transformer)
         return out
 
     @staticmethod
@@ -342,9 +358,8 @@ class BaseModel(LightningModule):
         Train on batch.
         """
         x, y = batch
-        log, _ = self.step(x, y, batch_idx)
-        # log loss
-        self.log("train_loss", log["loss"], on_step=True, on_epoch=True, prog_bar=True)
+        log, out = self.step(x, y, batch_idx)
+        log.update(self.create_log(x, y, out, batch_idx))
         return log
 
     def training_epoch_end(self, outputs):
@@ -352,9 +367,42 @@ class BaseModel(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        log, _ = self.step(x, y, batch_idx)  # log loss
-        self.log("val_loss", log["loss"], on_step=False, on_epoch=True, prog_bar=True)
+        log, out = self.step(x, y, batch_idx)
+        log.update(self.create_log(x, y, out, batch_idx))
         return log
+
+    def create_log(
+        self,
+        x: Dict[str, torch.Tensor],
+        y: Tuple[torch.Tensor, torch.Tensor],
+        out: Dict[str, torch.Tensor],
+        batch_idx: int,
+        prediction_kwargs: Dict[str, Any] = {},
+        quantiles_kwargs: Dict[str, Any] = {},
+    ) -> Dict[str, Any]:
+        """
+        Create the log used in the training and validation step.
+
+        Args:
+            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
+            y (Tuple[torch.Tensor, torch.Tensor]): y as passed to the loss function by the dataloader
+            out (Dict[str, torch.Tensor]): output of the network
+            batch_idx (int): batch number
+            prediction_kwargs (Dict[str, Any], optional): arguments to pass to
+                :py:meth:`~pytorch_forcasting.models.base_model.BaseModel.to_prediction`. Defaults to {}.
+            quantiles_kwargs (Dict[str, Any], optional):
+                :py:meth:`~pytorch_forcasting.models.base_model.BaseModel.to_quantiles`. Defaults to {}.
+
+        Returns:
+            Dict[str, Any]: log dictionary to be returned by training and validation steps
+        """
+        # log
+        self.log_metrics(x, y, out, prediction_kwargs=prediction_kwargs)
+        if self.log_interval > 0:
+            self.log_prediction(
+                x, out, batch_idx, prediction_kwargs=prediction_kwargs, quantiles_kwargs=quantiles_kwargs
+            )
+        return {}
 
     def validation_epoch_end(self, outputs):
         self.epoch_end(outputs)
@@ -404,7 +452,6 @@ class BaseModel(LightningModule):
                 "`torch.backends.cudnn.flags(enable=False)`"
             )
             out = self(x, **kwargs)
-            out["prediction"] = self.transform_output(out)
             prediction = out["prediction"]
 
             # handle multiple targets
@@ -443,7 +490,6 @@ class BaseModel(LightningModule):
             loss = loss * (1 + monotinicity_loss)
         else:
             out = self(x, **kwargs)
-            out["prediction"] = self.transform_output(out)
 
             # calculate loss
             prediction = out["prediction"]
@@ -454,12 +500,8 @@ class BaseModel(LightningModule):
             else:
                 loss = self.loss(prediction, y)
 
-        # log
-        self.log_metrics(x, y, out)
-        if self.log_interval > 0:
-            self.log_prediction(x, out, batch_idx)
+        self.log(f"{['val', 'train'][self.training]}_loss", loss, on_step=self.training, on_epoch=True, prog_bar=True)
         log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
-
         return log, out
 
     def log_metrics(
@@ -502,7 +544,7 @@ class BaseModel(LightningModule):
                 else:
                     loss_value = metric(y_point, y_true)
                 if len(y_hat_point_detached) > 1:
-                    target_tag = f"Target {idx}_"
+                    target_tag = self.target_names[idx] + " "
                 else:
                     target_tag = ""
                 self.log(
@@ -511,6 +553,27 @@ class BaseModel(LightningModule):
                     on_step=self.training,
                     on_epoch=True,
                 )
+
+    def to_network_output(self, **results):
+        """
+        Convert output into a named (and immuatable) tuple.
+
+        This allows tracing the modules as graphs and prevents modifying the output.
+
+        Returns:
+            named tuple
+        """
+        if hasattr(self, "_output_class"):
+            Output = self._output_class
+        else:
+            OutputTuple = namedtuple("output", results)
+
+            class Output(OutputMixIn, OutputTuple):
+                pass
+
+            self._output_class = Output
+
+        return self._output_class(**results)
 
     def forward(
         self, x: Dict[str, Union[torch.Tensor, List[torch.Tensor]]]
@@ -524,15 +587,40 @@ class BaseModel(LightningModule):
                 returns a tuple of ``x`` and ``y``. This function expects ``x``.
 
         Returns:
-            Dict[str, Union[torch.Tensor, List[torch.Tensor]]]: network outputs / dictionary of tensors or list
-                of tensors. The minimal required entries in the dictionary are (and shapes in brackets):
+            NamedTuple[Union[torch.Tensor, List[torch.Tensor]]]: network outputs / dictionary of tensors or list
+                of tensors. Create it using the
+                :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_network_output` method.
+                The minimal required entries in the dictionary are (and shapes in brackets):
 
                 * ``prediction`` (batch_size x n_decoder_time_steps x n_outputs or list thereof with each
-                  entry for a different target): unscaled predictions that can be fed to metric. List of tensors
+                  entry for a different target): re-scaled predictions that can be fed to metric. List of tensors
                   if multiple targets are predicted at the same time.
-                * ``target_scale`` (batch_size x scale_size or list thereof with each entry for a different target):
-                  target scales that allow rescaling the predictions into the real space.
-                  The scale can mostly be directly taken from ``x``, i.e. ``target_scale=x["target_scale"]``
+
+                Before passing outputting the predictions, you want to rescale them into real space.
+                By default, you can use the
+                :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.transform_output`
+                method to achieve this.
+
+        Example:
+
+            .. code-block:: python
+
+                def forward(self, x:
+                    # x is a batch generated based on the TimeSeriesDataset, here we just use the
+                    # continuous variables for the encoder
+                    network_input = x["encoder_cont"].squeeze(-1)
+                    prediction = self.linear(network_input)  #
+
+                    # rescale predictions into target space
+                    prediction = self.transform_output(prediction, target_scale=x["target_scale"])
+
+                    # We need to return a dictionary that at least contains the prediction
+                    # The parameter can be directly forwarded from the input.
+                    # The conversion to a named tuple can be directly achieved with the `to_network_output` function.
+                    return self.to_network_output(prediction=prediction)
+
+
+
         """
         raise NotImplementedError()
 
@@ -562,7 +650,7 @@ class BaseModel(LightningModule):
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): current batch index
-            **kwargs: paramters to pass to ``pot_prediction``
+            **kwargs: paramters to pass to ``plot_prediction``
         """
         # log single prediction figure
         if (batch_idx % self.log_interval == 0 or self.log_interval < 1.0) and self.log_interval > 0:
@@ -582,7 +670,7 @@ class BaseModel(LightningModule):
                 if isinstance(fig, (list, tuple)):
                     for idx, f in enumerate(fig):
                         self.logger.experiment.add_figure(
-                            f"Target {idx} {tag}",
+                            f"{self.target_names[idx]} {tag}",
                             f,
                             global_step=self.global_step,
                         )
@@ -773,25 +861,41 @@ class BaseModel(LightningModule):
             optimizer_params = {}
         else:
             optimizer_params = self.hparams.optimizer_params
-        if isinstance(self.hparams.learning_rate, (list, tuple)):  # set schedule
-            lrs = self.hparams.learning_rate
-            if self.hparams.optimizer == "adam":
-                optimizer = torch.optim.Adam(self.parameters(), lr=lrs[0])
-            elif self.hparams.optimizer == "adamw":
-                optimizer = torch.optim.AdamW(self.parameters(), lr=lrs[0])
-            elif self.hparams.optimizer == "ranger":
-                optimizer = Ranger(self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay)
-            elif self.hparams.optimizer == "sgd":
-                optimizer = torch.optim.SGD(
-                    self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay, **optimizer_params
+        # set optimizer
+        lrs = self.hparams.learning_rate
+        if isinstance(lrs, (list, tuple)):
+            lr = lrs[0]
+        else:
+            lr = lrs
+        if callable(self.optimizer):
+            try:
+                optimizer = self.optimizer(
+                    self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
                 )
-            else:
-                try:
-                    optimizer = getattr(torch.optim, self.hparams.optimizer)(
-                        self.parameters(), lr=lrs[0], weight_decay=self.hparams.weight_decay, **optimizer_params
-                    )
-                except AttributeError:
-                    raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
+            except TypeError:  # in case there is no weight decay
+                optimizer = self.optimizer(self.parameters(), lr=lr, **optimizer_params)
+        elif self.hparams.optimizer == "adam":
+            optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        elif self.hparams.optimizer == "adamw":
+            optimizer = torch.optim.AdamW(self.parameters(), lr=lr)
+        elif self.hparams.optimizer == "ranger":
+            optimizer = Ranger(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay)
+        elif self.hparams.optimizer == "sgd":
+            optimizer = torch.optim.SGD(
+                self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
+            )
+        elif hasattr(torch.optim, self.hparams.optimizer):
+            try:
+                optimizer = getattr(torch.optim, self.hparams.optimizer)(
+                    self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
+                )
+            except TypeError:  # in case there is no weight decay
+                optimizer = getattr(torch.optim, self.hparams.optimizer)(self.parameters(), lr=lr, **optimizer_params)
+        else:
+            raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
+
+        # set scheduler
+        if isinstance(lr, (list, tuple)):  # change for each epoch
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             schedulers = [
@@ -802,17 +906,9 @@ class BaseModel(LightningModule):
                     "frequency": 1,
                 }
             ]
+        elif self.val_dataloader() is None:  # no schedule and no validation loss means no scheduling to be used
+            schedulers = []
         else:  # find schedule based on validation loss
-            if self.hparams.optimizer == "adam":
-                optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
-            elif self.hparams.optimizer == "ranger":
-                optimizer = Ranger(
-                    self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay
-                )
-            elif self.hparams.optimizer == "adamw":
-                optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.learning_rate)
-            else:
-                raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
             schedulers = [
                 {
                     "scheduler": ReduceLROnPlateau(
@@ -863,24 +959,46 @@ class BaseModel(LightningModule):
         )  # add dataset parameters for making fast predictions
         # hyper parameters are passed as arguments directly and not as single dictionary
         checkpoint["hparams_name"] = "kwargs"
+        # save specials
+        checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY] = {k: getattr(self, k) for k in self.hparams_special}
+        # add special hparams them back to save the hparams correctly for checkpoint
+        checkpoint[self.CHECKPOINT_HYPER_PARAMS_KEY].update(checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY])
+
+    @property
+    def target_names(self) -> List[str]:
+        """
+        List of targets that are predicted.
+
+        Returns:
+            List[str]: list of target names
+        """
+        if hasattr(self, "dataset_parameters") and self.dataset_parameters is not None:
+            return to_list(self.dataset_parameters["target"])
+        else:
+            return [f"Target {idx + 1}" for idx in range(self.n_targets)]
 
     def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
+        # load specials
+        for k, v in checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY].items():
+            setattr(self, k, v)
 
-    def to_prediction(self, out: Dict[str, Any], **kwargs):
+    def to_prediction(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
         """
         Convert output to prediction using the loss metric.
 
         Args:
             out (Dict[str, Any]): output of network where "prediction" has been
                 transformed with :py:meth:`~transform_output`
+            use_metric (bool): if to use metric to convert for conversion, if False,
+                simply take the average over ``out["prediction"]``
             **kwargs: arguments to metric ``to_quantiles`` method
 
         Returns:
             torch.Tensor: predictions of shape batch_size x timesteps
         """
         # if samples were already drawn directly take mean
-        if out.get("output_transformation", True) is None:
+        if not use_metric:
             # todo: support classification
             if isinstance(self.loss, MultiLoss):
                 out = [Metric.to_prediction(loss, out["prediction"][idx]) for idx, loss in enumerate(self.loss)]
@@ -893,20 +1011,22 @@ class BaseModel(LightningModule):
                 out = self.loss.to_prediction(out["prediction"])
         return out
 
-    def to_quantiles(self, out: Dict[str, Any], **kwargs):
+    def to_quantiles(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
         """
         Convert output to quantiles using the loss metric.
 
         Args:
             out (Dict[str, Any]): output of network where "prediction" has been
                 transformed with :py:meth:`~transform_output`
+            use_metric (bool): if to use metric to convert for conversion, if False,
+                simply take the quantiles over ``out["prediction"]``
             **kwargs: arguments to metric ``to_quantiles`` method
 
         Returns:
             torch.Tensor: quantiles of shape batch_size x timesteps x n_quantiles
         """
         # if samples are output directly take quantiles
-        if out.get("output_transformation", True) is None:
+        if not use_metric:
             # todo: support classification
             if isinstance(self.loss, MultiLoss):
                 out = [
@@ -943,15 +1063,17 @@ class BaseModel(LightningModule):
 
         Args:
             dataloader: dataloader, dataframe or dataset
-            mode: one of "prediction", "quantiles" or "raw", or tuple ``("raw", output_name)`` where output_name is
+            mode: one of "prediction", "quantiles", or "raw", or tuple ``("raw", output_name)`` where output_name is
                 a name in the dictionary returned by ``forward()``
-            return_index: if to return the prediction index
-            return_decoder_lengths: if to return decoder_lengths
+            return_index: if to return the prediction index (in the same order as the output, i.e. the row of the
+                dataframe corresponds to the first dimension of the output and the given time index is the time index
+                of the first prediction)
+            return_decoder_lengths: if to return decoder_lengths (in the same order as the output
             batch_size: batch size for dataloader - only used if data is not a dataloader is passed
             num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
             fast_dev_run: if to only return results of first batch
             show_progress_bar: if to show progress bar. Defaults to False.
-            return_x: if to return network inputs
+            return_x: if to return network inputs (in the same order as prediction output)
             mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
                 for modes "prediction" and "quantiles"
             **kwargs: additional arguments to network's forward method
@@ -989,16 +1111,10 @@ class BaseModel(LightningModule):
                 # move data to appropriate device
                 data_device = x["encoder_cont"].device
                 if data_device != self.device:
-                    for name in x.keys():
-                        if isinstance(x[name], (tuple, list)):
-                            x[name] = [xi.to(self.device) for xi in x[name]]
-                        else:
-                            x[name] = x[name].to(self.device)
+                    x = move_to_device(x, self.device)
 
                 # make prediction
                 out = self(x, **kwargs)  # raw output is dictionary
-
-                out["prediction"] = self.transform_output(out)
 
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
@@ -1310,7 +1426,7 @@ class BaseModelWithCovariates(BaseModel):
 
         Args:
             x: input as ``forward()``
-            y_pred: predictions obtained by ``self.transform_output(self(x, **kwargs))``
+            y_pred: predictions obtained by ``self(x, **kwargs)``
             normalize: if to return normalized averages, i.e. mean or sum of ``y``
             bins: number of bins to calculate
             std: number of standard deviations for standard scaled continuous variables
@@ -1487,7 +1603,7 @@ class BaseModelWithCovariates(BaseModel):
                 x = np.linspace(-data["std"], data["std"], bins)
                 # reversing normalization for group normalizer is not possible without sample level information
                 if not isinstance(scaler, (GroupNormalizer, EncoderNormalizer)):
-                    x = scaler.inverse_transform(x)
+                    x = scaler.inverse_transform(x.reshape(-1, 1)).reshape(-1)
                     ax.set_xlabel(f"Normalized {name}")
 
                 if len(x) > 0:
@@ -1603,7 +1719,7 @@ class AutoRegressiveBaseModel(BaseModel):
             normalized_prediction_parameters = apply_to_list(normalized_prediction_parameters, lambda x: x.unsqueeze(1))
         # transform into real space
         prediction_parameters = self.transform_output(
-            dict(prediction=normalized_prediction_parameters, target_scale=target_scale, **kwargs)
+            prediction=normalized_prediction_parameters, target_scale=target_scale, **kwargs
         )
         # todo: handle classification
         # sample value(s) from distribution and  select first sample
@@ -1662,8 +1778,7 @@ class AutoRegressiveBaseModel(BaseModel):
             **kwargs: additional arguments that are passed to the decode_one function.
 
         Returns:
-            Union[List[torch.Tensor], torch.Tensor]: re-scaled prediction (i.e. use ``output_transformation = None``
-                when passing on - see :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.transform_output`)
+            Union[List[torch.Tensor], torch.Tensor]: re-scaled prediction
 
         Example:
 
@@ -1702,8 +1817,8 @@ class AutoRegressiveBaseModel(BaseModel):
                         else:
                             output = [projector(decoder_output) for projector in self.distribution_projector]
 
-                        # predictions are not yet rescaled
-                        return return dict(prediction=output, target_scale=x["target_scale"])
+                        # predictions are not yet rescaled -> so rescale now
+                        return self.transform_output(output, target_scale=target_scale)
 
                     else:  # prediction mode
                         target_pos = self.target_positions
@@ -1736,7 +1851,7 @@ class AutoRegressiveBaseModel(BaseModel):
                         )
 
                         # predictions are already rescaled
-                        return dict(prediction=output, output_transformation=None, target_scale=x["target_scale"])
+                        return output
 
         """
         # make predictions which are fed into next step

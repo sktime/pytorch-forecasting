@@ -14,7 +14,7 @@ PyTorch Forecasting Documentation
 Our article on `Towards Data Science <https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46>`_
 introduces the package and provides background information.
 
-Pytorch Forecasting aims to ease state-of-the-art
+PyTorch Forecasting aims to ease state-of-the-art
 timeseries forecasting with neural networks for both real-world cases and
 research alike. The goal is to provide a high-level API with maximum flexibility for
 professionals and reasonable defaults for beginners.

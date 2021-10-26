@@ -1,8 +1,8 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
-from copy import deepcopy
-from typing import Callable, Dict, List, Tuple, Union
+from copy import copy
+from typing import Dict, List, Tuple, Union
 
 from matplotlib import pyplot as plt
 import numpy as np
@@ -23,7 +23,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import autocorrelation, create_mask, integer_histogram, padded_stack, to_list
+from pytorch_forecasting.utils import autocorrelation, create_mask, detach, integer_histogram, padded_stack, to_list
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
@@ -342,11 +342,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             TemporalFusionTransformer
         """
         # add maximum encoder length
-        new_kwargs = dict(max_encoder_length=dataset.max_encoder_length)
-        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss()))
-
         # update defaults
-        new_kwargs.update(kwargs)
+        new_kwargs = copy(kwargs)
+        new_kwargs["max_encoder_length"] = dataset.max_encoder_length
+        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss()))
 
         # create class and return
         return super().from_dataset(
@@ -498,48 +497,34 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         else:
             output = self.output_layer(output)
 
-        return dict(
-            prediction=output,
+        return self.to_network_output(
+            prediction=self.transform_output(output, target_scale=x["target_scale"]),
             attention=attn_output_weights,
             static_variables=static_variable_selection,
             encoder_variables=encoder_sparse_weights,
             decoder_variables=decoder_sparse_weights,
             decoder_lengths=decoder_lengths,
             encoder_lengths=encoder_lengths,
-            groups=x["groups"],
-            decoder_time_idx=x["decoder_time_idx"],
-            target_scale=x["target_scale"],
         )
 
     def on_fit_end(self):
         if self.log_interval > 0:
             self.log_embeddings()
 
-    def step(self, x, y, batch_idx):
-        """
-        run at each step for training or validation
-        """
-        # extract data and run model
-        log, out = super().step(x, y, batch_idx)
-        # calculate interpretations etc for latter logging
+    def create_log(self, x, y, out, batch_idx, **kwargs):
+        log = super().create_log(x, y, out, batch_idx, **kwargs)
         if self.log_interval > 0:
+            log["interpretation"] = self._log_interpretation(out)
+        return log
 
-            def detach(v):
-                if isinstance(v, torch.Tensor):
-                    return v.detach()
-                elif isinstance(v, (list, tuple)) and len(v) > 0 and isinstance(v[0], torch.Tensor):
-                    return [vp.detach() for vp in v]
-                else:
-                    return v
-
-            detached_output = {name: detach(out_part) for name, out_part in out.items()}
-            interpretation = self.interpret_output(
-                detached_output,
-                reduction="sum",
-                attention_prediction_horizon=0,  # attention only for first prediction horizon
-            )
-            log["interpretation"] = interpretation
-        return log, out
+    def _log_interpretation(self, out):
+        # calculate interpretations etc for latter logging
+        interpretation = self.interpret_output(
+            detach(out),
+            reduction="sum",
+            attention_prediction_horizon=0,  # attention only for first prediction horizon
+        )
+        return interpretation
 
     def epoch_end(self, outputs):
         """
@@ -659,6 +644,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         add_loss_to_title: bool = False,
         show_future_observed: bool = True,
         ax=None,
+        **kwargs,
     ) -> plt.Figure:
         """
         Plot actuals vs prediction and attention
@@ -678,7 +664,13 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # plot prediction as normal
         fig = super().plot_prediction(
-            x, out, idx=idx, add_loss_to_title=add_loss_to_title, show_future_observed=show_future_observed, ax=ax
+            x,
+            out,
+            idx=idx,
+            add_loss_to_title=add_loss_to_title,
+            show_future_observed=show_future_observed,
+            ax=ax,
+            **kwargs,
         )
 
         # add attention on secondary axis

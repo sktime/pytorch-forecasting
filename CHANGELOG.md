@@ -1,6 +1,5 @@
 # Release Notes
-
-## v0.9.0 Graph networks (UNRELEASED)
+## v0.9.2 Graph networks (UNRELEASED)
 
 ### Added
 
@@ -11,6 +10,62 @@
 ### Changed
 
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
+
+## v0.9.1 Maintenance Release (26/09/2021)
+
+### Added
+
+- Use target name instead of target number for logging metrics (#588)
+- Optimizer can be initialized by passing string, class or function (#602)
+- Add support for multiple outputs in Baseline model (#603)
+- Added Optuna pruner as optional parameter in `TemporalFusionTransformer.optimize_hyperparameters` (#619)
+- Dropping support for Python 3.6 and starting support for Python 3.9 (#639)
+
+### Fixed
+
+- Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
+- Added missing transformation of prediction for MLP (#602)
+- Fixed logging hyperparameters (#688)
+- Ensure MultiNormalizer fit state is detected (#681)
+- Fix infinite loop in TimeDistributedEmbeddingBag (#672)
+
+### Contributors
+
+- jdb78
+- TKlerx
+- chefPony
+- eavae
+- L0Z1K
+
+## v0.9.0 Simplified API (04/06/2021)
+
+### Breaking changes
+
+- Removed `dropout_categoricals` parameter from `TimeSeriesDataSet`.
+  Use `categorical_encoders=dict(<variable_name>=NaNLabelEncoder(add_nan=True)`) instead (#518)
+- Rename parameter `allow_missings` for `TimeSeriesDataSet` to `allow_missing_timesteps` (#518)
+- Transparent handling of transformations. Forward methods should now call two new methods (#518):
+
+  - `transform_output` to explicitly rescale the network outputs into the de-normalized space
+  - `to_network_output` to create a dict-like named tuple. This allows tracing the modules with PyTorch's JIT. Only `prediction` is still required which is the main network output.
+
+  Example:
+
+  ```python
+  def forward(self, x):
+      normalized_prediction = self.module(x)
+      prediction = self.transform_output(prediction=normalized_prediction, target_scale=x["target_scale"])
+      return self.to_network_output(prediction=prediction)
+  ```
+
+### Fixed
+
+- Fix quantile prediction for tensors on GPUs for distribution losses (#491)
+- Fix hyperparameter update for RecurrentNetwork.from_dataset method (#497)
+
+### Added
+
+- Improved validation of input parameters of TimeSeriesDataSet (#518)
 
 ## v0.8.5 Generic distribution loss(es) (27/04/2021)
 
