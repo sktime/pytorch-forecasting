@@ -128,6 +128,11 @@ class TimeSeriesDataSet(Dataset):
     * downsampling for data augmentation
     * generating inference, validation and test datasets
     * etc.
+
+
+    # todo: refactor:
+    # - creating base class with minimal functionality
+    # - "outsource" transformations -> use pytorch transformations as default
     """
 
     def __init__(
@@ -1395,7 +1400,6 @@ class TimeSeriesDataSet(Dataset):
         self,
         time_last: Union[int, pd.Series, np.ndarray],
         sequence_length: Union[int, pd.Series, np.ndarray],
-        sequence_end: Union[int, pd.Series, np.ndarray],
     ) -> Union[int, pd.Series, np.ndarray]:
         """
         Calculate length of decoder.
