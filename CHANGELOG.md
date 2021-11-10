@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.9.2 UNRELEASED
+
+### Added
+
+### Fixed
+
+- Fix inattention mutation to `x_cont`. 
+
+### Contributors
+
+- eavae
+
 ## v0.9.1 Maintenance Release (26/09/2021)
 
 ### Added
