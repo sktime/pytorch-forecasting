@@ -114,7 +114,7 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         """
         if self.add_nan:
             if self.warn:
-                cond = ~np.isin(y, self.classes_)
+                cond = np.array([item not in self.classes_ for item in y])
                 if cond.any():
                     warnings.warn(
                         f"Found {np.unique(np.asarray(y)[cond]).size} unknown classes which were set to NaN",
