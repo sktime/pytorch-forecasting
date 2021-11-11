@@ -174,7 +174,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             input_vector = flat_embeddings
 
         if len(self.reals) > 0:
-            input_vector = x_cont
+            input_vector = x_cont.clone()
 
         if len(self.reals) > 0 and len(self.categoricals) > 0:
             input_vector = torch.cat([x_cont, flat_embeddings], dim=-1)
