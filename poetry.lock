@@ -436,7 +436,7 @@ pyflakes = ">=2.4.0,<2.5.0"
 
 [[package]]
 name = "fsspec"
-version = "2021.10.1"
+version = "2021.11.0"
 description = "File-system specification"
 category = "main"
 optional = false
@@ -1316,7 +1316,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pydata-sphinx-theme"
-version = "0.7.1"
+version = "0.7.2"
 description = "Bootstrap-based Sphinx theme from the PyData community"
 category = "dev"
 optional = false
@@ -2415,8 +2415,8 @@ flake8 = [
     {file = "flake8-4.0.1.tar.gz", hash = "sha256:806e034dda44114815e23c16ef92f95c91e4c71100ff52813adf7132a6ad870d"},
 ]
 fsspec = [
-    {file = "fsspec-2021.10.1-py3-none-any.whl", hash = "sha256:7164a488f3f5bf6a0fb39674978b756dda84e011a5db411a79791b7c38a36ff7"},
-    {file = "fsspec-2021.10.1.tar.gz", hash = "sha256:c245626e3cb8de5cd91485840b215a385fa6f2b0f6ab87978305e99e2d842753"},
+    {file = "fsspec-2021.11.0-py3-none-any.whl", hash = "sha256:8843f31c7a7bb1afc4add371948f10701814594d407ee1b0bb4facec8b517efa"},
+    {file = "fsspec-2021.11.0.tar.gz", hash = "sha256:cbb7bafd59aa33684a92e843877f4adc0109fb0722b1a26e7d08f5a6e2500904"},
 ]
 future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
@@ -3178,8 +3178,8 @@ pycparser = [
     {file = "pycparser-2.20.tar.gz", hash = "sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0"},
 ]
 pydata-sphinx-theme = [
-    {file = "pydata-sphinx-theme-0.7.1.tar.gz", hash = "sha256:bda31425085f076932f0a85cb6156f63ff82673d75100614bebb5e5f28798166"},
-    {file = "pydata_sphinx_theme-0.7.1-py3-none-any.whl", hash = "sha256:354919a7b13e83dfc8df06e92d11ce7087875dcd6d34e4eeed997074e18ed131"},
+    {file = "pydata-sphinx-theme-0.7.2.tar.gz", hash = "sha256:671df35fcdd290eafbd23d0595e6d359dbe90b2e64e6c3f4dc88276eed4a065e"},
+    {file = "pydata_sphinx_theme-0.7.2-py3-none-any.whl", hash = "sha256:bc1abc45e103b254c6c7a8f2ddabbaf8aa1f0817d85cae65dd163dd554c52700"},
 ]
 pydeprecate = [
     {file = "pyDeprecate-0.3.1-py3-none-any.whl", hash = "sha256:b5dd8c4c0535854b6a52936d1256883a940e3b02006fc7118b53027c0acde181"},
