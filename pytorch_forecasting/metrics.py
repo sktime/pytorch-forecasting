@@ -565,7 +565,7 @@ class MultiHorizonMetric(Metric):
         Mask losses.
 
         Args:
-            losses (torch.Tensor): total loss. first dimenion are samples, second timesteps
+            losses (torch.Tensor): total loss. first dimension are samples, second timesteps
             lengths (torch.Tensor): total length
             reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
 
@@ -594,7 +594,7 @@ class MultiHorizonMetric(Metric):
         Reduce loss.
 
         Args:
-            losses (torch.Tensor): total loss. first dimenion are samples, second timesteps
+            losses (torch.Tensor): total loss. first dimension are samples, second timesteps
             lengths (torch.Tensor): total length
             reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
 
@@ -650,9 +650,9 @@ class PoissonLoss(MultiHorizonMetric):
 
 class QuantileLoss(MultiHorizonMetric):
     """
-    Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calcualted as
+    Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calculated as
 
-    Defined as ``max(q * (y-y_pred), (1-q) * (y_pred-y))``
+    Defined as ``max(q * (y-y_pred), (q-1) * (y-y_pred))``
     """
 
     def __init__(
