@@ -40,7 +40,7 @@ class Metric(LightningMetric):
         self.name = name
         super().__init__()
 
-    def update(y_pred: torch.Tensor, y_actual: torch.Tensor):
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
         raise NotImplementedError()
 
     def compute(self) -> torch.Tensor:
