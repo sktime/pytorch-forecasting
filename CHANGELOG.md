@@ -6,7 +6,7 @@
 
 ### Fixed
 
-- Fix inattention mutation to `x_cont`. 
+- Fix inattention mutation to `x_cont`.
 
 ### Contributors
 
