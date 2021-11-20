@@ -64,6 +64,7 @@ matplotlib = "*"
 statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
+pyro-ppl = "^1.7.0"
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
