@@ -877,7 +877,7 @@ class BaseModel(LightningModule):
         elif self.hparams.optimizer == "adam":
             optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         elif self.hparams.optimizer == "adamw":
-            optimizer = torch.optim.AdamW(self.parameters(), lr=lr)
+            optimizer = torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay)
         elif self.hparams.optimizer == "ranger":
             optimizer = Ranger(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay)
         elif self.hparams.optimizer == "sgd":

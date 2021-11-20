@@ -41,7 +41,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
     )
 
     net = DecoderMLP.from_dataset(
-        train_dataloader.dataset, learning_rate=0.15, log_gradient_flow=True, log_interval=1000, **kwargs
+        train_dataloader.dataset, learning_rate=1e-3, log_gradient_flow=True, log_interval=1000, **kwargs
     )
     net.size()
     try:
