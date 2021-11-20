@@ -906,7 +906,7 @@ class BaseModel(LightningModule):
                     "frequency": 1,
                 }
             ]
-        elif self.val_dataloader() is None:  # no schedule and no validation loss means no scheduling to be used
+        elif self.trainer.val_dataloader() is None:  # no schedule and no validation loss means no scheduling to be used
             schedulers = []
         else:  # find schedule based on validation loss
             schedulers = [
