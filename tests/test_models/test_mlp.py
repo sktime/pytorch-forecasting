@@ -12,7 +12,7 @@ from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLo
 from pytorch_forecasting.models import DecoderMLP
 
 
-def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **kwargs):
+def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, train_only=False, **kwargs):
     data_loader_default_kwargs = dict(
         target="target",
         time_varying_known_reals=["price_actual"],
@@ -24,7 +24,9 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
     dataloaders_with_covariates = make_dataloaders(data_with_covariates, **data_loader_default_kwargs)
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min", strict=False
+    )
 
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
@@ -45,11 +47,14 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
     )
     net.size()
     try:
-        trainer.fit(
-            net,
-            train_dataloader=train_dataloader,
-            val_dataloaders=val_dataloader,
-        )
+        if train_only:
+            trainer.fit(net, train_dataloader=train_dataloader)
+        else:
+            trainer.fit(
+                net,
+                train_dataloader=train_dataloader,
+                val_dataloaders=val_dataloader,
+            )
         # check loading
         net = DecoderMLP.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
@@ -65,6 +70,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
     "kwargs",
     [
         {},
+        dict(train_only=True),
         dict(
             loss=MultiLoss([QuantileLoss(), MAE()]),
             data_loader_kwargs=dict(
