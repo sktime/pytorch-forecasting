@@ -56,6 +56,8 @@ def test_distribution_loss(data_with_covariates, tmp_path, gpus):
 def _integration(dataloader, tmp_path, gpus, loss=None):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
+    test_dataloader = dataloader["test"]
+
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     # check training
@@ -114,6 +116,8 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
                 train_dataloader=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
+            test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+            assert len(test_outputs) > 0
 
             # check loading
             net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)

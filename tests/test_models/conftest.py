@@ -70,8 +70,9 @@ def make_dataloaders(data_with_covariates, **kwargs):
     batch_size = 4
     train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
     val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+    test_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
-    return dict(train=train_dataloader, val=val_dataloader)
+    return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
 
 
 @pytest.fixture(

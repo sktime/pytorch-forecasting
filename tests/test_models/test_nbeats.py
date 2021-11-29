@@ -12,6 +12,8 @@ from pytorch_forecasting.models import NBeats
 def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus):
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
     val_dataloader = dataloaders_fixed_window_without_covariates["val"]
+    test_dataloader = dataloaders_fixed_window_without_covariates["test"]
+
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
@@ -43,6 +45,8 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
             train_dataloader=train_dataloader,
             val_dataloaders=val_dataloader,
         )
+        test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+        assert len(test_outputs) > 0
         # check loading
         net = NBeats.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
