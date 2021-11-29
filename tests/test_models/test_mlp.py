@@ -89,9 +89,15 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
                 target="agency",
             ),
         ),
-        dict(optimizer="SGD", weight_decay=1e-3),
-        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-3)),
-        dict(optimizer=SGD, weight_decay=1e-4),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-1)),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-1)),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-1)),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-1)),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-1)),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-1)),
+        dict(optimizer="SGD", weight_decay=1e-1),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-1)),
+        dict(optimizer=SGD, weight_decay=1e-1),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
