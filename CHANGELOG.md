@@ -3,7 +3,7 @@
 ## v0.9.2 UNRELEASED
 
 ### Added
-
+ - Added support for running `pytorch_lightning.trainer.test` (#759)
 ### Fixed
 
 - Fix inattention mutation to `x_cont` (#732).
@@ -11,6 +11,7 @@
 ### Contributors
 
 - eavae
+- danielgafni
 
 ## v0.9.1 Maintenance Release (26/09/2021)
 
