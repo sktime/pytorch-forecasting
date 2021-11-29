@@ -12,6 +12,7 @@ import numpy as np
 from numpy.lib.function_base import iterable
 import pandas as pd
 from pytorch_lightning import LightningModule
+from pytorch_lightning.trainer.states import RunningStage
 from pytorch_lightning.utilities.parsing import AttributeDict, get_init_args
 import scipy.stats
 import torch
@@ -118,6 +119,15 @@ def _concatenate_output(
     if isinstance(output[0], OutputMixIn):
         output_cat = output[0].__class__(**output_cat)
     return output_cat
+
+
+STAGE_STATES = {
+    RunningStage.TRAINING: "train",
+    RunningStage.VALIDATING: "val",
+    RunningStage.TESTING: "test",
+    RunningStage.PREDICTING: "predict",
+    RunningStage.SANITY_CHECKING: "sanity_check",
+}
 
 
 class BaseModel(LightningModule):
@@ -262,6 +272,14 @@ class BaseModel(LightningModule):
             del self._hparams_initial[k]
 
     @property
+    def current_stage(self) -> str:
+        """
+        Available inside lightning loops.
+        :return: current trainer stage. One of ["train", "val", "test", "predict", "sanity_check"]
+        """
+        return STAGE_STATES[self.trainer.state.stage]
+
+    @property
     def n_targets(self) -> int:
         """
         Number of targets to forecast.
@@ -371,6 +389,18 @@ class BaseModel(LightningModule):
         log.update(self.create_log(x, y, out, batch_idx))
         return log
 
+    def validation_epoch_end(self, outputs):
+        self.epoch_end(outputs)
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        log, out = self.step(x, y, batch_idx)
+        log.update(self.create_log(x, y, out, batch_idx))
+        return log
+
+    def test_epoch_end(self, outputs):
+        self.epoch_end(outputs)
+
     def create_log(
         self,
         x: Dict[str, torch.Tensor],
@@ -403,9 +433,6 @@ class BaseModel(LightningModule):
                 x, out, batch_idx, prediction_kwargs=prediction_kwargs, quantiles_kwargs=quantiles_kwargs
             )
         return {}
-
-    def validation_epoch_end(self, outputs):
-        self.epoch_end(outputs)
 
     def step(
         self, x: Dict[str, torch.Tensor], y: Tuple[torch.Tensor, torch.Tensor], batch_idx: int, **kwargs
@@ -500,7 +527,7 @@ class BaseModel(LightningModule):
             else:
                 loss = self.loss(prediction, y)
 
-        self.log(f"{['val', 'train'][self.training]}_loss", loss, on_step=self.training, on_epoch=True, prog_bar=True)
+        self.log(f"{self.current_stage}_loss", loss, on_step=self.training, on_epoch=True, prog_bar=True)
         log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
         return log, out
 
@@ -548,7 +575,7 @@ class BaseModel(LightningModule):
                 else:
                     target_tag = ""
                 self.log(
-                    f"{target_tag}{['val', 'train'][self.training]}_{metric.name}",
+                    f"{target_tag}{self.current_stage}_{metric.name}",
                     loss_value,
                     on_step=self.training,
                     on_epoch=True,
@@ -662,7 +689,7 @@ class BaseModel(LightningModule):
                 log_indices = [0]
             for idx in log_indices:
                 fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True, **kwargs)
-                tag = f"{['Val', 'Train'][self.training]} prediction"
+                tag = f"{self.current_stage} prediction"
                 if self.training:
                     tag += f" of item {idx} in global batch {self.global_step}"
                 else:

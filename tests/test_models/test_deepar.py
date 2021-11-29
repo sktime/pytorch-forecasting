@@ -33,8 +33,11 @@ def _integration(
     )
     data_loader_default_kwargs.update(data_loader_kwargs)
     dataloaders_with_covariates = make_dataloaders(data_with_covariates, **data_loader_default_kwargs)
+
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
+    test_dataloader = dataloaders_with_covariates["test"]
+
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
@@ -48,6 +51,7 @@ def _integration(
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
+        limit_test_batches=2,
         logger=logger,
     )
 
@@ -67,6 +71,8 @@ def _integration(
             train_dataloader=train_dataloader,
             val_dataloaders=val_dataloader,
         )
+        test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+        assert len(test_outputs) > 0
         # check loading
         net = DeepAR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
