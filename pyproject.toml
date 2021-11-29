@@ -67,6 +67,8 @@ pytest-github-actions-annotate-failures = {version = "*", optional = true}
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
+pre-commit = "^2.15.0"
+
 invoke = "*"
 flake8 = "*"
 mypy = "*"
@@ -91,7 +93,6 @@ pydata-sphinx-theme = "*"
 nbsphinx = "*"
 pandoc = "*"
 recommonmark = "*"
-pre-commit = "^2.15.0"
 
 
 [tool.poetry.extras]  # extras
