@@ -898,34 +898,31 @@ class BaseModel(LightningModule):
         if isinstance(lr, (list, tuple)):  # change for each epoch
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
-            schedulers = [
-                {
-                    "scheduler": LambdaLR(optimizer, lambda epoch: lrs[min(epoch, len(lrs) - 1)]),
-                    "interval": "epoch",
-                    "reduce_on_plateau": False,
-                    "frequency": 1,
-                }
-            ]
-        elif self.val_dataloader() is None:  # no schedule and no validation loss means no scheduling to be used
-            schedulers = []
+            scheduler_config = {
+                "scheduler": LambdaLR(optimizer, lambda epoch: lrs[min(epoch, len(lrs) - 1)]),
+                "interval": "epoch",
+                "frequency": 1,
+                "strict": False,
+            }
+        elif self.hparams.reduce_on_plateau_patience is None:
+            scheduler_config = {}
         else:  # find schedule based on validation loss
-            schedulers = [
-                {
-                    "scheduler": ReduceLROnPlateau(
-                        optimizer,
-                        mode="min",
-                        factor=0.1,
-                        patience=self.hparams.reduce_on_plateau_patience,
-                        cooldown=self.hparams.reduce_on_plateau_patience,
-                        min_lr=self.hparams.reduce_on_plateau_min_lr,
-                    ),
-                    "monitor": "val_loss",  # Default: val_loss
-                    "interval": "epoch",
-                    "reduce_on_plateau": True,
-                    "frequency": 1,
-                }
-            ]
-        return [optimizer], schedulers
+            scheduler_config = {
+                "scheduler": ReduceLROnPlateau(
+                    optimizer,
+                    mode="min",
+                    factor=0.2,
+                    patience=self.hparams.reduce_on_plateau_patience,
+                    cooldown=self.hparams.reduce_on_plateau_patience,
+                    min_lr=self.hparams.reduce_on_plateau_min_lr,
+                ),
+                "monitor": "val_loss",  # Default: val_loss
+                "interval": "epoch",
+                "frequency": 1,
+                "strict": False,
+            }
+
+        return {"optimizer": optimizer, "lr_scheduler": scheduler_config}
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs) -> LightningModule:

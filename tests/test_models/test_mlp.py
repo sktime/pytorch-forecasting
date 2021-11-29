@@ -6,13 +6,13 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
-from torch.optim import AdamW
+from torch.optim import SGD
 
 from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss
 from pytorch_forecasting.models import DecoderMLP
 
 
-def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **kwargs):
+def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, train_only=False, **kwargs):
     data_loader_default_kwargs = dict(
         target="target",
         time_varying_known_reals=["price_actual"],
@@ -24,7 +24,9 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
     dataloaders_with_covariates = make_dataloaders(data_with_covariates, **data_loader_default_kwargs)
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min", strict=False
+    )
 
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
@@ -41,15 +43,18 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
     )
 
     net = DecoderMLP.from_dataset(
-        train_dataloader.dataset, learning_rate=1e-3, log_gradient_flow=True, log_interval=1000, **kwargs
+        train_dataloader.dataset, learning_rate=0.015, log_gradient_flow=True, log_interval=1000, **kwargs
     )
     net.size()
     try:
-        trainer.fit(
-            net,
-            train_dataloader=train_dataloader,
-            val_dataloaders=val_dataloader,
-        )
+        if train_only:
+            trainer.fit(net, train_dataloader=train_dataloader)
+        else:
+            trainer.fit(
+                net,
+                train_dataloader=train_dataloader,
+                val_dataloaders=val_dataloader,
+            )
         # check loading
         net = DecoderMLP.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
@@ -65,6 +70,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
     "kwargs",
     [
         {},
+        dict(train_only=True),
         dict(
             loss=MultiLoss([QuantileLoss(), MAE()]),
             data_loader_kwargs=dict(
@@ -78,9 +84,9 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, **
                 target="agency",
             ),
         ),
-        dict(optimizer="AdamW"),
-        dict(optimizer=lambda params, lr: AdamW(params, lr=lr)),
-        dict(optimizer=AdamW),
+        dict(optimizer="SGD", weight_decay=1e-3),
+        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-3)),
+        dict(optimizer=SGD, weight_decay=1e-4),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
