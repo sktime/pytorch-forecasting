@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.9.2 UNRELEASED
+## v0.9.2 Maintenance Release (30/11/2021)
 
 ### Added
 
