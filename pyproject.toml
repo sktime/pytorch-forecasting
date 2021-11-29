@@ -91,6 +91,7 @@ pydata-sphinx-theme = "*"
 nbsphinx = "*"
 pandoc = "*"
 recommonmark = "*"
+pre-commit = "^2.15.0"
 
 
 [tool.poetry.extras]  # extras
