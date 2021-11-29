@@ -72,6 +72,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
+        limit_test_batches=2,
         logger=logger,
     )
     # test monotone constraints automatically

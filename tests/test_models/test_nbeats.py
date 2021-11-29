@@ -27,6 +27,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
+        limit_test_batches=2,
         logger=logger,
     )
 

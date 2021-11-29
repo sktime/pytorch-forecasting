@@ -40,6 +40,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
+        limit_test_batches=2,
         logger=logger,
     )
 
