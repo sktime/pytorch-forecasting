@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.9.3 UNRELEASED
+
+### Added
+
+- Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
+
+### Contributors
+
+- jdb78
+
 ## v0.9.2 Maintenance Release (30/11/2021)
 
 ### Added
