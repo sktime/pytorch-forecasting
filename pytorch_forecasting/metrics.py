@@ -11,6 +11,7 @@ from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 from torchmetrics import Metric as LightningMetric
+from torchmetrics.metric import CompositionalMetric
 
 from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
@@ -24,7 +25,7 @@ class Metric(LightningMetric):
     Other metrics should inherit from this base class
     """
 
-    def __init__(self, name: str = None, quantiles: List[float] = None, reduction="mean"):
+    def __init__(self, name: str = None, quantiles: List[float] = None, reduction="mean", **kwargs):
         """
         Initialize metric
 
@@ -38,7 +39,7 @@ class Metric(LightningMetric):
         if name is None:
             name = self.__class__.__name__
         self.name = name
-        super().__init__()
+        super().__init__(**kwargs)
 
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
         raise NotImplementedError()
@@ -129,6 +130,91 @@ class Metric(LightningMetric):
     __rmul__ = __mul__
 
 
+class TorchMetricWrapper(Metric):
+    """
+    Wrap a torchmetric to work with PyTorch Forecasting. Does not support weighting.
+    """
+
+    def __init__(self, torchmetric: LightningMetric, reduction: str = None, **kwargs):
+        """
+        Args:
+            torchmetric (LightningMetric): Torchmetric to wrap.
+            reduction (str, optional): use reduction with torchmetric directly. Defaults to None.
+        """
+        super().__init__(**kwargs)
+        if reduction is not None:
+            raise ValueError("use reduction with torchmetric directly")
+        self.torchmetric = torchmetric
+
+    def _sync_dist(self, dist_sync_fn=None, process_group=None) -> None:
+        # No syncing required here. syncing will be done in metric_a and metric_b
+        pass
+
+    def reset(self) -> None:
+        self.torchmetric.reset()
+
+    def persistent(self, mode: bool = False) -> None:
+        self.torchmetric.persistent(mode=mode)
+
+    def _convert(self, y_pred: torch.Tensor, target: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # unpack target into target and weights
+        if isinstance(target, (list, tuple)) and not isinstance(target, rnn.PackedSequence):
+            target, weight = target
+            if weight is not None:
+                raise NotImplementedError(
+                    "Weighting is not supported for pure torchmetrics - "
+                    "implement a custom version or use pytorch-forecasting metrics"
+                )
+
+        # unpack target if it is PackedSequence
+        if isinstance(target, rnn.PackedSequence):
+            target, lengths = unpack_sequence(target)
+            # create mask for different lengths
+            length_mask = create_mask(target.size(1), lengths, inverse=True)
+            target = target.masked_select(length_mask)
+            y_pred = y_pred.masked_select(length_mask)
+
+        y_pred = y_pred.flatten()
+        target = target.flatten()
+        return y_pred, target
+
+    def update(self, y_pred: torch.Tensor, target: torch.Tensor, **kwargs) -> torch.Tensor:
+        # flatten target and prediction
+        y_pred, target = self._convert(y_pred, target)
+
+        # update metric
+        self.torchmetric.update(y_pred, target, **kwargs)
+
+    def forward(self, y_pred, target, **kwargs):
+        # need this explicitly to avoid backpropagation errors because of sketchy caching
+        y_pred, target = self._convert(y_pred, target)
+        return self.torchmetric.forward(y_pred, target, **kwargs)
+
+    def compute(self):
+        res = self.torchmetric.compute()
+        return res
+
+    def __repr__(self):
+        return f"WrappedTorchmetric({repr(self.torchmetric)})"
+
+
+def convert_torchmetric_to_pytorch_forecasting_metric(metric: LightningMetric) -> Metric:
+    """
+    If necessary, convert a torchmetric to a PyTorch Forecasting metric that
+    works with PyTorch Forecasting models.
+
+    Args:
+        metric (LightningMetric): metric to (potentially) convert
+
+    Returns:
+        Metric: PyTorch Forecasting metric
+    """
+    if not isinstance(metric, Metric):
+        return TorchMetricWrapper(metric)
+    else:
+        return metric
+
+
 class MultiLoss(LightningMetric):
     """
     Metric that can be used with muliple metrics.
@@ -145,7 +231,7 @@ class MultiLoss(LightningMetric):
             weights = [1.0 for _ in metrics]
         assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
 
-        self.metrics = metrics
+        self.metrics = [convert_torchmetric_to_pytorch_forecasting_metric(m) for m in metrics]
         self.weights = weights
 
         super().__init__()
