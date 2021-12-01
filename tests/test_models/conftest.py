@@ -54,8 +54,8 @@ def data_with_covariates():
 
 def make_dataloaders(data_with_covariates, **kwargs):
     training_cutoff = "2016-09-01"
-    max_encoder_length = 5
-    max_prediction_length = 2
+    kwargs.setdefault("max_encoder_length", 5)
+    kwargs.setdefault("max_prediction_length", 2)
 
     kwargs.setdefault("target", "volume")
     kwargs.setdefault("group_ids", ["agency", "sku"])
@@ -65,8 +65,6 @@ def make_dataloaders(data_with_covariates, **kwargs):
     training = TimeSeriesDataSet(
         data_with_covariates[lambda x: x.date < training_cutoff].copy(),
         time_idx="time_idx",
-        max_encoder_length=max_encoder_length,
-        max_prediction_length=max_prediction_length,
         **kwargs,  # fixture parametrization
     )
 
@@ -174,3 +172,18 @@ def dataloaders_fixed_window_without_covariates():
     test_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
     return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
+
+
+@pytest.fixture(scope="session")
+def dataloaders_fixed_window_with_covariates(data_with_covariates):
+    return make_dataloaders(
+        data_with_covariates,
+        target="target",
+        time_varying_known_reals=["discount"],
+        time_varying_unknown_reals=["target"],
+        static_categoricals=["agency"],
+        add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+        max_encoder_length=36,
+        max_prediction_length=6,
+    )

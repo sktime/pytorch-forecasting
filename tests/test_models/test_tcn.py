@@ -12,19 +12,22 @@ from pytorch_forecasting import MAE, TemporalConvolutionalNetwork
 def test_integration(dataloaders_fixed_window_with_covariates, tmp_path, gpus):
     train_dataloader = dataloaders_fixed_window_with_covariates["train"]
     val_dataloader = dataloaders_fixed_window_with_covariates["val"]
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    test_dataloader = dataloaders_fixed_window_with_covariates["test"]
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min", strict=False
+    )
 
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
+        limit_test_batches=2,
         logger=logger,
     )
 
@@ -33,7 +36,7 @@ def test_integration(dataloaders_fixed_window_with_covariates, tmp_path, gpus):
         learning_rate=0.15,
         log_gradient_flow=True,
         conv_dropout=0.0,
-        hidden_layer_sizes=[64, 32, 16],
+        hidden_layer_sizes=[8, 4, 2],
         kernel_size=3,
         fc_dropout=0.0,
         loss=MAE(),
@@ -43,7 +46,7 @@ def test_integration(dataloaders_fixed_window_with_covariates, tmp_path, gpus):
     try:
         trainer.fit(
             net,
-            train_dataloader=train_dataloader,
+            train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader,
         )
         # check loading
@@ -51,6 +54,10 @@ def test_integration(dataloaders_fixed_window_with_covariates, tmp_path, gpus):
 
         # check prediction
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+
+        # check test dataloader
+        test_outputs = trainer.test(net, dataloaders=test_dataloader)
+        assert len(test_outputs) > 0
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
@@ -65,7 +72,7 @@ def model(dataloaders_fixed_window_with_covariates):
         learning_rate=0.15,
         log_gradient_flow=True,
         conv_dropout=0.0,
-        hidden_layer_sizes=[64, 32, 16],
+        hidden_layer_sizes=[8, 4, 2],
         kernel_size=3,
         fc_dropout=0.0,
         loss=MAE(),
