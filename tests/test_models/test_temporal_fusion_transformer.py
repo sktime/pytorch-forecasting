@@ -124,7 +124,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
 
             # check prediction
             predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True, fast_dev_run=True)
-            pred_len = len(x)
+            pred_len = len(index)
 
             # check that output is of correct shape
             def check(x):
