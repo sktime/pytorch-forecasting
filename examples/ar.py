@@ -69,7 +69,6 @@ lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(
     max_epochs=10,
     gpus=-1,
-    weights_summary="top",
     gradient_clip_val=0.1,
     limit_train_batches=30,
     limit_val_batches=3,
@@ -97,7 +96,7 @@ print(f"Number of parameters in network: {deepar.size()/1e3:.1f}k")
 # deepar.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
 # res = trainer.tuner.lr_find(
-#     deepar, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+#     deepar, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
 # )
 
 # print(f"suggested learning rate: {res.suggestion()}")
@@ -108,7 +107,7 @@ print(f"Number of parameters in network: {deepar.size()/1e3:.1f}k")
 torch.set_num_threads(10)
 trainer.fit(
     deepar,
-    train_dataloader=train_dataloader,
+    train_dataloaders=train_dataloader,
     val_dataloaders=val_dataloader,
 )
 

@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
 from torch.optim import SGD
+from torchmetrics import MeanSquaredError
 
 from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss
 from pytorch_forecasting.models import DecoderMLP
@@ -33,10 +34,9 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
@@ -45,16 +45,21 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
     )
 
     net = DecoderMLP.from_dataset(
-        train_dataloader.dataset, learning_rate=0.015, log_gradient_flow=True, log_interval=1000, **kwargs
+        train_dataloader.dataset,
+        learning_rate=0.015,
+        log_gradient_flow=True,
+        log_interval=1000,
+        hidden_size=10,
+        **kwargs
     )
     net.size()
     try:
         if train_only:
-            trainer.fit(net, train_dataloader=train_dataloader)
+            trainer.fit(net, train_dataloaders=train_dataloader)
         else:
             trainer.fit(
                 net,
-                train_dataloader=train_dataloader,
+                train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
         # check loading
@@ -63,7 +68,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         # check prediction
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
         # check test dataloader
-        test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+        test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
@@ -89,8 +94,12 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
                 target="agency",
             ),
         ),
-        dict(optimizer="SGD", weight_decay=1e-3),
         dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-3)),
+        dict(loss=MeanSquaredError()),
+        dict(
+            loss=MeanSquaredError(),
+            data_loader_kwargs=dict(min_prediction_length=1, min_encoder_length=1),
+        ),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
@@ -105,6 +114,7 @@ def model(dataloaders_with_covariates):
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
+        hidden_size=10,
     )
     return net
 

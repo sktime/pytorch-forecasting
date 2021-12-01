@@ -65,10 +65,9 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
     trainer = pl.Trainer(
         max_epochs=2,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
@@ -100,10 +99,10 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
         net = TemporalFusionTransformer.from_dataset(
             train_dataloader.dataset,
             learning_rate=0.15,
-            hidden_size=4,
+            hidden_size=2,
+            hidden_continuous_size=2,
             attention_head_size=1,
             dropout=0.2,
-            hidden_continuous_size=2,
             loss=loss,
             log_interval=5,
             log_val_interval=1,
@@ -114,18 +113,18 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
         try:
             trainer.fit(
                 net,
-                train_dataloader=train_dataloader,
+                train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
-            test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+            test_outputs = trainer.test(net, dataloaders=test_dataloader)
             assert len(test_outputs) > 0
 
             # check loading
             net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
             # check prediction
-            predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True)
-            pred_len = len(val_dataloader.dataset)
+            predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True, fast_dev_run=True)
+            pred_len = len(index)
 
             # check that output is of correct shape
             def check(x):
@@ -185,7 +184,7 @@ def test_tensorboard_graph_log(dataloaders_with_covariates, model, tmp_path):
 def test_init_shared_network(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = TemporalFusionTransformer.from_dataset(dataset, share_single_variable_networks=True)
-    net.predict(dataset)
+    net.predict(dataset, fast_dev_run=True)
 
 
 @pytest.mark.parametrize("accelerator", ["ddp", "dp"])
@@ -201,17 +200,16 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=list(range(torch.cuda.device_count())),
-        weights_summary="top",
         gradient_clip_val=0.1,
         fast_dev_run=True,
         logger=logger,
         accelerator=accelerator,
-        checkpoint_callback=True,
+        enable_checkpointing=True,
     )
     try:
         trainer.fit(
             net,
-            train_dataloader=train_dataloader,
+            train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader,
         )
 
@@ -227,6 +225,7 @@ def test_pickle(model):
 @pytest.mark.parametrize("kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")])
 def test_predict_dependency(model, dataloaders_with_covariates, data_with_covariates, kwargs):
     train_dataset = dataloaders_with_covariates["train"].dataset
+    data_with_covariates = data_with_covariates.copy()
     dataset = TimeSeriesDataSet.from_dataset(
         train_dataset, data_with_covariates[lambda x: x.agency == data_with_covariates.agency.iloc[0]], predict=True
     )
@@ -274,13 +273,13 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
             val_dataloader=val_dataloader,
             model_path=tmp_path,
             max_epochs=1,
-            n_trials=8,
+            n_trials=3,
             log_dir=tmp_path,
             trainer_kwargs=dict(
                 fast_dev_run=True,
-                limit_train_batches=5,
+                limit_train_batches=3,
                 # overwrite default trainer kwargs
-                progress_bar_refresh_rate=20,
+                enable_progress_bar=False,
             ),
             use_learning_rate_finder=use_learning_rate_finder,
         )

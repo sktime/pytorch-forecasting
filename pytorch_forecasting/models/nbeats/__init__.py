@@ -236,8 +236,20 @@ class NBeats(BaseModel):
             else:
                 backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
             label = ["val", "train"][self.training]
-            self.log(f"{label}_backcast_loss", backcast_loss, on_epoch=True, on_step=self.training)
-            self.log(f"{label}_forecast_loss", log["loss"], on_epoch=True, on_step=self.training)
+            self.log(
+                f"{label}_backcast_loss",
+                backcast_loss,
+                on_epoch=True,
+                on_step=self.training,
+                batch_size=len(x["decoder_target"]),
+            )
+            self.log(
+                f"{label}_forecast_loss",
+                log["loss"],
+                on_epoch=True,
+                on_step=self.training,
+                batch_size=len(x["decoder_target"]),
+            )
             log["loss"] = log["loss"] * forecast_weight + backcast_loss
 
         self.log_interpretation(x, out, batch_idx=batch_idx)

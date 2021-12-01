@@ -125,7 +125,7 @@ Example
 
     # find optimal learning rate (set limit_train_batches to 1.0 and log_interval = -1)
     res = trainer.tuner.lr_find(
-        tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
+        tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
     )
 
     print(f"suggested learning rate: {res.suggestion()}")
@@ -134,7 +134,7 @@ Example
 
     # fit the model
     trainer.fit(
-        tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+        tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader,
     )
 
 Main API

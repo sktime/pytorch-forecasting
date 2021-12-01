@@ -34,6 +34,7 @@ from pytorch_forecasting.metrics import (
     MultiHorizonMetric,
     MultiLoss,
     QuantileLoss,
+    convert_torchmetric_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
@@ -244,11 +245,13 @@ class BaseModel(LightningModule):
 
         if not hasattr(self, "loss"):
             if isinstance(loss, (tuple, list)):
-                self.loss = MultiLoss(metrics=loss)
+                self.loss = MultiLoss(metrics=[convert_torchmetric_to_pytorch_forecasting_metric(l) for l in loss])
             else:
-                self.loss = loss
+                self.loss = convert_torchmetric_to_pytorch_forecasting_metric(loss)
         if not hasattr(self, "logging_metrics"):
-            self.logging_metrics = nn.ModuleList([l for l in logging_metrics])
+            self.logging_metrics = nn.ModuleList(
+                [convert_torchmetric_to_pytorch_forecasting_metric(l) for l in logging_metrics]
+            )
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
         if not hasattr(self, "optimizer"):  # callables are removed from hyperparameters, so better to save them
@@ -527,7 +530,14 @@ class BaseModel(LightningModule):
             else:
                 loss = self.loss(prediction, y)
 
-        self.log(f"{self.current_stage}_loss", loss, on_step=self.training, on_epoch=True, prog_bar=True)
+        self.log(
+            f"{self.current_stage}_loss",
+            loss,
+            on_step=self.training,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=len(x["decoder_target"]),
+        )
         log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
         return log, out
 
@@ -579,6 +589,7 @@ class BaseModel(LightningModule):
                     loss_value,
                     on_step=self.training,
                     on_epoch=True,
+                    batch_size=len(x["decoder_target"]),
                 )
 
     def to_network_output(self, **results):

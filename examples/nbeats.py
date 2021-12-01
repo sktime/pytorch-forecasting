@@ -53,7 +53,6 @@ early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience
 trainer = pl.Trainer(
     max_epochs=100,
     gpus=0,
-    weights_summary="top",
     gradient_clip_val=0.1,
     callbacks=[early_stop_callback],
     limit_train_batches=15,
@@ -76,7 +75,7 @@ print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
 # trainer.limit_train_batches = 1.0
 # # run learning rate finder
 # res = trainer.tuner.lr_find(
-#     net, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+#     net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
 # )
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)
@@ -85,6 +84,6 @@ print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
 
 trainer.fit(
     net,
-    train_dataloader=train_dataloader,
+    train_dataloaders=train_dataloader,
     val_dataloaders=val_dataloader,
 )
