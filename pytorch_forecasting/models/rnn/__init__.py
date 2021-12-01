@@ -98,7 +98,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         lagged_target_names = [l for lags in target_lags.values() for l in lags]
         assert set(self.encoder_variables) - set(to_list(target)) - set(lagged_target_names) == set(
             self.decoder_variables
-        ), "Encoder and decoder variables have to be the same apart from target variable"
+        ) - set(lagged_target_names), "Encoder and decoder variables have to be the same apart from target variable"
         for targeti in to_list(target):
             assert (
                 targeti in time_varying_reals_encoder

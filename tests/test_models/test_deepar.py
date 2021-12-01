@@ -109,7 +109,7 @@ def _integration(
         ),
         dict(
             data_loader_kwargs=dict(
-                lags={"volume": [2, 5]}, target="volume", time_varying_unknown_reals=["volume"], min_encoder_length=10
+                lags={"volume": [2, 5]}, target="volume", time_varying_unknown_reals=["volume"], min_encoder_length=2
             )
         ),
         dict(
