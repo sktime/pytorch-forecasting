@@ -145,6 +145,9 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
             check(x)
             check(index)
 
+            # predict raw
+            net.predict(val_dataloader, return_index=True, return_x=True, fast_dev_run=True, mode="raw")
+
             # check prediction on gpu
             if not (isinstance(gpus, int) and gpus == 0):
                 net.to("cuda")
