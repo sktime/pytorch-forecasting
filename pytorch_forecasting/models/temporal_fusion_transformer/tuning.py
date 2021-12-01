@@ -175,11 +175,11 @@ def optimize_hyperparameters(
                 gpus=[0] if torch.cuda.is_available() else None,
                 logger=False,
                 enable_progress_bar=False,
-                weights_summary=None,
+                enable_model_summary=False,
             )
             res = lr_trainer.tuner.lr_find(
                 model,
-                train_dataloader=train_dataloader,
+                train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
                 early_stop_threshold=10000,
                 min_lr=learning_rate_range[0],
@@ -206,7 +206,7 @@ def optimize_hyperparameters(
             model.hparams.learning_rate = trial.suggest_loguniform("learning_rate", *learning_rate_range)
 
         # fit
-        trainer.fit(model, train_dataloader=train_dataloader, val_dataloaders=val_dataloader)
+        trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
         # report result
         return metrics_callback.metrics[-1]["val_loss"].item()

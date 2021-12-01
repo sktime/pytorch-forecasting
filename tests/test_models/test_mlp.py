@@ -36,7 +36,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
@@ -55,11 +55,11 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
     net.size()
     try:
         if train_only:
-            trainer.fit(net, train_dataloader=train_dataloader)
+            trainer.fit(net, train_dataloaders=train_dataloader)
         else:
             trainer.fit(
                 net,
-                train_dataloader=train_dataloader,
+                train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
         # check loading

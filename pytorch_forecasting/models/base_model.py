@@ -530,7 +530,14 @@ class BaseModel(LightningModule):
             else:
                 loss = self.loss(prediction, y)
 
-        self.log(f"{self.current_stage}_loss", loss, on_step=self.training, on_epoch=True, prog_bar=True)
+        self.log(
+            f"{self.current_stage}_loss",
+            loss,
+            on_step=self.training,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=len(x["decoder_target"]),
+        )
         log = {"loss": loss, "n_samples": x["decoder_lengths"].size(0)}
         return log, out
 
@@ -582,6 +589,7 @@ class BaseModel(LightningModule):
                     loss_value,
                     on_step=self.training,
                     on_epoch=True,
+                    batch_size=len(x["decoder_target"]),
                 )
 
     def to_network_output(self, **results):

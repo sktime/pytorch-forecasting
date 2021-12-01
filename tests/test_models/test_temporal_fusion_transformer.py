@@ -67,7 +67,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
         gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
@@ -113,7 +113,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
         try:
             trainer.fit(
                 net,
-                train_dataloader=train_dataloader,
+                train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
             test_outputs = trainer.test(net, dataloaders=test_dataloader)
@@ -204,12 +204,12 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
         fast_dev_run=True,
         logger=logger,
         accelerator=accelerator,
-        checkpoint_callback=True,
+        enable_checkpointing=True,
     )
     try:
         trainer.fit(
             net,
-            train_dataloader=train_dataloader,
+            train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader,
         )
 

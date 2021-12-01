@@ -157,7 +157,7 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # find the optimal learning rate
 res = trainer.lr_find(
-    tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
+    tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 )
 # and plot the result - always visually confirm that the suggested learning rate makes sense
 print(f"suggested learning rate: {res.suggestion()}")
@@ -166,6 +166,6 @@ fig.show()
 
 # fit the model on the data - redefine the model with the correct learning rate if necessary
 trainer.fit(
-    tft, train_dataloader=train_dataloader, val_dataloaders=val_dataloader,
+    tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader,
 )
 ```

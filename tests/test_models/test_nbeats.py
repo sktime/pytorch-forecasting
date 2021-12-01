@@ -22,7 +22,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
         gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
@@ -42,7 +42,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     try:
         trainer.fit(
             net,
-            train_dataloader=train_dataloader,
+            train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader,
         )
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
