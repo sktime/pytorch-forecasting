@@ -20,7 +20,6 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     trainer = pl.Trainer(
         max_epochs=2,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         checkpoint_callback=True,
@@ -59,7 +58,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def model(dataloaders_fixed_window_without_covariates):
     dataset = dataloaders_fixed_window_without_covariates["train"].dataset
     net = NBeats.from_dataset(

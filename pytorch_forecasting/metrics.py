@@ -209,7 +209,7 @@ def convert_torchmetric_to_pytorch_forecasting_metric(metric: LightningMetric) -
     Returns:
         Metric: PyTorch Forecasting metric
     """
-    if not isinstance(metric, Metric):
+    if not isinstance(metric, (Metric, MultiLoss, CompositeMetric)):
         return TorchMetricWrapper(metric)
     else:
         return metric

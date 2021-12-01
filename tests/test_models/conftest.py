@@ -7,7 +7,7 @@ from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabe
 from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def gpus():
     if torch.cuda.is_available():
         return [0]
@@ -15,7 +15,7 @@ def gpus():
         return 0
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def data_with_covariates():
     data = get_stallion_data()
     data["month"] = data.date.dt.month.astype(str)
@@ -43,6 +43,12 @@ def data_with_covariates():
     data[special_days] = data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
     data = data.astype(dict(industry_volume=float))
 
+    # select data subset
+    data = data[lambda x: x.sku.isin(data.sku.unique()[:2])][lambda x: x.agency.isin(data.agency.unique()[:2])]
+
+    # default target
+    data["target"] = data["volume"].clip(1e-3, 1.0)
+
     return data
 
 
@@ -57,7 +63,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
     kwargs.setdefault("time_varying_unknown_reals", ["volume"])
 
     training = TimeSeriesDataSet(
-        data_with_covariates[lambda x: x.date < training_cutoff],
+        data_with_covariates[lambda x: x.date < training_cutoff].copy(),
         time_idx="time_idx",
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
@@ -67,10 +73,9 @@ def make_dataloaders(data_with_covariates, **kwargs):
     validation = TimeSeriesDataSet.from_dataset(
         training, data_with_covariates.copy(), min_prediction_idx=training.index.time.max() + 1
     )
-    batch_size = 4
-    train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
-    val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
-    test_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+    train_dataloader = training.to_dataloader(train=True, batch_size=2, num_workers=0)
+    val_dataloader = validation.to_dataloader(train=False, batch_size=2, num_workers=0)
+    test_dataloader = validation.to_dataloader(train=False, batch_size=1, num_workers=0)
 
     return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
 
@@ -117,17 +122,17 @@ def make_dataloaders(data_with_covariates, **kwargs):
         dict(target=["agency", "volume"], weight="volume"),
         # test weights
         dict(target="volume", weight="volume"),
-    ]
+    ],
+    scope="session",
 )
 def multiple_dataloaders_with_covariates(data_with_covariates, request):
     return make_dataloaders(data_with_covariates, **request.param)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def dataloaders_with_covariates(data_with_covariates):
-    data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
     return make_dataloaders(
-        data_with_covariates,
+        data_with_covariates.copy(),
         target="target",
         time_varying_known_reals=["discount"],
         time_varying_unknown_reals=["target"],
@@ -137,13 +142,13 @@ def dataloaders_with_covariates(data_with_covariates):
     )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def dataloaders_fixed_window_without_covariates():
-    data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10)
+    data = generate_ar_data(seasonality=10.0, timesteps=50, n_series=2)
     validation = data.series.iloc[:2]
 
-    max_encoder_length = 60
-    max_prediction_length = 20
+    max_encoder_length = 30
+    max_prediction_length = 10
 
     training = TimeSeriesDataSet(
         data[lambda x: ~x.series.isin(validation)],
@@ -163,7 +168,7 @@ def dataloaders_fixed_window_without_covariates():
         data[lambda x: x.series.isin(validation)],
         stop_randomization=True,
     )
-    batch_size = 4
+    batch_size = 2
     train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
     val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
     test_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)

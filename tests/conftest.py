@@ -23,7 +23,7 @@ if os.getenv("_PYTEST_RAISE", "0") != "0":
         raise excinfo.value
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def test_data():
     data = get_stallion_data()
     data["month"] = data.date.dt.month.astype(str)
@@ -53,7 +53,7 @@ def test_data():
     return data
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def test_dataset(test_data):
     training = TimeSeriesDataSet(
         test_data.copy(),

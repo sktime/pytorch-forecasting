@@ -69,7 +69,6 @@ lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(
     max_epochs=10,
     gpus=-1,
-    weights_summary="top",
     gradient_clip_val=0.1,
     limit_train_batches=30,
     limit_val_batches=3,

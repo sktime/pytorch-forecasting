@@ -53,7 +53,6 @@ early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience
 trainer = pl.Trainer(
     max_epochs=100,
     gpus=0,
-    weights_summary="top",
     gradient_clip_val=0.1,
     callbacks=[early_stop_callback],
     limit_train_batches=15,

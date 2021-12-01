@@ -16,6 +16,7 @@ from pytorch_forecasting.models import RecurrentNetwork
 def _integration(
     data_with_covariates, tmp_path, gpus, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
 ):
+    data_with_covariates = data_with_covariates.copy()
     if clip_target:
         data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
     else:
@@ -39,7 +40,6 @@ def _integration(
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         checkpoint_callback=True,
@@ -56,6 +56,7 @@ def _integration(
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
+        hidden_size=5,
         **kwargs
     )
     net.size()
@@ -104,7 +105,7 @@ def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
     _integration(data_with_covariates, tmp_path, gpus, **kwargs)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def model(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = RecurrentNetwork.from_dataset(
@@ -112,6 +113,7 @@ def model(dataloaders_with_covariates):
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
+        hidden_size=5,
     )
     return net
 

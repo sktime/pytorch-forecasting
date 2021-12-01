@@ -20,6 +20,7 @@ from pytorch_forecasting.models import DeepAR
 def _integration(
     data_with_covariates, tmp_path, gpus, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
 ):
+    data_with_covariates = data_with_covariates.copy()
     if clip_target:
         data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
     else:
@@ -44,7 +45,6 @@ def _integration(
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         checkpoint_callback=True,
@@ -57,6 +57,7 @@ def _integration(
 
     net = DeepAR.from_dataset(
         train_dataloader.dataset,
+        hidden_size=5,
         cell_type=cell_type,
         learning_rate=0.15,
         log_gradient_flow=True,
@@ -131,6 +132,7 @@ def model(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = DeepAR.from_dataset(
         dataset,
+        hidden_size=5,
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
