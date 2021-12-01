@@ -97,6 +97,10 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         dict(optimizer="SGD", weight_decay=1e-3),
         dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-3)),
         dict(loss=MeanSquaredError()),
+        dict(
+            loss=MeanSquaredError(),
+            data_loader_kwargs=dict(min_prediction_length=1, min_encoder_length=1),
+        ),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):

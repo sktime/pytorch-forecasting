@@ -132,7 +132,9 @@ class Metric(LightningMetric):
 
 class TorchMetricWrapper(Metric):
     """
-    Wrap a torchmetric to work with PyTorch Forecasting. Does not support weighting.
+    Wrap a torchmetric to work with PyTorch Forecasting.
+
+    Does not support weighting of errors and only supports metrics for point predictions.
     """
 
     def __init__(self, torchmetric: LightningMetric, reduction: str = None, **kwargs):
@@ -166,6 +168,9 @@ class TorchMetricWrapper(Metric):
                     "implement a custom version or use pytorch-forecasting metrics"
                 )
 
+        # convert to point prediction - limits applications of class
+        y_pred = self.to_prediction(y_pred)
+
         # unpack target if it is PackedSequence
         if isinstance(target, rnn.PackedSequence):
             target, lengths = unpack_sequence(target)
@@ -180,15 +185,15 @@ class TorchMetricWrapper(Metric):
 
     def update(self, y_pred: torch.Tensor, target: torch.Tensor, **kwargs) -> torch.Tensor:
         # flatten target and prediction
-        y_pred, target = self._convert(y_pred, target)
+        y_pred_flattened, target_flattened = self._convert(y_pred, target)
 
         # update metric
-        self.torchmetric.update(y_pred, target, **kwargs)
+        self.torchmetric.update(y_pred_flattened, target_flattened, **kwargs)
 
     def forward(self, y_pred, target, **kwargs):
         # need this explicitly to avoid backpropagation errors because of sketchy caching
-        y_pred, target = self._convert(y_pred, target)
-        return self.torchmetric.forward(y_pred, target, **kwargs)
+        y_pred_flattened, target_flattened = self._convert(y_pred, target)
+        return self.torchmetric.forward(y_pred_flattened, target_flattened, **kwargs)
 
     def compute(self):
         res = self.torchmetric.compute()
