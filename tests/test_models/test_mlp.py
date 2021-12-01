@@ -94,7 +94,6 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
                 target="agency",
             ),
         ),
-        dict(optimizer=lambda params, lr: SGD(params, lr=lr, weight_decay=1e-3)),
         dict(loss=MeanSquaredError()),
         dict(
             loss=MeanSquaredError(),
