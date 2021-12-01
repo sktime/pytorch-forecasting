@@ -1,7 +1,9 @@
 """
-Temporal Convolutional Network (TCN): An Empirical Evaluation of Generic Convolutional and Recurrent Networks for
+`Temporal Convolutional Network (TCN): An Empirical Evaluation of Generic Convolutional and Recurrent Networks for
 Sequence Modeling <https://arxiv.org/abs/1803.01271>`_. TCNs have often a better performance than LSTMs in
-time series forecasting while training much faster.
+time series forecasting while training much faster. This implementation is the M-TCN that can process also covariates
+based on `Multivariate Temporal Convolutional Network: A Deep Neural Networks Approach for Multivariate Time Series
+Forecasting <https://doi.org/10.3390/electronics8080876>`_
 """
 
 from copy import copy
@@ -122,6 +124,7 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         skip_connection: bool = True,
         loss: MultiHorizonMetric = None,
         prediction_length: int = 1,
+        encoder_length: int = 1,
         output_size: Union[int, List[int]] = 1,
         x_reals: List[str] = [],
         x_categoricals: List[str] = [],
@@ -151,7 +154,9 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
         `Temporal Convolutional Network (TCN): An Empirical Evaluation of Generic Convolutional and Recurrent Networks
         for Sequence Modeling
         <https://arxiv.org/abs/1803.01271>`_. TCNs have often a better performance than LSTMs in time series forecasting
-        while training much faster.
+        while training much faster.  This implementation is the M-TCN that can process also covariates
+        based on `Multivariate Temporal Convolutional Network: A Deep Neural Networks Approach for Multivariate Time
+        Series Forecasting <https://doi.org/10.3390/electronics8080876>`_
 
         Keep in mind that known time-dependent variables in the future are not used in the TCN as the decoder structure
         is a single linear layer.
@@ -296,6 +301,7 @@ class TemporalConvolutionalNetwork(BaseModelWithCovariates):
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         new_kwargs = copy(kwargs)
         new_kwargs["prediction_length"] = dataset.max_prediction_length
+        new_kwargs["encoder_length"] = dataset.max_encoder_length
 
         new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, MAE()))
         # example for dataset validation
