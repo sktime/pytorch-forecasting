@@ -116,7 +116,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
                 train_dataloader=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
-            test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+            test_outputs = trainer.test(net, dataloaders=test_dataloader)
             assert len(test_outputs) > 0
 
             # check loading
@@ -273,11 +273,11 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
             val_dataloader=val_dataloader,
             model_path=tmp_path,
             max_epochs=1,
-            n_trials=8,
+            n_trials=3,
             log_dir=tmp_path,
             trainer_kwargs=dict(
                 fast_dev_run=True,
-                limit_train_batches=5,
+                limit_train_batches=3,
                 # overwrite default trainer kwargs
                 enable_progress_bar=False,
             ),

@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 
 import numpy as np
 import pytest
@@ -10,6 +11,29 @@ sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:sk
 from pytorch_forecasting import TimeSeriesDataSet  # isort:skip
 from pytorch_forecasting.data.examples import get_stallion_data  # isort:skip
 
+# suppress warnings that are expected given "small" data for testing
+warnings.filterwarnings("ignore", category=UserWarning, message=r"Found \d+ unkown classes which were set to NaN")
+warnings.filterwarnings(
+    "ignore", category=UserWarning, message=r"Less than \d+ samples available for \d+ prediction times. Use ba"
+)
+warnings.filterwarnings(
+    "ignore", category=UserWarning, message="scale is below 1e-7 - consider not centering the data or using data with"
+)
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="ReduceLROnPlateau conditioned on metric")
+warnings.filterwarnings(
+    "ignore", category=UserWarning, message="You defined a `validation_step` but have no `val_dataloader`"
+)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message=r"The number of training samples \(\d+\) is smaller than the logging interval Trainer\(",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message=r"The dataloader, [\_\s]+ \d+, does not have many workers which may be a bottleneck.  "
+    "Consider increasing the value of the `num_workers` argument`",
+)
 
 # for vscode debugging: https://stackoverflow.com/a/62563106/14121677
 if os.getenv("_PYTEST_RAISE", "0") != "0":

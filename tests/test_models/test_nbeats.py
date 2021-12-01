@@ -45,7 +45,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
             train_dataloader=train_dataloader,
             val_dataloaders=val_dataloader,
         )
-        test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+        test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
         # check loading
         net = NBeats.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)

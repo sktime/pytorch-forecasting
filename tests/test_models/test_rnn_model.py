@@ -66,7 +66,7 @@ def _integration(
             train_dataloader=train_dataloader,
             val_dataloaders=val_dataloader,
         )
-        test_outputs = trainer.test(net, test_dataloaders=test_dataloader)
+        test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
         # check loading
         net = RecurrentNetwork.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
