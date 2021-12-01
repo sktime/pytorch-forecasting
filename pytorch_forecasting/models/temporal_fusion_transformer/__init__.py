@@ -769,7 +769,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
-        label = ["val", "train"][self.training]
+        label = self.current_stage
         # log to tensorboard
         for name, fig in figs.items():
             self.logger.experiment.add_figure(

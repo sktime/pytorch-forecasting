@@ -1,22 +1,59 @@
 # Release Notes
 
-## v0.9.1 Adding TCN architecture (UNRELEASED)
+## v0.9.3 UNRELEASED
 
 ### Added
 
+- Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Adding a new architecture: The [TemporalConvolutionalNetwork](https://arxiv.org/abs/1803.01271) (#549)
 - Tutorial for TemporalConvolutionalNetwork (#549)
+
+### Contributors
+
+- jdb78
+
+## v0.9.2 Maintenance Release (30/11/2021)
+
+### Added
+
+- Added support for running `pytorch_lightning.trainer.test` (#759)
+
+### Fixed
+
+- Fix inattention mutation to `x_cont` (#732).
+- Compatability with pytorch-lightning 1.5 (#758)
+
+### Contributors
+
+- eavae
+- danielgafni
+- jdb78
+
+## v0.9.1 Maintenance Release (26/09/2021)
 
 ### Added
 
 - Use target name instead of target number for logging metrics (#588)
 - Optimizer can be initialized by passing string, class or function (#602)
 - Add support for multiple outputs in Baseline model (#603)
+- Added Optuna pruner as optional parameter in `TemporalFusionTransformer.optimize_hyperparameters` (#619)
+- Dropping support for Python 3.6 and starting support for Python 3.9 (#639)
 
 ### Fixed
 
 - Initialization of TemporalFusionTransformer with multiple targets but loss for only one target (#550)
 - Added missing transformation of prediction for MLP (#602)
+- Fixed logging hyperparameters (#688)
+- Ensure MultiNormalizer fit state is detected (#681)
+- Fix infinite loop in TimeDistributedEmbeddingBag (#672)
+
+### Contributors
+
+- jdb78
+- TKlerx
+- chefPony
+- eavae
+- L0Z1K
 
 ### Contributors
 

@@ -54,6 +54,7 @@ def optimize_hyperparameters(
     log_dir: str = "lightning_logs",
     study: optuna.Study = None,
     verbose: Union[int, bool] = None,
+    pruner: optuna.pruners.BasePruner = optuna.pruners.SuccessiveHalvingPruner(),
     **kwargs,
 ) -> optuna.Study:
     """
@@ -92,6 +93,8 @@ def optimize_hyperparameters(
             * 1 or True: log pruning events.
             * 2: optuna logging level at debug level.
             Defaults to None.
+        pruner (optuna.pruners.BasePruner, optional): The optuna pruner to use.
+            Defaults to optuna.pruners.SuccessiveHalvingPruner().
 
         **kwargs: Additional arguments for the :py:class:`~TemporalFusionTransformer`.
 
@@ -140,7 +143,7 @@ def optimize_hyperparameters(
                 PyTorchLightningPruningCallback(trial, monitor="val_loss"),
             ],
             logger=logger,
-            progress_bar_refresh_rate=[0, 1][optuna_verbose < optuna.logging.INFO],
+            enable_progress_bar=optuna_verbose < optuna.logging.INFO,
             weights_summary=[None, "top"][optuna_verbose < optuna.logging.INFO],
         )
         default_trainer_kwargs.update(trainer_kwargs)
@@ -171,12 +174,12 @@ def optimize_hyperparameters(
                 gradient_clip_val=gradient_clip_val,
                 gpus=[0] if torch.cuda.is_available() else None,
                 logger=False,
-                progress_bar_refresh_rate=0,
-                weights_summary=None,
+                enable_progress_bar=False,
+                enable_model_summary=False,
             )
             res = lr_trainer.tuner.lr_find(
                 model,
-                train_dataloader=train_dataloader,
+                train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
                 early_stop_threshold=10000,
                 min_lr=learning_rate_range[0],
@@ -203,13 +206,12 @@ def optimize_hyperparameters(
             model.hparams.learning_rate = trial.suggest_loguniform("learning_rate", *learning_rate_range)
 
         # fit
-        trainer.fit(model, train_dataloader=train_dataloader, val_dataloaders=val_dataloader)
+        trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
         # report result
         return metrics_callback.metrics[-1]["val_loss"].item()
 
     # setup optuna and run
-    pruner = optuna.pruners.SuccessiveHalvingPruner()
     if study is None:
         study = optuna.create_study(direction="minimize", pruner=pruner)
     study.optimize(objective, n_trials=n_trials, timeout=timeout)

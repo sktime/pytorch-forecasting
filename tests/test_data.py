@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.validation import NotFittedError, check_is_fitted
 import torch
 
 from pytorch_forecasting.data import (
@@ -128,6 +129,24 @@ def test_GroupNormalizer(kwargs, groups):
         assert torch.isclose(
             normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5
         ).all(), "Inverse transform should reverse transform"
+
+
+def test_MultiNormalizer_fitted():
+    data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1], c=[1.1, 1.1, 1.0, 5.0, 1.1]))
+
+    normalizer = MultiNormalizer([GroupNormalizer(groups=["a"]), TorchNormalizer()])
+
+    with pytest.raises(NotFittedError):
+        check_is_fitted(normalizer)
+
+    normalizer.fit(data, data)
+
+    try:
+        check_is_fitted(normalizer.normalizers[0])
+        check_is_fitted(normalizer.normalizers[1])
+        check_is_fitted(normalizer)
+    except NotFittedError:
+        pytest.fail(f"{NotFittedError}")
 
 
 def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):

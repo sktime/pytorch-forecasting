@@ -12,19 +12,21 @@ from pytorch_forecasting.models import NBeats
 def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus):
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
     val_dataloader = dataloaders_fixed_window_without_covariates["val"]
+    test_dataloader = dataloaders_fixed_window_without_covariates["test"]
+
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
+        limit_test_batches=2,
         logger=logger,
     )
 
@@ -40,9 +42,11 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     try:
         trainer.fit(
             net,
-            train_dataloader=train_dataloader,
+            train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader,
         )
+        test_outputs = trainer.test(net, dataloaders=test_dataloader)
+        assert len(test_outputs) > 0
         # check loading
         net = NBeats.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
@@ -54,7 +58,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def model(dataloaders_fixed_window_without_covariates):
     dataset = dataloaders_fixed_window_without_covariates["train"].dataset
     net = NBeats.from_dataset(
