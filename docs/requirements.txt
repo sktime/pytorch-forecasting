@@ -15,3 +15,5 @@ statsmodels
 ipython
 nbconvert<6.0
 recommonmark>=0.7.1
+ipykernel
+ipywidgets

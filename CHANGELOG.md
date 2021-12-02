@@ -5,6 +5,8 @@
 ### Added
 
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
+- Adding a new architecture: The [TemporalConvolutionalNetwork](https://arxiv.org/abs/1803.01271) (#549)
+- Tutorial for TemporalConvolutionalNetwork (#549)
 
 ### Contributors
 
@@ -52,6 +54,12 @@
 - chefPony
 - eavae
 - L0Z1K
+
+### Contributors
+
+- jdb78
+- wangbingnan136
+- vds12
 
 ## v0.9.0 Simplified API (04/06/2021)
 

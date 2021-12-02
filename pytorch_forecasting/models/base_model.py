@@ -1009,6 +1009,8 @@ class BaseModel(LightningModule):
         """
         if hasattr(self, "dataset_parameters") and self.dataset_parameters is not None:
             return to_list(self.dataset_parameters["target"])
+        elif "target" in self.hparams:
+            return to_list(self.hparams.target)
         else:
             return [f"Target {idx + 1}" for idx in range(self.n_targets)]
 
@@ -1384,6 +1386,29 @@ class BaseModelWithCovariates(BaseModel):
         for group_name, sublist in self.hparams.categorical_groups.items():
             groups.update({name: group_name for name in sublist})
         return groups
+
+    @property
+    def target_positions(self) -> torch.LongTensor:
+        """
+        Positions of target variable(s) in covariates.
+
+        Returns:
+            torch.LongTensor: tensor of positions.
+        """
+        positions = []
+        for name in to_list(self.target_names):
+            if name in self.hparams.x_reals:
+                positions.append(self.hparams.x_reals.index(name))
+            elif name in self.hparams.x_categoricals:
+                positions.append(self.hparams.x_categoricals.index(name))
+            else:
+                raise ValueError(f"Target {name} is not in covariates")
+
+        return torch.tensor(
+            positions,
+            device=self.device,
+            dtype=torch.long,
+        )
 
     @classmethod
     def from_dataset(
@@ -1917,21 +1942,6 @@ class AutoRegressiveBaseModel(BaseModel):
         return output
 
     @property
-    def target_positions(self) -> torch.LongTensor:
-        """
-        Positions of target variable(s) in covariates.
-
-        Returns:
-            torch.LongTensor: tensor of positions.
-        """
-        # todo: expand for categorical targets
-        return torch.tensor(
-            [0],
-            device=self.device,
-            dtype=torch.long,
-        )
-
-    @property
     def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:
         """
         Positions of lagged target variable(s) in covariates.
@@ -1975,21 +1985,6 @@ class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegress
             can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
             as bag of embeddings
     """
-
-    @property
-    def target_positions(self) -> torch.LongTensor:
-        """
-        Positions of target variable(s) in covariates.
-
-        Returns:
-            torch.LongTensor: tensor of positions.
-        """
-        # todo: expand for categorical targets
-        return torch.tensor(
-            [self.hparams.x_reals.index(name) for name in to_list(self.hparams.target)],
-            device=self.device,
-            dtype=torch.long,
-        )
 
     @property
     def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:

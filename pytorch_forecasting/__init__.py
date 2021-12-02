@@ -41,6 +41,7 @@ from pytorch_forecasting.models import (
     MultiEmbedding,
     NBeats,
     RecurrentNetwork,
+    TemporalConvolutionalNetwork,
     TemporalFusionTransformer,
     get_rnn,
 )
@@ -93,6 +94,7 @@ __all__ = [
     "get_rnn",
     "LSTM",
     "GRU",
+    "TemporalConvolutionalNetwork",
     "MultiEmbedding",
     "apply_to_list",
     "autocorrelation",
