@@ -64,30 +64,46 @@ def test_NaNLabelEncoder_add():
     "kwargs",
     [
         dict(method="robust"),
+        dict(method="robust", data=np.random.randn(100)),
+        dict(data=np.random.randn(100)),
         dict(transformation="log"),
         dict(transformation="softplus"),
         dict(transformation="log1p"),
         dict(transformation="relu"),
+        dict(method="identity"),
+        dict(method="identity", data=np.random.randn(100)),
         dict(center=False),
+        dict(max_length=5),
+        dict(data=pd.Series(np.random.randn(100))),
+        dict(max_length=[1, 2]),
     ],
 )
 def test_EncoderNormalizer(kwargs):
-    data = torch.rand(100)
-    defaults = dict(method="standard", center=True)
-    defaults.update(kwargs)
-    kwargs = defaults
+    kwargs.setdefault("method", "standard")
+    kwargs.setdefault("center", True)
+    kwargs.setdefault("data", torch.rand(100))
+    data = kwargs.pop("data")
+
     normalizer = EncoderNormalizer(**kwargs)
     if kwargs.get("transformation") in ["relu", "softplus"]:
         data = data - 0.5
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
         assert (
-            normalizer.inverse_transform(normalizer.fit_transform(data)) >= 0
+            normalizer.inverse_transform(torch.as_tensor(normalizer.fit_transform(data))) >= 0
         ).all(), "Inverse transform should yield only positive values"
     else:
         assert torch.isclose(
-            normalizer.inverse_transform(normalizer.fit_transform(data)), data, atol=1e-5
+            normalizer.inverse_transform(torch.as_tensor(normalizer.fit_transform(data))),
+            torch.as_tensor(data),
+            atol=1e-5,
         ).all(), "Inverse transform should reverse transform"
+
+
+def test_EncoderNormalizer_with_limited_history():
+    data = torch.rand(100)
+    normalizer = EncoderNormalizer(max_length=[1, 2]).fit(data)
+    assert normalizer.center_ == data[-1]
 
 
 @pytest.mark.parametrize(
