@@ -5,6 +5,7 @@
 ### Added
 
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
+- Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 
 ### Contributors
 

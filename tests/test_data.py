@@ -96,6 +96,12 @@ def test_EncoderNormalizer(kwargs):
         ).all(), "Inverse transform should reverse transform"
 
 
+def test_EncoderNormalizer_with_limited_history():
+    data = torch.rand(100)
+    normalizer = EncoderNormalizer(max_length=[1, 2]).fit(data)
+    assert normalizer.center_ == data[-1]
+
+
 @pytest.mark.parametrize(
     "kwargs,groups",
     itertools.product(
