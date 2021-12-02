@@ -913,11 +913,15 @@ class BaseModel(LightningModule):
             except TypeError:  # in case there is no weight decay
                 optimizer = self.optimizer(self.parameters(), lr=lr, **optimizer_params)
         elif self.hparams.optimizer == "adam":
-            optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+            optimizer = torch.optim.Adam(
+                self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
+            )
         elif self.hparams.optimizer == "adamw":
-            optimizer = torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay)
+            optimizer = torch.optim.AdamW(
+                self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
+            )
         elif self.hparams.optimizer == "ranger":
-            optimizer = Ranger(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay)
+            optimizer = Ranger(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params)
         elif self.hparams.optimizer == "sgd":
             optimizer = torch.optim.SGD(
                 self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
