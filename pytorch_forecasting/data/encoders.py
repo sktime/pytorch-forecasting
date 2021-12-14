@@ -417,7 +417,12 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
         # transform
+        dtype = y.dtype
         y = (y - center) / scale
+        try:
+            y = y.astype(dtype)
+        except AttributeError:  # torch.Tensor has `.type()` instead of `.astype()`
+            y = y.type(dtype)
 
         # return with center and scale or without
         if return_norm:
@@ -449,6 +454,9 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             torch.Tensor: de-scaled data
         """
+        # ensure output dtype matches input dtype
+        dtype = data["prediction"].dtype
+
         # inverse transformation with tensors
         norm = data["target_scale"]
 
@@ -464,7 +472,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         # return correct shape
         if data["prediction"].ndim == 1 and y.ndim > 1:
             y = y.squeeze(0)
-        return y
+        return y.type(dtype)
 
 
 class EncoderNormalizer(TorchNormalizer):
