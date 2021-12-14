@@ -120,7 +120,7 @@ class Ranger(Optimizer):
         # for w in it.chain(*self.slow_weights):
         #    w.requires_grad = False
 
-    def __getstate__(self) -> None:
+    def __getstate__(self) -> dict:
         state = super().__getstate__()
         state["radam_buffer"] = self.radam_buffer
         state["alpha"] = self.alpha
@@ -133,8 +133,8 @@ class Ranger(Optimizer):
         super().__setstate__(state)
         self.radam_buffer = state["radam_buffer"]
         self.alpha = state["alpha"]
-        self.k = state["k"] 
-        self.N_sma_threshhold = state["N_sma_threshhold"] 
+        self.k = state["k"]
+        self.N_sma_threshhold = state["N_sma_threshhold"]
 
 
     def step(self, closure: OptLossClosure = None) -> OptFloat:
