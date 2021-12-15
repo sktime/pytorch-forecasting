@@ -355,10 +355,13 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 self.scale_ = torch.std(y_scale, dim=-1) + self.eps
             elif isinstance(y_center, np.ndarray):
                 self.center_ = np.mean(y_center, axis=-1)
-                self.scale_ = (np.std(y_scale, axis=-1) + self.eps).astype(y_scale.dtype)
+                self.scale_ = np.std(y_scale, axis=-1) + self.eps
             else:
                 self.center_ = np.mean(y_center)
-                self.scale_ = (np.std(y_scale) + self.eps).astype(y_scale.dtype)
+                self.scale_ = np.std(y_scale) + self.eps
+            # correct numpy scalar dtype promotion, e.g. fix type from `np.float32(0.0) + 1e-8` gives `np.float64(1e-8)`
+            if not torch.is_tensor(self.scale_) and np.isscalar(self.scale_):
+                self.scale_ = self.scale_.astype(y_scale.dtype)
 
         elif self.method == "robust":
             if isinstance(y_center, torch.Tensor):
