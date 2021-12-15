@@ -18,7 +18,7 @@ jobs:
           with:
             python-version: 3.8
         - name: Install Black
-          run: pip install black
+          run: pip install black[jupyter]
         - name: Run Black
           run: black --check .
 
