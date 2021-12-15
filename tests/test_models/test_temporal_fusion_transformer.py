@@ -28,7 +28,6 @@ if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     def nullcontext(enter_result=None):
         yield enter_result
 
-
 else:
     from contextlib import nullcontext
 
