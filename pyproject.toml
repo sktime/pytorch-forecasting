@@ -85,7 +85,7 @@ pyarrow = "*"
 
 # jupyter notebook
 ipykernel = "*"
-black = { version = "*", allow-prereleases = true }
+black = { version = "*", allow-prereleases = true, extras = ["jupyter"] }
 
 # documentatation
 sphinx = "*"
