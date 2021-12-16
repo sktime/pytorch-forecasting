@@ -7,9 +7,16 @@
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 
+### Fixed
+
+- Fix pip install via github (#798)
+
 ### Contributors
 
 - jdb78
+- christy
+- lukemerrick
+- Seon82
 
 ## v0.9.2 Maintenance Release (30/11/2021)
 
