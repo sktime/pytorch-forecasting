@@ -620,3 +620,11 @@ def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
             index = test_dataset.x_to_index(x)
             assert (index["agency"] == agency).all(), "Agency filter has failed"
             assert index["time_idx"].min() == first_prediction_idx, "First prediction filter has failed"
+
+
+def test_TorchNormalizer_dtype_consistency():
+    """Ensures that even for float64 `target_scale`, the transformation will not change the prediction dtype."""
+    parameters = torch.tensor([[[366.4587]]])
+    target_scale = torch.tensor([[427875.7500, 80367.4766]], dtype=torch.float64)
+    assert TorchNormalizer()(dict(prediction=parameters, target_scale=target_scale)).dtype == torch.float32
+    assert TorchNormalizer().transform(parameters, target_scale=target_scale).dtype == torch.float32
