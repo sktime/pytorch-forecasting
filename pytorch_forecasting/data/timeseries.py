@@ -1247,7 +1247,7 @@ class TimeSeriesDataSet(Dataset):
             len(df_index) > 0
         ), "filters should not remove entries all entries - check encoder/decoder lengths and lags"
 
-        return df_index
+        return df_index.to_records(index=False)
 
     def filter(self, filter_func: Callable, copy: bool = True) -> "TimeSeriesDataSet":
         """
@@ -1404,17 +1404,22 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             Tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
-        index = self.index.iloc[idx]
+        index = self.index[idx]
+        # get index data        
+        index_start = index.index_start
+        index_end = index.index_end
+        index_sequence_length = index.sequence_length  
+        
         # get index data
-        data_cont = self.data["reals"][index.index_start : index.index_end + 1].clone()
-        data_cat = self.data["categoricals"][index.index_start : index.index_end + 1].clone()
-        time = self.data["time"][index.index_start : index.index_end + 1].clone()
-        target = [d[index.index_start : index.index_end + 1].clone() for d in self.data["target"]]
-        groups = self.data["groups"][index.index_start].clone()
+        data_cont = self.data["reals"][index_start : index_end + 1].clone()
+        data_cat = self.data["categoricals"][index_start : index_end + 1].clone()
+        time = self.data["time"][index_start : index_end + 1].clone()
+        target = [d[index_start : index_end + 1].clone() for d in self.data["target"]]
+        groups = self.data["groups"][index_start].clone()
         if self.data["weight"] is None:
             weight = None
         else:
-            weight = self.data["weight"][index.index_start : index.index_end + 1].clone()
+            weight = self.data["weight"][index_start : index_end + 1].clone()
         # get target scale in the form of a list
         target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
         if not isinstance(self.target_normalizer, MultiNormalizer):
@@ -1422,7 +1427,7 @@ class TimeSeriesDataSet(Dataset):
 
         # fill in missing values (if not all time indices are specified
         sequence_length = len(time)
-        if sequence_length < index.sequence_length:
+        if sequence_length < index_sequence_length:
             assert self.allow_missing_timesteps, "allow_missing_timesteps should be True if sequences have gaps"
             repetitions = torch.cat([time[1:] - time[:-1], torch.ones(1, dtype=time.dtype)])
             indices = torch.repeat_interleave(torch.arange(len(time)), repetitions)
