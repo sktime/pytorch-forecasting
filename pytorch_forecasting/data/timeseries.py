@@ -1247,8 +1247,7 @@ class TimeSeriesDataSet(Dataset):
             len(df_index) > 0
         ), "filters should not remove entries all entries - check encoder/decoder lengths and lags"
 
-        return df_index.to_records(index=False)
-
+        return df_index.to_records(index=True)
     def filter(self, filter_func: Callable, copy: bool = True) -> "TimeSeriesDataSet":
         """
         Filter subsequences in dataset.
