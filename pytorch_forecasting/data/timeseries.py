@@ -1404,10 +1404,10 @@ class TimeSeriesDataSet(Dataset):
             Tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
         index = self.index[idx]
-        # get index data        
+        # get index data
         index_start = index.index_start
         index_end = index.index_end
-        index_sequence_length = index.sequence_length  
+        index_sequence_length = index.sequence_length
         
         # get index data
         data_cont = self.data["reals"][index_start : index_end + 1].clone()
