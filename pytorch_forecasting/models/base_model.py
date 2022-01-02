@@ -707,16 +707,16 @@ class BaseModel(LightningModule):
                     tag += f" of item {idx} in batch {batch_idx}"
                 if isinstance(fig, (list, tuple)):
                     for idx, f in enumerate(fig):
-                        self.logger.experiment.add_figure(
+                        self.logger.add_figure(
                             f"{self.target_names[idx]} {tag}",
                             f,
-                            global_step=self.global_step,
+                            step=self.global_step,
                         )
                 else:
-                    self.logger.experiment.add_figure(
+                    self.logger.add_figure(
                         tag,
                         fig,
-                        global_step=self.global_step,
+                        step=self.global_step,
                     )
 
     def plot_prediction(
@@ -858,20 +858,7 @@ class BaseModel(LightningModule):
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """
-        ave_grads = []
-        layers = []
-        for name, p in named_parameters:
-            if p.grad is not None and p.requires_grad and "bias" not in name:
-                layers.append(name)
-                ave_grads.append(p.grad.abs().mean())
-                self.logger.experiment.add_histogram(tag=name, values=p.grad, global_step=self.global_step)
-        fig, ax = plt.subplots()
-        ax.plot(ave_grads)
-        ax.set_xlabel("Layers")
-        ax.set_ylabel("Average gradient")
-        ax.set_yscale("log")
-        ax.set_title("Gradient flow")
-        self.logger.experiment.add_figure("Gradient flow", fig, global_step=self.global_step)
+        self.logger.log_gradient_flow(named_parameters, step=self.global_step)
 
     def on_after_backward(self):
         """
