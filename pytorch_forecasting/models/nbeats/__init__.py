@@ -267,7 +267,7 @@ class NBeats(BaseModel):
                 name += f"step {self.global_step}"
             else:
                 name += f"batch {batch_idx}"
-            self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
+            self.logger.add_figure(name, fig, step=self.global_step)
 
     def plot_interpretation(
         self,
