@@ -772,9 +772,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         label = self.current_stage
         # log to tensorboard
         for name, fig in figs.items():
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
-            )
+            self.logger.add_figure(f"{label.capitalize()} {name} importance", fig, step=self.global_step)
 
         # log lengths of encoder/decoder
         for type in ["encoder", "decoder"]:
@@ -794,16 +792,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             ax.set_ylabel("Number of samples")
             ax.set_title(f"{type.capitalize()} length distribution in {label} epoch")
 
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
-            )
+            self.logger.add_figure(f"{label.capitalize()} {type} length distribution", fig, step=self.global_step)
 
     def log_embeddings(self):
         """
         Log embeddings to tensorboard
         """
-        for name, emb in self.input_embeddings.items():
-            labels = self.hparams.embedding_labels[name]
-            self.logger.experiment.add_embedding(
-                emb.weight.data.detach().cpu(), metadata=labels, tag=name, global_step=self.global_step
-            )
+        self.logger.add_embeddings(self.input_embeddings, self.hparams.embeddings_labels, self.global_step)
