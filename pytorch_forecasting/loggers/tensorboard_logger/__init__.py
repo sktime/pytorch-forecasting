@@ -29,8 +29,8 @@ class ForecastingTensorBoardLogger(TensorBoardLogger, ForecastingLoggerBase):
         for name, p in named_parameters:
             if p.grad is not None and p.requires_grad and "bias" not in name:
                 layers.append(name)
-                ave_grads.append(p.grad.abs().mean())
-                self.experiment.add_histogram(tag=name, values=p.grad, global_step=step)
+                ave_grads.append(p.grad.abs().mean().cpu())
+                self.experiment.add_histogram(tag=name, values=p.grad.cpu(), global_step=step)
         fig, ax = plt.subplots()
         ax.plot(ave_grads)
         ax.set_xlabel("Layers")
