@@ -1,9 +1,9 @@
-from typing import List, Dict
+from typing import Dict, List
 
-import torch
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from pytorch_lightning.loggers import TensorBoardLogger
+import torch
 
 from pytorch_forecasting import MultiEmbedding
 from pytorch_forecasting.loggers.base_logger import ForecastingLoggerBase

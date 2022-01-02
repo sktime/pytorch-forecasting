@@ -1,9 +1,9 @@
-from typing import List, Dict
+from typing import Dict, List
 
-import torch
-import wandb
 from matplotlib.figure import Figure
 from pytorch_lightning.loggers import WandbLogger
+import torch
+import wandb
 
 from pytorch_forecasting import MultiEmbedding
 from pytorch_forecasting.loggers.base_logger import ForecastingLoggerBase
