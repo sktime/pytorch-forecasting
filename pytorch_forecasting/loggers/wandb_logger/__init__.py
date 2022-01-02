@@ -24,4 +24,6 @@ class ForecastingWandbLogger(WandbLogger, ForecastingLoggerBase):
             self.experiment.log({f"embeddings_{name}": wandb.Table(columns=labels, data=emb)}, step=step)
 
     def log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor], step: int) -> None:
+        """To log the distribution of the gradients with Wandb, call `logger.watch(model)` after the initialization of
+        the logger. Wandb automatically logs the distributions once `watch` is called."""
         pass
