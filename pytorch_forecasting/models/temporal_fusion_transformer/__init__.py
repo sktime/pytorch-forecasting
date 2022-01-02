@@ -798,4 +798,4 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         Log embeddings to tensorboard
         """
-        self.logger.add_embeddings(self.input_embeddings, self.hparams.embeddings_labels, self.global_step)
+        self.logger.add_embeddings(self.input_embeddings, self.hparams.embedding_labels, self.global_step)
