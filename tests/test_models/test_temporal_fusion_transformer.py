@@ -5,7 +5,6 @@ import sys
 import pytest
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
@@ -180,7 +179,7 @@ def model(dataloaders_with_covariates, gpus):
 
 def test_tensorboard_graph_log(dataloaders_with_covariates, model, tmp_path):
     d = next(iter(dataloaders_with_covariates["train"]))
-    logger = TensorBoardLogger("test", str(tmp_path), log_graph=True)
+    logger = ForecastingTensorBoardLogger("test", str(tmp_path), log_graph=True)
     logger.log_graph(model, d[0])
 
 
@@ -199,7 +198,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
     net = TemporalFusionTransformer.from_dataset(
         train_dataloader.dataset,
     )
-    logger = TensorBoardLogger(tmp_path)
+    logger = ForecastingTensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=list(range(torch.cuda.device_count())),

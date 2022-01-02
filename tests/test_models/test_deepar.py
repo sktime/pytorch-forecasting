@@ -4,7 +4,6 @@ import shutil
 import pytest
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
 from torch import nn
 

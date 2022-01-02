@@ -4,7 +4,6 @@ import shutil
 import pytest
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
 
 from pytorch_forecasting.loggers import ForecastingTensorBoardLogger
 from pytorch_forecasting.models import NBeats
