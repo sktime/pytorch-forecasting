@@ -9,6 +9,7 @@ from test_models.conftest import make_dataloaders
 from torch.optim import SGD
 from torchmetrics import MeanSquaredError
 
+from pytorch_forecasting.loggers import ForecastingTensorBoardLogger
 from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss
 from pytorch_forecasting.models import DecoderMLP
 
@@ -30,7 +31,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min", strict=False
     )
 
-    logger = TensorBoardLogger(tmp_path)
+    logger = ForecastingTensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=gpus,

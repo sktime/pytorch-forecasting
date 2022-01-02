@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from pytorch_forecasting.loggers import ForecastingTensorBoardLogger
 from pytorch_forecasting.models import NBeats
 
 
@@ -16,7 +17,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
 
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
-    logger = TensorBoardLogger(tmp_path)
+    logger = ForecastingTensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
         gpus=gpus,

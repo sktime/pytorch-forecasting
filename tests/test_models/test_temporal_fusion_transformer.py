@@ -11,6 +11,7 @@ import torch
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
+from pytorch_forecasting.loggers import ForecastingTensorBoardLogger
 from pytorch_forecasting.metrics import (
     CrossEntropy,
     MultiLoss,
@@ -60,7 +61,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     # check training
-    logger = TensorBoardLogger(tmp_path)
+    logger = ForecastingTensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
         gpus=gpus,
