@@ -64,6 +64,7 @@ matplotlib = "*"
 statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
+wandb = "^0.12.9"
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
