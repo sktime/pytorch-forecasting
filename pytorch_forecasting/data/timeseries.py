@@ -1651,7 +1651,9 @@ class TimeSeriesDataSet(Dataset):
                 if isinstance(batches[0][0]["target_scale"][idx], torch.Tensor):  # stack tensor
                     scale = torch.stack([batch[0]["target_scale"][idx] for batch in batches])
                 else:
-                    scale = torch.tensor([batch[0]["target_scale"][idx] for batch in batches], dtype=torch.float)
+                    scale = torch.from_numpy(
+                        np.array([batch[0]["target_scale"][idx] for batch in batches], dtype=np.float32),
+                    )
                 target_scale.append(scale)
         else:  # convert to tensor
             target_scale = torch.tensor([batch[0]["target_scale"] for batch in batches], dtype=torch.float)
