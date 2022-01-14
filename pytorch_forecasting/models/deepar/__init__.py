@@ -140,7 +140,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         rnn_class = get_rnn(cell_type)
         cont_size = len(self.reals)
-        cat_size = sum([size[1] for size in self.hparams.embedding_sizes.values()])
+        cat_size = sum(self.embeddings.output_size.values())
         input_size = cont_size + cat_size
         self.rnn = rnn_class(
             input_size=input_size,
