@@ -71,7 +71,28 @@ class MultiEmbedding(nn.Module):
                 ``max_embedding_size``, it will be constrained. Defaults to None.
         """
         super().__init__()
-        if not isinstance(embedding_sizes, dict):
+        if isinstance(embedding_sizes, dict):
+            self.concat_output = False  # return dictionary of embeddings
+            # conduct input data checks
+            assert x_categoricals is not None, "x_categoricals must be provided."
+            categorical_group_variables = [name for names in categorical_groups.values() for name in names]
+            if len(categorical_groups) > 0:
+                assert all(
+                    name in embedding_sizes for name in categorical_groups
+                ), "categorical_groups must be in embedding_sizes."
+                assert not any(
+                    name in embedding_sizes for name in categorical_group_variables
+                ), "group variables in categorical_groups must not be in embedding_sizes."
+                assert all(
+                    name in x_categoricals for name in categorical_group_variables
+                ), "group variables in categorical_groups must be in x_categoricals."
+            assert all(
+                name in embedding_sizes for name in embedding_sizes if name not in categorical_group_variables
+            ), (
+                "all variables in embedding_sizes must be in x_categoricals - but only if"
+                "not already in categorical_groups."
+            )
+        else:
             assert (
                 x_categoricals is None and len(categorical_groups) == 0
             ), "If embedding_sizes is not a dictionary, categorical_groups and x_categoricals must be empty."
@@ -79,9 +100,6 @@ class MultiEmbedding(nn.Module):
             embedding_sizes = {str(name): size for name, size in enumerate(embedding_sizes)}
             x_categoricals = list(embedding_sizes.keys())
             self.concat_output = True
-        else:
-            self.concat_output = False
-        assert x_categoricals is not None, "x_categoricals must be provided."
 
         # infer embedding sizes if not determined
         self.embedding_sizes = {
@@ -171,4 +189,5 @@ class MultiEmbedding(nn.Module):
 
         if self.concat_output:  # concatenate output
             return torch.cat(list(input_vectors.values()), dim=-1)
-        return input_vectors
+        else:
+            return input_vectors
