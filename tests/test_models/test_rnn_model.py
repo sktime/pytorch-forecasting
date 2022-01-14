@@ -4,11 +4,11 @@ import shutil
 import pytest
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
 from torch import nn
 
 from pytorch_forecasting.data.encoders import GroupNormalizer
+from pytorch_forecasting.loggers import ForecastingTensorBoardLogger
 from pytorch_forecasting.metrics import MAE, CrossEntropy, QuantileLoss
 from pytorch_forecasting.models import RecurrentNetwork
 
@@ -36,7 +36,7 @@ def _integration(
 
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
-    logger = TensorBoardLogger(tmp_path)
+    logger = ForecastingTensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=gpus,
