@@ -48,16 +48,18 @@ class MultiEmbedding(nn.Module):
         Args:
             embedding_sizes (Union[Dict[str, Tuple[int, int]], Dict[str, int], List[int], List[Tuple[int, int]]]):
                 either
+
                 * dictionary of embedding sizes, e.g. ``{'cat1': (10, 3)}``
-                 indicates that the first categorical variable has 10 unique values which are mapped to 3 embedding
-                 dimensions. Use :py:func:`~pytorch_forecasting.utils.get_embedding_size` to automatically obtain
-                 reasonable embedding sizes depending on the number of categories.
+                  indicates that the first categorical variable has 10 unique values which are mapped to 3 embedding
+                  dimensions. Use :py:func:`~pytorch_forecasting.utils.get_embedding_size` to automatically obtain
+                  reasonable embedding sizes depending on the number of categories.
                 * dictionary of categorical sizes, e.g. ``{'cat1': 10}`` where embedding sizes are inferred by
                   :py:func:`~pytorch_forecasting.utils.get_embedding_size`.
                 * list of embedding and categorical sizes, e.g. ``[(10, 3), (20, 2)]`` (requires ``x_categoricals`` to
                   be empty)
                 * list of categorical sizes where embedding sizes are inferred by
                   :py:func:`~pytorch_forecasting.utils.get_embedding_size` (requires ``x_categoricals`` to be empty).
+
                 If input is provided as list, output will be a single tensor of shape batch x (optional) time x
                 sum(embedding_sizes). Otherwise, output is a dictionary of embedding tensors.
             x_categoricals (List[str]): list of categorical variables that are used as input.
