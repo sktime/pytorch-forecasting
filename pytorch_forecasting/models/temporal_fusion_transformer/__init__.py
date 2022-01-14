@@ -159,7 +159,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # variable selection
         # variable selection for static variables
-        static_input_sizes = {name: self.hparams.embedding_sizes[name][1] for name in self.hparams.static_categoricals}
+        static_input_sizes = {
+            name: self.input_embeddings.output_size[name] for name in self.hparams.static_categoricals
+        }
         static_input_sizes.update(
             {
                 name: self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
@@ -176,7 +178,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # variable selection for encoder and decoder
         encoder_input_sizes = {
-            name: self.hparams.embedding_sizes[name][1] for name in self.hparams.time_varying_categoricals_encoder
+            name: self.input_embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder
         }
         encoder_input_sizes.update(
             {
@@ -186,7 +188,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         decoder_input_sizes = {
-            name: self.hparams.embedding_sizes[name][1] for name in self.hparams.time_varying_categoricals_decoder
+            name: self.input_embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_decoder
         }
         decoder_input_sizes.update(
             {
