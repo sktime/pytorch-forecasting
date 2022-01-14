@@ -6,6 +6,7 @@
 
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
+- More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)
 
 ### Fixed
 
