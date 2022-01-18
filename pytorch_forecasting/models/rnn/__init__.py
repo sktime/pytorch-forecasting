@@ -98,7 +98,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         lagged_target_names = [l for lags in target_lags.values() for l in lags]
         assert set(self.encoder_variables) - set(to_list(target)) - set(lagged_target_names) == set(
             self.decoder_variables
-        ), "Encoder and decoder variables have to be the same apart from target variable"
+        ) - set(lagged_target_names), "Encoder and decoder variables have to be the same apart from target variable"
         for targeti in to_list(target):
             assert (
                 targeti in time_varying_reals_encoder
@@ -109,7 +109,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
 
         rnn_class = get_rnn(cell_type)
         cont_size = len(self.reals)
-        cat_size = sum([size[1] for size in self.hparams.embedding_sizes.values()])
+        cat_size = sum(self.embeddings.output_size.values())
         input_size = cont_size + cat_size
         self.rnn = rnn_class(
             input_size=input_size,
@@ -174,7 +174,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             input_vector = flat_embeddings
 
         if len(self.reals) > 0:
-            input_vector = x_cont
+            input_vector = x_cont.clone()
 
         if len(self.reals) > 0 and len(self.categoricals) > 0:
             input_vector = torch.cat([x_cont, flat_embeddings], dim=-1)

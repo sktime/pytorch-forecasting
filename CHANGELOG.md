@@ -11,6 +11,42 @@
 
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
 
+## v0.9.3 UNRELEASED
+
+### Added
+
+- Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
+- Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
+- More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)
+
+### Fixed
+
+- Fix pip install via github (#798)
+
+### Contributors
+
+- jdb78
+- christy
+- lukemerrick
+- Seon82
+
+## v0.9.2 Maintenance Release (30/11/2021)
+
+### Added
+
+- Added support for running `pytorch_lightning.trainer.test` (#759)
+
+### Fixed
+
+- Fix inattention mutation to `x_cont` (#732).
+- Compatability with pytorch-lightning 1.5 (#758)
+
+### Contributors
+
+- eavae
+- danielgafni
+- jdb78
+
 ## v0.9.1 Maintenance Release (26/09/2021)
 
 ### Added

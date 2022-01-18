@@ -68,6 +68,8 @@ pyro-ppl = "^1.7.0"
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
+pre-commit = "^2.16.0"
+
 invoke = "*"
 flake8 = "*"
 mypy = "*"
@@ -84,7 +86,7 @@ pyarrow = "*"
 
 # jupyter notebook
 ipykernel = "*"
-black = { version = "*", allow-prereleases = true }
+black = { version = "*", allow-prereleases = true, extras = ["jupyter"] }
 
 # documentatation
 sphinx = "*"
@@ -104,5 +106,5 @@ dirty = false
 style = "semver"  # semantic versioning
 
 [build-system]  # make the package pip installable
-requires = ["poetry_core>=1.1.0", "poetry-dynamic-versioning>=0.9.0"]
+requires = ["poetry-core>=1.0.7", "poetry-dynamic-versioning>=0.13.1"]
 build-backend = "poetry.core.masonry.api"

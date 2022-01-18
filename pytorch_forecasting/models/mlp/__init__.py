@@ -104,7 +104,7 @@ class DecoderMLP(BaseModelWithCovariates):
             mlp_output_size = sum(self.hparams.output_size)
 
         cont_size = len(self.decoder_reals_positions)
-        cat_size = sum([emb.embedding_dim for emb in self.input_embeddings.values()])
+        cat_size = sum(self.input_embeddings.output_size.values())
         input_size = cont_size + cat_size
 
         self.mlp = FullyConnectedModule(

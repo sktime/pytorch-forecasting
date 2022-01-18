@@ -114,7 +114,7 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         """
         if self.add_nan:
             if self.warn:
-                cond = ~np.isin(y, self.classes_)
+                cond = np.array([item not in self.classes_ for item in y])
                 if cond.any():
                     warnings.warn(
                         f"Found {np.unique(np.asarray(y)[cond]).size} unknown classes which were set to NaN",
@@ -325,46 +325,61 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             TorchNormalizer: self
         """
         y = self.preprocess(y)
+        self._set_parameters(y_center=y, y_scale=y)
+        return self
 
+    def _set_parameters(
+        self, y_center: Union[pd.Series, np.ndarray, torch.Tensor], y_scale: Union[pd.Series, np.ndarray, torch.Tensor]
+    ):
+        """
+        Calculate parameters for scale and center based on input timeseries
+
+        Args:
+            y_center (Union[pd.Series, np.ndarray, torch.Tensor]): timeseries for calculating center
+            y_scale (Union[pd.Series, np.ndarray, torch.Tensor]): timeseries for calculating scale
+        """
         if self.method == "identity":
-            if isinstance(y, torch.Tensor):
-                self.center_ = torch.zeros(y.size()[:-1])
-                self.scale_ = torch.ones(y.size()[:-1])
-            elif isinstance(y, (np.ndarray, pd.Series, pd.DataFrame)):
-                self.center_ = np.zeros(y.shape[:-1])
-                self.scale_ = np.ones(y.shape[:-1])
+            if isinstance(y_center, torch.Tensor):
+                self.center_ = torch.zeros(y_center.size()[:-1])
+                self.scale_ = torch.ones(y_scale.size()[:-1])
+            elif isinstance(y_center, (np.ndarray, pd.Series, pd.DataFrame)):
+                self.center_ = np.zeros(y_center.shape[:-1])
+                self.scale_ = np.ones(y_scale.shape[:-1])
             else:
                 self.center_ = 0.0
                 self.scale_ = 1.0
 
         elif self.method == "standard":
-            if isinstance(y, torch.Tensor):
-                self.center_ = torch.mean(y, dim=-1)
-                self.scale_ = torch.std(y, dim=-1) + self.eps
-            elif isinstance(y, np.ndarray):
-                self.center_ = np.mean(y, axis=-1)
-                self.scale_ = np.std(y, axis=-1) + self.eps
+            if isinstance(y_center, torch.Tensor):
+                self.center_ = torch.mean(y_center, dim=-1)
+                self.scale_ = torch.std(y_scale, dim=-1) + self.eps
+            elif isinstance(y_center, np.ndarray):
+                self.center_ = np.mean(y_center, axis=-1)
+                self.scale_ = np.std(y_scale, axis=-1) + self.eps
             else:
-                self.center_ = np.mean(y)
-                self.scale_ = np.std(y) + self.eps
+                self.center_ = np.mean(y_center)
+                self.scale_ = np.std(y_scale) + self.eps
+            # correct numpy scalar dtype promotion, e.g. fix type from `np.float32(0.0) + 1e-8` gives `np.float64(1e-8)`
+            if not torch.is_tensor(self.scale_) and np.isscalar(self.scale_):
+                self.scale_ = self.scale_.astype(y_scale.dtype)
 
         elif self.method == "robust":
-            if isinstance(y, torch.Tensor):
-                self.center_ = torch.median(y, dim=-1).values
-                q_75 = y.kthvalue(int(len(y) * 0.75), dim=-1).values
-                q_25 = y.kthvalue(int(len(y) * 0.25), dim=-1).values
-            elif isinstance(y, np.ndarray):
-                self.center_ = np.median(y, axis=-1)
-                q_75 = np.percentile(y, 75, axis=-1)
-                q_25 = np.percentile(y, 25, axis=-1)
+            if isinstance(y_center, torch.Tensor):
+                self.center_ = torch.median(y_center, dim=-1).values
+                q_75 = y_scale.kthvalue(int(len(y_scale) * 0.75), dim=-1).values
+                q_25 = y_scale.kthvalue(int(len(y_scale) * 0.25), dim=-1).values
+            elif isinstance(y_center, np.ndarray):
+                self.center_ = np.median(y_center, axis=-1)
+                q_75 = np.percentile(y_scale, 75, axis=-1)
+                q_25 = np.percentile(y_scale, 25, axis=-1)
             else:
-                self.center_ = np.median(y)
-                q_75 = np.percentile(y, 75)
-                q_25 = np.percentile(y, 25)
+                self.center_ = np.median(y_center)
+                q_75 = np.percentile(y_scale, 75)
+                q_25 = np.percentile(y_scale, 25)
             self.scale_ = (q_75 - q_25) / 2.0 + self.eps
         if not self.center:
             self.scale_ = self.center_
-            if isinstance(y, torch.Tensor):
+            if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros_like(self.center_)
             else:
                 self.center_ = np.zeros_like(self.center_)
@@ -375,8 +390,6 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 "the data or using data with higher variance for numerical stability",
                 UserWarning,
             )
-
-        return self
 
     def transform(
         self,
@@ -407,7 +420,12 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
         # transform
+        dtype = y.dtype
         y = (y - center) / scale
+        try:
+            y = y.astype(dtype)
+        except AttributeError:  # torch.Tensor has `.type()` instead of `.astype()`
+            y = y.type(dtype)
 
         # return with center and scale or without
         if return_norm:
@@ -439,6 +457,9 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         Returns:
             torch.Tensor: de-scaled data
         """
+        # ensure output dtype matches input dtype
+        dtype = data["prediction"].dtype
+
         # inverse transformation with tensors
         norm = data["target_scale"]
 
@@ -454,7 +475,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         # return correct shape
         if data["prediction"].ndim == 1 and y.ndim > 1:
             y = y.squeeze(0)
-        return y
+        return y.type(dtype)
 
 
 class EncoderNormalizer(TorchNormalizer):
@@ -465,7 +486,89 @@ class EncoderNormalizer(TorchNormalizer):
     This normalizer can be particularly useful as target normalizer.
     """
 
-    pass
+    def __init__(
+        self,
+        method: str = "standard",
+        center: bool = True,
+        max_length: Union[int, List[int]] = None,
+        transformation: Union[str, Tuple[Callable, Callable]] = None,
+        eps: float = 1e-8,
+    ):
+        """
+        Initialize
+
+        Args:
+            method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
+                or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
+            center (bool, optional): If to center the output to zero. Defaults to True.
+            max_length(Union[int, List[int]], optional): Maximum length to take into account for calculating
+                parameters. If tuple, first length is maximum length for calculating center and second is maximum
+                length for calculating scale. Defaults to entire length of time series.
+            transformation (Union[str, Tuple[Callable, Callable]] optional): Transform values before
+                applying normalizer. Available options are
+
+                * None (default): No transformation of values
+                * log: Estimate in log-space leading to a multiplicative model
+                * logp1: Estimate in log-space but add 1 to values before transforming for stability
+                    (e.g. if many small values <<1 are present).
+                    Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
+                * logit: Apply logit transformation on values that are between 0 and 1
+                * softplus: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
+                * relu: Apply max(0, x) to output
+                * Tuple[Callable, Callable] of PyTorch functions that transforms and inversely transforms values.
+
+            eps (float, optional): Number for numerical stability of calculations.
+                Defaults to 1e-8.
+        """
+        super().__init__(method=method, center=center, transformation=transformation, eps=eps)
+        self.max_length = max_length
+
+    def fit(self, y: Union[pd.Series, np.ndarray, torch.Tensor]):
+        """
+        Fit transformer, i.e. determine center and scale of data
+
+        Args:
+            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
+
+        Returns:
+            TorchNormalizer: self
+        """
+        # reduce size of time series - take only max length
+        if self.max_length is None:
+            y_center = y_scale = self.preprocess(y)
+        elif isinstance(self.max_length, int):
+            y_center = y_scale = self.preprocess(self._slice(y, slice(-self.max_length, None)))
+        else:
+            y = self.preprocess(self._slice(y, slice(-max(self.max_length), None)))
+            if np.argmax(self.max_length) == 0:
+                y_center = y
+                y_scale = self._slice(y, slice(-self.max_length[1], None))
+            else:
+                y_center = self._slice(y, slice(-self.max_length[0], None))
+                y_scale = y
+        # set parameters for normalization
+        self._set_parameters(y_center=y_center, y_scale=y_scale)
+        return self
+
+    @staticmethod
+    def _slice(
+        x: Union[pd.DataFrame, pd.Series, np.ndarray, torch.Tensor], s: slice
+    ) -> Union[pd.DataFrame, pd.Series, np.ndarray, torch.Tensor]:
+        """
+        Slice pandas data frames, numpy arrays and tensors.
+
+        Args:
+            x (Union[pd.Series, np.ndarray, torch.Tensor]): object to slice
+            s (slice): slice, e.g. ``slice(None, -5)```
+
+        Returns:
+            Union[pd.Series, np.ndarray, torch.Tensor]: sliced object
+        """
+
+        if isinstance(x, (pd.DataFrame, pd.Series)):
+            return x[s]
+        else:
+            return x[..., s]
 
 
 class GroupNormalizer(TorchNormalizer):

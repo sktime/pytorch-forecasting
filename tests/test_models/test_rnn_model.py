@@ -16,6 +16,7 @@ from pytorch_forecasting.models import RecurrentNetwork
 def _integration(
     data_with_covariates, tmp_path, gpus, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
 ):
+    data_with_covariates = data_with_covariates.copy()
     if clip_target:
         data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
     else:
@@ -31,19 +32,21 @@ def _integration(
     dataloaders_with_covariates = make_dataloaders(data_with_covariates, **data_loader_default_kwargs)
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
+    test_dataloader = dataloaders_with_covariates["test"]
+
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
         gpus=gpus,
-        weights_summary="top",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
-        checkpoint_callback=True,
+        enable_checkpointing=True,
         default_root_dir=tmp_path,
         limit_train_batches=2,
         limit_val_batches=2,
+        limit_test_batches=2,
         logger=logger,
     )
 
@@ -53,15 +56,18 @@ def _integration(
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
+        hidden_size=5,
         **kwargs
     )
     net.size()
     try:
         trainer.fit(
             net,
-            train_dataloader=train_dataloader,
+            train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader,
         )
+        test_outputs = trainer.test(net, dataloaders=test_dataloader)
+        assert len(test_outputs) > 0
         # check loading
         net = RecurrentNetwork.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
@@ -83,7 +89,7 @@ def _integration(
         ),
         dict(
             data_loader_kwargs=dict(
-                lags={"volume": [2, 5]}, target="volume", time_varying_unknown_reals=["volume"], min_encoder_length=10
+                lags={"volume": [2, 5]}, target="volume", time_varying_unknown_reals=["volume"], min_encoder_length=2
             )
         ),
         dict(
@@ -99,7 +105,7 @@ def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
     _integration(data_with_covariates, tmp_path, gpus, **kwargs)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def model(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = RecurrentNetwork.from_dataset(
@@ -107,6 +113,7 @@ def model(dataloaders_with_covariates):
         learning_rate=0.15,
         log_gradient_flow=True,
         log_interval=1000,
+        hidden_size=5,
     )
     return net
 
