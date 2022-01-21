@@ -53,7 +53,7 @@ The general setup for training and testing a model is
 #. Load the model from the model checkpoint and apply it to new data.
 
 
-The :ref:`Tutorials <tutorials>` section provides detailled guidance and examples on how to use models and implement new ones.
+The :ref:`Tutorials <tutorials>` section provides detailed guidance and examples on how to use models and implement new ones.
 
 
 Example
