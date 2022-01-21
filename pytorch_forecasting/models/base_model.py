@@ -599,7 +599,7 @@ class BaseModel(LightningModule):
 
     def epoch_end(self, outputs):
         """
-        Run at epoch end for training or validation. Can be overriden in models.
+        Run at epoch end for training or validation. Can be overridden in models.
         """
         pass
 

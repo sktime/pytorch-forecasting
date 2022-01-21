@@ -45,9 +45,9 @@ class Metric(LightningMetric):
 
     def compute(self) -> torch.Tensor:
         """
-        Abstract method that calcualtes metric
+        Abstract method that calculates metric
 
-        Should be overriden in derived classes
+        Should be overridden in derived classes
 
         Args:
             y_pred: network output
@@ -861,7 +861,7 @@ class MASE(MultiHorizonMetric):
         return (y_pred - target).abs() / scaling.unsqueeze(-1)
 
     def calculate_scaling(self, target, lengths, encoder_target, encoder_lengths):
-        # calcualte mean(abs(diff(targets)))
+        # calculate mean(abs(diff(targets)))
         eps = 1e-6
         batch_size = target.size(0)
         total_lengths = lengths + encoder_lengths
