@@ -1103,10 +1103,10 @@ class DistributionLoss(MultiHorizonMetric):
             quantiles = self.quantiles
         try:
             distribution = self.map_x_to_distribution(y_pred)
-            quantiles = distribution.icdf(torch.tensor(quantiles, device=y_pred.device)[:, None, None]).permute(1, 2, 0)
+            quantiles = distribution.icdf(torch.tensor(quantiles, device=y_pred.device, dtype=torch.float64)[:, None, None]).permute(1, 2, 0)
         except NotImplementedError:  # resort to derive quantiles empirically
             samples = torch.sort(self.sample(y_pred, n_samples), -1).values
-            quantiles = torch.quantile(samples, torch.tensor(quantiles, device=samples.device), dim=2).permute(1, 2, 0)
+            quantiles = torch.quantile(samples, torch.tensor(quantiles, device=samples.device, dtype=torch.float64), dim=2).permute(1, 2, 0)
         return quantiles
 
 
