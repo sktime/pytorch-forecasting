@@ -1484,7 +1484,7 @@ class BaseModelWithCovariates(BaseModel):
         max_encoder_length = x["decoder_lengths"].max()
         mask = create_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
         # select valid y values
-        y_flat = x["decoder_target"][mask]
+        y_flat = x["decoder_target"][mask].double()
         y_pred_flat = y_pred[mask]
 
         # determine in which average in log-space to transform data
