@@ -648,7 +648,7 @@ class TimeSeriesDataSet(Dataset):
 
         # encode group ids - this encoding
         for name, group_name in self._group_ids_mapping.items():
-            # use existing encoder - but a copy of it not too loose current encodings
+            # use existing encoder - but a copy of it not to lose current encodings
             encoder = deepcopy(self.categorical_encoders.get(group_name, NaNLabelEncoder()))
             self.categorical_encoders[group_name] = encoder.fit(data[name].to_numpy().reshape(-1), overwrite=False)
             data[group_name] = self.transform_values(name, data[name], inverse=False, group_id=True)
