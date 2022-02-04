@@ -660,7 +660,7 @@ class TimeSeriesDataSet(Dataset):
             group_ids_to_encode = self.group_ids
         else:
             group_ids_to_encode = []
-        for name in dict.fromkeys(group_ids_to_encode + self.categoricals):
+        for name in dict.fromkeys(self.categoricals):
             if name in self.lagged_variables:
                 continue  # do not encode here but only in transform
             if name in self.variable_groups:  # fit groups
@@ -688,7 +688,11 @@ class TimeSeriesDataSet(Dataset):
             # targets and its lagged versions are handled separetely
             if name not in self.target_names and name not in self.lagged_targets:
                 data[name] = self.transform_values(
-                    name, data[name], inverse=False, ignore_na=name in self.lagged_variables
+                    name=name,
+                    values=data[name],
+                    inverse=False,
+                    group_id=name in self._group_ids_mapping,
+                    ignore_na=name in self.lagged_variables,
                 )
 
         # save special variables
