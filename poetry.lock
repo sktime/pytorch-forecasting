@@ -704,7 +704,7 @@ test = ["pytest (!=5.3.4)", "pytest-cov", "flaky", "ipyparallel"]
 
 [[package]]
 name = "ipython"
-version = "7.30.1"
+version = "7.31.1"
 description = "IPython: Productive Interactive Computing"
 category = "dev"
 optional = false
@@ -2850,8 +2850,8 @@ ipykernel = [
     {file = "ipykernel-6.7.0.tar.gz", hash = "sha256:d82b904fdc2fd8c7b1fbe0fa481c68a11b4cd4c8ef07e6517da1f10cc3114d24"},
 ]
 ipython = [
-    {file = "ipython-7.30.1-py3-none-any.whl", hash = "sha256:fc60ef843e0863dd4e24ab2bb5698f071031332801ecf8d1aeb4fb622056545c"},
-    {file = "ipython-7.30.1.tar.gz", hash = "sha256:cb6aef731bf708a7727ab6cde8df87f0281b1427d41e65d62d4b68934fa54e97"},
+    {file = "ipython-7.31.1-py3-none-any.whl", hash = "sha256:55df3e0bd0f94e715abd968bedd89d4e8a7bce4bf498fb123fed4f5398fea874"},
+    {file = "ipython-7.31.1.tar.gz", hash = "sha256:b5548ec5329a4bcf054a5deed5099b0f9622eb9ea51aaa7104d215fece201d8c"},
 ]
 ipython-genutils = [
     {file = "ipython_genutils-0.2.0-py2.py3-none-any.whl", hash = "sha256:72dd37233799e619666c9f639a9da83c34013a73e8bbc79a7a6348d93c61fab8"},
