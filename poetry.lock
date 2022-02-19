@@ -1171,7 +1171,7 @@ test = ["hypothesis (>=3.58)", "pytest (>=6.0)", "pytest-xdist"]
 
 [[package]]
 name = "pandoc"
-version = "2.0.1"
+version = "2.1"
 description = "Pandoc Documents for Python"
 category = "dev"
 optional = false
@@ -3291,7 +3291,7 @@ pandas = [
     {file = "pandas-1.3.5.tar.gz", hash = "sha256:1e4285f5de1012de20ca46b188ccf33521bff61ba5c5ebd78b4fb28e5416a9f1"},
 ]
 pandoc = [
-    {file = "pandoc-2.0.1.tar.gz", hash = "sha256:4d3850314fa56cb6164101ad8af561db0c0d5fd19d047e2ca8a9119bf47dac23"},
+    {file = "pandoc-2.1.tar.gz", hash = "sha256:5385d81a2176237e3c48e9719ab661c7046ec5b24db5f138332f189cd7793b87"},
 ]
 pandocfilters = [
     {file = "pandocfilters-1.5.0-py2.py3-none-any.whl", hash = "sha256:33aae3f25fd1a026079f5d27bdd52496f0e0803b3469282162bafdcbdf6ef14f"},
