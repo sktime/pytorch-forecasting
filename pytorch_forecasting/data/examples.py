@@ -87,13 +87,13 @@ def generate_ar_data(
     # sample parameters
     np.random.seed(seed)
     linear_trends = np.random.normal(size=n_series)[:, None] / timesteps
-    quadratic_trends = np.random.normal(size=n_series)[:, None] / timesteps ** 2
+    quadratic_trends = np.random.normal(size=n_series)[:, None] / timesteps**2
     seasonalities = np.random.normal(size=n_series)[:, None]
     levels = level * np.random.normal(size=n_series)[:, None]
 
     # generate series
     x = np.arange(timesteps)[None, :]
-    series = (x * linear_trends + x ** 2 * quadratic_trends) * trend + seasonalities * np.sin(
+    series = (x * linear_trends + x**2 * quadratic_trends) * trend + seasonalities * np.sin(
         2 * np.pi * seasonality * x / timesteps
     )
     # add noise

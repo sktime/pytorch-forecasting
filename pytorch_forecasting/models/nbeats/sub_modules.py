@@ -151,10 +151,10 @@ class NBEATSTrendBlock(NBEATSBlock):
         backcast_linspace, forecast_linspace = linspace(backcast_length, forecast_length, centered=True)
         norm = np.sqrt(forecast_length / thetas_dim)  # ensure range of predictions is comparable to input
 
-        coefficients = torch.tensor([backcast_linspace ** i for i in range(thetas_dim)], dtype=torch.float32)
+        coefficients = torch.tensor([backcast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
         self.register_buffer("T_backcast", coefficients * norm)
 
-        coefficients = torch.tensor([forecast_linspace ** i for i in range(thetas_dim)], dtype=torch.float32)
+        coefficients = torch.tensor([forecast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
         self.register_buffer("T_forecast", coefficients * norm)
 
     def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
