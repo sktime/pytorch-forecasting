@@ -489,13 +489,16 @@ class BaseModel(LightningModule):
             gradient = 0
             # todo: should monotone constrains be applicable to certain targets?
             for pred in prediction_list:
-                gradient = gradient + torch.autograd.grad(
-                    outputs=pred,
-                    inputs=x["decoder_cont"],
-                    grad_outputs=torch.ones_like(pred),  # t
-                    create_graph=True,  # allows usage in graph
-                    allow_unused=True,
-                )[0]
+                gradient = (
+                    gradient
+                    + torch.autograd.grad(
+                        outputs=pred,
+                        inputs=x["decoder_cont"],
+                        grad_outputs=torch.ones_like(pred),  # t
+                        create_graph=True,  # allows usage in graph
+                        allow_unused=True,
+                    )[0]
+                )
 
             # select relevant features
             indices = torch.tensor(
