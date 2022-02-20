@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.1.0
     hooks:
     - id: trailing-whitespace
     - id: end-of-file-fixer
@@ -13,15 +13,15 @@ repos:
     hooks:
     - id: flake8
   - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.9.3
+    rev: v5.10.1
     hooks:
     - id: isort
   - repo: https://github.com/psf/black
-    rev: 21.12b0
+    rev: 22.1.0
     hooks:
     - id: black
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.2.2
+    rev: 1.2.3
     hooks:
       - id: nbqa-black
       - id: nbqa-isort
