@@ -811,6 +811,10 @@ class GroupNormalizer(TorchNormalizer):
                 try:
                     norm = norm * self.norm_[group_name].loc[group].to_numpy()
                 except KeyError:
+                    warnings.warn(
+                        f"GroupNormalizer found no value for {group_name} {group}. Filling in missing",
+                        UserWarning,
+                    )
                     norm = norm * np.asarray([self.missing_[group_name][name] for name in self.names])
             norm = np.power(norm, 1.0 / len(self.groups))
             params = norm
@@ -818,6 +822,10 @@ class GroupNormalizer(TorchNormalizer):
             try:
                 params = self.norm_.loc[groups].to_numpy()
             except (KeyError, TypeError):
+                warnings.warn(
+                    f"GroupNormalizer found no value for {groups}. Filling in missing",
+                    UserWarning,
+                )
                 params = np.asarray([self.missing_[name] for name in self.names])
         return params
 
@@ -834,22 +842,34 @@ class GroupNormalizer(TorchNormalizer):
         if len(self.groups) == 0:
             norm = np.asarray([self.norm_["center"], self.norm_["scale"]]).reshape(1, -1)
         elif self.scale_by_group:
-            norm = [
-                np.prod(
-                    [
-                        X[group_name]
-                        .map(self.norm_[group_name][name])
-                        .fillna(self.missing_[group_name][name])
-                        .to_numpy()
-                        for group_name in self.groups
-                    ],
-                    axis=0,
-                )
-                for name in self.names
-            ]
+            norm = []
+            for name in self.names:
+                factors = []
+                for group_name in self.groups:
+                    factor = X[group_name].map(self.norm_[group_name][name])
+
+                    if factor.isnull().any():
+                        warnings.warn(
+                            f"GroupNormalizer found missing values in {group_name} and is filling them.",
+                            UserWarning,
+                        )
+                        factor = factor.fillna(self.missing_[group_name][name])
+
+                    factors.append(factor.to_numpy())
+
+                norm.append(np.prod(factors, axis=0))
+
             norm = np.power(np.stack(norm, axis=1), 1.0 / len(self.groups))
         else:
-            norm = X[self.groups].set_index(self.groups).join(self.norm_).fillna(self.missing_).to_numpy()
+            norm = X[self.groups].set_index(self.groups).join(self.norm_)
+
+            if norm.isnull().any().any():
+                warnings.warn(
+                    "GroupNormalizer found missing values and is filling them.",
+                    UserWarning,
+                )
+                norm = norm.fillna(self.missing_)
+            norm = norm.to_numpy()
         return norm
 
 

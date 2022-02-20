@@ -106,7 +106,7 @@ def check_for_nonfinite(tensor: torch.Tensor, names: Union[str, List[str]]) -> t
                 "`allow_missing_timesteps` refers to missing rows, not to missing values. Possible strategies to "
                 f"fix the issue are (a) dropping the variable {name}, "
                 "(b) using `NaNLabelEncoder(add_nan=True)` for categorical variables, "
-                "(c) filling missing values and/or (d) optionally adding a variable indicating filled values"
+                "(c) filling missing values and/or (d) optionally adding a variable indicating filled values."
             )
     return tensor
 
@@ -539,7 +539,7 @@ class TimeSeriesDataSet(Dataset):
                     if self.max_encoder_length > 20 and self.min_encoder_length > 1:
                         normalizers.append(EncoderNormalizer(transformation=transformer))
                     else:
-                        normalizers.append(GroupNormalizer(transformation=transformer))
+                        normalizers.append(GroupNormalizer(groups=self.group_ids, transformation=transformer))
             if self.multi_target:
                 self.target_normalizer = MultiNormalizer(normalizers)
             else:
@@ -653,14 +653,7 @@ class TimeSeriesDataSet(Dataset):
             self.categorical_encoders[group_name] = encoder.fit(data[name].to_numpy().reshape(-1), overwrite=False)
             data[group_name] = self.transform_values(name, data[name], inverse=False, group_id=True)
 
-        # encode categoricals first to ensure that group normalizer for relies on encoded categories
-        if isinstance(
-            self.target_normalizer, (GroupNormalizer, MultiNormalizer)
-        ):  # if we use a group normalizer, group_ids must be encoded as well
-            group_ids_to_encode = self.group_ids
-        else:
-            group_ids_to_encode = []
-        for name in dict.fromkeys(group_ids_to_encode + self.categoricals):
+        for name in dict.fromkeys(self.categoricals):
             if name in self.lagged_variables:
                 continue  # do not encode here but only in transform
             if name in self.variable_groups:  # fit groups
@@ -684,7 +677,7 @@ class TimeSeriesDataSet(Dataset):
                         self.categorical_encoders[name] = self.categorical_encoders[name].fit(data[name])
 
         # encode them
-        for name in dict.fromkeys(group_ids_to_encode + self.flat_categoricals):
+        for name in dict.fromkeys(self.flat_categoricals):
             # targets and its lagged versions are handled separetely
             if name not in self.target_names and name not in self.lagged_targets:
                 data[name] = self.transform_values(
@@ -705,6 +698,14 @@ class TimeSeriesDataSet(Dataset):
         # train target normalizer
         if self.target_normalizer is not None:
 
+            def select_and_rename_groups(X):
+                return X[self._group_ids].rename(
+                    columns={
+                        new_group_id_name: original_group_id_name
+                        for original_group_id_name, new_group_id_name in self._group_ids_mapping.items()
+                    }
+                )
+
             # fit target normalizer
             try:
                 check_is_fitted(self.target_normalizer)
@@ -712,7 +713,10 @@ class TimeSeriesDataSet(Dataset):
                 if isinstance(self.target_normalizer, EncoderNormalizer):
                     self.target_normalizer.fit(data[self.target])
                 elif isinstance(self.target_normalizer, (GroupNormalizer, MultiNormalizer)):
-                    self.target_normalizer.fit(data[self.target], data)
+                    self.target_normalizer.fit(
+                        data[self.target],
+                        select_and_rename_groups(data),
+                    )
                 else:
                     self.target_normalizer.fit(data[self.target])
 
@@ -731,10 +735,14 @@ class TimeSeriesDataSet(Dataset):
                 data[self.target], scales = normalizer.fit_transform(data[self.target], data, return_norm=True)
 
             elif isinstance(self.target_normalizer, GroupNormalizer):
-                data[self.target], scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+                data[self.target], scales = self.target_normalizer.transform(
+                    data[self.target], select_and_rename_groups(data), return_norm=True
+                )
 
             elif isinstance(self.target_normalizer, MultiNormalizer):
-                transformed, scales = self.target_normalizer.transform(data[self.target], data, return_norm=True)
+                transformed, scales = self.target_normalizer.transform(
+                    data[self.target], select_and_rename_groups(data), return_norm=True
+                )
 
                 for idx, target in enumerate(self.target_names):
                     data[target] = transformed[idx]
@@ -895,7 +903,11 @@ class TimeSeriesDataSet(Dataset):
         # reals
         elif name in self.reals:
             if isinstance(transformer, GroupNormalizer):
-                return transform(values, data, **kwargs)
+                return transform(
+                    values,
+                    data,
+                    **kwargs,
+                )
             elif isinstance(transformer, EncoderNormalizer):
                 return transform(values, **kwargs)
             else:
