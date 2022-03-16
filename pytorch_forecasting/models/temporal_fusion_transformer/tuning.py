@@ -209,7 +209,10 @@ def optimize_hyperparameters(
         trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
         # report result
-        return metrics_callback.metrics[-1]["val_loss"].item()
+        if "val_loss" in metrics_callback.metrics[-1].keys():
+            return metrics_callback.metrics[-1]["val_loss"].item()
+        else:
+            return metrics_callback.metrics[-1]["sanity_check_loss"].item()
 
     # setup optuna and run
     if study is None:
