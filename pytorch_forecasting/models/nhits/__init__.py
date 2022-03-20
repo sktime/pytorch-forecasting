@@ -61,7 +61,6 @@ class NHiTS(BaseModelWithCovariates):
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
-        super(NHiTS, self).__init__()
         """
         todo: update
         N-HiTS model.
@@ -152,9 +151,8 @@ class NHiTS(BaseModelWithCovariates):
             output_size=self.hparams.output_size,
             static_size=len(self.hparams.static_reals)
             + sum(self.embeddings.output_size[name] for name in self.hparams.static_categoricals),
-            covariate_size=len(self.hparams.time_varying_reals_decoder)
-            + sum(self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder)
-            - len(self.target_names),
+            covariate_size=len(set(self.hparams.time_varying_reals_decoder) - set(self.target_names))
+            + sum(self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder),
             static_hidden_size=self.hparams.static_hidden_size,
             n_blocks=self.hparams.n_blocks,
             n_layers=self.hparams.n_layers,
@@ -188,18 +186,19 @@ class NHiTS(BaseModelWithCovariates):
         decoder_features = self.extract_features(x, self.embeddings, period="decoder")
         decoder_x_t = torch.concat([decoder_features[name] for name in self.decoder_variables], dim=2)
 
-        encoder_mask = create_mask(x["encoder_lengths"].max(), x["encoder_lengths"])
+        encoder_mask = create_mask(x["encoder_lengths"].max(), x["encoder_lengths"], inverse=True)
 
         forecast, backcast, block_forecasts, block_backcasts = self.model(
             encoder_y, encoder_mask, encoder_x_t, decoder_x_t, x_s
         )
-        block_predictions = torch.cat([block_backcasts.detach(), block_forecasts.detach()], dim=-1)
-        encoder_target = x["encoder_cont"][..., self.target_positions[0]]
+        block_predictions = torch.cat([block_backcasts.detach(), block_forecasts.detach()], dim=1)
+        encoder_target = x["encoder_cont"][..., self.target_positions]
         return self.to_network_output(
             prediction=self.transform_output(forecast, target_scale=x["target_scale"]),
             backcast=self.transform_output(prediction=encoder_target - backcast, target_scale=x["target_scale"]),
-            block_predictions=self.transform_output(
-                torch.stack(block_predictions, dim=0).sum(0), target_scale=x["target_scale"]
+            block_predictions=tuple(
+                self.transform_output(block_predictions[..., i], target_scale=x["target_scale"])
+                for i in range(block_predictions.size(-1))
             ),
         )
 

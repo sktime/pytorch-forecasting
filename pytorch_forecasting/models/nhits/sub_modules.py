@@ -144,6 +144,8 @@ class NHiTSBlock(nn.Module):
         ] + n_theta_hidden
 
         self.context_length = context_length
+        self.output_size = output_size
+        self.n_theta = n_theta
         self.prediction_length = prediction_length
         self.static_size = static_size
         self.static_hidden_size = static_hidden_size
@@ -175,7 +177,7 @@ class NHiTSBlock(nn.Module):
             if self.dropout_prob > 0:
                 hidden_layers.append(nn.Dropout(p=self.dropout_prob))
 
-        output_layer = [nn.Linear(in_features=n_theta_hidden[-1], out_features=n_theta)]
+        output_layer = [nn.Linear(in_features=n_theta_hidden[-1], out_features=n_theta * output_size)]
         layers = hidden_layers + output_layer
 
         # static_size is computed with data, static_hidden_size is provided by user, if 0 no statics are used
@@ -188,15 +190,20 @@ class NHiTSBlock(nn.Module):
         self, encoder_y: torch.Tensor, encoder_x_t: torch.Tensor, decoder_x_t: torch.Tensor, x_s: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        encoder_y = encoder_y.unsqueeze(1)
+        encoder_y = encoder_y.transpose(-1, -2)
         # Pooling layer to downsample input
         encoder_y = self.pooling_layer(encoder_y)
-        encoder_y = encoder_y.squeeze(1)
+        encoder_y = encoder_y.transpose(-1, -2)
 
         batch_size = len(encoder_y)
         if self.covariate_size > 0:
             encoder_y = torch.cat(
-                (encoder_y, encoder_x_t.reshape(batch_size, -1), decoder_x_t.reshape(batch_size, -1)), 1
+                (
+                    encoder_y.reshape(batch_size, -1),
+                    encoder_x_t.reshape(batch_size, -1),
+                    decoder_x_t.reshape(batch_size, -1),
+                ),
+                1,
             )
 
         # Static exogenous
@@ -205,8 +212,10 @@ class NHiTSBlock(nn.Module):
             encoder_y = torch.cat((encoder_y, x_s), 1)
 
         # Compute local projection weights and projection
-        theta = self.layers(encoder_y)
+        theta = self.layers(encoder_y).reshape(-1, self.n_theta)
         backcast, forecast = self.basis(theta, encoder_x_t, decoder_x_t)
+        backcast = backcast.reshape(-1, self.context_length, self.output_size)
+        forecast = forecast.reshape(-1, self.prediction_length, self.output_size)
 
         return backcast, forecast
 
@@ -340,24 +349,31 @@ class NHiTS(nn.Module):
         x_s,
     ):
 
-        residuals = encoder_y.flip(dims=(-1,))
-        encoder_x_t = encoder_x_t.flip(dims=(-1,))
-        encoder_mask = encoder_mask.flip(dims=(-1,))
+        residuals = (
+            encoder_y  # .flip(dims=(1,))  # todo: check if flip is required or should be rather replaced by scatter
+        )
+        # encoder_x_t = encoder_x_t.flip(dims=(-1,))
+        # encoder_mask = encoder_mask.flip(dims=(-1,))
+        encoder_mask = encoder_mask.unsqueeze(-1)
 
-        level = encoder_y[:, -1:]  # Level with Naive1
-        block_forecasts = [level.repeat(1, encoder_y.size(1), 1)]
+        level = encoder_y[:, -1:].repeat(1, decoder_x_t.size(1), 1)  # Level with Naive1
+        block_forecasts = [level]
+        block_backcasts = [encoder_y[:, -1:].repeat(1, encoder_y.size(1), 1)]
 
         forecast = level
         for block in self.blocks:
-            backcast, block_forecast = block(
+            block_backcast, block_forecast = block(
                 encoder_y=residuals, encoder_x_t=encoder_x_t, decoder_x_t=decoder_x_t, x_s=x_s
             )
-            residuals = (residuals - backcast) * encoder_mask
+            residuals = (residuals - block_backcast) * encoder_mask
+
             forecast = forecast + block_forecast
             block_forecasts.append(block_forecast)
+            block_backcasts.append(block_backcast)
 
-        # (n_batch, n_blocks, n_t)
-        block_forecasts = torch.stack(block_forecasts)
-        block_forecasts = block_forecasts.permute(1, 0, 2)
+        # (n_batch, n_t, n_outputs, n_blocks)
+        block_forecasts = torch.stack(block_forecasts, dim=-1)
+        block_backcasts = torch.stack(block_backcasts, dim=-1)
+        backcast = residuals
 
-        return forecast, block_forecasts
+        return forecast, backcast, block_forecasts, block_backcasts
