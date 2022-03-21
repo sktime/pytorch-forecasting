@@ -48,6 +48,9 @@ class NBeats(BaseModel):
         the most
         important benchmark for univariate time series forecasting.
 
+        The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently shown to consistently outperform
+        N-BEATS.
+
         Args:
             stack_types: One of the following values: “generic”, “seasonality" or “trend". A list of strings
                 of length 1 or ‘num_stacks’. Default and recommended value

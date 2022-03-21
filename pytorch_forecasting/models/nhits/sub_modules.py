@@ -122,20 +122,20 @@ class NHiTSBlock(nn.Module):
         static_size: int,
         static_hidden_size: int,
         n_theta: int,
-        n_theta_hidden: List[int],
-        n_pool_kernel_size: int,
+        hidden_size: List[int],
+        pooling_sizes: int,
         pooling_mode: str,
         basis: nn.Module,
         n_layers: int,
         batch_normalization: bool,
-        dropout_prob: float,
+        dropout: float,
         activation: str,
     ):
         super().__init__()
 
         assert pooling_mode in ["max", "average"]
 
-        self.context_length_pooled = int(np.ceil(context_length / n_pool_kernel_size))
+        self.context_length_pooled = int(np.ceil(context_length / pooling_sizes))
 
         if static_size == 0:
             static_hidden_size = 0
@@ -147,40 +147,36 @@ class NHiTSBlock(nn.Module):
         self.static_size = static_size
         self.static_hidden_size = static_hidden_size
         self.covariate_size = covariate_size
-        self.n_pool_kernel_size = n_pool_kernel_size
+        self.pooling_sizes = pooling_sizes
         self.batch_normalization = batch_normalization
-        self.dropout_prob = dropout_prob
+        self.dropout = dropout
 
-        self.n_theta_hidden = [
+        self.hidden_size = [
             self.context_length_pooled
             + (self.context_length + self.prediction_length) * self.covariate_size
             + self.static_hidden_size
-        ] + n_theta_hidden
+        ] + hidden_size
 
         assert activation in ACTIVATIONS, f"{activation} is not in {ACTIVATIONS}"
         activ = getattr(nn, activation)()
 
         if pooling_mode == "max":
-            self.pooling_layer = nn.MaxPool1d(
-                kernel_size=self.n_pool_kernel_size, stride=self.n_pool_kernel_size, ceil_mode=True
-            )
+            self.pooling_layer = nn.MaxPool1d(kernel_size=self.pooling_sizes, stride=self.pooling_sizes, ceil_mode=True)
         elif pooling_mode == "average":
-            self.pooling_layer = nn.AvgPool1d(
-                kernel_size=self.n_pool_kernel_size, stride=self.n_pool_kernel_size, ceil_mode=True
-            )
+            self.pooling_layer = nn.AvgPool1d(kernel_size=self.pooling_sizes, stride=self.pooling_sizes, ceil_mode=True)
 
         hidden_layers = []
         for i in range(n_layers):
-            hidden_layers.append(nn.Linear(in_features=self.n_theta_hidden[i], out_features=self.n_theta_hidden[i + 1]))
+            hidden_layers.append(nn.Linear(in_features=self.hidden_size[i], out_features=self.hidden_size[i + 1]))
             hidden_layers.append(activ)
 
             if self.batch_normalization:
-                hidden_layers.append(nn.BatchNorm1d(num_features=self.n_theta_hidden[i + 1]))
+                hidden_layers.append(nn.BatchNorm1d(num_features=self.hidden_size[i + 1]))
 
-            if self.dropout_prob > 0:
-                hidden_layers.append(nn.Dropout(p=self.dropout_prob))
+            if self.dropout > 0:
+                hidden_layers.append(nn.Dropout(p=self.dropout))
 
-        output_layer = [nn.Linear(in_features=self.n_theta_hidden[-1], out_features=n_theta * output_size)]
+        output_layer = [nn.Linear(in_features=self.hidden_size[-1], out_features=n_theta * output_size)]
         layers = hidden_layers + output_layer
 
         # static_size is computed with data, static_hidden_size is provided by user, if 0 no statics are used
@@ -238,12 +234,12 @@ class NHiTS(nn.Module):
         static_hidden_size,
         n_blocks: list,
         n_layers: list,
-        n_theta_hidden: list,
-        n_pool_kernel_size: list,
-        n_freq_downsample: list,
+        hidden_size: list,
+        pooling_sizes: list,
+        downsample_frequencies: list,
         pooling_mode,
         interpolation_mode,
-        dropout_theta,
+        dropout,
         activation,
         initialization,
         batch_normalization,
@@ -263,13 +259,13 @@ class NHiTS(nn.Module):
             static_size=static_size,
             static_hidden_size=static_hidden_size,
             n_layers=n_layers,
-            n_theta_hidden=n_theta_hidden,
-            n_pool_kernel_size=n_pool_kernel_size,
-            n_freq_downsample=n_freq_downsample,
+            hidden_size=hidden_size,
+            pooling_sizes=pooling_sizes,
+            downsample_frequencies=downsample_frequencies,
             pooling_mode=pooling_mode,
             interpolation_mode=interpolation_mode,
             batch_normalization=batch_normalization,
-            dropout_theta=dropout_theta,
+            dropout=dropout,
             activation=activation,
             shared_weights=shared_weights,
             initialization=initialization,
@@ -286,13 +282,13 @@ class NHiTS(nn.Module):
         static_size,
         static_hidden_size,
         n_layers,
-        n_theta_hidden,
-        n_pool_kernel_size,
-        n_freq_downsample,
+        hidden_size,
+        pooling_sizes,
+        downsample_frequencies,
         pooling_mode,
         interpolation_mode,
         batch_normalization,
-        dropout_theta,
+        dropout,
         activation,
         shared_weights,
         initialization,
@@ -312,7 +308,7 @@ class NHiTS(nn.Module):
                 if shared_weights and block_id > 0:
                     nbeats_block = block_list[-1]
                 else:
-                    n_theta = context_length + max(prediction_length // n_freq_downsample[i], 1)
+                    n_theta = context_length + max(prediction_length // downsample_frequencies[i], 1)
                     basis = IdentityBasis(
                         backcast_size=context_length,
                         forecast_size=prediction_length,
@@ -327,13 +323,13 @@ class NHiTS(nn.Module):
                         static_size=static_size,
                         static_hidden_size=static_hidden_size,
                         n_theta=n_theta,
-                        n_theta_hidden=n_theta_hidden[i],
-                        n_pool_kernel_size=n_pool_kernel_size[i],
+                        hidden_size=hidden_size[i],
+                        pooling_sizes=pooling_sizes[i],
                         pooling_mode=pooling_mode,
                         basis=basis,
                         n_layers=n_layers[i],
                         batch_normalization=batch_normalization_block,
-                        dropout_prob=dropout_theta,
+                        dropout=dropout,
                         activation=activation,
                     )
 

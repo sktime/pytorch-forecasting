@@ -194,6 +194,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         loss: Metric = SMAPE(),
         logging_metrics: nn.ModuleList = nn.ModuleList([]),
         reduce_on_plateau_patience: int = 1000,
+        reduce_on_plateau_reduction: float = 2.0,
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
         optimizer_params: Dict[str, Any] = None,
@@ -217,6 +218,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
                 Defaults to [].
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
+            reduce_on_plateau_reduction (float): reduction in learning rate when encountering plateau. Defaults to 2.0.
             reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
@@ -937,7 +939,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
                 "scheduler": ReduceLROnPlateau(
                     optimizer,
                     mode="min",
-                    factor=0.2,
+                    factor=1.0 / self.hparams.reduce_on_plateau_reduction,
                     patience=self.hparams.reduce_on_plateau_patience,
                     cooldown=self.hparams.reduce_on_plateau_patience,
                     min_lr=self.hparams.reduce_on_plateau_min_lr,
