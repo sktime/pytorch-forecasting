@@ -137,7 +137,18 @@ def dataloaders_with_covariates(data_with_covariates):
         time_varying_known_reals=["discount"],
         time_varying_unknown_reals=["target"],
         static_categoricals=["agency"],
-        add_relative_time_idx=True,
+        add_relative_time_idx=False,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+    )
+
+
+@pytest.fixture(scope="session")
+def dataloaders_multi_target(data_with_covariates):
+    return make_dataloaders(
+        data_with_covariates.copy(),
+        time_varying_unknown_reals=["target", "discount"],
+        target=["target", "discount"],
+        add_relative_time_idx=False,
         target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
     )
 
@@ -174,11 +185,3 @@ def dataloaders_fixed_window_without_covariates():
     test_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
 
     return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
-
-
-@pytest.fixture(params=["with-covariates", "without"], scope="session")
-def dataloaders_fixed_window(dataloaders_with_covariates, dataloaders_fixed_window_without_covariates, request):
-    if "covariates" in request.param:
-        return dataloaders_with_covariates
-    else:
-        return dataloaders_fixed_window_without_covariates

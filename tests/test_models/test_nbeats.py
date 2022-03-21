@@ -75,3 +75,10 @@ def model(dataloaders_fixed_window_without_covariates):
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)
+
+
+def test_interpretation(model, dataloaders_fixed_window_without_covariates):
+    raw_predictions, x = model.predict(
+        dataloaders_fixed_window_without_covariates["val"], mode="raw", return_x=True, fast_dev_run=True
+    )
+    model.plot_interpretation(x, raw_predictions, idx=0)
