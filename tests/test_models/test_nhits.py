@@ -58,7 +58,7 @@ def _integration(dataloader, tmp_path, gpus):
     net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
 
 
-@pytest.mark.parametrize("dataloader", ["with_covariates", "fixed_window_without_covariates", "multi-target"])
+@pytest.mark.parametrize("dataloader", ["with_covariates", "fixed_window_without_covariates", "multi_target"])
 def test_integration(
     dataloaders_with_covariates,
     dataloaders_fixed_window_without_covariates,

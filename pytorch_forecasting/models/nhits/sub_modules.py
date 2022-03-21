@@ -152,7 +152,7 @@ class NHiTSBlock(nn.Module):
         self.dropout = dropout
 
         self.hidden_size = [
-            self.context_length_pooled
+            self.context_length_pooled * self.output_size
             + (self.context_length + self.prediction_length) * self.covariate_size
             + self.static_hidden_size
         ] + hidden_size
@@ -190,10 +190,10 @@ class NHiTSBlock(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         batch_size = len(encoder_y)
 
-        encoder_y = encoder_y.transpose(-1, -2)
+        encoder_y = encoder_y.transpose(1, 2)
         # Pooling layer to downsample input
         encoder_y = self.pooling_layer(encoder_y)
-        encoder_y = encoder_y.transpose(-1, -2).reshape(batch_size, -1)
+        encoder_y = encoder_y.transpose(1, 2).reshape(batch_size, -1)
 
         if self.covariate_size > 0:
             encoder_y = torch.cat(
@@ -213,8 +213,8 @@ class NHiTSBlock(nn.Module):
         # Compute local projection weights and projection
         theta = self.layers(encoder_y).reshape(-1, self.n_theta)
         backcast, forecast = self.basis(theta, encoder_x_t, decoder_x_t)
-        backcast = backcast.reshape(-1, self.context_length, self.output_size)
-        forecast = forecast.reshape(-1, self.prediction_length, self.output_size)
+        backcast = backcast.reshape(-1, self.output_size, self.context_length).transpose(1, 2)
+        forecast = forecast.reshape(-1, self.output_size, self.prediction_length).transpose(1, 2)
 
         return backcast, forecast
 

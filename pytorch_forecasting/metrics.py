@@ -264,19 +264,30 @@ class MultiLoss(LightningMetric):
         """
         return len(self.metrics)
 
-    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
         """
         Update composite metric
 
         Args:
             y_pred: network output
             y_actual: actual values
+            **kwargs: arguments to update function
 
         Returns:
             torch.Tensor: metric value on which backpropagation can be applied
         """
         for idx, metric in enumerate(self.metrics):
-            metric.update(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+            try:
+                metric.update(
+                    y_pred[idx],
+                    (y_actual[0][idx], y_actual[1]),
+                    **{
+                        name: value[idx] if isinstance(value, (list, tuple)) else value
+                        for name, value in kwargs.items()
+                    },
+                )
+            except TypeError:  # silently update without kwargs if not supported
+                metric.update(y_pred[idx], (y_actual[0][idx], y_actual[1]))
 
     def compute(self) -> torch.Tensor:
         """

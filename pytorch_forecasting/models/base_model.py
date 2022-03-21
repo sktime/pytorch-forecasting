@@ -517,7 +517,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
             # multiply monotinicity loss by large number to ensure relevance and take to the power of 2
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
-            if isinstance(self.loss, MASE):
+            if isinstance(self.loss, (MASE, MultiLoss)):
                 loss = self.loss(
                     prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
                 )
@@ -530,10 +530,9 @@ class BaseModel(LightningModule, TupleOutputMixIn):
 
             # calculate loss
             prediction = out["prediction"]
-            if isinstance(self.loss, MASE):
-                loss = self.loss(
-                    prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
-                )
+            if isinstance(self.loss, (MASE, MultiLoss)):
+                mase_kwargs = dict(encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"])
+                loss = self.loss(prediction, y, **mase_kwargs)
             else:
                 loss = self.loss(prediction, y)
 
