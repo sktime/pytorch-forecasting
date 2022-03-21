@@ -9,10 +9,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_forecasting.models import NHiTS
 
 
-def test_integration(dataloaders_with_covariates, tmp_path, gpus):
-    train_dataloader = dataloaders_with_covariates["train"]
-    val_dataloader = dataloaders_with_covariates["val"]
-    test_dataloader = dataloaders_with_covariates["test"]
+def test_integration(dataloaders_fixed_window, tmp_path, gpus):
+    train_dataloader = dataloaders_fixed_window["train"]
+    val_dataloader = dataloaders_fixed_window["val"]
+    test_dataloader = dataloaders_fixed_window["test"]
 
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 

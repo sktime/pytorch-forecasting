@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -122,7 +122,7 @@ class NHiTSBlock(nn.Module):
         static_size: int,
         static_hidden_size: int,
         n_theta: int,
-        n_theta_hidden: list,
+        n_theta_hidden: List[int],
         n_pool_kernel_size: int,
         pooling_mode: str,
         basis: nn.Module,
@@ -135,13 +135,10 @@ class NHiTSBlock(nn.Module):
 
         assert pooling_mode in ["max", "average"]
 
-        context_length_pooled = int(np.ceil(context_length / n_pool_kernel_size))
+        self.context_length_pooled = int(np.ceil(context_length / n_pool_kernel_size))
 
         if static_size == 0:
             static_hidden_size = 0
-        n_theta_hidden = [
-            context_length_pooled + (context_length + prediction_length) * covariate_size + static_hidden_size
-        ] + n_theta_hidden
 
         self.context_length = context_length
         self.output_size = output_size
@@ -153,6 +150,12 @@ class NHiTSBlock(nn.Module):
         self.n_pool_kernel_size = n_pool_kernel_size
         self.batch_normalization = batch_normalization
         self.dropout_prob = dropout_prob
+
+        self.n_theta_hidden = [
+            self.context_length_pooled
+            + (self.context_length + self.prediction_length) * self.covariate_size
+            + self.static_hidden_size
+        ] + n_theta_hidden
 
         assert activation in ACTIVATIONS, f"{activation} is not in {ACTIVATIONS}"
         activ = getattr(nn, activation)()
@@ -168,16 +171,16 @@ class NHiTSBlock(nn.Module):
 
         hidden_layers = []
         for i in range(n_layers):
-            hidden_layers.append(nn.Linear(in_features=n_theta_hidden[i], out_features=n_theta_hidden[i + 1]))
+            hidden_layers.append(nn.Linear(in_features=self.n_theta_hidden[i], out_features=self.n_theta_hidden[i + 1]))
             hidden_layers.append(activ)
 
             if self.batch_normalization:
-                hidden_layers.append(nn.BatchNorm1d(num_features=n_theta_hidden[i + 1]))
+                hidden_layers.append(nn.BatchNorm1d(num_features=self.n_theta_hidden[i + 1]))
 
             if self.dropout_prob > 0:
                 hidden_layers.append(nn.Dropout(p=self.dropout_prob))
 
-        output_layer = [nn.Linear(in_features=n_theta_hidden[-1], out_features=n_theta * output_size)]
+        output_layer = [nn.Linear(in_features=self.n_theta_hidden[-1], out_features=n_theta * output_size)]
         layers = hidden_layers + output_layer
 
         # static_size is computed with data, static_hidden_size is provided by user, if 0 no statics are used
@@ -189,17 +192,17 @@ class NHiTSBlock(nn.Module):
     def forward(
         self, encoder_y: torch.Tensor, encoder_x_t: torch.Tensor, decoder_x_t: torch.Tensor, x_s: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        batch_size = len(encoder_y)
 
         encoder_y = encoder_y.transpose(-1, -2)
         # Pooling layer to downsample input
         encoder_y = self.pooling_layer(encoder_y)
-        encoder_y = encoder_y.transpose(-1, -2)
+        encoder_y = encoder_y.transpose(-1, -2).reshape(batch_size, -1)
 
-        batch_size = len(encoder_y)
         if self.covariate_size > 0:
             encoder_y = torch.cat(
                 (
-                    encoder_y.reshape(batch_size, -1),
+                    encoder_y,
                     encoder_x_t.reshape(batch_size, -1),
                     decoder_x_t.reshape(batch_size, -1),
                 ),
@@ -249,6 +252,7 @@ class NHiTS(nn.Module):
         super().__init__()
 
         self.prediction_length = prediction_length
+        self.context_length = context_length
 
         blocks = self.create_stack(
             n_blocks=n_blocks,
@@ -336,7 +340,6 @@ class NHiTS(nn.Module):
                 # Select type of evaluation and apply it to all layers of block
                 init_function = partial(init_weights, initialization=initialization)
                 nbeats_block.layers.apply(init_function)
-                # print(f'     | -- {nbeats_block}')
                 block_list.append(nbeats_block)
         return block_list
 
@@ -356,9 +359,9 @@ class NHiTS(nn.Module):
         # encoder_mask = encoder_mask.flip(dims=(-1,))
         encoder_mask = encoder_mask.unsqueeze(-1)
 
-        level = encoder_y[:, -1:].repeat(1, decoder_x_t.size(1), 1)  # Level with Naive1
+        level = encoder_y[:, -1:].repeat(1, self.prediction_length, 1)  # Level with Naive1
         block_forecasts = [level]
-        block_backcasts = [encoder_y[:, -1:].repeat(1, encoder_y.size(1), 1)]
+        block_backcasts = [encoder_y[:, -1:].repeat(1, self.context_length, 1)]
 
         forecast = level
         for block in self.blocks:

@@ -949,7 +949,7 @@ class MASE(MultiHorizonMetric):
         self._update_losses_and_lengths(losses, lengths)
 
     def loss(self, y_pred, target, scaling):
-        return (y_pred - target).abs() / scaling.unsqueeze(-1)
+        return (self.to_prediction(y_pred) - target).abs() / scaling.unsqueeze(-1)
 
     def calculate_scaling(self, target, lengths, encoder_target, encoder_lengths):
         # calcualte mean(abs(diff(targets)))

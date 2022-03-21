@@ -2,7 +2,7 @@
 N-HiTS model for timeseries forecasting with covariates.
 """
 from copy import copy
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -35,21 +35,19 @@ class NHiTS(BaseModelWithCovariates):
         x_categoricals: List[str] = [],
         context_length: int = 1,
         prediction_length: int = 1,
-        static_hidden_size: int = 512,
+        static_hidden_size: Optional[int] = None,
         shared_weights: bool = True,
         activation: str = "ReLU",
         initialization: str = "lecun_normal",
-        n_blocks: List[int] = 3 * [1],
-        n_layers: List[int] = 9 * [2],
-        n_theta_hidden: List[List[int]] = 512,
-        n_pool_kernel_size: List[int] = [16, 8, 1],
-        n_freq_downsample: List[int] = [60, 8, 1],
+        n_blocks: List[int] = [1, 1, 1],
+        n_layers: List[int] = [2, 2, 2],
+        n_theta_hidden: int = 512,
+        n_pool_kernel_size: Optional[List[int]] = None,
+        n_freq_downsample: Optional[List[int]] = None,
         pooling_mode: str = "max",
         interpolation_mode: str = "linear",
         batch_normalization: bool = False,
         dropout_theta: float = 0.0,
-        frequency: str = "D",
-        seasonality: int = 7,
         learning_rate: float = 1e-2,
         log_interval: int = -1,
         log_gradient_flow: bool = False,
@@ -112,19 +110,12 @@ class NHiTS(BaseModelWithCovariates):
         loss_train: str
             Loss to optimize.
             An item from ['MAPE', 'MASE', 'SMAPE', 'MSE', 'MAE', 'PINBALL', 'PINBALL2'].
-        loss_hypar:
-            Hyperparameter for chosen loss.
         loss_valid:
             Validation loss.
             An item from ['MAPE', 'MASE', 'SMAPE', 'RMSE', 'MAE', 'PINBALL'].
-        frequency: str
-            Time series frequency.
         random_seed: int
             random_seed for pseudo random pytorch initializer and
             numpy random generator.
-        seasonality: int
-            Time series seasonality.
-            Usually 7 for daily data, 12 for monthly data and 4 for weekly data.
         """
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
@@ -133,6 +124,17 @@ class NHiTS(BaseModelWithCovariates):
 
         if activation == "SELU":
             self.hparams.initialization = "lecun_normal"
+
+        # provide default downsampling sizes
+        if n_pool_kernel_size is None:
+            n_pool_kernel_size = np.exp2(np.round(np.linspace(0.49, np.log2(prediction_length / 2), len(n_blocks))))
+            n_pool_kernel_size = [int(x) for x in n_pool_kernel_size[::-1]]
+        if n_freq_downsample is None:
+            n_freq_downsample = [min(prediction_length, int(np.power(x, 1.5))) for x in n_pool_kernel_size]
+
+        # set static hidden size
+        if static_hidden_size is None:
+            static_hidden_size = n_theta_hidden
 
         self.save_hyperparameters()
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
@@ -149,10 +151,8 @@ class NHiTS(BaseModelWithCovariates):
             context_length=self.hparams.context_length,
             prediction_length=self.hparams.prediction_length,
             output_size=self.hparams.output_size,
-            static_size=len(self.hparams.static_reals)
-            + sum(self.embeddings.output_size[name] for name in self.hparams.static_categoricals),
-            covariate_size=len(set(self.hparams.time_varying_reals_decoder) - set(self.target_names))
-            + sum(self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder),
+            static_size=self.static_size,
+            covariate_size=self.covariate_size,
             static_hidden_size=self.hparams.static_hidden_size,
             n_blocks=self.hparams.n_blocks,
             n_layers=self.hparams.n_layers,
@@ -169,33 +169,61 @@ class NHiTS(BaseModelWithCovariates):
         )
 
     @property
+    def covariate_size(self) -> int:
+        return len(set(self.hparams.time_varying_reals_decoder) - set(self.target_names)) + sum(
+            self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder
+        )
+
+    @property
+    def static_size(self) -> int:
+        return len(self.hparams.static_reals) + sum(
+            self.embeddings.output_size[name] for name in self.hparams.static_categoricals
+        )
+
+    @property
     def n_stacks(self) -> int:
         return len(self.hparams.n_blocks)
 
     def forward(self, x):
-        encoder_features = self.extract_features(x, self.embeddings, period="encoder")
-        encoder_x_t = torch.concat(
-            [encoder_features[name] for name in self.encoder_variables if name not in self.target_names],
-            dim=2,
-        )
-        encoder_y = torch.concat(
-            [encoder_features[name] for name in self.target_names],
-            dim=2,
-        )
-        x_s = torch.concat([encoder_features[name][:, 0] for name in self.static_variables], dim=1)
-        decoder_features = self.extract_features(x, self.embeddings, period="decoder")
-        decoder_x_t = torch.concat([decoder_features[name] for name in self.decoder_variables], dim=2)
+        # covariates
+        if self.covariate_size > 0:
+            encoder_features = self.extract_features(x, self.embeddings, period="encoder")
+            encoder_x_t = torch.concat(
+                [encoder_features[name] for name in self.encoder_variables if name not in self.target_names],
+                dim=2,
+            )
+            decoder_features = self.extract_features(x, self.embeddings, period="decoder")
+            decoder_x_t = torch.concat([decoder_features[name] for name in self.decoder_variables], dim=2)
+        else:
+            encoder_x_t = None
+            decoder_x_t = None
 
+        # statics
+        if self.static_size > 0:
+            x_s = torch.concat([encoder_features[name][:, 0] for name in self.static_variables], dim=1)
+        else:
+            x_s = None
+
+        # target
+        encoder_y = x["encoder_cont"][..., self.target_positions]
+
+        # torch.concat(
+        #     [encoder_features[name] for name in self.target_names],
+        #     dim=2,
+        # )
         encoder_mask = create_mask(x["encoder_lengths"].max(), x["encoder_lengths"], inverse=True)
 
+        # run model
         forecast, backcast, block_forecasts, block_backcasts = self.model(
             encoder_y, encoder_mask, encoder_x_t, decoder_x_t, x_s
         )
+
+        # create output
         block_predictions = torch.cat([block_backcasts.detach(), block_forecasts.detach()], dim=1)
-        encoder_target = x["encoder_cont"][..., self.target_positions]
+
         return self.to_network_output(
             prediction=self.transform_output(forecast, target_scale=x["target_scale"]),
-            backcast=self.transform_output(prediction=encoder_target - backcast, target_scale=x["target_scale"]),
+            backcast=self.transform_output(prediction=encoder_y - backcast, target_scale=x["target_scale"]),
             block_predictions=tuple(
                 self.transform_output(block_predictions[..., i], target_scale=x["target_scale"])
                 for i in range(block_predictions.size(-1))
@@ -216,7 +244,9 @@ class NHiTS(BaseModelWithCovariates):
         """
         # todo: assert same variables in encoder and decoder
         new_kwargs = copy(kwargs)
-        new_kwargs = {"prediction_length": dataset.max_prediction_length, "context_length": dataset.max_encoder_length}
+        new_kwargs.update(
+            {"prediction_length": dataset.max_prediction_length, "context_length": dataset.max_encoder_length}
+        )
         new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, MeanSquaredError()))
 
         # initialize class
