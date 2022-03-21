@@ -272,7 +272,7 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
     try:
         optimize_hyperparameters(
             train_dataloaders=train_dataloader,
-            val_dataloader=val_dataloader,
+            val_dataloaders=val_dataloader,
             model_path=tmp_path,
             max_epochs=1,
             n_trials=3,
