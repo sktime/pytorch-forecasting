@@ -1,9 +1,10 @@
 # Release Notes
 
-## v0.9.3 UNRELEASED
+## v0.10.0 UNRELEASED
 
 ### Added
 
+- Added new `N-HiTS` network that has consistently beaten `N-BEATS` (#890)
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 - More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)

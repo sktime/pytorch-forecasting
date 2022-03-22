@@ -69,6 +69,7 @@ The documentation provides a [comparison of available models](https://pytorch-fo
 - [N-BEATS: Neural basis expansion analysis for interpretable time series forecasting](http://arxiv.org/abs/1905.10437)
   which has (if used as ensemble) outperformed all other methods including ensembles of traditional statical
   methods in the M4 competition. The M4 competition is arguably the most important benchmark for univariate time series forecasting.
+- [N-HiTS: Neural Hierarchical Interpolation for Time Series Forecasting](http://arxiv.org/abs/2201.12886) which supports covariates and has consistently beaten N-BEATS. It is also particularly well-suited for long-horizon forecasting.
 - [DeepAR: Probabilistic forecasting with autoregressive recurrent networks](https://www.sciencedirect.com/science/article/pii/S0169207019301888)
   which is the one of the most popular forecasting algorithms and is often used as a baseline
 - Simple standard networks for baselining: LSTM and GRU networks as well as a MLP on the decoder

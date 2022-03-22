@@ -36,9 +36,11 @@ from pytorch_forecasting.metrics import (
     QuantileLoss,
     convert_torchmetric_to_pytorch_forecasting_metric,
 )
+from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
     OutputMixIn,
+    TupleOutputMixIn,
     apply_to_list,
     create_mask,
     get_embedding_size,
@@ -131,7 +133,7 @@ STAGE_STATES = {
 }
 
 
-class BaseModel(LightningModule):
+class BaseModel(LightningModule, TupleOutputMixIn):
     """
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
@@ -192,6 +194,7 @@ class BaseModel(LightningModule):
         loss: Metric = SMAPE(),
         logging_metrics: nn.ModuleList = nn.ModuleList([]),
         reduce_on_plateau_patience: int = 1000,
+        reduce_on_plateau_reduction: float = 2.0,
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
         optimizer_params: Dict[str, Any] = None,
@@ -215,6 +218,7 @@ class BaseModel(LightningModule):
                 Defaults to [].
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
+            reduce_on_plateau_reduction (float): reduction in learning rate when encountering plateau. Defaults to 2.0.
             reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
@@ -513,7 +517,7 @@ class BaseModel(LightningModule):
             # multiply monotinicity loss by large number to ensure relevance and take to the power of 2
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
-            if isinstance(self.loss, MASE):
+            if isinstance(self.loss, (MASE, MultiLoss)):
                 loss = self.loss(
                     prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
                 )
@@ -526,10 +530,9 @@ class BaseModel(LightningModule):
 
             # calculate loss
             prediction = out["prediction"]
-            if isinstance(self.loss, MASE):
-                loss = self.loss(
-                    prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
-                )
+            if isinstance(self.loss, (MASE, MultiLoss)):
+                mase_kwargs = dict(encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"])
+                loss = self.loss(prediction, y, **mase_kwargs)
             else:
                 loss = self.loss(prediction, y)
 
@@ -594,27 +597,6 @@ class BaseModel(LightningModule):
                     on_epoch=True,
                     batch_size=len(x["decoder_target"]),
                 )
-
-    def to_network_output(self, **results):
-        """
-        Convert output into a named (and immuatable) tuple.
-
-        This allows tracing the modules as graphs and prevents modifying the output.
-
-        Returns:
-            named tuple
-        """
-        if hasattr(self, "_output_class"):
-            Output = self._output_class
-        else:
-            OutputTuple = namedtuple("output", results)
-
-            class Output(OutputMixIn, OutputTuple):
-                pass
-
-            self._output_class = Output
-
-        return self._output_class(**results)
 
     def forward(
         self, x: Dict[str, Union[torch.Tensor, List[torch.Tensor]]]
@@ -956,7 +938,7 @@ class BaseModel(LightningModule):
                 "scheduler": ReduceLROnPlateau(
                     optimizer,
                     mode="min",
-                    factor=0.2,
+                    factor=1.0 / self.hparams.reduce_on_plateau_reduction,
                     patience=self.hparams.reduce_on_plateau_patience,
                     cooldown=self.hparams.reduce_on_plateau_patience,
                     min_lr=self.hparams.reduce_on_plateau_min_lr,
@@ -1348,6 +1330,25 @@ class BaseModelWithCovariates(BaseModel):
     """
 
     @property
+    def target_positions(self) -> torch.LongTensor:
+        """
+        Positions of target variable(s) in covariates.
+
+        Returns:
+            torch.LongTensor: tensor of positions.
+        """
+        # todo: expand for categorical targets
+        if "target" in self.hparams:
+            target = self.hparams.target
+        else:
+            target = self.dataset_parameters["target"]
+        return torch.tensor(
+            [self.hparams.x_reals.index(name) for name in to_list(target)],
+            device=self.device,
+            dtype=torch.long,
+        )
+
+    @property
     def reals(self) -> List[str]:
         """List of all continuous variables in model"""
         return list(
@@ -1453,6 +1454,47 @@ class BaseModelWithCovariates(BaseModel):
         )
         new_kwargs.update(kwargs)
         return super().from_dataset(dataset, **new_kwargs)
+
+    def extract_features(
+        self,
+        x,
+        embeddings: MultiEmbedding = None,
+        period: str = "all",
+    ) -> torch.Tensor:
+        """
+        Extract features
+
+        Args:
+            x (Dict[str, torch.Tensor]): input from the dataloader
+            embeddings (MultiEmbedding): embeddings for categorical variables
+            period (str, optional): One of "encoder", "decoder" or "all". Defaults to "all".
+
+        Returns:
+            torch.Tensor: tensor with selected variables
+        """
+        # select period
+        if period == "encoder":
+            x_cat = x["encoder_cat"]
+            x_cont = x["encoder_cont"]
+        elif period == "decoder":
+            x_cat = x["decoder_cat"]
+            x_cont = x["decoder_cont"]
+        elif period == "all":
+            x_cat = torch.cat([x["encoder_cat"], x["decoder_cat"]], dim=1)  # concatenate in time dimension
+            x_cont = torch.cat([x["encoder_cont"], x["decoder_cont"]], dim=1)  # concatenate in time dimension
+        else:
+            raise ValueError(f"Unknown type: {type}")
+
+        # create dictionary of encoded vectors
+        input_vectors = embeddings(x_cat)
+        input_vectors.update(
+            {
+                name: x_cont[..., idx].unsqueeze(-1)
+                for idx, name in enumerate(self.hparams.x_reals)
+                if name in self.reals
+            }
+        )
+        return input_vectors
 
     def calculate_prediction_actual_by_variable(
         self,
@@ -1982,21 +2024,6 @@ class AutoRegressiveBaseModelWithCovariates(BaseModelWithCovariates, AutoRegress
             can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
             as bag of embeddings
     """
-
-    @property
-    def target_positions(self) -> torch.LongTensor:
-        """
-        Positions of target variable(s) in covariates.
-
-        Returns:
-            torch.LongTensor: tensor of positions.
-        """
-        # todo: expand for categorical targets
-        return torch.tensor(
-            [self.hparams.x_reals.index(name) for name in to_list(self.hparams.target)],
-            device=self.device,
-            dtype=torch.long,
-        )
 
     @property
     def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:

@@ -6,13 +6,13 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from pytorch_forecasting.models import NBeats
+from pytorch_forecasting.models import NHiTS
 
 
-def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus):
-    train_dataloader = dataloaders_fixed_window_without_covariates["train"]
-    val_dataloader = dataloaders_fixed_window_without_covariates["val"]
-    test_dataloader = dataloaders_fixed_window_without_covariates["test"]
+def _integration(dataloader, tmp_path, gpus):
+    train_dataloader = dataloader["train"]
+    val_dataloader = dataloader["val"]
+    test_dataloader = dataloader["test"]
 
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
@@ -30,12 +30,12 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
         logger=logger,
     )
 
-    net = NBeats.from_dataset(
+    net = NHiTS.from_dataset(
         train_dataloader.dataset,
         learning_rate=0.15,
         log_gradient_flow=True,
-        widths=[4, 4, 4],
         log_interval=1000,
+        hidden_size=8,
         backcast_loss_ratio=1.0,
     )
     net.size()
@@ -48,7 +48,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
         # check loading
-        net = NBeats.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        net = NHiTS.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         # check prediction
         net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
@@ -58,14 +58,34 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
 
 
+@pytest.mark.parametrize("dataloader", ["with_covariates", "fixed_window_without_covariates", "multi_target"])
+def test_integration(
+    dataloaders_with_covariates,
+    dataloaders_fixed_window_without_covariates,
+    dataloaders_multi_target,
+    tmp_path,
+    gpus,
+    dataloader,
+):
+    if dataloader == "with_covariates":
+        dataloader = dataloaders_with_covariates
+    elif dataloader == "fixed_window_without_covariates":
+        dataloader = dataloaders_fixed_window_without_covariates
+    elif dataloader == "multi_target":
+        dataloader = dataloaders_multi_target
+    else:
+        raise ValueError(f"dataloader {dataloader} unknown")
+    _integration(dataloader, tmp_path=tmp_path, gpus=gpus)
+
+
 @pytest.fixture(scope="session")
-def model(dataloaders_fixed_window_without_covariates):
-    dataset = dataloaders_fixed_window_without_covariates["train"].dataset
-    net = NBeats.from_dataset(
+def model(dataloaders_with_covariates):
+    dataset = dataloaders_with_covariates["train"].dataset
+    net = NHiTS.from_dataset(
         dataset,
         learning_rate=0.15,
+        hidden_size=8,
         log_gradient_flow=True,
-        widths=[4, 4, 4],
         log_interval=1000,
         backcast_loss_ratio=1.0,
     )
@@ -77,8 +97,7 @@ def test_pickle(model):
     pickle.loads(pkl)
 
 
-def test_interpretation(model, dataloaders_fixed_window_without_covariates):
-    raw_predictions, x = model.predict(
-        dataloaders_fixed_window_without_covariates["val"], mode="raw", return_x=True, fast_dev_run=True
-    )
+def test_interpretation(model, dataloaders_with_covariates):
+    raw_predictions, x = model.predict(dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True)
+    model.plot_prediction(x, raw_predictions, idx=0, add_loss_to_title=True)
     model.plot_interpretation(x, raw_predictions, idx=0)

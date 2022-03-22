@@ -1,6 +1,7 @@
 """
 Helper functions for PyTorch forecasting
 """
+from collections import namedtuple
 from contextlib import redirect_stdout
 import os
 from typing import Any, Callable, Dict, List, Tuple, Union
@@ -336,6 +337,31 @@ class OutputMixIn:
 
     def keys(self):
         return self._fields
+
+
+class TupleOutputMixIn:
+    """MixIn to give output a namedtuple-like access capabilities with ``to_network_output() function``."""
+
+    def to_network_output(self, **results):
+        """
+        Convert output into a named (and immuatable) tuple.
+
+        This allows tracing the modules as graphs and prevents modifying the output.
+
+        Returns:
+            named tuple
+        """
+        if hasattr(self, "_output_class"):
+            Output = self._output_class
+        else:
+            OutputTuple = namedtuple("output", results)
+
+            class Output(OutputMixIn, OutputTuple):
+                pass
+
+            self._output_class = Output
+
+        return self._output_class(**results)
 
 
 def move_to_device(
