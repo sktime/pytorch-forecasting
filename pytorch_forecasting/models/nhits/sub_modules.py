@@ -7,22 +7,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class RepeatVector(nn.Module):
-    """
-    Receives x input of dim [N,C], and repeats the vector
-    to create tensor of shape [N, C, K]
-    : repeats: int, the number of repetitions for the vector.
-    """
-
-    def __init__(self, repeats):
-        super(RepeatVector, self).__init__()
-        self.repeats = repeats
-
-    def forward(self, x):
-        x = x.unsqueeze(-1).repeat(1, 1, self.repeats)
-        return x
-
-
 class StaticFeaturesEncoder(nn.Module):
     def __init__(self, in_features, out_features):
         super().__init__()
@@ -31,20 +15,6 @@ class StaticFeaturesEncoder(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
-        return x
-
-
-class sEncoder(nn.Module):
-    def __init__(self, in_features, out_features, context_length):
-        super().__init__()
-        layers = [nn.Dropout(p=0.5), nn.Linear(in_features=in_features, out_features=out_features), nn.ReLU()]
-        self.encoder = nn.Sequential(*layers)
-        self.repeat = RepeatVector(repeats=context_length)
-
-    def forward(self, x):
-        # Encode and repeat values to match time
-        x = self.encoder(x)
-        x = self.repeat(x)  # [N,S_out] -> [N,S_out,T]
         return x
 
 
