@@ -180,7 +180,7 @@ def optimize_hyperparameters(
             res = lr_trainer.tuner.lr_find(
                 model,
                 train_dataloaders=train_dataloaders,
-                val_dataloaderss=val_dataloaders,
+                val_dataloaders=val_dataloaders,
                 early_stop_threshold=10000,
                 min_lr=learning_rate_range[0],
                 num_training=100,
@@ -206,7 +206,7 @@ def optimize_hyperparameters(
             model.hparams.learning_rate = trial.suggest_loguniform("learning_rate", *learning_rate_range)
 
         # fit
-        trainer.fit(model, train_dataloaders=train_dataloaders, val_dataloaderss=val_dataloaders)
+        trainer.fit(model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders)
 
         # report result
         return metrics_callback.metrics[-1]["val_loss"].item()
