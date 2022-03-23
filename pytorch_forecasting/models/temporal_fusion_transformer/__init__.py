@@ -556,6 +556,23 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             interpretations that can be plotted with ``plot_interpretation()``
         """
+        # take attention and concatenate if a list to proper attention object
+        if isinstance(out["attention"], (list, tuple)):
+            # assume issue is in last dimension, we need to find max
+            max_last_dimension = max(x.size(-1) for x in out["attention"])
+            first_elm = out["attention"][0]
+            # create new attention tensor into which we will scatter
+            attention = torch.full(
+                (len(out["attention"]), *first_elm.shape[:-1], max_last_dimension),
+                float("nan"),
+                dtype=first_elm.dtype,
+                device=first_elm.device,
+            )
+            # scatter into tensor
+            for idx, x in enumerate(out["attention"]):
+                attention[idx, :, :, : x.size(-1)] = x
+        else:
+            attention = out["attention"]
 
         # histogram of decode and encode lengths
         encoder_length_histogram = integer_histogram(out["encoder_lengths"], min=0, max=self.hparams.max_encoder_length)
@@ -582,7 +599,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         static_variables = out["static_variables"].squeeze(1)
         # attention is batch x time x heads x time_to_attend
         # average over heads + only keep prediction attention and attention on observed timesteps
-        attention = out["attention"][
+        attention = attention[
             :, attention_prediction_horizon, :, : out["encoder_lengths"].max() + attention_prediction_horizon
         ].mean(1)
 
@@ -677,15 +694,15 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # add attention on secondary axis
         if plot_attention:
-            interpretation = self.interpret_output(out)
+            interpretation = self.interpret_output(out.iget(slice(idx, idx + 1)))
             for f in to_list(fig):
                 ax = f.axes[0]
                 ax2 = ax.twinx()
                 ax2.set_ylabel("Attention")
-                encoder_length = x["encoder_lengths"][idx]
+                encoder_length = x["encoder_lengths"][0]
                 ax2.plot(
                     torch.arange(-encoder_length, 0),
-                    interpretation["attention"][idx, :encoder_length].detach().cpu(),
+                    interpretation["attention"][0, :encoder_length].detach().cpu(),
                     alpha=0.2,
                     color="k",
                 )

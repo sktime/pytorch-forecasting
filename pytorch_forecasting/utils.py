@@ -338,6 +338,17 @@ class OutputMixIn:
     def keys(self):
         return self._fields
 
+    def iget(self, idx: Union[int, slice]):
+        """Select item(s) row-wise.
+
+        Args:
+            idx ([int, slice]): item to select
+
+        Returns:
+            Output of single item.
+        """
+        return self.__class__(*(x[idx] for x in self))
+
 
 class TupleOutputMixIn:
     """MixIn to give output a namedtuple-like access capabilities with ``to_network_output() function``."""
