@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.10.0 Adding N-HiTS network (N-BEATS successor) (UNRELEASED)
+## v0.10.0 Adding N-HiTS network (N-BEATS successor) (23/03/2022)
 
 ### Added
 
