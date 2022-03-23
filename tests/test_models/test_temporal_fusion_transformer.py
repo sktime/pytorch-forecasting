@@ -266,7 +266,7 @@ def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
     dataset = TimeSeriesDataSet(
         test_data,
         time_idx="time_idx",
-        max_encoder_length=24,
+        max_encoder_length=8,
         max_prediction_length=10,
         min_prediction_length=1,
         min_encoder_length=1,
@@ -276,6 +276,7 @@ def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
         allow_missing_timesteps=True,
         time_varying_unknown_reals=["volume"],
         time_varying_known_reals=["time_idx"],
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"]),
     )
 
     net = TemporalFusionTransformer.from_dataset(
@@ -285,17 +286,12 @@ def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
         attention_head_size=1,
         dropout=0.2,
         hidden_continuous_size=2,
-        loss=PoissonLoss(),
         log_interval=1,
         log_val_interval=1,
         log_gradient_flow=True,
     )
     logger = TensorBoardLogger(tmp_path)
-    trainer = pl.Trainer(
-        max_epochs=1,
-        gradient_clip_val=0.1,
-        logger=logger,
-    )
+    trainer = pl.Trainer(max_epochs=1, gradient_clip_val=1e-6, logger=logger)
     trainer.fit(net, train_dataloaders=dataset.to_dataloader(batch_size=4, num_workers=0))
 
     # choose small batch size to provoke issue
