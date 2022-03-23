@@ -285,7 +285,7 @@ def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
         attention_head_size=1,
         dropout=0.2,
         hidden_continuous_size=2,
-        # loss=PoissonLoss(),
+        loss=PoissonLoss(),
         log_interval=1,
         log_val_interval=1,
         log_gradient_flow=True,
