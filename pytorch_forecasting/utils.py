@@ -447,3 +447,28 @@ def detach(
         return [detach(xi) for xi in x]
     else:
         return x
+
+
+def masked_op(tensor: torch.Tensor, op: str = "mean", dim: int = 0, mask: torch.Tensor = None) -> torch.Tensor:
+    """Calculate operation on masked tensor.
+
+    Args:
+        tensor (torch.Tensor): tensor to conduct operation over
+        op (str): operation to apply. One of ["mean", "sum"]. Defaults to "mean".
+        dim (int, optional): dimension to average over. Defaults to 0.
+        mask (torch.Tensor, optional): boolean mask to apply (True=will take mean, False=ignore).
+            Masks nan values by default.
+
+    Returns:
+        torch.Tensor: tensor with averaged out dimension
+    """
+    if mask is None:
+        mask = ~torch.isnan(tensor)
+    masked = tensor.masked_fill(~mask, 0.0)
+    summed = masked.sum(dim=dim)
+    if op == "mean":
+        return summed / mask.sum(dim=dim)  # Find the average
+    elif op == "sum":
+        return summed
+    else:
+        raise ValueError(f"unkown operation {op}")

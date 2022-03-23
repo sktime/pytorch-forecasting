@@ -2,6 +2,7 @@ import pickle
 import shutil
 import sys
 
+import numpy as np
 import pytest
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
@@ -254,6 +255,56 @@ def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
 def test_prediction_with_dataloder(model, dataloaders_with_covariates, kwargs):
     val_dataloader = dataloaders_with_covariates["val"]
     model.predict(val_dataloader, fast_dev_run=True, **kwargs)
+
+
+def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
+    # tests correct concatenation of raw output
+    test_data = data_with_covariates.copy()
+    np.random.seed(2)
+    test_data = test_data.sample(frac=0.5)
+
+    dataset = TimeSeriesDataSet(
+        test_data,
+        time_idx="time_idx",
+        max_encoder_length=24,
+        max_prediction_length=10,
+        min_prediction_length=1,
+        min_encoder_length=1,
+        target="volume",
+        group_ids=["agency", "sku"],
+        constant_fill_strategy=dict(volume=0.0),
+        allow_missing_timesteps=True,
+        time_varying_unknown_reals=["volume"],
+        time_varying_known_reals=["time_idx"],
+    )
+
+    net = TemporalFusionTransformer.from_dataset(
+        dataset,
+        learning_rate=1e-6,
+        hidden_size=4,
+        attention_head_size=1,
+        dropout=0.2,
+        hidden_continuous_size=2,
+        # loss=PoissonLoss(),
+        log_interval=1,
+        log_val_interval=1,
+        log_gradient_flow=True,
+    )
+    logger = TensorBoardLogger(tmp_path)
+    trainer = pl.Trainer(
+        max_epochs=1,
+        gradient_clip_val=0.1,
+        logger=logger,
+    )
+    trainer.fit(net, train_dataloaders=dataset.to_dataloader(batch_size=4, num_workers=0))
+
+    # choose small batch size to provoke issue
+    res = net.predict(dataset.to_dataloader(batch_size=2, num_workers=0), mode="raw")
+    # check that interpretation works
+    net.interpret_output(res)["attention"]
+    assert net.interpret_output(res.iget(slice(1)))["attention"].size() == torch.Size(
+        (1, net.hparams.max_encoder_length)
+    )
 
 
 def test_prediction_with_dataset(model, dataloaders_with_covariates):
