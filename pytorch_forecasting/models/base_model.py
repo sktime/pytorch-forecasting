@@ -6,6 +6,7 @@ import copy
 from copy import deepcopy
 import inspect
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -75,7 +76,24 @@ def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
                 )
                 for xi in x
             ]
-    return torch.cat(x, dim=0)
+
+    # check if remaining dimensions are all equal
+    if x[0].ndim > 2:
+        remaining_dimensions_equal = all([all([xi.size(i) == x[0].size(i) for xi in x]) for i in range(2, x[0].ndim)])
+    else:
+        remaining_dimensions_equal = True
+
+    # deaggregate
+    if remaining_dimensions_equal:
+        return torch.cat(x, dim=0)
+    else:
+        # make list instead but warn
+        warnings.warn(
+            f"Not all dimensions are equal for tensors shapes. Example tensor {x[0].shape}. "
+            "Returning list instead of torch.Tensor.",
+            UserWarning,
+        )
+        return [xii for xi in x for xii in xi]
 
 
 def _concatenate_output(
