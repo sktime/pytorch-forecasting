@@ -1,7 +1,7 @@
 """
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
 
 import scipy.stats
@@ -11,7 +11,6 @@ from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 from torchmetrics import Metric as LightningMetric
-from torchmetrics.metric import CompositionalMetric
 
 from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
@@ -151,6 +150,9 @@ class TorchMetricWrapper(Metric):
     def _sync_dist(self, dist_sync_fn=None, process_group=None) -> None:
         # No syncing required here. syncing will be done in metric_a and metric_b
         pass
+
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
 
     def reset(self) -> None:
         self.torchmetric.reset()
@@ -339,6 +341,10 @@ class MultiLoss(LightningMetric):
 
     def _wrap_compute(self, compute: Callable) -> Callable:
         return compute
+
+    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+        # No syncing required here. syncing will be done in metrics
+        pass
 
     def reset(self) -> None:
         for metric in self.metrics:
