@@ -791,7 +791,7 @@ class PoissonLoss(MultiHorizonMetric):
                 quantiles = self.quantiles
         predictions = super().to_prediction(out)
         return torch.stack(
-            [torch.tensor(scipy.stats.poisson(predictions.detach().copy().numpy()).ppf(q)) for q in quantiles], dim=-1
+            [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles], dim=-1
         ).to(predictions.device)
 
 
