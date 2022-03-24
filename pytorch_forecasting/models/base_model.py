@@ -866,7 +866,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         for name, p in named_parameters:
             if p.grad is not None and p.requires_grad and "bias" not in name:
                 layers.append(name)
-                ave_grads.append(p.grad.abs().mean())
+                ave_grads.append(p.grad.abs().cpu().mean())
                 self.logger.experiment.add_histogram(tag=name, values=p.grad, global_step=self.global_step)
         fig, ax = plt.subplots()
         ax.plot(ave_grads)

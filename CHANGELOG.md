@@ -1,4 +1,10 @@
 # Release Notes
+## v0.10.1 Bugfixes (24/03/2022)
+
+### Fixed
+
+- Fix with creating tensors on correct devices (#908)
+- Fix with MultiLoss when calculating gradient (#908)
 
 ## v0.10.0 Adding N-HiTS network (N-BEATS successor) (23/03/2022)
 

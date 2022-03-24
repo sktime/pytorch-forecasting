@@ -360,7 +360,7 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
                 self.center_ = np.mean(y_center)
                 self.scale_ = np.std(y_scale) + self.eps
             # correct numpy scalar dtype promotion, e.g. fix type from `np.float32(0.0) + 1e-8` gives `np.float64(1e-8)`
-            if not torch.is_tensor(self.scale_) and np.isscalar(self.scale_):
+            if isinstance(self.scale_, np.ndarray) and np.isscalar(self.scale_):
                 self.scale_ = self.scale_.astype(y_scale.dtype)
 
         elif self.method == "robust":

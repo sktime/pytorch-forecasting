@@ -1,7 +1,7 @@
 """
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
-from typing import Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
 
 import scipy.stats
@@ -11,7 +11,6 @@ from torch import distributions
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 from torchmetrics import Metric as LightningMetric
-from torchmetrics.metric import CompositionalMetric
 
 from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
@@ -152,6 +151,9 @@ class TorchMetricWrapper(Metric):
         # No syncing required here. syncing will be done in metric_a and metric_b
         pass
 
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
+
     def reset(self) -> None:
         self.torchmetric.reset()
 
@@ -264,7 +266,7 @@ class MultiLoss(LightningMetric):
         """
         return len(self.metrics)
 
-    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs) -> None:
         """
         Update composite metric
 
@@ -272,9 +274,6 @@ class MultiLoss(LightningMetric):
             y_pred: network output
             y_actual: actual values
             **kwargs: arguments to update function
-
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
         """
         for idx, metric in enumerate(self.metrics):
             try:
@@ -305,6 +304,55 @@ class MultiLoss(LightningMetric):
         else:
             results = torch.stack(results, dim=0).sum(0)
         return results
+
+    @torch.jit.unused
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+            **kwargs: arguments to update function
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        results = []
+        for idx, metric in enumerate(self.metrics):
+            try:
+                res = metric(
+                    y_pred[idx],
+                    (y_actual[0][idx], y_actual[1]),
+                    **{
+                        name: value[idx] if isinstance(value, (list, tuple)) else value
+                        for name, value in kwargs.items()
+                    },
+                )
+            except TypeError:  # silently update without kwargs if not supported
+                res = metric(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+            results.append(res * self.weights[idx])
+
+        if len(results) == 1:
+            results = results[0]
+        else:
+            results = torch.stack(results, dim=0).sum(0)
+        return results
+
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
+
+    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+        # No syncing required here. syncing will be done in metrics
+        pass
+
+    def reset(self) -> None:
+        for metric in self.metrics:
+            metric.reset()
+
+    def persistent(self, mode: bool = False) -> None:
+        for metric in self.metrics:
+            metric.persistent(mode=mode)
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -746,7 +794,7 @@ class PoissonLoss(MultiHorizonMetric):
                 quantiles = self.quantiles
         predictions = super().to_prediction(out)
         return torch.stack(
-            [torch.tensor(scipy.stats.poisson(predictions.detach().numpy()).ppf(q)) for q in quantiles], dim=-1
+            [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles], dim=-1
         ).to(predictions.device)
 
 

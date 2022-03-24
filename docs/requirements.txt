@@ -15,3 +15,5 @@ statsmodels
 ipython
 nbconvert>=6.3.0
 recommonmark>=0.7.1
+# Jinja2 3.1.0 breaks docs. Keep until nbconvert or Jinja2 fixes it.
+jinja2<3.1.0
