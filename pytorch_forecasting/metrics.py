@@ -369,8 +369,6 @@ class MultiLoss(LightningMetric):
                 result.append(metric.to_prediction(y_pred[idx]))
         return result
 
-    # fix sincing, wrap_compute and add forward
-
     def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
