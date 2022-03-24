@@ -596,7 +596,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             encoder_attention = out["encoder_attention"]
             shifts = encoder_attention.size(3) - out["encoder_lengths"]
             new_index = (
-                torch.arange(encoder_attention.size(3))[None, None, None].expand_as(encoder_attention)
+                torch.arange(encoder_attention.size(3), device=encoder_attention.device)[None, None, None].expand_as(
+                    encoder_attention
+                )
                 - shifts[:, None, None, None]
             ) % encoder_attention.size(3)
             encoder_attention = torch.gather(encoder_attention, dim=3, index=new_index)

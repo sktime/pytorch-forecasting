@@ -1,7 +1,7 @@
 """
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 import warnings
 
 import scipy.stats
@@ -264,7 +264,7 @@ class MultiLoss(LightningMetric):
         """
         return len(self.metrics)
 
-    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs) -> None:
         """
         Update composite metric
 
@@ -272,9 +272,6 @@ class MultiLoss(LightningMetric):
             y_pred: network output
             y_actual: actual values
             **kwargs: arguments to update function
-
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
         """
         for idx, metric in enumerate(self.metrics):
             try:
@@ -299,12 +296,58 @@ class MultiLoss(LightningMetric):
         results = []
         for weight, metric in zip(self.weights, self.metrics):
             results.append(metric.compute() * weight)
+            print(metric.compute().requires_grad)
 
         if len(results) == 1:
             results = results[0]
         else:
             results = torch.stack(results, dim=0).sum(0)
         return results
+
+    @torch.jit.unused
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+            **kwargs: arguments to update function
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        results = []
+        for idx, metric in enumerate(self.metrics):
+            try:
+                res = metric(
+                    y_pred[idx],
+                    (y_actual[0][idx], y_actual[1]),
+                    **{
+                        name: value[idx] if isinstance(value, (list, tuple)) else value
+                        for name, value in kwargs.items()
+                    },
+                )
+            except TypeError:  # silently update without kwargs if not supported
+                res = metric(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+            results.append(res * self.weights[idx])
+
+        if len(results) == 1:
+            results = results[0]
+        else:
+            results = torch.stack(results, dim=0).sum(0)
+        return results
+
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
+
+    def reset(self) -> None:
+        for metric in self.metrics:
+            metric.reset()
+
+    def persistent(self, mode: bool = False) -> None:
+        for metric in self.metrics:
+            metric.persistent(mode=mode)
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -326,6 +369,8 @@ class MultiLoss(LightningMetric):
             except TypeError:
                 result.append(metric.to_prediction(y_pred[idx]))
         return result
+
+    # fix sincing, wrap_compute and add forward
 
     def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -746,7 +791,7 @@ class PoissonLoss(MultiHorizonMetric):
                 quantiles = self.quantiles
         predictions = super().to_prediction(out)
         return torch.stack(
-            [torch.tensor(scipy.stats.poisson(predictions.detach().numpy()).ppf(q)) for q in quantiles], dim=-1
+            [torch.tensor(scipy.stats.poisson(predictions.detach().copy().numpy()).ppf(q)) for q in quantiles], dim=-1
         ).to(predictions.device)
 
 
