@@ -296,7 +296,6 @@ class MultiLoss(LightningMetric):
         results = []
         for weight, metric in zip(self.weights, self.metrics):
             results.append(metric.compute() * weight)
-            print(metric.compute().requires_grad)
 
         if len(results) == 1:
             results = results[0]
