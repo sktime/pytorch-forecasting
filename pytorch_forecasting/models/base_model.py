@@ -940,7 +940,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
             raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
 
         # set scheduler
-        if isinstance(lr, (list, tuple)):  # change for each epoch
+        if isinstance(lrs, (list, tuple)):  # change for each epoch
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             scheduler_config = {
