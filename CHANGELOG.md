@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Fix learning scale schedule
+- Fix learning scale schedule (#912)
 
 ### Contributors
 
