@@ -1327,9 +1327,9 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale)).unsqueeze(-1)
         scale = (
             F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) + self.sigma_minimum**2
-        ) * target_scale[..., 1, None, None]
+        ) * target_scale[..., 1, None, None] ** 2
 
-        cov_factor = parameters[..., 2:] * torch.sqrt(target_scale[..., 1, None, None])
+        cov_factor = parameters[..., 2:] * target_scale[..., 1, None, None]
         return torch.concat([loc, scale, cov_factor], dim=-1)
 
     def inv_softplus(self, y):

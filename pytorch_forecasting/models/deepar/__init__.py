@@ -28,6 +28,7 @@ from pytorch_forecasting.metrics import (
     DistributionLoss,
     Metric,
     MultiLoss,
+    MultivariateDistributionLoss,
     NormalDistributionLoss,
 )
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
@@ -188,6 +189,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             not isinstance(dataset.target_normalizer, MultiNormalizer)
             or all([not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer])
         ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
+        if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
+            assert (
+                dataset.min_prediction_length == dataset.max_prediction_length
+            ), "Multivariate models require constant prediction lenghts"
         return super().from_dataset(
             dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
         )
