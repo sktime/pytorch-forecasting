@@ -1259,6 +1259,8 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
     """
     Multivariate low-rank normal distribution loss.
 
+    Use this loss to make out of a DeepAR model a DeepVAR network.
+
     Requirements for original target normalizer:
         * not normalized in log space (use :py:class:`~LogNormalDistributionLoss`)
         * not coerced to be positive
@@ -1271,8 +1273,8 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         name: str = None,
         quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
         reduction: str = "mean",
-        rank: int = None,
-        input_size: int = 10,
+        rank: int = 10,
+        input_size: int = None,
         sigma_init: float = 1.0,
         sigma_minimum: float = 1e-3,
     ):
@@ -1284,18 +1286,19 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
             quantiles (List[float], optional): quantiles for probability range.
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
+            rank (int): rank of low-rank approximation for covariance matrix. Defaults to 10.
+            input_size (int, optional): Size of tensor that should be output by network. Defaults to squared rank.
+            sigma_init (float, optional): default value for diagonal covariance. Defaults to 1.0.
+            sigma_minimum (float, optional): minimum value for diagonal covariance. Defaults to 1e-3.
         """
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
-        if rank is None:
-            rank = int(np.ceil(np.sqrt(input_size)))
+        if input_size is None:
+            input_size = rank**2
         self.rank = rank
         self.input_size = input_size
         self.sigma_minimum = sigma_minimum
         self.sigma_init = sigma_init
-        self.distribution_arguments = list(range(input_size))
-        self.cov_factor_projector = nn.Linear(input_size, rank)
-        self.loc_projector = nn.Linear(input_size, 1)
-        self.cov_diag_projector = nn.Linear(input_size, 1)
+        self.distribution_arguments = list(range(2 + rank))
 
         # determine bias
         self._diag_bias: float = self.inv_softplus(self.sigma_init**2) if self.sigma_init > 0.0 else 0.0
@@ -1323,15 +1326,14 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
         self.validate_encoder(encoder)
-        # project parameters
-        loc = self.loc_projector(parameters)
-        cov_diag = self.cov_diag_projector(parameters)
-        cov_factor = self.cov_factor_projector(parameters)
 
         # scale
-        loc = encoder(dict(prediction=loc, target_scale=target_scale))
-        scale = F.softplus(cov_diag + self._diag_bias) * target_scale[..., 1, None, None] + self.sigma_minimum**2
-        cov_factor = cov_factor * target_scale[..., 1, None, None]
+        loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale)).unsqueeze(-1)
+        scale = (
+            F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) * target_scale[..., 1, None, None]
+            + self.sigma_minimum**2
+        )
+        cov_factor = parameters[..., 2:] * target_scale[..., 1, None, None]
         return torch.concat([loc, scale, cov_factor], dim=-1)
 
     def inv_softplus(self, y):
