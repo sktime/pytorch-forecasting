@@ -68,6 +68,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         The code is based on the article `DeepAR: Probabilistic forecasting with autoregressive recurrent networks
         <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_.
 
+        By using a Multivariate Loss such as the
+        :py:class:`~pytorch_forecasting.metrics.MultivariateNormalDistributionLoss`,
+        the network is converted into a `DeepVAR network <http://arxiv.org/abs/1910.03002>`_.
+
         Args:
             cell_type (str, optional): Recurrent cell type ["LSTM", "GRU"]. Defaults to "LSTM".
             hidden_size (int, optional): hidden recurrent size - the most important hyperparameter along with
@@ -295,6 +299,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 first_hidden_state=hidden_state,
                 target_scale=target_scale,
                 n_decoder_steps=input_vector.size(1),
+                n_samples=n_samples,
             )
             # reshape predictions for n_samples:
             # from n_samples * batch_size x time steps to batch_size x time steps x n_samples

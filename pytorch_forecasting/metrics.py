@@ -1274,7 +1274,6 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
         reduction: str = "mean",
         rank: int = 10,
-        input_size: int = None,
         sigma_init: float = 1.0,
         sigma_minimum: float = 1e-3,
     ):
@@ -1287,15 +1286,11 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
             rank (int): rank of low-rank approximation for covariance matrix. Defaults to 10.
-            input_size (int, optional): Size of tensor that should be output by network. Defaults to squared rank.
             sigma_init (float, optional): default value for diagonal covariance. Defaults to 1.0.
             sigma_minimum (float, optional): minimum value for diagonal covariance. Defaults to 1e-3.
         """
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
-        if input_size is None:
-            input_size = rank**2
         self.rank = rank
-        self.input_size = input_size
         self.sigma_minimum = sigma_minimum
         self.sigma_init = sigma_init
         self.distribution_arguments = list(range(2 + rank))
@@ -1311,11 +1306,12 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
             cov_diag=x[..., 1],
         )
 
+    @staticmethod
     def validate_encoder(encoder: BaseEstimator):
         assert encoder.transformation not in [
             "log",
             "log1p",
-        ], "Use MultivariateLogNormalDistributionLoss for log scaled data"
+        ], "Use MultivariateLogNormalDistributionLoss for log scaled data"  # todo: implement
         assert encoder.transformation not in [
             "softplus",
             "relu",
@@ -1330,10 +1326,10 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         # scale
         loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale)).unsqueeze(-1)
         scale = (
-            F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) * target_scale[..., 1, None, None]
-            + self.sigma_minimum**2
-        )
-        cov_factor = parameters[..., 2:] * target_scale[..., 1, None, None]
+            F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) + self.sigma_minimum**2
+        ) * target_scale[..., 1, None, None]
+
+        cov_factor = parameters[..., 2:] * torch.sqrt(target_scale[..., 1, None, None])
         return torch.concat([loc, scale, cov_factor], dim=-1)
 
     def inv_softplus(self, y):
