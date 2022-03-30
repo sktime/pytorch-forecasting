@@ -12,7 +12,9 @@ from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics import (
     BetaDistributionLoss,
     LogNormalDistributionLoss,
+    MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
+    NormalDistributionLoss,
 )
 from pytorch_forecasting.models import DeepAR
 
@@ -119,6 +121,10 @@ def _integration(
                 lags={"volume": [2], "discount": [2]},
             )
         ),
+        dict(
+            # data_loader_kwargs=dict(to_dataloader_kwargs=dict()),
+            loss=MultivariateNormalDistributionLoss(),
+        ),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
@@ -150,6 +156,11 @@ def test_predict_samples(model, dataloaders_with_covariates):
     assert prediction.size()[-1] == 100, "expected raw samples"
 
 
-def test_pickle(model):
+@pytest.mark.parametrize("loss", [NormalDistributionLoss(), MultivariateNormalDistributionLoss()])
+def test_pickle(dataloaders_with_covariates, loss):
+    dataset = dataloaders_with_covariates["train"].dataset
+    model = DeepAR.from_dataset(
+        dataset, hidden_size=5, learning_rate=0.15, log_gradient_flow=True, log_interval=1000, loss=loss
+    )
     pkl = pickle.dumps(model)
     pickle.loads(pkl)

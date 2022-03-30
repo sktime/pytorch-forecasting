@@ -12,3 +12,4 @@ The following tutorials can be also found as `notebooks on GitHub <https://githu
    tutorials/stallion
    tutorials/ar
    tutorials/building
+   tutorials/deepar

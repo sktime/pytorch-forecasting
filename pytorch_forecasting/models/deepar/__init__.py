@@ -28,6 +28,7 @@ from pytorch_forecasting.metrics import (
     DistributionLoss,
     Metric,
     MultiLoss,
+    MultivariateDistributionLoss,
     NormalDistributionLoss,
 )
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
@@ -67,6 +68,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         The code is based on the article `DeepAR: Probabilistic forecasting with autoregressive recurrent networks
         <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_.
+
+        By using a Multivariate Loss such as the
+        :py:class:`~pytorch_forecasting.metrics.MultivariateNormalDistributionLoss`,
+        the network is converted into a `DeepVAR network <http://arxiv.org/abs/1910.03002>`_.
 
         Args:
             cell_type (str, optional): Recurrent cell type ["LSTM", "GRU"]. Defaults to "LSTM".
@@ -184,6 +189,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             not isinstance(dataset.target_normalizer, MultiNormalizer)
             or all([not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer])
         ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
+        if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
+            assert (
+                dataset.min_prediction_length == dataset.max_prediction_length
+            ), "Multivariate models require constant prediction lenghts"
         return super().from_dataset(
             dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
         )
@@ -295,6 +304,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 first_hidden_state=hidden_state,
                 target_scale=target_scale,
                 n_decoder_steps=input_vector.size(1),
+                n_samples=n_samples,
             )
             # reshape predictions for n_samples:
             # from n_samples * batch_size x time steps to batch_size x time steps x n_samples
