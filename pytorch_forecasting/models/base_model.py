@@ -452,6 +452,12 @@ class BaseModel(LightningModule, TupleOutputMixIn):
             Dict[str, Any]: log dictionary to be returned by training and validation steps
         """
         # log
+        if isinstance(self.loss, DistributionLoss):
+            prediction_kwargs.setdefault("n_samples", 20)
+            prediction_kwargs.setdefault("use_metric", True)
+            quantiles_kwargs.setdefault("n_samples", 20)
+            quantiles_kwargs.setdefault("use_metric", True)
+
         self.log_metrics(x, y, out, prediction_kwargs=prediction_kwargs)
         if self.log_interval > 0:
             self.log_prediction(
@@ -730,8 +736,8 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Dict[str, Any] = None,
-        prediction_kwargs: Dict[str, Any] = None,
+        quantiles_kwargs: Dict[str, Any] = {},
+        prediction_kwargs: Dict[str, Any] = {},
     ) -> plt.Figure:
         """
         Plot prediction of prediction vs actuals
@@ -756,11 +762,9 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         decoder_targets = to_list(x["decoder_target"])
 
         # get predictions
-        if prediction_kwargs is None:
-            prediction_kwargs = {}
-
-        if quantiles_kwargs is None:
-            quantiles_kwargs = {}
+        if isinstance(self.loss, DistributionLoss):
+            prediction_kwargs.setdefault("use_metric", False)
+            quantiles_kwargs.setdefault("use_metric", False)
 
         y_raws = to_list(out["prediction"])  # raw predictions - used for calculating loss
         y_hats = to_list(self.to_prediction(out, **prediction_kwargs))
@@ -1800,6 +1804,7 @@ class AutoRegressiveBaseModel(BaseModel):
         self,
         normalized_prediction_parameters: torch.Tensor,
         target_scale: Union[List[torch.Tensor], torch.Tensor],
+        n_samples: int = 1,
         **kwargs,
     ) -> Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]:
         """
@@ -1810,6 +1815,7 @@ class AutoRegressiveBaseModel(BaseModel):
         Args:
             normalized_prediction_parameters (torch.Tensor): network prediction output
             target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale to rescale network output
+            n_samples (int, optional): Number of samples to draw independently. Defaults to 1.
             **kwargs: extra arguments for dictionary passed to :py:meth:`~transform_output` method.
 
         Returns:
@@ -1829,7 +1835,15 @@ class AutoRegressiveBaseModel(BaseModel):
             isinstance(self.loss, MultiLoss) and isinstance(self.loss[0], DistributionLoss)
         ):
             # todo: handle mixed losses
-            prediction = self.loss.sample(prediction_parameters, 1)
+            if n_samples > 1:
+                prediction_parameters = apply_to_list(
+                    prediction_parameters, lambda x: x.reshape(int(x.size(0) / n_samples), n_samples, -1)
+                )
+                prediction = self.loss.sample(prediction_parameters, 1)
+                prediction = apply_to_list(prediction, lambda x: x.reshape(x.size(0) * n_samples, 1, -1))
+            else:
+                prediction = self.loss.sample(normalized_prediction_parameters, 1)
+
         else:
             prediction = prediction_parameters
         # normalize prediction prediction
@@ -1852,6 +1866,7 @@ class AutoRegressiveBaseModel(BaseModel):
         first_hidden_state: Any,
         target_scale: Union[List[torch.Tensor], torch.Tensor],
         n_decoder_steps: int,
+        n_samples: int = 1,
         **kwargs,
     ) -> Union[List[torch.Tensor], torch.Tensor]:
         """
@@ -1877,6 +1892,8 @@ class AutoRegressiveBaseModel(BaseModel):
             first_hidden_state (Any): first hidden state used for decoding
             target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale as in ``x``
             n_decoder_steps (int): number of decoding/prediction steps
+            n_samples (int): number of independent samples to draw from the distribution -
+                only relevant for multivariate models. Defaults to 1.
             **kwargs: additional arguments that are passed to the decode_one function.
 
         Returns:
@@ -1970,7 +1987,9 @@ class AutoRegressiveBaseModel(BaseModel):
             )
 
             # get prediction and its normalized version for the next step
-            prediction, current_target = self.output_to_prediction(current_target, target_scale=target_scale)
+            prediction, current_target = self.output_to_prediction(
+                current_target, target_scale=target_scale, n_samples=n_samples
+            )
             # save normalized output for lagged targets
             normalized_output.append(current_target)
             # set output to unnormalized samples, append each target as n_batch_samples x n_random_samples
