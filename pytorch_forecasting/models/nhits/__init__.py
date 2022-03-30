@@ -15,7 +15,7 @@ from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHoriz
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.utils import create_mask
+from pytorch_forecasting.utils import create_mask, to_list
 
 
 class NHiTS(BaseModelWithCovariates):
@@ -37,6 +37,7 @@ class NHiTS(BaseModelWithCovariates):
         context_length: int = 1,
         prediction_length: int = 1,
         static_hidden_size: Optional[int] = None,
+        naive_level: bool = True,
         shared_weights: bool = True,
         activation: str = "ReLU",
         initialization: str = "lecun_normal",
@@ -73,8 +74,10 @@ class NHiTS(BaseModelWithCovariates):
                 covariates are employed. Defaults to 512.
             static_hidden_size (Optional[int], optional): size of hidden layers for static variables.
                 Defaults to hidden_size.
-            loss: loss to optimize. Defaults to MASE().
+            loss: loss to optimize. Defaults to MASE(). QuantileLoss is also supported
             shared_weights (bool, optional): if True, weights of blocks are shared in each stack. Defaults to True.
+            naive_level (bool, optional): if True, native forecast of last observation is added at the beginnging.
+                Defaults to True.
             initialization (str, optional): Initialization method. One of ['orthogonal', 'he_uniform', 'glorot_uniform',
                 'glorot_normal', 'lecun_normal']. Defaults to "lecun_normal".
             n_blocks (List[int], optional): list of blocks used in each stack (i.e. length of stacks).
@@ -170,15 +173,11 @@ class NHiTS(BaseModelWithCovariates):
             embedding_paddings=self.hparams.embedding_paddings,
             x_categoricals=self.hparams.x_categoricals,
         )
-        if isinstance(self.hparams.output_size, int):
-            output_size = self.hparams.output_size
-        else:
-            output_size = sum(self.hparams.output_size)
 
         self.model = NHiTSModule(
             context_length=self.hparams.context_length,
             prediction_length=self.hparams.prediction_length,
-            output_size=output_size,
+            output_size=to_list(output_size),
             static_size=self.static_size,
             covariate_size=self.covariate_size,
             static_hidden_size=self.hparams.static_hidden_size,
@@ -194,6 +193,7 @@ class NHiTS(BaseModelWithCovariates):
             initialization=self.hparams.initialization,
             batch_normalization=self.hparams.batch_normalization,
             shared_weights=self.hparams.shared_weights,
+            naive_level=self.hparams.naive_level,
         )
 
     @property
@@ -265,32 +265,44 @@ class NHiTS(BaseModelWithCovariates):
         forecast, backcast, block_forecasts, block_backcasts = self.model(
             encoder_y, encoder_mask, encoder_x_t, decoder_x_t, x_s
         )
+        backcast = encoder_y - backcast
 
-        # create output
-        block_predictions = torch.cat([block_backcasts.detach(), block_forecasts.detach()], dim=1)
+        # create block output: detach and split by block
+        block_backcasts = block_backcasts.detach()
+        block_forecasts = block_forecasts.detach()
 
-        if forecast.size(2) > 1:  # multi-output
-            n_outputs = forecast.size(2)
-            forecast = [forecast[:, :, i] for i in range(n_outputs)]
-            backcast = [encoder_y[:, :, i] - backcast[:, :, i] for i in range(n_outputs)]
-
-            n_blocks = block_predictions.size(3)
-            block_predictions = [block_predictions[:, :, i] for i in range(n_outputs)]
-            block_predictions = tuple(
-                self.transform_output([b[..., block] for b in block_predictions], target_scale=x["target_scale"])
-                for block in range(n_blocks)
+        if isinstance(self.hparams.output_size, (tuple, list)):
+            forecast = forecast.split(self.hparams.output_size, dim=2)
+            backcast = backcast.split(1, dim=2)
+            block_backcasts = tuple(
+                self.transform_output(block.squeeze(3).split(1, dim=2), target_scale=x["target_scale"])
+                for block in block_backcasts.split(1, dim=3)
+            )
+            block_forecasts = tuple(
+                self.transform_output(
+                    block.squeeze(3).split(self.hparams.output_size, dim=2), target_scale=x["target_scale"]
+                )
+                for block in block_forecasts.split(1, dim=3)
             )
         else:
-            block_predictions = tuple(
-                self.transform_output(block_predictions[..., i], target_scale=x["target_scale"])
-                for i in range(block_predictions[0].size(-1))
+            block_backcasts = tuple(
+                self.transform_output(block.squeeze(3), target_scale=x["target_scale"])
+                for block in block_backcasts.split(1, dim=3)
             )
-            backcast = encoder_y - backcast
+            block_forecasts = tuple(
+                self.transform_output(block.squeeze(3), target_scale=x["target_scale"])
+                for block in block_forecasts.split(1, dim=3)
+            )
 
         return self.to_network_output(
-            prediction=self.transform_output(forecast, target_scale=x["target_scale"]),
-            backcast=self.transform_output(backcast, target_scale=x["target_scale"]),
-            block_predictions=block_predictions,
+            prediction=self.transform_output(
+                forecast, target_scale=x["target_scale"]
+            ),  # (n_outputs x) n_samples x n_timesteps x output_size
+            backcast=self.transform_output(
+                backcast, target_scale=x["target_scale"]
+            ),  # (n_outputs x) n_samples x n_timesteps x 1
+            block_backcasts=block_backcasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x 1
+            block_forecasts=block_forecasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x output_size
         )
 
     @classmethod
@@ -326,9 +338,11 @@ class NHiTS(BaseModelWithCovariates):
         )
         new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, MASE()))
 
-        assert (isinstance(new_kwargs["output_size"], int) and new_kwargs["output_size"] == 1) or all(
+        assert (new_kwargs.get("backcast_loss_ratio", 0) == 0) | (
+            isinstance(new_kwargs["output_size"], int) and new_kwargs["output_size"] == 1
+        ) or all(
             o == 1 for o in new_kwargs["output_size"]
-        ), "output sizes can only be of size 1, i.e. point forecasts"
+        ), "output sizes can only be of size 1, i.e. point forecasts if backcast_loss_ratio > 0"
 
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
@@ -416,7 +430,8 @@ class NHiTS(BaseModelWithCovariates):
                         dict(
                             backcast=output["backcast"][i],
                             prediction=output["prediction"][i],
-                            block_predictions=output["block_predictions"][i],
+                            block_backcasts=[block[i] for block in output["block_backcasts"]],
+                            block_forecasts=[block[i] for block in output["block_forecasts"]],
                         ),
                         idx=idx,
                         ax=ax_i,
@@ -425,41 +440,58 @@ class NHiTS(BaseModelWithCovariates):
             return figs
 
         if ax is None:
-            fig, ax = plt.subplots(2, 1, figsize=(6, 8))
+            fig, ax = plt.subplots(2, 1, figsize=(6, 8), sharex=True, sharey=True)
         else:
             fig = ax[0].get_figure()
 
-        time = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
-
+        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
         # plot target vs prediction
-        ax[0].plot(time, torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]]).detach().cpu(), label="target")
+        # target
+
+        def to_prediction(x):
+            # todo: better to use loss metric
+            return x[..., x.size(-1) // 2]
+
+        color = next(prop_cycle)["color"]
+        ax[0].plot(torch.arange(-self.hparams.context_length, 0), x["encoder_target"][idx].detach().cpu(), c=color)
         ax[0].plot(
-            time,
-            torch.cat(
-                [
-                    output["backcast"][idx].detach(),
-                    output["prediction"][idx].detach(),
-                ],
-                dim=0,
-            ).cpu(),
-            label="prediction",
+            torch.arange(self.hparams.prediction_length),
+            x["decoder_target"][idx].detach().cpu(),
+            label="Target",
+            c=color,
         )
-        ax[0].set_xlabel("Time")
+        # prediction
+        color = next(prop_cycle)["color"]
+        ax[0].plot(
+            torch.arange(-self.hparams.context_length, 0),
+            output["backcast"][idx][..., 0].detach().cpu(),
+            label="Backcast",
+            c=color,
+        )
+        ax[0].plot(
+            torch.arange(self.hparams.prediction_length),
+            to_prediction(output["prediction"][idx].detach().cpu()),
+            label="Forecast",
+            c=color,
+        )
 
         # plot blocks
-        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
-        next(prop_cycle)  # prediction
-        next(prop_cycle)  # observations
-
-        for pooling_size, block_prediction in zip(self.hparams.pooling_sizes, output["block_predictions"][1:]):
+        for pooling_size, block_backcast, block_forecast in zip(
+            self.hparams.pooling_sizes, output["block_backcasts"][1:], output["block_forecasts"][1:]
+        ):
+            color = next(prop_cycle)["color"]
             ax[1].plot(
-                time,
-                block_prediction[idx].detach().cpu(),
+                torch.arange(-self.hparams.context_length, 0),
+                block_backcast[idx][..., 0].detach().cpu(),
+                c=color,
+            )
+            ax[1].plot(
+                torch.arange(self.hparams.prediction_length),
+                to_prediction(block_forecast[idx].detach().cpu()),
+                c=color,
                 label=f"Pooling size: {pooling_size}",
-                c=next(prop_cycle)["color"],
             )
         ax[1].set_xlabel("Time")
-        ax[1].set_ylabel("Decomposition")
 
         fig.legend()
         return fig

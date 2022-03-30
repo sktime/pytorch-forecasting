@@ -27,11 +27,15 @@ class IdentityBasis(nn.Module):
         self.interpolation_mode = interpolation_mode
 
     def forward(
-        self, theta: torch.Tensor, encoder_x_t: torch.Tensor, decoder_x_t: torch.Tensor
+        self,
+        backcast_theta: torch.Tensor,
+        forecast_theta: torch.Tensor,
+        encoder_x_t: torch.Tensor,
+        decoder_x_t: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        backcast = theta[:, : self.backcast_size]
-        knots = theta[:, self.backcast_size :]
+        backcast = backcast_theta
+        knots = forecast_theta
 
         if self.interpolation_mode == "nearest":
             knots = knots[:, None, :]
@@ -122,7 +126,7 @@ class NHiTSBlock(nn.Module):
         self.dropout = dropout
 
         self.hidden_size = [
-            self.context_length_pooled * self.output_size
+            self.context_length_pooled * len(self.output_size)
             + (self.context_length + self.prediction_length) * self.covariate_size
             + self.static_hidden_size
         ] + hidden_size
@@ -146,7 +150,12 @@ class NHiTSBlock(nn.Module):
             if self.dropout > 0:
                 hidden_layers.append(nn.Dropout(p=self.dropout))
 
-        output_layer = [nn.Linear(in_features=self.hidden_size[-1], out_features=n_theta * output_size)]
+        output_layer = [
+            nn.Linear(
+                in_features=self.hidden_size[-1],
+                out_features=context_length * len(output_size) + n_theta * sum(output_size),
+            )
+        ]
         layers = hidden_layers + output_layer
 
         # static_size is computed with data, static_hidden_size is provided by user, if 0 no statics are used
@@ -181,10 +190,12 @@ class NHiTSBlock(nn.Module):
             encoder_y = torch.cat((encoder_y, x_s), 1)
 
         # Compute local projection weights and projection
-        theta = self.layers(encoder_y).reshape(-1, self.n_theta)
-        backcast, forecast = self.basis(theta, encoder_x_t, decoder_x_t)
-        backcast = backcast.reshape(-1, self.output_size, self.context_length).transpose(1, 2)
-        forecast = forecast.reshape(-1, self.output_size, self.prediction_length).transpose(1, 2)
+        theta = self.layers(encoder_y)
+        backcast_theta = theta[:, : self.context_length * len(self.output_size)].reshape(-1, self.context_length)
+        forecast_theta = theta[:, self.context_length * len(self.output_size) :].reshape(-1, self.n_theta)
+        backcast, forecast = self.basis(backcast_theta, forecast_theta, encoder_x_t, decoder_x_t)
+        backcast = backcast.reshape(-1, len(self.output_size), self.context_length).transpose(1, 2)
+        forecast = forecast.reshape(-1, sum(self.output_size), self.prediction_length).transpose(1, 2)
 
         return backcast, forecast
 
@@ -214,11 +225,14 @@ class NHiTS(nn.Module):
         initialization,
         batch_normalization,
         shared_weights,
+        naive_level: bool,
     ):
         super().__init__()
 
         self.prediction_length = prediction_length
         self.context_length = context_length
+        self.output_size = output_size
+        self.naive_level = naive_level
 
         blocks = self.create_stack(
             n_blocks=n_blocks,
@@ -278,7 +292,7 @@ class NHiTS(nn.Module):
                 if shared_weights and block_id > 0:
                     nbeats_block = block_list[-1]
                 else:
-                    n_theta = context_length + max(prediction_length // downsample_frequencies[i], 1)
+                    n_theta = max(prediction_length // downsample_frequencies[i], 1)
                     basis = IdentityBasis(
                         backcast_size=context_length,
                         forecast_size=prediction_length,
@@ -326,10 +340,20 @@ class NHiTS(nn.Module):
         encoder_mask = encoder_mask.unsqueeze(-1)
 
         level = encoder_y[:, -1:].repeat(1, self.prediction_length, 1)  # Level with Naive1
-        block_forecasts = [level]
-        block_backcasts = [encoder_y[:, -1:].repeat(1, self.context_length, 1)]
+        forecast_level = level.repeat_interleave(torch.tensor(self.output_size, device=level.device), dim=2)
 
-        forecast = level
+        # level with last available observation
+        if self.naive_level:
+            block_forecasts = [forecast_level]
+            block_backcasts = [encoder_y[:, -1:].repeat(1, self.context_length, 1)]
+
+            forecast = block_forecasts[0]
+        else:
+            block_forecasts = []
+            block_backcasts = []
+            forecast = torch.zeros_like(forecast_level, device=forecast_level.device)
+
+        # forecast by block
         for block in self.blocks:
             block_backcast, block_forecast = block(
                 encoder_y=residuals, encoder_x_t=encoder_x_t, decoder_x_t=decoder_x_t, x_s=x_s
