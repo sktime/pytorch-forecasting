@@ -6,10 +6,11 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models import NHiTS
 
 
-def _integration(dataloader, tmp_path, gpus):
+def _integration(dataloader, tmp_path, gpus, **kwargs):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
@@ -36,7 +37,7 @@ def _integration(dataloader, tmp_path, gpus):
         log_gradient_flow=True,
         log_interval=1000,
         hidden_size=8,
-        backcast_loss_ratio=1.0,
+        **kwargs,
     )
     net.size()
     try:
@@ -58,7 +59,9 @@ def _integration(dataloader, tmp_path, gpus):
     net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
 
 
-@pytest.mark.parametrize("dataloader", ["with_covariates", "fixed_window_without_covariates", "multi_target"])
+@pytest.mark.parametrize(
+    "dataloader", ["with_covariates", "fixed_window_without_covariates", "multi_target", "quantiles"]
+)
 def test_integration(
     dataloaders_with_covariates,
     dataloaders_fixed_window_without_covariates,
@@ -67,15 +70,21 @@ def test_integration(
     gpus,
     dataloader,
 ):
+    kwargs = {}
     if dataloader == "with_covariates":
         dataloader = dataloaders_with_covariates
+        kwargs["backcast_loss_ratio"] = 0.5
     elif dataloader == "fixed_window_without_covariates":
         dataloader = dataloaders_fixed_window_without_covariates
     elif dataloader == "multi_target":
         dataloader = dataloaders_multi_target
+        kwargs["loss"] = QuantileLoss()
+    elif dataloader == "quantiles":
+        dataloader = dataloaders_with_covariates
+        kwargs["loss"] = QuantileLoss()
     else:
         raise ValueError(f"dataloader {dataloader} unknown")
-    _integration(dataloader, tmp_path=tmp_path, gpus=gpus)
+    _integration(dataloader, tmp_path=tmp_path, gpus=gpus, **kwargs)
 
 
 @pytest.fixture(scope="session")
