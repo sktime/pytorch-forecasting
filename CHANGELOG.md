@@ -1,27 +1,22 @@
 # Release Notes
-## v0.9.2 Graph networks (UNRELEASED)
 
-### Added
-
-- Added a sampler which uses Graphs to sample from
-
-### Fixed
-
-### Changed
-
-- Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
-
-## v0.10.2 UNRELEASED
+## v0.10.2 Multivariate networks (UNRELEASED)
 
 ### Added
 
 - DeepVar network (#923)
 - Enable quantile loss for N-HiTS (#926)
+- Added a sampler which uses Graphs to sample from (#479)
 
 ### Fixed
 
 - Fix learning scale schedule (#912)
 - Fix TFT list/tuple issue at interpretation (#924)
+
+### Changed
+
+- Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
+
 
 ### Contributors
 

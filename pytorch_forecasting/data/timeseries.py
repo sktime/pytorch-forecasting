@@ -133,6 +133,31 @@ class TimeSeriesDataSet(Dataset):
     # todo: refactor:
     # - creating base class with minimal functionality
     # - "outsource" transformations -> use pytorch transformations as default
+
+    # todo: integrate graphs
+    - add option to pass networkx graph to the dataset -> clearly defined
+    - create method to create networkx graph for hierachies -> clearly defined
+    - convert networkx graph to pytorch geometric graph
+    - create sampler to sample from the graph
+    - create option in `to_dataloader` method to use a graph sampler
+        -> automatically changing collate function which returns graphs
+        -> should incorporate entire dataset but be compatible with current approach
+    - integrate hierachical loss somehow into loss metrics
+
+    how to get there:
+    - add networkx and pytorch_geometric to requirements BUT as extras
+        -> do we also need torch_sparse, etc.? -> can we avoid this? probably not
+    - networkx graph: define what makes sense from user perspective
+    - define conversion into pytorch geometric graph? is this a two-step process of
+        - encoding networkx graph and converting it into "unfilled" pytorch geometric graph
+        - then creating full graph in collate function on the fly?
+        - or is data already stored in pytorch geometric graph and we only cut through it?
+        - dataformat would change? Is is all timeseries data? + mask when valid?
+        - then making cuts through the graph in sampling?
+        - would it be best in this case to re-think the timeseries class and design it as series of transformations?
+        - what is the new master data? very off current state or very similar?
+        - current approach is storing data in long format which is memory efficient. graphs would require wide format?
+    - do NOT overengineer, i.e. support only usecase of single static graph, but only subset might be relevant
     """
 
     def __init__(
@@ -1681,10 +1706,14 @@ class TimeSeriesDataSet(Dataset):
                 if isinstance(batches[0][0]["target_scale"][idx], torch.Tensor):  # stack tensor
                     scale = torch.stack([batch[0]["target_scale"][idx] for batch in batches])
                 else:
-                    scale = torch.tensor([batch[0]["target_scale"][idx] for batch in batches], dtype=torch.float)
+                    scale = torch.from_numpy(
+                        np.array([batch[0]["target_scale"][idx] for batch in batches], dtype=np.float32),
+                    )
                 target_scale.append(scale)
         else:  # convert to tensor
-            target_scale = torch.tensor([batch[0]["target_scale"] for batch in batches], dtype=torch.float)
+            target_scale = torch.from_numpy(
+                np.array([batch[0]["target_scale"] for batch in batches], dtype=np.float32),
+            )
 
         # target and weight
         if isinstance(batches[0][1][0], (tuple, list)):
