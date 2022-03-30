@@ -572,7 +572,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             for idx, x in enumerate(out["decoder_attention"]):
                 decoder_length = out["decoder_lengths"][idx]
                 decoder_attention[idx, :, :, :decoder_length] = x[..., :decoder_length]
+        else:
+            decoder_attention = out["decoder_attention"]
+            decoder_mask = create_mask(out["decoder_attention"].size(1), out["decoder_lengths"])
+            decoder_attention[decoder_mask[..., None, None].expand_as(decoder_attention)] = float("nan")
 
+        if isinstance(out["encoder_attention"], (list, tuple)):
             # same game for encoder attention
             # create new attention tensor into which we will scatter
             first_elm = out["encoder_attention"][0]
@@ -589,9 +594,6 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                     ..., :encoder_length
                 ]
         else:
-            decoder_attention = out["decoder_attention"]
-            decoder_mask = create_mask(out["decoder_attention"].size(1), out["decoder_lengths"])
-            decoder_attention[decoder_mask[..., None, None].expand_as(decoder_attention)] = float("nan")
             # roll encoder attention (so start last encoder value is on the right)
             encoder_attention = out["encoder_attention"]
             shifts = encoder_attention.size(3) - out["encoder_lengths"]
