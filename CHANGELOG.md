@@ -5,6 +5,7 @@
 ### Added
 
 - DeepVar network (#923)
+- Enable quantile loss for N-HiTS (#926)
 
 ### Fixed
 
