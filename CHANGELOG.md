@@ -2,9 +2,14 @@
 
 ## v0.10.2 UNRELEASED
 
+### Added
+
+- DeepVar network (#923)
+
 ### Fixed
 
 - Fix learning scale schedule (#912)
+- Fix TFT list/tuple issue at interpretation (#924)
 
 ### Contributors
 
