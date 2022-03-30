@@ -27,9 +27,12 @@ and you should take into account. Here is an overview over the pros and cons of 
    :py:class:`~pytorch_forecasting.models.rnn.RecurrentNetwork`,                                           "x",          "x",                "x",          "",               "",               "",           "",                            "x",                       "",           2
    :py:class:`~pytorch_forecasting.models.mlp.DecoderMLP`,                                                 "x",          "x",                "x",          "x",              "",               "x",          "",                            "x",                       "x",          1
    :py:class:`~pytorch_forecasting.models.nbeats.NBeats`,                                                  "",           "",                 "x",          "",               "",               "",           "",                            "",                        "",           1
-   :py:class:`~pytorch_forecasting.models.deepar.DeepAR`,                                                  "x",          "x",                "x",          "",               "x",              "x",          "",                            "x",                       "",           3
+   :py:class:`~pytorch_forecasting.models.nhits.NHiTS`,                                                    "x",          "x",                "x",          "",               "",               "",           "",                            "",                        "",           1
+   :py:class:`~pytorch_forecasting.models.deepar.DeepAR`,                                                  "x",          "x",                "x",          "",               "x",              "x",          "x [#deepvar]_ ",              "x",                       "",           3
    :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`,          "x",          "x",                "x",          "x",              "",               "x",          "",                            "x",                       "x",          4
 
+
+.. [#deepvar] Accounting for correlations using a multivariate loss function which converts the network into a DeepVAR model.
 
 Size and type of available data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -85,6 +88,9 @@ multiple targets and even hetrogeneous targets where some are continuous variabl
 i.e. regression and classification at the same time. :py:class:`~pytorch_forecasting.models.deepar.DeepAR`
 can handle multiple targets but only works for regression tasks.
 
+For long forecast horizon forecasts, :py:class:`~pytorch_forecasting.models.nhits.NHiTS` is an excellent choice
+as it uses interpolation capabilities.
+
 Supporting uncertainty
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -123,7 +129,8 @@ the lifetime of a model.
 
 The :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer` is
 a rather large model but might benefit from being trained with.
-For example, :py:class:`~pytorch_forecasting.models.nbeats.NBeats` is an efficient model.
+For example, :py:class:`~pytorch_forecasting.models.nbeats.NBeats` or :py:class:`~pytorch_forecasting.models.nhits.NHiTS` are
+efficient models.
 Autoregressive models such as :py:class:`~pytorch_forecasting.models.deepar.DeepAR` might be quick to train
 but might be slow at inference time (in case of :py:class:`~pytorch_forecasting.models.deepar.DeepAR` this is
 driven by sampling results probabilistically multiple times, effectively increasing the computational burden linearly with the

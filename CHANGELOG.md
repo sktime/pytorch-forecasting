@@ -11,13 +11,42 @@
 
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
 
-## v0.9.3 UNRELEASED
+## v0.10.2 UNRELEASED
 
 ### Added
 
+- DeepVar network (#923)
+- Enable quantile loss for N-HiTS (#926)
+
+### Fixed
+
+- Fix learning scale schedule (#912)
+- Fix TFT list/tuple issue at interpretation (#924)
+
+### Contributors
+
+- jdb78
+
+## v0.10.1 Bugfixes (24/03/2022)
+
+### Fixed
+
+- Fix with creating tensors on correct devices (#908)
+- Fix with MultiLoss when calculating gradient (#908)
+
+### Contributors
+
+- jdb78
+
+## v0.10.0 Adding N-HiTS network (N-BEATS successor) (23/03/2022)
+
+### Added
+
+- Added new `N-HiTS` network that has consistently beaten `N-BEATS` (#890)
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 - More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)
+- Fix concatentation of attention (#902)
 
 ### Fixed
 

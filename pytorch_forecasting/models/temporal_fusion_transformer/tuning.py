@@ -37,8 +37,8 @@ class MetricsCallback(Callback):
 
 
 def optimize_hyperparameters(
-    train_dataloader: DataLoader,
-    val_dataloader: DataLoader,
+    train_dataloaders: DataLoader,
+    val_dataloaders: DataLoader,
     model_path: str,
     max_epochs: int = 20,
     n_trials: int = 100,
@@ -64,8 +64,8 @@ def optimize_hyperparameters(
     the PyTorch Lightning learning rate finder.
 
     Args:
-        train_dataloader (DataLoader): dataloader for training model
-        val_dataloader (DataLoader): dataloader for validating model
+        train_dataloaders (DataLoader): dataloader for training model
+        val_dataloaders (DataLoader): dataloader for validating model
         model_path (str): folder to which model checkpoints are saved
         max_epochs (int, optional): Maximum number of epochs to run training. Defaults to 20.
         n_trials (int, optional): Number of hyperparameter trials to run. Defaults to 100.
@@ -101,8 +101,8 @@ def optimize_hyperparameters(
     Returns:
         optuna.Study: optuna study results
     """
-    assert isinstance(train_dataloader.dataset, TimeSeriesDataSet) and isinstance(
-        val_dataloader.dataset, TimeSeriesDataSet
+    assert isinstance(train_dataloaders.dataset, TimeSeriesDataSet) and isinstance(
+        val_dataloaders.dataset, TimeSeriesDataSet
     ), "dataloaders must be built from timeseriesdataset"
 
     logging_level = {
@@ -155,7 +155,7 @@ def optimize_hyperparameters(
         hidden_size = trial.suggest_int("hidden_size", *hidden_size_range, log=True)
         kwargs["loss"] = copy.deepcopy(loss)
         model = TemporalFusionTransformer.from_dataset(
-            train_dataloader.dataset,
+            train_dataloaders.dataset,
             dropout=trial.suggest_uniform("dropout", *dropout_range),
             hidden_size=hidden_size,
             hidden_continuous_size=trial.suggest_int(
@@ -179,8 +179,8 @@ def optimize_hyperparameters(
             )
             res = lr_trainer.tuner.lr_find(
                 model,
-                train_dataloaders=train_dataloader,
-                val_dataloaders=val_dataloader,
+                train_dataloaders=train_dataloaders,
+                val_dataloaders=val_dataloaders,
                 early_stop_threshold=10000,
                 min_lr=learning_rate_range[0],
                 num_training=100,
@@ -206,7 +206,7 @@ def optimize_hyperparameters(
             model.hparams.learning_rate = trial.suggest_loguniform("learning_rate", *learning_rate_range)
 
         # fit
-        trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+        trainer.fit(model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders)
 
         # report result
         return metrics_callback.metrics[-1]["val_loss"].item()

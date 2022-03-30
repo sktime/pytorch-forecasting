@@ -1,17 +1,17 @@
 """
 Implementation of metrics for (mulit-horizon) timeseries forecasting.
 """
-from typing import Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
 
+import numpy as np
 import scipy.stats
 from sklearn.base import BaseEstimator
 import torch
-from torch import distributions
+from torch import distributions, nn
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 from torchmetrics import Metric as LightningMetric
-from torchmetrics.metric import CompositionalMetric
 
 from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
 
@@ -152,6 +152,9 @@ class TorchMetricWrapper(Metric):
         # No syncing required here. syncing will be done in metric_a and metric_b
         pass
 
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
+
     def reset(self) -> None:
         self.torchmetric.reset()
 
@@ -264,19 +267,27 @@ class MultiLoss(LightningMetric):
         """
         return len(self.metrics)
 
-    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs) -> None:
         """
         Update composite metric
 
         Args:
             y_pred: network output
             y_actual: actual values
-
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+            **kwargs: arguments to update function
         """
         for idx, metric in enumerate(self.metrics):
-            metric.update(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+            try:
+                metric.update(
+                    y_pred[idx],
+                    (y_actual[0][idx], y_actual[1]),
+                    **{
+                        name: value[idx] if isinstance(value, (list, tuple)) else value
+                        for name, value in kwargs.items()
+                    },
+                )
+            except TypeError:  # silently update without kwargs if not supported
+                metric.update(y_pred[idx], (y_actual[0][idx], y_actual[1]))
 
     def compute(self) -> torch.Tensor:
         """
@@ -294,6 +305,55 @@ class MultiLoss(LightningMetric):
         else:
             results = torch.stack(results, dim=0).sum(0)
         return results
+
+    @torch.jit.unused
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+            **kwargs: arguments to update function
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        results = []
+        for idx, metric in enumerate(self.metrics):
+            try:
+                res = metric(
+                    y_pred[idx],
+                    (y_actual[0][idx], y_actual[1]),
+                    **{
+                        name: value[idx] if isinstance(value, (list, tuple)) else value
+                        for name, value in kwargs.items()
+                    },
+                )
+            except TypeError:  # silently update without kwargs if not supported
+                res = metric(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+            results.append(res * self.weights[idx])
+
+        if len(results) == 1:
+            results = results[0]
+        else:
+            results = torch.stack(results, dim=0).sum(0)
+        return results
+
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
+
+    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+        # No syncing required here. syncing will be done in metrics
+        pass
+
+    def reset(self) -> None:
+        for metric in self.metrics:
+            metric.reset()
+
+    def persistent(self, mode: bool = False) -> None:
+        for metric in self.metrics:
+            metric.persistent(mode=mode)
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -734,9 +794,9 @@ class PoissonLoss(MultiHorizonMetric):
             else:
                 quantiles = self.quantiles
         predictions = super().to_prediction(out)
-        return torch.stack([torch.tensor(scipy.stats.poisson(predictions.cpu()).ppf(q)) for q in quantiles], dim=-1).to(
-            predictions.device
-        )
+        return torch.stack(
+            [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles], dim=-1
+        ).to(predictions.device)
 
 
 class QuantileLoss(MultiHorizonMetric):
@@ -949,7 +1009,7 @@ class MASE(MultiHorizonMetric):
         self._update_losses_and_lengths(losses, lengths)
 
     def loss(self, y_pred, target, scaling):
-        return (y_pred - target).abs() / scaling.unsqueeze(-1)
+        return (self.to_prediction(y_pred) - target).abs() / scaling.unsqueeze(-1)
 
     def calculate_scaling(self, target, lengths, encoder_target, encoder_lengths):
         # calcualte mean(abs(diff(targets)))
@@ -1110,6 +1170,62 @@ class DistributionLoss(MultiHorizonMetric):
         return quantiles
 
 
+class MultivariateDistributionLoss(DistributionLoss):
+    """Base class for multivariate distribution losses.
+
+    Class should be inherited for all multivariate distribution losses, i.e. if a batch of values
+    is predicted in one go and the batch dimension is not independent, but the time dimension still
+    remains independent.
+    """
+
+    def sample(self, y_pred, n_samples: int) -> torch.Tensor:
+        """
+        Sample from distribution.
+
+        Args:
+            y_pred: prediction output of network (shape batch_size x n_timesteps x n_paramters)
+            n_samples (int): number of samples to draw
+
+        Returns:
+            torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
+        """
+        dist = self.map_x_to_distribution(y_pred)
+        samples = dist.sample((n_samples,)).permute(
+            2, 1, 0
+        )  # returned as (n_samples, n_timesteps, batch_size), so reshape to (batch_size, n_timesteps, n_samples)
+        return samples
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        """
+        Convert network prediction into a point prediction.
+
+        Args:
+            y_pred: prediction output of network
+
+        Returns:
+            torch.Tensor: mean prediction
+        """
+        distribution = self.map_x_to_distribution(y_pred)
+
+        return distribution.mean.transpose(0, 1)  # switch to batch_size x n_timesteps
+
+    def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate negative likelihood
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        distribution = self.map_x_to_distribution(y_pred)
+        # calculate one number and scale with batch size
+        loss = -distribution.log_prob(y_actual.transpose(0, 1)).sum() * y_actual.size(0)
+        return loss
+
+
 class NormalDistributionLoss(DistributionLoss):
     """
     Normal distribution loss.
@@ -1137,6 +1253,90 @@ class NormalDistributionLoss(DistributionLoss):
         loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale))
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(1)
         return torch.stack([loc, scale], dim=-1)
+
+
+class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
+    """
+    Multivariate low-rank normal distribution loss.
+
+    Use this loss to make out of a DeepAR model a DeepVAR network.
+
+    Requirements for original target normalizer:
+        * not normalized in log space (use :py:class:`~LogNormalDistributionLoss`)
+        * not coerced to be positive
+    """
+
+    distribution_class = distributions.LowRankMultivariateNormal
+
+    def __init__(
+        self,
+        name: str = None,
+        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
+        reduction: str = "mean",
+        rank: int = 10,
+        sigma_init: float = 1.0,
+        sigma_minimum: float = 1e-3,
+    ):
+        """
+        Initialize metric
+
+        Args:
+            name (str): metric name. Defaults to class name.
+            quantiles (List[float], optional): quantiles for probability range.
+                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
+            reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
+            rank (int): rank of low-rank approximation for covariance matrix. Defaults to 10.
+            sigma_init (float, optional): default value for diagonal covariance. Defaults to 1.0.
+            sigma_minimum (float, optional): minimum value for diagonal covariance. Defaults to 1e-3.
+        """
+        super().__init__(name=name, quantiles=quantiles, reduction=reduction)
+        self.rank = rank
+        self.sigma_minimum = sigma_minimum
+        self.sigma_init = sigma_init
+        self.distribution_arguments = list(range(2 + rank))
+
+        # determine bias
+        self._diag_bias: float = self.inv_softplus(self.sigma_init**2) if self.sigma_init > 0.0 else 0.0
+
+    def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
+        x = x.permute(1, 0, 2)
+        return self.distribution_class(
+            loc=x[..., 0],
+            cov_factor=x[..., 2:],
+            cov_diag=x[..., 1],
+        )
+
+    @staticmethod
+    def validate_encoder(encoder: BaseEstimator):
+        assert encoder.transformation not in [
+            "log",
+            "log1p",
+        ], "Use MultivariateLogNormalDistributionLoss for log scaled data"  # todo: implement
+        assert encoder.transformation not in [
+            "softplus",
+            "relu",
+        ], "Cannot use NormalDistributionLoss for positive data"
+        assert encoder.transformation not in ["logit"], "Cannot use bound transformation such as 'logit'"
+
+    def rescale_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
+    ) -> torch.Tensor:
+        self.validate_encoder(encoder)
+
+        # scale
+        loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale)).unsqueeze(-1)
+        scale = (
+            F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) + self.sigma_minimum**2
+        ) * target_scale[..., 1, None, None] ** 2
+
+        cov_factor = parameters[..., 2:] * target_scale[..., 1, None, None]
+        return torch.concat([loc, scale, cov_factor], dim=-1)
+
+    def inv_softplus(self, y):
+        if y < 20.0:
+            return np.log(np.exp(y) - 1.0)
+        else:
+            return y
 
 
 class NegativeBinomialDistributionLoss(DistributionLoss):
