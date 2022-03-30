@@ -9,6 +9,7 @@
 ### Fixed
 
 - Fix learning scale schedule (#912)
+- Fix TFT list/tuple issue at interpretation (#924)
 
 ### Contributors
 
