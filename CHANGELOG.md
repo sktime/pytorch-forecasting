@@ -15,8 +15,8 @@
 
 ### Changed
 
+- Dropping Python 3.6 suppport, adding 3.10 support (#479)
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
-
 
 ### Contributors
 

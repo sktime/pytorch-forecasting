@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest] # add windows-2019 when poetry allows installation with `-f` flag
-        python-version: [3.7, 3.8, 3.9] # python 3.9 is not supported by all dependencies yet
+        python-version: [3.8, 3.9, 3.10]
 
     steps:
       - uses: actions/checkout@v2
@@ -70,7 +70,11 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: poetry install -E "github-actions"
+        run: poetry install -E "github-actions graph"
+
+      - name: Install pytorch geometric dependencies
+        shell: bash
+        run: poetry run pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
       - name: Run pytest
         shell: bash
