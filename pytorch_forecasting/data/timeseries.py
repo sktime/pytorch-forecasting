@@ -128,37 +128,48 @@ class TimeSeriesDataSet(Dataset):
     * downsampling for data augmentation
     * generating inference, validation and test datasets
     * etc.
-
+    """
 
     # todo: refactor:
     # - creating base class with minimal functionality
     # - "outsource" transformations -> use pytorch transformations as default
 
     # todo: integrate graphs
-    - add option to pass networkx graph to the dataset -> clearly defined
-    - create method to create networkx graph for hierachies -> clearly defined
-    - convert networkx graph to pytorch geometric graph
-    - create sampler to sample from the graph
-    - create option in `to_dataloader` method to use a graph sampler
-        -> automatically changing collate function which returns graphs
-        -> should incorporate entire dataset but be compatible with current approach
-    - integrate hierachical loss somehow into loss metrics
+    # - add option to pass networkx graph to the dataset -> clearly defined
+    # - create method to create networkx graph for hierachies -> clearly defined
+    # - convert networkx graph to pytorch geometric graph
+    # - create sampler to sample from the graph
+    # - create option in `to_dataloader` method to use a graph sampler
+    #     -> automatically changing collate function which returns graphs
+    #     -> should incorporate entire dataset but be compatible with current approach
+    # - integrate hierachical loss somehow into loss metrics
 
-    how to get there:
-    - add networkx and pytorch_geometric to requirements BUT as extras
-        -> do we also need torch_sparse, etc.? -> can we avoid this? probably not
-    - networkx graph: define what makes sense from user perspective
-    - define conversion into pytorch geometric graph? is this a two-step process of
-        - encoding networkx graph and converting it into "unfilled" pytorch geometric graph
-        - then creating full graph in collate function on the fly?
-        - or is data already stored in pytorch geometric graph and we only cut through it?
-        - dataformat would change? Is is all timeseries data? + mask when valid?
-        - then making cuts through the graph in sampling?
-        - would it be best in this case to re-think the timeseries class and design it as series of transformations?
-        - what is the new master data? very off current state or very similar?
-        - current approach is storing data in long format which is memory efficient. graphs would require wide format?
-    - do NOT overengineer, i.e. support only usecase of single static graph, but only subset might be relevant
-    """
+    # how to get there:
+    # - add networkx and pytorch_geometric to requirements BUT as extras
+    #     -> do we also need torch_sparse, etc.? -> can we avoid this? probably not
+    # - networkx graph: define what makes sense from user perspective
+    # - define conversion into pytorch geometric graph? is this a two-step process of
+    #     - encoding networkx graph and converting it into "unfilled" pytorch geometric graph
+    #     - then creating full graph in collate function on the fly?
+    #     - or is data already stored in pytorch geometric graph and we only cut through it?
+    #     - dataformat would change? Is is all timeseries data? + mask when valid?
+    #     - then making cuts through the graph in sampling?
+    #     - would it be best in this case to re-think the timeseries class and design it as series of transformations?
+    #     - what is the new master data? very off current state or very similar?
+    #     - current approach is storing data in long format which is memory efficient and using the index object to
+    #       make sense of it when accessing. graphs would require wide format?
+    # - do NOT overengineer, i.e. support only usecase of single static graph, but only subset might be relevant
+    #     -> however, should think what happens if we want a dynamic graph. would this completely change the
+    #        data format?
+
+    # decisions:
+    # - stay with long format and create graph on the fly even if hampering efficiency and performance
+    # - go with pytorch_geometric approach for future proofing
+    # - directly convert networkx into pytorch_geometric graph
+    # - sampling: support only time-synchronized.
+    #     - sample randomly an instance from index as now.
+    #     - then get additional samples as per graph (that has been created) and available data
+    #     - then collate into graph object
 
     def __init__(
         self,
@@ -466,7 +477,7 @@ class TimeSeriesDataSet(Dataset):
             assert target not in self.scalers, "Target normalizer is separate and not in scalers."
 
         # create index
-        self.index = self._construct_index(data, predict_mode=predict_mode)
+        self.group_index = self._construct_group_index(data)
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
@@ -1197,7 +1208,8 @@ class TimeSeriesDataSet(Dataset):
             predict_mode (bool): if to create one same per group with prediction length equals ``max_decoder_length``
 
         Returns:
-            pd.DataFrame: index dataframe
+            pd.DataFrame: index dataframe for timesteps and index dataframe for groups.
+                It contains a list of all possible subsequences.
         """
         g = data.groupby(self._group_ids, observed=True)
 
@@ -1208,8 +1220,8 @@ class TimeSeriesDataSet(Dataset):
         df_index["index_start"] = np.arange(len(df_index))
         df_index["time"] = data["__time_idx__"]
         df_index["count"] = (df_index["time_last"] - df_index["time_first"]).astype(int) + 1
-        group_ids = g.ngroup()
-        df_index["group_id"] = group_ids
+        sequence_ids = g.ngroup()
+        df_index["sequence_id"] = sequence_ids
 
         min_sequence_length = self.min_prediction_length + self.min_encoder_length
         max_sequence_length = self.max_prediction_length + self.max_encoder_length
@@ -1257,11 +1269,11 @@ class TimeSeriesDataSet(Dataset):
                 & (x["sequence_length"] >= min_sequence_length)
             ]
             # choose longest sequence
-            df_index = df_index.loc[df_index.groupby("group_id").sequence_length.idxmax()]
+            df_index = df_index.loc[df_index.groupby("sequence_id").sequence_length.idxmax()]
 
         # check that all groups/series have at least one entry in the index
-        if not group_ids.isin(df_index.group_id).all():
-            missing_groups = data.loc[~group_ids.isin(df_index.group_id), self._group_ids].drop_duplicates()
+        if not sequence_ids.isin(df_index.sequence_id).all():
+            missing_groups = data.loc[~sequence_ids.isin(df_index.sequence_id), self._group_ids].drop_duplicates()
             # decode values
             for name, id in self._group_ids_mapping.items():
                 missing_groups[id] = self.transform_values(name, missing_groups[id], inverse=True, group_id=True)
