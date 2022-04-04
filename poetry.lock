@@ -668,7 +668,7 @@ python-versions = "*"
 
 [[package]]
 name = "ipykernel"
-version = "6.11.0"
+version = "6.12.1"
 description = "IPython Kernel for Jupyter"
 category = "dev"
 optional = false
@@ -681,6 +681,7 @@ ipython = ">=7.23.1"
 jupyter-client = ">=6.1.12"
 matplotlib-inline = ">=0.1"
 nest-asyncio = "*"
+packaging = "*"
 psutil = "*"
 tornado = ">=6.1"
 traitlets = ">=5.1.0"
@@ -2838,8 +2839,8 @@ invoke = [
     {file = "invoke-1.7.0.tar.gz", hash = "sha256:e332e49de40463f2016315f51df42313855772be86435686156bc18f45b5cc6c"},
 ]
 ipykernel = [
-    {file = "ipykernel-6.11.0-py3-none-any.whl", hash = "sha256:62ec17caff6e4fa1dc87ef0a6f9eff5a5d6588bb585ab1e06897e7bec9eb2819"},
-    {file = "ipykernel-6.11.0.tar.gz", hash = "sha256:6712604531c96100f326440c11cb023da26819f2f34ba9d1ca0fb163401834e8"},
+    {file = "ipykernel-6.12.1-py3-none-any.whl", hash = "sha256:d840e3bf1c4b23bf6939f78dcdae639c9f6962e41d17e1c084a18c3c7f972d3a"},
+    {file = "ipykernel-6.12.1.tar.gz", hash = "sha256:0868f5561729ade444011f8ca7d3502dc9f27f7f44e20f1d5fee7e1f2b7183a1"},
 ]
 ipython = [
     {file = "ipython-7.32.0-py3-none-any.whl", hash = "sha256:86df2cf291c6c70b5be6a7b608650420e89180c8ec74f376a34e2dc15c3400e7"},
