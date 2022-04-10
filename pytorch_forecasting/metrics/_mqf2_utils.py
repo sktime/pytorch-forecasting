@@ -395,7 +395,12 @@ class MQF2Distribution(Distribution):
             layout=self.hidden_state.layout,
         )
 
-        return self.quantile(alpha, hidden_state_repeat).reshape((numel_batch,) + sample_shape + (prediction_length,))
+        samples = (
+            self.quantile(alpha, hidden_state_repeat)
+            .reshape((numel_batch,) + sample_shape + (prediction_length,))
+            .transpose(0, 1)
+        )
+        return samples
 
     def quantile(self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
@@ -441,11 +446,11 @@ class MQF2Distribution(Distribution):
 
     @property
     def event_shape(self) -> Tuple:
-        return ()
+        return (self.prediction_length,)
 
     @property
     def event_dim(self) -> int:
-        return 0
+        return 1
 
 
 class TransformedMQF2Distribution(TransformedDistribution):
@@ -469,9 +474,7 @@ class TransformedMQF2Distribution(TransformedDistribution):
         return z, scale
 
     def repeat_scale(self, scale: torch.Tensor) -> torch.Tensor:
-        if scale.ndim > 1:
-            scale = scale.squeeze(-1)
-        return scale.repeat_interleave(self.base_dist.context_length, 0)
+        return scale.squeeze(-1).repeat_interleave(self.base_dist.context_length, 0)
 
     def log_prob(self, y: torch.Tensor) -> torch.Tensor:
         prediction_length = self.base_dist.prediction_length
@@ -498,8 +501,11 @@ class TransformedMQF2Distribution(TransformedDistribution):
 
     def quantile(self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None) -> torch.Tensor:
         result = self.base_dist.quantile(alpha, hidden_state=hidden_state)
+        result = result.reshape(self.base_dist.hidden_state.size(0), -1, self.base_dist.prediction_length).transpose(
+            0, 1
+        )
         for transform in self.transforms:
             # transform separate for each prediction horizon
-            result = torch.stack(tuple(transform(r.squeeze(1)) for r in result.split(1, dim=1)), dim=1)
+            result = transform(result)
 
-        return result
+        return result.transpose(0, 1).reshape_as(alpha)

@@ -847,10 +847,11 @@ class BaseModel(LightningModule, TupleOutputMixIn):
                     raise ValueError(f"add_loss_to_title '{add_loss_to_title}'' is unkown")
                 if isinstance(loss, MASE):
                     loss_value = loss(y_raw[None], (y[-n_pred:][None], None), y[:n_pred][None])
-                elif isinstance(loss, DistributionLoss):
-                    loss_value = "-"
                 elif isinstance(loss, Metric):
-                    loss_value = loss(y_raw[None], (y[-n_pred:][None], None))
+                    try:
+                        loss_value = loss(y_raw[None], (y[-n_pred:][None], None))
+                    except Exception:
+                        loss_value = "-"
                 else:
                     loss_value = loss
                 ax.set_title(f"Loss {loss_value}")

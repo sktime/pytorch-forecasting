@@ -259,13 +259,14 @@ class BetaDistributionLoss(DistributionLoss):
 
 
 class MQF2DistributionLoss(DistributionLoss):
+    """Multivariate quantile loss."""
 
     eps = 1e-4
 
     def __init__(
         self,
         prediction_length: int,
-        hidden_size: int = 30,
+        hidden_size: int = 4,
         threshold_input: float = 100.0,
         es_num_samples: int = 50,
         beta: float = 1.0,
@@ -276,7 +277,6 @@ class MQF2DistributionLoss(DistributionLoss):
         super().__init__()
 
         from cpflows.flows import ActNorm
-        import cpflows.icnn
         from cpflows.icnn import PICNN
 
         from pytorch_forecasting.metrics._mqf2_utils import (
@@ -288,9 +288,7 @@ class MQF2DistributionLoss(DistributionLoss):
 
         self.distribution_class = MQF2Distribution
         self.transformed_distribution_class = TransformedMQF2Distribution
-        n_arguments = hidden_size / prediction_length
-        assert round(n_arguments) == n_arguments, "MQF2 requires hidden_size to be a multiple of prediction_length"
-        self.distribution_arguments = list(range(int(n_arguments)))
+        self.distribution_arguments = list(range(int(hidden_size)))
         self.prediction_length = prediction_length
         self.threshold_input = threshold_input
         self.es_num_samples = es_num_samples
@@ -300,7 +298,7 @@ class MQF2DistributionLoss(DistributionLoss):
         convexnet = PICNN(
             dim=prediction_length,
             dimh=icnn_hidden_size,
-            dimc=hidden_size,
+            dimc=hidden_size * prediction_length,
             num_hidden_layers=icnn_num_layers,
             symm_act_first=True,
         )
@@ -336,8 +334,8 @@ class MQF2DistributionLoss(DistributionLoss):
             beta=self.beta,
         )
         # rescale
-        loc = x[..., -2]
-        scale = x[..., -1]
+        loc = x[..., -2][:, None]
+        scale = x[..., -1][:, None]
         return self.transformed_distribution_class(distr, [distributions.AffineTransform(loc=loc, scale=scale)])
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
@@ -352,41 +350,16 @@ class MQF2DistributionLoss(DistributionLoss):
             torch.Tensor: metric value on which backpropagation can be applied
         """
         distribution = self.map_x_to_distribution(y_pred)
-        # clip y_actual to avoid infinite losses
         if self.is_energy_score:
-            # todo: why clip to 0 to 1??? certainly not right in this case
-            loss = -distribution.energy_score(y_actual)  # .clip(self.eps, 1 - self.eps))
+            loss = distribution.energy_score(y_actual)
         else:
-            loss = -distribution.log_prob(y_actual)  # .clip(self.eps, 1 - self.eps))
+            loss = -distribution.log_prob(y_actual)
         return loss.reshape(-1, 1)
 
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
         return torch.concat([parameters.reshape(parameters.size(0), -1), target_scale], dim=-1)
-
-    @property
-    def event_shape(self) -> Tuple:
-        return ()
-
-    def sample(self, y_pred, n_samples: int) -> torch.Tensor:
-        """
-        Sample from distribution.
-
-        Args:
-            y_pred: prediction output of network (shape batch_size x n_timesteps x n_paramters)
-            n_samples (int): number of samples to draw
-
-        Returns:
-            torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
-        """
-        dist = self.map_x_to_distribution(y_pred)
-        samples = dist.sample((n_samples,))
-        if samples.ndim == 3:
-            samples = samples.permute(0, 2, 1)
-        elif samples.ndim == 2:
-            samples = samples.transpose(0, 1)
-        return samples
 
     def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
         """
@@ -402,14 +375,14 @@ class MQF2DistributionLoss(DistributionLoss):
         """
         if quantiles is None:
             quantiles = self.quantiles
-        distribution = self.map_x_to_distribution(y_pred.repeat_interleave(len(quantiles), dim=0))
+        distribution = self.map_x_to_distribution(y_pred)
         alpha = (
             torch.as_tensor(quantiles, device=y_pred.device)[:, None]
             .repeat(y_pred.size(0), 1)
             .expand(-1, self.prediction_length)
-        )  # (batch_size * quantiles x prediction_length)
-
-        result = distribution.quantile(alpha)  # (batch_size * quantiles x prediction_length)
+        )
+        hidden_state = distribution.base_dist.hidden_state.repeat_interleave(len(quantiles), dim=0)
+        result = distribution.quantile(alpha, hidden_state=hidden_state)  # (batch_size * quantiles x prediction_length)
 
         # reshape
         result = result.reshape(-1, len(quantiles), self.prediction_length).transpose(
