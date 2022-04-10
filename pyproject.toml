@@ -65,6 +65,7 @@ statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
 networkx = {version = "^2.7.1", optional = true}
+# cpflows = {git = "https://github.com/KelvinKan/CP-Flow.git", branch = "package-specific-version", rev = "4ab5f50", optional = true}
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
@@ -99,6 +100,7 @@ recommonmark = "*"
 [tool.poetry.extras]  # extras
 github-actions = ["pytest-github-actions-annotate-failures"]
 graph = ["networkx"]
+# mqf2 = ["cpflows"]
 
 [tool.poetry-dynamic-versioning]
 enable = true

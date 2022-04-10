@@ -78,7 +78,7 @@ jobs:
 
       - name: Install CP flow dependencies
         shell: bash
-        run: poetry run pip install https://github.com/KelvinKan/CP-Flow --no-deps
+        run: poetry run pip install git+https://github.com/KelvinKan/CP-Flow.git@package-specific-version --no-deps
 
       - name: Run pytest
         shell: bash
