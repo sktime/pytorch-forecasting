@@ -832,7 +832,7 @@ class DistributionLoss(MultiHorizonMetric):
         loss = -distribution.log_prob(y_actual)
         return loss
 
-    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+    def to_prediction(self, y_pred: torch.Tensor, n_samples: int = 100) -> torch.Tensor:
         """
         Convert network prediction into a point prediction.
 
@@ -843,8 +843,10 @@ class DistributionLoss(MultiHorizonMetric):
             torch.Tensor: mean prediction
         """
         distribution = self.map_x_to_distribution(y_pred)
-
-        return distribution.mean
+        try:
+            return distribution.mean
+        except NotImplementedError:
+            return self.sample(y_pred, n_samples=n_samples).mean(-1)
 
     def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         """

@@ -9,14 +9,13 @@ from pytorch_forecasting.data.encoders import TorchNormalizer
 from pytorch_forecasting.metrics import (
     MAE,
     SMAPE,
-    AggregationMetric,
     BetaDistributionLoss,
-    CompositeMetric,
     LogNormalDistributionLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
+from pytorch_forecasting.metrics.base_metrics import AggregationMetric, CompositeMetric
 
 
 def test_composite_metric():

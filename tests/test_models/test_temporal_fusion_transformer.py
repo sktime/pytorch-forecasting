@@ -53,6 +53,27 @@ def test_distribution_loss(data_with_covariates, tmp_path, gpus):
     _integration(dataloaders_with_covariates, tmp_path, gpus, loss=NegativeBinomialDistributionLoss())
 
 
+def test_mqf2_loss(data_with_covariates, tmp_path, gpus):
+    data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    dataloaders_with_covariates = make_dataloaders(
+        data_with_covariates,
+        target="volume",
+        time_varying_known_reals=["price_actual"],
+        time_varying_unknown_reals=["volume"],
+        static_categoricals=["agency"],
+        add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+    )
+
+    from pytorch_forecasting.metrics.distributions import MQF2DistributionLoss
+
+    prediction_length = dataloaders_with_covariates["train"].dataset.min_prediction_length
+
+    _integration(
+        dataloaders_with_covariates, tmp_path, gpus, loss=MQF2DistributionLoss(prediction_length=prediction_length)
+    )
+
+
 def _integration(dataloader, tmp_path, gpus, loss=None):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]

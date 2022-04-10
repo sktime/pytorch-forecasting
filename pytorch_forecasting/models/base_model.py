@@ -31,12 +31,12 @@ from pytorch_forecasting.metrics import (
     MASE,
     SMAPE,
     DistributionLoss,
-    Metric,
     MultiHorizonMetric,
     MultiLoss,
     QuantileLoss,
     convert_torchmetric_to_pytorch_forecasting_metric,
 )
+from pytorch_forecasting.metrics.base_metrics import Metric
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
@@ -835,6 +835,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
                         c=pred_color,
                         capsize=1.0,
                     )
+
             if add_loss_to_title is not False:
                 if isinstance(add_loss_to_title, bool):
                     loss = self.loss
@@ -846,6 +847,8 @@ class BaseModel(LightningModule, TupleOutputMixIn):
                     raise ValueError(f"add_loss_to_title '{add_loss_to_title}'' is unkown")
                 if isinstance(loss, MASE):
                     loss_value = loss(y_raw[None], (y[-n_pred:][None], None), y[:n_pred][None])
+                elif isinstance(loss, DistributionLoss):
+                    loss_value = "-"
                 elif isinstance(loss, Metric):
                     loss_value = loss(y_raw[None], (y[-n_pred:][None], None))
                 else:

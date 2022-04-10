@@ -477,7 +477,7 @@ class TimeSeriesDataSet(Dataset):
             assert target not in self.scalers, "Target normalizer is separate and not in scalers."
 
         # create index
-        self.group_index = self._construct_group_index(data)
+        self.index = self._construct_index(data, predict_mode=self.predict_mode)
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)

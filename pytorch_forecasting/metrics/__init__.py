@@ -4,6 +4,7 @@ Metrics for (mulit-horizon) timeseries forecasting.
 
 from pytorch_forecasting.metrics.base_metrics import (
     DistributionLoss,
+    Metric,
     MultiHorizonMetric,
     MultiLoss,
     MultivariateDistributionLoss,
@@ -16,7 +17,7 @@ from pytorch_forecasting.metrics.distributions import (
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
-from pytorch_forecasting.metrics.point import MAE, MAPE, MASE, SMAPE, CrossEntropy, PoissonLoss
+from pytorch_forecasting.metrics.point import MAE, MAPE, MASE, RMSE, SMAPE, CrossEntropy, PoissonLoss
 from pytorch_forecasting.metrics.quantile import QuantileLoss
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "DistributionLoss",
     "MultivariateDistributionLoss",
     "MultiLoss",
+    "Metric",
     "convert_torchmetric_to_pytorch_forecasting_metric",
     "MAE",
     "MAPE",
@@ -31,6 +33,7 @@ __all__ = [
     "PoissonLoss",
     "CrossEntropy",
     "SMAPE",
+    "RMSE",
     "BetaDistributionLoss",
     "NegativeBinomialDistributionLoss",
     "NormalDistributionLoss",

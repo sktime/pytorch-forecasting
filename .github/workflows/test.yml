@@ -76,6 +76,10 @@ jobs:
         shell: bash
         run: poetry run pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
+      - name: Install CP flow dependencies
+        shell: bash
+        run: poetry run pip install https://github.com/KelvinKan/CP-Flow --no-deps
+
       - name: Run pytest
         shell: bash
         run: poetry run pytest tests
