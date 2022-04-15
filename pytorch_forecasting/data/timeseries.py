@@ -589,8 +589,9 @@ class TimeSeriesDataSet(Dataset):
             self.target_normalizer = MultiNormalizer(self.target_normalizer)
         elif self.target_normalizer is None:
             self.target_normalizer = TorchNormalizer(method="identity")
-        assert self.min_encoder_length > 1 or not isinstance(
-            self.target_normalizer, EncoderNormalizer
+        assert (
+            not isinstance(self.target_normalizer, EncoderNormalizer)
+            or self.min_encoder_length >= self.target_normalizer.min_length
         ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
         assert isinstance(
             self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)

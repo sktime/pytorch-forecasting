@@ -761,11 +761,6 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         encoder_targets = to_list(x["encoder_target"])
         decoder_targets = to_list(x["decoder_target"])
 
-        # get predictions
-        if isinstance(self.loss, DistributionLoss):
-            prediction_kwargs.setdefault("use_metric", False)
-            quantiles_kwargs.setdefault("use_metric", False)
-
         y_raws = to_list(out["prediction"])  # raw predictions - used for calculating loss
         y_hats = to_list(self.to_prediction(out, **prediction_kwargs))
         y_quantiles = to_list(self.to_quantiles(out, **quantiles_kwargs))
@@ -1047,8 +1042,8 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         Returns:
             torch.Tensor: predictions of shape batch_size x timesteps
         """
-        # if samples were already drawn directly take mean
         if not use_metric:
+            # if samples were already drawn directly take mean
             # todo: support classification
             if isinstance(self.loss, MultiLoss):
                 out = [Metric.to_prediction(loss, out["prediction"][idx]) for idx, loss in enumerate(self.loss)]
@@ -2019,6 +2014,52 @@ class AutoRegressiveBaseModel(BaseModel):
             [0],
             device=self.device,
             dtype=torch.long,
+        )
+
+    def plot_prediction(
+        self,
+        x: Dict[str, torch.Tensor],
+        out: Dict[str, torch.Tensor],
+        idx: int = 0,
+        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
+        show_future_observed: bool = True,
+        ax=None,
+        quantiles_kwargs: Dict[str, Any] = {},
+        prediction_kwargs: Dict[str, Any] = {},
+    ) -> plt.Figure:
+        """
+        Plot prediction of prediction vs actuals
+
+        Args:
+            x: network input
+            out: network output
+            idx: index of prediction to plot
+            add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
+                bool indicating if to use loss metric or tensor which contains losses for all samples.
+                Calcualted losses are determined without weights. Default to False.
+            show_future_observed: if to show actuals for future. Defaults to True.
+            ax: matplotlib axes to plot on
+            quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
+            prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
+
+        Returns:
+            matplotlib figure
+        """
+
+        # get predictions
+        if isinstance(self.loss, DistributionLoss):
+            prediction_kwargs.setdefault("use_metric", False)
+            quantiles_kwargs.setdefault("use_metric", False)
+
+        return super().plot_prediction(
+            x=x,
+            out=out,
+            idx=idx,
+            add_loss_to_title=add_loss_to_title,
+            show_future_observed=show_future_observed,
+            ax=ax,
+            quantiles_kwargs=quantiles_kwargs,
+            prediction_kwargs=prediction_kwargs,
         )
 
     @property

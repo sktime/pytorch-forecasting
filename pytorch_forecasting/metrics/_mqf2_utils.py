@@ -393,7 +393,9 @@ class MQF2Distribution(Distribution):
             dtype=self.hidden_state.dtype,
             device=self.hidden_state.device,
             layout=self.hidden_state.layout,
-        )
+        ).clamp(
+            min=1e-4, max=1 - 1e-4
+        )  # prevent numerical issues by preventing to sample beyond 0.1% and 99.9% percentiles
 
         samples = (
             self.quantile(alpha, hidden_state_repeat)
@@ -464,14 +466,17 @@ class TransformedMQF2Distribution(TransformedDistribution):
 
     def scale_input(self, y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # Auxiliary function to scale the observations
-        z = y
-        scale = 1.0
+        scale = torch.tensor(1.0, device=y.device)
         for t in self.transforms[::-1]:
-            assert isinstance(t, AffineTransform), "Not an AffineTransform"
-            z = t._inverse(y)
-            scale *= t.scale
+            y = t._inverse(y)
 
-        return z, scale
+        for t in self.transforms:
+            if isinstance(t, AffineTransform):
+                scale = scale * t.scale
+            else:
+                scale = t(scale)
+
+        return y, scale
 
     def repeat_scale(self, scale: torch.Tensor) -> torch.Tensor:
         return scale.squeeze(-1).repeat_interleave(self.base_dist.context_length, 0)

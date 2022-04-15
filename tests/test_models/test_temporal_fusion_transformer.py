@@ -14,6 +14,7 @@ from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
 from pytorch_forecasting.metrics import (
     CrossEntropy,
+    MQF2DistributionLoss,
     MultiLoss,
     NegativeBinomialDistributionLoss,
     PoissonLoss,
@@ -39,6 +40,10 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
     _integration(multiple_dataloaders_with_covariates, tmp_path, gpus)
 
 
+def test_non_causal_attention(dataloaders_with_covariates, tmp_path, gpus):
+    _integration(dataloaders_with_covariates, tmp_path, gpus, causal_attention=False)
+
+
 def test_distribution_loss(data_with_covariates, tmp_path, gpus):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
@@ -62,10 +67,8 @@ def test_mqf2_loss(data_with_covariates, tmp_path, gpus):
         time_varying_unknown_reals=["volume"],
         static_categoricals=["agency"],
         add_relative_time_idx=True,
-        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False, transformation="softplus"),
     )
-
-    from pytorch_forecasting.metrics.distributions import MQF2DistributionLoss
 
     prediction_length = dataloaders_with_covariates["train"].dataset.min_prediction_length
 
@@ -74,7 +77,7 @@ def test_mqf2_loss(data_with_covariates, tmp_path, gpus):
     )
 
 
-def _integration(dataloader, tmp_path, gpus, loss=None):
+def _integration(dataloader, tmp_path, gpus, loss=None, **kwargs):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
@@ -129,6 +132,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None):
             log_val_interval=1,
             log_gradient_flow=True,
             monotone_constaints=monotone_constaints,
+            **kwargs
         )
         net.size()
         try:

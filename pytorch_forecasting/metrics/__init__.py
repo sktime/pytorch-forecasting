@@ -13,6 +13,7 @@ from pytorch_forecasting.metrics.base_metrics import (
 from pytorch_forecasting.metrics.distributions import (
     BetaDistributionLoss,
     LogNormalDistributionLoss,
+    MQF2DistributionLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
@@ -40,4 +41,5 @@ __all__ = [
     "LogNormalDistributionLoss",
     "MultivariateNormalDistributionLoss",
     "QuantileLoss",
+    "MQF2DistributionLoss",
 ]

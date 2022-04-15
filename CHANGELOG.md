@@ -7,16 +7,20 @@
 - DeepVar network (#923)
 - Enable quantile loss for N-HiTS (#926)
 - Added a sampler which uses Graphs to sample from (#479)
+- Added MQF2 loss (multivariate quantile loss) (#949)
+- Added non-causal attention for TFT (#949)
 
 ### Fixed
 
 - Fix learning scale schedule (#912)
 - Fix TFT list/tuple issue at interpretation (#924)
+- Allowed encoder length down to zero for EncoderNormalizer if transformation is not needed (#949
 
 ### Changed
 
 - Dropping Python 3.6 suppport, adding 3.10 support (#479)
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
+- Changed transformation format for Encoders to dict from tuple (#949)
 
 ### Contributors
 

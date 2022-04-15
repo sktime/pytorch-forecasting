@@ -57,6 +57,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         reduce_on_plateau_patience: int = 1000,
         monotone_constaints: Dict[str, int] = {},
         share_single_variable_networks: bool = False,
+        causal_attention: bool = True,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
@@ -126,6 +127,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 This constraint significantly slows down training. Defaults to {}.
             share_single_variable_networks (bool): if to share the single variable networks between the encoder and
                 decoder. Defaults to False.
+            causal_attention (bool): If to attend only at previous timesteps in the decoder or also include future
+                predictions. Defaults to True.
             logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are logged during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
             **kwargs: additional arguments to :py:class:`~BaseModel`.
@@ -360,32 +363,33 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         return context[:, None].expand(-1, timesteps, -1)
 
-    def get_attention_mask(self, encoder_lengths: torch.LongTensor, decoder_length: int):
+    def get_attention_mask(self, encoder_lengths: torch.LongTensor, decoder_lengths: torch.LongTensor):
         """
         Returns causal mask to apply for self-attention layer.
-
-        Args:
-            self_attn_inputs: Inputs to self attention layer to determine mask shape
         """
-        # indices to which is attended
-        attend_step = torch.arange(decoder_length, device=self.device)
-        # indices for which is predicted
-        predict_step = torch.arange(0, decoder_length, device=self.device)[:, None]
-        # do not attend to steps to self or after prediction
-        # todo: there is potential value in attending to future forecasts if they are made with knowledge currently
-        #   available
-        #   one possibility is here to use a second attention layer for future attention (assuming different effects
-        #   matter in the future than the past)
-        #   or alternatively using the same layer but allowing forward attention - i.e. only masking out non-available
-        #   data and self
-        decoder_mask = attend_step >= predict_step
+        decoder_length = decoder_lengths.max()
+        if self.hparams.causal_attention:
+            # indices to which is attended
+            attend_step = torch.arange(decoder_length, device=self.device)
+            # indices for which is predicted
+            predict_step = torch.arange(0, decoder_length, device=self.device)[:, None]
+            # do not attend to steps to self or after prediction
+            decoder_mask = (attend_step >= predict_step).unsqueeze(0).expand(encoder_lengths.size(0), -1, -1)
+        else:
+            # there is value in attending to future forecasts if they are made with knowledge currently
+            #   available
+            #   one possibility is here to use a second attention layer for future attention (assuming different effects
+            #   matter in the future than the past)
+            #   or alternatively using the same layer but allowing forward attention - i.e. only
+            #   masking out non-available data and self
+            decoder_mask = create_mask(decoder_length, decoder_lengths).unsqueeze(1).expand(-1, decoder_length, -1)
         # do not attend to steps where data is padded
-        encoder_mask = create_mask(encoder_lengths.max(), encoder_lengths)
+        encoder_mask = create_mask(encoder_lengths.max(), encoder_lengths).unsqueeze(1).expand(-1, decoder_length, -1)
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
-                encoder_mask.unsqueeze(1).expand(-1, decoder_length, -1),
-                decoder_mask.unsqueeze(0).expand(encoder_lengths.size(0), -1, -1),
+                encoder_mask,
+                decoder_mask,
             ),
             dim=2,
         )
@@ -481,9 +485,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             q=attn_input[:, max_encoder_length:],  # query only for predictions
             k=attn_input,
             v=attn_input,
-            mask=self.get_attention_mask(
-                encoder_lengths=encoder_lengths, decoder_length=timesteps - max_encoder_length
-            ),
+            mask=self.get_attention_mask(encoder_lengths=encoder_lengths, decoder_lengths=decoder_lengths),
         )
 
         # skip connection over attention

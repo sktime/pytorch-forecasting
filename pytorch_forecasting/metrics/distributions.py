@@ -259,22 +259,42 @@ class BetaDistributionLoss(DistributionLoss):
 
 
 class MQF2DistributionLoss(DistributionLoss):
-    """Multivariate quantile loss."""
+    """Multivariate quantile loss based on the article
+    `Multivariate Quantile Function Forecaster <http://arxiv.org/abs/2202.11316>`_.
+
+    Requires install of additional library:
+    ``pip install git+https://github.com/KelvinKan/CP-Flow.git@package-specific-version --no-deps``
+    """
 
     eps = 1e-4
 
     def __init__(
         self,
         prediction_length: int,
+        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
         hidden_size: int = 4,
-        threshold_input: float = 100.0,
         es_num_samples: int = 50,
         beta: float = 1.0,
         icnn_hidden_size: int = 20,
         icnn_num_layers: int = 2,
         estimate_logdet: bool = False,
     ) -> None:
-        super().__init__()
+        """
+        Args:
+            prediction_length (int): maximum prediction length.
+            quantiles (List[float], optional): default quantiles to output.
+                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
+            hidden_size (int, optional): hidden size per prediction length. Defaults to 4.
+            es_num_samples (int, optional): Number of samples to calculate energy score.
+                If None, maximum liklihood is used as opposed to energy score for optimization.
+                Defaults to 50.
+            beta (float, optional): between 0 and 1.0 to control how scale sensitive metric is (1=fully sensitive).
+                Defaults to 1.0.
+            icnn_hidden_size (int, optional): hidden size of distribution estimating network. Defaults to 20.
+            icnn_num_layers (int, optional): number of hidden layers in distribution estimating network. Defaults to 2.
+            estimate_logdet (bool, optional): if to estimate log determinant. Defaults to False.
+        """
+        super().__init__(quantiles=quantiles)
 
         from cpflows.flows import ActNorm
         from cpflows.icnn import PICNN
@@ -290,7 +310,6 @@ class MQF2DistributionLoss(DistributionLoss):
         self.transformed_distribution_class = TransformedMQF2Distribution
         self.distribution_arguments = list(range(int(hidden_size)))
         self.prediction_length = prediction_length
-        self.threshold_input = threshold_input
         self.es_num_samples = es_num_samples
         self.beta = beta
 
@@ -336,7 +355,9 @@ class MQF2DistributionLoss(DistributionLoss):
         # rescale
         loc = x[..., -2][:, None]
         scale = x[..., -1][:, None]
-        return self.transformed_distribution_class(distr, [distributions.AffineTransform(loc=loc, scale=scale)])
+        return self.transformed_distribution_class(
+            distr, [distributions.AffineTransform(loc=loc, scale=scale), self.transformation]
+        )
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """
@@ -359,6 +380,7 @@ class MQF2DistributionLoss(DistributionLoss):
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
+        self.transformation = encoder.inverse_torch_transformation
         return torch.concat([parameters.reshape(parameters.size(0), -1), target_scale], dim=-1)
 
     def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
