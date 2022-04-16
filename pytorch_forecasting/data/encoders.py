@@ -84,9 +84,9 @@ class TransformMixIn:
     TRANSFORMATIONS = {
         "log": dict(forward=torch.log, reverse=torch.exp),
         "log1p": dict(forward=torch.log1p, reverse=torch.exp, inverse=torch.expm1),
-        "logit": dict(foward=torch.logit, reverse=torch.sigmoid),
+        "logit": dict(forward=torch.logit, reverse=torch.sigmoid),
         "softplus": dict(forward=_plus_one, reverse=F.softplus, inverse=softplus_inv),
-        "relu": dict(foward=_identity, reverse=_clamp_zero),
+        "relu": dict(forward=_identity, reverse=_clamp_zero),
     }
 
     @property
