@@ -557,8 +557,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             interpretations that can be plotted with ``plot_interpretation()``
         """
         # take attention and concatenate if a list to proper attention object
+        batch_size = len(out["decoder_attention"])
         if isinstance(out["decoder_attention"], (list, tuple)):
-            batch_size = len(out["decoder_attention"])
             # start with decoder attention
             # assume issue is in last dimension, we need to find max
             max_last_dimension = max(x.size(-1) for x in out["decoder_attention"])

@@ -2303,7 +2303,7 @@ graph = ["networkx"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "45d307226f865831806cb7568d74ee81773d994423613432ed4f8e8b2ef0b563"
+content-hash = "aee7bf3bdc10e03b025d83109e8f01bf9436c3be71271a67eaeed22e0953806d"
 
 [metadata.files]
 absl-py = [
