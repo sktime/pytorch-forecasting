@@ -351,8 +351,6 @@ class TorchNormalizer(BaseEstimator, TransformerMixin, TransformMixIn):
         eps: float = 1e-8,
     ):
         """
-        Initialize
-
         Args:
             method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
                 or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
@@ -363,14 +361,14 @@ class TorchNormalizer(BaseEstimator, TransformerMixin, TransformMixIn):
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
                 * logp1: Estimate in log-space but add 1 to values before transforming for stability
-                    (e.g. if many small values <<1 are present).
-                    Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
+                  (e.g. if many small values <<1 are present).
+                  Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
                 * logit: Apply logit transformation on values that are between 0 and 1
                 * softplus: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
                 * relu: Apply max(0, x) to output
                 * Dict[str, Callable] of PyTorch functions that transforms and inversely transforms values.
                   ``forward`` and ``reverse`` entries are required. ``inverse`` transformation is optional and
-                   should be defined if ``reverse`` is not the inverse of the forward transformation.
+                  should be defined if ``reverse`` is not the inverse of the forward transformation.
 
             eps (float, optional): Number for numerical stability of calculations.
                 Defaults to 1e-8.
