@@ -583,9 +583,9 @@ def test_graph_sampler(test_dataset):
                 indices = self.data_source.index.iloc[self._groups[name]]
                 selected_pos = indices["index_start"].iloc[sub_group_idx]
                 # remove selected sample
-                indices = indices[lambda x: x["group_id"] != indices["group_id"].iloc[sub_group_idx]]
+                indices = indices[lambda x: x["sequence_id"] != indices["sequence_id"].iloc[sub_group_idx]]
                 # filter duplicate timeseries
-                # indices = indices.sort_values("sequence_length").drop_duplicates("group_id", keep="last")
+                # indices = indices.sort_values("sequence_length").drop_duplicates("sequence_id", keep="last")
 
                 # calculate distances for corresponding groups
                 group_distances = torch.cdist(
