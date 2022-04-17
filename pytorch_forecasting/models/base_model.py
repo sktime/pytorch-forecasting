@@ -40,6 +40,7 @@ from pytorch_forecasting.metrics.base_metrics import Metric
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
+    InitialParameterRepresenterMixIn,
     OutputMixIn,
     TupleOutputMixIn,
     apply_to_list,
@@ -151,7 +152,7 @@ STAGE_STATES = {
 }
 
 
-class BaseModel(LightningModule, TupleOutputMixIn):
+class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMixIn):
     """
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.

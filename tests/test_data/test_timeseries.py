@@ -270,6 +270,7 @@ def test_TimeSeriesDataSet(test_data, kwargs):
 
     # create dataset and sample from it
     dataset = TimeSeriesDataSet(test_data, **kwargs)
+    repr(dataset)
     check_dataloader_output(dataset, next(iter(dataset.to_dataloader(num_workers=0))))
 
 

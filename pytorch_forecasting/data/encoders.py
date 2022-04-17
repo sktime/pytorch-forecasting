@@ -14,6 +14,8 @@ from torch.distributions.transforms import Transform
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
+from pytorch_forecasting.utils import InitialParameterRepresenterMixIn
+
 
 def _plus_one(x):
     return x + 1
@@ -28,7 +30,7 @@ def _clamp_zero(x):
 
 
 def softplus_inv(y):
-    return y + y.neg().expm1().neg().log()
+    return y.where(y > 20.0, y + y.neg().expm1().neg().log())
 
 
 class FunctionalTransform(Transform):
@@ -160,7 +162,7 @@ class TransformMixIn:
         return y
 
 
-class NaNLabelEncoder(BaseEstimator, TransformerMixin, TransformMixIn):
+class NaNLabelEncoder(InitialParameterRepresenterMixIn, BaseEstimator, TransformerMixin, TransformMixIn):
     """
     Labelencoder that can optionally always encode nan and unknown classes (in transform) as class ``0``
     """
@@ -338,7 +340,7 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin, TransformMixIn):
         return np.zeros(2, dtype=np.float64)
 
 
-class TorchNormalizer(BaseEstimator, TransformerMixin, TransformMixIn):
+class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, TransformerMixin, TransformMixIn):
     """
     Basic target transformer that can be fit also on torch tensors.
     """

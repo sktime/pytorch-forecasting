@@ -1,6 +1,7 @@
 """
 Base classes for metrics - only for inheritance.
 """
+import inspect
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
 
@@ -123,6 +124,17 @@ class Metric(LightningMetric):
     def __mul__(self, multiplier: float):
         new_metric = CompositeMetric(metrics=[self], weights=[multiplier])
         return new_metric
+
+    def extra_repr(self) -> str:
+        forbidden_attributes = ["name", "reduction"]
+        attributes = list(inspect.signature(self.__class__).parameters.keys())
+        return ", ".join(
+            [
+                f"{name}={repr(getattr(self, name))}"
+                for name in attributes
+                if hasattr(self, name) and name not in forbidden_attributes
+            ]
+        )
 
     __rmul__ = __mul__
 

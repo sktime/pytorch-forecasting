@@ -30,6 +30,7 @@ from pytorch_forecasting.data.encoders import (
     TorchNormalizer,
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
+from pytorch_forecasting.utils import repr_class
 
 
 def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -1876,3 +1877,6 @@ class TimeSeriesDataSet(Dataset):
             index_data[id] = self.transform_values(id, index_data[id], inverse=True, group_id=True)
         index = pd.DataFrame(index_data)
         return index
+
+    def __repr__(self) -> str:
+        return repr_class(self, attributes=self.get_parameters(), extra_attributes=dict(length=len(self)))

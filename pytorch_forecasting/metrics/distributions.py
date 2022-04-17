@@ -81,6 +81,8 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
 
         # determine bias
         self._diag_bias: float = self.inv_softplus(self.sigma_init**2) if self.sigma_init > 0.0 else 0.0
+        # determine normalizer to bring unscaled diagonal close to 1.0
+        self._cov_factor_scale: float = np.sqrt(self.rank)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
         x = x.permute(1, 0, 2)
@@ -108,12 +110,13 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         self.validate_encoder(encoder)
 
         # scale
+        scale_multiplier = target_scale[..., 1, None, None] / np.sqrt(2.0)
         loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale)).unsqueeze(-1)
         scale = (
             F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) + self.sigma_minimum**2
-        ) * target_scale[..., 1, None, None] ** 2
+        ) * scale_multiplier**2
 
-        cov_factor = parameters[..., 2:] * target_scale[..., 1, None, None]
+        cov_factor = parameters[..., 2:] * scale_multiplier / self._cov_factor_scale
         return torch.concat([loc, scale, cov_factor], dim=-1)
 
     def inv_softplus(self, y):
