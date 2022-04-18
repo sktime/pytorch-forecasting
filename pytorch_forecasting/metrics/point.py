@@ -228,3 +228,36 @@ class MASE(MultiHorizonMetric):
         scaling = diffs.sum(1) / total_lengths + eps
 
         return scaling
+
+
+class TweedieLoss(MultiHorizonMetric):
+    """
+    Tweedie loss
+
+    Tweedie regression with log-link. It might be useful, e.g., for modeling total
+    loss in insurance, or for any target that might be tweedie-distributed.
+    """
+
+    def __init__(self, reduction="mean", p: float = 1.5, **kwargs):
+        """
+        Args:
+            p (float, optional): tweedie variance power which is greater equal
+                1.0 and smaller 2.0. Close to ``2`` shifts to
+                Gamma distribution and close to ``1`` shifts to Poisson distribution.
+                Defaults to 1.5.
+            reduction (str, optional): How to reduce the loss. Defaults to "mean".
+        """
+        super().__init__(reduction=reduction, **kwargs)
+        assert 1 <= p < 2, "p must be in range [1, 2]"
+        self.p = p
+
+    def to_prediction(self, out: Dict[str, torch.Tensor]):
+        rate = torch.exp(super().to_prediction(out))
+        return rate
+
+    def loss(self, y_pred, y_true):
+        y_pred = super().to_prediction(y_pred)
+        a = y_true * torch.exp(y_pred * (1 - self.p)) / (1 - self.p)
+        b = torch.exp(y_pred * (2 - self.p)) / (2 - self.p)
+        loss = -a + b
+        return loss

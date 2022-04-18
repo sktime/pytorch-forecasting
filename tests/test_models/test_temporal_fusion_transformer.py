@@ -19,6 +19,7 @@ from pytorch_forecasting.metrics import (
     NegativeBinomialDistributionLoss,
     PoissonLoss,
     QuantileLoss,
+    TweedieLoss,
 )
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
@@ -41,7 +42,7 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
 
 
 def test_non_causal_attention(dataloaders_with_covariates, tmp_path, gpus):
-    _integration(dataloaders_with_covariates, tmp_path, gpus, causal_attention=False)
+    _integration(dataloaders_with_covariates, tmp_path, gpus, causal_attention=False, loss=TweedieLoss())
 
 
 def test_distribution_loss(data_with_covariates, tmp_path, gpus):

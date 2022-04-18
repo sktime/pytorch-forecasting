@@ -6,9 +6,9 @@
 
 - DeepVar network (#923)
 - Enable quantile loss for N-HiTS (#926)
-- Added a sampler which uses Graphs to sample from (#479)
-- Added MQF2 loss (multivariate quantile loss) (#949)
-- Added non-causal attention for TFT (#949)
+- MQF2 loss (multivariate quantile loss) (#949)
+- Non-causal attention for TFT (#949)
+- Tweedie loss (#949)
 
 ### Fixed
 

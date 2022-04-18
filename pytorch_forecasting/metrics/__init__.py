@@ -18,7 +18,7 @@ from pytorch_forecasting.metrics.distributions import (
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
-from pytorch_forecasting.metrics.point import MAE, MAPE, MASE, RMSE, SMAPE, CrossEntropy, PoissonLoss
+from pytorch_forecasting.metrics.point import MAE, MAPE, MASE, RMSE, SMAPE, CrossEntropy, PoissonLoss, TweedieLoss
 from pytorch_forecasting.metrics.quantile import QuantileLoss
 
 __all__ = [
@@ -32,6 +32,7 @@ __all__ = [
     "MAPE",
     "MASE",
     "PoissonLoss",
+    "TweedieLoss",
     "CrossEntropy",
     "SMAPE",
     "RMSE",
