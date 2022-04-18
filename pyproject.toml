@@ -95,6 +95,7 @@ pydata-sphinx-theme = "*"
 nbsphinx = "*"
 pandoc = "*"
 recommonmark = "*"
+ipywidgets = "^7.7.0"
 
 
 [tool.poetry.extras]  # extras

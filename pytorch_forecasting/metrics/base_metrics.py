@@ -2,7 +2,7 @@
 Base classes for metrics - only for inheritance.
 """
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 import warnings
 
 from sklearn.base import BaseEstimator
@@ -503,7 +503,7 @@ class CompositeMetric(LightningMetric):
         name = " + ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
         return name
 
-    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor):
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
         """
         Update composite metric
 
@@ -515,7 +515,10 @@ class CompositeMetric(LightningMetric):
             torch.Tensor: metric value on which backpropagation can be applied
         """
         for metric in self.metrics:
-            metric.update(y_pred, y_actual)
+            try:
+                metric.update(y_pred, y_actual, **kwargs)
+            except TypeError:
+                metric.update(y_pred, y_actual)
 
     def compute(self) -> torch.Tensor:
         """
@@ -533,6 +536,47 @@ class CompositeMetric(LightningMetric):
         else:
             results = torch.stack(results, dim=0).sum(0)
         return results
+
+    @torch.jit.unused
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+            **kwargs: arguments to update function
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        results = []
+        for weight, metric in zip(self.weights, self.metrics):
+            try:
+                results.append(metric(y_pred, y_actual, **kwargs) * weight)
+            except TypeError:
+                results.append(metric(y_pred, y_actual) * weight)
+
+        if len(results) == 1:
+            results = results[0]
+        else:
+            results = torch.stack(results, dim=0).sum(0)
+        return results
+
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
+
+    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+        # No syncing required here. syncing will be done in metrics
+        pass
+
+    def reset(self) -> None:
+        for metric in self.metrics:
+            metric.reset()
+
+    def persistent(self, mode: bool = False) -> None:
+        for metric in self.metrics:
+            metric.persistent(mode=mode)
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -594,7 +638,7 @@ class AggregationMetric(Metric):
         super().__init__(**kwargs)
         self.metric = metric
 
-    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Calculate composite metric
 
@@ -605,6 +649,12 @@ class AggregationMetric(Metric):
         Returns:
             torch.Tensor: metric value on which backpropagation can be applied
         """
+        y_pred_mean, y_mean = self._calculate_mean(y_pred, y_actual)
+        # update metric. unsqueeze first batch dimension (as batches are collapsed)
+        self.metric.update(y_pred_mean, y_mean, **kwargs)
+
+    @staticmethod
+    def _calculate_mean(y_pred: torch.Tensor, y_actual: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # extract target and weight
         if isinstance(y_actual, (tuple, list)) and not isinstance(y_actual, rnn.PackedSequence):
             target, weight = y_actual
@@ -637,12 +687,39 @@ class AggregationMetric(Metric):
 
             y_pred_sum = (y_pred * unsqueeze_like(weight, y_pred)).sum(0)
             y_pred_mean = y_pred_sum / unsqueeze_like(weight.sum(0), y_pred_sum)
-
-        # update metric. unsqueeze first batch dimension (as batches are collapsed)
-        self.metric.update(y_pred_mean.unsqueeze(0), y_mean.unsqueeze(0))
+        return y_pred_mean.unsqueeze(0), y_mean.unsqueeze(0)
 
     def compute(self):
         return self.metric.compute()
+
+    @torch.jit.unused
+    def forward(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
+        """
+        Calculate composite metric
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+            **kwargs: arguments to update function
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        y_pred_mean, y_mean = self._calculate_mean(y_pred, y_actual)
+        return self.metric(y_pred_mean, y_mean, **kwargs)
+
+    def _wrap_compute(self, compute: Callable) -> Callable:
+        return compute
+
+    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+        # No syncing required here. syncing will be done in metrics
+        pass
+
+    def reset(self) -> None:
+        self.metrics.reset()
+
+    def persistent(self, mode: bool = False) -> None:
+        self.metric.persistent(mode=mode)
 
 
 class MultiHorizonMetric(Metric):
