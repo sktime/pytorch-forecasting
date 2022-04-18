@@ -125,7 +125,7 @@ class TimeSynchronizedBatchSampler(GroupedSampler):
     def get_groups(self, data_source):
         index = data_source.index
         # get groups, i.e. group all samples by first predict time
-        last_time = data_source.data["time"][index["index_end"]].numpy()
+        last_time = data_source.data["time"][index["index_end"].to_numpy()].numpy()
         decoder_lengths = data_source.calculate_decoder_length(last_time, index.sequence_length)
         first_prediction_time = index.time + index.sequence_length - decoder_lengths + 1
         groups = pd.RangeIndex(0, len(index.index)).groupby(first_prediction_time)

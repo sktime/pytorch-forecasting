@@ -14,7 +14,8 @@
 
 - Fix learning scale schedule (#912)
 - Fix TFT list/tuple issue at interpretation (#924)
-- Allowed encoder length down to zero for EncoderNormalizer if transformation is not needed (#949
+- Allowed encoder length down to zero for EncoderNormalizer if transformation is not needed (#949)
+- Fix Aggregation and CompositeMetric resets (#949)
 
 ### Changed
 
