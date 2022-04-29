@@ -289,7 +289,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 hidden_state,
             ):
                 x = input_vector[:, [idx]]
-                x[:, 0, target_pos] = lagged_targets[-1]
+                x[:, 0, target_pos] = lagged_targets[-1].float()
                 for lag, lag_positions in lagged_target_positions.items():
                     if idx > lag:
                         x[:, 0, lag_positions] = lagged_targets[-lag]
