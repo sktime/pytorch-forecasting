@@ -5,7 +5,7 @@ from collections import namedtuple
 import copy
 from copy import deepcopy
 import inspect
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import warnings
 
 import matplotlib.pyplot as plt
@@ -321,7 +321,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             return 1
 
     def transform_output(
-        self, prediction: Union[torch.Tensor, List[torch.Tensor]], target_scale: Union[torch.Tensor, List[torch.Tensor]]
+        self,
+        prediction: Union[torch.Tensor, List[torch.Tensor]],
+        target_scale: Union[torch.Tensor, List[torch.Tensor]],
+        loss: Optional[Metric] = None,
     ) -> torch.Tensor:
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
@@ -329,18 +332,21 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Args:
             prediction (Union[torch.Tensor, List[torch.Tensor]]): normalized prediction
             target_scale (Union[torch.Tensor, List[torch.Tensor]]): scale to rescale prediction
+            loss (Optional[Metric]): metric to use for transform
 
         Returns:
             torch.Tensor: rescaled prediction
         """
-        if isinstance(self.loss, MultiLoss):
-            out = self.loss.rescale_parameters(
+        if loss is None:
+            loss = self.loss
+        if isinstance(loss, MultiLoss):
+            out = loss.rescale_parameters(
                 prediction,
                 target_scale=target_scale,
                 encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder
             )
         else:
-            out = self.loss.rescale_parameters(prediction, target_scale=target_scale, encoder=self.output_transformer)
+            out = loss.rescale_parameters(prediction, target_scale=target_scale, encoder=self.output_transformer)
         return out
 
     @staticmethod

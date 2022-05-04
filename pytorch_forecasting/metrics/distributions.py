@@ -275,7 +275,7 @@ class MQF2DistributionLoss(DistributionLoss):
         self,
         prediction_length: int,
         quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
-        hidden_size: int = 4,
+        hidden_size: Optional[int] = None,
         es_num_samples: int = 50,
         beta: float = 1.0,
         icnn_hidden_size: int = 20,
@@ -287,7 +287,7 @@ class MQF2DistributionLoss(DistributionLoss):
             prediction_length (int): maximum prediction length.
             quantiles (List[float], optional): default quantiles to output.
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
-            hidden_size (int, optional): hidden size per prediction length. Defaults to 4.
+            hidden_size (int, optional): hidden size per prediction length. Defaults to sqrt(prediction_length).
             es_num_samples (int, optional): Number of samples to calculate energy score.
                 If None, maximum liklihood is used as opposed to energy score for optimization.
                 Defaults to 50.
@@ -309,6 +309,8 @@ class MQF2DistributionLoss(DistributionLoss):
             TransformedMQF2Distribution,
         )
 
+        if hidden_size is None:
+            hidden_size = int(np.sqrt(prediction_length))
         self.distribution_class = MQF2Distribution
         self.transformed_distribution_class = TransformedMQF2Distribution
         self.distribution_arguments = list(range(int(hidden_size)))
