@@ -5,7 +5,7 @@ from collections import namedtuple
 import copy
 from copy import deepcopy
 import inspect
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import warnings
 
 import matplotlib.pyplot as plt
@@ -31,15 +31,16 @@ from pytorch_forecasting.metrics import (
     MASE,
     SMAPE,
     DistributionLoss,
-    Metric,
     MultiHorizonMetric,
     MultiLoss,
     QuantileLoss,
     convert_torchmetric_to_pytorch_forecasting_metric,
 )
+from pytorch_forecasting.metrics.base_metrics import Metric
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
+    InitialParameterRepresenterMixIn,
     OutputMixIn,
     TupleOutputMixIn,
     apply_to_list,
@@ -151,7 +152,7 @@ STAGE_STATES = {
 }
 
 
-class BaseModel(LightningModule, TupleOutputMixIn):
+class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMixIn):
     """
     BaseModel from which new timeseries models should inherit from.
     The ``hparams`` of the created object will default to the parameters indicated in :py:meth:`~__init__`.
@@ -320,7 +321,10 @@ class BaseModel(LightningModule, TupleOutputMixIn):
             return 1
 
     def transform_output(
-        self, prediction: Union[torch.Tensor, List[torch.Tensor]], target_scale: Union[torch.Tensor, List[torch.Tensor]]
+        self,
+        prediction: Union[torch.Tensor, List[torch.Tensor]],
+        target_scale: Union[torch.Tensor, List[torch.Tensor]],
+        loss: Optional[Metric] = None,
     ) -> torch.Tensor:
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
@@ -328,18 +332,21 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         Args:
             prediction (Union[torch.Tensor, List[torch.Tensor]]): normalized prediction
             target_scale (Union[torch.Tensor, List[torch.Tensor]]): scale to rescale prediction
+            loss (Optional[Metric]): metric to use for transform
 
         Returns:
             torch.Tensor: rescaled prediction
         """
-        if isinstance(self.loss, MultiLoss):
-            out = self.loss.rescale_parameters(
+        if loss is None:
+            loss = self.loss
+        if isinstance(loss, MultiLoss):
+            out = loss.rescale_parameters(
                 prediction,
                 target_scale=target_scale,
                 encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder
             )
         else:
-            out = self.loss.rescale_parameters(prediction, target_scale=target_scale, encoder=self.output_transformer)
+            out = loss.rescale_parameters(prediction, target_scale=target_scale, encoder=self.output_transformer)
         return out
 
     @staticmethod
@@ -761,11 +768,6 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         encoder_targets = to_list(x["encoder_target"])
         decoder_targets = to_list(x["decoder_target"])
 
-        # get predictions
-        if isinstance(self.loss, DistributionLoss):
-            prediction_kwargs.setdefault("use_metric", False)
-            quantiles_kwargs.setdefault("use_metric", False)
-
         y_raws = to_list(out["prediction"])  # raw predictions - used for calculating loss
         y_hats = to_list(self.to_prediction(out, **prediction_kwargs))
         y_quantiles = to_list(self.to_quantiles(out, **quantiles_kwargs))
@@ -835,6 +837,7 @@ class BaseModel(LightningModule, TupleOutputMixIn):
                         c=pred_color,
                         capsize=1.0,
                     )
+
             if add_loss_to_title is not False:
                 if isinstance(add_loss_to_title, bool):
                     loss = self.loss
@@ -847,7 +850,10 @@ class BaseModel(LightningModule, TupleOutputMixIn):
                 if isinstance(loss, MASE):
                     loss_value = loss(y_raw[None], (y[-n_pred:][None], None), y[:n_pred][None])
                 elif isinstance(loss, Metric):
-                    loss_value = loss(y_raw[None], (y[-n_pred:][None], None))
+                    try:
+                        loss_value = loss(y_raw[None], (y[-n_pred:][None], None))
+                    except Exception:
+                        loss_value = "-"
                 else:
                     loss_value = loss
                 ax.set_title(f"Loss {loss_value}")
@@ -1043,8 +1049,8 @@ class BaseModel(LightningModule, TupleOutputMixIn):
         Returns:
             torch.Tensor: predictions of shape batch_size x timesteps
         """
-        # if samples were already drawn directly take mean
         if not use_metric:
+            # if samples were already drawn directly take mean
             # todo: support classification
             if isinstance(self.loss, MultiLoss):
                 out = [Metric.to_prediction(loss, out["prediction"][idx]) for idx, loss in enumerate(self.loss)]
@@ -1919,7 +1925,7 @@ class AutoRegressiveBaseModel(BaseModel):
                         torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
                         x["encoder_lengths"] - 1,
                         self.target_positions.unsqueeze(-1)
-                    ].T
+                    ].T.contiguous()
                     input_vector[:, 0, self.target_positions] = last_encoder_target
 
                     if self.training:  # training mode
@@ -2015,6 +2021,52 @@ class AutoRegressiveBaseModel(BaseModel):
             [0],
             device=self.device,
             dtype=torch.long,
+        )
+
+    def plot_prediction(
+        self,
+        x: Dict[str, torch.Tensor],
+        out: Dict[str, torch.Tensor],
+        idx: int = 0,
+        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
+        show_future_observed: bool = True,
+        ax=None,
+        quantiles_kwargs: Dict[str, Any] = {},
+        prediction_kwargs: Dict[str, Any] = {},
+    ) -> plt.Figure:
+        """
+        Plot prediction of prediction vs actuals
+
+        Args:
+            x: network input
+            out: network output
+            idx: index of prediction to plot
+            add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
+                bool indicating if to use loss metric or tensor which contains losses for all samples.
+                Calcualted losses are determined without weights. Default to False.
+            show_future_observed: if to show actuals for future. Defaults to True.
+            ax: matplotlib axes to plot on
+            quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
+            prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
+
+        Returns:
+            matplotlib figure
+        """
+
+        # get predictions
+        if isinstance(self.loss, DistributionLoss):
+            prediction_kwargs.setdefault("use_metric", False)
+            quantiles_kwargs.setdefault("use_metric", False)
+
+        return super().plot_prediction(
+            x=x,
+            out=out,
+            idx=idx,
+            add_loss_to_title=add_loss_to_title,
+            show_future_observed=show_future_observed,
+            ax=ax,
+            quantiles_kwargs=quantiles_kwargs,
+            prediction_kwargs=prediction_kwargs,
         )
 
     @property

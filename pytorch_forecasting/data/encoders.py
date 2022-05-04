@@ -1,19 +1,168 @@
 """
 Encoders for encoding categorical variables and scaling continuous data.
 """
+
 from typing import Callable, Dict, Iterable, List, Tuple, Union
 import warnings
 
 import numpy as np
 import pandas as pd
-from pandas.core.algorithms import isin
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
+from torch.distributions import constraints
+from torch.distributions.transforms import Transform
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
+from pytorch_forecasting.utils import InitialParameterRepresenterMixIn
 
-class NaNLabelEncoder(BaseEstimator, TransformerMixin):
+
+def _plus_one(x):
+    return x + 1
+
+
+def _identity(x):
+    return x
+
+
+def _clamp_zero(x):
+    return x.clamp(0.0)
+
+
+def softplus_inv(y):
+    return y.where(y > 20.0, y + y.neg().expm1().neg().log())
+
+
+class FunctionalTransform(Transform):
+    r"""
+    Transform using two mapping functions.
+    """
+    domain = constraints.real
+    codomain = constraints.real
+    sign: int = 1
+
+    def __init__(self, name: str, transform: Callable, inverse_transform: Callable, eps: float = 1e-4, **kwargs):
+        """
+        Args:
+            name (str): name of functional transform
+            transform (Callable): transforma function
+            inverse_transform (Callable): inverse transform function
+            eps (float, optional): number to be added to value for inverse transform to prevent NAs.
+                Defaults to 1e-4.
+        """
+        super().__init__(**kwargs)
+        self.transform = transform
+        self.inverse_transform = inverse_transform
+        self.eps = eps
+        self.name = name
+
+    def __eq__(self, other):
+        return isinstance(other, FunctionalTransform)
+
+    def _call(self, x):
+        return self.transform(x)
+
+    def _inverse(self, y):
+        if isinstance(self.name, str) and self.name == "logit":
+            # need to apply eps slightly differently
+            y = y / (1 + 2 * self.eps) + self.eps
+        else:
+            y = y + self.eps
+        return self.inverse_transform(y)
+
+    @property
+    def scale(self) -> float:
+        return 1.0
+
+
+class TransformMixIn:
+    """Mixin for providing pre- and post-processing capabilities to encoders.
+
+    Class should have a ``transformation`` attribute to indicate how to preprocess data.
+    """
+
+    # dict of PyTorch functions that transforms and inversely transforms values.
+    # inverse entry required if "reverse" is not the "inverse" of "forward".
+    TRANSFORMATIONS = {
+        "log": dict(forward=torch.log, reverse=torch.exp),
+        "log1p": dict(forward=torch.log1p, reverse=torch.exp, inverse=torch.expm1),
+        "logit": dict(forward=torch.logit, reverse=torch.sigmoid),
+        "softplus": dict(forward=_plus_one, reverse=F.softplus, inverse=softplus_inv),
+        "relu": dict(forward=_identity, reverse=_clamp_zero),
+    }
+
+    @property
+    def inverse_torch_transformation(self) -> List[Callable]:
+        """
+        Get inverse transform function from "transformation" attribute.
+
+        Returns:
+            Callable: transform function
+        """
+        if not hasattr(self, "transformation") or self.transformation is None:
+            return FunctionalTransform(name="identity", transform=_identity, inverse_transform=_identity)
+        else:
+            transforms = self.TRANSFORMATIONS.get(self.transformation, self.transformation)
+            return FunctionalTransform(
+                name=self.transformation,
+                transform=transforms.get("inverse", transforms["reverse"]),
+                inverse_transform=transforms["forward"],
+            )
+
+    def preprocess(
+        self, y: Union[pd.Series, pd.DataFrame, np.ndarray, torch.Tensor]
+    ) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Preprocess input data (e.g. take log).
+
+        Uses ``transform`` attribute to determine how to apply transform.
+
+        Returns:
+            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
+        """
+        if self.transformation is None:
+            return y
+
+        # protect against numerical instabilities
+        if isinstance(self.transformation, str) and self.transformation == "logit":
+            # need to apply eps slightly differently
+            y = y / (1 + 2 * self.eps) + self.eps
+        else:
+            y = y + self.eps
+
+        if isinstance(y, torch.Tensor):
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["forward"](y)
+        else:
+            # convert first to tensor, then transform and then convert to numpy array
+            if isinstance(y, (pd.Series, pd.DataFrame)):
+                y = y.to_numpy()
+            y = torch.as_tensor(y)
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["forward"](y)
+            y = np.asarray(y)
+        return y
+
+    def inverse_preprocess(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Inverse preprocess re-scaled data (e.g. take exp).
+
+        Uses ``transform`` attribute to determine how to apply inverse transform.
+
+        Returns:
+            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
+        """
+        if self.transformation is None:
+            pass
+        elif isinstance(y, torch.Tensor):
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["reverse"](y)
+        else:
+            # convert first to tensor, then transform and then convert to numpy array
+            y = torch.as_tensor(y)
+            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["reverse"](y)
+            y = np.asarray(y)
+        return y
+
+
+class NaNLabelEncoder(InitialParameterRepresenterMixIn, BaseEstimator, TransformerMixin, TransformMixIn):
     """
     Labelencoder that can optionally always encode nan and unknown classes (in transform) as class ``0``
     """
@@ -191,31 +340,10 @@ class NaNLabelEncoder(BaseEstimator, TransformerMixin):
         return np.zeros(2, dtype=np.float64)
 
 
-def _plus_one(x):
-    return x + 1
-
-
-def _identity(x):
-    return x
-
-
-def _clamp_zero(x):
-    return x.clamp(0.0)
-
-
-class TorchNormalizer(BaseEstimator, TransformerMixin):
+class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, TransformerMixin, TransformMixIn):
     """
     Basic target transformer that can be fit also on torch tensors.
     """
-
-    # transformation and inverse transformation
-    TRANSFORMATIONS = {
-        "log": (torch.log, torch.exp),
-        "log1p": (torch.log1p, torch.exp),
-        "logit": (torch.logit, torch.sigmoid),
-        "softplus": (_plus_one, F.softplus),
-        "relu": (_identity, _clamp_zero),
-    }
 
     def __init__(
         self,
@@ -225,24 +353,24 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
         eps: float = 1e-8,
     ):
         """
-        Initialize
-
         Args:
             method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
                 or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
             center (bool, optional): If to center the output to zero. Defaults to True.
-            transformation (Union[str, Tuple[Callable, Callable]] optional): Transform values before
+            transformation (Union[str, Dict[str, Callable]] optional): Transform values before
                 applying normalizer. Available options are
 
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
                 * logp1: Estimate in log-space but add 1 to values before transforming for stability
-                    (e.g. if many small values <<1 are present).
-                    Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
+                  (e.g. if many small values <<1 are present).
+                  Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
                 * logit: Apply logit transformation on values that are between 0 and 1
                 * softplus: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
                 * relu: Apply max(0, x) to output
-                * Tuple[Callable, Callable] of PyTorch functions that transforms and inversely transforms values.
+                * Dict[str, Callable] of PyTorch functions that transforms and inversely transforms values.
+                  ``forward`` and ``reverse`` entries are required. ``inverse`` transformation is optional and
+                  should be defined if ``reverse`` is not the inverse of the forward transformation.
 
             eps (float, optional): Number for numerical stability of calculations.
                 Defaults to 1e-8.
@@ -261,58 +389,6 @@ class TorchNormalizer(BaseEstimator, TransformerMixin):
             torch.Tensor: First element is center of data and second is scale
         """
         return torch.stack([torch.as_tensor(self.center_), torch.as_tensor(self.scale_)], dim=-1)
-
-    def preprocess(
-        self, y: Union[pd.Series, pd.DataFrame, np.ndarray, torch.Tensor]
-    ) -> Union[np.ndarray, torch.Tensor]:
-        """
-        Preprocess input data (e.g. take log).
-
-        Uses ``transform`` attribute to determine how to apply transform.
-
-        Returns:
-            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
-        """
-        if self.transformation is None:
-            return y
-
-        # protect against numerical instabilities
-        if isinstance(self.transformation, str) and self.transformation == "logit":
-            # need to apply eps slightly differently
-            y = y / (1 + 2 * self.eps) + self.eps
-        else:
-            y = y + self.eps
-
-        if isinstance(y, torch.Tensor):
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[0](y)
-        else:
-            # convert first to tensor, then transform and then convert to numpy array
-            if isinstance(y, (pd.Series, pd.DataFrame)):
-                y = y.to_numpy()
-            y = torch.as_tensor(y)
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[0](y)
-            y = np.asarray(y)
-        return y
-
-    def inverse_preprocess(self, y: Union[pd.Series, np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
-        """
-        Inverse preprocess re-scaled data (e.g. take exp).
-
-        Uses ``transform`` attribute to determine how to apply inverse transform.
-
-        Returns:
-            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
-        """
-        if self.transformation is None:
-            pass
-        elif isinstance(y, torch.Tensor):
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[1](y)
-        else:
-            # convert first to tensor, then transform and then convert to numpy array
-            y = torch.as_tensor(y)
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)[1](y)
-            y = np.asarray(y)
-        return y
 
     def fit(self, y: Union[pd.Series, np.ndarray, torch.Tensor]):
         """
@@ -549,6 +625,15 @@ class EncoderNormalizer(TorchNormalizer):
         # set parameters for normalization
         self._set_parameters(y_center=y_center, y_scale=y_scale)
         return self
+
+    @property
+    def min_length(self):
+        if self.method == "identity":
+            return 0  # no timeseries properties used
+        elif self.center:
+            return 1  # only calculation of mean required
+        else:
+            return 2  # requires std, i.e. at least 2 entries
 
     @staticmethod
     def _slice(

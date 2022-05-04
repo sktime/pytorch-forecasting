@@ -52,18 +52,20 @@ documentation = "https://pytorch-forecasting.readthedocs.io"
 homepage = "https://pytorch-forecasting.readthedocs.io"
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = ">=3.8,<3.11"
 
 torch = "^1.7"
 pytorch-lightning = "^1.2.4"
 optuna = "^2.3.0"
-scipy = "*"
+scipy = "^1.8"
 pandas = "^1.3.0"
 scikit-learn = ">=0.24,<1.1"
 matplotlib = "*"
 statsmodels = "*"
 
 pytest-github-actions-annotate-failures = {version = "*", optional = true}
+networkx = {version = "^2.7.1", optional = true}
+# cpflows = {git = "https://github.com/KelvinKan/CP-Flow.git", branch = "package-specific-version", rev = "4ab5f50", optional = true}
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
@@ -93,10 +95,13 @@ pydata-sphinx-theme = "*"
 nbsphinx = "*"
 pandoc = "*"
 recommonmark = "*"
+ipywidgets = "^7.7.0"
 
 
 [tool.poetry.extras]  # extras
 github-actions = ["pytest-github-actions-annotate-failures"]
+graph = ["networkx"]
+# mqf2 = ["cpflows"]
 
 [tool.poetry-dynamic-versioning]
 enable = true
