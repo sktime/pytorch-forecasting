@@ -3,10 +3,13 @@ Helper functions for PyTorch forecasting
 """
 from collections import namedtuple
 from contextlib import redirect_stdout
+import inspect
 import os
 from typing import Any, Callable, Dict, List, Tuple, Union
 
+import pytorch_lightning as pl
 import torch
+from torch import nn
 from torch.fft import irfft, rfft
 import torch.nn.functional as F
 from torch.nn.utils import rnn
@@ -472,3 +475,59 @@ def masked_op(tensor: torch.Tensor, op: str = "mean", dim: int = 0, mask: torch.
         return summed
     else:
         raise ValueError(f"unkown operation {op}")
+
+
+def repr_class(
+    obj,
+    attributes: Union[List[str], Dict[str, Any]],
+    max_characters_before_break: int = 100,
+    extra_attributes: Dict[str, Any] = {},
+) -> str:
+    """Print class name and parameters.
+
+    Args:
+        obj: class to format
+        attributes (Union[List[str], Dict[str]]): list of attributes to show or dictionary of attributes and values
+            to show max_characters_before_break (int): number of characters before breaking the into multiple lines
+        extra_attributes (Dict[str, Any]): extra attributes to show in angled brackets
+
+    Returns:
+        str
+    """
+    # get attributes
+    if isinstance(attributes, (tuple, list)):
+        attributes = {name: getattr(obj, name) for name in attributes if hasattr(obj, name)}
+    attributes_strings = [f"{name}={repr(value)}" for name, value in attributes.items()]
+    # get header
+    header_name = obj.__class__.__name__
+    # add extra attributes
+    if len(extra_attributes) > 0:
+        extra_attributes_strings = [f"{name}={repr(value)}" for name, value in extra_attributes.items()]
+        if len(header_name) + 2 + len(", ".join(extra_attributes_strings)) > max_characters_before_break:
+            header = f"{header_name}[\n\t" + ",\n\t".join(attributes_strings) + "\n]("
+        else:
+            header = f"{header_name}[{', '.join(extra_attributes_strings)}]("
+    else:
+        header = f"{header_name}("
+
+    # create final representation
+    attributes_string = ", ".join(attributes_strings)
+    if len(attributes_string) + len(header.split("\n")[-1]) + 1 > max_characters_before_break:
+        attributes_string = "\n\t" + ",\n\t".join(attributes_strings) + "\n"
+    return f"{header}{attributes_string})"
+
+
+class InitialParameterRepresenterMixIn:
+    def __repr__(self) -> str:
+        if isinstance(self, nn.Module):
+            return super().__repr__()
+        else:
+            attributes = list(inspect.signature(self.__class__).parameters.keys())
+            return repr_class(self, attributes=attributes)
+
+    def extra_repr(self) -> str:
+        if isinstance(self, pl.LightningModule):
+            return "\t" + repr(self.hparams).replace("\n", "\n\t")
+        else:
+            attributes = list(inspect.signature(self.__class__).parameters.keys())
+            return ", ".join([f"{name}={repr(getattr(self, name))}" for name in attributes if hasattr(self, name)])

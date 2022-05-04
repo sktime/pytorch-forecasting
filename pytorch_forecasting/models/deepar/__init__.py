@@ -324,7 +324,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
                 x["encoder_lengths"] - 1,
                 self.target_positions.unsqueeze(-1),
-            ].T,
+            ].T.contiguous(),
         )
 
         if self.training:
@@ -350,21 +350,6 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             quantiles_kwargs=dict(n_samples=n_samples),
         )
         return log
-
-    def plot_prediction(
-        self,
-        x: Dict[str, torch.Tensor],
-        out: Dict[str, torch.Tensor],
-        idx: int,
-        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
-        show_future_observed: bool = True,
-        ax=None,
-        **kwargs,
-    ) -> plt.Figure:
-        # workaround for not being able to compute loss for single sample without parameters of distribution
-        return super().plot_prediction(
-            x, out, idx=idx, add_loss_to_title=False, show_future_observed=show_future_observed, ax=ax, **kwargs
-        )
 
     def predict(
         self,

@@ -286,7 +286,7 @@ class NHiTS(BaseModelWithCovariates):
             )
         else:
             block_backcasts = tuple(
-                self.transform_output(block.squeeze(3), target_scale=x["target_scale"])
+                self.transform_output(block.squeeze(3), target_scale=x["target_scale"], loss=MultiHorizonMetric())
                 for block in block_backcasts.split(1, dim=3)
             )
             block_forecasts = tuple(
@@ -299,7 +299,7 @@ class NHiTS(BaseModelWithCovariates):
                 forecast, target_scale=x["target_scale"]
             ),  # (n_outputs x) n_samples x n_timesteps x output_size
             backcast=self.transform_output(
-                backcast, target_scale=x["target_scale"]
+                backcast, target_scale=x["target_scale"], loss=MultiHorizonMetric()
             ),  # (n_outputs x) n_samples x n_timesteps x 1
             block_backcasts=block_backcasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x 1
             block_forecasts=block_forecasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x output_size
@@ -416,8 +416,25 @@ class NHiTS(BaseModelWithCovariates):
         Returns:
             plt.Figure: matplotlib figure
         """
-        if isinstance(x["encoder_target"], (tuple, list)):  # multi-target
+        if not isinstance(self.loss, MultiLoss):  # not multi-target
+            prediction = self.to_prediction(dict(prediction=output["prediction"][[idx]].detach().cpu()))[0]
+            block_forecasts = [
+                self.to_prediction(dict(prediction=block[[idx]].detach().cpu()))[0]
+                for block in output["block_forecasts"]
+            ]
+        elif isinstance(output["prediction"], (tuple, list)):  # multi-target
             figs = []
+            # predictions and block forecasts need to be converted
+            prediction = [p[[idx]].detach().cpu() for p in output["prediction"]]  # select index
+            prediction = self.to_prediction(dict(prediction=prediction))  # transform to prediction
+            prediction = [p[0] for p in prediction]  # select first and only index
+
+            block_forecasts = [
+                self.to_prediction(dict(prediction=[b[[idx]].detach().cpu() for b in block]))
+                for block in output["block_forecasts"]
+            ]
+            block_forecasts = [[b[0] for b in block] for block in block_forecasts]
+
             for i in range(len(self.target_names)):
                 if ax is not None:
                     ax_i = ax[i]
@@ -429,29 +446,27 @@ class NHiTS(BaseModelWithCovariates):
                         dict(encoder_target=x["encoder_target"][i], decoder_target=x["decoder_target"][i]),
                         dict(
                             backcast=output["backcast"][i],
-                            prediction=output["prediction"][i],
+                            prediction=prediction[i],
                             block_backcasts=[block[i] for block in output["block_backcasts"]],
-                            block_forecasts=[block[i] for block in output["block_forecasts"]],
+                            block_forecasts=[block[i] for block in block_forecasts],
                         ),
                         idx=idx,
                         ax=ax_i,
                     )
                 )
             return figs
+        else:
+            prediction = output["prediction"]  # multi target that has already been transformed
+            block_forecasts = output["block_forecasts"]
 
         if ax is None:
             fig, ax = plt.subplots(2, 1, figsize=(6, 8), sharex=True, sharey=True)
         else:
             fig = ax[0].get_figure()
 
-        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
         # plot target vs prediction
         # target
-
-        def to_prediction(x):
-            # todo: better to use loss metric
-            return x[..., x.size(-1) // 2]
-
+        prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
         color = next(prop_cycle)["color"]
         ax[0].plot(torch.arange(-self.hparams.context_length, 0), x["encoder_target"][idx].detach().cpu(), c=color)
         ax[0].plot(
@@ -470,14 +485,14 @@ class NHiTS(BaseModelWithCovariates):
         )
         ax[0].plot(
             torch.arange(self.hparams.prediction_length),
-            to_prediction(output["prediction"][idx].detach().cpu()),
+            prediction,
             label="Forecast",
             c=color,
         )
 
         # plot blocks
         for pooling_size, block_backcast, block_forecast in zip(
-            self.hparams.pooling_sizes, output["block_backcasts"][1:], output["block_forecasts"][1:]
+            self.hparams.pooling_sizes, output["block_backcasts"][1:], block_forecasts
         ):
             color = next(prop_cycle)["color"]
             ax[1].plot(
@@ -487,7 +502,7 @@ class NHiTS(BaseModelWithCovariates):
             )
             ax[1].plot(
                 torch.arange(self.hparams.prediction_length),
-                to_prediction(block_forecast[idx].detach().cpu()),
+                block_forecast,
                 c=color,
                 label=f"Pooling size: {pooling_size}",
             )

@@ -6,6 +6,8 @@ from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
 from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
 
+torch.manual_seed(23)
+
 
 @pytest.fixture(scope="session")
 def gpus():
@@ -54,8 +56,8 @@ def data_with_covariates():
 
 def make_dataloaders(data_with_covariates, **kwargs):
     training_cutoff = "2016-09-01"
-    max_encoder_length = 5
-    max_prediction_length = 2
+    max_encoder_length = 4
+    max_prediction_length = 3
 
     kwargs.setdefault("target", "volume")
     kwargs.setdefault("group_ids", ["agency", "sku"])
