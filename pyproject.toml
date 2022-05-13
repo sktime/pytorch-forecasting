@@ -69,7 +69,7 @@ networkx = {version = "^2.7.1", optional = true}
 
 [tool.poetry.dev-dependencies]
 # checks and make tools
-pre-commit = "^2.18.1"
+pre-commit = "^2.19.0"
 
 invoke = "*"
 flake8 = "*"
