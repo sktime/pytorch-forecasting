@@ -7,6 +7,7 @@ import torch
 from torch import distributions
 import torch.nn.functional as F
 
+from pytorch_forecasting.data.encoders import softplus_inv
 from pytorch_forecasting.metrics.base_metrics import DistributionLoss, MultivariateDistributionLoss
 
 
@@ -80,50 +81,36 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         self.distribution_arguments = list(range(2 + rank))
 
         # determine bias
-        self._diag_bias: float = self.inv_softplus(self.sigma_init**2) if self.sigma_init > 0.0 else 0.0
+        self._diag_bias: float = (
+            softplus_inv(torch.tensor(self.sigma_init) ** 2).item() if self.sigma_init > 0.0 else 0.0
+        )
         # determine normalizer to bring unscaled diagonal close to 1.0
         self._cov_factor_scale: float = np.sqrt(self.rank)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
         x = x.permute(1, 0, 2)
-        return self.distribution_class(
-            loc=x[..., 0],
-            cov_factor=x[..., 2:],
-            cov_diag=x[..., 1],
+        distr = self.distribution_class(
+            loc=torch.zeros_like(x[..., 2]),
+            cov_factor=x[..., 4:],
+            cov_diag=x[..., 3],
         )
-
-    @staticmethod
-    def validate_encoder(encoder: BaseEstimator):
-        assert encoder.transformation not in [
-            "log",
-            "log1p",
-        ], "Use MultivariateLogNormalDistributionLoss for log scaled data"  # todo: implement
-        assert encoder.transformation not in [
-            "softplus",
-            "relu",
-        ], "Cannot use NormalDistributionLoss for positive data"
-        assert encoder.transformation not in ["logit"], "Cannot use bound transformation such as 'logit'"
+        scaler = distributions.AffineTransform(loc=x[..., 0], scale=x[..., 1])
+        if self.transformation is None:
+            return distributions.TransformedDistribution(distr, [scaler])
+        else:
+            return distributions.TransformedDistribution(distr, [scaler, self.transformation])
 
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
-        self.validate_encoder(encoder)
+        self.transformation = encoder.inverse_torch_transformation
 
         # scale
-        scale_multiplier = target_scale[..., 1, None, None] / np.sqrt(2.0)
-        loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale)).unsqueeze(-1)
-        scale = (
-            F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) + self.sigma_minimum**2
-        ) * scale_multiplier**2
+        loc = parameters[..., 0].unsqueeze(-1)
+        scale = F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) + self.sigma_minimum**2
 
-        cov_factor = parameters[..., 2:] * scale_multiplier / self._cov_factor_scale
-        return torch.concat([loc, scale, cov_factor], dim=-1)
-
-    def inv_softplus(self, y):
-        if y < 20.0:
-            return np.log(np.exp(y) - 1.0)
-        else:
-            return y
+        cov_factor = parameters[..., 2:] / self._cov_factor_scale
+        return torch.concat([target_scale, loc, scale, cov_factor], dim=-1)
 
 
 class NegativeBinomialDistributionLoss(DistributionLoss):

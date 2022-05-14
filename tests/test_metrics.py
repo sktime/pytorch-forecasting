@@ -189,17 +189,21 @@ def test_BetaDistributionLoss(center, transformation):
     itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
 def test_MultivariateNormalDistributionLoss(center, transformation):
+    normalizer = TorchNormalizer(center=center, transformation=transformation)
+
     mean = torch.tensor([10.0, 10.0])
     std = torch.tensor([200.0, 100.0]).sqrt()
     cov_factor = torch.tensor([[0.0], [0.0]])
     n = 100000
 
+    if transformation is not None and "log" in transformation:
+        mean = mean.log()
+        std = std / 1e4
+
     loss = MultivariateNormalDistributionLoss()
     target = loss.distribution_class(loc=mean, cov_diag=std**2, cov_factor=cov_factor).sample((n,))
-    if transformation in ["log", "log1p", "relu", "softplus"]:
-        target = target.abs()
+    target = normalizer.inverse_preprocess(target)
     target = target[:, 0]
-    normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
     target_scale = normalizer.get_parameters().unsqueeze(0)
     scale = torch.ones_like(normalized_target) * normalized_target.std()
@@ -209,11 +213,10 @@ def test_MultivariateNormalDistributionLoss(center, transformation):
     )
 
     if transformation in ["logit", "log", "log1p", "softplus", "relu", "logit"]:
-        with pytest.raises(AssertionError):
-            rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
-    else:
-        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
+        rescaled_parameters = loss.rescale_parameters(
+            parameters, target_scale=target_scale.repeat(n, 1)[None], encoder=normalizer
+        )
         samples = loss.sample(rescaled_parameters, 1)
-        assert torch.isclose(torch.as_tensor(mean[0]), samples.mean(), atol=0.1, rtol=0.2)
+        assert torch.isclose(target.mean(), samples.mean(), atol=7.0, rtol=0.5)
         if center:  # if not centered, softplus distorts std too much for testing
-            assert torch.isclose(torch.as_tensor(std[0]), samples.std(), atol=0.1, rtol=0.7)
+            assert torch.isclose(target.std(), samples.std(), atol=0.1, rtol=0.7)
