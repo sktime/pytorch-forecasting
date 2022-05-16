@@ -7,7 +7,7 @@ import torch
 from torch import distributions
 import torch.nn.functional as F
 
-from pytorch_forecasting.data.encoders import softplus_inv
+from pytorch_forecasting.data.encoders import TorchNormalizer, softplus_inv
 from pytorch_forecasting.metrics.base_metrics import DistributionLoss, MultivariateDistributionLoss
 
 
@@ -94,23 +94,25 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
             cov_factor=x[..., 4:],
             cov_diag=x[..., 3],
         )
-        scaler = distributions.AffineTransform(loc=x[..., 0], scale=x[..., 1])
-        if self.transformation is None:
+        scaler = distributions.AffineTransform(loc=x[0, :, 0], scale=x[0, :, 1])
+        if self._transformation is None:
             return distributions.TransformedDistribution(distr, [scaler])
         else:
-            return distributions.TransformedDistribution(distr, [scaler, self.transformation])
+            return distributions.TransformedDistribution(
+                distr, [scaler, TorchNormalizer.get_transform(self._transformation)["inverse_torch"]]
+            )
 
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
-        self.transformation = encoder.inverse_torch_transformation
+        self._transformation = encoder.transformation
 
         # scale
         loc = parameters[..., 0].unsqueeze(-1)
         scale = F.softplus(parameters[..., 1].unsqueeze(-1) + self._diag_bias) + self.sigma_minimum**2
 
         cov_factor = parameters[..., 2:] / self._cov_factor_scale
-        return torch.concat([target_scale, loc, scale, cov_factor], dim=-1)
+        return torch.concat([target_scale.unsqueeze(1).expand(-1, loc.size(1), -1), loc, scale, cov_factor], dim=-1)
 
 
 class NegativeBinomialDistributionLoss(DistributionLoss):
@@ -346,7 +348,11 @@ class MQF2DistributionLoss(DistributionLoss):
         loc = x[..., -2][:, None]
         scale = x[..., -1][:, None]
         return self.transformed_distribution_class(
-            distr, [distributions.AffineTransform(loc=loc, scale=scale), self.transformation]
+            distr,
+            [
+                distributions.AffineTransform(loc=loc, scale=scale),
+                TorchNormalizer.get_transform(self._transformation)["inverse_torch"],
+            ],
         )
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
@@ -370,7 +376,7 @@ class MQF2DistributionLoss(DistributionLoss):
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
-        self.transformation = encoder.inverse_torch_transformation
+        self._transformation = encoder.transformation
         return torch.concat([parameters.reshape(parameters.size(0), -1), target_scale], dim=-1)
 
     def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:

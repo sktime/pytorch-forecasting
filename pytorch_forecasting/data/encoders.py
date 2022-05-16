@@ -10,7 +10,14 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints
-from torch.distributions.transforms import ExpTransform, PowerTransform, SigmoidTransform, Transform, _clipped_sigmoid
+from torch.distributions.transforms import (
+    ExpTransform,
+    PowerTransform,
+    SigmoidTransform,
+    Transform,
+    _clipped_sigmoid,
+    identity_transform,
+)
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -48,6 +55,11 @@ def _square(y):
     return torch.pow(y, 2.0)
 
 
+def _clipped_log(y):
+    finfo = torch.finfo(y.dtype)
+    return y.log().clamp(min=finfo.min)
+
+
 class SoftplusTransform(Transform):
     r"""
     Transform via the mapping :math:`\text{Softplus}(x) = \log(1 + \exp(x))`.
@@ -72,6 +84,9 @@ class SoftplusTransform(Transform):
 
 
 class Expm1Transform(ExpTransform):
+
+    codomain = constraints.greater_than_eq(-1.0)
+
     def _call(self, x):
         return super()._call(x) - 1.0
 
@@ -79,34 +94,23 @@ class Expm1Transform(ExpTransform):
         return super()._inverse(y + 1.0)
 
 
-class FunctionalTransform(Transform):
+class MinusOneTransform(Transform):
     r"""
-    Transform using two mapping functions.
+    Transform y -> x - 1.
     """
     domain = constraints.real
     codomain = constraints.real
     sign: int = 1
-
-    def __init__(self, name: str, transform: Callable, inverse_transform: Callable, **kwargs):
-        """
-        Args:
-            name (str): name of functional transform
-            transform (Callable): transforma function
-            inverse_transform (Callable): inverse transform function
-        """
-        super().__init__(**kwargs)
-        self.transform = transform
-        self.inverse_transform = inverse_transform
-        self.name = name
-
-    def __eq__(self, other):
-        return isinstance(other, FunctionalTransform)
+    bijective: bool = True
 
     def _call(self, x):
-        return self.transform(x)
+        return x - 1.0
 
     def _inverse(self, y):
-        return self.inverse_transform(y)
+        return y + 1.0
+
+    def log_abs_det_jacobian(self, x, y):
+        return 0.0
 
 
 class TransformMixIn:
@@ -118,34 +122,27 @@ class TransformMixIn:
     # dict of PyTorch functions that transforms and inversely transforms values.
     # inverse entry required if "reverse" is not the "inverse" of "forward".
     TRANSFORMATIONS = {
-        "log": dict(forward=torch.log, reverse=torch.exp, inverse_torch=ExpTransform()),
+        "log": dict(forward=_clipped_log, reverse=torch.exp, inverse_torch=ExpTransform()),
         "log1p": dict(forward=torch.log1p, reverse=torch.exp, inverse=torch.expm1, inverse_torch=Expm1Transform()),
         "logit": dict(forward=_clipped_logit, reverse=_clipped_sigmoid, inverse_torch=SigmoidTransform()),
-        "count": dict(forward=_plus_one, reverse=F.softplus, inverse=_minus_one),
+        "count": dict(forward=_plus_one, reverse=F.softplus, inverse=_minus_one, inverse_torch=MinusOneTransform()),
         "softplus": dict(forward=softplus_inv, reverse=F.softplus, inverse_torch=SoftplusTransform()),
-        "relu": dict(forward=_identity, reverse=_clamp_zero),
+        "relu": dict(forward=_identity, reverse=_clamp_zero, inverse_torch=identity_transform),
         "sqrt": dict(forward=torch.sqrt, reverse=_square, inverse_torch=PowerTransform(exponent=2.0)),
     }
 
-    @property
-    def inverse_torch_transformation(self) -> List[Callable]:
-        """
-        Get inverse transform function from "transformation" attribute.
+    @classmethod
+    def get_transform(cls, transformation: Union[str, Dict[str, Callable]]) -> Dict[str, Callable]:
+        """Return transformation functions.
+
+        Args:
+            transformation (Union[str, Dict[str, Callable]]): name of transformation or
+                dictionary with transformation information.
 
         Returns:
-            Callable: transform function
+            Dict[str, Callable]: dictionary with transformation functions (forward, reverse, inverse and inverse_torch)
         """
-        if not hasattr(self, "transformation") or self.transformation is None:
-            return FunctionalTransform(name="identity", transform=_identity, inverse_transform=_identity)
-        elif "inverse_torch" in self.TRANSFORMATIONS[self.transformation]:
-            return self.TRANSFORMATIONS[self.transformation]["inverse_torch"]
-        else:
-            transforms = self.TRANSFORMATIONS.get(self.transformation, self.transformation)
-            return FunctionalTransform(
-                name=self.transformation,
-                transform=transforms.get("inverse", transforms["reverse"]),
-                inverse_transform=transforms["forward"],
-            )
+        return cls.TRANSFORMATIONS.get(transformation, transformation)
 
     def preprocess(
         self, y: Union[pd.Series, pd.DataFrame, np.ndarray, torch.Tensor]
@@ -162,13 +159,13 @@ class TransformMixIn:
             return y
 
         if isinstance(y, torch.Tensor):
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["forward"](y)
+            y = self.get_transform(self.transformation)["forward"](y)
         else:
             # convert first to tensor, then transform and then convert to numpy array
             if isinstance(y, (pd.Series, pd.DataFrame)):
                 y = y.to_numpy()
             y = torch.as_tensor(y)
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["forward"](y)
+            y = self.get_transform(self.transformation)["forward"](y)
             y = np.asarray(y)
         return y
 
@@ -184,11 +181,11 @@ class TransformMixIn:
         if self.transformation is None:
             pass
         elif isinstance(y, torch.Tensor):
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["reverse"](y)
+            y = self.get_transform(self.transformation)["reverse"](y)
         else:
             # convert first to tensor, then transform and then convert to numpy array
             y = torch.as_tensor(y)
-            y = self.TRANSFORMATIONS.get(self.transformation, self.transformation)["reverse"](y)
+            y = self.get_transform(self.transformation)["reverse"](y)
             y = np.asarray(y)
         return y
 
@@ -446,7 +443,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         if isinstance(y_center, torch.Tensor):
             eps = torch.finfo(y_center.dtype).eps
         else:
-            eps = np.finfo(y_center.dtype).eps
+            eps = np.finfo(np.float).eps
         if self.method == "identity":
             if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros(y_center.size()[:-1])

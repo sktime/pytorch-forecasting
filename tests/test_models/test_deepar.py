@@ -122,8 +122,13 @@ def _integration(
             )
         ),
         dict(
-            # data_loader_kwargs=dict(to_dataloader_kwargs=dict()),
             loss=MultivariateNormalDistributionLoss(),
+        ),
+        dict(
+            loss=MultivariateNormalDistributionLoss(),
+            data_loader_kwargs=dict(
+                target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log1p")
+            ),
         ),
     ],
 )

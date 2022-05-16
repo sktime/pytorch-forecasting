@@ -213,9 +213,7 @@ def test_MultivariateNormalDistributionLoss(center, transformation):
     )
 
     if transformation in ["logit", "log", "log1p", "softplus", "relu", "logit"]:
-        rescaled_parameters = loss.rescale_parameters(
-            parameters, target_scale=target_scale.repeat(n, 1)[None], encoder=normalizer
-        )
+        rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
         samples = loss.sample(rescaled_parameters, 1)
         assert torch.isclose(target.mean(), samples.mean(), atol=7.0, rtol=0.5)
         if center:  # if not centered, softplus distorts std too much for testing
