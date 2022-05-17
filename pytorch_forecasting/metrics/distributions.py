@@ -347,13 +347,14 @@ class MQF2DistributionLoss(DistributionLoss):
         # rescale
         loc = x[..., -2][:, None]
         scale = x[..., -1][:, None]
-        return self.transformed_distribution_class(
-            distr,
-            [
-                distributions.AffineTransform(loc=loc, scale=scale),
-                TorchNormalizer.get_transform(self._transformation)["inverse_torch"],
-            ],
-        )
+        scaler = distributions.AffineTransform(loc=loc, scale=scale)
+        if self._transformation is None:
+            return self.transformed_distribution_class(distr, [scaler])
+        else:
+            return self.transformed_distribution_class(
+                distr,
+                [scaler, TorchNormalizer.get_transform(self._transformation)["inverse_torch"]],
+            )
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """

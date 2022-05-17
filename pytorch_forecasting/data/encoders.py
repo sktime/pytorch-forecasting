@@ -36,13 +36,9 @@ def _identity(x):
     return x
 
 
-def _clamp_zero(x):
-    return x.clamp(0.0)
-
-
 def _clipped_logit(x):
     finfo = torch.finfo(x.dtype)
-    x = x.clamp(min=finfo.tiny, max=1.0 - finfo.eps)
+    x = x.clamp(min=finfo.eps, max=1.0 - finfo.eps)
     return x.log() - (-x).log1p()
 
 
@@ -57,7 +53,7 @@ def _square(y):
 
 def _clipped_log(y):
     finfo = torch.finfo(y.dtype)
-    return y.log().clamp(min=finfo.min)
+    return y.log().clamp(min=finfo.eps)
 
 
 class SoftplusTransform(Transform):
@@ -96,7 +92,7 @@ class Expm1Transform(ExpTransform):
 
 class MinusOneTransform(Transform):
     r"""
-    Transform y -> x - 1.
+    Transform x -> x - 1.
     """
     domain = constraints.real
     codomain = constraints.real
@@ -108,6 +104,25 @@ class MinusOneTransform(Transform):
 
     def _inverse(self, y):
         return y + 1.0
+
+    def log_abs_det_jacobian(self, x, y):
+        return 0.0
+
+
+class ReLuTransform(Transform):
+    r"""
+    Transform x -> max(0, x).
+    """
+    domain = constraints.real
+    codomain = constraints.nonnegative
+    sign: int = 1
+    bijective: bool = False
+
+    def _call(self, x):
+        return F.relu(x)
+
+    def _inverse(self, y):
+        return y
 
     def log_abs_det_jacobian(self, x, y):
         return 0.0
@@ -127,7 +142,7 @@ class TransformMixIn:
         "logit": dict(forward=_clipped_logit, reverse=_clipped_sigmoid, inverse_torch=SigmoidTransform()),
         "count": dict(forward=_plus_one, reverse=F.softplus, inverse=_minus_one, inverse_torch=MinusOneTransform()),
         "softplus": dict(forward=softplus_inv, reverse=F.softplus, inverse_torch=SoftplusTransform()),
-        "relu": dict(forward=_identity, reverse=_clamp_zero, inverse_torch=identity_transform),
+        "relu": dict(forward=_identity, reverse=F.relu, inverse=_identity, inverse_torch=ReLuTransform()),
         "sqrt": dict(forward=torch.sqrt, reverse=_square, inverse_torch=PowerTransform(exponent=2.0)),
     }
 
@@ -753,7 +768,7 @@ class GroupNormalizer(TorchNormalizer):
             self
         """
         y = self.preprocess(y)
-        eps = np.finfo(y.dtype).eps
+        eps = np.finfo(np.float).eps
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
