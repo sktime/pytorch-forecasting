@@ -53,7 +53,7 @@ def _square(y):
 
 def _clipped_log(y):
     finfo = torch.finfo(y.dtype)
-    return y.log().clamp(min=finfo.eps)
+    return y.log().clamp(min=-1 / finfo.eps)
 
 
 class SoftplusTransform(Transform):
