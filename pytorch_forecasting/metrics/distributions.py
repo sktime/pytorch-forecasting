@@ -14,30 +14,30 @@ from pytorch_forecasting.metrics.base_metrics import DistributionLoss, Multivari
 class NormalDistributionLoss(DistributionLoss):
     """
     Normal distribution loss.
-
-    Requirements for original target normalizer:
-        * not normalized in log space (use :py:class:`~LogNormalDistributionLoss`)
-        * not coerced to be positive
     """
 
     distribution_class = distributions.Normal
     distribution_arguments = ["loc", "scale"]
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
-        return self.distribution_class(loc=x[..., 0], scale=x[..., 1])
+        distr = self.distribution_class(loc=x[..., 2], scale=x[..., 3])
+        scaler = distributions.AffineTransform(loc=x[..., 0], scale=x[..., 1])
+        if self._transformation is None:
+            return distributions.TransformedDistribution(distr, [scaler])
+        else:
+            return distributions.TransformedDistribution(
+                distr, [scaler, TorchNormalizer.get_transform(self._transformation)["inverse_torch"]]
+            )
 
     def rescale_parameters(
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
-        assert encoder.transformation not in ["log", "log1p"], "Use LogNormalDistributionLoss for log scaled data"
-        assert encoder.transformation not in [
-            "softplus",
-            "relu",
-        ], "Cannot use NormalDistributionLoss for positive data"
-        assert encoder.transformation not in ["logit"], "Cannot use bound transformation such as 'logit'"
-        loc = encoder(dict(prediction=parameters[..., 0], target_scale=target_scale))
-        scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(1)
-        return torch.stack([loc, scale], dim=-1)
+        self._transformation = encoder.transformation
+        loc = parameters[..., 0]
+        scale = F.softplus(parameters[..., 1])
+        return torch.concat(
+            [target_scale.unsqueeze(1).expand(-1, loc.size(1), -1), loc.unsqueeze(-1), scale.unsqueeze(-1)], dim=-1
+        )
 
 
 class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
@@ -45,10 +45,6 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
     Multivariate low-rank normal distribution loss.
 
     Use this loss to make out of a DeepAR model a DeepVAR network.
-
-    Requirements for original target normalizer:
-        * not normalized in log space (use :py:class:`~LogNormalDistributionLoss`)
-        * not coerced to be positive
     """
 
     distribution_class = distributions.LowRankMultivariateNormal
@@ -90,11 +86,11 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
         x = x.permute(1, 0, 2)
         distr = self.distribution_class(
-            loc=torch.zeros_like(x[..., 2]),
+            loc=x[..., 2],
             cov_factor=x[..., 4:],
             cov_diag=x[..., 3],
         )
-        scaler = distributions.AffineTransform(loc=x[0, :, 0], scale=x[0, :, 1])
+        scaler = distributions.AffineTransform(loc=x[0, :, 0], scale=x[0, :, 1], event_dim=1)
         if self._transformation is None:
             return distributions.TransformedDistribution(distr, [scaler])
         else:
