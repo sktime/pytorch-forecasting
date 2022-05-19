@@ -140,21 +140,20 @@ def test_NegativeBinomialDistributionLoss(center, transformation):
     shape = 1.0
     n = 100000
     target = NegativeBinomialDistributionLoss().map_x_to_distribution(torch.tensor([mean, shape])).sample((n,))
-    std = target.std()
     normalizer = TorchNormalizer(center=center, transformation=transformation)
     normalized_target = normalizer.fit_transform(target).view(1, -1)
     target_scale = normalizer.get_parameters().unsqueeze(0)
     parameters = torch.stack([normalized_target, 1.0 * torch.ones_like(normalized_target)], dim=-1)
     loss = NegativeBinomialDistributionLoss()
 
-    if center or transformation in ["logit"]:
+    if center or transformation in ["logit", "log"]:
         with pytest.raises(AssertionError):
             rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
     else:
         rescaled_parameters = loss.rescale_parameters(parameters, target_scale=target_scale, encoder=normalizer)
         samples = loss.sample(rescaled_parameters, 1)
-        assert torch.isclose(torch.as_tensor(mean), samples.mean(), atol=0.1, rtol=0.5)
-        assert torch.isclose(torch.as_tensor(std), samples.std(), atol=0.1, rtol=0.5)
+        assert torch.isclose(target.mean(), samples.mean(), atol=0.1, rtol=0.5)
+        assert torch.isclose(target.std(), samples.std(), atol=0.1, rtol=0.5)
 
 
 @pytest.mark.parametrize(

@@ -133,8 +133,8 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
         self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
     ) -> torch.Tensor:
         assert not encoder.center, "NegativeBinomialDistributionLoss is not compatible with `center=True` normalization"
-        assert encoder.transformation not in ["logit"], "Cannot use bound transformation such as 'logit'"
-        if encoder.transformation in ["log", "log1p"]:
+        assert encoder.transformation not in ["logit", "log"], "Cannot use bound transformation such as 'logit'"
+        if encoder.transformation in ["log1p"]:
             mean = torch.exp(parameters[..., 0] * target_scale[..., 1].unsqueeze(-1))
             shape = (
                 F.softplus(torch.exp(parameters[..., 1]))

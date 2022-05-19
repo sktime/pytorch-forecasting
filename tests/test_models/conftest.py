@@ -114,7 +114,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
         dict(static_categoricals=["agency", "sku"]),
         dict(randomize_length=True, min_encoder_length=2),
         dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
-        dict(target_normalizer=GroupNormalizer(transformation="log")),
+        dict(target_normalizer=GroupNormalizer(transformation="log1p")),
         dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="softplus", center=False)),
         dict(target="agency"),
         # test multiple targets

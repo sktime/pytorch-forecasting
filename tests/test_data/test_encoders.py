@@ -120,7 +120,7 @@ def test_GroupNormalizer(kwargs, groups):
         target_scale=torch.tensor(normalizer.get_parameters([1])).unsqueeze(0),
     )
 
-    if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
+    if kwargs.get("transformation") in ["relu", "softplus", "log1p", "log"]:
         assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
     else:
         assert torch.isclose(
