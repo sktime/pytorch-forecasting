@@ -822,7 +822,7 @@ class TimeSeriesDataSet(Dataset):
                     check_is_fitted(self.scalers[name])
                 except NotFittedError:
                     if isinstance(self.scalers[name], GroupNormalizer):
-                        self.scalers[name] = self.scalers[name].fit(data[[name]], data)
+                        self.scalers[name] = self.scalers[name].fit(data[name], data)
                     else:
                         self.scalers[name] = self.scalers[name].fit(data[[name]])
 

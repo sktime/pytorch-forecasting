@@ -1005,20 +1005,6 @@ class MultivariateDistributionLoss(DistributionLoss):
         )  # returned as (n_samples, n_timesteps, batch_size), so reshape to (batch_size, n_timesteps, n_samples)
         return samples
 
-    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
-        """
-        Convert network prediction into a point prediction.
-
-        Args:
-            y_pred: prediction output of network
-
-        Returns:
-            torch.Tensor: mean prediction
-        """
-        distribution = self.map_x_to_distribution(y_pred)
-
-        return distribution.mean.transpose(0, 1)  # switch to batch_size x n_timesteps
-
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """
         Calculate negative likelihood
