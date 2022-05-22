@@ -232,3 +232,6 @@ def test_ImplicitQuantileNetworkDistributionLoss():
     assert quantiles.size(-1) == len(loss.quantiles)
     assert quantiles.size(0) == batch_size
     assert quantiles.size(1) == n_timesteps
+
+    point_prediction = loss.to_prediction(pred, n_samples=None)
+    assert point_prediction.ndim == loss.to_prediction(pred, n_samples=100).ndim - 1

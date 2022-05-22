@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from pytorch_forecasting.metrics import MQF2DistributionLoss, QuantileLoss
+from pytorch_forecasting.metrics.distributions import ImplicitQuantileNetworkDistributionLoss
 from pytorch_forecasting.models import NHiTS
 
 
@@ -61,7 +62,14 @@ def _integration(dataloader, tmp_path, gpus, **kwargs):
 
 @pytest.mark.parametrize(
     "dataloader",
-    ["with_covariates", "fixed_window_without_covariates", "multi_target", "quantiles", "multivariate-quantiles"],
+    [
+        "with_covariates",
+        "fixed_window_without_covariates",
+        "multi_target",
+        "quantiles",
+        "multivariate-quantiles",
+        "implicit-quantiles",
+    ],
 )
 def test_integration(
     dataloaders_with_covariates,
@@ -83,6 +91,9 @@ def test_integration(
     elif dataloader == "quantiles":
         dataloader = dataloaders_with_covariates
         kwargs["loss"] = QuantileLoss()
+    elif dataloader == "implicit-quantiles":
+        dataloader = dataloaders_with_covariates
+        kwargs["loss"] = ImplicitQuantileNetworkDistributionLoss()
     elif dataloader == "multivariate-quantiles":
         dataloader = dataloaders_with_covariates
         kwargs["loss"] = MQF2DistributionLoss(prediction_length=dataloader["train"].dataset.max_prediction_length)

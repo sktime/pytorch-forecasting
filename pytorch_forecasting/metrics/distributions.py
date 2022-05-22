@@ -493,8 +493,8 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         else:
             # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities) make prediction
             eps = 1e-3
-            quantiles = torch.rand(size=n_samples, device=y_pred.device).clamp(eps, 1 - eps)
-            return self.to_quantiles(y_pred, quantiles=quantiles)
+            quantiles = torch.rand(size=(n_samples,), device=y_pred.device).clamp(eps, 1 - eps)
+            return self.to_quantiles(y_pred, quantiles=quantiles).mean(-1)
 
     def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
         """
@@ -525,4 +525,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         if self._transformation is not None:
             transform = TorchNormalizer.get_transform(self._transformation)["reverse"]
             predictions = transform(predictions)
+
+        if not y_pred.requires_grad:
+            predictions = predictions.detach()
         return predictions
