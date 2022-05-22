@@ -10,6 +10,7 @@ from pytorch_forecasting.metrics import (
     MAE,
     SMAPE,
     BetaDistributionLoss,
+    ImplicitQuantileNetworkDistributionLoss,
     LogNormalDistributionLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
@@ -210,3 +211,24 @@ def test_MultivariateNormalDistributionLoss(center, transformation):
     assert torch.isclose(target.mean(), samples.mean(), atol=3.0, rtol=0.5)
     if center:  # if not centered, softplus distorts std too much for testing
         assert torch.isclose(target.std(), samples.std(), atol=0.1, rtol=0.7)
+
+
+def test_ImplicitQuantileNetworkDistributionLoss():
+    batch_size = 3
+    n_timesteps = 2
+    output_size = 5
+
+    target = torch.rand((batch_size, n_timesteps))
+
+    normalizer = TorchNormalizer(center=True, transformation="softplus")
+    normalizer.fit(target.reshape(-1))
+
+    loss = ImplicitQuantileNetworkDistributionLoss(input_size=output_size)
+    x = torch.rand((batch_size, n_timesteps, output_size))
+    target_scale = torch.rand((batch_size, 2))
+    pred = loss.rescale_parameters(x, target_scale=target_scale, encoder=normalizer)
+    assert loss.loss(pred, target).shape == target.shape
+    quantiles = loss.to_quantiles(pred)
+    assert quantiles.size(-1) == len(loss.quantiles)
+    assert quantiles.size(0) == batch_size
+    assert quantiles.size(1) == n_timesteps
