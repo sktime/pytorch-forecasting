@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.10.2 Multivariate networks (UNRELEASED)
+## v0.10.2 Multivariate networks (23/05/2022)
 
 ### Added
 
