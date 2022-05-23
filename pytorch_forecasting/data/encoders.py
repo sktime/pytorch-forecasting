@@ -498,7 +498,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
                 q_75 = np.percentile(y_scale, 75)
                 q_25 = np.percentile(y_scale, 25)
             self.scale_ = (q_75 - q_25) / 2.0 + eps
-        if not self.center:
+        if not self.center and self.method != "identity":
             self.scale_ = self.center_
             if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros_like(self.center_)
