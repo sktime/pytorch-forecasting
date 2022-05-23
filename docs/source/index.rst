@@ -47,6 +47,12 @@ or to install via conda
 
    conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
 
+To use the MQF2 loss (multivariate quantile loss), also execute
+
+.. code-block::
+
+   pip install git+https://github.com/KelvinKan/CP-Flow.git@package-specific-version --no-deps
+
 Vist :ref:`Getting started <getting-started>` to learn more about the package and detailled installation instruction.
 The :ref:`Tutorials <tutorials>` section provides guidance on how to use models and implement new ones.
 
