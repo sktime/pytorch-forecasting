@@ -535,7 +535,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         run at epoch end for training or validation
         """
-        if self.log_interval > 0:
+        if self.log_interval > 0 and not self.training:
             self.log_interpretation(outputs)
 
     def interpret_output(

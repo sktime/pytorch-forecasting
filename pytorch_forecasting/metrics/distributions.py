@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 from sklearn.base import BaseEstimator
 import torch
-from torch import distributions
+from torch import distributions, nn
 import torch.nn.functional as F
 
 from pytorch_forecasting.data.encoders import TorchNormalizer, softplus_inv
@@ -405,3 +405,135 @@ class MQF2DistributionLoss(DistributionLoss):
         )  # (batch_size, prediction_length, quantile_size)
 
         return result
+
+
+class ImplicitQuantileNetwork(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int):
+        super().__init__()
+        self.quantile_layer = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size), nn.PReLU(), nn.Linear(hidden_size, input_size)
+        )
+        self.output_layer = nn.Sequential(
+            nn.Linear(input_size, input_size),
+            nn.PReLU(),
+            nn.Linear(input_size, 1),
+        )
+        self.register_buffer("cos_multipliers", torch.arange(0, hidden_size) * torch.pi)
+
+    def forward(self, x: torch.Tensor, quantiles: torch.Tensor) -> torch.Tensor:
+        # embed quantiles
+        cos_emb_tau = torch.cos(quantiles[:, None] * self.cos_multipliers[None])  # n_quantiles x hidden_size
+        # modulates input depending on quantile
+        cos_emb_tau = self.quantile_layer(cos_emb_tau)  # n_quantiles x input_size
+
+        emb_inputs = x.unsqueeze(-2) * (1.0 + cos_emb_tau)  # ... x n_quantiles x input_size
+        emb_outputs = self.output_layer(emb_inputs).squeeze(-1)  # ... x n_quantiles
+        return emb_outputs
+
+
+class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
+    """Implicit Quantile Network Distribution Loss.
+
+    Based on `Probabilistic Time Series Forecasting with Implicit Quantile Networks
+    <https://arxiv.org/pdf/2107.03743.pdf>`_.
+    A network is used to directly map network outputs to a quantile.
+    """
+
+    def __init__(
+        self,
+        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
+        input_size: Optional[int] = 16,
+        hidden_size: Optional[int] = 32,
+        n_loss_samples: Optional[int] = 64,
+    ) -> None:
+        """
+        Args:
+            prediction_length (int): maximum prediction length.
+            quantiles (List[float], optional): default quantiles to output.
+                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
+            input_size (int, optional): input size per prediction length. Defaults to 16.
+            hidden_size (int, optional): hidden size per prediction length. Defaults to 64.
+            n_loss_samples (int, optional): number of quantiles to sample to calculate loss.
+        """
+        super().__init__(quantiles=quantiles)
+        self.quantile_network = ImplicitQuantileNetwork(input_size=input_size, hidden_size=hidden_size)
+        self.distribution_arguments = list(range(int(input_size)))
+        self.n_loss_samples = n_loss_samples
+
+    def sample(self, y_pred, n_samples: int) -> torch.Tensor:
+        eps = 1e-3
+        # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities)
+        quantiles = torch.rand(size=(n_samples,), device=y_pred.device).clamp(eps, 1 - eps)
+        # make prediction
+        samples = self.to_quantiles(y_pred, quantiles=quantiles)
+        return samples
+
+    def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """
+        Calculate negative likelihood
+
+        Args:
+            y_pred: network output
+            y_actual: actual values
+
+        Returns:
+            torch.Tensor: metric value on which backpropagation can be applied
+        """
+        eps = 1e-3
+        # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities)
+        quantiles = torch.rand(size=(self.n_loss_samples,), device=y_pred.device).clamp(eps, 1 - eps)
+        # make prediction
+        pred_quantiles = self.to_quantiles(y_pred, quantiles=quantiles)
+        # and calculate quantile loss
+        errors = y_actual[..., None] - pred_quantiles
+        loss = 2 * torch.fmax(quantiles[None] * errors, (quantiles[None] - 1) * errors).mean(dim=-1)
+        return loss
+
+    def rescale_parameters(
+        self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
+    ) -> torch.Tensor:
+        self._transformation = encoder.transformation
+        return torch.concat([parameters, target_scale.unsqueeze(1).expand(-1, parameters.size(1), -1)], dim=-1)
+
+    def to_prediction(self, y_pred: torch.Tensor, n_samples: int = 100) -> torch.Tensor:
+        if n_samples is None:
+            return self.to_quantiles(y_pred, quantiles=[0.5]).squeeze(-1)
+        else:
+            # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities) make prediction
+            return self.sample(y_pred, n_samples=n_samples).mean(-1)
+
+    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
+        """
+        Convert network prediction into a quantile prediction.
+
+        Args:
+            y_pred: prediction output of network
+            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+                as defined in the class initialization.
+
+        Returns:
+            torch.Tensor: prediction quantiles (last dimension)
+        """
+        if quantiles is None:
+            quantiles = self.quantiles
+        quantiles = torch.as_tensor(quantiles, device=y_pred.device)
+
+        # extract parameters
+        x = y_pred[..., :-2]
+        loc = y_pred[..., -2][..., None]
+        scale = y_pred[..., -1][..., None]
+
+        # predict quantiles
+        if y_pred.requires_grad:
+            predictions = self.quantile_network(x, quantiles)
+        else:
+            with torch.no_grad():
+                predictions = self.quantile_network(x, quantiles)
+        # rescale output
+        predictions = loc + predictions * scale
+        # transform output if required
+        if self._transformation is not None:
+            transform = TorchNormalizer.get_transform(self._transformation)["reverse"]
+            predictions = transform(predictions)
+
+        return predictions

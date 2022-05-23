@@ -15,7 +15,7 @@ from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHoriz
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.utils import create_mask, to_list
+from pytorch_forecasting.utils import create_mask, detach, to_list
 
 
 class NHiTS(BaseModelWithCovariates):

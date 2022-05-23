@@ -9,6 +9,7 @@
 - MQF2 loss (multivariate quantile loss) (#949)
 - Non-causal attention for TFT (#949)
 - Tweedie loss (#949)
+- ImplicitQuantileNetworkDistributionLoss (#995)
 
 ### Fixed
 
