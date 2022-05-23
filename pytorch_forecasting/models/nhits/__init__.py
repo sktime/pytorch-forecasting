@@ -417,23 +417,23 @@ class NHiTS(BaseModelWithCovariates):
             plt.Figure: matplotlib figure
         """
         if not isinstance(self.loss, MultiLoss):  # not multi-target
-            prediction = self.to_prediction(dict(prediction=output["prediction"][[idx]].detach().cpu()))[0]
+            prediction = self.to_prediction(dict(prediction=output["prediction"][[idx]].detach()))[0].cpu()
             block_forecasts = [
-                self.to_prediction(dict(prediction=block[[idx]].detach().cpu()))[0]
+                self.to_prediction(dict(prediction=block[[idx]].detach()))[0].cpu()
                 for block in output["block_forecasts"]
             ]
         elif isinstance(output["prediction"], (tuple, list)):  # multi-target
             figs = []
             # predictions and block forecasts need to be converted
-            prediction = [p[[idx]].detach().cpu() for p in output["prediction"]]  # select index
+            prediction = [p[[idx]].detach() for p in output["prediction"]]  # select index
             prediction = self.to_prediction(dict(prediction=prediction))  # transform to prediction
-            prediction = [p[0] for p in prediction]  # select first and only index
+            prediction = [p[0].cpu() for p in prediction]  # select first and only index
 
             block_forecasts = [
-                self.to_prediction(dict(prediction=[b[[idx]].detach().cpu() for b in block]))
+                self.to_prediction(dict(prediction=[b[[idx]].detach() for b in block]))
                 for block in output["block_forecasts"]
             ]
-            block_forecasts = [[b[0] for b in block] for block in block_forecasts]
+            block_forecasts = [[b[0].cpu() for b in block] for block in block_forecasts]
 
             for i in range(len(self.target_names)):
                 if ax is not None:
