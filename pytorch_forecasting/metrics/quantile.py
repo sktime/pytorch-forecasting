@@ -32,7 +32,7 @@ class QuantileLoss(MultiHorizonMetric):
         for i, q in enumerate(self.quantiles):
             errors = target - y_pred[..., i]
             losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(-1))
-        losses = torch.cat(losses, dim=2)
+        losses = 2 * torch.cat(losses, dim=2)
 
         return losses
 

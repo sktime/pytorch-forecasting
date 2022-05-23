@@ -443,8 +443,8 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         self,
         quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
         input_size: Optional[int] = 16,
-        hidden_size: Optional[int] = 64,
-        n_loss_samples: Optional[int] = 16,
+        hidden_size: Optional[int] = 32,
+        n_loss_samples: Optional[int] = 64,
     ) -> None:
         """
         Args:
@@ -459,6 +459,14 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         self.quantile_network = ImplicitQuantileNetwork(input_size=input_size, hidden_size=hidden_size)
         self.distribution_arguments = list(range(int(input_size)))
         self.n_loss_samples = n_loss_samples
+
+    def sample(self, y_pred, n_samples: int) -> torch.Tensor:
+        eps = 1e-3
+        # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities)
+        quantiles = torch.rand(size=(n_samples,), device=y_pred.device).clamp(eps, 1 - eps)
+        # make prediction
+        samples = self.to_quantiles(y_pred, quantiles=quantiles)
+        return samples
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
         """
@@ -478,7 +486,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         pred_quantiles = self.to_quantiles(y_pred, quantiles=quantiles)
         # and calculate quantile loss
         errors = y_actual[..., None] - pred_quantiles
-        loss = torch.fmax(quantiles[None] * errors, (quantiles[None] - 1) * errors).mean(dim=-1)
+        loss = 2 * torch.fmax(quantiles[None] * errors, (quantiles[None] - 1) * errors).mean(dim=-1)
         return loss
 
     def rescale_parameters(
@@ -492,9 +500,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
             return self.to_quantiles(y_pred, quantiles=[0.5]).squeeze(-1)
         else:
             # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities) make prediction
-            eps = 1e-3
-            quantiles = torch.rand(size=(n_samples,), device=y_pred.device).clamp(eps, 1 - eps)
-            return self.to_quantiles(y_pred, quantiles=quantiles).mean(-1)
+            return self.sample(y_pred, n_samples=n_samples).mean(-1)
 
     def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
         """
@@ -518,7 +524,11 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         scale = y_pred[..., -1][..., None]
 
         # predict quantiles
-        predictions = self.quantile_network(x, quantiles)
+        if y_pred.requires_grad:
+            predictions = self.quantile_network(x, quantiles)
+        else:
+            with torch.no_grad():
+                predictions = self.quantile_network(x, quantiles)
         # rescale output
         predictions = loc + predictions * scale
         # transform output if required
@@ -526,6 +536,4 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
             transform = TorchNormalizer.get_transform(self._transformation)["reverse"]
             predictions = transform(predictions)
 
-        if not y_pred.requires_grad:
-            predictions = predictions.detach()
         return predictions

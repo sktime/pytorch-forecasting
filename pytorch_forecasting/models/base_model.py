@@ -409,7 +409,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         x, y = batch
         log, out = self.step(x, y, batch_idx)
-        log.update(self.create_log(x, y, out, batch_idx))
         return log
 
     def training_epoch_end(self, outputs):

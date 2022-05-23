@@ -11,6 +11,7 @@ from torch import nn
 from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics import (
     BetaDistributionLoss,
+    ImplicitQuantileNetworkDistributionLoss,
     LogNormalDistributionLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
@@ -120,6 +121,9 @@ def _integration(
                 target=["volume", "discount"],
                 lags={"volume": [2], "discount": [2]},
             )
+        ),
+        dict(
+            loss=ImplicitQuantileNetworkDistributionLoss(hidden_size=8),
         ),
         dict(
             loss=MultivariateNormalDistributionLoss(),
