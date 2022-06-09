@@ -464,8 +464,11 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
                 self.center_ = torch.zeros(y_center.size()[:-1])
                 self.scale_ = torch.ones(y_scale.size()[:-1])
             elif isinstance(y_center, (np.ndarray, pd.Series, pd.DataFrame)):
-                self.center_ = np.zeros(y_center.shape[:-1])
-                self.scale_ = np.ones(y_scale.shape[:-1])
+                # numpy default type is numpy.float64 while torch default type is torch.float32 (if not changed)
+                # therefore, we first generate torch tensors (with torch default type) and then
+                # convert them to numpy arrays
+                self.center_ = torch.zeros(y_center.shape[:-1]).numpy()
+                self.scale_ = torch.ones(y_scale.shape[:-1]).numpy()
             else:
                 self.center_ = 0.0
                 self.scale_ = 1.0
@@ -481,7 +484,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
                 self.center_ = np.mean(y_center)
                 self.scale_ = np.std(y_scale) + eps
             # correct numpy scalar dtype promotion, e.g. fix type from `np.float32(0.0) + 1e-8` gives `np.float64(1e-8)`
-            if isinstance(self.scale_, np.ndarray) and np.isscalar(self.scale_):
+            if isinstance(self.scale_, np.ndarray):
                 self.scale_ = self.scale_.astype(y_scale.dtype)
 
         elif self.method == "robust":

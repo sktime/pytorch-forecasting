@@ -153,8 +153,14 @@ def test_MultiNormalizer_fitted():
 
 
 def test_TorchNormalizer_dtype_consistency():
-    """Ensures that even for float64 `target_scale`, the transformation will not change the prediction dtype."""
+    """
+    - Ensures that even for float64 `target_scale`, the transformation will not change the prediction dtype.
+    - Ensure that target_scale will be of type float32 if method is 'identity'
+    """
     parameters = torch.tensor([[[366.4587]]])
     target_scale = torch.tensor([[427875.7500, 80367.4766]], dtype=torch.float64)
     assert TorchNormalizer()(dict(prediction=parameters, target_scale=target_scale)).dtype == torch.float32
     assert TorchNormalizer().transform(parameters, target_scale=target_scale).dtype == torch.float32
+
+    y = np.array([1, 2, 3], dtype=np.float32)
+    assert TorchNormalizer(method="identity").fit(y).get_parameters().dtype == torch.float32
