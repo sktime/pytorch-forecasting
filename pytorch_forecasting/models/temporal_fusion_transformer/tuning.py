@@ -144,7 +144,7 @@ def optimize_hyperparameters(
             ],
             logger=logger,
             enable_progress_bar=optuna_verbose < optuna.logging.INFO,
-            weights_summary=[None, "top"][optuna_verbose < optuna.logging.INFO],
+            enable_model_summary=[False, True][optuna_verbose < optuna.logging.INFO],
         )
         default_trainer_kwargs.update(trainer_kwargs)
         trainer = pl.Trainer(
