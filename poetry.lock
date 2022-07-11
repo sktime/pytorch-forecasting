@@ -1729,7 +1729,7 @@ pytest = ">=4.0.0"
 
 [[package]]
 name = "pytest-sugar"
-version = "0.9.4"
+version = "0.9.5"
 description = "pytest-sugar is a plugin for pytest that changes the default look and feel of pytest (e.g. progressbar, show tests that fail instantly)."
 category = "dev"
 optional = false
