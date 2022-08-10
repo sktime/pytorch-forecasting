@@ -47,6 +47,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         x_categoricals: List[str] = [],
         hidden_continuous_size: int = 8,
         hidden_continuous_sizes: Dict[str, int] = {},
+        bidirectional_lstm_decoder: bool = False,
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_paddings: List[str] = [],
         embedding_labels: Dict[str, np.ndarray] = {},
@@ -109,6 +110,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 embedding size)
             hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
                 (fallback to hidden_continuous_size if index is not in dictionary)
+            bidirectional_lstm_decoder: whether the lstm decoder should be a bidirectional layer or not
             embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
                 embedding size
             embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
@@ -288,6 +290,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             num_layers=self.hparams.lstm_layers,
             dropout=self.hparams.dropout if self.hparams.lstm_layers > 1 else 0,
             batch_first=True,
+            bidirectional=self.hparams.bidirectional_lstm_decoder,
         )
 
         # skip connection for lstm
