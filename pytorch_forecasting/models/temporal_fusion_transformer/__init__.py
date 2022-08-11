@@ -490,8 +490,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             #       documentation that specifies how the input of the `forward`
             #       of a bidirectional LSTM layer is processed. The call gets
             #       passed to `torch.onnx.symbolic_opset9.py` but gets
-            #       incomprehensible to me. I assume the code below is right,
-            #       because in my eyes it makes the most sense.
+            #       incomprehensible to me.
+            # NOTE: there might be another way of performing this operation, 
+            #       namely:
+            #       https://discuss.pytorch.org/t/proper-way-of-setting-h-c-in-bidirectional-rnn-layers/158842
             hidden = torch.cat([hidden, reverse_hidden], dim=0)
             cell = torch.cat([cell, reverse_cell], dim=0)
 
@@ -508,14 +510,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # NOTE: to reviewer: see above. The process is not extremely clear from
         #       the pytorch documentation
         if self.hparams.bidirectional_lstm_decoder:
-            # decoder_output = decoder_output.view(-1, decoder_lengths, 2, self.hparams.hidden_size)[:, :, 0, :]
             decoder_output = decoder_output[:, :, :self.hparams.hidden_size]
-
-        
-        # print(encoder_output.shape)
-        # print(embeddings_varying_encoder.shape)
-        # print(decoder_output.shape)
-        # print(embeddings_varying_decoder.shape)
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)
