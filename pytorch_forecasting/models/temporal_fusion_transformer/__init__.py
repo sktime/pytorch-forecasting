@@ -494,8 +494,14 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             # NOTE: there might be another way of performing this operation, 
             #       namely:
             #       https://discuss.pytorch.org/t/proper-way-of-setting-h-c-in-bidirectional-rnn-layers/158842
-            hidden = torch.cat([hidden, reverse_hidden], dim=0)
-            cell = torch.cat([cell, reverse_cell], dim=0)
+            # hidden = torch.cat([hidden, reverse_hidden], dim=0)
+            # cell = torch.cat([cell, reverse_cell], dim=0)
+            hidden = torch.cat([hidden[:, None, :, :], 
+                                reverse_hidden[:, None, :, :]], dim=1). \
+                view(2 * self.hparams.lstm_layers, -1, self.hparams.hidden_size)
+            cell = torch.cat([cell[:, None, :, :], 
+                              reverse_cell[:, None, :, :]],dim=1). \
+                view(2 * self.hparams.lstm_layers, -1, self.hparams.hidden_size)
 
 
         # run local decoder
@@ -510,7 +516,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # NOTE: to reviewer: see above. The process is not extremely clear from
         #       the pytorch documentation
         if self.hparams.bidirectional_lstm_decoder:
-            decoder_output = decoder_output[:, :, :self.hparams.hidden_size]
+            decoder_output = decoder_output.unflatten(2, (2, self.hparams.hidden_size))[:, :, 0, :]
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)
