@@ -45,6 +45,10 @@ def test_non_causal_attention(dataloaders_with_covariates, tmp_path, gpus):
     _integration(dataloaders_with_covariates, tmp_path, gpus, causal_attention=False, loss=TweedieLoss())
 
 
+def test_bidirectional_decoder(dataloaders_with_covariates, tmp_path, gpus):
+    _integration(dataloaders_with_covariates, tmp_path, gpus, bidirectional_lstm_decoder=True)
+
+
 def test_distribution_loss(data_with_covariates, tmp_path, gpus):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
