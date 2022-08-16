@@ -595,9 +595,9 @@ rsa = {version = ">=3.1.4,<5", markers = "python_version >= \"3.6\""}
 six = ">=1.9.0"
 
 [package.extras]
-aiohttp = ["requests (>=2.20.0,<3.0.0dev)", "aiohttp (>=3.6.2,<4.0.0dev)"]
-pyopenssl = ["pyopenssl (>=20.0.0)"]
 reauth = ["pyu2f (>=0.1.5)"]
+pyopenssl = ["pyopenssl (>=20.0.0)"]
+aiohttp = ["aiohttp (>=3.6.2,<4.0.0dev)", "requests (>=2.20.0,<3.0.0dev)"]
 
 [[package]]
 name = "google-auth-oauthlib"
@@ -1084,7 +1084,7 @@ test = ["black", "check-manifest", "flake8", "ipykernel", "ipython (<8.0.0)", "i
 
 [[package]]
 name = "nbconvert"
-version = "6.5.2"
+version = "6.5.3"
 description = "Converting Jupyter Notebooks"
 category = "dev"
 optional = false
@@ -1806,17 +1806,17 @@ tqdm = ">=4.57.0"
 typing-extensions = ">=4.0.0"
 
 [package.extras]
-all = ["matplotlib (>3.1)", "torchtext (>=0.9)", "omegaconf (>=2.0.5)", "hydra-core (>=1.0.5)", "jsonargparse[signatures] (>=4.7.1)", "gcsfs (>=2021.5.0)", "rich (>=10.2.2,!=10.15.0.a)", "neptune-client (>=0.10.0)", "comet-ml (>=3.1.12)", "mlflow (>=1.0.0)", "test-tube (>=0.7.5)", "wandb (>=0.8.21)", "coverage (>=6.4)", "codecov (>=2.1)", "pytest (>=6.0)", "pytest-rerunfailures (>=10.2)", "mypy (>=0.920)", "flake8 (>=3.9.2)", "pre-commit (>=1.0)", "pytest-forked", "cloudpickle (>=1.3)", "scikit-learn (>0.22.1)", "onnxruntime", "pandas", "torchvision (>=0.9)", "gym[classic_control] (>=0.17.0)", "ipython", "fairscale (>=0.4.5)", "deepspeed", "horovod (>=0.21.2,!=0.24.0)", "hivemind (>=1.0.1)"]
-deepspeed = ["deepspeed"]
-dev = ["matplotlib (>3.1)", "torchtext (>=0.9)", "omegaconf (>=2.0.5)", "hydra-core (>=1.0.5)", "jsonargparse[signatures] (>=4.7.1)", "gcsfs (>=2021.5.0)", "rich (>=10.2.2,!=10.15.0.a)", "neptune-client (>=0.10.0)", "comet-ml (>=3.1.12)", "mlflow (>=1.0.0)", "test-tube (>=0.7.5)", "wandb (>=0.8.21)", "coverage (>=6.4)", "codecov (>=2.1)", "pytest (>=6.0)", "pytest-rerunfailures (>=10.2)", "mypy (>=0.920)", "flake8 (>=3.9.2)", "pre-commit (>=1.0)", "pytest-forked", "cloudpickle (>=1.3)", "scikit-learn (>0.22.1)", "onnxruntime", "pandas"]
-examples = ["torchvision (>=0.9)", "gym[classic_control] (>=0.17.0)", "ipython"]
-extra = ["matplotlib (>3.1)", "torchtext (>=0.9)", "omegaconf (>=2.0.5)", "hydra-core (>=1.0.5)", "jsonargparse[signatures] (>=4.7.1)", "gcsfs (>=2021.5.0)", "rich (>=10.2.2,!=10.15.0.a)"]
-fairscale = ["fairscale (>=0.4.5)"]
-hivemind = ["hivemind (>=1.0.1)"]
+test = ["pandas", "onnxruntime", "scikit-learn (>0.22.1)", "cloudpickle (>=1.3)", "pytest-forked", "pre-commit (>=1.0)", "flake8 (>=3.9.2)", "mypy (>=0.920)", "pytest-rerunfailures (>=10.2)", "pytest (>=6.0)", "codecov (>=2.1)", "coverage (>=6.4)"]
+strategies = ["hivemind (>=1.0.1)", "horovod (>=0.21.2,!=0.24.0)", "deepspeed", "fairscale (>=0.4.5)"]
+loggers = ["wandb (>=0.8.21)", "test-tube (>=0.7.5)", "mlflow (>=1.0.0)", "comet-ml (>=3.1.12)", "neptune-client (>=0.10.0)"]
 horovod = ["horovod (>=0.21.2,!=0.24.0)"]
-loggers = ["neptune-client (>=0.10.0)", "comet-ml (>=3.1.12)", "mlflow (>=1.0.0)", "test-tube (>=0.7.5)", "wandb (>=0.8.21)"]
-strategies = ["fairscale (>=0.4.5)", "deepspeed", "horovod (>=0.21.2,!=0.24.0)", "hivemind (>=1.0.1)"]
-test = ["coverage (>=6.4)", "codecov (>=2.1)", "pytest (>=6.0)", "pytest-rerunfailures (>=10.2)", "mypy (>=0.920)", "flake8 (>=3.9.2)", "pre-commit (>=1.0)", "pytest-forked", "cloudpickle (>=1.3)", "scikit-learn (>0.22.1)", "onnxruntime", "pandas"]
+hivemind = ["hivemind (>=1.0.1)"]
+fairscale = ["fairscale (>=0.4.5)"]
+extra = ["rich (>=10.2.2,!=10.15.0.a)", "gcsfs (>=2021.5.0)", "jsonargparse[signatures] (>=4.7.1)", "hydra-core (>=1.0.5)", "omegaconf (>=2.0.5)", "torchtext (>=0.9)", "matplotlib (>3.1)"]
+examples = ["ipython", "gym[classic_control] (>=0.17.0)", "torchvision (>=0.9)"]
+dev = ["pandas", "onnxruntime", "scikit-learn (>0.22.1)", "cloudpickle (>=1.3)", "pytest-forked", "pre-commit (>=1.0)", "flake8 (>=3.9.2)", "mypy (>=0.920)", "pytest-rerunfailures (>=10.2)", "pytest (>=6.0)", "codecov (>=2.1)", "coverage (>=6.4)", "wandb (>=0.8.21)", "test-tube (>=0.7.5)", "mlflow (>=1.0.0)", "comet-ml (>=3.1.12)", "neptune-client (>=0.10.0)", "rich (>=10.2.2,!=10.15.0.a)", "gcsfs (>=2021.5.0)", "jsonargparse[signatures] (>=4.7.1)", "hydra-core (>=1.0.5)", "omegaconf (>=2.0.5)", "torchtext (>=0.9)", "matplotlib (>3.1)"]
+deepspeed = ["deepspeed"]
+all = ["hivemind (>=1.0.1)", "horovod (>=0.21.2,!=0.24.0)", "deepspeed", "fairscale (>=0.4.5)", "ipython", "gym[classic_control] (>=0.17.0)", "torchvision (>=0.9)", "pandas", "onnxruntime", "scikit-learn (>0.22.1)", "cloudpickle (>=1.3)", "pytest-forked", "pre-commit (>=1.0)", "flake8 (>=3.9.2)", "mypy (>=0.920)", "pytest-rerunfailures (>=10.2)", "pytest (>=6.0)", "codecov (>=2.1)", "coverage (>=6.4)", "wandb (>=0.8.21)", "test-tube (>=0.7.5)", "mlflow (>=1.0.0)", "comet-ml (>=3.1.12)", "neptune-client (>=0.10.0)", "rich (>=10.2.2,!=10.15.0.a)", "gcsfs (>=2021.5.0)", "jsonargparse[signatures] (>=4.7.1)", "hydra-core (>=1.0.5)", "omegaconf (>=2.0.5)", "torchtext (>=0.9)", "matplotlib (>3.1)"]
 
 [[package]]
 name = "pytz"
@@ -3504,8 +3504,8 @@ nbclient = [
     {file = "nbclient-0.6.3.tar.gz", hash = "sha256:b80726fc1fb89a0e8f8be1e77e28d0026b1e8ed90bc143c8a0c7622e4f8cdd9e"},
 ]
 nbconvert = [
-    {file = "nbconvert-6.5.2-py3-none-any.whl", hash = "sha256:2f2bc01f43a6db5ef0c450b75d3f129448c9b49f9a4205699ceda61e4936784b"},
-    {file = "nbconvert-6.5.2.tar.gz", hash = "sha256:48426ef6c592cf338dad2ef408deaf87db019591f697b6d906a759aa72e19dcd"},
+    {file = "nbconvert-6.5.3-py3-none-any.whl", hash = "sha256:2564bb5125d862949f72475de0c0348392add7ea62cc950985347bfe7bbc2034"},
+    {file = "nbconvert-6.5.3.tar.gz", hash = "sha256:10ed693c4cfd3c63583c87ca5c3a2f6ed874145103595f3824efcc8dfcb7522c"},
 ]
 nbformat = [
     {file = "nbformat-5.3.0-py3-none-any.whl", hash = "sha256:38856d97de49e8292e2d5d8f595e9d26f02abfd87e075d450af4511870b40538"},
