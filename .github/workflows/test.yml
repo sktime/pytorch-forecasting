@@ -46,7 +46,7 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
 
       - name: Set poetry path variable
-        run: echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+        run: echo "/Users/runner/.local/bin" >> $GITHUB_PATH
 
       - name: Configure poetry
         shell: bash

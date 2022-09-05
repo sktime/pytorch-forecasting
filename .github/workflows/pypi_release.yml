@@ -28,7 +28,7 @@ jobs:
           python -m pip install poetry-dynamic-versioning[plugin]
 
       - name: Set poetry path variable
-        run: echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+        run: echo "/Users/runner/.local/bin" >> $GITHUB_PATH
 
       - name: Build
         run: |
