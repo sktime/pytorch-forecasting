@@ -111,4 +111,4 @@ style = "semver"  # semantic versioning
 
 [build-system]  # make the package pip installable
 requires = ["poetry-core>=1.0.7", "poetry-dynamic-versioning>=0.13.1"]
-build-backend = "poetry.core.masonry.api"
+build-backend = "poetry_dynamic_versioning.backend"
