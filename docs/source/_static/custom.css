@@ -1,6 +1,12 @@
 .container-xl {
   max-width: 4000px;
 }
+
+.bd-content {
+  flex-grow: 1;
+  max-width: 100%;
+}
+
 a.reference.internal.nav-link {
   color: #727991 !important;
 }
