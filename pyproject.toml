@@ -94,6 +94,7 @@ black = { version = "*", allow-prereleases = true, extras = ["jupyter"] }
 sphinx = "*"
 pydata-sphinx-theme = "*"
 nbsphinx = "*"
+# pandoc = "*"  # todo: bring back later when install works again
 recommonmark = "*"
 ipywidgets = "^8.0.1"
 

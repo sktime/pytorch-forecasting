@@ -23,6 +23,10 @@ class Metric(LightningMetric):
     Other metrics should inherit from this base class
     """
 
+    full_state_update = False
+    higher_is_better = False
+    is_differentiable = True
+
     def __init__(self, name: str = None, quantiles: List[float] = None, reduction="mean", **kwargs):
         """
         Initialize metric
@@ -236,6 +240,10 @@ class MultiLoss(LightningMetric):
     """
     Metric that can be used with muliple metrics.
     """
+
+    full_state_update = False
+    higher_is_better = False
+    is_differentiable = True
 
     def __init__(self, metrics: List[LightningMetric], weights: List[float] = None):
         """
@@ -483,6 +491,10 @@ class CompositeMetric(LightningMetric):
 
             composite_metric = SMAPE() + 0.4 * MAE()
     """
+
+    full_state_update = False
+    higher_is_better = False
+    is_differentiable = True
 
     def __init__(self, metrics: List[LightningMetric] = [], weights: List[float] = None):
         """
