@@ -157,7 +157,10 @@ class TransformMixIn:
         Returns:
             Dict[str, Callable]: dictionary with transformation functions (forward, reverse, inverse and inverse_torch)
         """
-        return cls.TRANSFORMATIONS.get(transformation, transformation)
+        transform = cls.TRANSFORMATIONS.get(transformation, transformation)
+        transform.setdefault("forward", _identity)
+        transform.setdefault("reverse", _identity)
+        return transform
 
     def preprocess(
         self, y: Union[pd.Series, pd.DataFrame, np.ndarray, torch.Tensor]
