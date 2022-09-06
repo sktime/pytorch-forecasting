@@ -70,7 +70,6 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    contribute
    api
    CHANGELOG
-   .. GitHub <https://github.com/jdb78/pytorch-forecasting>
 
 
 Indices and tables
