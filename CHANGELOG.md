@@ -1,5 +1,12 @@
 # Release Notes
 
+## v0.10.3 UNRELEASED
+
+### Fixed
+
+- Removed pandoc from dependencies as issue with poetry install (#1126)
+- Added metric attributes for torchmetric resulting in better multi-GPU performance (#1126)
+
 ## v0.10.2 Multivariate networks (23/05/2022)
 
 ### Added
