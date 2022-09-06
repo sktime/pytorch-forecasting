@@ -251,7 +251,7 @@ class MQF2DistributionLoss(DistributionLoss):
     `Multivariate Quantile Function Forecaster <http://arxiv.org/abs/2202.11316>`_.
 
     Requires install of additional library:
-    ``pip install git+https://github.com/KelvinKan/CP-Flow.git@package-specific-version --no-deps``
+    ``pip install pytorch-forecasting[mqf2]``
     """
 
     eps = 1e-4

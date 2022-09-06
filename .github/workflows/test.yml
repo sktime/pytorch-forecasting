@@ -70,15 +70,11 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: poetry install -E "github-actions graph"
+        run: poetry install -E "github-actions graph mqf2"
 
       - name: Install pytorch geometric dependencies
         shell: bash
         run: poetry run pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.12.1+cpu.html
-
-      - name: Install CP flow dependencies
-        shell: bash
-        run: poetry run pip install git+https://github.com/KelvinKan/CP-Flow.git@package-specific-version --no-deps
 
       - name: Run pytest
         shell: bash
