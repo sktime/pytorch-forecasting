@@ -94,7 +94,6 @@ black = { version = "*", allow-prereleases = true, extras = ["jupyter"] }
 sphinx = "*"
 pydata-sphinx-theme = "*"
 nbsphinx = "*"
-pandoc = "*"
 recommonmark = "*"
 ipywidgets = "^8.0.1"
 
