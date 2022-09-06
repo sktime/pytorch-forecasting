@@ -489,7 +489,7 @@ Fix bug where predictions were not correctly logged in case of `decoder_length =
 
 ## v0.2.3 Make pip installable from master branch (23/08/2020)
 
-Update build system requirements to be parsed correctly when installing with `pip install git+https://github.com/jdb78/pytorch-forecasting`
+Update build system requirements to be parsed correctly when installing with `pip install git+...`
 
 ---
 
