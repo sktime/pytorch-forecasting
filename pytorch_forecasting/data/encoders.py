@@ -2,7 +2,7 @@
 Encoders for encoding categorical variables and scaling continuous data.
 """
 
-from typing import Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 import warnings
 
 import numpy as np
@@ -393,11 +393,14 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         method: str = "standard",
         center: bool = True,
         transformation: Union[str, Tuple[Callable, Callable]] = None,
+        method_kwargs: Dict[str, Any] = {},
     ):
         """
         Args:
             method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
                 or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
+            method_kwargs (Dict[str, Any], optional): Dictionary of method specific arguments as listed below
+                * "robust" method: "upper", "lower", "center" quantiles defaulting to 0.75, 0.25 and 0.5
             center (bool, optional): If to center the output to zero. Defaults to True.
             transformation (Union[str, Dict[str, Callable]] optional): Transform values before
                 applying normalizer. Available options are
@@ -421,6 +424,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.transformation = transformation
+        self.method_kwargs = method_kwargs
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -489,17 +493,19 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
 
         elif self.method == "robust":
             if isinstance(y_center, torch.Tensor):
-                self.center_ = torch.median(y_center, dim=-1).values
-                q_75 = y_scale.kthvalue(int(len(y_scale) * 0.75), dim=-1).values
-                q_25 = y_scale.kthvalue(int(len(y_scale) * 0.25), dim=-1).values
+                self.center_ = y_center.kthvalue(
+                    int(len(y_center) * self.method_kwargs.get("center", 0.5)), dim=-1
+                ).values
+                q_75 = y_scale.kthvalue(int(len(y_scale) * self.method_kwargs.get("upper", 0.75)), dim=-1).values
+                q_25 = y_scale.kthvalue(int(len(y_scale) * self.method_kwargs.get("lower", 0.25)), dim=-1).values
             elif isinstance(y_center, np.ndarray):
-                self.center_ = np.median(y_center, axis=-1)
-                q_75 = np.percentile(y_scale, 75, axis=-1)
-                q_25 = np.percentile(y_scale, 25, axis=-1)
+                self.center_ = np.percentile(y_center, self.method_kwargs.get("center", 0.5) * 100, axis=-1)
+                q_75 = np.percentile(y_scale, self.method_kwargs.get("upper", 0.75) * 100, axis=-1)
+                q_25 = np.percentile(y_scale, self.method_kwargs.get("lower", 0.25) * 100, axis=-1)
             else:
-                self.center_ = np.median(y_center)
-                q_75 = np.percentile(y_scale, 75)
-                q_25 = np.percentile(y_scale, 25)
+                self.center_ = np.percentile(y_center, self.method_kwargs.get("center", 0.5) * 100, axis=-1)
+                q_75 = np.percentile(y_scale, self.method_kwargs.get("upper", 0.75) * 100)
+                q_25 = np.percentile(y_scale, self.method_kwargs.get("lower", 0.25) * 100)
             self.scale_ = (q_75 - q_25) / 2.0 + eps
         if not self.center and self.method != "identity":
             self.scale_ = self.center_
@@ -616,6 +622,7 @@ class EncoderNormalizer(TorchNormalizer):
         center: bool = True,
         max_length: Union[int, List[int]] = None,
         transformation: Union[str, Tuple[Callable, Callable]] = None,
+        method_kwargs: Dict[str, Any] = {},
     ):
         """
         Initialize
@@ -623,6 +630,8 @@ class EncoderNormalizer(TorchNormalizer):
         Args:
             method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
                 or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
+            method_kwargs (Dict[str, Any], optional): Dictionary of method specific arguments as listed below
+                * "robust" method: "upper", "lower", "center" quantiles defaulting to 0.75, 0.25 and 0.5
             center (bool, optional): If to center the output to zero. Defaults to True.
             max_length(Union[int, List[int]], optional): Maximum length to take into account for calculating
                 parameters. If tuple, first length is maximum length for calculating center and second is maximum
@@ -645,7 +654,7 @@ class EncoderNormalizer(TorchNormalizer):
                   should be defined if ``reverse`` is not the inverse of the forward transformation. ``inverse_torch``
                   can be defined to provide a torch distribution transform for inverse transformations.
         """
-        super().__init__(method=method, center=center, transformation=transformation)
+        super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
         self.max_length = max_length
 
     def fit(self, y: Union[pd.Series, np.ndarray, torch.Tensor]):
@@ -720,6 +729,7 @@ class GroupNormalizer(TorchNormalizer):
         center: bool = True,
         scale_by_group: bool = False,
         transformation: Union[str, Tuple[Callable, Callable]] = None,
+        method_kwargs: Dict[str, Any] = {},
     ):
         """
         Group normalizer to normalize a given entry by groups. Can be used as target normalizer.
@@ -727,6 +737,8 @@ class GroupNormalizer(TorchNormalizer):
         Args:
             method (str, optional): method to rescale series. Either "standard" (standard scaling) or "robust"
                 (scale using quantiles 0.25-0.75). Defaults to "standard".
+            method_kwargs (Dict[str, Any], optional): Dictionary of method specific arguments as listed below
+                * "robust" method: "upper", "lower", "center" quantiles defaulting to 0.75, 0.25 and 0.5
             groups (List[str], optional): Group names to normalize by. Defaults to [].
             center (bool, optional): If to center the output to zero. Defaults to True.
             scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as
@@ -753,11 +765,7 @@ class GroupNormalizer(TorchNormalizer):
         """
         self.groups = groups
         self.scale_by_group = scale_by_group
-        super().__init__(
-            method=method,
-            center=center,
-            transformation=transformation,
-        )
+        super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
 
     def fit(self, y: pd.Series, X: pd.DataFrame):
         """
@@ -777,7 +785,14 @@ class GroupNormalizer(TorchNormalizer):
             if self.method == "standard":
                 self.norm_ = {"center": np.mean(y), "scale": np.std(y) + eps}  # center and scale
             else:
-                quantiles = np.quantile(y, [0.25, 0.5, 0.75])
+                quantiles = np.quantile(
+                    y,
+                    [
+                        self.method_kwargs.get("lower", 0.25),
+                        self.method_kwargs.get("center", 0.5),
+                        self.method_kwargs.get("upper", 0.75),
+                    ],
+                )
                 self.norm_ = {
                     "center": quantiles[1],
                     "scale": (quantiles[2] - quantiles[0]) / 2.0 + eps,
@@ -801,11 +816,21 @@ class GroupNormalizer(TorchNormalizer):
                     g: X[[g]]
                     .assign(y=y)
                     .groupby(g, observed=True)
-                    .y.quantile([0.25, 0.5, 0.75])
+                    .y.quantile(
+                        [
+                            self.method_kwargs.get("lower", 0.25),
+                            self.method_kwargs.get("center", 0.5),
+                            self.method_kwargs.get("upper", 0.75),
+                        ]
+                    )
                     .unstack(-1)
                     .assign(
-                        center=lambda x: x[0.5],
-                        scale=lambda x: (x[0.75] - x[0.25]) / 2.0 + eps,
+                        center=lambda x: x[self.method_kwargs.get("center", 0.5)],
+                        scale=lambda x: (
+                            x[self.method_kwargs.get("upper", 0.75)] - x[self.method_kwargs.get("lower", 0.25)]
+                        )
+                        / 2.0
+                        + eps,
                     )[["center", "scale"]]
                     for g in self.groups
                 }
@@ -834,11 +859,21 @@ class GroupNormalizer(TorchNormalizer):
                     X[self.groups]
                     .assign(y=y)
                     .groupby(self.groups, observed=True)
-                    .y.quantile([0.25, 0.5, 0.75])
+                    .y.quantile(
+                        [
+                            self.method_kwargs.get("lower", 0.25),
+                            self.method_kwargs.get("center", 0.5),
+                            self.method_kwargs.get("upper", 0.75),
+                        ]
+                    )
                     .unstack(-1)
                     .assign(
-                        center=lambda x: x[0.5],
-                        scale=lambda x: (x[0.75] - x[0.25]) / 2.0 + eps,
+                        center=lambda x: x[self.method_kwargs.get("center", 0.5)],
+                        scale=lambda x: (
+                            x[self.method_kwargs.get("upper", 0.75)] - x[self.method_kwargs.get("lower", 0.25)]
+                        )
+                        / 2.0
+                        + eps,
                     )[["center", "scale"]]
                 )
             if not self.center:  # swap center and scale

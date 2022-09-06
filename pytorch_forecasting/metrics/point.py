@@ -17,12 +17,8 @@ class PoissonLoss(MultiHorizonMetric):
 
     def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
         return F.poisson_nll_loss(
-            super().to_prediction(y_pred), target, log_input=True, full=False, eps=1e-6, reduction="none"
+            super().to_prediction(y_pred), target, log_input=False, full=False, eps=1e-6, reduction="none"
         )
-
-    def to_prediction(self, out: Dict[str, torch.Tensor]):
-        rate = torch.exp(super().to_prediction(out))
-        return rate
 
     def to_quantiles(self, out: Dict[str, torch.Tensor], quantiles=None):
         if quantiles is None:
