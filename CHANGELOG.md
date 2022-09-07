@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.10.3 UNRELEASED
+## v0.10.3 Poetry update (07/09/2022)
 
 ### Fixed
 
