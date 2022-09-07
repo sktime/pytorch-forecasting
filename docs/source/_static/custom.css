@@ -1,22 +1,24 @@
 .container-xl {
   max-width: 4000px;
 }
+
+.bd-content {
+  flex-grow: 1;
+  max-width: 100%;
+}
+
 a.reference.internal.nav-link {
   color: #727991 !important;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.active > a,
-.active .nav-link,
-.nav-link,
-.navbar-nav > .active > a.nav-link {
-  color: #ee4c2c !important;
+html[data-theme="light"] {
+  --pst-color-primary: #ee4c2c;
 }
+a.nav-link
+{
+  color: #647db6 !important;
+}
+
 a.nav-link[href="https://github.com/jdb78/pytorch-forecasting"]
 {
   color: #ee4c2c !important;

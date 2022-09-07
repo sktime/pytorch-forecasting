@@ -1,5 +1,16 @@
 # Release Notes
 
+## v0.10.3 Poetry update (07/09/2022)
+
+### Fixed
+
+- Removed pandoc from dependencies as issue with poetry install (#1126)
+- Added metric attributes for torchmetric resulting in better multi-GPU performance (#1126)
+
+### Added
+
+- "robust" encoder method can be customized by setting "center", "lower" and "upper" quantiles (#1126)
+
 ## v0.10.2 Multivariate networks (23/05/2022)
 
 ### Added
@@ -489,7 +500,7 @@ Fix bug where predictions were not correctly logged in case of `decoder_length =
 
 ## v0.2.3 Make pip installable from master branch (23/08/2020)
 
-Update build system requirements to be parsed correctly when installing with `pip install https://github.com/jdb78/pytorch-forecasting/`
+Update build system requirements to be parsed correctly when installing with `pip install git+https://github.com/jdb78/pytorch-forecasting`
 
 ---
 

@@ -56,7 +56,7 @@ Alternatively, you can install the package via conda
 PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
 
 To use the MQF2 loss (multivariate quantile loss), also install
-`pip install git+https://github.com/KelvinKan/CP-Flow.git@package-specific-version --no-deps`
+`pip install pytorch-forecasting[mqf2]`
 
 # Documentation
 

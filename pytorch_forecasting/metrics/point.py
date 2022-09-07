@@ -12,7 +12,23 @@ from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_li
 
 class PoissonLoss(MultiHorizonMetric):
     """
-    Poisson loss for count data
+    Poisson loss for count data.
+
+    The loss will take the exponential of the network output before it is returned as prediction.
+    Target normalizer should therefore have no "reverse" transformation, e.g.
+    for the :py:class:`~data.timeseries.TimeSeriesDataSet` initialization, one could use:
+
+    .. code-block:: python
+
+        from pytorch_forecasting import TimeSeriesDataSet, EncoderNormalizer
+
+        dataset = TimeSeriesDataSet(
+            target_normalizer=EncoderNormalizer(transformation=dict(forward=torch.log1p))
+        )
+
+    Note that in this example, the data is log1p-transformed before normalized but not re-transformed.
+    The PoissonLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
+    The result is the model prediction.
     """
 
     def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
@@ -232,10 +248,26 @@ class MASE(MultiHorizonMetric):
 
 class TweedieLoss(MultiHorizonMetric):
     """
-    Tweedie loss
+    Tweedie loss.
 
     Tweedie regression with log-link. It might be useful, e.g., for modeling total
     loss in insurance, or for any target that might be tweedie-distributed.
+
+    The loss will take the exponential of the network output before it is returned as prediction.
+    Target normalizer should therefore have no "reverse" transformation, e.g.
+    for the :py:class:`~data.timeseries.TimeSeriesDataSet` initialization, one could use:
+
+    .. code-block:: python
+
+        from pytorch_forecasting import TimeSeriesDataSet, EncoderNormalizer
+
+        dataset = TimeSeriesDataSet(
+            target_normalizer=EncoderNormalizer(transformation=dict(forward=torch.log1p))
+        )
+
+    Note that in this example, the data is log1p-transformed before normalized but not re-transformed.
+    The TweedieLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
+    The result is the model prediction.
     """
 
     def __init__(self, reduction="mean", p: float = 1.5, **kwargs):
