@@ -157,7 +157,10 @@ class TransformMixIn:
         Returns:
             Dict[str, Callable]: dictionary with transformation functions (forward, reverse, inverse and inverse_torch)
         """
-        transform = cls.TRANSFORMATIONS.get(transformation, transformation)
+        if isinstance(transformation, str):
+            transform = cls.TRANSFORMATIONS[transformation]
+        else:
+            transform = transformation
         transform.setdefault("forward", _identity)
         transform.setdefault("reverse", _identity)
         return transform
