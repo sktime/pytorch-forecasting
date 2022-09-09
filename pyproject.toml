@@ -64,10 +64,10 @@ matplotlib = "*"
 statsmodels = "*"
 
 cpflows = {version="^0.1.2", optional = true}
-numpy = "^1.23.2"
-requests = "^2.28.1"
-torchmetrics = "^0.9.3"
-tqdm = "^4.64.1"
+numpy = "*"
+requests = "*"
+torchmetrics = "*"
+tqdm = "*"
 
 
 [tool.poetry.group.dev.dependencies]
