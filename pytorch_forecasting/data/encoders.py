@@ -254,7 +254,9 @@ class NaNLabelEncoder(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         Returns:
             bool: True if series is numeric
         """
-        return y.dtype.kind in "bcif" or (isinstance(y, pd.CategoricalDtype) and y.cat.categories.dtype.kind in "bcif")
+        return y.dtype.kind in "bcif" or (
+            isinstance(y.dtype, pd.CategoricalDtype) and y.cat.categories.dtype.kind in "bcif"
+        )
 
     def fit(self, y: pd.Series, overwrite: bool = False):
         """
