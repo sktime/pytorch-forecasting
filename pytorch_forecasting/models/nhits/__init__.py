@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from matplotlib import pyplot as plt
 import numpy as np
+from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from torch import nn
 
@@ -16,7 +17,6 @@ from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.utils import create_mask, detach, to_list
-from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class NHiTS(BaseModelWithCovariates):

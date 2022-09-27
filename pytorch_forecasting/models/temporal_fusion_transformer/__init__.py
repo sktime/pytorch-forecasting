@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple, Union
 
 from matplotlib import pyplot as plt
 import numpy as np
+from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 from torch import nn
 from torchmetrics import Metric as LightningMetric
@@ -24,7 +25,6 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
 )
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
-from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
