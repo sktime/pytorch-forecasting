@@ -13,6 +13,7 @@ import numpy as np
 from numpy.lib.function_base import iterable
 import pandas as pd
 from pytorch_lightning import LightningModule
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.trainer.states import RunningStage
 from pytorch_lightning.utilities.parsing import AttributeDict, get_init_args
 import scipy.stats
@@ -722,12 +723,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     tag += f" of item {idx} in batch {batch_idx}"
                 if isinstance(fig, (list, tuple)):
                     for idx, f in enumerate(fig):
-                        self.logger.experiment.add_figure(
-                            f"{self.target_names[idx]} {tag}",
-                            f,
-                            global_step=self.global_step,
-                        )
-                else:
+                        if isinstance(self.logger, TensorBoardLogger):
+                            self.logger.experiment.add_figure(
+                                f"{self.target_names[idx]} {tag}",
+                                f,
+                                global_step=self.global_step,
+                            )
+                elif isinstance(self.logger, TensorBoardLogger):
                     self.logger.experiment.add_figure(
                         tag,
                         fig,
@@ -883,7 +885,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         ax.set_ylabel("Average gradient")
         ax.set_yscale("log")
         ax.set_title("Gradient flow")
-        self.logger.experiment.add_figure("Gradient flow", fig, global_step=self.global_step)
+        if isinstance(self.logger, TensorBoardLogger):
+            self.logger.experiment.add_figure("Gradient flow", fig, global_step=self.global_step)
 
     def on_after_backward(self):
         """

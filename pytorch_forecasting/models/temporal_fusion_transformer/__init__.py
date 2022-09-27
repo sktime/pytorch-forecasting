@@ -24,6 +24,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
 )
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
+from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
@@ -817,9 +818,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         label = self.current_stage
         # log to tensorboard
         for name, fig in figs.items():
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
-            )
+            if isinstance(self.logger, TensorBoardLogger):
+                self.logger.experiment.add_figure(
+                    f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
+                )
 
         # log lengths of encoder/decoder
         for type in ["encoder", "decoder"]:
@@ -839,9 +841,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             ax.set_ylabel("Number of samples")
             ax.set_title(f"{type.capitalize()} length distribution in {label} epoch")
 
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
-            )
+            if isinstance(self.logger, TensorBoardLogger):
+                self.logger.experiment.add_figure(
+                    f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
+                )
 
     def log_embeddings(self):
         """

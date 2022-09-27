@@ -16,6 +16,7 @@ from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.utils import create_mask, detach, to_list
+from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class NHiTS(BaseModelWithCovariates):
@@ -523,17 +524,20 @@ class NHiTS(BaseModelWithCovariates):
                 name += f"step {self.global_step}"
             else:
                 name += f"batch {batch_idx}"
-            self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
+            if isinstance(self.logger, TensorBoardLogger):
+                self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
             if isinstance(fig, (list, tuple)):
                 for idx, f in enumerate(fig):
-                    self.logger.experiment.add_figure(
-                        f"{self.target_names[idx]} {name}",
-                        f,
-                        global_step=self.global_step,
-                    )
+                    if isinstance(self.logger, TensorBoardLogger):
+                        self.logger.experiment.add_figure(
+                            f"{self.target_names[idx]} {name}",
+                            f,
+                            global_step=self.global_step,
+                        )
                 else:
-                    self.logger.experiment.add_figure(
-                        name,
-                        fig,
-                        global_step=self.global_step,
-                    )
+                    if isinstance(self.logger, TensorBoardLogger):
+                        self.logger.experiment.add_figure(
+                            name,
+                            fig,
+                            global_step=self.global_step,
+                        )

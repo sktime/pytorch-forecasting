@@ -12,6 +12,7 @@ from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
+from pytorch_lightning.loggers import TensorBoardLogger
 
 
 class NBeats(BaseModel):
@@ -270,7 +271,8 @@ class NBeats(BaseModel):
                 name += f"step {self.global_step}"
             else:
                 name += f"batch {batch_idx}"
-            self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
+            if isinstance(self.logger, TensorBoardLogger):
+                self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
 
     def plot_interpretation(
         self,
