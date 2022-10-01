@@ -6,6 +6,12 @@
   flex-grow: 1;
   max-width: 100%;
 }
+.bd-page-width {
+  max-width: 100rem;
+}
+.bd-main .bd-content .bd-article-container {
+  max-width: 100%;
+}
 
 a.reference.internal.nav-link {
   color: #727991 !important;
