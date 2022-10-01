@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.10.4 UNRELEASED (xx/xx/xxxx)
+
+### Fixed
+
+- Fixed robust scaler when quantiles are 0.0, and 1.0, i.e. minimum and maximum (#1142)
+
 ## v0.10.3 Poetry update (07/09/2022)
 
 ### Fixed

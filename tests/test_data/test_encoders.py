@@ -55,6 +55,7 @@ def test_NaNLabelEncoder_add():
     "kwargs",
     [
         dict(method="robust"),
+        dict(method="robust", method_kwargs=dict(upper=1.0, lower=0.0)),
         dict(method="robust", data=np.random.randn(100)),
         dict(data=np.random.randn(100)),
         dict(transformation="log"),
