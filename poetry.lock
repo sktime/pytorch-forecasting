@@ -2002,8 +2002,8 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
-name = "Sphinx"
-version = "5.1.1"
+name = "sphinx"
+version = "5.3.0"
 description = "Python documentation generator"
 category = "dev"
 optional = false
@@ -2011,16 +2011,16 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 alabaster = ">=0.7,<0.8"
-babel = ">=1.3"
-colorama = {version = ">=0.3.5", markers = "sys_platform == \"win32\""}
+babel = ">=2.9"
+colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
 docutils = ">=0.14,<0.20"
-imagesize = "*"
-importlib-metadata = {version = ">=4.4", markers = "python_version < \"3.10\""}
-Jinja2 = ">=2.3"
-packaging = "*"
-Pygments = ">=2.0"
+imagesize = ">=1.3"
+importlib-metadata = {version = ">=4.8", markers = "python_version < \"3.10\""}
+Jinja2 = ">=3.0"
+packaging = ">=21.0"
+Pygments = ">=2.12"
 requests = ">=2.5.0"
-snowballstemmer = ">=1.1"
+snowballstemmer = ">=2.0"
 sphinxcontrib-applehelp = "*"
 sphinxcontrib-devhelp = "*"
 sphinxcontrib-htmlhelp = ">=2.0.0"
@@ -2030,8 +2030,8 @@ sphinxcontrib-serializinghtml = ">=1.1.5"
 
 [package.extras]
 docs = ["sphinxcontrib-websupport"]
-lint = ["docutils-stubs", "flake8 (>=3.5.0)", "flake8-bugbear", "flake8-comprehensions", "isort", "mypy (>=0.971)", "sphinx-lint", "types-requests", "types-typed-ast"]
-test = ["cython", "html5lib", "pytest (>=4.6)", "typed-ast"]
+lint = ["docutils-stubs", "flake8 (>=3.5.0)", "flake8-bugbear", "flake8-comprehensions", "flake8-simplify", "isort", "mypy (>=0.981)", "sphinx-lint", "types-requests", "types-typed-ast"]
+test = ["cython", "html5lib", "pytest (>=4.6)", "typed_ast"]
 
 [[package]]
 name = "sphinxcontrib-applehelp"
@@ -4271,9 +4271,9 @@ soupsieve = [
     {file = "soupsieve-2.3.2.post1-py3-none-any.whl", hash = "sha256:3b2503d3c7084a42b1ebd08116e5f81aadfaea95863628c80a3b774a11b7c759"},
     {file = "soupsieve-2.3.2.post1.tar.gz", hash = "sha256:fc53893b3da2c33de295667a0e19f078c14bf86544af307354de5fcf12a3f30d"},
 ]
-Sphinx = [
-    {file = "Sphinx-5.1.1-py3-none-any.whl", hash = "sha256:309a8da80cb6da9f4713438e5b55861877d5d7976b69d87e336733637ea12693"},
-    {file = "Sphinx-5.1.1.tar.gz", hash = "sha256:ba3224a4e206e1fbdecf98a4fae4992ef9b24b85ebf7b584bb340156eaf08d89"},
+sphinx = [
+    {file = "Sphinx-5.3.0.tar.gz", hash = "sha256:51026de0a9ff9fc13c05d74913ad66047e104f56a129ff73e174eb5c3ee794b5"},
+    {file = "sphinx-5.3.0-py3-none-any.whl", hash = "sha256:060ca5c9f7ba57a08a1219e547b269fadf125ae25b06b9fa7f66768efb652d6d"},
 ]
 sphinxcontrib-applehelp = [
     {file = "sphinxcontrib-applehelp-1.0.2.tar.gz", hash = "sha256:a072735ec80e7675e3f432fcae8610ecf509c5f1869d17e2eecff44389cdbc58"},
