@@ -333,8 +333,9 @@ class TimeSeriesDataSet(Dataset):
         if min_encoder_length is None:
             min_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
+        assert self.min_encoder_length > 0, "min encoder length must be larger than 0"
         assert (
-            self.min_encoder_length <= self.max_encoder_length
+                self.min_encoder_length <= self.max_encoder_length
         ), "max encoder length has to be larger equals min encoder length"
         assert isinstance(self.min_encoder_length, int), "min encoder length must be integer"
         self.max_prediction_length = max_prediction_length
@@ -343,11 +344,12 @@ class TimeSeriesDataSet(Dataset):
             min_prediction_length = max_prediction_length
         self.min_prediction_length = min_prediction_length
         assert (
-            self.min_prediction_length <= self.max_prediction_length
+                self.min_prediction_length <= self.max_prediction_length
         ), "max prediction length has to be larger equals min prediction length"
         assert self.min_prediction_length > 0, "min prediction length must be larger than 0"
         assert isinstance(self.min_prediction_length, int), "min prediction length must be integer"
         assert data[time_idx].dtype.kind == "i", "Timeseries index should be of type integer"
+        assert len(data[time_idx].unique()) > 1, "Timeseries index should contain various values"
         self.target = target
         self.weight = weight
         self.time_idx = time_idx
