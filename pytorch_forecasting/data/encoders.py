@@ -493,7 +493,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
                 self.center_ = np.mean(y_center, axis=-1)
                 self.scale_ = np.std(y_scale, axis=-1) + eps
             else:
-                self.center_ = np.mean(y_center)
+                self.center_ = np.mean(y_center, axis=0)
                 self.scale_ = np.std(y_scale) + eps
             # correct numpy scalar dtype promotion, e.g. fix type from `np.float32(0.0) + 1e-8` gives `np.float64(1e-8)`
             if isinstance(self.scale_, np.ndarray):
@@ -789,7 +789,7 @@ class GroupNormalizer(TorchNormalizer):
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
-                self.norm_ = {"center": np.mean(y), "scale": np.std(y) + eps}  # center and scale
+                self.norm_ = {"center": np.mean(y, axis=0), "scale": np.std(y) + eps}  # center and scale
             else:
                 quantiles = np.quantile(
                     y,
