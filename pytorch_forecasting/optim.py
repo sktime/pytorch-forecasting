@@ -130,10 +130,10 @@ class Ranger(Optimizer):
 
     def __setstate__(self, state: dict) -> None:
         super().__setstate__(state)
-        self.radam_buffer = state["radam_buffer"]
-        self.alpha = state["alpha"]
-        self.k = state["k"]
-        self.N_sma_threshhold = state["N_sma_threshhold"]
+        self.radam_buffer = state['state']["radam_buffer"]
+        self.alpha = state['state']["alpha"]
+        self.k = state['state']["k"]
+        self.N_sma_threshhold = state['state']["N_sma_threshhold"]
 
     def step(self, closure: OptLossClosure = None) -> OptFloat:
         r"""Performs a single optimization step.
