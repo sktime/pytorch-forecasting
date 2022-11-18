@@ -47,6 +47,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         x_categoricals: List[str] = [],
         hidden_continuous_size: int = 8,
         hidden_continuous_sizes: Dict[str, int] = {},
+        bidirectional_lstm_decoder: bool = False,
         embedding_sizes: Dict[str, Tuple[int, int]] = {},
         embedding_paddings: List[str] = [],
         embedding_labels: Dict[str, np.ndarray] = {},
@@ -109,6 +110,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 embedding size)
             hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
                 (fallback to hidden_continuous_size if index is not in dictionary)
+            bidirectional_lstm_decoder: whether the lstm decoder should be a bidirectional layer or not
             embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
                 embedding size
             embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
@@ -268,6 +270,23 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             dropout=self.hparams.dropout,
         )
 
+        if self.hparams.bidirectional_lstm_decoder:
+            # for hidden state of the reverse lstm decoder
+            self.static_context_initial_reverse_hidden_lstm = GatedResidualNetwork(
+                input_size=self.hparams.hidden_size,
+                hidden_size=self.hparams.hidden_size,
+                output_size=self.hparams.hidden_size,
+                dropout=self.hparams.dropout,
+            )
+
+            # for cell state of the the reverse lstm decoder
+            self.static_context_initial_reverse_cell_lstm = GatedResidualNetwork(
+                input_size=self.hparams.hidden_size,
+                hidden_size=self.hparams.hidden_size,
+                output_size=self.hparams.hidden_size,
+                dropout=self.hparams.dropout,
+            )
+
         # for post lstm static enrichment
         self.static_context_enrichment = GatedResidualNetwork(
             self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.dropout
@@ -288,6 +307,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             num_layers=self.hparams.lstm_layers,
             dropout=self.hparams.dropout if self.hparams.lstm_layers > 1 else 0,
             batch_first=True,
+            bidirectional=self.hparams.bidirectional_lstm_decoder,
         )
 
         # skip connection for lstm
@@ -446,7 +466,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # LSTM
-        # calculate initial state
+        # calculate initial state for the encoder lstm
         input_hidden = self.static_context_initial_hidden_lstm(static_embedding).expand(
             self.hparams.lstm_layers, -1, -1
         )
@@ -457,6 +477,33 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             embeddings_varying_encoder, (input_hidden, input_cell), lengths=encoder_lengths, enforce_sorted=False
         )
 
+        # calculate initial reverse state for the bidirectional decoder if 
+        # needed
+        if self.hparams.bidirectional_lstm_decoder:
+
+            # evaluate context layers
+            reverse_hidden = self.static_context_initial_reverse_hidden_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1)
+            reverse_cell = self.static_context_initial_reverse_cell_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1)
+
+            # modify input to the lstm decoder
+            # NOTE: to reviewer: I couldn't explicitely find any pytorch
+            #       documentation that specifies how the input of the `forward`
+            #       of a bidirectional LSTM layer is processed. The call gets
+            #       passed to `torch.onnx.symbolic_opset9.py` but gets
+            #       incomprehensible to me.
+            # NOTE: there might be another way of performing this operation, 
+            #       namely:
+            #       https://discuss.pytorch.org/t/proper-way-of-setting-h-c-in-bidirectional-rnn-layers/158842
+            # hidden = torch.cat([hidden, reverse_hidden], dim=0)
+            # cell = torch.cat([cell, reverse_cell], dim=0)
+            hidden = torch.cat([hidden[:, None, :, :], 
+                                reverse_hidden[:, None, :, :]], dim=1). \
+                view(2 * self.hparams.lstm_layers, -1, self.hparams.hidden_size)
+            cell = torch.cat([cell[:, None, :, :], 
+                              reverse_cell[:, None, :, :]],dim=1). \
+                view(2 * self.hparams.lstm_layers, -1, self.hparams.hidden_size)
+
+
         # run local decoder
         decoder_output, _ = self.lstm_decoder(
             embeddings_varying_decoder,
@@ -464,6 +511,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             lengths=decoder_lengths,
             enforce_sorted=False,
         )
+
+        # in case of bidirectional layer the backward output is not needed
+        # NOTE: to reviewer: see above. The process is not extremely clear from
+        #       the pytorch documentation
+        if self.hparams.bidirectional_lstm_decoder:
+            decoder_output = decoder_output.unflatten(2, (2, self.hparams.hidden_size))[:, :, 0, :]
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)
