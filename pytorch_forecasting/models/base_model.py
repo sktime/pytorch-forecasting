@@ -1153,7 +1153,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         # run predictions
         output = []
-        decode_lenghts = []
+        decode_lengths = []
         x_list = []
         index = []
         progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader), disable=not show_progress_bar)
@@ -1169,7 +1169,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
                 lengths = x["decoder_lengths"]
                 if return_decoder_lengths:
-                    decode_lenghts.append(lengths)
+                    decode_lengths.append(lengths)
                 nan_mask = create_mask(lengths.max(), lengths)
                 if isinstance(mode, (tuple, list)):
                     if mode[0] == "raw":
@@ -1234,7 +1234,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if return_index:
             output.append(pd.concat(index, axis=0, ignore_index=True))
         if return_decoder_lengths:
-            output.append(torch.cat(decode_lenghts, dim=0))
+            output.append(torch.cat(decode_lengths, dim=0))
         return output
 
     def predict_dependency(
