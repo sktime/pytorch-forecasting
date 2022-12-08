@@ -99,19 +99,19 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         backcast_linspace, forecast_linspace = linspace(backcast_length, forecast_length, centered=False)
 
         p1, p2 = (thetas_dim // 2, thetas_dim // 2) if thetas_dim % 2 == 0 else (thetas_dim // 2, thetas_dim // 2 + 1)
-        s1_b = torch.tensor(
-            [np.cos(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p1)], dtype=torch.float32
+        s1_b = torch.from_numpy(np.array(
+            [np.cos(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p1)], dtype=np.float32),
         )  # H/2-1
-        s2_b = torch.tensor(
-            [np.sin(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p2)], dtype=torch.float32
+        s2_b = torch.from_numpy(np.array(
+            [np.sin(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p2)], dtype=np.float32),
         )
         self.register_buffer("S_backcast", torch.cat([s1_b, s2_b]))
 
-        s1_f = torch.tensor(
-            [np.cos(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p1)], dtype=torch.float32
+        s1_f = torch.from_numpy(np.array(
+            [np.cos(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p1)], dtype=np.float32),
         )  # H/2-1
-        s2_f = torch.tensor(
-            [np.sin(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p2)], dtype=torch.float32
+        s2_f = torch.from_numpy(np.array(
+            [np.sin(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p2)], dtype=np.float32),
         )
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
 
@@ -151,10 +151,13 @@ class NBEATSTrendBlock(NBEATSBlock):
         backcast_linspace, forecast_linspace = linspace(backcast_length, forecast_length, centered=True)
         norm = np.sqrt(forecast_length / thetas_dim)  # ensure range of predictions is comparable to input
 
-        coefficients = torch.tensor([backcast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
+        coefficients = torch.from_numpy(
+                np.array([backcast_linspace**i for i in range(thetas_dim)], dtype=np.float32),
+                )
         self.register_buffer("T_backcast", coefficients * norm)
-
-        coefficients = torch.tensor([forecast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
+        coefficients = torch.from_numpy(
+                np.array([forecast_linspace**i for i in range(thetas_dim)], dtype=np.float32),
+                )
         self.register_buffer("T_forecast", coefficients * norm)
 
     def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -165,7 +168,9 @@ class NBEATSTrendBlock(NBEATSBlock):
 
 
 class NBEATSGenericBlock(NBEATSBlock):
-    def __init__(
+    def __init__(coefficients = torch.tensor([backcast_linspace**i coefficients = torch.tensor([backcast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
+        for i in range(thetas_dim)], dtype=torch.float32)
+        
         self,
         units,
         thetas_dim,
