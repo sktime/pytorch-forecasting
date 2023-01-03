@@ -776,7 +776,7 @@ test = ["flaky", "ipyparallel", "pre-commit", "pytest (>=6.0)", "pytest-cov", "p
 
 [[package]]
 name = "ipython"
-version = "8.6.0"
+version = "8.8.0"
 description = "IPython: Productive Interactive Computing"
 category = "dev"
 optional = false
@@ -791,7 +791,7 @@ jedi = ">=0.16"
 matplotlib-inline = "*"
 pexpect = {version = ">4.3", markers = "sys_platform != \"win32\""}
 pickleshare = "*"
-prompt-toolkit = ">3.0.1,<3.1.0"
+prompt-toolkit = ">=3.0.11,<3.1.0"
 pygments = ">=2.4.0"
 stack-data = "*"
 traitlets = ">=5"
@@ -3198,8 +3198,8 @@ ipykernel = [
     {file = "ipykernel-6.15.3.tar.gz", hash = "sha256:b81d57b0e171670844bf29cdc11562b1010d3da87115c4513e0ee660a8368765"},
 ]
 ipython = [
-    {file = "ipython-8.6.0-py3-none-any.whl", hash = "sha256:91ef03016bcf72dd17190f863476e7c799c6126ec7e8be97719d1bc9a78a59a4"},
-    {file = "ipython-8.6.0.tar.gz", hash = "sha256:7c959e3dedbf7ed81f9b9d8833df252c430610e2a4a6464ec13cd20975ce20a5"},
+    {file = "ipython-8.8.0-py3-none-any.whl", hash = "sha256:da01e6df1501e6e7c32b5084212ddadd4ee2471602e2cf3e0190f4de6b0ea481"},
+    {file = "ipython-8.8.0.tar.gz", hash = "sha256:f3bf2c08505ad2c3f4ed5c46ae0331a8547d36bf4b21a451e8ae80c0791db95b"},
 ]
 ipywidgets = [
     {file = "ipywidgets-8.0.2-py3-none-any.whl", hash = "sha256:1dc3dd4ee19ded045ea7c86eb273033d238d8e43f9e7872c52d092683f263891"},
