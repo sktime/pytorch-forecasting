@@ -722,16 +722,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     tag += f" of item {idx} in batch {batch_idx}"
                 if isinstance(fig, (list, tuple)):
                     for idx, f in enumerate(fig):
-                        self.logger.experiment.add_figure(
-                            f"{self.target_names[idx]} {tag}",
-                            f,
-                            global_step=self.global_step,
+                        self.logger.experiment.log_figure(
+                            image=f, 
+                            artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                         )
                 else:
-                    self.logger.experiment.add_figure(
-                        tag,
-                        fig,
-                        global_step=self.global_step,
+                    self.logger.experiment.log_figure(
+                        image=f, 
+                        artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
 
     def plot_prediction(
@@ -883,7 +881,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         ax.set_ylabel("Average gradient")
         ax.set_yscale("log")
         ax.set_title("Gradient flow")
-        self.logger.experiment.add_figure("Gradient flow", fig, global_step=self.global_step)
+        self.logger.experiment.log_figure(image=fig, artifact_file=f"gradient_flow.png")
 
     def on_after_backward(self):
         """

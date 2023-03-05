@@ -817,8 +817,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         label = self.current_stage
         # log to tensorboard
         for name, fig in figs.items():
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
+            self.logger.experiment.log_figure(
+                image=fig, 
+                artifact_file=f"{label.capitalize()}_{name}_step_{self.global_step}.png"
             )
 
         # log lengths of encoder/decoder
@@ -839,8 +840,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             ax.set_ylabel("Number of samples")
             ax.set_title(f"{type.capitalize()} length distribution in {label} epoch")
 
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
+            self.logger.experiment.log_figure(
+                image=fig, 
+                artifact_file=f"{label.capitalize()}_{type}_length_distribution_step_{self.global_step}.png", 
             )
 
     def log_embeddings(self):
