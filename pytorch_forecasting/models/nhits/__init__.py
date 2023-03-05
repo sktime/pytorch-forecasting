@@ -523,15 +523,15 @@ class NHiTS(BaseModelWithCovariates):
                 name += f"step {self.global_step}"
             else:
                 name += f"batch {batch_idx}"
-            self.logger.experiment.log_figure(image=fig, artifact_file=f"{name}.png")
+            self.logger.experiment.log_image(image=fig, artifact_file=f"{name}.png")
             if isinstance(fig, (list, tuple)):
                 for idx, f in enumerate(fig):
-                    self.logger.experiment.log_figure(
+                    self.logger.experiment.log_image(
                         image=f, 
                         artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
                 else:
-                    self.logger.experiment.log_figure(
-                        image=f, 
+                    self.logger.experiment.log_image(
+                        image=fig, 
                         artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
