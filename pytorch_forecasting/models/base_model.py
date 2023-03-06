@@ -153,6 +153,9 @@ STAGE_STATES = {
 
 
 def fig2img(fig):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from PIL import Image
     """Convert a Matplotlib figure to a PIL Image and return it"""
     import io
     buf = io.BytesIO()

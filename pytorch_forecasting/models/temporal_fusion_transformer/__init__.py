@@ -26,6 +26,9 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
 
 def fig2img(fig):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from PIL import Image
     """Convert a Matplotlib figure to a PIL Image and return it"""
     import io
     buf = io.BytesIO()
