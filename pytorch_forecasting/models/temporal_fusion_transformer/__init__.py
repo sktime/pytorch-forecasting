@@ -25,6 +25,15 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
 )
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
 
+def fig2img(fig):
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
+
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
     def __init__(
@@ -819,7 +828,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         for name, fig in figs.items():
             self.logger.experiment.log_image(
                 run_id=self.logger.run_id,
-                image=fig, 
+                image=fig2img(fig), 
                 artifact_file=f"{label.capitalize()}_{name}_step_{self.global_step}.png"
             )
 
@@ -843,7 +852,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
             self.logger.experiment.log_image(
                 run_id=self.logger.run_id,
-                image=fig, 
+                image=fig2img(fig), 
                 artifact_file=f"{label.capitalize()}_{type}_length_distribution_step_{self.global_step}.png", 
             )
 

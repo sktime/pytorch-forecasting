@@ -18,6 +18,15 @@ from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.utils import create_mask, detach, to_list
 
 
+def fig2img(fig):
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
+
 class NHiTS(BaseModelWithCovariates):
     def __init__(
         self,
@@ -528,12 +537,12 @@ class NHiTS(BaseModelWithCovariates):
                 for idx, f in enumerate(fig):
                     self.logger.experiment.log_image(
                         run_id=self.logger.run_id,
-                        image=f, 
+                        image=fig2img(f), 
                         artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
                 else:
                     self.logger.experiment.log_image(
                         run_id=self.logger.run_id,
-                        image=fig, 
+                        image=fig2img(fig), 
                         artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
