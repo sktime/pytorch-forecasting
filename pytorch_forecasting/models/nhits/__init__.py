@@ -527,11 +527,13 @@ class NHiTS(BaseModelWithCovariates):
             if isinstance(fig, (list, tuple)):
                 for idx, f in enumerate(fig):
                     self.logger.experiment.log_image(
+                        run_id=self.logger.run_id,
                         image=f, 
                         artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
                 else:
                     self.logger.experiment.log_image(
+                        run_id=self.logger.run_id,
                         image=fig, 
                         artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )

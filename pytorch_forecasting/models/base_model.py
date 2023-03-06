@@ -723,11 +723,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 if isinstance(fig, (list, tuple)):
                     for idx, f in enumerate(fig):
                         self.logger.experiment.log_image(
+                            run_id=self.logger.run_id,
                             image=f, 
                             artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                         )
                 else:
                     self.logger.experiment.log_image(
+                        run_id=self.logger.run_id,
                         image=fig, 
                         artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
@@ -881,7 +883,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         ax.set_ylabel("Average gradient")
         ax.set_yscale("log")
         ax.set_title("Gradient flow")
-        self.logger.experiment.log_image(image=fig, artifact_file=f"gradient_flow.png")
+        self.logger.experiment.log_image(run_id=self.logger.run_id, image=fig, artifact_file=f"gradient_flow.png")
 
     def on_after_backward(self):
         """
