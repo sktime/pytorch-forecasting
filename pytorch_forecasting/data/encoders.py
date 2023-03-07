@@ -956,7 +956,7 @@ class GroupNormalizer(TorchNormalizer):
         if target_scale is None:
             assert X is not None, "either target_scale or X has to be passed"
             target_scale = self.get_norm(X)
-        return super().transform(y=y, return_norm=return_norm, target_scale=target_scale)
+        return super().transform(y, return_norm=return_norm, target_scale=target_scale)
 
     def get_parameters(self, groups: Union[torch.Tensor, list, tuple], group_names: List[str] = None) -> np.ndarray:
         """
