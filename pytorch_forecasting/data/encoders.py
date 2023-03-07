@@ -470,7 +470,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         if isinstance(y_center, torch.Tensor):
             eps = torch.finfo(y_center.dtype).eps
         else:
-            eps = np.finfo(float).eps
+            eps = np.finfo(np.float32).eps
         if self.method == "identity":
             if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros(y_center.size()[:-1])
@@ -785,7 +785,7 @@ class GroupNormalizer(TorchNormalizer):
             self
         """
         y = self.preprocess(y)
-        eps = np.finfo(float).eps
+        eps = np.finfo(np.float32).eps
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":

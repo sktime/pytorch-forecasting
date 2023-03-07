@@ -163,5 +163,5 @@ def test_TorchNormalizer_dtype_consistency():
     assert TorchNormalizer()(dict(prediction=parameters, target_scale=target_scale)).dtype == torch.float32
     assert TorchNormalizer().transform(parameters, target_scale=target_scale).dtype == torch.float32
 
-    y = np.array([1, 2, 3], dtype=float)
+    y = np.array([1, 2, 3], dtype=np.float32)
     assert TorchNormalizer(method="identity").fit(y).get_parameters().dtype == torch.float32
