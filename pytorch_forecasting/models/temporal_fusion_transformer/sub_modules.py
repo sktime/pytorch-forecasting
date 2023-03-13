@@ -390,7 +390,7 @@ class ScaledDotProductAttention(nn.Module):
             attn = attn / dimension
 
         if mask is not None:
-            attn = attn.masked_fill(mask, -1e9)
+            attn = attn.masked_fill(mask, -1e4)
         attn = self.softmax(attn)
 
         if self.dropout is not None:
