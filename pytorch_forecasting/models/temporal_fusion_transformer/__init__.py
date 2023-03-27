@@ -531,7 +531,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
         return interpretation
 
-    def epoch_end(self, outputs):
+    def on_epoch_end(self, outputs):
         """
         run at epoch end for training or validation
         """

@@ -47,7 +47,6 @@ def _integration(
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,

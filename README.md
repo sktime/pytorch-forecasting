@@ -133,7 +133,7 @@ early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience
 lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(
     max_epochs=100,
-    gpus=0,  # run on CPU, if on multiple GPUs, use accelerator="ddp"
+    accelerator="auto",  # run on CPU, if on multiple GPUs, use accelerator="ddp"
     gradient_clip_val=0.1,
     limit_train_batches=30,  # 30 batches per epoch
     callbacks=[lr_logger, early_stop_callback],

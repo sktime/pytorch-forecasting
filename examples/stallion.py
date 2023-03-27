@@ -98,7 +98,7 @@ logger = TensorBoardLogger(log_graph=True)
 
 trainer = pl.Trainer(
     max_epochs=100,
-    gpus=0,
+    accelerator="auto",
     gradient_clip_val=0.1,
     limit_train_batches=30,
     # val_check_interval=20,

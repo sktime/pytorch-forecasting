@@ -133,7 +133,7 @@ def optimize_hyperparameters(
         logger = TensorBoardLogger(log_dir, name="optuna", version=trial.number)
         gradient_clip_val = trial.suggest_loguniform("gradient_clip_val", *gradient_clip_val_range)
         default_trainer_kwargs = dict(
-            gpus=[0] if torch.cuda.is_available() else None,
+            accelerator="auto",
             max_epochs=max_epochs,
             gradient_clip_val=gradient_clip_val,
             callbacks=[
@@ -172,7 +172,7 @@ def optimize_hyperparameters(
         if use_learning_rate_finder:
             lr_trainer = pl.Trainer(
                 gradient_clip_val=gradient_clip_val,
-                gpus=[0] if torch.cuda.is_available() else None,
+                accelerator="auto",
                 logger=False,
                 enable_progress_bar=False,
                 enable_model_summary=False,

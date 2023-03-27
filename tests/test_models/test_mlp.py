@@ -33,7 +33,6 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,

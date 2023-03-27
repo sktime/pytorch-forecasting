@@ -105,7 +105,7 @@ Example
     lr_logger = LearningRateMonitor()
     trainer = pl.Trainer(
         max_epochs=100,
-        gpus=0,
+        accelerator="auto",
         gradient_clip_val=0.1,
         limit_train_batches=30,
         callbacks=[lr_logger, early_stop_callback],

@@ -93,7 +93,6 @@ def _integration(dataloader, tmp_path, gpus, loss=None, **kwargs):
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -236,7 +235,6 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
-        gpus=list(range(torch.cuda.device_count())),
         gradient_clip_val=0.1,
         fast_dev_run=True,
         logger=logger,

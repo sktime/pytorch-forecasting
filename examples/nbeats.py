@@ -52,7 +52,7 @@ val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, nu
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
 trainer = pl.Trainer(
     max_epochs=100,
-    gpus=0,
+    accelerator="auto",
     gradient_clip_val=0.1,
     callbacks=[early_stop_callback],
     limit_train_batches=15,

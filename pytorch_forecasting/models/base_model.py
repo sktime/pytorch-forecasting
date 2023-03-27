@@ -176,7 +176,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         * The :py:meth:`~BaseModel.step` method takes care of calculating the loss, logging additional metrics defined
           in the ``logging_metrics`` attribute and plots of sample predictions. You can override this method to add
           custom interpretations or pass extra arguments to the networks forward method.
-        * The :py:meth:`~BaseModel.epoch_end` method can be used to calculate summaries of each epoch such as
+        * The :py:meth:`~BaseModel.on_epoch_end` method can be used to calculate summaries of each epoch such as
           statistics on the encoder length, etc.
         * The :py:meth:`~BaseModel.predict` method makes predictions using a dataloader or dataset. Override it if you
           need to pass additional arguments to ``forward`` by default.
@@ -412,8 +412,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         log, out = self.step(x, y, batch_idx)
         return log
 
-    def training_epoch_end(self, outputs):
-        self.epoch_end(outputs)
+    def on_train_epoch_end(self, outputs):
+        self.on_epoch_end(outputs)
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -421,8 +421,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         log.update(self.create_log(x, y, out, batch_idx))
         return log
 
-    def validation_epoch_end(self, outputs):
-        self.epoch_end(outputs)
+    def on_validation_epoch_end(self, outputs):
+        self.on_epoch_end(outputs)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -430,8 +430,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         log.update(self.create_log(x, y, out, batch_idx))
         return log
 
-    def test_epoch_end(self, outputs):
-        self.epoch_end(outputs)
+    def on_test_epoch_end(self, outputs):
+        self.on_epoch_end(outputs)
 
     def create_log(
         self,
@@ -487,7 +487,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]: tuple where the first
                 entry is a dictionary to which additional logging results can be added for consumption in the
-                ``epoch_end`` hook and the second entry is the model's output.
+                ``on_epoch_end`` hook and the second entry is the model's output.
         """
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
@@ -678,7 +678,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         raise NotImplementedError()
 
-    def epoch_end(self, outputs):
+    def on_epoch_end(self, outputs):
         """
         Run at epoch end for training or validation. Can be overriden in models.
         """

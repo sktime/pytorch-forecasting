@@ -21,7 +21,6 @@ def _integration(dataloader, tmp_path, gpus, **kwargs):
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -105,7 +104,7 @@ def test_integration(
         kwargs["learning_rate"] = 1e-6
     else:
         raise ValueError(f"dataloader {dataloader} unknown")
-    _integration(dataloader, tmp_path=tmp_path, gpus=gpus, **kwargs)
+    _integration(dataloader, tmp_path=tmp_path, **kwargs)
 
 
 @pytest.fixture(scope="session")

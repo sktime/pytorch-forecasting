@@ -952,6 +952,9 @@ class GroupNormalizer(TorchNormalizer):
             Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
                 as second element
         """
+        # # check if arguments are wrong way round
+        if isinstance(y, pd.DataFrame) and not isinstance(X, pd.DataFrame):
+            raise ValueError("X and y is in wrong positions")
         if target_scale is None:
             assert X is not None, "either target_scale or X has to be passed"
             target_scale = self.get_norm(X)
@@ -1059,7 +1062,7 @@ class MultiNormalizer(TorchNormalizer):
 
         for idx, normalizer in enumerate(self.normalizers):
             if isinstance(normalizer, GroupNormalizer):
-                normalizer.fit(y[:, idx], X=X)
+                normalizer.fit(y[:, idx], X)
             else:
                 normalizer.fit(y[:, idx])
 
@@ -1118,7 +1121,7 @@ class MultiNormalizer(TorchNormalizer):
             else:
                 scale = None
             if isinstance(normalizer, GroupNormalizer):
-                r = normalizer.transform(y[idx], X=X, return_norm=return_norm, target_scale=scale)
+                r = normalizer.transform(y[idx], X, return_norm=return_norm, target_scale=scale)
             else:
                 r = normalizer.transform(y[idx], return_norm=return_norm, target_scale=scale)
             res.append(r)

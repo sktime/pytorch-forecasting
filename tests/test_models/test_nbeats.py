@@ -19,7 +19,6 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
