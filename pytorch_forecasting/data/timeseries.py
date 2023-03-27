@@ -747,7 +747,6 @@ class TimeSeriesDataSet(Dataset):
 
         # train target normalizer
         if self.target_normalizer is not None:
-
             # fit target normalizer
             try:
                 check_is_fitted(self.target_normalizer)

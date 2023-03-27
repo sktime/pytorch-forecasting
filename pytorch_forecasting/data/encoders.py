@@ -80,7 +80,6 @@ class SoftplusTransform(Transform):
 
 
 class Expm1Transform(ExpTransform):
-
     codomain = constraints.greater_than_eq(-1.0)
 
     def _call(self, x):

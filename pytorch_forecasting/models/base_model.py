@@ -367,6 +367,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Dict[str, Any]: dictionary with ``output_size`` and ``loss``.
         """
+
         # infer output size
         def get_output_size(normalizer, loss):
             if isinstance(loss, QuantileLoss):
@@ -776,7 +777,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         for y_raw, y_hat, y_quantile, encoder_target, decoder_target in zip(
             y_raws, y_hats, y_quantiles, encoder_targets, decoder_targets
         ):
-
             y_all = torch.cat([encoder_target[idx], decoder_target[idx]])
             max_encoder_length = x["encoder_lengths"].max()
             y = torch.cat(

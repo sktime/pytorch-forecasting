@@ -145,7 +145,6 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
     ],
 )
 def test_TimeSeriesDataSet(test_data, kwargs):
-
     defaults = dict(
         time_idx="time_idx",
         target="volume",
