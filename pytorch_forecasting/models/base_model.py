@@ -177,7 +177,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
           in the ``logging_metrics`` attribute and plots of sample predictions. You can override this method to add
           custom interpretations or pass extra arguments to the networks forward method.
         * The :py:meth:`~BaseModel.on_epoch_end` method can be used to calculate summaries of each epoch such as
-          statistics on the encoder length, etc.
+          statistics on the encoder length, etc and needs to return the outputs.
         * The :py:meth:`~BaseModel.predict` method makes predictions using a dataloader or dataset. Override it if you
           need to pass additional arguments to ``forward`` by default.
 
@@ -296,6 +296,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         for k in hparams_to_delete:
             del self._hparams[k]
             del self._hparams_initial[k]
+        # epoch outputs
+        self.training_step_outputs = []
+        self.validation_step_outputs = []
+        self.testing_step_outputs = []
 
     @property
     def current_stage(self) -> str:
@@ -410,28 +414,34 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         x, y = batch
         log, out = self.step(x, y, batch_idx)
+        self.training_step_outputs.append(log)
         return log
 
-    def on_train_epoch_end(self, outputs):
-        self.on_epoch_end(outputs)
+    def on_train_epoch_end(self):
+        self.on_epoch_end(self.training_step_outputs)
+        self.training_step_outputs.clear()
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         log, out = self.step(x, y, batch_idx)
         log.update(self.create_log(x, y, out, batch_idx))
+        self.validation_step_outputs.append(log)
         return log
 
-    def on_validation_epoch_end(self, outputs):
-        self.on_epoch_end(outputs)
+    def on_validation_epoch_end(self):
+        self.on_epoch_end(self.validation_step_outputs)
+        self.validation_step_outputs.clear()
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         log, out = self.step(x, y, batch_idx)
         log.update(self.create_log(x, y, out, batch_idx))
+        self.testing_step_outputs.append(log)
         return log
 
-    def on_test_epoch_end(self, outputs):
-        self.on_epoch_end(outputs)
+    def on_test_epoch_end(self):
+        self.on_epoch_end(self.testing_step_outputs)
+        self.testing_step_outputs.clear()
 
     def create_log(
         self,
@@ -672,8 +682,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     # The parameter can be directly forwarded from the input.
                     # The conversion to a named tuple can be directly achieved with the `to_network_output` function.
                     return self.to_network_output(prediction=prediction)
-
-
 
         """
         raise NotImplementedError()
