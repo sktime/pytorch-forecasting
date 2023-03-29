@@ -51,6 +51,8 @@ from pytorch_forecasting.utils import (
     to_list,
 )
 
+# todo: rewrite predict to use trainer
+
 
 def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
     """

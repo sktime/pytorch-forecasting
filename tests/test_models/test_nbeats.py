@@ -9,7 +9,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_forecasting.models import NBeats
 
 
-def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus):
+def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
     val_dataloader = dataloaders_fixed_window_without_covariates["val"]
     test_dataloader = dataloaders_fixed_window_without_covariates["test"]

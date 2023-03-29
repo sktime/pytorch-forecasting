@@ -6,9 +6,10 @@ import logging
 import os
 from typing import Any, Dict, Tuple, Union
 
+from lightning.pytorch.tuner import Tuner
 import numpy as np
 import optuna
-from optuna.integration import PyTorchLightningPruningCallback, TensorBoardCallback
+from optuna.integration import PyTorchLightningPruningCallback
 import optuna.logging
 import pytorch_lightning as pl
 from pytorch_lightning import Callback
@@ -177,7 +178,8 @@ def optimize_hyperparameters(
                 enable_progress_bar=False,
                 enable_model_summary=False,
             )
-            res = lr_trainer.tuner.lr_find(
+            tuner = Tuner(lr_trainer)
+            res = tuner.lr_find(
                 model,
                 train_dataloaders=train_dataloaders,
                 val_dataloaders=val_dataloaders,

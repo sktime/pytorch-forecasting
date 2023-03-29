@@ -11,7 +11,7 @@ from pytorch_forecasting.metrics.distributions import ImplicitQuantileNetworkDis
 from pytorch_forecasting.models import NHiTS
 
 
-def _integration(dataloader, tmp_path, gpus, **kwargs):
+def _integration(dataloader, tmp_path, trainer_kwargs, **kwargs):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
@@ -29,6 +29,7 @@ def _integration(dataloader, tmp_path, gpus, **kwargs):
         limit_val_batches=2,
         limit_test_batches=2,
         logger=logger,
+        **trainer_kwargs,
     )
 
     kwargs.setdefault("learning_rate", 0.15)
@@ -80,7 +81,6 @@ def test_integration(
     dataloaders_fixed_window_without_covariates,
     dataloaders_multi_target,
     tmp_path,
-    gpus,
     dataloader,
 ):
     kwargs = {}
@@ -102,6 +102,7 @@ def test_integration(
         dataloader = dataloaders_with_covariates
         kwargs["loss"] = MQF2DistributionLoss(prediction_length=dataloader["train"].dataset.max_prediction_length)
         kwargs["learning_rate"] = 1e-6
+        kwargs["trainer_kwargs"] = dict(accelerator="cpu")
     else:
         raise ValueError(f"dataloader {dataloader} unknown")
     _integration(dataloader, tmp_path=tmp_path, **kwargs)

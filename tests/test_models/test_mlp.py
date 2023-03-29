@@ -13,7 +13,7 @@ from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLo
 from pytorch_forecasting.models import DecoderMLP
 
 
-def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, train_only=False, **kwargs):
+def _integration(data_with_covariates, tmp_path, data_loader_kwargs={}, train_only=False, **kwargs):
     data_loader_default_kwargs = dict(
         target="target",
         time_varying_known_reals=["price_actual"],
@@ -100,8 +100,8 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         ),
     ],
 )
-def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
-    _integration(data_with_covariates.assign(target=lambda x: x.volume), tmp_path, gpus, **kwargs)
+def test_integration(data_with_covariates, tmp_path, kwargs):
+    _integration(data_with_covariates.assign(target=lambda x: x.volume), tmp_path, **kwargs)
 
 
 @pytest.fixture

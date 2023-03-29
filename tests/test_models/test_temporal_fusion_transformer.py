@@ -37,15 +37,15 @@ else:
 from test_models.conftest import make_dataloaders
 
 
-def test_integration(multiple_dataloaders_with_covariates, tmp_path, gpus):
-    _integration(multiple_dataloaders_with_covariates, tmp_path, gpus)
+def test_integration(multiple_dataloaders_with_covariates, tmp_path):
+    _integration(multiple_dataloaders_with_covariates, tmp_path, trainer_kwargs=dict(accelerator="cpu"))
 
 
-def test_non_causal_attention(dataloaders_with_covariates, tmp_path, gpus):
-    _integration(dataloaders_with_covariates, tmp_path, gpus, causal_attention=False, loss=TweedieLoss())
+def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
+    _integration(dataloaders_with_covariates, tmp_path, causal_attention=False, loss=TweedieLoss())
 
 
-def test_distribution_loss(data_with_covariates, tmp_path, gpus):
+def test_distribution_loss(data_with_covariates, tmp_path):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
         data_with_covariates,
@@ -56,10 +56,10 @@ def test_distribution_loss(data_with_covariates, tmp_path, gpus):
         add_relative_time_idx=True,
         target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
     )
-    _integration(dataloaders_with_covariates, tmp_path, gpus, loss=NegativeBinomialDistributionLoss())
+    _integration(dataloaders_with_covariates, tmp_path, loss=NegativeBinomialDistributionLoss())
 
 
-def test_mqf2_loss(data_with_covariates, tmp_path, gpus):
+def test_mqf2_loss(data_with_covariates, tmp_path):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
         data_with_covariates,
@@ -76,13 +76,13 @@ def test_mqf2_loss(data_with_covariates, tmp_path, gpus):
     _integration(
         dataloaders_with_covariates,
         tmp_path,
-        gpus,
         loss=MQF2DistributionLoss(prediction_length=prediction_length),
         learning_rate=1e-3,
+        trainer_kwargs=dict(accelerator="cpu"),
     )
 
 
-def _integration(dataloader, tmp_path, gpus, loss=None, **kwargs):
+def _integration(dataloader, tmp_path, loss=None, trainer_kwargs={}, **kwargs):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
@@ -101,6 +101,7 @@ def _integration(dataloader, tmp_path, gpus, loss=None, **kwargs):
         limit_val_batches=2,
         limit_test_batches=2,
         logger=logger,
+        **trainer_kwargs
     )
     # test monotone constraints automatically
     if "discount_in_percent" in train_dataloader.dataset.reals:
@@ -181,17 +182,12 @@ def _integration(dataloader, tmp_path, gpus, loss=None, **kwargs):
             # predict raw
             net.predict(val_dataloader, return_index=True, return_x=True, fast_dev_run=True, mode="raw")
 
-            # check prediction on gpu
-            if not (isinstance(gpus, int) and gpus == 0):
-                net.to("cuda")
-                net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
-
         finally:
             shutil.rmtree(tmp_path, ignore_errors=True)
 
 
 @pytest.fixture
-def model(dataloaders_with_covariates, gpus):
+def model(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = TemporalFusionTransformer.from_dataset(
         dataset,
@@ -206,8 +202,6 @@ def model(dataloaders_with_covariates, gpus):
         log_val_interval=1,
         log_gradient_flow=True,
     )
-    if isinstance(gpus, list) and len(gpus) > 0:  # only run test on GPU
-        net.to(gpus[0])
     return net
 
 
@@ -223,10 +217,8 @@ def test_init_shared_network(dataloaders_with_covariates):
     net.predict(dataset, fast_dev_run=True)
 
 
-@pytest.mark.parametrize("accelerator", ["ddp", "dp"])
-def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
-    if isinstance(gpus, int) and gpus == 0:  # only run test on GPU
-        return
+@pytest.mark.parametrize("strategy", ["ddp", "dp"])
+def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
     net = TemporalFusionTransformer.from_dataset(
@@ -238,7 +230,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, accelerator, gpus):
         gradient_clip_val=0.1,
         fast_dev_run=True,
         logger=logger,
-        accelerator=accelerator,
+        strategy=strategy,
         enable_checkpointing=True,
     )
     try:

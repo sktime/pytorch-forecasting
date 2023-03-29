@@ -797,7 +797,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         }
         # normalize attention with length histogram squared to account for: 1. zeros in attention and
         # 2. higher attention due to less values
-        attention_occurances = interpretation["encoder_length_histogram"][1:].flip(0).cumsum(0).float()
+        attention_occurances = interpretation["encoder_length_histogram"][1:].flip(0).float().cumsum(0)
         attention_occurances = attention_occurances / attention_occurances.max()
         attention_occurances = torch.cat(
             [

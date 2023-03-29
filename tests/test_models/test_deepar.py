@@ -21,7 +21,7 @@ from pytorch_forecasting.models import DeepAR
 
 
 def _integration(
-    data_with_covariates, tmp_path, gpus, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
+    data_with_covariates, tmp_path, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
 ):
     data_with_covariates = data_with_covariates.copy()
     if clip_target:
@@ -135,10 +135,10 @@ def _integration(
         ),
     ],
 )
-def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
+def test_integration(data_with_covariates, tmp_path, kwargs):
     if "loss" in kwargs and isinstance(kwargs["loss"], NegativeBinomialDistributionLoss):
         data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
-    _integration(data_with_covariates, tmp_path, gpus, **kwargs)
+    _integration(data_with_covariates, tmp_path, **kwargs)
 
 
 @pytest.fixture
