@@ -67,6 +67,7 @@ pytest-github-actions-annotate-failures = {version = "*", optional = true}
 networkx = {version = "^3.0.0", optional = true}
 cpflows = {version="^0.1.2", optional = true}
 fastapi = ">=0.80"
+pytorch-optimizer = "^2.5.1"
 
 [tool.poetry.group.dev.dependencies]
 pydocstyle = "^6.1.1"

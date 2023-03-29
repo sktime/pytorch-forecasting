@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.lib.function_base import iterable
 import pandas as pd
+from pytorch_optimizer import Ranger21
 import scipy.stats
 import torch
 import torch.nn as nn
@@ -38,7 +39,6 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.metrics.base_metrics import Metric
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.optim import Ranger
 from pytorch_forecasting.utils import (
     InitialParameterRepresenterMixIn,
     OutputMixIn,
@@ -253,8 +253,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
             optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``.
                 Alternatively, a class or function can be passed which takes parameters as first argument and
-                a `lr` argument (optionally also `weight_decay`)
-                Defaults to "ranger".
+                a `lr` argument (optionally also `weight_decay`). Defaults to
+                `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_.
         """
         super().__init__()
         # update hparams
@@ -943,7 +943,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
             )
         elif self.hparams.optimizer == "ranger":
-            optimizer = Ranger(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params)
+            optimizer_params.setdefault("num_iterations", 20)
+            optimizer = Ranger21(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params)
         elif self.hparams.optimizer == "sgd":
             optimizer = torch.optim.SGD(
                 self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params

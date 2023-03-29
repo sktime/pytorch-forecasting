@@ -34,7 +34,6 @@ Specifically, the package provides
 - Multiple neural network architectures for timeseries forecasting that have been enhanced
   for real-world deployment and come with in-built interpretation capabilities
 - Multi-horizon timeseries metrics
-- Ranger optimizer for faster model training
 - Hyperparameter tuning with [optuna](https://optuna.readthedocs.io/)
 
 The package is built on [pytorch-lightning](https://pytorch-lightning.readthedocs.io/) to allow training on CPUs, single and multiple GPUs out-of-the-box.

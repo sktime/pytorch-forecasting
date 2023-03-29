@@ -355,6 +355,7 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
                 enable_progress_bar=False,
             ),
             use_learning_rate_finder=use_learning_rate_finder,
+            learning_rate_range=[1e-6, 1e-2],
         )
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
