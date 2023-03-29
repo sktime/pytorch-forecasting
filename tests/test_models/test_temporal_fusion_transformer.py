@@ -2,11 +2,11 @@ import pickle
 import shutil
 import sys
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import pytest
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 
 from pytorch_forecasting import TimeSeriesDataSet

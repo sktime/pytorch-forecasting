@@ -1,8 +1,8 @@
 import sys
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
 import pandas as pd
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
 from sklearn.preprocessing import scale
 
 from pytorch_forecasting import NBeats, TimeSeriesDataSet

@@ -8,13 +8,13 @@ import inspect
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import warnings
 
+from lightning import LightningModule
+from lightning.pytorch.trainer.states import RunningStage
+from lightning.pytorch.utilities.parsing import AttributeDict, get_init_args
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.lib.function_base import iterable
 import pandas as pd
-from pytorch_lightning import LightningModule
-from pytorch_lightning.trainer.states import RunningStage
-from pytorch_lightning.utilities.parsing import AttributeDict, get_init_args
 import scipy.stats
 import torch
 import torch.nn as nn

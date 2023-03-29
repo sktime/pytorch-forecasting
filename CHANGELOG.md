@@ -81,7 +81,7 @@
 
 ### Added
 
-- Added support for running `pytorch_lightning.trainer.test` (#759)
+- Added support for running `lightning.trainer.test` (#759)
 
 ### Fixed
 

@@ -46,7 +46,7 @@ The general setup for training and testing a model is
    directly if you do not wish to load the entire training dataset at inference time.
 
 #. Instantiate a model using the its ``.from_dataset()`` method.
-#. Create a ``pytorch_lightning.Trainer()`` object.
+#. Create a ``lightning.Trainer()`` object.
 #. Find the optimal learning rate with its ``.tuner.lr_find()`` method.
 #. Train the model with early stopping on the training dataset and use the tensorboard logs
    to understand if it has converged with acceptable accuracy.
@@ -65,8 +65,8 @@ Example
 
 .. code-block:: python
 
-    import pytorch_lightning as pl
-    from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
+    import lightning.pytorch as pl
+    from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 
     from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 
