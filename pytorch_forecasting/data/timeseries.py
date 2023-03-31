@@ -1214,8 +1214,8 @@ class TimeSeriesDataSet(Dataset):
         """
         g = data.groupby(self._group_ids, observed=True)
 
-        df_index_first = g["__time_idx__"].transform("nth", 0).to_frame("time_first")
-        df_index_last = g["__time_idx__"].transform("nth", -1).to_frame("time_last")
+        df_index_first = g["__time_idx__"].transform("first").to_frame("time_first")
+        df_index_last = g["__time_idx__"].transform("last").to_frame("time_last")
         df_index_diff_to_next = -g["__time_idx__"].diff(-1).fillna(-1).astype(int).to_frame("time_diff_to_next")
         df_index = pd.concat([df_index_first, df_index_last, df_index_diff_to_next], axis=1)
         df_index["index_start"] = np.arange(len(df_index))

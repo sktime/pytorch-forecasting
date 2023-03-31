@@ -21,7 +21,13 @@ from pytorch_forecasting.models import DeepAR
 
 
 def _integration(
-    data_with_covariates, tmp_path, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
+    data_with_covariates,
+    tmp_path,
+    cell_type="LSTM",
+    data_loader_kwargs={},
+    clip_target: bool = False,
+    trainer_kwargs={},
+    **kwargs
 ):
     data_with_covariates = data_with_covariates.copy()
     if clip_target:
@@ -55,13 +61,14 @@ def _integration(
         limit_val_batches=2,
         limit_test_batches=2,
         logger=logger,
+        **trainer_kwargs,
     )
 
     net = DeepAR.from_dataset(
         train_dataloader.dataset,
         hidden_size=5,
         cell_type=cell_type,
-        learning_rate=0.15,
+        learning_rate=0.01,
         log_gradient_flow=True,
         log_interval=1000,
         n_plotting_samples=100,
@@ -124,14 +131,13 @@ def _integration(
         dict(
             loss=ImplicitQuantileNetworkDistributionLoss(hidden_size=8),
         ),
-        dict(
-            loss=MultivariateNormalDistributionLoss(),
-        ),
+        dict(loss=MultivariateNormalDistributionLoss(), trainer_kwargs=dict(accelerator="cpu")),
         dict(
             loss=MultivariateNormalDistributionLoss(),
             data_loader_kwargs=dict(
                 target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log1p")
             ),
+            trainer_kwargs=dict(accelerator="cpu"),
         ),
     ],
 )

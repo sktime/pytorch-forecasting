@@ -11,7 +11,7 @@ from pytorch_forecasting.metrics.distributions import ImplicitQuantileNetworkDis
 from pytorch_forecasting.models import NHiTS
 
 
-def _integration(dataloader, tmp_path, trainer_kwargs, **kwargs):
+def _integration(dataloader, tmp_path, trainer_kwargs={}, **kwargs):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]

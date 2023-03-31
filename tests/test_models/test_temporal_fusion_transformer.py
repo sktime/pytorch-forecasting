@@ -217,7 +217,7 @@ def test_init_shared_network(dataloaders_with_covariates):
     net.predict(dataset, fast_dev_run=True)
 
 
-@pytest.mark.parametrize("strategy", ["ddp", "dp"])
+@pytest.mark.parametrize("strategy", ["ddp"])
 def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
@@ -232,6 +232,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
         logger=logger,
         strategy=strategy,
         enable_checkpointing=True,
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
     )
     try:
         trainer.fit(
