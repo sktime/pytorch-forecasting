@@ -90,6 +90,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 # import dataset, network to train and metric to optimize
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, QuantileLoss
+from lightning.pytorch.tuner import Tuner
 
 # load data: this is pandas dataframe with at least a column for
 # * the target (what you want to predict)
@@ -159,7 +160,7 @@ tft = TemporalFusionTransformer.from_dataset(
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # find the optimal learning rate
-res = trainer.lr_find(
+res = Tuner(trainer).lr_find(
     tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 )
 # and plot the result - always visually confirm that the suggested learning rate makes sense

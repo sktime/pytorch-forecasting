@@ -333,6 +333,12 @@ def test_prediction_with_dataset(model, dataloaders_with_covariates):
     model.predict(val_dataloader.dataset, fast_dev_run=True)
 
 
+def test_prediction_with_write_to_disk(model, dataloaders_with_covariates, tmp_path):
+    val_dataloader = dataloaders_with_covariates["val"]
+    res = model.predict(val_dataloader.dataset, fast_dev_run=True, output_dir=tmp_path)
+    assert res is None, "result should be empty when writing to disk"
+
+
 def test_prediction_with_dataframe(model, data_with_covariates):
     model.predict(data_with_covariates, fast_dev_run=True)
 

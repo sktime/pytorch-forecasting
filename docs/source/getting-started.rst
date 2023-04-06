@@ -67,7 +67,7 @@ Example
 
     import lightning.pytorch as pl
     from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
-
+    from lightning.pytorch.tuner import Tuner
     from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 
     # load data
@@ -127,7 +127,7 @@ Example
     print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
     # find optimal learning rate (set limit_train_batches to 1.0 and log_interval = -1)
-    res = trainer.tuner.lr_find(
+    res = Tuner(trainer).lr_find(
         tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
     )
 

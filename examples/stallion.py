@@ -5,6 +5,7 @@ import warnings
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.tuner import Tuner
 import numpy as np
 import pandas as pd
 from pandas.core.common import SettingWithCopyWarning
@@ -131,7 +132,7 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # tft.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
 # # run learning rate finder
-# res = trainer.tuner.lr_find(
+# res = Tuner(trainer).lr_find(
 #     tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
 # )
 # print(f"suggested learning rate: {res.suggestion()}")

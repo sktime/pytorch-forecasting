@@ -5,16 +5,20 @@ from collections import namedtuple
 import copy
 from copy import deepcopy
 import inspect
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+import os
+from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union
 import warnings
 
-from lightning import LightningModule
+import lightning.pytorch as pl
+from lightning.pytorch import LightningModule, Trainer
+from lightning.pytorch.callbacks import BasePredictionWriter, LearningRateFinder
 from lightning.pytorch.trainer.states import RunningStage
 from lightning.pytorch.utilities.parsing import AttributeDict, get_init_args
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.lib.function_base import iterable
 import pandas as pd
+import pytorch_optimizer
 from pytorch_optimizer import Ranger21
 import scipy.stats
 import torch
@@ -51,7 +55,7 @@ from pytorch_forecasting.utils import (
     to_list,
 )
 
-# todo: rewrite predict to use trainer
+# todo: compile models
 
 
 def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
@@ -154,6 +158,162 @@ STAGE_STATES = {
 }
 
 
+class PredictCallback(BasePredictionWriter):
+    """Internally used callback to capture predictions and optionally write them to disk."""
+
+    # prediction callback used internally
+
+    # hparams that need resetting
+    predict_hparams: Dict[str, Any] = {"log_interval": -1, "log_val_interval": -1}
+
+    # see base class predict function for documentation of parameters
+    def __init__(
+        self,
+        mode: Union[str, Tuple[str, str]] = "prediction",
+        return_index: bool = False,
+        return_decoder_lengths: bool = False,
+        write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
+        return_x: bool = False,
+        mode_kwargs: Dict[str, Any] = None,
+        output_dir: Optional[str] = None,
+    ) -> None:
+        super().__init__(write_interval=write_interval)
+        self.mode = mode
+        self.return_decoder_lengths = return_decoder_lengths
+        self.return_x = return_x
+        self.return_index = return_index
+        self.mode_kwargs = mode_kwargs if mode_kwargs is not None else {}
+        self.output_dir = output_dir
+        self._reset_data()
+
+    def _reset_data(self):
+        # reset data objects to save results into
+        self._output = []
+        self._decode_lenghts = []
+        self._x_list = []
+        self._index = []
+
+    def on_predict_batch_end(
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        outputs: Any,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+        # extract predictions form output
+        x = batch[0]
+        out = outputs
+
+        lengths = x["decoder_lengths"]
+
+        nan_mask = create_mask(lengths.max(), lengths)
+        if isinstance(self.mode, (tuple, list)):
+            if self.mode[0] == "raw":
+                out = out[self.mode[1]]
+            else:
+                raise ValueError(
+                    f"If a tuple is specified, the first element must be 'raw' - got {self.mode[0]} instead"
+                )
+        elif self.mode == "prediction":
+            out = pl_module.to_prediction(out, **self.mode_kwargs)
+            # mask non-predictions
+            if isinstance(out, (list, tuple)):
+                out = [
+                    o.masked_fill(nan_mask, torch.tensor(float("nan"))) if o.dtype == torch.float else o for o in out
+                ]
+            elif out.dtype == torch.float:  # only floats can be filled with nans
+                out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
+        elif self.mode == "quantiles":
+            out = pl_module.to_quantiles(out, **self.mode_kwargs)
+            # mask non-predictions
+            if isinstance(out, (list, tuple)):
+                out = [
+                    o.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan"))) if o.dtype == torch.float else o
+                    for o in out
+                ]
+            elif out.dtype == torch.float:
+                out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
+        elif self.mode == "raw":
+            pass
+        else:
+            raise ValueError(f"Unknown mode {self.mode} - see docs for valid arguments")
+
+        self._output.append(out)
+        outputs = [out]
+        if self.return_x:
+            self._x_list.append(x)
+            outputs.append(self._x_list[-1])
+        if self.return_index:
+            self._index.append(trainer.predict_dataloaders.dataset.x_to_index(x))
+            outputs.append(self._index[-1])
+        if self.return_decoder_lengths:
+            self._decode_lenghts.append(lengths)
+            outputs.append(self._decode_lenghts[-1])
+        # write to disk
+        if self.output_dir is not None:
+            super().on_predict_batch_end(trainer, pl_module, outputs, batch, batch_idx, dataloader_idx)
+
+    def write_on_batch_end(self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx):
+        torch.save(prediction, os.path.join(self.output_dir, f"predictions_{batch_idx}.pt"))
+        self._reset_data()
+
+    def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices):
+        torch.save(predictions, os.path.join(self.output_dir, "predictions.pt"))
+        self._reset_data()
+
+    def on_predict_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        output = self._output
+        if len(output) > 0:
+            # concatenate output (of different batches)
+            if isinstance(self.mode, (tuple, list)) or self.mode != "raw":
+                if (
+                    isinstance(output[0], (tuple, list))
+                    and len(output[0]) > 0
+                    and isinstance(output[0][0], torch.Tensor)
+                ):
+                    output = [_torch_cat_na([out[idx] for out in output]) for idx in range(len(output[0]))]
+                else:
+                    output = _torch_cat_na(output)
+            elif self.mode == "raw":
+                output = _concatenate_output(output)
+
+            # generate output
+            if self.return_x or self.return_index or self.return_decoder_lengths:
+                output = [output]
+            if self.return_x:
+                output.append(_concatenate_output(self._x_list))
+            if self.return_index:
+                output.append(pd.concat(self._index, axis=0, ignore_index=True))
+            if self.return_decoder_lengths:
+                output.append(torch.cat(self._decode_lenghts, dim=0))
+            self._output = output  # save for later writing or outputting
+
+        # write to disk
+        if self.interval.on_epoch:
+            self.write_on_epoch_end(trainer, pl_module, self._output, trainer.predict_loop.epoch_batch_indices)
+
+    def on_predict_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        # avoid logging and save logging hparams for later reseting
+        self._model_hparams = {k: pl_module.hparams[k] for k in self.predict_hparams.keys()}
+        for k, v in self.predict_hparams.items():
+            pl_module.hparams[k] = v
+
+    def on_predict_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        # reset hparams
+        for k, v in self._model_hparams.items():
+            pl_module.hparams[k] = v
+
+    @property
+    def result(self):
+        if self.output_dir is None:
+            return self._output
+        else:
+            assert len(self.output) == 0, "Cannot return result if output_dir is set"
+            return None
+
+
 class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMixIn):
     """
     BaseModel from which new timeseries models should inherit from.
@@ -251,7 +411,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 This constraint significantly slows down training. Defaults to {}.
             output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
-            optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``.
+            optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``
+                or ``pytorch_optimizer``.
                 Alternatively, a class or function can be passed which takes parameters as first argument and
                 a `lr` argument (optionally also `weight_decay`). Defaults to
                 `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_.
@@ -303,13 +464,18 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         self.validation_step_outputs = []
         self.testing_step_outputs = []
 
+    def log(self, *args, **kwargs):
+        # never log for prediction
+        if self.current_stage is not None and self.current_stage != "predict":
+            super().log(*args, **kwargs)
+
     @property
     def current_stage(self) -> str:
         """
         Available inside lightning loops.
         :return: current trainer stage. One of ["train", "val", "test", "predict", "sanity_check"]
         """
-        return STAGE_STATES[self.trainer.state.stage]
+        return STAGE_STATES.get(self.trainer.state.stage, None)
 
     @property
     def n_targets(self) -> int:
@@ -422,6 +588,12 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
     def on_train_epoch_end(self):
         self.on_epoch_end(self.training_step_outputs)
         self.training_step_outputs.clear()
+
+    def predict_step(self, batch, batch_idx):
+        predict_callback = [c for c in self.trainer.callbacks if isinstance(c, PredictCallback)][0]
+        x, y = batch
+        _, out = self.step(x, y, batch_idx, **predict_callback.mode_kwargs)
+        return out  # need to return output to be able to use predict callback
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -943,7 +1115,20 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
             )
         elif self.hparams.optimizer == "ranger":
-            optimizer_params.setdefault("num_iterations", 20)
+            if any([isinstance(c, LearningRateFinder) for c in self.trainer.callbacks]):
+                # if finding learning rate, switch off warm up and cool down
+                optimizer_params.setdefault("num_warm_up_iterations", 0)
+                optimizer_params.setdefault("num_warm_down_iterations", 0)
+                optimizer_params.setdefault("lookahead_merge_time", 1e6)
+                optimizer_params.setdefault("num_iterations", 100)
+            elif self.trainer.limit_train_batches is not None:
+                # if finding limiting train batches, set iterations to it
+                optimizer_params.setdefault(
+                    "num_iterations", min(self.trainer.num_training_batches, self.trainer.limit_train_batches)
+                )
+            else:
+                # if finding not limiting train batches, set iterations to dataloader length
+                optimizer_params.setdefault("num_iterations", self.trainer.num_training_batches)
             optimizer = Ranger21(self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params)
         elif self.hparams.optimizer == "sgd":
             optimizer = torch.optim.SGD(
@@ -956,6 +1141,15 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
             except TypeError:  # in case there is no weight decay
                 optimizer = getattr(torch.optim, self.hparams.optimizer)(self.parameters(), lr=lr, **optimizer_params)
+        elif hasattr(pytorch_optimizer, self.hparams.optimizer):
+            try:
+                optimizer = getattr(pytorch_optimizer, self.hparams.optimizer)(
+                    self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
+                )
+            except TypeError:  # in case there is no weight decay
+                optimizer = getattr(pytorch_optimizer, self.hparams.optimizer)(
+                    self.parameters(), lr=lr, **optimizer_params
+                )
         else:
             raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
 
@@ -1118,6 +1312,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         show_progress_bar: bool = False,
         return_x: bool = False,
         mode_kwargs: Dict[str, Any] = None,
+        trainer_kwargs: Optional[Dict[str, Any]] = None,
+        write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
+        output_dir: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -1138,6 +1335,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             return_x: if to return network inputs (in the same order as prediction output)
             mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
                 for modes "prediction" and "quantiles"
+            trainer_kwargs (Dict[str, Any], optional): keyword arguments for the trainer
+            write_interval: interval to write predictions to disk
+            output_dir: directory to write predictions to. Defaults to None. If set function will return empty list
             **kwargs: additional arguments to network's forward method
 
         Returns:
@@ -1159,94 +1359,22 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         # ensure passed dataloader is correct
         assert isinstance(dataloader.dataset, TimeSeriesDataSet), "dataset behind dataloader mut be TimeSeriesDataSet"
 
-        # prepare model
-        self.eval()  # no dropout, etc. no gradients
+        predict_callback = PredictCallback(
+            mode=mode,
+            return_index=return_index,
+            return_decoder_lengths=return_decoder_lengths,
+            write_interval=write_interval,
+            return_x=return_x,
+            mode_kwargs=mode_kwargs,
+            output_dir=output_dir,
+        )
+        if trainer_kwargs is None:
+            trainer_kwargs = {}
+        trainer_kwargs.setdefault("callbacks", trainer_kwargs.get("callbacks", []) + [predict_callback])
+        trainer = Trainer(fast_dev_run=fast_dev_run, **trainer_kwargs)
+        trainer.predict(self, dataloader)
 
-        # run predictions
-        output = []
-        decode_lenghts = []
-        x_list = []
-        index = []
-        progress_bar = tqdm(desc="Predict", unit=" batches", total=len(dataloader), disable=not show_progress_bar)
-        with torch.no_grad():
-            for x, _ in dataloader:
-                # move data to appropriate device
-                data_device = x["encoder_cont"].device
-                if data_device != self.device:
-                    x = move_to_device(x, self.device)
-
-                # make prediction
-                out = self(x, **kwargs)  # raw output is dictionary
-
-                lengths = x["decoder_lengths"]
-                if return_decoder_lengths:
-                    decode_lenghts.append(lengths)
-                nan_mask = create_mask(lengths.max(), lengths)
-                if isinstance(mode, (tuple, list)):
-                    if mode[0] == "raw":
-                        out = out[mode[1]]
-                    else:
-                        raise ValueError(
-                            f"If a tuple is specified, the first element must be 'raw' - got {mode[0]} instead"
-                        )
-                elif mode == "prediction":
-                    out = self.to_prediction(out, **mode_kwargs)
-                    # mask non-predictions
-                    if isinstance(out, (list, tuple)):
-                        out = [
-                            o.masked_fill(nan_mask, torch.tensor(float("nan"))) if o.dtype == torch.float else o
-                            for o in out
-                        ]
-                    elif out.dtype == torch.float:  # only floats can be filled with nans
-                        out = out.masked_fill(nan_mask, torch.tensor(float("nan")))
-                elif mode == "quantiles":
-                    out = self.to_quantiles(out, **mode_kwargs)
-                    # mask non-predictions
-                    if isinstance(out, (list, tuple)):
-                        out = [
-                            o.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
-                            if o.dtype == torch.float
-                            else o
-                            for o in out
-                        ]
-                    elif out.dtype == torch.float:
-                        out = out.masked_fill(nan_mask.unsqueeze(-1), torch.tensor(float("nan")))
-                elif mode == "raw":
-                    pass
-                else:
-                    raise ValueError(f"Unknown mode {mode} - see docs for valid arguments")
-
-                out = move_to_device(out, device="cpu")
-
-                output.append(out)
-                if return_x:
-                    x = move_to_device(x, "cpu")
-                    x_list.append(x)
-                if return_index:
-                    index.append(dataloader.dataset.x_to_index(x))
-                progress_bar.update()
-                if fast_dev_run:
-                    break
-
-        # concatenate output (of different batches)
-        if isinstance(mode, (tuple, list)) or mode != "raw":
-            if isinstance(output[0], (tuple, list)) and len(output[0]) > 0 and isinstance(output[0][0], torch.Tensor):
-                output = [_torch_cat_na([out[idx] for out in output]) for idx in range(len(output[0]))]
-            else:
-                output = _torch_cat_na(output)
-        elif mode == "raw":
-            output = _concatenate_output(output)
-
-        # generate output
-        if return_x or return_index or return_decoder_lengths:
-            output = [output]
-        if return_x:
-            output.append(_concatenate_output(x_list))
-        if return_index:
-            output.append(pd.concat(index, axis=0, ignore_index=True))
-        if return_decoder_lengths:
-            output.append(torch.cat(decode_lenghts, dim=0))
-        return output
+        return predict_callback.result
 
     def predict_dependency(
         self,
