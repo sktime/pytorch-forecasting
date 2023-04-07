@@ -157,7 +157,9 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs={}, **kwargs):
             net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
             # check prediction
-            predictions, x, index = net.predict(val_dataloader, return_index=True, return_x=True, fast_dev_run=True)
+            predictions, x, index = net.predict(
+                val_dataloader, return_index=True, return_x=True, fast_dev_run=True, trainer_kwargs=trainer_kwargs
+            )
             pred_len = len(index)
 
             # check that output is of correct shape
@@ -180,7 +182,14 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs={}, **kwargs):
             check(index)
 
             # predict raw
-            net.predict(val_dataloader, return_index=True, return_x=True, fast_dev_run=True, mode="raw")
+            net.predict(
+                val_dataloader,
+                return_index=True,
+                return_x=True,
+                fast_dev_run=True,
+                mode="raw",
+                trainer_kwargs=trainer_kwargs,
+            )
 
         finally:
             shutil.rmtree(tmp_path, ignore_errors=True)

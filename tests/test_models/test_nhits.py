@@ -58,7 +58,13 @@ def _integration(dataloader, tmp_path, trainer_kwargs={}, **kwargs):
         net = NHiTS.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         # check prediction
-        net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+        net.predict(
+            val_dataloader,
+            fast_dev_run=True,
+            return_index=True,
+            return_decoder_lengths=True,
+            trainer_kwargs=trainer_kwargs,
+        )
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 

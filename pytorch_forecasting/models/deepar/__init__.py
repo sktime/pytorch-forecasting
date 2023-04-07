@@ -4,7 +4,7 @@
 which is the one of the most popular forecasting algorithms and is often used as a baseline
 """
 from copy import copy, deepcopy
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -355,9 +355,11 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         batch_size: int = 64,
         num_workers: int = 0,
         fast_dev_run: bool = False,
-        show_progress_bar: bool = False,
         return_x: bool = False,
         mode_kwargs: Dict[str, Any] = None,
+        trainer_kwargs: Optional[Dict[str, Any]] = None,
+        write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
+        output_dir: Optional[str] = None,
         n_samples: int = 100,
     ):
         """
@@ -378,6 +380,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             return_x: if to return network inputs (in the same order as prediction output)
             mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
                 for modes "prediction" and "quantiles"
+            trainer_kwargs (Dict[str, Any], optional): keyword arguments for the trainer
+            write_interval: interval to write predictions to disk
+            output_dir: directory to write predictions to. Defaults to None. If set function will return empty list
             n_samples: number of samples to draw. Defaults to 100.
 
         Returns:
@@ -400,9 +405,11 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             return_index=return_index,
             n_samples=n_samples,  # new keyword that is passed to forward function
             return_x=return_x,
-            show_progress_bar=show_progress_bar,
             fast_dev_run=fast_dev_run,
             num_workers=num_workers,
             batch_size=batch_size,
             mode_kwargs=mode_kwargs,
+            trainer_kwargs=trainer_kwargs,
+            write_interval=write_interval,
+            output_dir=output_dir,
         )

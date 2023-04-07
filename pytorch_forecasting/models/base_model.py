@@ -79,7 +79,13 @@ def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
                 xi
                 if xi.shape[1] == max_first_len
                 else torch.cat(
-                    [xi, torch.full((xi.shape[0], max_first_len - xi.shape[1], *xi.shape[2:]), float("nan"))], dim=1
+                    [
+                        xi,
+                        torch.full(
+                            (xi.shape[0], max_first_len - xi.shape[1], *xi.shape[2:]), float("nan"), device=xi.device
+                        ),
+                    ],
+                    dim=1,
                 )
                 for xi in x
             ]
@@ -161,11 +167,6 @@ STAGE_STATES = {
 class PredictCallback(BasePredictionWriter):
     """Internally used callback to capture predictions and optionally write them to disk."""
 
-    # prediction callback used internally
-
-    # hparams that need resetting
-    predict_hparams: Dict[str, Any] = {"log_interval": -1, "log_val_interval": -1}
-
     # see base class predict function for documentation of parameters
     def __init__(
         self,
@@ -176,6 +177,7 @@ class PredictCallback(BasePredictionWriter):
         return_x: bool = False,
         mode_kwargs: Dict[str, Any] = None,
         output_dir: Optional[str] = None,
+        predict_kwargs: Dict[str, Any] = None,
     ) -> None:
         super().__init__(write_interval=write_interval)
         self.mode = mode
@@ -183,15 +185,18 @@ class PredictCallback(BasePredictionWriter):
         self.return_x = return_x
         self.return_index = return_index
         self.mode_kwargs = mode_kwargs if mode_kwargs is not None else {}
+        self.predict_kwargs = predict_kwargs if predict_kwargs is not None else {}
         self.output_dir = output_dir
         self._reset_data()
 
-    def _reset_data(self):
+    def _reset_data(self, result: bool = True):
         # reset data objects to save results into
         self._output = []
         self._decode_lenghts = []
         self._x_list = []
         self._index = []
+        if result:
+            self._result = []
 
     def on_predict_batch_end(
         self,
@@ -279,6 +284,7 @@ class PredictCallback(BasePredictionWriter):
             elif self.mode == "raw":
                 output = _concatenate_output(output)
 
+            # if len(output) > 0:
             # generate output
             if self.return_x or self.return_index or self.return_decoder_lengths:
                 output = [output]
@@ -288,29 +294,19 @@ class PredictCallback(BasePredictionWriter):
                 output.append(pd.concat(self._index, axis=0, ignore_index=True))
             if self.return_decoder_lengths:
                 output.append(torch.cat(self._decode_lenghts, dim=0))
-            self._output = output  # save for later writing or outputting
+            self._result = output  # save for later writing or outputting
 
-        # write to disk
-        if self.interval.on_epoch:
-            self.write_on_epoch_end(trainer, pl_module, self._output, trainer.predict_loop.epoch_batch_indices)
-
-    def on_predict_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        # avoid logging and save logging hparams for later reseting
-        self._model_hparams = {k: pl_module.hparams[k] for k in self.predict_hparams.keys()}
-        for k, v in self.predict_hparams.items():
-            pl_module.hparams[k] = v
-
-    def on_predict_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
-        # reset hparams
-        for k, v in self._model_hparams.items():
-            pl_module.hparams[k] = v
+            # write to disk
+            if self.interval.on_epoch:
+                self.write_on_epoch_end(trainer, pl_module, self._output, trainer.predict_loop.epoch_batch_indices)
+            self._reset_data(result=False)
 
     @property
     def result(self):
         if self.output_dir is None:
-            return self._output
+            return self._result
         else:
-            assert len(self.output) == 0, "Cannot return result if output_dir is set"
+            assert len(self._result) == 0, "Cannot return result if output_dir is set"
             return None
 
 
@@ -466,8 +462,12 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def log(self, *args, **kwargs):
         # never log for prediction
-        if self.current_stage is not None and self.current_stage != "predict":
+        if not self.predicting:
             super().log(*args, **kwargs)
+
+    @property
+    def predicting(self) -> bool:
+        return self.current_stage is None or self.current_stage == "predict"
 
     @property
     def current_stage(self) -> str:
@@ -592,7 +592,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
     def predict_step(self, batch, batch_idx):
         predict_callback = [c for c in self.trainer.callbacks if isinstance(c, PredictCallback)][0]
         x, y = batch
-        _, out = self.step(x, y, batch_idx, **predict_callback.mode_kwargs)
+        _, out = self.step(x, y, batch_idx, **predict_callback.predict_kwargs)
         return out  # need to return output to be able to use predict callback
 
     def validation_step(self, batch, batch_idx):
@@ -732,25 +732,30 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # multiply monotinicity loss by large number to ensure relevance and take to the power of 2
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
-            if isinstance(self.loss, (MASE, MultiLoss)):
-                loss = self.loss(
-                    prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
-                )
-            else:
-                loss = self.loss(prediction, y)
+            if not self.predicting:
+                if isinstance(self.loss, (MASE, MultiLoss)):
+                    loss = self.loss(
+                        prediction, y, encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"]
+                    )
+                else:
+                    loss = self.loss(prediction, y)
 
-            loss = loss * (1 + monotinicity_loss)
+                loss = loss * (1 + monotinicity_loss)
+            else:
+                loss = None
         else:
             out = self(x, **kwargs)
 
             # calculate loss
             prediction = out["prediction"]
-            if isinstance(self.loss, (MASE, MultiLoss)):
-                mase_kwargs = dict(encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"])
-                loss = self.loss(prediction, y, **mase_kwargs)
+            if not self.predicting:
+                if isinstance(self.loss, (MASE, MultiLoss)):
+                    mase_kwargs = dict(encoder_target=x["encoder_target"], encoder_lengths=x["encoder_lengths"])
+                    loss = self.loss(prediction, y, **mase_kwargs)
+                else:
+                    loss = self.loss(prediction, y)
             else:
-                loss = self.loss(prediction, y)
-
+                loss = None
         self.log(
             f"{self.current_stage}_loss",
             loss,
@@ -873,6 +878,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         if self.training:
             return self.hparams.log_interval
+        elif self.predicting:
+            return -1
         else:
             return self.hparams.log_val_interval
 
@@ -1309,7 +1316,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         batch_size: int = 64,
         num_workers: int = 0,
         fast_dev_run: bool = False,
-        show_progress_bar: bool = False,
         return_x: bool = False,
         mode_kwargs: Dict[str, Any] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
@@ -1331,7 +1337,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             batch_size: batch size for dataloader - only used if data is not a dataloader is passed
             num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
             fast_dev_run: if to only return results of first batch
-            show_progress_bar: if to show progress bar. Defaults to False.
             return_x: if to return network inputs (in the same order as prediction output)
             mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
                 for modes "prediction" and "quantiles"
@@ -1367,6 +1372,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             return_x=return_x,
             mode_kwargs=mode_kwargs,
             output_dir=output_dir,
+            predict_kwargs=kwargs,
         )
         if trainer_kwargs is None:
             trainer_kwargs = {}
@@ -1441,7 +1447,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         # convert results to requested output format
         if mode == "series":
             results = results[:, ~torch.isnan(results[0])].mean(1)  # average samples and prediction horizon
-            results = pd.Series(results, index=values)
+            results = pd.Series(results.cpu().numpy(), index=values)
 
         elif mode == "dataframe":
             # take mean over time
@@ -1453,7 +1459,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             dependencies = (
                 index.iloc[np.tile(np.arange(len(index)), len(values))]
                 .reset_index(drop=True)
-                .assign(prediction=results.flatten())
+                .assign(prediction=results.flatten().cpu().numpy())
             )
             dependencies[variable] = values.repeat(len(data))
             first_prediction = dependencies.groupby(data.group_ids, observed=True).prediction.transform("first")

@@ -46,10 +46,15 @@ class PoissonLoss(MultiHorizonMetric):
                 quantiles = [0.5]
             else:
                 quantiles = self.quantiles
-        predictions = super().to_prediction(out)
-        return torch.stack(
-            [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles], dim=-1
-        ).to(predictions.device)
+        predictions = self.to_prediction(out)
+        return (
+            torch.stack(
+                [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles],
+                dim=-1,
+            )
+            .type(predictions.dtype)
+            .to(predictions.device)
+        )
 
 
 class SMAPE(MultiHorizonMetric):
