@@ -405,7 +405,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         optimizer_params: Dict[str, Any] = None,
         monotone_constaints: Dict[str, int] = {},
         output_transformer: Callable = None,
-        optimizer="ranger",
+        optimizer="Ranger",
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -1376,7 +1376,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             **kwargs: additional arguments to network's forward method
 
         Returns:
-            Prediction: prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
+            Prediction: if one of the ```return`` arguments is present,
+                prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
         """
         # convert to dataloader
         if isinstance(data, pd.DataFrame):
@@ -1407,6 +1408,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if trainer_kwargs is None:
             trainer_kwargs = {}
         trainer_kwargs.setdefault("callbacks", trainer_kwargs.get("callbacks", []) + [predict_callback])
+        trainer_kwargs.setdefault("enable_progress_bar", False)
         trainer = Trainer(fast_dev_run=fast_dev_run, **trainer_kwargs)
         trainer.predict(self, dataloader)
 
