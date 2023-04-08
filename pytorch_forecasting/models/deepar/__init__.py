@@ -26,7 +26,7 @@ from pytorch_forecasting.metrics import (
     MultivariateDistributionLoss,
     NormalDistributionLoss,
 )
-from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
+from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates, Prediction
 from pytorch_forecasting.models.nn import HiddenState, MultiEmbedding, get_rnn
 from pytorch_forecasting.utils import apply_to_list, to_list
 
@@ -356,12 +356,14 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         num_workers: int = 0,
         fast_dev_run: bool = False,
         return_x: bool = False,
+        return_y: bool = False,
         mode_kwargs: Dict[str, Any] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         output_dir: Optional[str] = None,
         n_samples: int = 100,
-    ):
+        **kwargs,
+    ) -> Prediction:
         """
         predict dataloader
 
@@ -378,6 +380,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             fast_dev_run: if to only return results of first batch
             show_progress_bar: if to show progress bar. Defaults to False.
             return_x: if to return network inputs (in the same order as prediction output)
+            return_y: if to return network targets (in the same order as prediction output)
             mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
                 for modes "prediction" and "quantiles"
             trainer_kwargs (Dict[str, Any], optional): keyword arguments for the trainer
@@ -386,8 +389,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             n_samples: number of samples to draw. Defaults to 100.
 
         Returns:
-            output, x, index, decoder_lengths: some elements might not be present depending on what is configured
-                to be returned
+            Prediction: if one of the ```return`` arguments is present,
+                prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
         """
         if isinstance(mode, str):
             if mode in ["prediction", "quantiles"]:
@@ -412,4 +415,6 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             trainer_kwargs=trainer_kwargs,
             write_interval=write_interval,
             output_dir=output_dir,
+            return_y=return_y,
+            **kwargs,
         )
