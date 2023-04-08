@@ -107,7 +107,7 @@ def test_integration(
     elif dataloader == "multivariate-quantiles":
         dataloader = dataloaders_with_covariates
         kwargs["loss"] = MQF2DistributionLoss(prediction_length=dataloader["train"].dataset.max_prediction_length)
-        kwargs["learning_rate"] = 1e-6
+        kwargs["learning_rate"] = 1e-9
         kwargs["trainer_kwargs"] = dict(accelerator="cpu")
     else:
         raise ValueError(f"dataloader {dataloader} unknown")

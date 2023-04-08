@@ -48,10 +48,10 @@ from pytorch_forecasting.utils import (
     OutputMixIn,
     TupleOutputMixIn,
     apply_to_list,
+    concat_sequences,
     create_mask,
     get_embedding_size,
     groupby_apply,
-    move_to_device,
     to_list,
 )
 
@@ -163,6 +163,15 @@ STAGE_STATES = {
     RunningStage.SANITY_CHECKING: "sanity_check",
 }
 
+# return type of predict function
+PredictTuple = namedtuple(
+    "prediction", ["output", "x", "index", "decoder_lengths", "y"], defaults=(None, None, None, None, None)
+)
+
+
+class Prediction(PredictTuple, OutputMixIn):
+    pass
+
 
 class PredictCallback(BasePredictionWriter):
     """Internally used callback to capture predictions and optionally write them to disk."""
@@ -173,6 +182,7 @@ class PredictCallback(BasePredictionWriter):
         mode: Union[str, Tuple[str, str]] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
+        return_y: bool = False,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         return_x: bool = False,
         mode_kwargs: Dict[str, Any] = None,
@@ -184,6 +194,7 @@ class PredictCallback(BasePredictionWriter):
         self.return_decoder_lengths = return_decoder_lengths
         self.return_x = return_x
         self.return_index = return_index
+        self.return_y = return_y
         self.mode_kwargs = mode_kwargs if mode_kwargs is not None else {}
         self.predict_kwargs = predict_kwargs if predict_kwargs is not None else {}
         self.output_dir = output_dir
@@ -195,6 +206,7 @@ class PredictCallback(BasePredictionWriter):
         self._decode_lenghts = []
         self._x_list = []
         self._index = []
+        self._y = []
         if result:
             self._result = []
 
@@ -246,19 +258,25 @@ class PredictCallback(BasePredictionWriter):
             raise ValueError(f"Unknown mode {self.mode} - see docs for valid arguments")
 
         self._output.append(out)
-        outputs = [out]
+        out = dict(output=out)
         if self.return_x:
             self._x_list.append(x)
-            outputs.append(self._x_list[-1])
+            out["x"] = self._x_list[-1]
         if self.return_index:
             self._index.append(trainer.predict_dataloaders.dataset.x_to_index(x))
-            outputs.append(self._index[-1])
+            out["index"] = self._index[-1]
         if self.return_decoder_lengths:
             self._decode_lenghts.append(lengths)
-            outputs.append(self._decode_lenghts[-1])
+            out["decoder_lengths"] = self._decode_lenghts[-1]
+        if self.return_y:
+            self._y.append(batch[1])
+            out["y"] = self._y[-1]
+
+        if isinstance(out, dict):
+            out = Prediction(**out)
         # write to disk
         if self.output_dir is not None:
-            super().on_predict_batch_end(trainer, pl_module, outputs, batch, batch_idx, dataloader_idx)
+            super().on_predict_batch_end(trainer, pl_module, out, batch, batch_idx, dataloader_idx)
 
     def write_on_batch_end(self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx):
         torch.save(prediction, os.path.join(self.output_dir, f"predictions_{batch_idx}.pt"))
@@ -286,15 +304,25 @@ class PredictCallback(BasePredictionWriter):
 
             # if len(output) > 0:
             # generate output
-            if self.return_x or self.return_index or self.return_decoder_lengths:
-                output = [output]
+            if self.return_x or self.return_index or self.return_decoder_lengths or self.return_y:
+                output = dict(output=output)
             if self.return_x:
-                output.append(_concatenate_output(self._x_list))
+                output["x"] = _concatenate_output(self._x_list)
             if self.return_index:
-                output.append(pd.concat(self._index, axis=0, ignore_index=True))
+                output["index"] = pd.concat(self._index, axis=0, ignore_index=True)
             if self.return_decoder_lengths:
-                output.append(torch.cat(self._decode_lenghts, dim=0))
-            self._result = output  # save for later writing or outputting
+                output["decoder_lengths"] = torch.cat(self._decode_lenghts, dim=0)
+            if self.return_y:
+                y = concat_sequences([yi[0] for yi in self._y])
+                if self._y[-1][1] is None:
+                    weight = None
+                else:
+                    weight = concat_sequences([yi[1] for yi in self._y])
+
+                output["y"] = (y, weight)
+            if isinstance(output, dict):
+                output = Prediction(**output)  # save for later writing or outputting
+            self._result = output
 
             # write to disk
             if self.interval.on_epoch:
@@ -302,7 +330,7 @@ class PredictCallback(BasePredictionWriter):
             self._reset_data(result=False)
 
     @property
-    def result(self):
+    def result(self) -> Prediction:
         if self.output_dir is None:
             return self._result
         else:
@@ -1317,12 +1345,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         num_workers: int = 0,
         fast_dev_run: bool = False,
         return_x: bool = False,
+        return_y: bool = False,
         mode_kwargs: Dict[str, Any] = None,
         trainer_kwargs: Optional[Dict[str, Any]] = None,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         output_dir: Optional[str] = None,
         **kwargs,
-    ):
+    ) -> Prediction:
         """
         Run inference / prediction.
 
@@ -1338,6 +1367,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
             fast_dev_run: if to only return results of first batch
             return_x: if to return network inputs (in the same order as prediction output)
+            return_y: if to return network targets (in the same order as prediction output)
             mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
                 for modes "prediction" and "quantiles"
             trainer_kwargs (Dict[str, Any], optional): keyword arguments for the trainer
@@ -1346,8 +1376,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             **kwargs: additional arguments to network's forward method
 
         Returns:
-            output, x, index, decoder_lengths: some elements might not be present depending on what is configured
-                to be returned
+            Prediction: prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
         """
         # convert to dataloader
         if isinstance(data, pd.DataFrame):
@@ -1373,6 +1402,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             mode_kwargs=mode_kwargs,
             output_dir=output_dir,
             predict_kwargs=kwargs,
+            return_y=return_y,
         )
         if trainer_kwargs is None:
             trainer_kwargs = {}

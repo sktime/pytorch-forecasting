@@ -42,7 +42,13 @@ def test_integration(multiple_dataloaders_with_covariates, tmp_path):
 
 
 def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
-    _integration(dataloaders_with_covariates, tmp_path, causal_attention=False, loss=TweedieLoss())
+    _integration(
+        dataloaders_with_covariates,
+        tmp_path,
+        causal_attention=False,
+        loss=TweedieLoss(),
+        trainer_kwargs=dict(accelerator="cpu"),
+    )
 
 
 def test_distribution_loss(data_with_covariates, tmp_path):
@@ -56,7 +62,11 @@ def test_distribution_loss(data_with_covariates, tmp_path):
         add_relative_time_idx=True,
         target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
     )
-    _integration(dataloaders_with_covariates, tmp_path, loss=NegativeBinomialDistributionLoss())
+    _integration(
+        dataloaders_with_covariates,
+        tmp_path,
+        loss=NegativeBinomialDistributionLoss(),
+    )
 
 
 def test_mqf2_loss(data_with_covariates, tmp_path):
@@ -284,6 +294,7 @@ def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
         dict(return_index=True),
         dict(return_decoder_lengths=True),
         dict(return_x=True),
+        dict(return_y=True),
     ],
 )
 def test_prediction_with_dataloder(model, dataloaders_with_covariates, kwargs):

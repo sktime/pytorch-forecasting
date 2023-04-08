@@ -20,7 +20,7 @@ import torch
 from torch.distributions import Beta
 from torch.nn.utils import rnn
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.data.sampler import Sampler
+from torch.utils.data.sampler import Sampler, SequentialSampler
 
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
@@ -1849,7 +1849,10 @@ class TimeSeriesDataSet(Dataset):
             if isinstance(sampler, str):
                 if sampler == "synchronized":
                     kwargs["batch_sampler"] = TimeSynchronizedBatchSampler(
-                        self, batch_size=kwargs["batch_size"], shuffle=kwargs["shuffle"], drop_last=kwargs["drop_last"]
+                        SequentialSampler(self),
+                        batch_size=kwargs["batch_size"],
+                        shuffle=kwargs["shuffle"],
+                        drop_last=kwargs["drop_last"],
                     )
                 else:
                     raise ValueError(f"batch_sampler {sampler} unknown - see docstring for valid batch_sampler")
