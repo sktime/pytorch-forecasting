@@ -134,6 +134,6 @@ def test_pickle(model):
 
 
 def test_interpretation(model, dataloaders_with_covariates):
-    raw_predictions, x = model.predict(dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True)
-    model.plot_prediction(x, raw_predictions, idx=0, add_loss_to_title=True)
-    model.plot_interpretation(x, raw_predictions, idx=0)
+    raw_predictions = model.predict(dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True)
+    model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=0, add_loss_to_title=True)
+    model.plot_interpretation(raw_predictions.x, raw_predictions.output, idx=0)

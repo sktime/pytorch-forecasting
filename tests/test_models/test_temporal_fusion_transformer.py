@@ -167,10 +167,15 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs={}, **kwargs):
             net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
             # check prediction
-            predictions, x, index = net.predict(
-                val_dataloader, return_index=True, return_x=True, fast_dev_run=True, trainer_kwargs=trainer_kwargs
+            predictions = net.predict(
+                val_dataloader,
+                return_index=True,
+                return_x=True,
+                return_y=True,
+                fast_dev_run=True,
+                trainer_kwargs=trainer_kwargs,
             )
-            pred_len = len(index)
+            pred_len = len(predictions.index)
 
             # check that output is of correct shape
             def check(x):
@@ -183,13 +188,15 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs={}, **kwargs):
                 else:
                     assert pred_len == x.shape[0], "first dimension should be prediction length"
 
-            check(predictions)
-            if isinstance(predictions, torch.Tensor):
-                assert predictions.ndim == 2, "shape of predictions should be batch_size x timesteps"
+            check(predictions.output)
+            if isinstance(predictions.output, torch.Tensor):
+                assert predictions.output.ndim == 2, "shape of predictions should be batch_size x timesteps"
             else:
-                assert all(p.ndim == 2 for p in predictions), "shape of predictions should be batch_size x timesteps"
-            check(x)
-            check(index)
+                assert all(
+                    p.ndim == 2 for p in predictions.output
+                ), "shape of predictions should be batch_size x timesteps"
+            check(predictions.x)
+            check(predictions.index)
 
             # predict raw
             net.predict(
@@ -281,8 +288,8 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
 
 
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
-    y_hat, x = model.predict(dataloaders_with_covariates["val"], return_x=True)
-    averages = model.calculate_prediction_actual_by_variable(x, y_hat)
+    prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
+    averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)
     model.plot_prediction_actual_by_variable(averages)
 
 

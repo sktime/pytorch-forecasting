@@ -1464,8 +1464,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             kwargs.setdefault("mode", "prediction")
 
             if idx == 0 and mode == "dataframe":  # need index for returning as dataframe
-                res, index = self.predict(data, return_index=True, **kwargs)
-                results.append(res)
+                res = self.predict(data, return_index=True, **kwargs)
+                results.append(res.output)
             else:
                 results.append(self.predict(data, **kwargs))
             # increment progress
@@ -1489,7 +1489,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
             # create dataframe
             dependencies = (
-                index.iloc[np.tile(np.arange(len(index)), len(values))]
+                res.index.iloc[np.tile(np.arange(len(res.index)), len(values))]
                 .reset_index(drop=True)
                 .assign(prediction=results.flatten().cpu().numpy())
             )
