@@ -1410,6 +1410,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             trainer_kwargs = {}
         trainer_kwargs.setdefault("callbacks", trainer_kwargs.get("callbacks", []) + [predict_callback])
         trainer_kwargs.setdefault("enable_progress_bar", False)
+        trainer_kwargs.setdefault("inference_mode", False)
         log_level_lighting = logging.getLogger("lightning").getEffectiveLevel()
         log_level_pytorch_lightning = logging.getLogger("pytorch_lightning").getEffectiveLevel()
         logging.getLogger("lightning").setLevel(logging.WARNING)
