@@ -575,7 +575,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 decoder_length = out["decoder_lengths"][idx]
                 decoder_attention[idx, :, :, :decoder_length] = x[..., :decoder_length]
         else:
-            decoder_attention = out["decoder_attention"]
+            decoder_attention = out["decoder_attention"].clone()
             decoder_mask = create_mask(out["decoder_attention"].size(1), out["decoder_lengths"])
             decoder_attention[decoder_mask[..., None, None].expand_as(decoder_attention)] = float("nan")
 
@@ -597,7 +597,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 ]
         else:
             # roll encoder attention (so start last encoder value is on the right)
-            encoder_attention = out["encoder_attention"]
+            encoder_attention = out["encoder_attention"].clone()
             shifts = encoder_attention.size(3) - out["encoder_lengths"]
             new_index = (
                 torch.arange(encoder_attention.size(3), device=encoder_attention.device)[None, None, None].expand_as(
@@ -635,7 +635,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
-        encoder_variables = out["encoder_variables"].squeeze(-2)
+        encoder_variables = out["encoder_variables"].squeeze(-2).clone()
         encode_mask = create_mask(encoder_variables.size(1), out["encoder_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
@@ -644,7 +644,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             .unsqueeze(-1)
         )
 
-        decoder_variables = out["decoder_variables"].squeeze(-2)
+        decoder_variables = out["decoder_variables"].squeeze(-2).clone()
         decode_mask = create_mask(decoder_variables.size(1), out["decoder_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         decoder_variables /= out["decoder_lengths"].unsqueeze(-1)

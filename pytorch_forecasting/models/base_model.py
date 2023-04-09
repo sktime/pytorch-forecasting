@@ -5,6 +5,7 @@ from collections import namedtuple
 import copy
 from copy import deepcopy
 import inspect
+import logging
 import os
 from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union
 import warnings
@@ -1409,8 +1410,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             trainer_kwargs = {}
         trainer_kwargs.setdefault("callbacks", trainer_kwargs.get("callbacks", []) + [predict_callback])
         trainer_kwargs.setdefault("enable_progress_bar", False)
+        log_level_lighting = logging.getLogger("lightning").getEffectiveLevel()
+        log_level_pytorch_lightning = logging.getLogger("pytorch_lightning").getEffectiveLevel()
+        logging.getLogger("lightning").setLevel(logging.WARNING)
+        logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
         trainer = Trainer(fast_dev_run=fast_dev_run, **trainer_kwargs)
         trainer.predict(self, dataloader)
+        logging.getLogger("lightning").setLevel(log_level_lighting)
+        logging.getLogger("pytorch_lightning").setLevel(log_level_pytorch_lightning)
 
         return predict_callback.result
 
