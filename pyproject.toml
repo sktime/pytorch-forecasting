@@ -100,6 +100,7 @@ nbsphinx = "*"
 recommonmark = "*"
 ipywidgets = "^8.0.1"
 pytest-dotenv = "^0.5.2"
+tensorboard = "^2.12.1"
 
 
 [tool.poetry.extras]  # extras
