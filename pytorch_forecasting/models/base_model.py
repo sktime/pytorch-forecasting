@@ -490,6 +490,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         self.testing_step_outputs = []
 
     def log(self, *args, **kwargs):
+        """See :meth:`lightning.pytorch.core.lightning.LightningModule.log`."""
         # never log for prediction
         if not self.predicting:
             super().log(*args, **kwargs)
@@ -1411,6 +1412,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         trainer_kwargs.setdefault("callbacks", trainer_kwargs.get("callbacks", []) + [predict_callback])
         trainer_kwargs.setdefault("enable_progress_bar", False)
         trainer_kwargs.setdefault("inference_mode", False)
+        assert (
+            "fast_dev_run" not in trainer_kwargs
+        ), "fast_dev_run should be passed as argument to predict and not in trainer_kwargs"
         log_level_lighting = logging.getLogger("lightning").getEffectiveLevel()
         log_level_pytorch_lightning = logging.getLogger("pytorch_lightning").getEffectiveLevel()
         logging.getLogger("lightning").setLevel(logging.WARNING)

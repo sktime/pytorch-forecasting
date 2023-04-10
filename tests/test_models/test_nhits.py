@@ -11,7 +11,7 @@ from pytorch_forecasting.metrics.distributions import ImplicitQuantileNetworkDis
 from pytorch_forecasting.models import NHiTS
 
 
-def _integration(dataloader, tmp_path, trainer_kwargs={}, **kwargs):
+def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
@@ -19,6 +19,8 @@ def _integration(dataloader, tmp_path, trainer_kwargs={}, **kwargs):
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
+    if trainer_kwargs is None:
+        trainer_kwargs = {}
     trainer = pl.Trainer(
         max_epochs=2,
         gradient_clip_val=0.1,

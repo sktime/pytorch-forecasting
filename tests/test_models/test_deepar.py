@@ -26,7 +26,7 @@ def _integration(
     cell_type="LSTM",
     data_loader_kwargs={},
     clip_target: bool = False,
-    trainer_kwargs={},
+    trainer_kwargs=None,
     **kwargs
 ):
     data_with_covariates = data_with_covariates.copy()
@@ -51,6 +51,8 @@ def _integration(
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
+    if trainer_kwargs is None:
+        trainer_kwargs = {}
     trainer = pl.Trainer(
         max_epochs=3,
         gradient_clip_val=0.1,
