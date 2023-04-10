@@ -2,12 +2,13 @@ from pathlib import Path
 import pickle
 import warnings
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.tuner import Tuner
 import numpy as np
 import pandas as pd
 from pandas.core.common import SettingWithCopyWarning
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 
 from pytorch_forecasting import EncoderNormalizer, GroupNormalizer, TimeSeriesDataSet
@@ -68,7 +69,8 @@ lr_logger = LearningRateMonitor()
 
 trainer = pl.Trainer(
     max_epochs=10,
-    gpus=-1,
+    accelerator="gpu",
+    devices="auto",
     gradient_clip_val=0.1,
     limit_train_batches=30,
     limit_val_batches=3,
@@ -95,7 +97,7 @@ print(f"Number of parameters in network: {deepar.size()/1e3:.1f}k")
 # deepar.hparams.log_interval = -1
 # deepar.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
-# res = trainer.tuner.lr_find(
+# res = Tuner(trainer).lr_find(
 #     deepar, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
 # )
 

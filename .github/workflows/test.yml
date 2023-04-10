@@ -72,9 +72,9 @@ jobs:
         shell: bash
         run: poetry install -E "github-actions graph mqf2"
 
-      - name: Install pytorch geometric dependencies
-        shell: bash
-        run: poetry run pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.12.1+cpu.html
+      # - name: Install pytorch geometric dependencies
+      #   shell: bash
+      #   run: poetry run pip install pyg_lib torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-2.0.0+cpu.html
 
       - name: Run pytest
         shell: bash

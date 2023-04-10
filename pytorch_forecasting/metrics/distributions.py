@@ -84,6 +84,9 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         self._cov_factor_scale: float = np.sqrt(self.rank)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
+        assert (
+            x.device.type != "mps"
+        ), "MPS accelerator has a bug https://github.com/pytorch/pytorch/issues/98074, use cpu or gpu"
         x = x.permute(1, 0, 2)
         distr = self.distribution_class(
             loc=x[..., 2],
