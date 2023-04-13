@@ -253,6 +253,7 @@ class NHiTS(BaseModelWithCovariates):
 
         # statics
         if self.static_size > 0:
+            encoder_features = self.extract_features(x, self.embeddings, period="all")
             x_s = torch.concat([encoder_features[name][:, 0] for name in self.static_variables], dim=1)
         else:
             x_s = None
