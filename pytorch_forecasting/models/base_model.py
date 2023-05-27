@@ -993,6 +993,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         # for each target, plot
         figs = []
+        ax_provided = ax is not None
         for y_raw, y_hat, y_quantile, encoder_target, decoder_target in zip(
             y_raws, y_hats, y_quantiles, encoder_targets, decoder_targets
         ):
@@ -1012,7 +1013,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # move to cpu
             y = y.detach().cpu()
             # create figure
-            if ax is None:
+            if (ax is None) or (not ax_provided):
                 fig, ax = plt.subplots()
             else:
                 fig = ax.get_figure()
