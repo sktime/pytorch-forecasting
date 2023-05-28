@@ -1559,6 +1559,8 @@ class TimeSeriesDataSet(Dataset):
                 data_cat = data_cat[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 data_cont = data_cont[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 target = [t[encoder_length - new_encoder_length : encoder_length + new_decoder_length] for t in target]
+                if weight:
+                    weight = weight[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 encoder_length = new_encoder_length
                 decoder_length = new_decoder_length
 
