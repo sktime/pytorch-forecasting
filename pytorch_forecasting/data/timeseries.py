@@ -197,7 +197,7 @@ class TimeSeriesDataSet(Dataset):
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER]] = "auto",
+        target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None] = "auto",
         categorical_encoders: Dict[str, NaNLabelEncoder] = {},
         scalers: Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]] = {},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
