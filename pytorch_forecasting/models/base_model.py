@@ -422,7 +422,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             loss (Metric, optional): metric to optimize, can also be list of metrics. Defaults to SMAPE().
             logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
                 Defaults to [].
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
+            reduce_on_plateau_patience (int): patience (in steps) after which learning rate is reduced by a factor of 2. Defaults
                 to 1000
             reduce_on_plateau_reduction (float): reduction in learning rate when encountering plateau. Defaults to 2.0.
             reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
@@ -1214,7 +1214,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     min_lr=self.hparams.reduce_on_plateau_min_lr,
                 ),
                 "monitor": "val_loss",  # Default: val_loss
-                "interval": "epoch",
+                "interval": "step",
                 "frequency": 1,
                 "strict": False,
             }
