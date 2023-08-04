@@ -16,7 +16,6 @@ class TimeDistributed(nn.Module):
         self.batch_first = batch_first
 
     def forward(self, x):
-
         if len(x.size()) <= 2:
             return self.module(x)
 
@@ -50,7 +49,6 @@ class TimeDistributedInterpolation(nn.Module):
         return upsampled
 
     def forward(self, x):
-
         if len(x.size()) <= 2:
             return self.interpolate(x)
 

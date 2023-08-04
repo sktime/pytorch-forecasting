@@ -1,10 +1,10 @@
 import pickle
 import shutil
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
 from torch import nn
 
@@ -21,7 +21,13 @@ from pytorch_forecasting.models import DeepAR
 
 
 def _integration(
-    data_with_covariates, tmp_path, gpus, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
+    data_with_covariates,
+    tmp_path,
+    cell_type="LSTM",
+    data_loader_kwargs={},
+    clip_target: bool = False,
+    trainer_kwargs=None,
+    **kwargs
 ):
     data_with_covariates = data_with_covariates.copy()
     if clip_target:
@@ -45,9 +51,10 @@ def _integration(
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 
     logger = TensorBoardLogger(tmp_path)
+    if trainer_kwargs is None:
+        trainer_kwargs = {}
     trainer = pl.Trainer(
         max_epochs=3,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -56,13 +63,14 @@ def _integration(
         limit_val_batches=2,
         limit_test_batches=2,
         logger=logger,
+        **trainer_kwargs,
     )
 
     net = DeepAR.from_dataset(
         train_dataloader.dataset,
         hidden_size=5,
         cell_type=cell_type,
-        learning_rate=0.15,
+        learning_rate=0.01,
         log_gradient_flow=True,
         log_interval=1000,
         n_plotting_samples=100,
@@ -81,11 +89,19 @@ def _integration(
         net = DeepAR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         # check prediction
-        net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+        net.predict(
+            val_dataloader,
+            fast_dev_run=True,
+            return_index=True,
+            return_decoder_lengths=True,
+            trainer_kwargs=trainer_kwargs,
+        )
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
-    net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+    net.predict(
+        val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True, trainer_kwargs=trainer_kwargs
+    )
 
 
 @pytest.mark.parametrize(
@@ -125,21 +141,20 @@ def _integration(
         dict(
             loss=ImplicitQuantileNetworkDistributionLoss(hidden_size=8),
         ),
-        dict(
-            loss=MultivariateNormalDistributionLoss(),
-        ),
+        dict(loss=MultivariateNormalDistributionLoss(), trainer_kwargs=dict(accelerator="cpu")),
         dict(
             loss=MultivariateNormalDistributionLoss(),
             data_loader_kwargs=dict(
                 target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log1p")
             ),
+            trainer_kwargs=dict(accelerator="cpu"),
         ),
     ],
 )
-def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
+def test_integration(data_with_covariates, tmp_path, kwargs):
     if "loss" in kwargs and isinstance(kwargs["loss"], NegativeBinomialDistributionLoss):
         data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
-    _integration(data_with_covariates, tmp_path, gpus, **kwargs)
+    _integration(data_with_covariates, tmp_path, **kwargs)
 
 
 @pytest.fixture
