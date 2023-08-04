@@ -822,6 +822,9 @@ class MultiHorizonMetric(Metric):
         """
         if reduction is None:
             reduction = self.reduction
+
+        if isinstance(losses, list): losses = losses[0]
+
         if losses.ndim > 0:
             # mask loss
             mask = torch.arange(losses.size(1), device=losses.device).unsqueeze(0) >= lengths.unsqueeze(-1)
