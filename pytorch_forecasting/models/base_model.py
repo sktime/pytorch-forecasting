@@ -1473,13 +1473,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # set values
             data.set_overwrite_values(variable=variable, values=value, target=target)
             # predict
-            kwargs.setdefault("mode", "prediction")
+            pred_kwargs = deepcopy(kwargs)
+            pred_kwargs.setdefault("mode", "prediction")
 
             if idx == 0 and mode == "dataframe":  # need index for returning as dataframe
-                res = self.predict(data, return_index=True, **kwargs)
+                res = self.predict(data, return_index=True, **pred_kwargs)
                 results.append(res.output)
             else:
-                results.append(self.predict(data, **kwargs))
+                results.append(self.predict(data, **pred_kwargs))
             # increment progress
             progress_bar.update()
 
