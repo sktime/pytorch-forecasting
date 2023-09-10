@@ -1,10 +1,10 @@
 import pickle
 import shutil
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
 from torch.optim import SGD
 from torchmetrics import MeanSquaredError
@@ -13,7 +13,7 @@ from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLo
 from pytorch_forecasting.models import DecoderMLP
 
 
-def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, train_only=False, **kwargs):
+def _integration(data_with_covariates, tmp_path, data_loader_kwargs={}, train_only=False, **kwargs):
     data_loader_default_kwargs = dict(
         target="target",
         time_varying_known_reals=["price_actual"],
@@ -33,7 +33,6 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -101,8 +100,8 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         ),
     ],
 )
-def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
-    _integration(data_with_covariates.assign(target=lambda x: x.volume), tmp_path, gpus, **kwargs)
+def test_integration(data_with_covariates, tmp_path, kwargs):
+    _integration(data_with_covariates.assign(target=lambda x: x.volume), tmp_path, **kwargs)
 
 
 @pytest.fixture

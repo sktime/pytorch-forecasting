@@ -353,7 +353,7 @@ class NHiTS(BaseModelWithCovariates):
         """
         log, out = super().step(x, y, batch_idx=batch_idx)
 
-        if self.hparams.backcast_loss_ratio > 0:  # add loss from backcast
+        if self.hparams.backcast_loss_ratio > 0 and not self.predicting:  # add loss from backcast
             backcast = out["backcast"]
             backcast_weight = (
                 self.hparams.backcast_loss_ratio * self.hparams.prediction_length / self.hparams.context_length

@@ -6,14 +6,14 @@ import logging
 import os
 from typing import Any, Dict, Tuple, Union
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.tuner import Tuner
 import numpy as np
 import optuna
-from optuna.integration import PyTorchLightningPruningCallback, TensorBoardCallback
+from optuna.integration import PyTorchLightningPruningCallback
 import optuna.logging
-import pytorch_lightning as pl
-from pytorch_lightning import Callback
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger
 import statsmodels.api as sm
 import torch
 from torch.utils.data import DataLoader
@@ -25,15 +25,9 @@ from pytorch_forecasting.metrics import QuantileLoss
 optuna_logger = logging.getLogger("optuna")
 
 
-class MetricsCallback(Callback):
-    """PyTorch Lightning metric callback."""
-
-    def __init__(self):
-        super().__init__()
-        self.metrics = []
-
-    def on_validation_end(self, trainer, pl_module):
-        self.metrics.append(trainer.callback_metrics)
+# need to inherit from callback for this to work
+class PyTorchLightningPruningCallbackAdjusted(pl.Callback, PyTorchLightningPruningCallback):
+    pass
 
 
 def optimize_hyperparameters(
@@ -121,26 +115,21 @@ def optimize_hyperparameters(
     # create objective function
     def objective(trial: optuna.Trial) -> float:
         # Filenames for each trial must be made unique in order to access each checkpoint.
-        checkpoint_callback = pl.callbacks.ModelCheckpoint(
+        checkpoint_callback = ModelCheckpoint(
             dirpath=os.path.join(model_path, "trial_{}".format(trial.number)), filename="{epoch}", monitor="val_loss"
         )
 
-        # The default logger in PyTorch Lightning writes to event files to be consumed by
-        # TensorBoard. We don't use any logger here as it requires us to implement several abstract
-        # methods. Instead we setup a simple callback, that saves metrics from each validation step.
-        metrics_callback = MetricsCallback()
         learning_rate_callback = LearningRateMonitor()
         logger = TensorBoardLogger(log_dir, name="optuna", version=trial.number)
         gradient_clip_val = trial.suggest_loguniform("gradient_clip_val", *gradient_clip_val_range)
         default_trainer_kwargs = dict(
-            gpus=[0] if torch.cuda.is_available() else None,
+            accelerator="auto",
             max_epochs=max_epochs,
             gradient_clip_val=gradient_clip_val,
             callbacks=[
-                metrics_callback,
                 learning_rate_callback,
                 checkpoint_callback,
-                PyTorchLightningPruningCallback(trial, monitor="val_loss"),
+                PyTorchLightningPruningCallbackAdjusted(trial, monitor="val_loss"),
             ],
             logger=logger,
             enable_progress_bar=optuna_verbose < optuna.logging.INFO,
@@ -172,12 +161,13 @@ def optimize_hyperparameters(
         if use_learning_rate_finder:
             lr_trainer = pl.Trainer(
                 gradient_clip_val=gradient_clip_val,
-                gpus=[0] if torch.cuda.is_available() else None,
+                accelerator="auto",
                 logger=False,
                 enable_progress_bar=False,
                 enable_model_summary=False,
             )
-            res = lr_trainer.tuner.lr_find(
+            tuner = Tuner(lr_trainer)
+            res = tuner.lr_find(
                 model,
                 train_dataloaders=train_dataloaders,
                 val_dataloaders=val_dataloaders,
@@ -209,7 +199,7 @@ def optimize_hyperparameters(
         trainer.fit(model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders)
 
         # report result
-        return metrics_callback.metrics[-1]["val_loss"].item()
+        return trainer.callback_metrics["val_loss"].item()
 
     # setup optuna and run
     if study is None:
