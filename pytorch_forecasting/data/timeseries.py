@@ -197,7 +197,7 @@ class TimeSeriesDataSet(Dataset):
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER]] = "auto",
+        target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None] = "auto",
         categorical_encoders: Dict[str, NaNLabelEncoder] = {},
         scalers: Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]] = {},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
@@ -291,7 +291,7 @@ class TimeSeriesDataSet(Dataset):
                 the index will range from -encoder_length to prediction_length)
             add_target_scales (bool): if to add scales for target to static real features (i.e. add the center and scale
                 of the unnormalized timeseries as features)
-            add_encoder_length (bool): if to add decoder length to list of static real variables.
+            add_encoder_length (bool): if to add encoder length to list of static real variables.
                 Defaults to "auto", i.e. ``True`` if ``min_encoder_length != max_encoder_length``.
             target_normalizer (Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str, list, tuple]):
                 transformer that take group_ids, target and time_idx to normalize targets.
@@ -1559,6 +1559,8 @@ class TimeSeriesDataSet(Dataset):
                 data_cat = data_cat[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 data_cont = data_cont[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 target = [t[encoder_length - new_encoder_length : encoder_length + new_decoder_length] for t in target]
+                if weight is not None:
+                    weight = weight[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 encoder_length = new_encoder_length
                 decoder_length = new_decoder_length
 

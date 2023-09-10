@@ -61,7 +61,7 @@ class IdentityBasis(nn.Module):
 
 
 def init_weights(module, initialization):
-    if type(module) == torch.nn.Linear:
+    if type(module) is torch.nn.Linear:
         if initialization == "orthogonal":
             torch.nn.init.orthogonal_(module.weight)
         elif initialization == "he_uniform":

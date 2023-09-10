@@ -204,7 +204,7 @@ class PredictCallback(BasePredictionWriter):
     def _reset_data(self, result: bool = True):
         # reset data objects to save results into
         self._output = []
-        self._decode_lenghts = []
+        self._decode_lengths = []
         self._x_list = []
         self._index = []
         self._y = []
@@ -267,8 +267,8 @@ class PredictCallback(BasePredictionWriter):
             self._index.append(trainer.predict_dataloaders.dataset.x_to_index(x))
             out["index"] = self._index[-1]
         if self.return_decoder_lengths:
-            self._decode_lenghts.append(lengths)
-            out["decoder_lengths"] = self._decode_lenghts[-1]
+            self._decode_lengths.append(lengths)
+            out["decoder_lengths"] = self._decode_lengths[-1]
         if self.return_y:
             self._y.append(batch[1])
             out["y"] = self._y[-1]
@@ -312,7 +312,7 @@ class PredictCallback(BasePredictionWriter):
             if self.return_index:
                 output["index"] = pd.concat(self._index, axis=0, ignore_index=True)
             if self.return_decoder_lengths:
-                output["decoder_lengths"] = torch.cat(self._decode_lenghts, dim=0)
+                output["decoder_lengths"] = torch.cat(self._decode_lengths, dim=0)
             if self.return_y:
                 y = concat_sequences([yi[0] for yi in self._y])
                 if self._y[-1][1] is None:
@@ -1477,13 +1477,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # set values
             data.set_overwrite_values(variable=variable, values=value, target=target)
             # predict
-            kwargs.setdefault("mode", "prediction")
+            pred_kwargs = deepcopy(kwargs)
+            pred_kwargs.setdefault("mode", "prediction")
 
             if idx == 0 and mode == "dataframe":  # need index for returning as dataframe
-                res = self.predict(data, return_index=True, **kwargs)
+                res = self.predict(data, return_index=True, **pred_kwargs)
                 results.append(res.output)
             else:
-                results.append(self.predict(data, **kwargs))
+                results.append(self.predict(data, **pred_kwargs))
             # increment progress
             progress_bar.update()
 
