@@ -9,7 +9,7 @@ repos:
       - id: check-yaml
       - id: check-ast
   - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
+    rev: 6.1.0
     hooks:
       - id: flake8
   - repo: https://github.com/pre-commit/mirrors-isort
@@ -17,11 +17,11 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 23.1.0
+    rev: 23.9.0
     hooks:
       - id: black
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.6.4
+    rev: 1.7.0
     hooks:
       - id: nbqa-black
       - id: nbqa-isort
