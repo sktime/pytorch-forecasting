@@ -1,5 +1,27 @@
 # Release Notes
 
+## v1.1.0 Adding TSMixer
+
+### Added
+
+- New state-of-the-art model beating TFT called TSMixer based on [TSMixer: An All-MLP Architecture for Time Series Forecasting](https://arxiv.org/abs/2303.06053).
+
+### Fixes
+
+- Multiple small fixes
+
+### Contributors
+
+- jdb78
+- jurgispods
+- jacktang
+- andre-marcos-perez
+- tmxt
+- bohdan-safoniuk
+- maartensukel
+- CahidArda
+- MBelniak
+
 ## v1.0.0 Update to pytorch 2.0 (10/04/2023)
 
 
