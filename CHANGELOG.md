@@ -1,6 +1,16 @@
 # Release Notes
 
-## v0.10.4 UNRELEASED (xx/xx/xxxx)
+## v1.0.0 Update to pytorch 2.0 (10/04/2023)
+
+
+### Breaking Changes
+
+- Upgraded to pytorch 2.0 and lightning 2.0. This brings a couple of changes, such as configuration of trainers. See the [lightning upgrade guide](https://lightning.ai/docs/pytorch/latest/upgrade/migration_guide.html). For PyTorch Forecasting, this particularly means if you are developing own models, the class method `epoch_end` has been renamed to `on_epoch_end` and replacing `model.summarize()` with `ModelSummary(model, max_depth=-1)` and `Tuner(trainer)` is its own class, so `trainer.tuner` needs replacing. (#1280)
+- Changed the `predict()` interface returning named tuple - see tutorials.
+
+### Changes
+
+- The predict method is now using the lightning predict functionality and allows writing results to disk (#1280).
 
 ### Fixed
 
@@ -81,7 +91,7 @@
 
 ### Added
 
-- Added support for running `pytorch_lightning.trainer.test` (#759)
+- Added support for running `lightning.trainer.test` (#759)
 
 ### Fixed
 
@@ -402,7 +412,7 @@ This release has only one purpose: Allow usage of PyTorch Lightning 1.0 - all te
   - Using `LearningRateMonitor` instead of `LearningRateLogger`
   - Use `EarlyStopping` callback in trainer `callbacks` instead of `early_stopping` argument
   - Update metric system `update()` and `compute()` methods
-  - Use `trainer.tuner.lr_find()` instead of `trainer.lr_find()` in tutorials and examples
+  - Use `Tuner(trainer).lr_find()` instead of `trainer.lr_find()` in tutorials and examples
 - Update poetry to 1.1.0
 
 ---

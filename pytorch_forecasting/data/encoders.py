@@ -80,7 +80,6 @@ class SoftplusTransform(Transform):
 
 
 class Expm1Transform(ExpTransform):
-
     codomain = constraints.greater_than_eq(-1.0)
 
     def _call(self, x):
@@ -470,7 +469,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         if isinstance(y_center, torch.Tensor):
             eps = torch.finfo(y_center.dtype).eps
         else:
-            eps = np.finfo(np.float).eps
+            eps = np.finfo(np.float16).eps
         if self.method == "identity":
             if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros(y_center.size()[:-1])
@@ -785,7 +784,7 @@ class GroupNormalizer(TorchNormalizer):
             self
         """
         y = self.preprocess(y)
-        eps = np.finfo(np.float).eps
+        eps = np.finfo(np.float16).eps
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
@@ -953,10 +952,13 @@ class GroupNormalizer(TorchNormalizer):
             Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
                 as second element
         """
+        # # check if arguments are wrong way round
+        if isinstance(y, pd.DataFrame) and not isinstance(X, pd.DataFrame):
+            raise ValueError("X and y is in wrong positions")
         if target_scale is None:
             assert X is not None, "either target_scale or X has to be passed"
             target_scale = self.get_norm(X)
-        return super().transform(y=y, return_norm=return_norm, target_scale=target_scale)
+        return super().transform(y, return_norm=return_norm, target_scale=target_scale)
 
     def get_parameters(self, groups: Union[torch.Tensor, list, tuple], group_names: List[str] = None) -> np.ndarray:
         """
@@ -1060,7 +1062,7 @@ class MultiNormalizer(TorchNormalizer):
 
         for idx, normalizer in enumerate(self.normalizers):
             if isinstance(normalizer, GroupNormalizer):
-                normalizer.fit(y[:, idx], X=X)
+                normalizer.fit(y[:, idx], X)
             else:
                 normalizer.fit(y[:, idx])
 
@@ -1119,7 +1121,7 @@ class MultiNormalizer(TorchNormalizer):
             else:
                 scale = None
             if isinstance(normalizer, GroupNormalizer):
-                r = normalizer.transform(y[idx], X=X, return_norm=return_norm, target_scale=scale)
+                r = normalizer.transform(y[idx], X, return_norm=return_norm, target_scale=scale)
             else:
                 r = normalizer.transform(y[idx], return_norm=return_norm, target_scale=scale)
             res.append(r)
