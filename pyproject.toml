@@ -55,7 +55,7 @@ homepage = "https://pytorch-forecasting.readthedocs.io"
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 
-torch = "^2.0.0"
+torch = "^2.0.0,!=2.0.1"
 lightning = "^2.0.0"
 optuna = "^3.1.0"
 scipy = "^1.8"
