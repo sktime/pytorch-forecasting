@@ -264,7 +264,6 @@ class MQF2Distribution(Distribution):
         threshold_input: float = 100.0,
         validate_args: bool = False,
     ) -> None:
-
         self.picnn = picnn
         self.hidden_state = hidden_state
         self.prediction_length = prediction_length

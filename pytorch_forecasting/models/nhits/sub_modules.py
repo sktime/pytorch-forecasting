@@ -33,7 +33,6 @@ class IdentityBasis(nn.Module):
         encoder_x_t: torch.Tensor,
         decoder_x_t: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-
         backcast = backcast_theta
         knots = forecast_theta
 
@@ -62,7 +61,7 @@ class IdentityBasis(nn.Module):
 
 
 def init_weights(module, initialization):
-    if type(module) == torch.nn.Linear:
+    if type(module) is torch.nn.Linear:
         if initialization == "orthogonal":
             torch.nn.init.orthogonal_(module.weight)
         elif initialization == "he_uniform":
@@ -277,11 +276,9 @@ class NHiTS(nn.Module):
         shared_weights,
         initialization,
     ):
-
         block_list = []
         for i in range(len(n_blocks)):
             for block_id in range(n_blocks[i]):
-
                 # Batch norm only on first block
                 if (len(block_list) == 0) and (batch_normalization):
                     batch_normalization_block = True
@@ -331,7 +328,6 @@ class NHiTS(nn.Module):
         decoder_x_t,
         x_s,
     ):
-
         residuals = (
             encoder_y  # .flip(dims=(1,))  # todo: check if flip is required or should be rather replaced by scatter
         )

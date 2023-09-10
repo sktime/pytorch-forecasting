@@ -7,7 +7,7 @@ import inspect
 import os
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
 from torch import nn
 from torch.fft import irfft, rfft
@@ -228,6 +228,31 @@ def unpack_sequence(sequence: Union[torch.Tensor, rnn.PackedSequence]) -> Tuple[
     else:
         lengths = torch.ones(sequence.size(0), device=sequence.device, dtype=torch.long) * sequence.size(1)
     return sequence, lengths
+
+
+def concat_sequences(
+    sequences: Union[List[torch.Tensor], List[rnn.PackedSequence]]
+) -> Union[torch.Tensor, rnn.PackedSequence]:
+    """
+    Concatenate RNN sequences.
+
+    Args:
+        sequences (Union[List[torch.Tensor], List[rnn.PackedSequence]): list of RNN packed sequences or tensors of which
+            first index are samples and second are timesteps
+
+    Returns:
+        Union[torch.Tensor, rnn.PackedSequence]: concatenated sequence
+    """
+    if isinstance(sequences[0], rnn.PackedSequence):
+        return rnn.pack_sequence(sequences, enforce_sorted=False)
+    elif isinstance(sequences[0], torch.Tensor):
+        return torch.cat(sequences, dim=1)
+    elif isinstance(sequences[0], (tuple, list)):
+        return tuple(
+            concat_sequences([sequences[ii][i] for ii in range(len(sequences))]) for i in range(len(sequences[0]))
+        )
+    else:
+        raise ValueError("Unsupported sequence type")
 
 
 def padded_stack(

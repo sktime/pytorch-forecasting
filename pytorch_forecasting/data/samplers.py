@@ -20,7 +20,7 @@ class GroupedSampler(Sampler):
 
     def __init__(
         self,
-        data_source,
+        sampler: Sampler,
         batch_size: int = 64,
         shuffle: bool = False,
         drop_last: bool = False,
@@ -29,7 +29,7 @@ class GroupedSampler(Sampler):
         Initialize.
 
         Args:
-            data_source (TimeSeriesDataSet): timeseries dataset.
+            sampler (Sampler or Iterable): Base sampler. Can be any iterable object
             drop_last (bool): if to drop last mini-batch from a group if it is smaller than batch_size.
                 Defaults to False.
             shuffle (bool): if to shuffle dataset. Defaults to False.
@@ -46,20 +46,20 @@ class GroupedSampler(Sampler):
             )
         if not isinstance(drop_last, bool):
             raise ValueError("drop_last should be a boolean value, but got " "drop_last={}".format(drop_last))
-        self.data_source = data_source
+        self.sampler = sampler
         self.batch_size = batch_size
         self.drop_last = drop_last
         self.shuffle = shuffle
         # make groups and construct new index to sample from
-        groups = self.get_groups(self.data_source)
+        groups = self.get_groups(self.sampler)
         self.construct_batch_groups(groups)
 
-    def get_groups(self, data_source):
+    def get_groups(self, sampler: Sampler):
         """
         Create the groups which can be sampled.
 
         Args:
-            data_source (TimeSeriesDataSet): timeseries dataset.
+            sampler (Sampler): will have attribute data_source which is of type TimeSeriesDataSet.
 
         Returns:
             dict-like: dictionary-like object with data_source.index as values and group names as keys
@@ -122,7 +122,8 @@ class TimeSynchronizedBatchSampler(GroupedSampler):
     This sampler does not support missing values in the dataset.
     """
 
-    def get_groups(self, data_source):
+    def get_groups(self, sampler: Sampler):
+        data_source = sampler.data_source
         index = data_source.index
         # get groups, i.e. group all samples by first predict time
         last_time = data_source.data["time"][index["index_end"].to_numpy()].numpy()
