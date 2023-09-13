@@ -69,6 +69,7 @@ def _integration(dataloader, tmp_path, gpus, **kwargs):
     "dataloader",
     [
         "with_covariates",
+        "different_encoder_decoder_size",
         "fixed_window_without_covariates",
         "multi_target",
         "quantiles",
@@ -78,6 +79,7 @@ def _integration(dataloader, tmp_path, gpus, **kwargs):
 )
 def test_integration(
     dataloaders_with_covariates,
+    dataloaders_with_different_encoder_decoder_length,
     dataloaders_fixed_window_without_covariates,
     dataloaders_multi_target,
     tmp_path,
@@ -88,6 +90,8 @@ def test_integration(
     if dataloader == "with_covariates":
         dataloader = dataloaders_with_covariates
         kwargs["backcast_loss_ratio"] = 0.5
+    elif dataloader == "different_encoder_decoder_size":
+        dataloader = dataloaders_with_different_encoder_decoder_length
     elif dataloader == "fixed_window_without_covariates":
         dataloader = dataloaders_fixed_window_without_covariates
     elif dataloader == "multi_target":
