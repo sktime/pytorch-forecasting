@@ -693,7 +693,6 @@ class AggregationMetric(Metric):
             y_mean = target.mean(0)
             y_pred_mean = y_pred.mean(0)
         else:
-
             # calculate weighted sums
             y_mean = (target * unsqueeze_like(weight, y_pred)).sum(0) / weight.sum(0)
 
