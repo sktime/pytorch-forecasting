@@ -130,6 +130,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
 def multiple_dataloaders_with_covariates(data_with_covariates, request):
     return make_dataloaders(data_with_covariates, **request.param)
 
+
 @pytest.fixture(scope="session")
 def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
     return make_dataloaders(
@@ -159,6 +160,7 @@ def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
         add_relative_time_idx=False,
         target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
     )
+
 
 @pytest.fixture(scope="session")
 def dataloaders_with_covariates(data_with_covariates):
