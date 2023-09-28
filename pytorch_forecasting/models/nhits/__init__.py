@@ -198,7 +198,6 @@ class NHiTS(BaseModelWithCovariates):
             naive_level=self.hparams.naive_level,
         )
 
-    @property
     # def covariate_size(self) -> int:
     #     """Covariate size.
     @property
