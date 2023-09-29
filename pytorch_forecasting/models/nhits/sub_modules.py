@@ -91,7 +91,6 @@ class NHiTSBlock(nn.Module):
         context_length: int,
         prediction_length: int,
         output_size: int,
-        # covariate_size: int,
         encoder_covariate_size: int,
         decoder_covariate_size: int,
         static_size: int,
@@ -121,7 +120,6 @@ class NHiTSBlock(nn.Module):
         self.prediction_length = prediction_length
         self.static_size = static_size
         self.static_hidden_size = static_hidden_size
-        # self.covariate_size = covariate_size
         self.encoder_covariate_size = encoder_covariate_size
         self.decoder_covariate_size = decoder_covariate_size
         self.pooling_sizes = pooling_sizes
@@ -130,7 +128,6 @@ class NHiTSBlock(nn.Module):
 
         self.hidden_size = [
             self.context_length_pooled * len(self.output_size)
-            # + (self.context_length + self.prediction_length) * self.covariate_size
             + self.context_length * self.encoder_covariate_size
             + self.prediction_length * self.decoder_covariate_size
             + self.static_hidden_size
@@ -184,10 +181,10 @@ class NHiTSBlock(nn.Module):
                 (
                     encoder_y,
                     encoder_x_t.reshape(batch_size, -1),
-                    # decoder_x_t.reshape(batch_size, -1),
                 ),
                 1,
             )
+
         if self.decoder_covariate_size > 0:
             encoder_y = torch.cat(
                 (
@@ -223,10 +220,9 @@ class NHiTS(nn.Module):
         context_length,
         prediction_length,
         output_size: int,
-        # static_size,
+        static_size,
         encoder_covariate_size,
         decoder_covariate_size,
-        covariate_size,
         static_hidden_size,
         n_blocks: list,
         n_layers: list,
@@ -254,7 +250,6 @@ class NHiTS(nn.Module):
             context_length=context_length,
             prediction_length=prediction_length,
             output_size=output_size,
-            # covariate_size=covariate_size,
             encoder_covariate_size=encoder_covariate_size,
             decoder_covariate_size=decoder_covariate_size,
             static_size=static_size,
@@ -279,7 +274,6 @@ class NHiTS(nn.Module):
         context_length,
         prediction_length,
         output_size,
-        # covariate_size,
         encoder_covariate_size,
         decoder_covariate_size,
         static_size,
@@ -320,7 +314,6 @@ class NHiTS(nn.Module):
                         context_length=context_length,
                         prediction_length=prediction_length,
                         output_size=output_size,
-                        # covariate_size=covariate_size,
                         encoder_covariate_size=encoder_covariate_size,
                         decoder_covariate_size=decoder_covariate_size,
                         static_size=static_size,
