@@ -470,6 +470,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             self.optimizer = self.hparams.optimizer
         if not hasattr(self, "dataset_parameters"):
             self.dataset_parameters = dataset_parameters
+
         # delete everything from hparams that cannot be serialized with yaml.dump
         # which is particularly important for tensorboard logging
         hparams_to_delete = []
@@ -1240,7 +1241,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if "dataset_parameters" not in kwargs:
             kwargs["dataset_parameters"] = dataset.get_parameters()
         net = cls(**kwargs)
-        # net.dataset_parameters = dataset.get_parameters()
         if dataset.multi_target:
             assert isinstance(
                 net.loss, MultiLoss
