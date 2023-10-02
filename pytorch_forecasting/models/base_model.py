@@ -393,6 +393,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def __init__(
         self,
+        dataset_parameters: Dict[str, Any] = None,
         log_interval: Union[int, float] = -1,
         log_val_interval: Union[int, float] = None,
         learning_rate: Union[float, List[float]] = 1e-3,
@@ -467,6 +468,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             self.output_transformer = output_transformer
         if not hasattr(self, "optimizer"):  # callables are removed from hyperparameters, so better to save them
             self.optimizer = self.hparams.optimizer
+        if not hasattr(self, "dataset_parameters"):
+            self.dataset_parameters = dataset_parameters
 
         # delete everything from hparams that cannot be serialized with yaml.dump
         # which is particularly important for tensorboard logging
@@ -1235,8 +1238,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         if "output_transformer" not in kwargs:
             kwargs["output_transformer"] = dataset.target_normalizer
+        if "dataset_parameters" not in kwargs:
+            kwargs["dataset_parameters"] = dataset.get_parameters()
         net = cls(**kwargs)
-        net.dataset_parameters = dataset.get_parameters()
         if dataset.multi_target:
             assert isinstance(
                 net.loss, MultiLoss
