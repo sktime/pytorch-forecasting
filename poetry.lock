@@ -2656,13 +2656,13 @@ test = ["flaky", "ipykernel (>=6.19.3)", "ipython", "ipywidgets", "nbconvert (>=
 
 [[package]]
 name = "nbconvert"
-version = "7.9.1"
+version = "7.9.2"
 description = "Converting Jupyter Notebooks"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "nbconvert-7.9.1-py3-none-any.whl", hash = "sha256:94ebed2529152e01866694e924b45fb8d7dd14380ae43782ceabac1fb7f7c490"},
-    {file = "nbconvert-7.9.1.tar.gz", hash = "sha256:8a688aed706da51bdd08661ecbd8e536bace88888ef5748ea53c8c996632f1e4"},
+    {file = "nbconvert-7.9.2-py3-none-any.whl", hash = "sha256:39fe4b8bdd1b0104fdd86fc8a43a9077ba64c720bda4c6132690d917a0a154ee"},
+    {file = "nbconvert-7.9.2.tar.gz", hash = "sha256:e56cc7588acc4f93e2bb5a34ec69028e4941797b2bfaf6462f18a41d1cc258c9"},
 ]
 
 [package.dependencies]
