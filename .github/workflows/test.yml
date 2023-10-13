@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest] # add windows-2019 when poetry allows installation with `-f` flag
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v2
@@ -38,7 +38,7 @@ jobs:
       - name: Get full Python version
         id: full-python-version
         shell: bash
-        run: echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
+        run: echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))") >> $GITHUB_OUTPUT
 
       - name: Install poetry
         shell: bash
@@ -135,7 +135,7 @@ jobs:
       - name: Upload built docs
         uses: actions/upload-artifact@v2
         with:
-          name: docs-results-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.requires }}
+          name: docs-results
           path: docs/build/html/
         # Use always() to always run this step to publish test results when there are test failures
         if: success()
