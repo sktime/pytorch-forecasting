@@ -371,7 +371,9 @@ class PositionalEncoder(torch.nn.Module):
 
 
 class ScaledDotProductAttention(nn.Module):
-    def __init__(self, dropout: float = None, scale: bool = True):
+    def __init__(self, dropout: float = None, scale: bool = True, 
+                log_localise: bool = False, gaussian_localisation: bool = False,
+                sigma_init: float = 1., degen_attn: str = None):
         super(ScaledDotProductAttention, self).__init__()
         if dropout is not None:
             self.dropout = nn.Dropout(p=dropout)
@@ -379,16 +381,41 @@ class ScaledDotProductAttention(nn.Module):
             self.dropout = dropout
         self.softmax = nn.Softmax(dim=2)
         self.scale = scale
+        self.log_localise = log_localise
+        self.gaussian_localisation = gaussian_localisation
+        self.distance_matrix = None
+        self.degen_attn = degen_attn
+        if self.gaussian_localisation:
+            self.sigma = nn.Parameter(torch.full((1,), sigma_init))
+    def _init_dist_mat(self, total_len, out_seq_len, q):
+        distance_matrix = torch.arange(total_len).unsqueeze(0).repeat(total_len, 1)
+        distance_matrix = (distance_matrix - distance_matrix.T).abs().to(q.device)
+        # pick only the length of the output similar to how q was spliced
+        self.distance_matrix = distance_matrix[out_seq_len:, :]
 
     def forward(self, q, k, v, mask=None):
         attn = torch.bmm(q, k.permute(0, 2, 1))  # query-key overlap
+        _, total_len, _ = k.size()
+        _, out_seq_len, _ = q.size()
+
+        if self.distance_matrix is None:
+            self._init_dist_mat(total_len, out_seq_len, q)
 
         if self.scale:
             dimension = torch.as_tensor(k.size(-1), dtype=attn.dtype, device=attn.device).sqrt()
             attn = attn / dimension
+        if self.log_localise:
+            distance_penalty = -torch.log1p(self.distance_matrix)
+            attn += distance_penalty
+        elif self.degen_attn == "latest":
+            distance_penalty = -torch.log1p(self.distance_matrix) * 10. # 100% greater weighting
+            attn += distance_penalty
+        elif self.gaussian_localisation:
+            distance_penalty = -torch.exp(self.distance_matrix ** 2 / (2 * self.sigma ** 2))
+            attn += distance_penalty
 
         if mask is not None:
-            attn = attn.masked_fill(mask, -1e9)
+            attn = attn.masked_fill(mask, float("-inf"))
         attn = self.softmax(attn)
 
         if self.dropout is not None:
@@ -398,7 +425,7 @@ class ScaledDotProductAttention(nn.Module):
 
 
 class InterpretableMultiHeadAttention(nn.Module):
-    def __init__(self, n_head: int, d_model: int, dropout: float = 0.0):
+    def __init__(self, n_head: int, d_model: int, dropout: float = 0.0, log_localise: bool = False, gaussian_localise: bool = False, degen_attn: bool = False):
         super(InterpretableMultiHeadAttention, self).__init__()
 
         self.n_head = n_head
@@ -409,7 +436,7 @@ class InterpretableMultiHeadAttention(nn.Module):
         self.v_layer = nn.Linear(self.d_model, self.d_v)
         self.q_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_q) for _ in range(self.n_head)])
         self.k_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_k) for _ in range(self.n_head)])
-        self.attention = ScaledDotProductAttention()
+        self.attention = ScaledDotProductAttention(log_localise=log_localise, gaussian_localisation=gaussian_localise, degen_attn=degen_attn)
         self.w_h = nn.Linear(self.d_v, self.d_model, bias=False)
 
         self.init_weights()

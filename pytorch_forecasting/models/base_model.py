@@ -25,7 +25,7 @@ import scipy.stats
 import torch
 import torch.nn as nn
 from torch.nn.utils import rnn
-from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau, CosineAnnealingLR, OneCycleLR
 from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
 import yaml
@@ -408,6 +408,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         monotone_constaints: Dict[str, int] = {},
         output_transformer: Callable = None,
         optimizer="Ranger",
+        scheduler=None
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -1020,7 +1021,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             else:
                 fig = ax.get_figure()
             n_pred = y_hat.shape[0]
-            x_obs = np.arange(-(y.shape[0] - n_pred), 0)
+            x_obs = np.arange(-(y.shape[0] - n_pred), 1) #To plot even the 0th point
             x_pred = np.arange(n_pred)
             prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
             obs_color = next(prop_cycle)["color"]
@@ -1031,7 +1032,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     plotter = ax.plot
                 else:
                     plotter = ax.scatter
-                plotter(x_obs, y[:-n_pred], label="observed", c=obs_color)
+                plotter(x_obs, y[:-n_pred + 1], label="observed", c=obs_color) #
             if len(x_pred) > 1:
                 plotter = ax.plot
             else:
@@ -1041,6 +1042,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             if show_future_observed:
                 plotter(x_pred, y[-n_pred:], label=None, c=obs_color)
 
+            # vertical line on 0 to mark preds
+            ax.axvline(x=0, linestyle="--", color='#d3d3d3', linewidth=1.5)
             # plot prediction
             plotter(x_pred, y_hat, label="predicted", c=pred_color)
 
@@ -1205,6 +1208,24 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             }
         elif self.hparams.reduce_on_plateau_patience is None:
             scheduler_config = {}
+        elif self.hparams.scheduler == "cos":
+            scheduler_config = {
+                "scheduler": CosineAnnealingLR(
+                    optimizer,
+                    T_max=self.trainer.estimated_stepping_batches,
+                    eta_min=0.
+                ),
+                "interval": "step",
+                "frequency": 1
+            }
+        elif self.hparams.scheduler == "one_cycle":
+            scheduler_config = {
+                "scheduler": OneCycleLR(optimizer=optimizer,
+                                        max_lr=self.hparams.learning_rate * 10,
+                                        total_steps=self.trainer.estimated_stepping_batches),
+                "interval": "step",
+                "frequency": 1
+            }
         else:  # find schedule based on validation loss
             scheduler_config = {
                 "scheduler": ReduceLROnPlateau(

@@ -58,6 +58,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         monotone_constaints: Dict[str, int] = {},
         share_single_variable_networks: bool = False,
         causal_attention: bool = True,
+        log_localise: bool = False,
+        gaussian_localise: bool = False,
+        degen_attn: bool = False,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
@@ -309,7 +312,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # attention for long-range processing
         self.multihead_attn = InterpretableMultiHeadAttention(
-            d_model=self.hparams.hidden_size, n_head=self.hparams.attention_head_size, dropout=self.hparams.dropout
+            d_model=self.hparams.hidden_size, n_head=self.hparams.attention_head_size, dropout=self.hparams.dropout,
+            log_localise=self.hparams.log_localise, gaussian_localise=self.hparams.gaussian_localise, degen_attn=self.hparams.degen_attn
         )
         self.post_attn_gate_norm = GateAddNorm(
             self.hparams.hidden_size, dropout=self.hparams.dropout, trainable_add=False
