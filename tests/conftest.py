@@ -1,8 +1,8 @@
 import os
 import sys
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:skip

@@ -1,14 +1,14 @@
 __all__ = ["AutoRegressiveBaseModel"]
 
-from loguru import logger
-from typing import List, Union, Any, Sequence, Tuple, Dict, Callable
+from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
+from loguru import logger
 import torch
 from torch import Tensor
 
-from pytorch_forecasting.metrics import MultiLoss, DistributionLoss
-from pytorch_forecasting.utils import to_list, apply_to_list
+from pytorch_forecasting.metrics import DistributionLoss, MultiLoss
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModel as AutoRegressiveBaseModel_
+from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abstract-method
@@ -39,9 +39,7 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
         single_prediction = to_list(normalized_prediction_parameters)[0].ndim == 2
         logger.trace(f"single_prediction={single_prediction}")
         if single_prediction:  # add time dimension as it is expected
-            normalized_prediction_parameters = apply_to_list(
-                normalized_prediction_parameters, lambda x: x.unsqueeze(1)
-            )
+            normalized_prediction_parameters = apply_to_list(normalized_prediction_parameters, lambda x: x.unsqueeze(1))
         # transform into real space
         prediction_parameters = self.transform_output(
             prediction=normalized_prediction_parameters, target_scale=target_scale, **kwargs
@@ -95,12 +93,17 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
         """
         Make predictions in auto-regressive manner. Supports only continuous targets.
         Args:
-            decode_one (Callable): function that takes at least the following arguments:
+            decode_one (Callable):
+                function that takes at least the following arguments:
                 * ``idx`` (int): index of decoding step (from 0 to n_decoder_steps-1)
                 * ``lagged_targets`` (List[torch.Tensor]): list of normalized targets.
-                    List is ``idx + 1`` elements long with the most recent entry at the end, i.e. ``previous_target = lagged_targets[-1]`` and in general ``lagged_targets[-lag]``.
-                * ``hidden_state`` (Any): Current hidden state required for prediction. Keys are variable names. Only lags that are greater than ``idx`` are included.
-                * additional arguments are not dynamic but can be passed via the ``**kwargs`` argument And returns tuple of (not rescaled) network prediction output and hidden state for next auto-regressive step.
+                    List is ``idx + 1`` elements long with the most recent entry at the end, i.e.
+                    ``previous_target = lagged_targets[-1]`` and in general ``lagged_targets[-lag]``.
+                * ``hidden_state`` (Any): Current hidden state required for prediction. Keys are variable
+                names. Only lags that are greater than ``idx`` are included.
+                * additional arguments are not dynamic but can be passed via the ``**kwargs`` argument And
+                returns tuple of (not rescaled) network prediction output and hidden state for next
+                auto-regressive step.
             first_target (Union[List[torch.Tensor], torch.Tensor]): first target value to use for decoding
             first_hidden_state (Any): first hidden state used for decoding
             target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale as in ``x``
@@ -130,9 +133,7 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
             if isinstance(prediction, Tensor):
                 logger.trace(f"prediction ({type(prediction)}): {prediction.size()}")
             else:
-                logger.trace(
-                    f"prediction ({type(prediction)}|{len(prediction)}): {[p.size() for p in prediction]}"
-                )
+                logger.trace(f"prediction ({type(prediction)}|{len(prediction)}): {[p.size() for p in prediction]}")
             # save normalized output for lagged targets
             normalized_output.append(current_target)
             # set output to unnormalized samples, append each target as n_batch_samples x n_random_samples
@@ -159,7 +160,8 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
             logger.trace(f"final_output_multitarget: {final_output_multitarget.size()}")
         else:
             logger.trace(
-                f"final_output_multitarget ({type(final_output_multitarget)}): {[o.size() for o in final_output_multitarget]}"
+                f"final_output_multitarget ({type(final_output_multitarget)})"
+                f"{[o.size() for o in final_output_multitarget]}"
             )
         r = [final_output_multitarget[..., i] for i in range(final_output_multitarget.size(-1))]
         return r

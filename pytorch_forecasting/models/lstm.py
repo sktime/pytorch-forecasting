@@ -1,10 +1,10 @@
 __all__ = ["LSTMModel"]
 
-from loguru import logger
-from typing import List, Union, Any, Sequence, Tuple, Dict
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
+from loguru import logger
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 from pytorch_forecasting.metrics import MAE, Metric, MultiLoss
 from pytorch_forecasting.models.nn import LSTM
@@ -40,7 +40,8 @@ class LSTMModel(AutoRegressiveBaseModel):
             input_size (int, optional):
                 Input size. Defaults to: inferred from `target`.
             loss (Metric):
-                Loss criterion. Can be different for each target in multi-target setting thanks to `MultiLoss`. Defaults to `MAE`.
+                Loss criterion. Can be different for each target in multi-target setting thanks to
+                `MultiLoss`. Defaults to `MAE`.
             **kwargs:
                 See :class:`pytorch_forecasting.models.base_model.AutoRegressiveBaseModel`.
         """

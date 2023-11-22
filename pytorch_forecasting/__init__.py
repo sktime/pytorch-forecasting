@@ -41,12 +41,12 @@ from pytorch_forecasting.models import (
     BaseModelWithCovariates,
     DecoderMLP,
     DeepAR,
+    LSTMModel,
     MultiEmbedding,
     NBeats,
     NHiTS,
     RecurrentNetwork,
     TemporalFusionTransformer,
-    LSTMModel,
     get_rnn,
 )
 from pytorch_forecasting.utils import (

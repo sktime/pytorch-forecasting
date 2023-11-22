@@ -4,17 +4,17 @@ Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedoc
 
 __all__ = ["optimize_hyperparameters"]
 
-from loguru import logger
 import copy
 import logging
 import os
-from typing import Any, Dict, Tuple, Union, Optional, Callable, Type, Sequence
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Type, Union
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 from lightning.pytorch.tuner.lr_finder import _LRFinder
+from loguru import logger
 import numpy as np
 import optuna
 from optuna import Trial
@@ -24,7 +24,7 @@ import statsmodels.api as sm
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from pytorch_forecasting import TemporalFusionTransformer, BaseModel
+from pytorch_forecasting import BaseModel, TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
 
 optuna_logger = logging.getLogger("optuna")
@@ -87,7 +87,8 @@ def optimize_hyperparameters(
     **kwargs: Any,
 ) -> optuna.Study:
     """
-    Optimize hyperparameters. Run hyperparameter optimization. Learning rate for is determined with the PyTorch Lightning learning rate finder.
+    Optimize hyperparameters. Run hyperparameter optimization. Learning rate for is determined with the
+    PyTorch Lightning learning rate finder.
 
     Args:
         train_dataloaders (DataLoader):
@@ -97,30 +98,37 @@ def optimize_hyperparameters(
         model_path (str):
             Folder to which model checkpoints are saved.
         monitor (str):
-            Metric to return. The hyper-parameter (HP) tuner trains a model for a certain HP config, and reads this metric to score configuration. By default, the lower the better.
+            Metric to return. The hyper-parameter (HP) tuner trains a model for a certain HP config, and
+            reads this metric to score configuration. By default, the lower the better.
         direction (str):
-            By default, direction is "minimize", meaning that lower values of the specified `monitor` are better. You can change this, e.g. to "maximize".
+            By default, direction is "minimize", meaning that lower values of the specified `monitor` are
+            better. You can change this, e.g. to "maximize".
         max_epochs (int, optional):
             Maximum number of epochs to run training. Defaults to 20.
         n_trials (int, optional):
             Number of hyperparameter trials to run. Defaults to 100.
         timeout (float, optional):
-            Time in seconds after which training is stopped regardless of number of epochs or validation metric. Defaults to 3600*8.0.
+            Time in seconds after which training is stopped regardless of number of epochs or validation
+            metric. Defaults to 3600*8.0.
         input_params (dict, optional):
-            A dictionary, where each `key` contains another dictionary with two keys: `"method"` and `"ranges"`. Example:
+            A dictionary, where each `key` contains another dictionary with two keys: `"method"` and
+            `"ranges"`. Example:
                 >>> {"hidden_size": {
                 >>>     "method": "suggest_int",
                 >>>     "ranges": (16, 265),
                 >>> }}
-            The method key has to be a method of the `optuna.Trial` object. The ranges key are the input ranges for the specified method.
+            The method key has to be a method of the `optuna.Trial` object. The ranges key are the input
+            ranges for the specified method.
         input_params_generator (Callable, optional):
-            A function with the following signature: `fn(trial: optuna.Trial, **kwargs: Any) -> Dict[str, Any]`, returning the parameter values to set up your model for the current trial/run.
+            A function with the following signature: `fn(trial: optuna.Trial, **kwargs: Any) -> Dict[str, Any]
+            `, returning the parameter values to set up your model for the current trial/run.
             Example:
                 >>> def fn(trial: optuna.Trial, param_ranges: Tuple[int, int] = (16, 265)) -> Dict[str, Any]:
                 >>>     param = trial.suggest_int("param", *param_ranges, log=True)
                 >>>     model_params = {"param": param}
                 >>>     return model_params
-            Then, when your model is created (before training it and report the metrics for the current combination of hyperparameters), these dictionary is used as follows:
+            Then, when your model is created (before training it and report the metrics for the current
+            combination of hyperparameters), these dictionary is used as follows:
                 >>> model = YourModelClass.from_dataset(
                 >>>     train_dataloaders.dataset,
                 >>>     log_interval=-1,
@@ -133,7 +141,9 @@ def optimize_hyperparameters(
         use_learning_rate_finder (bool):
             If to use learning rate finder or optimize as part of hyperparameters. Defaults to True.
         trainer_kwargs (Dict[str, Any], optional):
-            Additional arguments to the `PyTorch Lightning trainer <https://pytorch-lightning.readthedocs.io/en/latest/trainer.html>` such as `limit_train_batches`. Defaults to {}.
+            Additional arguments to the
+            `PyTorch Lightning trainer <https://pytorch-lightning.readthedocs.io/en/latest/trainer.html>`
+            such as `limit_train_batches`. Defaults to {}.
         log_dir (str, optional):
             Folder into which to log results for tensorboard. Defaults to "lightning_logs".
         study (optuna.Study, optional):
@@ -153,6 +163,9 @@ def optimize_hyperparameters(
     Returns:
         optuna.Study: optuna study results
     """
+    if generator_params is None:
+        generator_params = {}
+
     assert isinstance(train_dataloaders.dataset, TimeSeriesDataSet) and isinstance(
         val_dataloaders.dataset, TimeSeriesDataSet
     ), "Dataloaders must be built from TimeSeriesDataSet."
@@ -209,8 +222,6 @@ def optimize_hyperparameters(
                 except ValueError as ex:
                     raise ValueError(f"Error while calling {fn} for {key}.") from ex
         else:
-            if generator_params is None:
-                generator_params = {}
             params = input_params_generator(trial, **generator_params)
         kwargs.update(params)
         kwargs["loss"] = copy.deepcopy(loss)
