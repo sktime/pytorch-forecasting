@@ -333,29 +333,33 @@ lxml = ["lxml"]
 
 [[package]]
 name = "black"
-version = "23.11.0"
+version = "24.1a1"
 description = "The uncompromising code formatter."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "black-23.11.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:dbea0bb8575c6b6303cc65017b46351dc5953eea5c0a59d7b7e3a2d2f433a911"},
-    {file = "black-23.11.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:412f56bab20ac85927f3a959230331de5614aecda1ede14b373083f62ec24e6f"},
-    {file = "black-23.11.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d136ef5b418c81660ad847efe0e55c58c8208b77a57a28a503a5f345ccf01394"},
-    {file = "black-23.11.0-cp310-cp310-win_amd64.whl", hash = "sha256:6c1cac07e64433f646a9a838cdc00c9768b3c362805afc3fce341af0e6a9ae9f"},
-    {file = "black-23.11.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:cf57719e581cfd48c4efe28543fea3d139c6b6f1238b3f0102a9c73992cbb479"},
-    {file = "black-23.11.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:698c1e0d5c43354ec5d6f4d914d0d553a9ada56c85415700b81dc90125aac244"},
-    {file = "black-23.11.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:760415ccc20f9e8747084169110ef75d545f3b0932ee21368f63ac0fee86b221"},
-    {file = "black-23.11.0-cp311-cp311-win_amd64.whl", hash = "sha256:58e5f4d08a205b11800332920e285bd25e1a75c54953e05502052738fe16b3b5"},
-    {file = "black-23.11.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:45aa1d4675964946e53ab81aeec7a37613c1cb71647b5394779e6efb79d6d187"},
-    {file = "black-23.11.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:4c44b7211a3a0570cc097e81135faa5f261264f4dfaa22bd5ee2875a4e773bd6"},
-    {file = "black-23.11.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2a9acad1451632021ee0d146c8765782a0c3846e0e0ea46659d7c4f89d9b212b"},
-    {file = "black-23.11.0-cp38-cp38-win_amd64.whl", hash = "sha256:fc7f6a44d52747e65a02558e1d807c82df1d66ffa80a601862040a43ec2e3142"},
-    {file = "black-23.11.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:7f622b6822f02bfaf2a5cd31fdb7cd86fcf33dab6ced5185c35f5db98260b055"},
-    {file = "black-23.11.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:250d7e60f323fcfc8ea6c800d5eba12f7967400eb6c2d21ae85ad31c204fb1f4"},
-    {file = "black-23.11.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5133f5507007ba08d8b7b263c7aa0f931af5ba88a29beacc4b2dc23fcefe9c06"},
-    {file = "black-23.11.0-cp39-cp39-win_amd64.whl", hash = "sha256:421f3e44aa67138ab1b9bfbc22ee3780b22fa5b291e4db8ab7eee95200726b07"},
-    {file = "black-23.11.0-py3-none-any.whl", hash = "sha256:54caaa703227c6e0c87b76326d0862184729a69b73d3b7305b6288e1d830067e"},
-    {file = "black-23.11.0.tar.gz", hash = "sha256:4c68855825ff432d197229846f971bc4d6666ce90492e5b02013bcaca4d9ab05"},
+    {file = "black-24.1a1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:3d139b9531e6bb6d129497a46475535d8289dddc861a5b980f908c36597b9817"},
+    {file = "black-24.1a1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2220c470c22476ca9631337b0daae41be2b215599919b19d576a956ad38aca69"},
+    {file = "black-24.1a1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2a12829e372563ffff10c18c7aff1ef274da6afbc7bc8ccdb5fcc8ff84cab43f"},
+    {file = "black-24.1a1-cp310-cp310-win_amd64.whl", hash = "sha256:d47b6530c55c092a9d841a12c8b3ad838bd639bebf6660a3df9dae83d4ab83c1"},
+    {file = "black-24.1a1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:6b594b3ede60182215d258c76de2de64712d2e8424442ff4402276e22684abbe"},
+    {file = "black-24.1a1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:915a6b6b916fc66edec886fc71b60284e447d8fa39d22b879af7ae6efccca90f"},
+    {file = "black-24.1a1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cb0a7ea9aa1c108924e31f1204a1e2534af255dbaa24ecbb8c05f47341a7b6f1"},
+    {file = "black-24.1a1-cp311-cp311-win_amd64.whl", hash = "sha256:41c0ce5cbdb701900c166bcca08ac941b64cf1d6967509e3caeab126da0ae0d0"},
+    {file = "black-24.1a1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:87c8165fad00b03d9c1d400b1dd250479792f49d012807ee45162d323d04fc06"},
+    {file = "black-24.1a1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:6e3c74b35ea179bb69440286b81c309a64c34a032746a9eef3399dc3ce671352"},
+    {file = "black-24.1a1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d30a018fc03fd1e83c75d40b8a156ef541d0b56b6403b63754e1cc96889849d9"},
+    {file = "black-24.1a1-cp312-cp312-win_amd64.whl", hash = "sha256:88d1c60bac2044a409154e895abb9d74c8ff5d034fb70f3e1f7c3ae96206bc0c"},
+    {file = "black-24.1a1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:4de8ba5825588017f90e63d7a25fc4df33a6342d1f4d628ad76130d8f4488fc6"},
+    {file = "black-24.1a1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:c86ecd9d3da3d91e96da5f4a43d9c4fe35c5698b0633e91f171ba9468d112a8b"},
+    {file = "black-24.1a1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:623efdb54e7290ba75f7b822dfd2d8a47a55e721ae63aab671ccfd46b2ba6c5d"},
+    {file = "black-24.1a1-cp38-cp38-win_amd64.whl", hash = "sha256:ec345caf15ae2c61540812500979e92f2989c6b6d4d13d21bdc82908043b3265"},
+    {file = "black-24.1a1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:ac226f37fc429b386d6447df6256dc958c28dd602f86f950072febf886995f80"},
+    {file = "black-24.1a1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:cad114d8673adab76b3602c28c461c613b7be3da28415500e42aed47415eb561"},
+    {file = "black-24.1a1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e8a054dbb8947718820be2ed6953d66b912ec2795f282725efdd08381a11b0d0"},
+    {file = "black-24.1a1-cp39-cp39-win_amd64.whl", hash = "sha256:b03cdf8a4e15929adf47e5e40a0ddeea1d63b65cf59c22553c12417a0c7ccbf4"},
+    {file = "black-24.1a1-py3-none-any.whl", hash = "sha256:a2c977909557439d0f17dc82adaea84e48374950d53416efc0b8451a594d42c3"},
+    {file = "black-24.1a1.tar.gz", hash = "sha256:4a159ae57f239f3f1ef6a78784b00c1c617c7bb188cc351b3017b9e0702df11c"},
 ]
 
 [package.dependencies]
@@ -371,7 +375,7 @@ typing-extensions = {version = ">=4.0.1", markers = "python_version < \"3.11\""}
 
 [package.extras]
 colorama = ["colorama (>=0.4.3)"]
-d = ["aiohttp (>=3.7.4)"]
+d = ["aiohttp (>=3.7.4)", "aiohttp (>=3.7.4,!=3.9.0)"]
 jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
 
