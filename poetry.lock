@@ -965,13 +965,13 @@ tests = ["asttokens", "littleutils", "pytest", "rich"]
 
 [[package]]
 name = "fastapi"
-version = "0.104.1"
+version = "0.106.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi-0.104.1-py3-none-any.whl", hash = "sha256:752dc31160cdbd0436bb93bad51560b57e525cbb1d4bbf6f4904ceee75548241"},
-    {file = "fastapi-0.104.1.tar.gz", hash = "sha256:e5e4540a7c5e1dcfbbcf5b903c234feddcdcd881f191977a1c5dfd917487e7ae"},
+    {file = "fastapi-0.106.0-py3-none-any.whl", hash = "sha256:193c2f1b495d1d6561a3dc1ca02a150757322247d895ff6bf15b6eefee24feb9"},
+    {file = "fastapi-0.106.0.tar.gz", hash = "sha256:c7e7453ac8c4b7414bbafcf90127d743559808eee286ae2c9f99a501f0b534a0"},
 ]
 
 [package.dependencies]
