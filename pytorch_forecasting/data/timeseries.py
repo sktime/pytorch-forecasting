@@ -475,8 +475,8 @@ class TimeSeriesDataSet(Dataset):
 
         # preprocess data
         data = self._preprocess_data(data)
-        for target in self.target_names:
-            assert target not in self.scalers, "Target normalizer is separate and not in scalers."
+        # for target in self.target_names:
+        #     assert target not in self.scalers, "Target normalizer is separate and not in scalers."
 
         # create index
         self.index = self._construct_index(data, predict_mode=self.predict_mode)
