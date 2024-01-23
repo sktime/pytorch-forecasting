@@ -28,7 +28,7 @@ jobs:
           python -m pip install ".[dev,all_extras,github-actions]"
 
       - name: Show dependencies
-        run:  python -m pip list
+        run: python -m pip list
 
       - name: Run example notebooks
         run: build_tools/run_examples.sh
