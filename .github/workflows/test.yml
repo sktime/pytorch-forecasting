@@ -10,7 +10,8 @@ on:
     branches: [master]
 
 jobs:
-  build:
+  pytest:
+    name: Run pytest
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -71,7 +72,6 @@ jobs:
         run: poetry run pytest tests
 
       - name: Statistics
-        if: success()
         run: |
           pip install coverage
           coverage report
@@ -89,7 +89,7 @@ jobs:
           fail_ci_if_error: false
 
   docs:
-    name: Test docs build
+    name: Docs build
     runs-on: ubuntu-latest
     defaults:
       run:
