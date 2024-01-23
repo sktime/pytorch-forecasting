@@ -22,6 +22,11 @@ from pytorch_forecasting.utils._dependencies import _get_installed_packages
 optuna_logger = logging.getLogger("optuna")
 
 
+# need to inherit from callback for this to work
+class PyTorchLightningPruningCallbackAdjusted(PyTorchLightningPruningCallback, pl.Callback):
+    pass
+
+
 def optimize_hyperparameters(
     train_dataloaders: DataLoader,
     val_dataloaders: DataLoader,
