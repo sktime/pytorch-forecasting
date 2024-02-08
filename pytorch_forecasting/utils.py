@@ -1,6 +1,7 @@
 """
 Helper functions for PyTorch forecasting
 """
+
 from collections import namedtuple
 from contextlib import redirect_stdout
 import inspect
@@ -246,7 +247,7 @@ def concat_sequences(
     if isinstance(sequences[0], rnn.PackedSequence):
         return rnn.pack_sequence(sequences, enforce_sorted=False)
     elif isinstance(sequences[0], torch.Tensor):
-        return torch.cat(sequences, dim=1)
+        return torch.cat(sequences, dim=0)
     elif isinstance(sequences[0], (tuple, list)):
         return tuple(
             concat_sequences([sequences[ii][i] for ii in range(len(sequences))]) for i in range(len(sequences[0]))
