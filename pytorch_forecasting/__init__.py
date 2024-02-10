@@ -43,6 +43,7 @@ from pytorch_forecasting.models import (
     NHiTS,
     RecurrentNetwork,
     TemporalFusionTransformer,
+    TSMixer,
     get_rnn,
 )
 from pytorch_forecasting.utils import (
@@ -69,6 +70,7 @@ __all__ = [
     "NBeats",
     "NHiTS",
     "Baseline",
+    "TSMixer",
     "DeepAR",
     "BaseModel",
     "BaseModelWithCovariates",

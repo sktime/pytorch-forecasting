@@ -15,6 +15,7 @@ from pytorch_forecasting.models.nhits import NHiTS
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.rnn import RecurrentNetwork
 from pytorch_forecasting.models.temporal_fusion_transformer import TemporalFusionTransformer
+from pytorch_forecasting.models.tsmixer import TSMixer
 
 __all__ = [
     "NBeats",
@@ -32,4 +33,5 @@ __all__ = [
     "GRU",
     "MultiEmbedding",
     "DecoderMLP",
+    "TSMixer",
 ]
