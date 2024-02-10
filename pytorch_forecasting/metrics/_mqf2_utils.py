@@ -1,4 +1,5 @@
 """Classes and functions for the MQF2 metric."""
+
 from typing import List, Optional, Tuple
 
 from cpflows.flows import DeepConvexFlow, SequentialFlow

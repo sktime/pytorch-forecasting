@@ -1,6 +1,7 @@
 """
 Timeseries models share a number of common characteristics. This module implements these in a common base class.
 """
+
 from collections import namedtuple
 import copy
 from copy import deepcopy
@@ -77,16 +78,20 @@ def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
         max_first_len = max(first_lens)
         if max_first_len > min(first_lens):
             x = [
-                xi
-                if xi.shape[1] == max_first_len
-                else torch.cat(
-                    [
-                        xi,
-                        torch.full(
-                            (xi.shape[0], max_first_len - xi.shape[1], *xi.shape[2:]), float("nan"), device=xi.device
-                        ),
-                    ],
-                    dim=1,
+                (
+                    xi
+                    if xi.shape[1] == max_first_len
+                    else torch.cat(
+                        [
+                            xi,
+                            torch.full(
+                                (xi.shape[0], max_first_len - xi.shape[1], *xi.shape[2:]),
+                                float("nan"),
+                                device=xi.device,
+                            ),
+                        ],
+                        dim=1,
+                    )
                 )
                 for xi in x
             ]
