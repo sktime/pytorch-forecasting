@@ -117,10 +117,10 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
     )
     # test monotone constraints automatically
     if "discount_in_percent" in train_dataloader.dataset.reals:
-        monotone_constaints = {"discount_in_percent": +1}
+        monotone_constraints = {"discount_in_percent": +1}
         cuda_context = torch.backends.cudnn.flags(enabled=False)
     else:
-        monotone_constaints = {}
+        monotone_constraints = {}
         cuda_context = nullcontext()
 
     kwargs.setdefault("learning_rate", 0.15)
@@ -149,7 +149,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
             log_interval=5,
             log_val_interval=1,
             log_gradient_flow=True,
-            monotone_constaints=monotone_constaints,
+            monotone_constraints=monotone_constraints,
             **kwargs
         )
         net.size()

@@ -405,7 +405,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
         optimizer_params: Dict[str, Any] = None,
-        monotone_constaints: Dict[str, int] = {},
+        monotone_constraints: Dict[str, int] = {},
         output_transformer: Callable = None,
         optimizer="Ranger",
     ):
@@ -430,7 +430,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
             optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
-            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
+            monotone_constraints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
@@ -726,7 +726,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     y[1],
                 )
 
-        if self.training and len(self.hparams.monotone_constaints) > 0:
+        if self.training and len(self.hparams.monotone_constraints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
             assert not torch._C._get_cudnn_enabled(), (
@@ -754,10 +754,12 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
             # select relevant features
             indices = torch.tensor(
-                [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constaints.keys()]
+                [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constraints.keys()]
             )
             monotonicity = torch.tensor(
-                [val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype, device=gradient.device
+                [val for val in self.hparams.monotone_constraints.values()],
+                dtype=gradient.dtype,
+                device=gradient.device,
             )
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
