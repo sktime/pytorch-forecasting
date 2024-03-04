@@ -2359,13 +2359,13 @@ test = ["flaky", "ipykernel (>=6.19.3)", "ipython", "ipywidgets", "nbconvert (>=
 
 [[package]]
 name = "nbconvert"
-version = "7.12.0"
-description = "Converting Jupyter Notebooks"
+version = "7.16.2"
+description = "Converting Jupyter Notebooks (.ipynb files) to other formats.  Output formats include asciidoc, html, latex, markdown, pdf, py, rst, script.  nbconvert can be used both as a Python library (`import nbconvert`) or as a command line tool (invoked as `jupyter nbconvert ...`)."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "nbconvert-7.12.0-py3-none-any.whl", hash = "sha256:5b6c848194d270cc55fb691169202620d7b52a12fec259508d142ecbe4219310"},
-    {file = "nbconvert-7.12.0.tar.gz", hash = "sha256:b1564bd89f69a74cd6398b0362da94db07aafb991b7857216a766204a71612c0"},
+    {file = "nbconvert-7.16.2-py3-none-any.whl", hash = "sha256:0c01c23981a8de0220255706822c40b751438e32467d6a686e26be08ba784382"},
+    {file = "nbconvert-7.16.2.tar.gz", hash = "sha256:8310edd41e1c43947e4ecf16614c61469ebc024898eb808cce0999860fc9fb16"},
 ]
 
 [package.dependencies]
@@ -2392,7 +2392,7 @@ docs = ["ipykernel", "ipython", "myst-parser", "nbsphinx (>=0.2.12)", "pydata-sp
 qtpdf = ["nbconvert[qtpng]"]
 qtpng = ["pyqtwebengine (>=5.15)"]
 serve = ["tornado (>=6.1)"]
-test = ["flaky", "ipykernel", "ipywidgets (>=7)", "pytest"]
+test = ["flaky", "ipykernel", "ipywidgets (>=7.5)", "pytest"]
 webpdf = ["playwright"]
 
 [[package]]
