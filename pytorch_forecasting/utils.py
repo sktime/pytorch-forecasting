@@ -7,7 +7,7 @@ import inspect
 import os
 from typing import Any, Callable, Dict, List, Tuple, Union
 
-import lightning.pytorch as pl
+import pytorch_lightning as pl
 import torch
 from torch import nn
 from torch.fft import irfft, rfft

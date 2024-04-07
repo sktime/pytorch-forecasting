@@ -6,10 +6,10 @@ import logging
 import os
 from typing import Any, Dict, Tuple, Union
 
-import lightning.pytorch as pl
-from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
-from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.tuner import Tuner
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.tuner import Tuner
 import numpy as np
 import optuna
 from optuna.integration import PyTorchLightningPruningCallback
