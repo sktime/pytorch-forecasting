@@ -1054,7 +1054,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     ax.errorbar(
                         x_pred,
                         y[[-n_pred]],
-                        yerr=quantiles - y[-n_pred],
+                        yerr=np.absolute(quantiles - y[-n_pred]),
                         c=pred_color,
                         capsize=1.0,
                     )
