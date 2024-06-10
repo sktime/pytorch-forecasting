@@ -168,7 +168,7 @@ class NBEATSTrendBlock(NBEATSBlock):
 
 
 class NBEATSGenericBlock(NBEATSBlock):
-    def __init__(        
+    def __init__(
         self,
         units,
         thetas_dim,
