@@ -168,9 +168,7 @@ class NBEATSTrendBlock(NBEATSBlock):
 
 
 class NBEATSGenericBlock(NBEATSBlock):
-    def __init__(coefficients = torch.tensor([backcast_linspace**i coefficients = torch.tensor([backcast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
-        for i in range(thetas_dim)], dtype=torch.float32)
-        
+    def __init__(        
         self,
         units,
         thetas_dim,
