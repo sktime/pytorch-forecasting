@@ -1,6 +1,7 @@
 """
 Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedocs.io/>`_.
 """
+
 import copy
 import logging
 import os
@@ -25,9 +26,13 @@ from pytorch_forecasting.metrics import QuantileLoss
 optuna_logger = logging.getLogger("optuna")
 
 
-# need to inherit from callback for this to work
-class PyTorchLightningPruningCallbackAdjusted(PyTorchLightningPruningCallback, pl.Callback):
-    pass
+# On previous versions of optuna, PyTorchLightningPruningCallback did not inherit from pl.Callback.
+# In newest it does, so if we try to inherit from it again, we get a TypeError due to bad use of inheritance.
+if not issubclass(PyTorchLightningPruningCallback, pl.Callback):
+    class PyTorchLightningPruningCallbackAdjusted(PyTorchLightningPruningCallback, pl.Callback):
+        pass
+else:
+    PyTorchLightningPruningCallbackAdjusted = PyTorchLightningPruningCallback
 
 
 def optimize_hyperparameters(
@@ -108,16 +113,12 @@ def optimize_hyperparameters(
     optuna_verbose = logging_level[verbose]
     optuna.logging.set_verbosity(optuna_verbose)
 
-    loss = kwargs.get(
-        "loss", QuantileLoss()
-    )  # need a deepcopy of loss as it will otherwise propagate from one trial to the next
+    loss = kwargs.get("loss", QuantileLoss())  # need a deepcopy of loss as it will otherwise propagate from one trial to the next
 
     # create objective function
     def objective(trial: optuna.Trial) -> float:
         # Filenames for each trial must be made unique in order to access each checkpoint.
-        checkpoint_callback = ModelCheckpoint(
-            dirpath=os.path.join(model_path, "trial_{}".format(trial.number)), filename="{epoch}", monitor="val_loss"
-        )
+        checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(model_path, "trial_{}".format(trial.number)), filename="{epoch}", monitor="val_loss")
 
         learning_rate_callback = LearningRateMonitor()
         logger = TensorBoardLogger(log_dir, name="optuna", version=trial.number)
