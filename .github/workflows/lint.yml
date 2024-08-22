@@ -1,0 +1,71 @@
+name: Lint
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  linter-black:
+      name: Check code formatting with Black
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v2
+        - name: Set up Python 3.8
+          uses: actions/setup-python@v2
+          with:
+            python-version: 3.8
+        - name: Install Black
+          run: pip install black[jupyter]
+        - name: Run Black
+          run: black --check .
+
+  imports-check-isort:
+    name: Check valid import formatting with isort
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install isort
+        run: pip install isort==5.6.4
+      - name: Run isort
+        run: isort --check-only --diff .
+
+  linter-flake8:
+    name: Check valid formatting with flake8
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: pip install flake8
+      - name: Run checks
+        run: flake8
+
+
+  pre-commit-hooks:
+    name: Check that pre-commit hooks pass
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: pip install pre-commit
+
+      - name: Run checks
+        run: pre-commit run --all-files
