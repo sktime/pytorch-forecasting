@@ -69,20 +69,24 @@ dependencies = [
 
 dev = [
   "pydocstyle >=6.1.1,<7.0.0",
+  # checks and make tools
   "pre-commit >=3.2.0,<4.0.0",
   "invoke",
   "flake8",
   "mypy",
   "pylint",
   "isort",
+  # pytest
   "pytest",
   "pytest-xdist",
   "pytest-cov",
   "pytest-sugar",
   "coverage",
   "pyarrow",
+  # jupyter notebook
   "ipykernel",
   "black[extras]",
+  # documentatation
   "sphinx",
   "pydata-sphinx-theme",
   "nbsphinx",
@@ -91,6 +95,8 @@ dev = [
   "pytest-dotenv>=0.5.2,<1.0.0",
   "tensorboard>=2.12.1,<3.0.0",
   "pandoc>=2.3,<3.0.0",
+  # extras for specific features
+  "requests",
 ]
 
 github-actions = ["pytest-github-actions-annotate-failures"]
