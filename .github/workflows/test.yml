@@ -45,7 +45,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          pip install ".[github-actions,graph,mqf2]"
+          pip install ".[dev,github-actions,graph,mqf2]"
 
       - name: Show dependencies
         run: python -m pip list
