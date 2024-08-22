@@ -61,6 +61,7 @@ class SoftplusTransform(Transform):
     Transform via the mapping :math:`\text{Softplus}(x) = \log(1 + \exp(x))`.
     The implementation reverts to the linear function when :math:`x > 20`.
     """
+
     domain = constraints.real
     codomain = constraints.positive
     bijective = True
@@ -93,6 +94,7 @@ class MinusOneTransform(Transform):
     r"""
     Transform x -> x - 1.
     """
+
     domain = constraints.real
     codomain = constraints.real
     sign: int = 1
@@ -112,6 +114,7 @@ class ReLuTransform(Transform):
     r"""
     Transform x -> max(0, x).
     """
+
     domain = constraints.real
     codomain = constraints.nonnegative
     sign: int = 1
@@ -364,7 +367,7 @@ class NaNLabelEncoder(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         decoded = self.classes_vector_[y]
         return decoded
 
-    def __call__(self, data: (Dict[str, torch.Tensor])) -> torch.Tensor:
+    def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Extract prediction from network output. Does not map back to input
         categories as this would require a numpy tensor without grad-abilities.
@@ -1189,17 +1192,23 @@ class MultiNormalizer(TorchNormalizer):
                         results = []
                         for idx, norm in enumerate(self.normalizers):
                             new_args = [
-                                arg[idx]
-                                if isinstance(arg, (list, tuple))
-                                and not isinstance(arg, rnn.PackedSequence)
-                                and len(arg) == n
-                                else arg
+                                (
+                                    arg[idx]
+                                    if isinstance(arg, (list, tuple))
+                                    and not isinstance(arg, rnn.PackedSequence)
+                                    and len(arg) == n
+                                    else arg
+                                )
                                 for arg in args
                             ]
                             new_kwargs = {
-                                key: val[idx]
-                                if isinstance(val, list) and not isinstance(val, rnn.PackedSequence) and len(val) == n
-                                else val
+                                key: (
+                                    val[idx]
+                                    if isinstance(val, list)
+                                    and not isinstance(val, rnn.PackedSequence)
+                                    and len(val) == n
+                                    else val
+                                )
                                 for key, val in kwargs.items()
                             }
                             results.append(getattr(norm, name)(*new_args, **new_kwargs))

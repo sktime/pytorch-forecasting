@@ -4,6 +4,7 @@ Timeseries datasets.
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
+
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
@@ -1566,9 +1567,9 @@ class TimeSeriesDataSet(Dataset):
 
             # switch some variables to nan if encode length is 0
             if encoder_length == 0 and len(self.dropout_categoricals) > 0:
-                data_cat[
-                    :, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]
-                ] = 0  # zero is encoded nan
+                data_cat[:, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]] = (
+                    0  # zero is encoded nan
+                )
 
         assert decoder_length > 0, "Decoder length should be greater than 0"
         assert encoder_length >= 0, "Encoder length should be at least 0"
