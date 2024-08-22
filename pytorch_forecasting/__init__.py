@@ -1,6 +1,7 @@
 """
 PyTorch Forecasting package for timeseries forecasting with PyTorch.
 """
+
 from pytorch_forecasting.data import (
     EncoderNormalizer,
     GroupNormalizer,
