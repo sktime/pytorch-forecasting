@@ -31,7 +31,9 @@ name = "pytorch_forecasting"
 readme = "README.md"         # Markdown files are supported
 version = "1.0.0"            # is being replaced automatically
 
-authors = ["Jan Beitner"]
+authors = [
+  {name = "Jan Beitner"},
+]
 requires-python = ">=3.8,<3.11"
 classifiers = [
   "Intended Audience :: Developers",
