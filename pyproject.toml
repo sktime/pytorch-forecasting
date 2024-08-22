@@ -97,7 +97,3 @@ dev = [
 github-actions = ["pytest-github-actions-annotate-failures"]
 graph = ["networkx"]
 mqf2 = ["cpflows"]
-
-[build-system] # make the package pip installable
-requires = ["poetry-core>=1.0.7", "poetry-dynamic-versioning>=0.13.1"]
-build-backend = "poetry_dynamic_versioning.backend"
