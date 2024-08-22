@@ -26,12 +26,13 @@ exclude = '''
 isort = 1
 black = 1
 
-[tool.poetry]
+[project]
 name = "pytorch_forecasting"
 readme = "README.md"         # Markdown files are supported
-version = "0.0.0"            # is being replaced automatically
+version = "1.0.0"            # is being replaced automatically
 
 authors = ["Jan Beitner"]
+requires-python = ">=3.8,<3.11"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
@@ -95,6 +96,33 @@ dev = [
 github-actions = ["pytest-github-actions-annotate-failures"]
 graph = ["networkx"]
 mqf2 = ["cpflows"]
+
+
+[tool.poetry]
+name = "pytorch_forecasting"
+readme = "README.md"         # Markdown files are supported
+version = "0.0.0"            # is being replaced automatically
+
+authors = ["Jan Beitner"]
+classifiers = [
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "License :: OSI Approved :: MIT License",
+]
+description = "Forecasting timeseries with PyTorch - dataloaders, normalizers, metrics and models"
+repository = "https://github.com/jdb78/pytorch-forecasting"
+documentation = "https://pytorch-forecasting.readthedocs.io"
+homepage = "https://pytorch-forecasting.readthedocs.io"
 
 
 [tool.poetry.dependencies]
