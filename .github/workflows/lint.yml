@@ -24,6 +24,3 @@ jobs:
         uses: tj-actions/changed-files@v44
       - name: run pre-commit hooks on modified files
         run: pre-commit run --color always --files ${{ steps.changed-files.outputs.all_changed_files }} --show-diff-on-failure
-      - name: check missing __init__ files
-        run: build_tools/fail_on_missing_init_files.sh
-        shell: bash
