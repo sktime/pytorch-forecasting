@@ -52,6 +52,51 @@ repository = "https://github.com/jdb78/pytorch-forecasting"
 documentation = "https://pytorch-forecasting.readthedocs.io"
 homepage = "https://pytorch-forecasting.readthedocs.io"
 
+dependencies = [
+  "torch >=2.0.0,!=2.0.1,<3.0.0",
+  "lightning >=2.0.0,<3.0.0",
+  "optuna >=3.1.0,<4.0.0",
+  "scipy >=1.8,<2.0",
+  "pandas >=1.3.0,<3.0.0",
+  "scikit-learn >=1.2,<2.0",
+  "matplotlib",
+  "statsmodels",
+  "pytorch-optimizer >=2.5.1,<3.0.0",
+]
+
+[project.optional-dependencies]
+
+dev = [
+  "pydocstyle >=6.1.1,<7.0.0",
+  "pre-commit >=3.2.0,<4.0.0",
+  "invoke",
+  "flake8",
+  "mypy",
+  "pylint",
+  "isort",
+  "pytest",
+  "pytest-xdist",
+  "pytest-cov",
+  "pytest-sugar",
+  "coverage",
+  "pyarrow",
+  "ipykernel",
+  "black[extras]",
+  "sphinx",
+  "pydata-sphinx-theme",
+  "nbsphinx",
+  "recommonmark",
+  "ipywidgets>=8.0.1,<9.0.0",
+  "pytest-dotenv>=0.5.2,<1.0.0",
+  "tensorboard>=2.12.1,<3.0.0",
+  "pandoc>=2.3,<3.0.0",
+]
+
+github-actions = ["pytest-github-actions-annotate-failures"]
+graph = ["networkx"]
+mqf2 = ["cpflows"]
+
+
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 
