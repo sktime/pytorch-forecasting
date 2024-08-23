@@ -2,11 +2,10 @@
 Example datasets for tutorials and testing.
 """
 from pathlib import Path
+from urllib.request import urlretrieve
 
 import numpy as np
 import pandas as pd
-from urllib.request import urlretrieve
-
 
 BASE_URL = "https://github.com/jdb78/pytorch-forecasting/raw/master/examples/data/"
 
