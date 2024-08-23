@@ -3,6 +3,7 @@
 <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_
 which is the one of the most popular forecasting algorithms and is often used as a baseline
 """
+
 from copy import copy, deepcopy
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 

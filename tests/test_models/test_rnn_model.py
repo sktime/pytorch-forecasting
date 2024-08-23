@@ -56,7 +56,7 @@ def _integration(
         log_gradient_flow=True,
         log_interval=1000,
         hidden_size=5,
-        **kwargs
+        **kwargs,
     )
     net.size()
     try:
