@@ -6,7 +6,7 @@
 [conda-url]: https://anaconda.org/conda-forge/pytorch-forecasting
 [build-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/test.yml/badge.svg?branch=master
 [build-url]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/test.yml?query=branch%3Amaster
-[linter-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/lint.yml/badge.svg?event=push
+[linter-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/code_quality.yml/badge.svg?branch=master
 [linter-url]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/code_quality.yml?query=branch%3Amaster
 [docs-image]: https://readthedocs.org/projects/pytorch-forecasting/badge/?version=latest
 [docs-url]: https://pytorch-forecasting.readthedocs.io

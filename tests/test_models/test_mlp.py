@@ -49,7 +49,7 @@ def _integration(data_with_covariates, tmp_path, data_loader_kwargs={}, train_on
         log_gradient_flow=True,
         log_interval=1000,
         hidden_size=10,
-        **kwargs,
+        **kwargs
     )
     net.size()
     try:

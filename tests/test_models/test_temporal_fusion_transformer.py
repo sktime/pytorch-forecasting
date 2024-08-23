@@ -113,7 +113,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         limit_val_batches=2,
         limit_test_batches=2,
         logger=logger,
-        **trainer_kwargs,
+        **trainer_kwargs
     )
     # test monotone constraints automatically
     if "discount_in_percent" in train_dataloader.dataset.reals:
@@ -150,7 +150,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
             log_val_interval=1,
             log_gradient_flow=True,
             monotone_constaints=monotone_constaints,
-            **kwargs,
+            **kwargs
         )
         net.size()
         try:
