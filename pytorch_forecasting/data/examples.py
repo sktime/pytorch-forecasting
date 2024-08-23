@@ -5,7 +5,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import requests
+from urllib.request import urlretrieve
+
 
 BASE_URL = "https://github.com/jdb78/pytorch-forecasting/raw/master/examples/data/"
 
@@ -27,9 +28,7 @@ def _get_data_by_filename(fname: str) -> Path:
     # check if file exists - download if necessary
     if not full_fname.exists():
         url = BASE_URL + fname
-        download = requests.get(url, allow_redirects=True)
-        with open(full_fname, "wb") as file:
-            file.write(download.content)
+        urlretrieve(url, full_fname)
 
     return full_fname
 
