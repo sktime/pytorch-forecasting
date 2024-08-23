@@ -4,6 +4,7 @@ Timeseries datasets.
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
+
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect

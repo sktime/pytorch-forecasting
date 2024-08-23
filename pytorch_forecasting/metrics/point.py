@@ -1,4 +1,5 @@
 """Point metrics for forecasting a single point per time step."""
+
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import scipy.stats
