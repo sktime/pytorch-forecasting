@@ -62,7 +62,7 @@ jobs:
         run: poetry run python -m pip install pip -U
 
       - name: Install dependencies
-        run: poetry install -E "github-actions graph mqf2"
+        run: poetry install -E "github-actions graph"
 
       # - name: Install pytorch geometric dependencies
       #   shell: bash
