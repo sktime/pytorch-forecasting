@@ -1,6 +1,7 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
+
 from copy import copy
 from typing import Dict, List, Tuple, Union
 
@@ -226,9 +227,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
-            single_variable_grns={}
-            if not self.hparams.share_single_variable_networks
-            else self.shared_single_variable_grns,
+            single_variable_grns=(
+                {} if not self.hparams.share_single_variable_networks else self.shared_single_variable_grns
+            ),
         )
 
         self.decoder_variable_selection = VariableSelectionNetwork(
@@ -238,9 +239,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
-            single_variable_grns={}
-            if not self.hparams.share_single_variable_networks
-            else self.shared_single_variable_grns,
+            single_variable_grns=(
+                {} if not self.hparams.share_single_variable_networks else self.shared_single_variable_grns
+            ),
         )
 
         # static encoders
