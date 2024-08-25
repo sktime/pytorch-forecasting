@@ -30,6 +30,7 @@ black = 1
 name = "pytorch_forecasting"
 readme = "README.md"         # Markdown files are supported
 version = "1.0.0"            # is being replaced automatically
+packages = ["pytorch_forecasting"]
 
 authors = [
   {name = "Jan Beitner"},
