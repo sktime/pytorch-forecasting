@@ -27,7 +27,7 @@ def _integration(
     data_loader_kwargs={},
     clip_target: bool = False,
     trainer_kwargs=None,
-    **kwargs
+    **kwargs,
 ):
     data_with_covariates = data_with_covariates.copy()
     if clip_target:

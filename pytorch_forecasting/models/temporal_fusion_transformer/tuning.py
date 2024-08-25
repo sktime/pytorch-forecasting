@@ -1,6 +1,7 @@
 """
 Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedocs.io/>`_.
 """
+
 import copy
 import logging
 import os
@@ -26,7 +27,7 @@ optuna_logger = logging.getLogger("optuna")
 
 
 # need to inherit from callback for this to work
-class PyTorchLightningPruningCallbackAdjusted(pl.Callback, PyTorchLightningPruningCallback):
+class PyTorchLightningPruningCallbackAdjusted(PyTorchLightningPruningCallback, pl.Callback):
     pass
 
 

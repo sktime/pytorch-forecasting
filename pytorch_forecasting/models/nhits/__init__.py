@@ -1,6 +1,7 @@
 """
 N-HiTS model for timeseries forecasting with covariates.
 """
+
 from copy import copy
 from typing import Dict, List, Optional, Tuple, Union
 

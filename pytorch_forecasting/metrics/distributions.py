@@ -1,4 +1,5 @@
 """Metrics that allow the parametric forecast of parameters of uni- and multivariate distributions."""
+
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
