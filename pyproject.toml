@@ -34,7 +34,7 @@ version = "1.0.0"            # is being replaced automatically
 authors = [
   {name = "Jan Beitner"},
 ]
-requires-python = ">=3.8,<3.11"
+requires-python = ">=3.8,<3.13"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
@@ -42,6 +42,8 @@ classifiers = [
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Mathematics",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
