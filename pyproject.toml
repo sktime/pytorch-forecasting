@@ -53,7 +53,7 @@ classifiers = [
 description = "Forecasting timeseries with PyTorch - dataloaders, normalizers, metrics and models"
 
 dependencies = [
-  "numpy<2.0.0",
+  "numpy<3.0.0",
   "torch >=2.0.0,!=2.0.1,<3.0.0",
   "lightning >=2.0.0,<3.0.0",
   "optuna >=3.1.0,<3.3.0",
