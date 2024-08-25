@@ -37,7 +37,3 @@ updates:
     - 0.6.0
     - 0.6.1
     - 0.6.2
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: weekly
