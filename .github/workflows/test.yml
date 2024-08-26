@@ -9,22 +9,45 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  run-notebook-tutorials:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev,github-actions,graph,mqf2]"
+
+      - name: Show dependencies
+        run:  python -m pip list
+
+      - name: Run example notebooks
+        run: build_tools/run_examples.sh
+        shell: bash
+
   pytest:
     name: Run pytest
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-latest] # add windows-2019 when poetry allows installation with `-f` flag
-        python-version: ["3.8", "3.9", "3.10"]
-    defaults:
-      run:
-        shell: bash
+        os: [ubuntu-latest, macos-13] # add windows-2019 when poetry allows installation with `-f` flag
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -35,41 +58,20 @@ jobs:
 
       - name: Get full Python version
         id: full-python-version
-        run: echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
-
-      - name: Install poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-
-      - name: Set poetry path variable
-        run: echo "/Users/runner/.local/bin" >> $GITHUB_PATH
-
-      - name: Configure poetry
-        run: poetry config virtualenvs.in-project true
-
-      - name: Set up cache
-        uses: actions/cache@v2
-        id: cache
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Ensure cache is healthy
-        if: steps.cache.outputs.cache-hit == 'true'
-        run: poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
-
-      - name: Upgrade pip
-        run: poetry run python -m pip install pip -U
+        shell: bash
+        run: echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))") >> $GITHUB_OUTPUT
 
       - name: Install dependencies
-        run: poetry install -E "github-actions graph mqf2"
+        shell: bash
+        run: |
+          pip install ".[dev,github-actions,graph,mqf2]"
 
-      # - name: Install pytorch geometric dependencies
-      #   shell: bash
-      #   run: poetry run pip install pyg_lib torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-2.0.0+cpu.html
+      - name: Show dependencies
+        run: python -m pip list
 
       - name: Run pytest
-        run: poetry run pytest tests
+        shell: bash
+        run: python -m pytest tests
 
       - name: Statistics
         run: |

@@ -1,6 +1,7 @@
 """
 MLP implementation
 """
+
 import torch
 from torch import nn
 

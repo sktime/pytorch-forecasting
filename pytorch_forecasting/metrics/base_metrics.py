@@ -1,6 +1,7 @@
 """
 Base classes for metrics - only for inheritance.
 """
+
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 import warnings
@@ -454,17 +455,23 @@ class MultiLoss(LightningMetric):
                         results = []
                         for idx, m in enumerate(self.metrics):
                             new_args = [
-                                arg[idx]
-                                if isinstance(arg, (list, tuple))
-                                and not isinstance(arg, rnn.PackedSequence)
-                                and len(arg) == n
-                                else arg
+                                (
+                                    arg[idx]
+                                    if isinstance(arg, (list, tuple))
+                                    and not isinstance(arg, rnn.PackedSequence)
+                                    and len(arg) == n
+                                    else arg
+                                )
                                 for arg in args
                             ]
                             new_kwargs = {
-                                key: val[idx]
-                                if isinstance(val, list) and not isinstance(val, rnn.PackedSequence) and len(val) == n
-                                else val
+                                key: (
+                                    val[idx]
+                                    if isinstance(val, list)
+                                    and not isinstance(val, rnn.PackedSequence)
+                                    and len(val) == n
+                                    else val
+                                )
                                 for key, val in kwargs.items()
                             }
                             results.append(getattr(m, name)(*new_args, **new_kwargs))

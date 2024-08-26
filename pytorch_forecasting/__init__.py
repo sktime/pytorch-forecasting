@@ -1,6 +1,7 @@
 """
 PyTorch Forecasting package for timeseries forecasting with PyTorch.
 """
+
 from pytorch_forecasting.data import (
     EncoderNormalizer,
     GroupNormalizer,
@@ -111,4 +112,4 @@ __all__ = [
     "unpack_sequence",
 ]
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
