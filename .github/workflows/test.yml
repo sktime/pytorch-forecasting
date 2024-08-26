@@ -26,11 +26,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install ".[dev,github-actions,graph,mqf2]"
-      - name: Show environment
-        run: |
-          which python
-          which jupyter
-          python -m pip list
+
+      - name: Show dependencies
+        run:  python -m pip list
+
       - name: Run example notebooks
         run: build_tools/run_examples.sh
         shell: bash
