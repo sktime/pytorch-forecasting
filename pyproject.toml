@@ -87,6 +87,7 @@ dev = [
   "pyarrow",
   # jupyter notebook
   "ipykernel",
+  "nbconvert",
   "black[extras]",
   # documentatation
   "sphinx",
