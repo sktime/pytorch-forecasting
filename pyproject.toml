@@ -104,9 +104,6 @@ github-actions = ["pytest-github-actions-annotate-failures"]
 graph = ["networkx"]
 mqf2 = ["cpflows"]
 
-[tool.setuptools]
-py-modules = ["pytorch_forecasting"]
-
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
