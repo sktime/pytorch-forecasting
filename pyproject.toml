@@ -105,7 +105,7 @@ graph = ["networkx"]
 mqf2 = ["cpflows"]
 
 [tool.setuptools]
-packages = ["pytorch_forecasting"]
+package-dir = {"" = "pytorch_forecasting"}
 
 [build-system]
 build-backend = "setuptools.build_meta"
