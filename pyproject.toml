@@ -104,8 +104,8 @@ github-actions = ["pytest-github-actions-annotate-failures"]
 graph = ["networkx"]
 mqf2 = ["cpflows"]
 
-[tool.setuptools]
-package-dir = {"" = "pytorch_forecasting"}
+[tool.setuptools.packages.find]
+exclude = ["build_tools"]
 
 [build-system]
 build-backend = "setuptools.build_meta"
