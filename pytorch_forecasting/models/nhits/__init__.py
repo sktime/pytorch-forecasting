@@ -154,8 +154,12 @@ class NHiTS(BaseModelWithCovariates):
         if pooling_sizes is None:
             pooling_sizes = np.exp2(np.round(np.linspace(0.49, np.log2(prediction_length / 2), n_stacks)))
             pooling_sizes = [int(x) for x in pooling_sizes[::-1]]
+            # remove zero from pooling_sizes
+            pooling_sizes = max(pooling_sizes, [1] * len(pooling_sizes))
         if downsample_frequencies is None:
             downsample_frequencies = [min(prediction_length, int(np.power(x, 1.5))) for x in pooling_sizes]
+            # remove zero from downsample_frequencies
+            downsample_frequencies = max(downsample_frequencies, [1] * len(downsample_frequencies))
 
         # set static hidden size
         if static_hidden_size is None:
