@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from pytorch_forecasting import TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import QuantileLoss
-from pytorch_forecastingu.utils._dependencies import _get_installed_packages
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 optuna_logger = logging.getLogger("optuna")
 
