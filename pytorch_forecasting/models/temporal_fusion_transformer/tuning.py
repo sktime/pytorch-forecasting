@@ -12,23 +12,14 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 import numpy as np
-import optuna
-from optuna.integration import PyTorchLightningPruningCallback
-import optuna.logging
-import statsmodels.api as sm
-import torch
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import QuantileLoss
+from pytorch_forecastingu.utils._dependencies import _get_installed_packages
 
 optuna_logger = logging.getLogger("optuna")
-
-
-# need to inherit from callback for this to work
-class PyTorchLightningPruningCallbackAdjusted(PyTorchLightningPruningCallback, pl.Callback):
-    pass
 
 
 def optimize_hyperparameters(
@@ -47,11 +38,11 @@ def optimize_hyperparameters(
     use_learning_rate_finder: bool = True,
     trainer_kwargs: Dict[str, Any] = {},
     log_dir: str = "lightning_logs",
-    study: optuna.Study = None,
+    study=None,
     verbose: Union[int, bool] = None,
-    pruner: optuna.pruners.BasePruner = optuna.pruners.SuccessiveHalvingPruner(),
+    pruner=None,
     **kwargs,
-) -> optuna.Study:
+):
     """
     Optimize Temporal Fusion Transformer hyperparameters.
 
@@ -96,6 +87,27 @@ def optimize_hyperparameters(
     Returns:
         optuna.Study: optuna study results
     """
+    pkgs = _get_installed_packages()
+
+    if "optuna" not in pkgs or "statsmodels" not in pkgs:
+        raise ImportError(
+            "optimize_hyperparameters requires optuna and statsmodels. "
+            "Please install these packages with `pip install optuna statsmodels`. "
+            "From optuna 3.3.0, optuna-integration is also required."
+        )
+
+    import optuna
+    from optuna.integration import PyTorchLightningPruningCallback
+    import optuna.logging
+    import statsmodels.api as sm
+
+    # need to inherit from callback for this to work
+    class PyTorchLightningPruningCallbackAdjusted(PyTorchLightningPruningCallback, pl.Callback):  # noqa: E501
+        pass
+
+    if pruner is None:
+        pruner = optuna.pruners.SuccessiveHalvingPruner()
+
     assert isinstance(train_dataloaders.dataset, TimeSeriesDataSet) and isinstance(
         val_dataloaders.dataset, TimeSeriesDataSet
     ), "dataloaders must be built from timeseriesdataset"
