@@ -87,6 +87,7 @@ dev = [
   "pyarrow",
   # jupyter notebook
   "ipykernel",
+  "nbconvert",
   "black[extras]",
   # documentatation
   "sphinx",
@@ -103,8 +104,8 @@ github-actions = ["pytest-github-actions-annotate-failures"]
 graph = ["networkx"]
 mqf2 = ["cpflows"]
 
-[tool.setuptools]
-py-modules = ["pytorch_forecasting"]
+[tool.setuptools.packages.find]
+exclude = ["build_tools"]
 
 [build-system]
 build-backend = "setuptools.build_meta"
