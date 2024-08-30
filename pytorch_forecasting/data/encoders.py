@@ -10,13 +10,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints
-from torch.distributions.transforms import (
-    ExpTransform,
-    PowerTransform,
-    SigmoidTransform,
-    Transform,
-    _clipped_sigmoid,
-)
+from torch.distributions.transforms import ExpTransform, PowerTransform, SigmoidTransform, Transform, _clipped_sigmoid
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
