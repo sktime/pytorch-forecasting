@@ -1100,10 +1100,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """
-        _check_matplotlib("log_gradient_flow")
-
-        from matplotlib import pyplot as plt
-
         ave_grads = []
         layers = []
         for name, p in named_parameters:
@@ -1111,6 +1107,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 layers.append(name)
                 ave_grads.append(p.grad.abs().cpu().mean())
                 self.logger.experiment.add_histogram(tag=name, values=p.grad, global_step=self.global_step)
+
+        mpl_available = _check_matplotlib("log_gradient_flow", raise_exception=False)
+
+        if not mpl_available:
+            return None
+
+        import matplotlib.pyplot as plt
+
         fig, ax = plt.subplots()
         ax.plot(ave_grads)
         ax.set_xlabel("Layers")
