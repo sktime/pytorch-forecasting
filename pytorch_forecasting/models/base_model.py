@@ -940,6 +940,12 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
             else:
                 log_indices = [0]
+
+            mpl_available = _check_matplotlib("plot_prediction", raise_error=False)
+
+            if not mpl_available:
+                return None  # don't log matplotlib plots if not available
+
             for idx in log_indices:
                 fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True, **kwargs)
                 tag = f"{self.current_stage} prediction"
