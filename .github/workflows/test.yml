@@ -103,7 +103,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          pip install ".[dev,github-actions,graph]"
+          pip install ".[dev,github-actions,graph,mqf2,all_extras]"
 
       - name: Show dependencies
         run: python -m pip list
