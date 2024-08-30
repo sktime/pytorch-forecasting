@@ -1567,9 +1567,9 @@ class TimeSeriesDataSet(Dataset):
 
             # switch some variables to nan if encode length is 0
             if encoder_length == 0 and len(self.dropout_categoricals) > 0:
-                data_cat[
-                    :, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]
-                ] = 0  # zero is encoded nan
+                data_cat[:, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]] = (
+                    0  # zero is encoded nan
+                )
 
         assert decoder_length > 0, "Decoder length should be greater than 0"
         assert encoder_length >= 0, "Encoder length should be at least 0"
