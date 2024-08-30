@@ -118,7 +118,7 @@ class SequentialNet(SequentialFlow):
         """
         Auxiliary function for energy score computation
         Drawing samples conditioned on the hidden state
-    
+
         Parameters
         ----------
         hidden_state
