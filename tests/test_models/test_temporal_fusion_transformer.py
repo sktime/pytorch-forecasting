@@ -23,6 +23,7 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -293,6 +294,10 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
     model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique()[:2], **kwargs)
 
 
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
     averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)

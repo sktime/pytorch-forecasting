@@ -12,6 +12,7 @@ from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MQF2DistributionLoss, QuantileLoss
 from pytorch_forecasting.metrics.distributions import ImplicitQuantileNetworkDistributionLoss
 from pytorch_forecasting.models import NHiTS
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
@@ -147,6 +148,10 @@ def test_pickle(model):
     pickle.loads(pkl)
 
 
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
 def test_interpretation(model, dataloaders_with_covariates):
     raw_predictions = model.predict(dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True)
     model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=0, add_loss_to_title=True)
