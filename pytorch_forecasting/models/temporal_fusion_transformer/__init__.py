@@ -706,10 +706,6 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             plt.Figure: matplotlib figure
         """
-        _check_matplotlib("plot_prediction")
-
-        from matplotlib import pyplot as plt
-
         # plot prediction as normal
         fig = super().plot_prediction(
             x,
@@ -738,7 +734,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f.tight_layout()
         return fig
 
-    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]) -> Dict[str, plt.Figure]:
+    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]):
         """
         Make figures that interpret model.
 
@@ -751,6 +747,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             dictionary of matplotlib figures
         """
+        _check_matplotlib("plot_interpretation")
+
+        import matplotlib.pyplot as plt
+
         figs = {}
 
         # attention
@@ -792,6 +792,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         Log interpretation metrics to tensorboard.
         """
+        _check_matplotlib("log_interpretation")
+
+        import matplotlib.pyplot as plt
+
         # extract interpretations
         interpretation = {
             # use padded_stack because decoder length histogram can be of different length
