@@ -263,6 +263,11 @@ class NBeats(BaseModel):
         """
         Log interpretation of network predictions in tensorboard.
         """
+        mpl_available = _check_matplotlib("log_interpretation", raise_exception=False)
+
+        if not mpl_available:
+            return None
+
         label = ["val", "train"][self.training]
         if self.log_interval > 0 and batch_idx % self.log_interval == 0:
             fig = self.plot_interpretation(x, out, idx=0)

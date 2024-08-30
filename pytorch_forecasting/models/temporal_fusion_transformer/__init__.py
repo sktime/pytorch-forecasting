@@ -792,10 +792,6 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         Log interpretation metrics to tensorboard.
         """
-        _check_matplotlib("log_interpretation")
-
-        import matplotlib.pyplot as plt
-
         # extract interpretations
         interpretation = {
             # use padded_stack because decoder length histogram can be of different length
@@ -819,6 +815,13 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
         interpretation["attention"] = interpretation["attention"] / attention_occurances.pow(2).clamp(1.0)
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
+
+        mpl_available = _check_matplotlib("log_interpretation", raise_exception=False)
+
+        if not mpl_available:
+            return None
+
+        import matplotlib.pyplot as plt
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
         label = self.current_stage
