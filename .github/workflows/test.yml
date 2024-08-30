@@ -35,7 +35,7 @@ jobs:
         shell: bash
 
   pytest-nosoftdeps:
-    name: no-softdeps
+    name: Run pytest without soft dependencies
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
