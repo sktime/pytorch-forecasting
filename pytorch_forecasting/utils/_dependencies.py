@@ -38,3 +38,19 @@ def _get_installed_packages():
         MAJOR.MINOR.PATCH version format is used for versions, e.g., "1.2.3"
     """
     return _get_installed_packages_private().copy()
+
+
+def _check_matplotlib(ref="This feature"):
+    """Check if matplotlib is installed.
+
+    Returns
+    -------
+    bool : whether matplotlib is installed
+    """  
+    pkgs = _get_installed_packages()
+
+    if "matplotlib" not in pkgs:
+        raise ImportError(
+            f"{ref} requires matplotlib. "
+            "Please install matplotlib with `pip install matplotlib`."
+        )

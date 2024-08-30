@@ -5,7 +5,6 @@ The temporal fusion transformer is a powerful predictive model for forecasting t
 from copy import copy
 from typing import Dict, List, Tuple, Union
 
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch import nn
@@ -24,6 +23,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
 )
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
@@ -690,7 +690,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         show_future_observed: bool = True,
         ax=None,
         **kwargs,
-    ) -> plt.Figure:
+    ):
         """
         Plot actuals vs prediction and attention
 
@@ -706,6 +706,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             plt.Figure: matplotlib figure
         """
+        _check_matplotlib("plot_prediction")
+
+        from matplotlib import pyplot as plt
 
         # plot prediction as normal
         fig = super().plot_prediction(

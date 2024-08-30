@@ -15,7 +15,6 @@ from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import BasePredictionWriter, LearningRateFinder
 from lightning.pytorch.trainer.states import RunningStage
 from lightning.pytorch.utilities.parsing import get_init_args
-import matplotlib.pyplot as plt
 import numpy as np
 from numpy import iterable
 import pandas as pd
@@ -55,6 +54,7 @@ from pytorch_forecasting.utils import (
     groupby_apply,
     to_list,
 )
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 # todo: compile models
 
@@ -971,7 +971,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         ax=None,
         quantiles_kwargs: Dict[str, Any] = {},
         prediction_kwargs: Dict[str, Any] = {},
-    ) -> plt.Figure:
+    ):
         """
         Plot prediction of prediction vs actuals
 
@@ -990,6 +990,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             matplotlib figure
         """
+        _check_matplotlib("plot_prediction")
+
+        from matplotlib import pyplot as plt
+
         # all true values for y of the first sample in batch
         encoder_targets = to_list(x["encoder_target"])
         decoder_targets = to_list(x["decoder_target"])
@@ -1096,6 +1100,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """
+        _check_matplotlib("log_gradient_flow")
+
+        from matplotlib import pyplot as plt
+
         ave_grads = []
         layers = []
         for name, p in named_parameters:
@@ -1842,7 +1850,7 @@ class BaseModelWithCovariates(BaseModel):
 
     def plot_prediction_actual_by_variable(
         self, data: Dict[str, Dict[str, torch.Tensor]], name: str = None, ax=None, log_scale: bool = None
-    ) -> Union[Dict[str, plt.Figure], plt.Figure]:
+    ):
         """
         Plot predicions and actual averages by variables
 
@@ -1860,6 +1868,10 @@ class BaseModelWithCovariates(BaseModel):
         Returns:
             Union[Dict[str, plt.Figure], plt.Figure]: matplotlib figure
         """
+        _check_matplotlib("plot_prediction_actual_by_variable")
+
+        from matplotlib import pyplot as plt
+
         if name is None:  # run recursion for figures
             figs = {name: self.plot_prediction_actual_by_variable(data, name) for name in data["support"].keys()}
             return figs
@@ -2230,7 +2242,7 @@ class AutoRegressiveBaseModel(BaseModel):
         ax=None,
         quantiles_kwargs: Dict[str, Any] = {},
         prediction_kwargs: Dict[str, Any] = {},
-    ) -> plt.Figure:
+    ):
         """
         Plot prediction of prediction vs actuals
 

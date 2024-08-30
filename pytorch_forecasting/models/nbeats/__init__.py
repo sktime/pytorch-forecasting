@@ -4,7 +4,6 @@ N-Beats model for timeseries forecasting without covariates.
 
 from typing import Dict, List
 
-import matplotlib.pyplot as plt
 import torch
 from torch import nn
 
@@ -13,6 +12,7 @@ from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NBeats(BaseModel):
@@ -280,7 +280,7 @@ class NBeats(BaseModel):
         idx: int,
         ax=None,
         plot_seasonality_and_generic_on_secondary_axis: bool = False,
-    ) -> plt.Figure:
+    ):
         """
         Plot interpretation.
 
@@ -299,6 +299,10 @@ class NBeats(BaseModel):
         Returns:
             plt.Figure: matplotlib figure
         """
+        _check_matplotlib("plot_interpretation")
+
+        import matplotlib.pyplot as plt
+
         if ax is None:
             fig, ax = plt.subplots(2, 1, figsize=(6, 8))
         else:
