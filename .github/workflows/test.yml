@@ -35,7 +35,7 @@ jobs:
         shell: bash
 
   pytest-nosoftdeps:
-    name: no-softdeps
+    name: no softdeps
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
