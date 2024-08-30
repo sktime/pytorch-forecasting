@@ -178,5 +178,5 @@ intersphinx_mapping = {
 }
 
 suppress_warnings = [
-    'autosummary.import_cycle',
+    "autosummary.import_cycle",
 ]
