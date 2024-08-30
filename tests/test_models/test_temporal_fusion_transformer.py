@@ -376,6 +376,10 @@ def test_prediction_with_dataframe(model, data_with_covariates):
     model.predict(data_with_covariates, fast_dev_run=True)
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason="Test skipped on Windows OS due to issues with ddp, see #1632",
+)
 @pytest.mark.parametrize("use_learning_rate_finder", [True, False])
 def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tmp_path, use_learning_rate_finder):
     train_dataloader = dataloaders_with_covariates["train"]
