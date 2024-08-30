@@ -816,7 +816,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         interpretation["attention"] = interpretation["attention"] / attention_occurances.pow(2).clamp(1.0)
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
 
-        mpl_available = _check_matplotlib("log_interpretation", raise_exception=False)
+        mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
 
         if not mpl_available:
             return None

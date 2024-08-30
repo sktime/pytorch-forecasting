@@ -263,7 +263,7 @@ class NBeats(BaseModel):
         """
         Log interpretation of network predictions in tensorboard.
         """
-        mpl_available = _check_matplotlib("log_interpretation", raise_exception=False)
+        mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
 
         if not mpl_available:
             return None
