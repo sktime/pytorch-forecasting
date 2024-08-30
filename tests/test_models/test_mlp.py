@@ -6,7 +6,6 @@ from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 from test_models.conftest import make_dataloaders
-from torch.optim import SGD
 from torchmetrics import MeanSquaredError
 
 from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss

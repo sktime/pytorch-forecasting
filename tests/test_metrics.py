@@ -1,6 +1,5 @@
 import itertools
 
-import numpy as np
 import pytest
 import torch
 from torch.nn.utils import rnn

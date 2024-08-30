@@ -16,7 +16,6 @@ from torch.distributions.transforms import (
     SigmoidTransform,
     Transform,
     _clipped_sigmoid,
-    identity_transform,
 )
 import torch.nn.functional as F
 from torch.nn.utils import rnn

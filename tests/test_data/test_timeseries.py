@@ -1,9 +1,7 @@
 from copy import deepcopy
-import itertools
 import pickle
 from typing import Dict
 
-import networkx
 import numpy as np
 import pandas as pd
 import pytest
@@ -13,7 +11,6 @@ from torch.utils.data.sampler import SequentialSampler
 
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import MultiNormalizer, TorchNormalizer
-from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data.timeseries import _find_end_indices
 from pytorch_forecasting.utils import to_list
 

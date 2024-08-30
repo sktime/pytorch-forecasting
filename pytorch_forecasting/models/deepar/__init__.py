@@ -4,7 +4,7 @@
 which is the one of the most popular forecasting algorithms and is often used as a baseline
 """
 
-from copy import copy, deepcopy
+from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 
-from pytorch_forecasting.data.encoders import EncoderNormalizer, MultiNormalizer, NaNLabelEncoder
+from pytorch_forecasting.data.encoders import MultiNormalizer, NaNLabelEncoder
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import (
     MAE,
@@ -22,7 +22,6 @@ from pytorch_forecasting.metrics import (
     RMSE,
     SMAPE,
     DistributionLoss,
-    Metric,
     MultiLoss,
     MultivariateDistributionLoss,
     NormalDistributionLoss,

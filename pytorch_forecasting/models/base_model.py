@@ -3,7 +3,6 @@ Timeseries models share a number of common characteristics. This module implemen
 """
 
 from collections import namedtuple
-import copy
 from copy import deepcopy
 import inspect
 import logging
@@ -15,7 +14,7 @@ import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import BasePredictionWriter, LearningRateFinder
 from lightning.pytorch.trainer.states import RunningStage
-from lightning.pytorch.utilities.parsing import AttributeDict, get_init_args
+from lightning.pytorch.utilities.parsing import get_init_args
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import iterable
