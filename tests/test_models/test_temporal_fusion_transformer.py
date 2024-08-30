@@ -25,7 +25,6 @@ from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
-
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
 
