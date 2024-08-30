@@ -246,7 +246,7 @@ def test_init_shared_network(dataloaders_with_covariates):
 
 
 @pytest.mark.skipif(
-    sys.platform.startswith('win'),
+    sys.platform.startswith("win"),
     reason="Test skipped on Windows OS due to issues with ddp, see #1623",
 )
 @pytest.mark.parametrize("strategy", ["ddp"])
