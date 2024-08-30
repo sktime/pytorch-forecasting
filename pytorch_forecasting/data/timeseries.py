@@ -1357,9 +1357,7 @@ class TimeSeriesDataSet(Dataset):
         )
         return index
 
-    def plot_randomization(
-        self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None
-    ):
+    def plot_randomization(self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None):
         """
         Plot expected randomized length distribution.
 
