@@ -70,6 +70,10 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     )
 
 
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="Test skipped if required package cpflows not available",
+)
 def test_mqf2_loss(data_with_covariates, tmp_path):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
