@@ -245,6 +245,10 @@ def test_init_shared_network(dataloaders_with_covariates):
     net.predict(dataset, fast_dev_run=True)
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith('win'),
+    reason="Test skipped on Windows OS due to issues with ddp, see #1623",
+)
 @pytest.mark.parametrize("strategy", ["ddp"])
 def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
     train_dataloader = dataloaders_with_covariates["train"]
