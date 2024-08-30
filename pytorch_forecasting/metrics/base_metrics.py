@@ -3,7 +3,7 @@ Base classes for metrics - only for inheritance.
 """
 
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import warnings
 
 from sklearn.base import BaseEstimator

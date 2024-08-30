@@ -3,7 +3,7 @@ import shutil
 import sys
 
 import lightning.pytorch as pl
-from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import pytest
