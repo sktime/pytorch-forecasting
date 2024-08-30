@@ -1,5 +1,3 @@
-import itertools
-
 import pytest
 import torch
 

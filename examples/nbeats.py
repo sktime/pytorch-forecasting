@@ -2,9 +2,7 @@ import sys
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
-from lightning.pytorch.tuner import Tuner
 import pandas as pd
-from sklearn.preprocessing import scale
 
 from pytorch_forecasting import NBeats, TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
