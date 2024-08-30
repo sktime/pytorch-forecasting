@@ -23,6 +23,7 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -69,6 +70,10 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     )
 
 
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="Test skipped if required package cpflows not available",
+)
 def test_mqf2_loss(data_with_covariates, tmp_path):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(

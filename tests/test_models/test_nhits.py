@@ -12,6 +12,7 @@ from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MQF2DistributionLoss, QuantileLoss
 from pytorch_forecasting.metrics.distributions import ImplicitQuantileNetworkDistributionLoss
 from pytorch_forecasting.models import NHiTS
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
@@ -81,18 +82,20 @@ def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
     )
 
 
-@pytest.mark.parametrize(
-    "dataloader",
-    [
-        "with_covariates",
-        "different_encoder_decoder_size",
-        "fixed_window_without_covariates",
-        "multi_target",
-        "quantiles",
-        "multivariate-quantiles",
-        "implicit-quantiles",
-    ],
-)
+LOADERS = [
+    "with_covariates",
+    "different_encoder_decoder_size",
+    "fixed_window_without_covariates",
+    "multi_target",
+    "quantiles",
+    "implicit-quantiles",
+]
+
+if "cpflows" in _get_installed_packages():
+    LOADERS += ["multivariate-quantiles"]
+
+
+@pytest.mark.parametrize("dataloader", LOADERS)
 def test_integration(
     dataloaders_with_covariates,
     dataloaders_with_different_encoder_decoder_length,
