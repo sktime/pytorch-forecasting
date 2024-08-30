@@ -176,3 +176,7 @@ shutil.copy(
 intersphinx_mapping = {
     "sklearn": ("https://scikit-learn.org/stable/", None),
 }
+
+suppress_warnings = [
+    'autosummary.import_cycle',
+]
