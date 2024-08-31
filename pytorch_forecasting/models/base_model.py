@@ -1204,6 +1204,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     optimizer = getattr(pytorch_optimizer, self.hparams.optimizer)(
                         self.parameters(), lr=lr, **optimizer_params
                     )
+            else:
+                raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
         else:
             raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
 
