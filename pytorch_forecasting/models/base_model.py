@@ -19,8 +19,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import iterable
 import pandas as pd
-import pytorch_optimizer
-from pytorch_optimizer import Ranger21
 import scipy.stats
 import torch
 import torch.nn as nn
@@ -55,6 +53,7 @@ from pytorch_forecasting.utils import (
     groupby_apply,
     to_list,
 )
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 # todo: compile models
 
@@ -1132,6 +1131,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Tuple[List]: first entry is list of optimizers and second is list of schedulers
         """
+        ptopt_in_env = "pytorch-optimizer" in _get_installed_packages
         # either set a schedule of lrs or find it dynamically
         if self.hparams.optimizer_params is None:
             optimizer_params = {}
@@ -1159,6 +1159,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
             )
         elif self.hparams.optimizer == "ranger":
+            if not ptopt_in_env:
+                raise ImportError(
+                    "optimizer 'ranger' requires pytorch-optimizer in the evironment. "
+                    "Please install pytorch-optimizer with `pip install pytorch-optimizer`."
+                )
+            from pytorch_optimizer import Ranger21
+
             if any([isinstance(c, LearningRateFinder) for c in self.trainer.callbacks]):
                 # if finding learning rate, switch off warm up and cool down
                 optimizer_params.setdefault("num_warm_up_iterations", 0)
@@ -1185,15 +1192,18 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
             except TypeError:  # in case there is no weight decay
                 optimizer = getattr(torch.optim, self.hparams.optimizer)(self.parameters(), lr=lr, **optimizer_params)
-        elif hasattr(pytorch_optimizer, self.hparams.optimizer):
-            try:
-                optimizer = getattr(pytorch_optimizer, self.hparams.optimizer)(
-                    self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
-                )
-            except TypeError:  # in case there is no weight decay
-                optimizer = getattr(pytorch_optimizer, self.hparams.optimizer)(
-                    self.parameters(), lr=lr, **optimizer_params
-                )
+        elif ptopt_in_env:
+            import pytorch_optimizer
+
+            if hasattr(pytorch_optimizer, self.hparams.optimizer):
+                try:
+                    optimizer = getattr(pytorch_optimizer, self.hparams.optimizer)(
+                        self.parameters(), lr=lr, weight_decay=self.hparams.weight_decay, **optimizer_params
+                    )
+                except TypeError:  # in case there is no weight decay
+                    optimizer = getattr(pytorch_optimizer, self.hparams.optimizer)(
+                        self.parameters(), lr=lr, **optimizer_params
+                    )
         else:
             raise ValueError(f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown")
 
