@@ -69,7 +69,7 @@ dependencies = [
 [project.optional-dependencies]
 
 all_extras = [
-  "pytorch_optimizer >=2.5.1,<3.0.0",
+  "pytorch_optimizer >=2.5.1,<4.0.0",
 ]
 
 dev = [
