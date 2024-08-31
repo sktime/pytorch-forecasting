@@ -64,10 +64,13 @@ dependencies = [
   "scikit-learn >=1.2,<2.0",
   "matplotlib",
   "statsmodels",
-  "pytorch-optimizer >=2.5.1,<3.0.0",
 ]
 
 [project.optional-dependencies]
+
+all_extras = [
+  "pytorch-optimizer >=2.5.1,<3.0.0",
+]
 
 dev = [
   "pydocstyle >=6.1.1,<7.0.0",
