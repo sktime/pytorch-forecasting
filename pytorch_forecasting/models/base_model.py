@@ -460,7 +460,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 warnings.warn(
                     "In pytorch-forecasting models, from version 1.2.0, "
                     "the default optimizer will be 'adam', in order to "
-                    "minimize the number of dependencies in default parameter settings. " 
+                    "minimize the number of dependencies in default parameter settings. "
                     "Users who wish to ensure their code continues using 'ranger' as optimizer "
                     "should ensure that pytorch_optimizer is installed, and set the optimizer "
                     "parameter explicitly to 'ranger'.",
@@ -475,7 +475,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     "otherwise it defaults to 'ranger' from pytorch_optimizer. "
                     "From version 1.2.0, the default optimizer will be 'adam' "
                     "regardless of whether pytorch_optimizer is installed, in order to "
-                    "minimize the number of dependencies in default parameter settings. " 
+                    "minimize the number of dependencies in default parameter settings. "
                     "Users who wish to ensure their code continues using 'ranger' as optimizer "
                     "should ensure that pytorch_optimizer is installed, and set the optimizer "
                     "parameter explicitly to 'ranger'.",
