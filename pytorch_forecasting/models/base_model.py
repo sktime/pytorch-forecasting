@@ -1131,7 +1131,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Tuple[List]: first entry is list of optimizers and second is list of schedulers
         """
-        ptopt_in_env = "pytorch-optimizer" in _get_installed_packages()
+        ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
         # either set a schedule of lrs or find it dynamically
         if self.hparams.optimizer_params is None:
             optimizer_params = {}
@@ -1161,8 +1161,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         elif self.hparams.optimizer == "ranger":
             if not ptopt_in_env:
                 raise ImportError(
-                    "optimizer 'ranger' requires pytorch-optimizer in the evironment. "
-                    "Please install pytorch-optimizer with `pip install pytorch-optimizer`."
+                    "optimizer 'ranger' requires pytorch_optimizer in the evironment. "
+                    "Please install pytorch_optimizer with `pip install pytorch_optimizer`."
                 )
             from pytorch_optimizer import Ranger21
 
