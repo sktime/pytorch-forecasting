@@ -469,7 +469,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             else:
                 init_args["optimizer"] = "adam"
                 warnings.warn(
-                    "In pytorch-forecasting models, since version 1.1.0, "
+                    "In pytorch-forecasting models, on versions 1.1.X, "
                     "the default optimizer defaults to 'adam', "
                     "if pytorch_optimizer is not installed, "
                     "otherwise it defaults to 'ranger' from pytorch_optimizer. "
