@@ -452,12 +452,35 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         frame = inspect.currentframe()
         init_args = get_init_args(frame)
 
+        # TODO 1.2.0: remove warnings and change default optimizer to "adam"
         if init_args["optimizer"] is None:
             ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
             if ptopt_in_env:
                 init_args["optimizer"] = "ranger"
+                warnings.warn(
+                    "In pytorch-forecasting models, from version 1.2.0, "
+                    "the default optimizer will be 'adam', in order to "
+                    "minimize the number of dependencies in default parameter settings. " 
+                    "Users who wish to continue using 'ranger' as default optimizer "
+                    "should ensure that pytorch_optimizer is installed, and set the optimizer "
+                    "parameter explicitly to 'ranger'.",
+                    stacklevel=2,
+                )
             else:
                 init_args["optimizer"] = "adam"
+                warnings.warn(
+                    "In pytorch-forecasting models, since version 1.1.0, "
+                    "the default optimizer defaults to 'adam', "
+                    "if pytorch_optimizer is not installed, "
+                    "otherwise it defaults to 'ranger' from pytorch_optimizer. "
+                    "From version 1.2.0, the default optimizer will be 'adam' "
+                    "regardless of whether pytorch_optimizer is installed, in order to "
+                    "minimize the number of dependencies in default parameter settings. " 
+                    "Users who wish to continue using 'ranger' as default optimizer "
+                    "should ensure that pytorch_optimizer is installed, and set the optimizer "
+                    "parameter explicitly to 'ranger'.",
+                    stacklevel=2,
+                )
 
         self.save_hyperparameters(
             {name: val for name, val in init_args.items() if name not in self.hparams and name not in ["self"]}
