@@ -410,7 +410,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         optimizer_params: Dict[str, Any] = None,
         monotone_constaints: Dict[str, int] = {},
         output_transformer: Callable = None,
-        optimizer="Ranger",
+        optimizer=None,
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -444,12 +444,21 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 or ``pytorch_optimizer``.
                 Alternatively, a class or function can be passed which takes parameters as first argument and
                 a `lr` argument (optionally also `weight_decay`). Defaults to
-                `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_.
+                `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_,
+                if pytorch_optimizer is installed, otherwise "adam".
         """
         super().__init__()
         # update hparams
         frame = inspect.currentframe()
         init_args = get_init_args(frame)
+
+        if init_args["optimizer"] is None:
+            ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
+            if ptopt_in_env:
+                init_args["optimizer"] = "ranger"
+            else:
+                init_args["optimizer"] = "adam"
+
         self.save_hyperparameters(
             {name: val for name, val in init_args.items() if name not in self.hparams and name not in ["self"]}
         )
