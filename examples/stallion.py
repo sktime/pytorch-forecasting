@@ -85,7 +85,7 @@ val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, nu
 
 
 # save datasets
-training.save("t raining.pkl")
+training.save("training.pkl")
 validation.save("validation.pkl")
 
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
