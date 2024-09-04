@@ -1,6 +1,6 @@
 """Metrics that allow the parametric forecast of parameters of uni- and multivariate distributions."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import List, Optional
 
 import numpy as np
 from sklearn.base import BaseEstimator
