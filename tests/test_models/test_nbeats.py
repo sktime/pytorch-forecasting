@@ -7,6 +7,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 
 from pytorch_forecasting.models import NBeats
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
@@ -76,6 +77,10 @@ def test_pickle(model):
     pickle.loads(pkl)
 
 
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
 def test_interpretation(model, dataloaders_fixed_window_without_covariates):
     raw_predictions = model.predict(
         dataloaders_fixed_window_without_covariates["val"], mode="raw", return_x=True, fast_dev_run=True

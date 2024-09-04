@@ -298,6 +298,10 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
     model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique()[:2], **kwargs)
 
 
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
     averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)

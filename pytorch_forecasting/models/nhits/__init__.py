@@ -5,7 +5,6 @@ N-HiTS model for timeseries forecasting with covariates.
 from copy import copy
 from typing import Dict, List, Optional, Tuple, Union
 
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch import nn
@@ -17,6 +16,7 @@ from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.utils import create_mask, to_list
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NHiTS(BaseModelWithCovariates):
@@ -419,7 +419,7 @@ class NHiTS(BaseModelWithCovariates):
         output: Dict[str, torch.Tensor],
         idx: int,
         ax=None,
-    ) -> plt.Figure:
+    ):
         """
         Plot interpretation.
 
@@ -436,6 +436,10 @@ class NHiTS(BaseModelWithCovariates):
         Returns:
             plt.Figure: matplotlib figure
         """
+        _check_matplotlib("plot_interpretation")
+
+        from matplotlib import pyplot as plt
+
         if not isinstance(self.loss, MultiLoss):  # not multi-target
             prediction = self.to_prediction(dict(prediction=output["prediction"][[idx]].detach()))[0].cpu()
             block_forecasts = [
@@ -535,6 +539,11 @@ class NHiTS(BaseModelWithCovariates):
         """
         Log interpretation of network predictions in tensorboard.
         """
+        mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
+
+        if not mpl_available:
+            return None
+
         label = ["val", "train"][self.training]
         if self.log_interval > 0 and batch_idx % self.log_interval == 0:
             fig = self.plot_interpretation(x, out, idx=0)
