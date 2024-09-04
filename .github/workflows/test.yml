@@ -103,11 +103,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-<<<<<<< Updated upstream
-          pip install ".[dev,github-actions,graph,mqf2]"
-=======
           pip install ".[dev,all_extras,github-actions,mqf2]"
->>>>>>> Stashed changes
 
       - name: Show dependencies
         run: python -m pip list
