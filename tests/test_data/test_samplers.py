@@ -1,3 +1,4 @@
+from helpers import monkeypatch_env
 import pytest
 import torch
 from torch.utils.data.sampler import SequentialSampler
@@ -13,6 +14,7 @@ from pytorch_forecasting.data import TimeSynchronizedBatchSampler
         (True, False, False, 1000),
     ],
 )
+@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 def test_TimeSynchronizedBatchSampler(test_dataset, shuffle, drop_last, as_string, batch_size):
     if as_string:
         dataloader = test_dataset.to_dataloader(

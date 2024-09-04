@@ -1,6 +1,7 @@
 import pickle
 import shutil
 
+from helpers import monkeypatch_env
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -98,6 +99,7 @@ def _integration(
         ),
     ],
 )
+@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 def test_integration(data_with_covariates, tmp_path, kwargs):
     _integration(data_with_covariates, tmp_path, **kwargs)
 
@@ -115,6 +117,7 @@ def model(dataloaders_with_covariates):
     return net
 
 
+@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)

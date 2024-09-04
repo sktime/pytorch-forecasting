@@ -1,3 +1,4 @@
+from helpers import monkeypatch_env
 import pytest
 import torch
 
@@ -17,6 +18,7 @@ from pytorch_forecasting import MultiEmbedding
         ),
     ],
 )
+@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 def test_MultiEmbedding(kwargs):
     x = torch.randint(0, 10, size=(4, 3))
     embedding = MultiEmbedding(**kwargs)

@@ -1,10 +1,12 @@
 import math
 
+from helpers import monkeypatch_env
 import torch
 
 from pytorch_forecasting.utils import autocorrelation
 
 
+@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 def test_autocorrelation():
     x = torch.sin(torch.linspace(0, 2 * 2 * math.pi, 201))
     corr = autocorrelation(x, dim=-1)
