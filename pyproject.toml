@@ -67,6 +67,12 @@ dependencies = [
 
 [project.optional-dependencies]
 
+tuning = [
+  "optuna >=3.1.0,<4.0.0",
+  "optuna-integration",
+  "statsmodels",
+]
+
 all_extras = [
   "optuna >=3.1.0,<4.0.0",
   "optuna-integration",
