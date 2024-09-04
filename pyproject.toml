@@ -66,6 +66,29 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# there are the following dependency sets:
+# - all_extras - all soft dependencies
+# - granular dependency sets:
+#     - tuning - dependencies for tuning hyperparameters via optuna
+#     - mqf2 - dependencies for multivariate quantile loss
+#     - graph - dependencies for graph based forecasting
+# - dev - the developer dependency set, for contributors to pytorch-forecasting
+# - CI related: e.g., dev, github-actions. Not for users of sktime.
+#
+# soft dependencies are not required for the core functionality of sktime
+# but are required by popular estimators, e.g., prophet, tbats, etc.
+
+# all soft dependencies
+#
+# users can install via "pip install pytorch-forecasting[all_extras]"
+#
+all_extras = [
+  "cpflows",
+  "networkx",
+  "optuna >=3.1.0,<4.0.0",
+  "optuna-integration",
+  "statsmodels",
+]
 
 tuning = [
   "optuna >=3.1.0,<4.0.0",
@@ -73,12 +96,11 @@ tuning = [
   "statsmodels",
 ]
 
-all_extras = [
-  "optuna >=3.1.0,<4.0.0",
-  "optuna-integration",
-  "statsmodels",
-]
+graph = ["networkx"]
 
+mqf2 = ["cpflows"]
+
+# dev - the developer dependency set, for contributors to pytorch-forecasting
 dev = [
   "pydocstyle >=6.1.1,<7.0.0",
   # checks and make tools
@@ -111,8 +133,6 @@ dev = [
 ]
 
 github-actions = ["pytest-github-actions-annotate-failures"]
-graph = ["networkx"]
-mqf2 = ["cpflows"]
 
 [tool.setuptools.packages.find]
 exclude = ["build_tools"]
