@@ -381,9 +381,18 @@ def test_prediction_with_dataframe(model, data_with_covariates):
     model.predict(data_with_covariates, fast_dev_run=True)
 
 
+SKIP_HYPEPARAM_TEST = (
+    sys.platform.startswith("win")
+    # Test skipped on Windows OS due to issues with ddp, see #1632"
+    or "optuna" not in _get_installed_packages()
+    or "statsmodels" not in _get_installed_packages()
+    # Test skipped if required package optuna or statsmodels not available
+)
+
+
 @pytest.mark.skipif(
-    sys.platform.startswith("win"),
-    reason="Test skipped on Windows OS due to issues with ddp, see #1632",
+    SKIP_HYPEPARAM_TEST,
+    reason="Test skipped on Win due to bug #1632, or if missing required packages",
 )
 @pytest.mark.parametrize("use_learning_rate_finder", [True, False])
 def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tmp_path, use_learning_rate_finder):
