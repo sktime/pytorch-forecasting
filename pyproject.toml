@@ -84,13 +84,13 @@ dependencies = [
 #
 all_extras = [
   "cpflows",
-  "optuna >=3.1.0,<4.0.0",
+  "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "statsmodels",
 ]
 
 tuning = [
-  "optuna >=3.1.0,<4.0.0",
+  "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "statsmodels",
 ]
