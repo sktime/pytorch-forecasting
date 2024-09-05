@@ -115,6 +115,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           sudo defaults write /Library/Preferences/com.apple.CoreDisplay useMetal -boolean no
+          sudo defaults write /Library/Preferences/com.apple.CoreDisplay useIOP -boolean no
 
       - name: test MPS
         shell: bash
