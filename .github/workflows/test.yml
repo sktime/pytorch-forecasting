@@ -108,6 +108,10 @@ jobs:
       - name: Show dependencies
         run: python -m pip list
 
+      - name: test MPS
+        shell: bash
+        run: python -m pytest tests/test_mps.py
+
       - name: Run pytest
         shell: bash
         run: python -m pytest tests
