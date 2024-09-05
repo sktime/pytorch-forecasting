@@ -111,6 +111,11 @@ jobs:
       - name: Show dependencies
         run: python -m pip list
 
+      - name: disable MPS
+        if: runner.os == 'macOS'
+        run: |
+          sudo defaults write /Library/Preferences/com.apple.CoreDisplay useMetal -boolean no
+
       - name: test MPS
         shell: bash
         run: python -m pytest tests/test_mps.py -s
