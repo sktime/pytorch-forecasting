@@ -110,7 +110,7 @@ jobs:
 
       - name: test MPS
         shell: bash
-        run: python -m pytest tests/test_mps.py
+        run: python -m pytest tests/test_mps.py -s
 
       - name: Run pytest
         shell: bash
