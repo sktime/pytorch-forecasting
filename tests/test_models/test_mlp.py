@@ -100,13 +100,13 @@ def _integration(data_with_covariates, tmp_path, data_loader_kwargs={}, train_on
         ),
     ],
 )
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_integration(data_with_covariates, tmp_path, kwargs):
     _integration(data_with_covariates.assign(target=lambda x: x.volume), tmp_path, **kwargs)
 
 
 @pytest.fixture
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def model(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = DecoderMLP.from_dataset(
@@ -119,7 +119,7 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)

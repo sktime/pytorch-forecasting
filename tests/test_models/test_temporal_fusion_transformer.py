@@ -39,12 +39,12 @@ from helpers import monkeypatch_env
 from test_models.conftest import make_dataloaders
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_integration(multiple_dataloaders_with_covariates, tmp_path):
     _integration(multiple_dataloaders_with_covariates, tmp_path, trainer_kwargs=dict(accelerator="cpu"))
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
     _integration(
         dataloaders_with_covariates,
@@ -55,7 +55,7 @@ def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
     )
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_distribution_loss(data_with_covariates, tmp_path):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
@@ -78,7 +78,7 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     "cpflows" not in _get_installed_packages(),
     reason="Test skipped if required package cpflows not available",
 )
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_mqf2_loss(data_with_covariates, tmp_path):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
@@ -243,14 +243,14 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_tensorboard_graph_log(dataloaders_with_covariates, model, tmp_path):
     d = next(iter(dataloaders_with_covariates["train"]))
     logger = TensorBoardLogger("test", str(tmp_path), log_graph=True)
     logger.log_graph(model, d[0])
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_init_shared_network(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = TemporalFusionTransformer.from_dataset(dataset, share_single_variable_networks=True)
@@ -262,7 +262,7 @@ def test_init_shared_network(dataloaders_with_covariates):
     reason="Test skipped on Windows OS due to issues with ddp, see #1623",
 )
 @pytest.mark.parametrize("strategy", ["ddp"])
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
@@ -290,14 +290,14 @@ def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
         shutil.rmtree(tmp_path, ignore_errors=True)
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)
 
 
 @pytest.mark.parametrize("kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")])
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_predict_dependency(model, dataloaders_with_covariates, data_with_covariates, kwargs):
     train_dataset = dataloaders_with_covariates["train"].dataset
     data_with_covariates = data_with_covariates.copy()
@@ -312,7 +312,7 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
     "matplotlib" not in _get_installed_packages(),
     reason="skip test if required package matplotlib not installed",
 )
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
     averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)
@@ -330,13 +330,13 @@ def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
         dict(return_y=True),
     ],
 )
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_prediction_with_dataloder(model, dataloaders_with_covariates, kwargs):
     val_dataloader = dataloaders_with_covariates["val"]
     model.predict(val_dataloader, fast_dev_run=True, **kwargs)
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
     # tests correct concatenation of raw output
     test_data = data_with_covariates.copy()
@@ -383,20 +383,20 @@ def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
     )
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_prediction_with_dataset(model, dataloaders_with_covariates):
     val_dataloader = dataloaders_with_covariates["val"]
     model.predict(val_dataloader.dataset, fast_dev_run=True)
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_prediction_with_write_to_disk(model, dataloaders_with_covariates, tmp_path):
     val_dataloader = dataloaders_with_covariates["val"]
     res = model.predict(val_dataloader.dataset, fast_dev_run=True, output_dir=tmp_path)
     assert res is None, "result should be empty when writing to disk"
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_prediction_with_dataframe(model, data_with_covariates):
     model.predict(data_with_covariates, fast_dev_run=True)
 
@@ -415,7 +415,7 @@ SKIP_HYPEPARAM_TEST = (
     reason="Test skipped on Win due to bug #1632, or if missing required packages",
 )
 @pytest.mark.parametrize("use_learning_rate_finder", [True, False])
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tmp_path, use_learning_rate_finder):
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]

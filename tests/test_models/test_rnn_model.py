@@ -99,7 +99,7 @@ def _integration(
         ),
     ],
 )
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_integration(data_with_covariates, tmp_path, kwargs):
     _integration(data_with_covariates, tmp_path, **kwargs)
 
@@ -117,7 +117,7 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)

@@ -18,7 +18,7 @@ from pytorch_forecasting import MultiEmbedding
         ),
     ],
 )
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_MultiEmbedding(kwargs):
     x = torch.randint(0, 10, size=(4, 3))
     embedding = MultiEmbedding(**kwargs)

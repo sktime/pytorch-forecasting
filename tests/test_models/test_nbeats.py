@@ -11,7 +11,7 @@ from pytorch_forecasting.models import NBeats
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
     val_dataloader = dataloaders_fixed_window_without_covariates["val"]
@@ -74,7 +74,7 @@ def model(dataloaders_fixed_window_without_covariates):
     return net
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)
@@ -84,7 +84,7 @@ def test_pickle(model):
     "matplotlib" not in _get_installed_packages(),
     reason="skip test if required package matplotlib not installed",
 )
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_interpretation(model, dataloaders_fixed_window_without_covariates):
     raw_predictions = model.predict(
         dataloaders_fixed_window_without_covariates["val"], mode="raw", return_x=True, fast_dev_run=True

@@ -6,7 +6,7 @@ import torch
 from pytorch_forecasting.utils import autocorrelation
 
 
-@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+@monkeypatch_env("torch._C._mps_is_available", False)
 def test_autocorrelation():
     x = torch.sin(torch.linspace(0, 2 * 2 * math.pi, 201))
     corr = autocorrelation(x, dim=-1)

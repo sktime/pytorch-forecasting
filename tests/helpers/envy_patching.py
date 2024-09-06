@@ -3,14 +3,14 @@ from functools import wraps
 import pytest
 
 
-def monkeypatch_env(key, value):
+def monkeypatch_env(torch_fn: str, return_value: bool):
     """Decorator to monkeypatch environment variables in tests.
     Parameters
     ----------
-    key : str
-        The environment variable key.
-    value : str
-        The environment variable value.
+    torch_fn : str
+        The torch function to monkeypatch.
+    return_value : bool
+        The return value of the torch function.
 
     Returns
     -------
@@ -23,7 +23,7 @@ def monkeypatch_env(key, value):
     import pytest
     from helpers import monkeypatch_env
 
-    @monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
+    @monkeypatch_env("torch._C._mps_is_available", False)
     def test_get_lstm_cell():
         assert os.getenv("PYTORCH_ENABLE_MPS_FALLBACK") == "1"
     """
@@ -32,7 +32,7 @@ def monkeypatch_env(key, value):
         @wraps(test_func)
         def wrapper(*args, **kwargs):
             monkeypatch = kwargs.get("monkeypatch", pytest.MonkeyPatch())
-            monkeypatch.setenv(key, value)
+            monkeypatch.setattr(torch_fn, lambda: return_value)
 
             return test_func(*args, **kwargs)
 
