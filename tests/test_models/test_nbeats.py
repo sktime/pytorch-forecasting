@@ -8,6 +8,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 
 from pytorch_forecasting.models import NBeats
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 @monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
@@ -79,6 +80,10 @@ def test_pickle(model):
     pickle.loads(pkl)
 
 
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
 @monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_interpretation(model, dataloaders_fixed_window_without_covariates):
     raw_predictions = model.predict(
