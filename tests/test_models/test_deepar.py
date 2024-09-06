@@ -152,7 +152,7 @@ def _integration(
         ),
     ],
 )
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_integration(data_with_covariates, tmp_path, kwargs):
     if "loss" in kwargs and isinstance(kwargs["loss"], NegativeBinomialDistributionLoss):
         data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
@@ -160,7 +160,7 @@ def test_integration(data_with_covariates, tmp_path, kwargs):
 
 
 @pytest.fixture
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def model(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
     net = DeepAR.from_dataset(
@@ -173,20 +173,20 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_predict_average(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], fast_dev_run=True, mode="prediction", n_samples=100)
     assert prediction.ndim == 2, "expected averaging of samples"
 
 
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_predict_samples(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], fast_dev_run=True, mode="samples", n_samples=100)
     assert prediction.size()[-1] == 100, "expected raw samples"
 
 
 @pytest.mark.parametrize("loss", [NormalDistributionLoss(), MultivariateNormalDistributionLoss()])
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_pickle(dataloaders_with_covariates, loss):
     dataset = dataloaders_with_covariates["train"].dataset
     model = DeepAR.from_dataset(

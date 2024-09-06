@@ -10,7 +10,7 @@ import pytest
 from pytorch_forecasting.models import NBeats
 
 
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
     val_dataloader = dataloaders_fixed_window_without_covariates["val"]
@@ -73,13 +73,13 @@ def model(dataloaders_fixed_window_without_covariates):
     return net
 
 
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)
 
 
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_interpretation(model, dataloaders_fixed_window_without_covariates):
     raw_predictions = model.predict(
         dataloaders_fixed_window_without_covariates["val"], mode="raw", return_x=True, fast_dev_run=True

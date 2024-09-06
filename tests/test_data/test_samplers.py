@@ -14,7 +14,7 @@ from pytorch_forecasting.data import TimeSynchronizedBatchSampler
         (True, False, False, 1000),
     ],
 )
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_TimeSynchronizedBatchSampler(test_dataset, shuffle, drop_last, as_string, batch_size):
     if as_string:
         dataloader = test_dataset.to_dataloader(

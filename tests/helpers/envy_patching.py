@@ -23,7 +23,7 @@ def monkeypatch_env(key, value):
     import pytest
     from helpers import monkeypatch_env
 
-    @monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+    @monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
     def test_get_lstm_cell():
         assert os.getenv("PYTORCH_ENABLE_MPS_FALLBACK") == "1"
     """

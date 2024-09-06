@@ -97,7 +97,7 @@ if "cpflows" in _get_installed_packages():
 
 
 @pytest.mark.parametrize("dataloader", LOADERS)
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_integration(
     dataloaders_with_covariates,
     dataloaders_with_different_encoder_decoder_length,
@@ -147,13 +147,13 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)
 
 
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_interpretation(model, dataloaders_with_covariates):
     raw_predictions = model.predict(dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True)
     model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=0, add_loss_to_title=True)
@@ -162,7 +162,7 @@ def test_interpretation(model, dataloaders_with_covariates):
 
 # Bug when max_prediction_length=1 #1571
 @pytest.mark.parametrize("max_prediction_length", [1, 5])
-@monkeypatch_env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+@monkeypatch_env("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.0")
 def test_prediction_length(max_prediction_length: int):
     n_timeseries = 10
     time_points = 10
