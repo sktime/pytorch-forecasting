@@ -3,7 +3,7 @@ from functools import wraps
 import pytest
 
 
-def monkeypatch_env(torch_fn: str, return_value: bool):
+def monkey_patch_torch_fn(torch_fn: str, return_value: bool):
     """Decorator to monkeypatch the torch function in tests.
     Parameters
     ----------
@@ -21,9 +21,9 @@ def monkeypatch_env(torch_fn: str, return_value: bool):
     --------
     import os
     import pytest
-    from helpers import monkeypatch_env
+    from helpers import monkey_patch_torch_fn
 
-    @monkeypatch_env("torch._C._mps_is_available", False)
+    @monkey_patch_torch_fn("torch._C._mps_is_available", False)
     def test_get_lstm_cell():
         import torch
         assert torch._C._mps_is_available() == False

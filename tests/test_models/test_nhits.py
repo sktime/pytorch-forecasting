@@ -1,7 +1,7 @@
 import pickle
 import shutil
 
-from helpers import monkeypatch_env
+from helpers import monkey_patch_torch_fn
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -97,7 +97,7 @@ if "cpflows" in _get_installed_packages():
 
 
 @pytest.mark.parametrize("dataloader", LOADERS)
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_integration(
     dataloaders_with_covariates,
     dataloaders_with_different_encoder_decoder_length,
@@ -147,7 +147,7 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)
@@ -157,7 +157,7 @@ def test_pickle(model):
     "matplotlib" not in _get_installed_packages(),
     reason="skip test if required package matplotlib not installed",
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_interpretation(model, dataloaders_with_covariates):
     raw_predictions = model.predict(dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True)
     model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=0, add_loss_to_title=True)
@@ -166,7 +166,7 @@ def test_interpretation(model, dataloaders_with_covariates):
 
 # Bug when max_prediction_length=1 #1571
 @pytest.mark.parametrize("max_prediction_length", [1, 5])
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_prediction_length(max_prediction_length: int):
     n_timeseries = 10
     time_points = 10

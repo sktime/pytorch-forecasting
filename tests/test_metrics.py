@@ -1,6 +1,6 @@
 import itertools
 
-from helpers import monkeypatch_env
+from helpers import monkey_patch_torch_fn
 import pytest
 import torch
 from torch.nn.utils import rnn
@@ -19,7 +19,7 @@ from pytorch_forecasting.metrics import (
 from pytorch_forecasting.metrics.base_metrics import AggregationMetric, CompositeMetric
 
 
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_composite_metric():
     metric1 = SMAPE()
     metric2 = MAE()
@@ -52,7 +52,7 @@ def test_composite_metric():
         (2 * torch.ones(2, dtype=torch.long), torch.tensor([[[0.0, 1.0], [1.0, 1.0]], [[5.0, 1.0], [1.0, 2.0]]])),
     ],
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_aggregation_metric(decoder_lengths, y):
     y_pred = torch.tensor([[0.0, 2.0], [4.0, 3.0]])
     if (decoder_lengths != y_pred.size(-1)).any():
@@ -68,7 +68,7 @@ def test_aggregation_metric(decoder_lengths, y):
 
 
 @pytest.mark.xfail(reason="failing, to be fixed, bug #1614")
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_none_reduction():
     pred = torch.rand(20, 10)
     target = torch.rand(20, 10)
@@ -81,7 +81,7 @@ def test_none_reduction():
     ["center", "transformation"],
     itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_NormalDistributionLoss(center, transformation):
     mean = 1.0
     std = 0.1
@@ -111,7 +111,7 @@ def test_NormalDistributionLoss(center, transformation):
     ["center", "transformation"],
     itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_LogNormalDistributionLoss(center, transformation):
     mean = 2.0
     std = 0.2
@@ -142,7 +142,7 @@ def test_LogNormalDistributionLoss(center, transformation):
     ["center", "transformation"],
     itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_NegativeBinomialDistributionLoss(center, transformation):
     mean = 100.0
     shape = 1.0
@@ -168,7 +168,7 @@ def test_NegativeBinomialDistributionLoss(center, transformation):
     ["center", "transformation"],
     itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_BetaDistributionLoss(center, transformation):
     initial_mean = 0.1
     initial_shape = 10
@@ -194,7 +194,7 @@ def test_BetaDistributionLoss(center, transformation):
     ["center", "transformation"],
     itertools.product([True, False], ["log", "log1p", "softplus", "relu", "logit", None]),
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_MultivariateNormalDistributionLoss(center, transformation):
     normalizer = TorchNormalizer(center=center, transformation=transformation)
 
@@ -222,7 +222,7 @@ def test_MultivariateNormalDistributionLoss(center, transformation):
         assert torch.isclose(target.std(), samples.std(), atol=0.1, rtol=0.7)
 
 
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_ImplicitQuantileNetworkDistributionLoss():
     batch_size = 3
     n_timesteps = 2

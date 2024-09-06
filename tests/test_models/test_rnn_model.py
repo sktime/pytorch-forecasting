@@ -1,7 +1,7 @@
 import pickle
 import shutil
 
-from helpers import monkeypatch_env
+from helpers import monkey_patch_torch_fn
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -99,7 +99,7 @@ def _integration(
         ),
     ],
 )
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_integration(data_with_covariates, tmp_path, kwargs):
     _integration(data_with_covariates, tmp_path, **kwargs)
 
@@ -117,7 +117,7 @@ def model(dataloaders_with_covariates):
     return net
 
 
-@monkeypatch_env("torch._C._mps_is_available", False)
+@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)

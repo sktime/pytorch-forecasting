@@ -1,3 +1,3 @@
-from .envy_patching import monkeypatch_env
+from .envy_patching import monkey_patch_torch_fn
 
-__all__ = ["monkeypatch_env"]
+__all__ = ["monkey_patch_torch_fn"]
