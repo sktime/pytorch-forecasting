@@ -11,7 +11,6 @@ import inspect
 from typing import Any, Callable, Dict, List, Tuple, Union
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.exceptions import NotFittedError
@@ -32,6 +31,7 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
 from pytorch_forecasting.utils import repr_class
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -1357,9 +1357,7 @@ class TimeSeriesDataSet(Dataset):
         )
         return index
 
-    def plot_randomization(
-        self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None
-    ) -> Tuple[plt.Figure, torch.Tensor]:
+    def plot_randomization(self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None):
         """
         Plot expected randomized length distribution.
 
@@ -1372,6 +1370,10 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             Tuple[plt.Figure, torch.Tensor]: tuple of figure and histogram based on 1000 samples
         """
+        _check_matplotlib("plot_randomization")
+
+        import matplotlib.pyplot as plt
+
         if betas is None:
             betas = self.randomize_length
         if length is None:

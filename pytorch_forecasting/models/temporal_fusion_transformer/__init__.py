@@ -5,7 +5,6 @@ The temporal fusion transformer is a powerful predictive model for forecasting t
 from copy import copy
 from typing import Dict, List, Tuple, Union
 
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch import nn
@@ -24,6 +23,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
 )
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
@@ -690,7 +690,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         show_future_observed: bool = True,
         ax=None,
         **kwargs,
-    ) -> plt.Figure:
+    ):
         """
         Plot actuals vs prediction and attention
 
@@ -706,7 +706,6 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             plt.Figure: matplotlib figure
         """
-
         # plot prediction as normal
         fig = super().plot_prediction(
             x,
@@ -735,7 +734,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f.tight_layout()
         return fig
 
-    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]) -> Dict[str, plt.Figure]:
+    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]):
         """
         Make figures that interpret model.
 
@@ -748,6 +747,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             dictionary of matplotlib figures
         """
+        _check_matplotlib("plot_interpretation")
+
+        import matplotlib.pyplot as plt
+
         figs = {}
 
         # attention
@@ -812,6 +815,13 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
         interpretation["attention"] = interpretation["attention"] / attention_occurances.pow(2).clamp(1.0)
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
+
+        mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
+
+        if not mpl_available:
+            return None
+
+        import matplotlib.pyplot as plt
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
         label = self.current_stage

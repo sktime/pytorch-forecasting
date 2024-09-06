@@ -298,6 +298,10 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
     model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique()[:2], **kwargs)
 
 
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
     averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)
@@ -381,9 +385,18 @@ def test_prediction_with_dataframe(model, data_with_covariates):
     model.predict(data_with_covariates, fast_dev_run=True)
 
 
+SKIP_HYPEPARAM_TEST = (
+    sys.platform.startswith("win")
+    # Test skipped on Windows OS due to issues with ddp, see #1632"
+    or "optuna" not in _get_installed_packages()
+    or "statsmodels" not in _get_installed_packages()
+    # Test skipped if required package optuna or statsmodels not available
+)
+
+
 @pytest.mark.skipif(
-    sys.platform.startswith("win"),
-    reason="Test skipped on Windows OS due to issues with ddp, see #1632",
+    SKIP_HYPEPARAM_TEST,
+    reason="Test skipped on Win due to bug #1632, or if missing required packages",
 )
 @pytest.mark.parametrize("use_learning_rate_finder", [True, False])
 def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tmp_path, use_learning_rate_finder):
