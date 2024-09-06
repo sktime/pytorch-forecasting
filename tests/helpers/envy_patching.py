@@ -4,7 +4,7 @@ import pytest
 
 
 def monkeypatch_env(torch_fn: str, return_value: bool):
-    """Decorator to monkeypatch environment variables in tests.
+    """Decorator to monkeypatch the torch function in tests.
     Parameters
     ----------
     torch_fn : str
@@ -25,7 +25,8 @@ def monkeypatch_env(torch_fn: str, return_value: bool):
 
     @monkeypatch_env("torch._C._mps_is_available", False)
     def test_get_lstm_cell():
-        assert os.getenv("PYTORCH_ENABLE_MPS_FALLBACK") == "1"
+        import torch
+        assert torch._C._mps_is_available() == False
     """
 
     def decorator(test_func):
