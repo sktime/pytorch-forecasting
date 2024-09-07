@@ -1,6 +1,5 @@
 import itertools
 
-from helpers import monkey_patch_torch_fn
 import pytest
 import torch
 from torch import nn
@@ -8,21 +7,18 @@ from torch import nn
 from pytorch_forecasting.models.nn.rnn import GRU, LSTM, get_rnn
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_get_lstm_cell():
     cell = get_rnn("LSTM")(10, 10)
     assert isinstance(cell, LSTM)
     assert isinstance(cell, nn.LSTM)
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_get_gru_cell():
     cell = get_rnn("GRU")(10, 10)
     assert isinstance(cell, GRU)
     assert isinstance(cell, nn.GRU)
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_get_cell_raises_value_error():
     pytest.raises(ValueError, lambda: get_rnn("ABCDEF"))
 
@@ -37,7 +33,6 @@ def test_get_cell_raises_value_error():
         ],
     ),
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_zero_length_sequence(klass, rnn_kwargs):
     rnn = klass(input_size=2, hidden_size=5, **rnn_kwargs)
     x = torch.rand(100, 3, 2)

@@ -2,7 +2,6 @@ from copy import deepcopy
 import pickle
 from typing import Dict
 
-from helpers import monkey_patch_torch_fn
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,7 +15,6 @@ from pytorch_forecasting.data.timeseries import _find_end_indices
 from pytorch_forecasting.utils import to_list
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_find_end_indices():
     diffs = np.array([1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1])
     max_lengths = np.array([4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1])
@@ -28,7 +26,6 @@ def test_find_end_indices():
     np.testing.assert_array_equal(missings, missings_test)
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_raise_short_encoder_length(test_data):
     with pytest.warns(UserWarning):
         test_data = test_data[lambda x: ~((x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3))]
@@ -44,7 +41,6 @@ def test_raise_short_encoder_length(test_data):
         )
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_categorical_target(test_data):
     dataset = TimeSeriesDataSet(
         test_data,
@@ -60,13 +56,11 @@ def test_categorical_target(test_data):
     assert y[0].dtype is torch.long, "target must be of type long"
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_pickle(test_dataset):
     pickle.dumps(test_dataset)
     pickle.dumps(test_dataset.to_dataloader())
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):
     x, y = out
 
@@ -148,7 +142,6 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
         dict(target_normalizer=None),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_TimeSeriesDataSet(test_data, kwargs):
     defaults = dict(
         time_idx="time_idx",
@@ -172,13 +165,11 @@ def test_TimeSeriesDataSet(test_data, kwargs):
     check_dataloader_output(dataset, next(iter(dataset.to_dataloader(num_workers=0))))
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_from_dataset(test_dataset, test_data):
     dataset = TimeSeriesDataSet.from_dataset(test_dataset, test_data)
     check_dataloader_output(dataset, next(iter(dataset.to_dataloader(num_workers=0))))
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_from_dataset_equivalence(test_data):
     training = TimeSeriesDataSet(
         test_data[lambda x: x.time_idx < x.time_idx.max() - 1],
@@ -214,7 +205,6 @@ def test_from_dataset_equivalence(test_data):
         assert torch.isclose(v1[1][0], v2[1][0]).all()
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_dataset_index(test_dataset):
     index = []
     for x, _ in iter(test_dataset.to_dataloader()):
@@ -224,7 +214,6 @@ def test_dataset_index(test_dataset):
 
 
 @pytest.mark.parametrize("min_prediction_idx", [0, 1, 3, 7])
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_min_prediction_idx(test_dataset, test_data, min_prediction_idx):
     dataset = TimeSeriesDataSet.from_dataset(
         test_dataset, test_data, min_prediction_idx=min_prediction_idx, min_encoder_length=1, max_prediction_length=10
@@ -244,7 +233,6 @@ def test_min_prediction_idx(test_dataset, test_data, min_prediction_idx):
         ("Agency_01", "agency", "decoder"),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_overwrite_values(test_dataset, value, variable, target):
     dataset = deepcopy(test_dataset)
 
@@ -293,7 +281,6 @@ def test_overwrite_values(test_dataset, value, variable, target):
         ),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_new_group_ids(test_data, kwargs):
     """Test for new group ids in dataset"""
     train_agency = test_data["agency"].iloc[0]
@@ -321,7 +308,6 @@ def test_new_group_ids(test_data, kwargs):
         pass
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_timeseries_columns_naming(test_data):
     with pytest.raises(ValueError):
         TimeSeriesDataSet(
@@ -336,7 +322,6 @@ def test_timeseries_columns_naming(test_data):
         )
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_encoder_normalizer_for_covariates(test_data):
     dataset = TimeSeriesDataSet(
         test_data,
@@ -364,7 +349,6 @@ def test_encoder_normalizer_for_covariates(test_data):
         dict(weight="volume"),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_multitarget(test_data, kwargs):
     dataset = TimeSeriesDataSet(
         test_data.assign(volume1=lambda x: x.volume),
@@ -382,7 +366,6 @@ def test_multitarget(test_data, kwargs):
     next(iter(dataset.to_dataloader()))
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_check_nas(test_data):
     data = test_data.copy()
     data.loc[0, "volume"] = np.nan
@@ -408,7 +391,6 @@ def test_check_nas(test_data):
         dict(target=["volume", "agency"]),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_lagged_variables(test_data, kwargs):
     dataset = TimeSeriesDataSet(
         test_data.copy(),
@@ -446,7 +428,6 @@ def test_lagged_variables(test_data, kwargs):
     "agency,first_prediction_idx,should_raise",
     [("Agency_01", 0, False), ("xxxxx", 0, True), ("Agency_01", 100, True), ("Agency_01", 4, False)],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
     func = lambda x: (x.agency == agency) & (x.time_idx_first_prediction >= first_prediction_idx)
     if should_raise:
@@ -463,7 +444,6 @@ def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
             assert index["time_idx"].min() == first_prediction_idx, "First prediction filter has failed"
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_graph_sampler(test_dataset):
     from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
 

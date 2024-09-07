@@ -1,4 +1,3 @@
-from helpers import monkey_patch_torch_fn
 import pytest
 import torch
 from torch.utils.data.sampler import SequentialSampler
@@ -14,7 +13,6 @@ from pytorch_forecasting.data import TimeSynchronizedBatchSampler
         (True, False, False, 1000),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_TimeSynchronizedBatchSampler(test_dataset, shuffle, drop_last, as_string, batch_size):
     if as_string:
         dataloader = test_dataset.to_dataloader(

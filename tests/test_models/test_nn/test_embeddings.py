@@ -1,4 +1,3 @@
-from helpers import monkey_patch_torch_fn
 import pytest
 import torch
 
@@ -18,7 +17,6 @@ from pytorch_forecasting import MultiEmbedding
         ),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_MultiEmbedding(kwargs):
     x = torch.randint(0, 10, size=(4, 3))
     embedding = MultiEmbedding(**kwargs)

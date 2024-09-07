@@ -1,7 +1,6 @@
 from copy import deepcopy
 import itertools
 
-from helpers import monkey_patch_torch_fn
 import numpy as np
 import pandas as pd
 import pytest
@@ -27,7 +26,6 @@ from pytorch_forecasting.data import (
         [True, False],
     ),
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_NaNLabelEncoder(data, allow_nan):
     fit_data, transform_data = data
     encoder = NaNLabelEncoder(warn=False, add_nan=allow_nan)
@@ -44,7 +42,6 @@ def test_NaNLabelEncoder(data, allow_nan):
         assert encoder.transform(fit_data)[0] > 0, "First value should not be 0 if not nan"
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_NaNLabelEncoder_add():
     encoder = NaNLabelEncoder(add_nan=False)
     encoder.fit(np.array(["a", "b", "c"]))
@@ -73,7 +70,6 @@ def test_NaNLabelEncoder_add():
         dict(max_length=[1, 2]),
     ],
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_EncoderNormalizer(kwargs):
     kwargs.setdefault("method", "standard")
     kwargs.setdefault("center", True)
@@ -109,7 +105,6 @@ def test_EncoderNormalizer(kwargs):
         [[], ["a"]],
     ),
 )
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_GroupNormalizer(kwargs, groups):
     data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 0.0, 1.1]))
     defaults = dict(method="standard", transformation=None, center=True, scale_by_group=False)
@@ -134,14 +129,12 @@ def test_GroupNormalizer(kwargs, groups):
         ).all(), "Inverse transform should reverse transform"
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_EncoderNormalizer_with_limited_history():
     data = torch.rand(100)
     normalizer = EncoderNormalizer(max_length=[1, 2]).fit(data)
     assert normalizer.center_ == data[-1]
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_MultiNormalizer_fitted():
     data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1], c=[1.1, 1.1, 1.0, 5.0, 1.1]))
 
@@ -160,7 +153,6 @@ def test_MultiNormalizer_fitted():
         pytest.fail(f"{NotFittedError}")
 
 
-@monkey_patch_torch_fn("torch._C._mps_is_available", False)
 def test_TorchNormalizer_dtype_consistency():
     """
     - Ensures that even for float64 `target_scale`, the transformation will not change the prediction dtype.

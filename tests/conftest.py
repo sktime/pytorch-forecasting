@@ -69,3 +69,9 @@ def test_dataset(test_data):
         randomize_length=None,
     )
     return training
+
+
+@pytest.fixture(autouse=True)
+def disable_mps(monkeypatch):
+    """Disable MPS for all tests"""
+    monkeypatch.setattr("torch._C._mps_is_available", lambda: False)
