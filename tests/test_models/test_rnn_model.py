@@ -1,20 +1,18 @@
 import pickle
 import shutil
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
-from torch import nn
 
 from pytorch_forecasting.data.encoders import GroupNormalizer
-from pytorch_forecasting.metrics import MAE, CrossEntropy, QuantileLoss
 from pytorch_forecasting.models import RecurrentNetwork
 
 
 def _integration(
-    data_with_covariates, tmp_path, gpus, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
+    data_with_covariates, tmp_path, cell_type="LSTM", data_loader_kwargs={}, clip_target: bool = False, **kwargs
 ):
     data_with_covariates = data_with_covariates.copy()
     if clip_target:
@@ -39,7 +37,6 @@ def _integration(
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -57,7 +54,7 @@ def _integration(
         log_gradient_flow=True,
         log_interval=1000,
         hidden_size=5,
-        **kwargs
+        **kwargs,
     )
     net.size()
     try:
@@ -101,8 +98,8 @@ def _integration(
         ),
     ],
 )
-def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
-    _integration(data_with_covariates, tmp_path, gpus, **kwargs)
+def test_integration(data_with_covariates, tmp_path, kwargs):
+    _integration(data_with_covariates, tmp_path, **kwargs)
 
 
 @pytest.fixture(scope="session")

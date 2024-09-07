@@ -1,18 +1,17 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
 """
+
 from copy import copy
 from typing import Dict, List, Tuple, Union
 
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch import nn
 from torchmetrics import Metric as LightningMetric
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.data.encoders import NaNLabelEncoder
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, MultiLoss, QuantileLoss
+from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nn import LSTM, MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
@@ -24,6 +23,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     VariableSelectionNetwork,
 )
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 def fig2img(fig):
     import numpy as np
@@ -238,9 +238,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
-            single_variable_grns={}
-            if not self.hparams.share_single_variable_networks
-            else self.shared_single_variable_grns,
+            single_variable_grns=(
+                {} if not self.hparams.share_single_variable_networks else self.shared_single_variable_grns
+            ),
         )
 
         self.decoder_variable_selection = VariableSelectionNetwork(
@@ -250,9 +250,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
-            single_variable_grns={}
-            if not self.hparams.share_single_variable_networks
-            else self.shared_single_variable_grns,
+            single_variable_grns=(
+                {} if not self.hparams.share_single_variable_networks else self.shared_single_variable_grns
+            ),
         )
 
         # static encoders
@@ -543,7 +543,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
         return interpretation
 
-    def epoch_end(self, outputs):
+    def on_epoch_end(self, outputs):
         """
         run at epoch end for training or validation
         """
@@ -587,7 +587,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 decoder_length = out["decoder_lengths"][idx]
                 decoder_attention[idx, :, :, :decoder_length] = x[..., :decoder_length]
         else:
-            decoder_attention = out["decoder_attention"]
+            decoder_attention = out["decoder_attention"].clone()
             decoder_mask = create_mask(out["decoder_attention"].size(1), out["decoder_lengths"])
             decoder_attention[decoder_mask[..., None, None].expand_as(decoder_attention)] = float("nan")
 
@@ -609,7 +609,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 ]
         else:
             # roll encoder attention (so start last encoder value is on the right)
-            encoder_attention = out["encoder_attention"]
+            encoder_attention = out["encoder_attention"].clone()
             shifts = encoder_attention.size(3) - out["encoder_lengths"]
             new_index = (
                 torch.arange(encoder_attention.size(3), device=encoder_attention.device)[None, None, None].expand_as(
@@ -647,7 +647,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # mask where decoder and encoder where not applied when averaging variable selection weights
-        encoder_variables = out["encoder_variables"].squeeze(-2)
+        encoder_variables = out["encoder_variables"].squeeze(-2).clone()
         encode_mask = create_mask(encoder_variables.size(1), out["encoder_lengths"])
         encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         encoder_variables /= (
@@ -656,7 +656,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             .unsqueeze(-1)
         )
 
-        decoder_variables = out["decoder_variables"].squeeze(-2)
+        decoder_variables = out["decoder_variables"].squeeze(-2).clone()
         decode_mask = create_mask(decoder_variables.size(1), out["decoder_lengths"])
         decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
         decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
@@ -702,7 +702,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         show_future_observed: bool = True,
         ax=None,
         **kwargs,
-    ) -> plt.Figure:
+    ):
         """
         Plot actuals vs prediction and attention
 
@@ -718,7 +718,6 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             plt.Figure: matplotlib figure
         """
-
         # plot prediction as normal
         fig = super().plot_prediction(
             x,
@@ -747,7 +746,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f.tight_layout()
         return fig
 
-    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]) -> Dict[str, plt.Figure]:
+    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]):
         """
         Make figures that interpret model.
 
@@ -760,6 +759,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Returns:
             dictionary of matplotlib figures
         """
+        _check_matplotlib("plot_interpretation")
+
+        import matplotlib.pyplot as plt
+
         figs = {}
 
         # attention
@@ -809,7 +812,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         }
         # normalize attention with length histogram squared to account for: 1. zeros in attention and
         # 2. higher attention due to less values
-        attention_occurances = interpretation["encoder_length_histogram"][1:].flip(0).cumsum(0).float()
+        attention_occurances = interpretation["encoder_length_histogram"][1:].flip(0).float().cumsum(0)
         attention_occurances = attention_occurances / attention_occurances.max()
         attention_occurances = torch.cat(
             [
@@ -824,6 +827,13 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
         interpretation["attention"] = interpretation["attention"] / attention_occurances.pow(2).clamp(1.0)
         interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
+
+        mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
+
+        if not mpl_available:
+            return None
+
+        import matplotlib.pyplot as plt
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
         label = self.current_stage

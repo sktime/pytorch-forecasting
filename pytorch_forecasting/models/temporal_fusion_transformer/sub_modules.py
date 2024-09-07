@@ -1,8 +1,9 @@
 """
 Implementation of ``nn.Modules`` for temporal fusion transformer.
 """
+
 import math
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -16,7 +17,6 @@ class TimeDistributed(nn.Module):
         self.batch_first = batch_first
 
     def forward(self, x):
-
         if len(x.size()) <= 2:
             return self.module(x)
 
@@ -50,7 +50,6 @@ class TimeDistributedInterpolation(nn.Module):
         return upsampled
 
     def forward(self, x):
-
         if len(x.size()) <= 2:
             return self.interpolate(x)
 

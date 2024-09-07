@@ -10,14 +10,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints
-from torch.distributions.transforms import (
-    ExpTransform,
-    PowerTransform,
-    SigmoidTransform,
-    Transform,
-    _clipped_sigmoid,
-    identity_transform,
-)
+from torch.distributions.transforms import ExpTransform, PowerTransform, SigmoidTransform, Transform, _clipped_sigmoid
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
@@ -61,6 +54,7 @@ class SoftplusTransform(Transform):
     Transform via the mapping :math:`\text{Softplus}(x) = \log(1 + \exp(x))`.
     The implementation reverts to the linear function when :math:`x > 20`.
     """
+
     domain = constraints.real
     codomain = constraints.positive
     bijective = True
@@ -80,7 +74,6 @@ class SoftplusTransform(Transform):
 
 
 class Expm1Transform(ExpTransform):
-
     codomain = constraints.greater_than_eq(-1.0)
 
     def _call(self, x):
@@ -94,6 +87,7 @@ class MinusOneTransform(Transform):
     r"""
     Transform x -> x - 1.
     """
+
     domain = constraints.real
     codomain = constraints.real
     sign: int = 1
@@ -113,6 +107,7 @@ class ReLuTransform(Transform):
     r"""
     Transform x -> max(0, x).
     """
+
     domain = constraints.real
     codomain = constraints.nonnegative
     sign: int = 1
@@ -365,7 +360,7 @@ class NaNLabelEncoder(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         decoded = self.classes_vector_[y]
         return decoded
 
-    def __call__(self, data: (Dict[str, torch.Tensor])) -> torch.Tensor:
+    def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Extract prediction from network output. Does not map back to input
         categories as this would require a numpy tensor without grad-abilities.
@@ -415,7 +410,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
 
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
-                * logp1: Estimate in log-space but add 1 to values before transforming for stability
+                * log1p: Estimate in log-space but add 1 to values before transforming for stability
                   (e.g. if many small values <<1 are present).
                   Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
                 * logit: Apply logit transformation on values that are between 0 and 1
@@ -470,7 +465,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         if isinstance(y_center, torch.Tensor):
             eps = torch.finfo(y_center.dtype).eps
         else:
-            eps = np.finfo(np.float).eps
+            eps = np.finfo(np.float16).eps
         if self.method == "identity":
             if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros(y_center.size()[:-1])
@@ -647,7 +642,7 @@ class EncoderNormalizer(TorchNormalizer):
 
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
-                * logp1: Estimate in log-space but add 1 to values before transforming for stability
+                * log1p: Estimate in log-space but add 1 to values before transforming for stability
                     (e.g. if many small values <<1 are present).
                     Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
                 * logit: Apply logit transformation on values that are between 0 and 1
@@ -754,7 +749,7 @@ class GroupNormalizer(TorchNormalizer):
 
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
-                * logp1: Estimate in log-space but add 1 to values before transforming for stability
+                * log1p: Estimate in log-space but add 1 to values before transforming for stability
                     (e.g. if many small values <<1 are present).
                     Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
                 * logit: Apply logit transformation on values that are between 0 and 1
@@ -785,7 +780,7 @@ class GroupNormalizer(TorchNormalizer):
             self
         """
         y = self.preprocess(y)
-        eps = np.finfo(np.float).eps
+        eps = np.finfo(np.float16).eps
         if len(self.groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
@@ -953,10 +948,13 @@ class GroupNormalizer(TorchNormalizer):
             Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
                 as second element
         """
+        # # check if arguments are wrong way round
+        if isinstance(y, pd.DataFrame) and not isinstance(X, pd.DataFrame):
+            raise ValueError("X and y is in wrong positions")
         if target_scale is None:
             assert X is not None, "either target_scale or X has to be passed"
             target_scale = self.get_norm(X)
-        return super().transform(y=y, return_norm=return_norm, target_scale=target_scale)
+        return super().transform(y, return_norm=return_norm, target_scale=target_scale)
 
     def get_parameters(self, groups: Union[torch.Tensor, list, tuple], group_names: List[str] = None) -> np.ndarray:
         """
@@ -1060,7 +1058,7 @@ class MultiNormalizer(TorchNormalizer):
 
         for idx, normalizer in enumerate(self.normalizers):
             if isinstance(normalizer, GroupNormalizer):
-                normalizer.fit(y[:, idx], X=X)
+                normalizer.fit(y[:, idx], X)
             else:
                 normalizer.fit(y[:, idx])
 
@@ -1119,7 +1117,7 @@ class MultiNormalizer(TorchNormalizer):
             else:
                 scale = None
             if isinstance(normalizer, GroupNormalizer):
-                r = normalizer.transform(y[idx], X=X, return_norm=return_norm, target_scale=scale)
+                r = normalizer.transform(y[idx], X, return_norm=return_norm, target_scale=scale)
             else:
                 r = normalizer.transform(y[idx], return_norm=return_norm, target_scale=scale)
             res.append(r)
@@ -1187,17 +1185,23 @@ class MultiNormalizer(TorchNormalizer):
                         results = []
                         for idx, norm in enumerate(self.normalizers):
                             new_args = [
-                                arg[idx]
-                                if isinstance(arg, (list, tuple))
-                                and not isinstance(arg, rnn.PackedSequence)
-                                and len(arg) == n
-                                else arg
+                                (
+                                    arg[idx]
+                                    if isinstance(arg, (list, tuple))
+                                    and not isinstance(arg, rnn.PackedSequence)
+                                    and len(arg) == n
+                                    else arg
+                                )
                                 for arg in args
                             ]
                             new_kwargs = {
-                                key: val[idx]
-                                if isinstance(val, list) and not isinstance(val, rnn.PackedSequence) and len(val) == n
-                                else val
+                                key: (
+                                    val[idx]
+                                    if isinstance(val, list)
+                                    and not isinstance(val, rnn.PackedSequence)
+                                    and len(val) == n
+                                    else val
+                                )
                                 for key, val in kwargs.items()
                             }
                             results.append(getattr(norm, name)(*new_args, **new_kwargs))

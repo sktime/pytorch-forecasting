@@ -1,20 +1,16 @@
-from pathlib import Path
 import pickle
 import warnings
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
+from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
-import pandas as pd
 from pandas.core.common import SettingWithCopyWarning
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
-from pytorch_lightning.loggers import TensorBoardLogger
-import torch
 
 from pytorch_forecasting import GroupNormalizer, TemporalFusionTransformer, TimeSeriesDataSet
 from pytorch_forecasting.data.examples import get_stallion_data
-from pytorch_forecasting.metrics import MAE, RMSE, SMAPE, PoissonLoss, QuantileLoss
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
-from pytorch_forecasting.utils import profile
 
 warnings.simplefilter("error", category=SettingWithCopyWarning)
 
@@ -98,7 +94,7 @@ logger = TensorBoardLogger(log_graph=True)
 
 trainer = pl.Trainer(
     max_epochs=100,
-    gpus=0,
+    accelerator="auto",
     gradient_clip_val=0.1,
     limit_train_batches=30,
     # val_check_interval=20,
@@ -131,7 +127,7 @@ print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 # tft.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
 # # run learning rate finder
-# res = trainer.tuner.lr_find(
+# res = Tuner(trainer).lr_find(
 #     tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
 # )
 # print(f"suggested learning rate: {res.suggestion()}")

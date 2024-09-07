@@ -6,7 +6,7 @@
 [conda-url]: https://anaconda.org/conda-forge/pytorch-forecasting
 [build-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/test.yml/badge.svg?branch=master
 [build-url]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/test.yml?query=branch%3Amaster
-[linter-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/code_quality.yml/badge.svg?branch=master
+[linter-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/lint.yml/badge.svg?event=push
 [linter-url]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/code_quality.yml?query=branch%3Amaster
 [docs-image]: https://readthedocs.org/projects/pytorch-forecasting/badge/?version=latest
 [docs-url]: https://pytorch-forecasting.readthedocs.io
@@ -34,7 +34,6 @@ Specifically, the package provides
 - Multiple neural network architectures for timeseries forecasting that have been enhanced
   for real-world deployment and come with in-built interpretation capabilities
 - Multi-horizon timeseries metrics
-- Ranger optimizer for faster model training
 - Hyperparameter tuning with [optuna](https://optuna.readthedocs.io/)
 
 The package is built on [pytorch-lightning](https://pytorch-lightning.readthedocs.io/) to allow training on CPUs, single and multiple GPUs out-of-the-box.
@@ -86,11 +85,12 @@ Networks can be trained with the [PyTorch Lighning Trainer](https://pytorch-ligh
 
 ```python
 # imports for training
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
+import lightning.pytorch as pl
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 # import dataset, network to train and metric to optimize
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, QuantileLoss
+from lightning.pytorch.tuner import Tuner
 
 # load data: this is pandas dataframe with at least a column for
 # * the target (what you want to predict)
@@ -133,7 +133,7 @@ early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience
 lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(
     max_epochs=100,
-    gpus=0,  # run on CPU, if on multiple GPUs, use accelerator="ddp"
+    accelerator="auto",  # run on CPU, if on multiple GPUs, use strategy="ddp"
     gradient_clip_val=0.1,
     limit_train_batches=30,  # 30 batches per epoch
     callbacks=[lr_logger, early_stop_callback],
@@ -160,7 +160,7 @@ tft = TemporalFusionTransformer.from_dataset(
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # find the optimal learning rate
-res = trainer.lr_find(
+res = Tuner(trainer).lr_find(
     tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 )
 # and plot the result - always visually confirm that the suggested learning rate makes sense

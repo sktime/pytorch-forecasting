@@ -9,19 +9,45 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  run-notebook-tutorials:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev,all_extras,github-actions]"
+
+      - name: Show dependencies
+        run:  python -m pip list
+
+      - name: Run example notebooks
+        run: build_tools/run_examples.sh
+        shell: bash
+
+  pytest-nosoftdeps:
+    name: no-softdeps
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-latest] # add windows-2019 when poetry allows installation with `-f` flag
-        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-latest, macos-13, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -30,58 +56,63 @@ jobs:
         run: |
           brew install libomp  # https://github.com/pytorch/pytorch/issues/20030
 
+      - name: Get full Python version
+        id: full-python-version
+        shell: bash
+        run: echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))") >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          pip install ".[dev,github-actions]"
+
+      - name: Show dependencies
+        run: python -m pip list
+
+      - name: Run pytest
+        shell: bash
+        run: python -m pytest tests
+
+  pytest:
+    name: Run pytest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
       - name: Setup macOS
-        if: runner.os == 'windows'
+        if: runner.os == 'macOS'
         run: |
           brew install libomp  # https://github.com/pytorch/pytorch/issues/20030
 
       - name: Get full Python version
         id: full-python-version
         shell: bash
-        run: echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
-
-      - name: Install poetry
-        shell: bash
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-
-      - name: Set poetry path variable
-        run: echo "/Users/runner/.local/bin" >> $GITHUB_PATH
-
-      - name: Configure poetry
-        shell: bash
-        run: poetry config virtualenvs.in-project true
-
-      - name: Set up cache
-        uses: actions/cache@v2
-        id: cache
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Ensure cache is healthy
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
-
-      - name: Upgrade pip
-        shell: bash
-        run: poetry run python -m pip install pip -U
+        run: echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))") >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         shell: bash
-        run: poetry install -E "github-actions graph mqf2"
+        run: |
+          pip install ".[dev,all_extras,github-actions]"
 
-      - name: Install pytorch geometric dependencies
-        shell: bash
-        run: poetry run pip install torch-scatter torch-sparse torch-cluster torch-spline-conv torch-geometric -f https://data.pyg.org/whl/torch-1.12.1+cpu.html
+      - name: Show dependencies
+        run: python -m pip list
 
       - name: Run pytest
         shell: bash
-        run: poetry run pytest tests
+        run: python -m pytest tests
 
       - name: Statistics
-        if: success()
         run: |
           pip install coverage
           coverage report
@@ -99,9 +130,11 @@ jobs:
           fail_ci_if_error: false
 
   docs:
-    name: Test docs build
+    name: Docs build
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v2
@@ -109,28 +142,24 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.8
+          python-version: 3.11
 
       - name: Cache pip
         uses: actions/cache@v2
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('docs/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          restore-keys: ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y pandoc
-          python -m pip install --upgrade pip
+          sudo apt-get update --fix-missing
+          sudo apt-get install -y pandoc
           pip install -r docs/requirements.txt
-        shell: bash
 
       - name: Build sphinx documentation
-        run: |
-          cd docs
-          make clean
-          make html --debug --jobs 2 SPHINXOPTS="-W"
+        working-directory: docs/
+        run: make html --debug --jobs 2 SPHINXOPTS="-W"
 
       - name: Upload built docs
         uses: actions/upload-artifact@v2
@@ -138,4 +167,4 @@ jobs:
           name: docs-results-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.requires }}
           path: docs/build/html/
         # Use always() to always run this step to publish test results when there are test failures
-        if: success()
+        #if: success()

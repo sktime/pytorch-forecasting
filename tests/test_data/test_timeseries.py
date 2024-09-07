@@ -1,18 +1,16 @@
 from copy import deepcopy
-import itertools
 import pickle
 from typing import Dict
 
-import networkx
 import numpy as np
 import pandas as pd
 import pytest
 from sklearn.preprocessing import StandardScaler
 import torch
+from torch.utils.data.sampler import SequentialSampler
 
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import MultiNormalizer, TorchNormalizer
-from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data.timeseries import _find_end_indices
 from pytorch_forecasting.utils import to_list
 
@@ -145,7 +143,6 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
     ],
 )
 def test_TimeSeriesDataSet(test_data, kwargs):
-
     defaults = dict(
         time_idx="time_idx",
         target="volume",
@@ -468,14 +465,14 @@ def test_graph_sampler(test_dataset):
 
             # for each point, sample the neighborhood
             # get groups associated with chosen sample
-            data_groups = self.data_source.data["groups"].float()
+            data_groups = self.sampler.data_source.data["groups"].float()
             n_groups = data_groups.size(1)  # number time series ids
             for idx in batch_samples:
                 name = self._group_index[idx]  # time-synchronized group name
                 sub_group_idx = self._sub_group_index[idx]
                 selected_index = self._groups[name][sub_group_idx]
                 # select all other indices in same time group
-                indices = self.data_source.index.iloc[self._groups[name]]
+                indices = self.sampler.data_source.index.iloc[self._groups[name]]
                 selected_pos = indices["index_start"].iloc[sub_group_idx]
                 # remove selected sample
                 indices = indices[lambda x: x["sequence_id"] != indices["sequence_id"].iloc[sub_group_idx]]
@@ -502,7 +499,9 @@ def test_graph_sampler(test_dataset):
                 ).tolist()
                 yield batch_indices
 
-    dl = test_dataset.to_dataloader(batch_sampler=NeighborhoodSampler(test_dataset, batch_size=200, shuffle=True))
+    dl = test_dataset.to_dataloader(
+        batch_sampler=NeighborhoodSampler(SequentialSampler(test_dataset), batch_size=200, shuffle=True)
+    )
     for idx, a in enumerate(dl):
         print(a[0]["groups"].shape)
         if idx > 100:

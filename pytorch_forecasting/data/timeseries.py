@@ -4,13 +4,13 @@ Timeseries datasets.
 Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
 defines a class that is able to handle a wide variety of timeseries data problems.
 """
+
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
 from typing import Any, Callable, Dict, List, Tuple, Union
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.exceptions import NotFittedError
@@ -20,7 +20,7 @@ import torch
 from torch.distributions import Beta
 from torch.nn.utils import rnn
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.data.sampler import Sampler
+from torch.utils.data.sampler import Sampler, SequentialSampler
 
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
@@ -31,6 +31,7 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
 from pytorch_forecasting.utils import repr_class
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -197,7 +198,7 @@ class TimeSeriesDataSet(Dataset):
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER]] = "auto",
+        target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None] = "auto",
         categorical_encoders: Dict[str, NaNLabelEncoder] = {},
         scalers: Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]] = {},
         randomize_length: Union[None, Tuple[float, float], bool] = False,
@@ -291,7 +292,7 @@ class TimeSeriesDataSet(Dataset):
                 the index will range from -encoder_length to prediction_length)
             add_target_scales (bool): if to add scales for target to static real features (i.e. add the center and scale
                 of the unnormalized timeseries as features)
-            add_encoder_length (bool): if to add decoder length to list of static real variables.
+            add_encoder_length (bool): if to add encoder length to list of static real variables.
                 Defaults to "auto", i.e. ``True`` if ``min_encoder_length != max_encoder_length``.
             target_normalizer (Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str, list, tuple]):
                 transformer that take group_ids, target and time_idx to normalize targets.
@@ -747,7 +748,6 @@ class TimeSeriesDataSet(Dataset):
 
         # train target normalizer
         if self.target_normalizer is not None:
-
             # fit target normalizer
             try:
                 check_is_fitted(self.target_normalizer)
@@ -1215,8 +1215,8 @@ class TimeSeriesDataSet(Dataset):
         """
         g = data.groupby(self._group_ids, observed=True)
 
-        df_index_first = g["__time_idx__"].transform("nth", 0).to_frame("time_first")
-        df_index_last = g["__time_idx__"].transform("nth", -1).to_frame("time_last")
+        df_index_first = g["__time_idx__"].transform("first").to_frame("time_first")
+        df_index_last = g["__time_idx__"].transform("last").to_frame("time_last")
         df_index_diff_to_next = -g["__time_idx__"].diff(-1).fillna(-1).astype(int).to_frame("time_diff_to_next")
         df_index = pd.concat([df_index_first, df_index_last, df_index_diff_to_next], axis=1)
         df_index["index_start"] = np.arange(len(df_index))
@@ -1357,9 +1357,7 @@ class TimeSeriesDataSet(Dataset):
         )
         return index
 
-    def plot_randomization(
-        self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None
-    ) -> Tuple[plt.Figure, torch.Tensor]:
+    def plot_randomization(self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None):
         """
         Plot expected randomized length distribution.
 
@@ -1372,6 +1370,10 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             Tuple[plt.Figure, torch.Tensor]: tuple of figure and histogram based on 1000 samples
         """
+        _check_matplotlib("plot_randomization")
+
+        import matplotlib.pyplot as plt
+
         if betas is None:
             betas = self.randomize_length
         if length is None:
@@ -1560,14 +1562,16 @@ class TimeSeriesDataSet(Dataset):
                 data_cat = data_cat[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 data_cont = data_cont[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 target = [t[encoder_length - new_encoder_length : encoder_length + new_decoder_length] for t in target]
+                if weight is not None:
+                    weight = weight[encoder_length - new_encoder_length : encoder_length + new_decoder_length]
                 encoder_length = new_encoder_length
                 decoder_length = new_decoder_length
 
             # switch some variables to nan if encode length is 0
             if encoder_length == 0 and len(self.dropout_categoricals) > 0:
-                data_cat[
-                    :, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]
-                ] = 0  # zero is encoded nan
+                data_cat[:, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]] = (
+                    0  # zero is encoded nan
+                )
 
         assert decoder_length > 0, "Decoder length should be greater than 0"
         assert encoder_length >= 0, "Encoder length should be at least 0"
@@ -1850,7 +1854,10 @@ class TimeSeriesDataSet(Dataset):
             if isinstance(sampler, str):
                 if sampler == "synchronized":
                     kwargs["batch_sampler"] = TimeSynchronizedBatchSampler(
-                        self, batch_size=kwargs["batch_size"], shuffle=kwargs["shuffle"], drop_last=kwargs["drop_last"]
+                        SequentialSampler(self),
+                        batch_size=kwargs["batch_size"],
+                        shuffle=kwargs["shuffle"],
+                        drop_last=kwargs["drop_last"],
                     )
                 else:
                     raise ValueError(f"batch_sampler {sampler} unknown - see docstring for valid batch_sampler")

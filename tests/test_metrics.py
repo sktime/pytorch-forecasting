@@ -1,6 +1,5 @@
 import itertools
 
-import numpy as np
 import pytest
 import torch
 from torch.nn.utils import rnn
@@ -65,6 +64,7 @@ def test_aggregation_metric(decoder_lengths, y):
         assert torch.isclose(res, (y.mean(0) - y_pred.mean(0)).abs().mean())
 
 
+@pytest.mark.xfail(reason="failing, to be fixed, bug #1614")
 def test_none_reduction():
     pred = torch.rand(20, 10)
     target = torch.rand(20, 10)

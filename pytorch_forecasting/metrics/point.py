@@ -1,5 +1,6 @@
 """Point metrics for forecasting a single point per time step."""
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+from typing import Dict, List
 
 import scipy.stats
 import torch
@@ -7,7 +8,7 @@ import torch.nn.functional as F
 from torch.nn.utils import rnn
 
 from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
-from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
+from pytorch_forecasting.utils import unpack_sequence
 
 
 class PoissonLoss(MultiHorizonMetric):
@@ -46,10 +47,15 @@ class PoissonLoss(MultiHorizonMetric):
                 quantiles = [0.5]
             else:
                 quantiles = self.quantiles
-        predictions = super().to_prediction(out)
-        return torch.stack(
-            [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles], dim=-1
-        ).to(predictions.device)
+        predictions = self.to_prediction(out)
+        return (
+            torch.stack(
+                [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles],
+                dim=-1,
+            )
+            .type(predictions.dtype)
+            .to(predictions.device)
+        )
 
 
 class SMAPE(MultiHorizonMetric):
@@ -95,7 +101,6 @@ class CrossEntropy(MultiHorizonMetric):
     """
 
     def loss(self, y_pred, target):
-
         loss = F.cross_entropy(y_pred.view(-1, y_pred.size(-1)), target.view(-1), reduction="none").view(
             -1, target.size(-1)
         )
@@ -188,7 +193,7 @@ class MASE(MultiHorizonMetric):
 
         # determine lengths for encoder
         if encoder_lengths is None:
-            encoder_target, encoder_lengths = unpack_sequence(target)
+            encoder_target, encoder_lengths = unpack_sequence(encoder_target)
         else:
             assert isinstance(encoder_target, torch.Tensor)
         assert not target.requires_grad

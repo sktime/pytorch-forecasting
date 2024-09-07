@@ -12,7 +12,6 @@ class TimeDistributedEmbeddingBag(nn.EmbeddingBag):
         self.batch_first = batch_first
 
     def forward(self, x):
-
         if len(x.size()) <= 2:
             return super().forward(x)
 
@@ -30,7 +29,6 @@ class TimeDistributedEmbeddingBag(nn.EmbeddingBag):
 
 
 class MultiEmbedding(nn.Module):
-
     concat_output: bool
 
     def __init__(

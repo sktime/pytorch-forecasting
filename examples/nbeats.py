@@ -1,9 +1,8 @@
 import sys
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
 import pandas as pd
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
-from sklearn.preprocessing import scale
 
 from pytorch_forecasting import NBeats, TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
@@ -52,7 +51,7 @@ val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, nu
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
 trainer = pl.Trainer(
     max_epochs=100,
-    gpus=0,
+    accelerator="auto",
     gradient_clip_val=0.1,
     callbacks=[early_stop_callback],
     limit_train_batches=15,
@@ -74,7 +73,7 @@ print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
 # net.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
 # # run learning rate finder
-# res = trainer.tuner.lr_find(
+# res = Tuner(trainer).lr_find(
 #     net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
 # )
 # print(f"suggested learning rate: {res.suggestion()}")

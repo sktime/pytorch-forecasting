@@ -11,5 +11,4 @@ API
    data
    models
    metrics
-   optim
    utils

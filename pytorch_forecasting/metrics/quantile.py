@@ -1,5 +1,6 @@
 """Quantile metrics for forecasting multiple quantiles per time step."""
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+from typing import List
 
 import torch
 
@@ -8,7 +9,7 @@ from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
 
 class QuantileLoss(MultiHorizonMetric):
     """
-    Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calcualted as
+    Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calculated as
 
     Defined as ``max(q * (y-y_pred), (1-q) * (y_pred-y))``
     """

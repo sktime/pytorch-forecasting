@@ -1,10 +1,10 @@
 """
 N-HiTS model for timeseries forecasting with covariates.
 """
+
 from copy import copy
 from typing import Dict, List, Optional, Tuple, Union
 
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch import nn
@@ -15,7 +15,8 @@ from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHoriz
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.utils import create_mask, detach, to_list
+from pytorch_forecasting.utils import create_mask, to_list
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 def fig2img(fig):
@@ -165,8 +166,12 @@ class NHiTS(BaseModelWithCovariates):
         if pooling_sizes is None:
             pooling_sizes = np.exp2(np.round(np.linspace(0.49, np.log2(prediction_length / 2), n_stacks)))
             pooling_sizes = [int(x) for x in pooling_sizes[::-1]]
+            # remove zero from pooling_sizes
+            pooling_sizes = max(pooling_sizes, [1] * len(pooling_sizes))
         if downsample_frequencies is None:
             downsample_frequencies = [min(prediction_length, int(np.power(x, 1.5))) for x in pooling_sizes]
+            # remove zero from downsample_frequencies
+            downsample_frequencies = max(downsample_frequencies, [1] * len(downsample_frequencies))
 
         # set static hidden size
         if static_hidden_size is None:
@@ -191,7 +196,8 @@ class NHiTS(BaseModelWithCovariates):
             prediction_length=self.hparams.prediction_length,
             output_size=to_list(output_size),
             static_size=self.static_size,
-            covariate_size=self.covariate_size,
+            encoder_covariate_size=self.encoder_covariate_size,
+            decoder_covariate_size=self.decoder_covariate_size,
             static_hidden_size=self.hparams.static_hidden_size,
             n_blocks=self.hparams.n_blocks,
             n_layers=self.hparams.n_layers,
@@ -209,13 +215,24 @@ class NHiTS(BaseModelWithCovariates):
         )
 
     @property
-    def covariate_size(self) -> int:
-        """Covariate size.
+    def decoder_covariate_size(self) -> int:
+        """Decoder covariates size.
 
         Returns:
-            int: size of time-dependent covariates
+            int: size of time-dependent covariates used by the decoder
         """
         return len(set(self.hparams.time_varying_reals_decoder) - set(self.target_names)) + sum(
+            self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_decoder
+        )
+
+    @property
+    def encoder_covariate_size(self) -> int:
+        """Encoder covariate size.
+
+        Returns:
+            int: size of time-dependent covariates used by the encoder
+        """
+        return len(set(self.hparams.time_varying_reals_encoder) - set(self.target_names)) + sum(
             self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder
         )
 
@@ -251,16 +268,19 @@ class NHiTS(BaseModelWithCovariates):
             Dict[str, torch.Tensor]: output of model
         """
         # covariates
-        if self.covariate_size > 0:
+        if self.encoder_covariate_size > 0:
             encoder_features = self.extract_features(x, self.embeddings, period="encoder")
             encoder_x_t = torch.concat(
                 [encoder_features[name] for name in self.encoder_variables if name not in self.target_names],
                 dim=2,
             )
+        else:
+            encoder_x_t = None
+
+        if self.decoder_covariate_size > 0:
             decoder_features = self.extract_features(x, self.embeddings, period="decoder")
             decoder_x_t = torch.concat([decoder_features[name] for name in self.decoder_variables], dim=2)
         else:
-            encoder_x_t = None
             decoder_x_t = None
 
         # statics
@@ -365,7 +385,7 @@ class NHiTS(BaseModelWithCovariates):
         """
         log, out = super().step(x, y, batch_idx=batch_idx)
 
-        if self.hparams.backcast_loss_ratio > 0:  # add loss from backcast
+        if self.hparams.backcast_loss_ratio > 0 and not self.predicting:  # add loss from backcast
             backcast = out["backcast"]
             backcast_weight = (
                 self.hparams.backcast_loss_ratio * self.hparams.prediction_length / self.hparams.context_length
@@ -411,7 +431,7 @@ class NHiTS(BaseModelWithCovariates):
         output: Dict[str, torch.Tensor],
         idx: int,
         ax=None,
-    ) -> plt.Figure:
+    ):
         """
         Plot interpretation.
 
@@ -428,6 +448,10 @@ class NHiTS(BaseModelWithCovariates):
         Returns:
             plt.Figure: matplotlib figure
         """
+        _check_matplotlib("plot_interpretation")
+
+        from matplotlib import pyplot as plt
+
         if not isinstance(self.loss, MultiLoss):  # not multi-target
             prediction = self.to_prediction(dict(prediction=output["prediction"][[idx]].detach()))[0].cpu()
             block_forecasts = [
@@ -527,6 +551,11 @@ class NHiTS(BaseModelWithCovariates):
         """
         Log interpretation of network predictions in tensorboard.
         """
+        mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
+
+        if not mpl_available:
+            return None
+
         label = ["val", "train"][self.training]
         if self.log_interval > 0 and batch_idx % self.log_interval == 0:
             fig = self.plot_interpretation(x, out, idx=0)
