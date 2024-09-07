@@ -2,7 +2,7 @@ import pickle
 import shutil
 
 import lightning.pytorch as pl
-from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 from test_models.conftest import make_dataloaders

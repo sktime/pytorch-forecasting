@@ -11,7 +11,6 @@ import inspect
 from typing import Any, Callable, Dict, List, Tuple, Union
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.exceptions import NotFittedError
@@ -32,6 +31,7 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
 from pytorch_forecasting.utils import repr_class
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 def _find_end_indices(diffs: np.ndarray, max_lengths: np.ndarray, min_length: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -1357,9 +1357,7 @@ class TimeSeriesDataSet(Dataset):
         )
         return index
 
-    def plot_randomization(
-        self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None
-    ) -> Tuple[plt.Figure, torch.Tensor]:
+    def plot_randomization(self, betas: Tuple[float, float] = None, length: int = None, min_length: int = None):
         """
         Plot expected randomized length distribution.
 
@@ -1372,6 +1370,10 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             Tuple[plt.Figure, torch.Tensor]: tuple of figure and histogram based on 1000 samples
         """
+        _check_matplotlib("plot_randomization")
+
+        import matplotlib.pyplot as plt
+
         if betas is None:
             betas = self.randomize_length
         if length is None:
@@ -1567,9 +1569,9 @@ class TimeSeriesDataSet(Dataset):
 
             # switch some variables to nan if encode length is 0
             if encoder_length == 0 and len(self.dropout_categoricals) > 0:
-                data_cat[
-                    :, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]
-                ] = 0  # zero is encoded nan
+                data_cat[:, [self.flat_categoricals.index(c) for c in self.dropout_categoricals]] = (
+                    0  # zero is encoded nan
+                )
 
         assert decoder_length > 0, "Decoder length should be greater than 0"
         assert encoder_length >= 0, "Encoder length should be at least 0"

@@ -7,7 +7,6 @@ import warnings
 import numpy as np
 import pandas as pd
 from sklearn.utils import shuffle
-import torch
 from torch.utils.data.sampler import Sampler
 
 

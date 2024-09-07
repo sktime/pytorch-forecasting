@@ -25,18 +25,22 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ".[dev,github-actions,graph,mqf2]"
+          python -m pip install ".[dev,all_extras,github-actions]"
+
+      - name: Show dependencies
+        run:  python -m pip list
+
       - name: Run example notebooks
         run: build_tools/run_examples.sh
         shell: bash
 
-  pytest:
-    name: Run pytest
+  pytest-nosoftdeps:
+    name: no-softdeps
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13] # add windows-2019 when poetry allows installation with `-f` flag
+        os: [ubuntu-latest, macos-13, windows-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
@@ -60,7 +64,46 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          pip install ".[dev,github-actions,graph,mqf2]"
+          pip install ".[dev,github-actions]"
+
+      - name: Show dependencies
+        run: python -m pip list
+
+      - name: Run pytest
+        shell: bash
+        run: python -m pytest tests
+
+  pytest:
+    name: Run pytest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Setup macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew install libomp  # https://github.com/pytorch/pytorch/issues/20030
+
+      - name: Get full Python version
+        id: full-python-version
+        shell: bash
+        run: echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))") >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          pip install ".[dev,all_extras,github-actions]"
 
       - name: Show dependencies
         run: python -m pip list
@@ -99,7 +142,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.8
+          python-version: 3.11
 
       - name: Cache pip
         uses: actions/cache@v2
