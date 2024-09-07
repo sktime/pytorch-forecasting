@@ -55,7 +55,7 @@ classifiers = [
 description = "Forecasting timeseries with PyTorch - dataloaders, normalizers, metrics and models"
 
 dependencies = [
-  "numpy<=2.1.0",
+  "numpy<=3.0.0",
   "torch >=2.3.0,<3.0.0",
   "lightning >=2.0.0,<3.0.0",
   "scipy >=1.8,<2.0",
