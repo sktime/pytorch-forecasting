@@ -11,14 +11,14 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Dependency changes
 
-* the following are no longer core dependencies and have been changed to optional dependencies : `optuna`, `statsmodels`, `pytorch-optimize`, `matplotlib`. Environments relying on functionality requiring these dependencies need to be updated to instlal these explicitly.
+* the following are no longer core dependencies and have been changed to optional dependencies : `optuna`, `statsmodels`, `pytorch-optimize`, `matplotlib`. Environments relying on functionality requiring these dependencies need to be updated to install these explicitly.
 * `optuna` bounds have been updated to `optuna >=3.1.0,<4.0.0`
 * `optuna-integrate` is now an additional soft dependency, in case of `optuna >=3.3.0`
 
 ### Deprecations and removals
 
 * from 1.2.0, the default optimizer will be changed from `"ranger"` to `"adam"` to avoid non-`torch` dependencies in defaults. `pytorch-optimize` optimizers can still be used. Users should set the optimizer explicitly to continue using `"ranger"`.
-*  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure tha `matplotlib` is installed.
+*  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure that `matplotlib` is installed.
 
 ## v1.0.0 Update to pytorch 2.0 (10/04/2023)
 
