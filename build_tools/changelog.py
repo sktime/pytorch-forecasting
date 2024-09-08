@@ -91,9 +91,7 @@ def fetch_pull_requests_since_last_release() -> list[dict]:
     all_pulls = []
     while not is_exhausted:
         pulls = fetch_merged_pull_requests(page=page)
-        all_pulls.extend(
-            [p for p in pulls if parser.parse(p["merged_at"]) > published_at]
-        )
+        all_pulls.extend([p for p in pulls if parser.parse(p["merged_at"]) > published_at])
         is_exhausted = any(parser.parse(p["updated_at"]) < published_at for p in pulls)
         page += 1
     return all_pulls
