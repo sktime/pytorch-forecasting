@@ -1,7 +1,7 @@
 """RestructuredText changelog generator."""
 
-import os
 from collections import defaultdict
+import os
 
 HEADERS = {
     "Accept": "application/vnd.github.v3+json",
@@ -62,9 +62,7 @@ def fetch_latest_release():  # noqa: D103
     """
     import httpx
 
-    response = httpx.get(
-        f"{GITHUB_REPOS}/{OWNER}/{REPO}/releases/latest", headers=HEADERS
-    )
+    response = httpx.get(f"{GITHUB_REPOS}/{OWNER}/{REPO}/releases/latest", headers=HEADERS)
 
     if response.status_code == 200:
         return response.json()
@@ -105,9 +103,7 @@ def github_compare_tags(tag_left: str, tag_right: str = "HEAD"):
     """Compare commit between two tags."""
     import httpx
 
-    response = httpx.get(
-        f"{GITHUB_REPOS}/{OWNER}/{REPO}/compare/{tag_left}...{tag_right}"
-    )
+    response = httpx.get(f"{GITHUB_REPOS}/{OWNER}/{REPO}/compare/{tag_left}...{tag_right}")
     if response.status_code == 200:
         return response.json()
     else:
@@ -141,9 +137,7 @@ def assign_prs(prs, categs: list[dict[str, list[str]]]):
     #             if any(l.startswith("module") for l in pr_labels):
     #                 print(i, pr_labels)
 
-    assigned["Other"] = list(
-        set(range(len(prs))) - {i for _, j in assigned.items() for i in j}
-    )
+    assigned["Other"] = list(set(range(len(prs))) - {i for _, j in assigned.items() for i in j})
 
     return assigned
 
