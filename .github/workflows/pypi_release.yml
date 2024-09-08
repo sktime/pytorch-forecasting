@@ -30,6 +30,7 @@ jobs:
   pytest-nosoftdeps:
     name: no-softdeps
     runs-on: ${{ matrix.os }}
+    needs: [build_wheels]
     strategy:
       fail-fast: false
       matrix:
