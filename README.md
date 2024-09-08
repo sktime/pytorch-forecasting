@@ -5,8 +5,7 @@ _PyTorch Forecasting_ is a PyTorch-based package for forecasting with state-of-t
 
 | Overview | |
 |---|---|
-| **Open&#160;Source** | [![MIT](https://img.shields.io/github/license/jdb78/pytorch-forecasting
-)](https://github.com/jdb78/pytorch-forecasting/blob/master/LICENSE) |
+| **Open&#160;Source** | [![MIT](https://img.shields.io/github/license/jdb78/pytorch-forecasting)](https://github.com/jdb78/pytorch-forecasting/blob/master/LICENSE) |
 | **Documentation** | **[Webpage](https://pytorch-forecasting.readthedocs.io)** · **[Tutorials](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials.html)** · **[Release Notes](https://pytorch-forecasting.readthedocs.io/en/latest/CHANGELOG.html)** |
 | **Community** | [![!discord](https://img.shields.io/static/v1?logo=discord&label=discord&message=chat&color=lightgreen)](https://discord.com/invite/54ACzaFsn7) [![!slack](https://img.shields.io/static/v1?logo=linkedin&label=LinkedIn&message=news&color=lightblue)](https://www.linkedin.com/company/scikit-time/)  |
 | **CI/CD** | [![github-actions](https://img.shields.io/github/actions/workflow/status/jdb78/pytorch-forecasting/pypi_release.yml?logo=github)](https://github.com/sktime/sktime/actions/workflows/wheels.yml) [![readthedocs](https://img.shields.io/readthedocs/pytorch-forecasting?logo=readthedocs)](https://pytorch-forecasting.readthedocs.io) [![platform](https://img.shields.io/conda/pn/conda-forge/pytorch-forecasting)](https://github.com/jdb78/pytorch-forecasting) |
