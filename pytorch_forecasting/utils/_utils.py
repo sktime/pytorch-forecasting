@@ -432,7 +432,7 @@ def move_to_device(
         if device == "mps":
             if hasattr(torch.backends, device):
                 if torch.backends.mps.is_available() and torch.backends.mps.is_built():
-                    device = torch.device(device)
+                    device = torch.device("mps")
                 else:
                     device = torch.device("cpu")
         else:
