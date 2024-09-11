@@ -435,8 +435,6 @@ def move_to_device(
                     device = torch.device(device)
                 else:
                     device = torch.device("cpu")
-            else:
-                device = torch.device("cpu")
         else:
             device = torch.device(device)
     if isinstance(x, dict):
