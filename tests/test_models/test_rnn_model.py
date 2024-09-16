@@ -6,10 +6,8 @@ from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 from test_models.conftest import make_dataloaders
-from torch import nn
 
 from pytorch_forecasting.data.encoders import GroupNormalizer
-from pytorch_forecasting.metrics import MAE, CrossEntropy, QuantileLoss
 from pytorch_forecasting.models import RecurrentNetwork
 
 
@@ -56,7 +54,7 @@ def _integration(
         log_gradient_flow=True,
         log_interval=1000,
         hidden_size=5,
-        **kwargs
+        **kwargs,
     )
     net.size()
     try:

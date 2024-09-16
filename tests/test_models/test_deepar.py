@@ -2,7 +2,7 @@ import pickle
 import shutil
 
 import lightning.pytorch as pl
-from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 from test_models.conftest import make_dataloaders
@@ -27,7 +27,7 @@ def _integration(
     data_loader_kwargs={},
     clip_target: bool = False,
     trainer_kwargs=None,
-    **kwargs
+    **kwargs,
 ):
     data_with_covariates = data_with_covariates.copy()
     if clip_target:

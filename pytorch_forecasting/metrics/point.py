@@ -1,5 +1,6 @@
 """Point metrics for forecasting a single point per time step."""
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+from typing import Dict, List
 
 import scipy.stats
 import torch
@@ -7,7 +8,7 @@ import torch.nn.functional as F
 from torch.nn.utils import rnn
 
 from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
-from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
+from pytorch_forecasting.utils import unpack_sequence
 
 
 class PoissonLoss(MultiHorizonMetric):

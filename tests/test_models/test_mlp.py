@@ -6,7 +6,6 @@ from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 from test_models.conftest import make_dataloaders
-from torch.optim import SGD
 from torchmetrics import MeanSquaredError
 
 from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss
@@ -49,7 +48,7 @@ def _integration(data_with_covariates, tmp_path, data_loader_kwargs={}, train_on
         log_gradient_flow=True,
         log_interval=1000,
         hidden_size=10,
-        **kwargs
+        **kwargs,
     )
     net.size()
     try:

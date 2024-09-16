@@ -3,7 +3,7 @@ import shutil
 import sys
 
 import lightning.pytorch as pl
-from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import pytest
@@ -23,6 +23,7 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -69,6 +70,10 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     )
 
 
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="Test skipped if required package cpflows not available",
+)
 def test_mqf2_loss(data_with_covariates, tmp_path):
     data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
     dataloaders_with_covariates = make_dataloaders(
@@ -113,7 +118,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         limit_val_batches=2,
         limit_test_batches=2,
         logger=logger,
-        **trainer_kwargs
+        **trainer_kwargs,
     )
     # test monotone constraints automatically
     if "discount_in_percent" in train_dataloader.dataset.reals:
@@ -150,7 +155,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
             log_val_interval=1,
             log_gradient_flow=True,
             monotone_constaints=monotone_constaints,
-            **kwargs
+            **kwargs,
         )
         net.size()
         try:
@@ -245,6 +250,10 @@ def test_init_shared_network(dataloaders_with_covariates):
     net.predict(dataset, fast_dev_run=True)
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason="Test skipped on Windows OS due to issues with ddp, see #1623",
+)
 @pytest.mark.parametrize("strategy", ["ddp"])
 def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
     train_dataloader = dataloaders_with_covariates["train"]
@@ -289,6 +298,10 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
     model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique()[:2], **kwargs)
 
 
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
     averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)
@@ -372,6 +385,19 @@ def test_prediction_with_dataframe(model, data_with_covariates):
     model.predict(data_with_covariates, fast_dev_run=True)
 
 
+SKIP_HYPEPARAM_TEST = (
+    sys.platform.startswith("win")
+    # Test skipped on Windows OS due to issues with ddp, see #1632"
+    or "optuna" not in _get_installed_packages()
+    or "statsmodels" not in _get_installed_packages()
+    # Test skipped if required package optuna or statsmodels not available
+)
+
+
+@pytest.mark.skipif(
+    SKIP_HYPEPARAM_TEST,
+    reason="Test skipped on Win due to bug #1632, or if missing required packages",
+)
 @pytest.mark.parametrize("use_learning_rate_finder", [True, False])
 def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tmp_path, use_learning_rate_finder):
     train_dataloader = dataloaders_with_covariates["train"]

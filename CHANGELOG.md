@@ -1,5 +1,32 @@
 # Release Notes
 
+## v1.1.1
+
+Hotfix for accidental package name change in `pyproject.toml`.
+
+The package name is now corrected to `pytorch-forecasting`.
+
+
+## v1.1.0
+
+Maintenance update widening compatibility ranges and consolidating dependencies:
+
+* support for python 3.11 and 3.12, added CI testing
+* support for MacOS, added CI testing
+* core dependencies have been minimized to `numpy`, `torch`, `lightning`, `scipy`, `pandas`, and `scikit-learn`.
+* soft dependencies are available in soft dependency sets: `all_extras` for all soft dependencies, and `tuning` for `optuna` based optimization.
+
+### Dependency changes
+
+* the following are no longer core dependencies and have been changed to optional dependencies : `optuna`, `statsmodels`, `pytorch-optimize`, `matplotlib`. Environments relying on functionality requiring these dependencies need to be updated to instlal these explicitly.
+* `optuna` bounds have been updated to `optuna >=3.1.0,<4.0.0`
+* `optuna-integrate` is now an additional soft dependency, in case of `optuna >=3.3.0`
+
+### Deprecations and removals
+
+* from 1.2.0, the default optimizer will be changed from `"ranger"` to `"adam"` to avoid non-`torch` dependencies in defaults. `pytorch-optimize` optimizers can still be used. Users should set the optimizer explicitly to continue using `"ranger"`.
+*  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure tha `matplotlib` is installed.
+
 ## v1.0.0 Update to pytorch 2.0 (10/04/2023)
 
 

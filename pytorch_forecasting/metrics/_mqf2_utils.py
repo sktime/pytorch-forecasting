@@ -1,4 +1,5 @@
 """Classes and functions for the MQF2 metric."""
+
 from typing import List, Optional, Tuple
 
 from cpflows.flows import DeepConvexFlow, SequentialFlow
@@ -11,12 +12,13 @@ class DeepConvexNet(DeepConvexFlow):
     r"""
     Class that takes a partially input convex neural network (picnn)
     as input and equips it with functions of logdet
-    computation (both estimation and exact computation)
+    computation (both estimation and exact computation).
     This class is based on DeepConvexFlow of the CP-Flow
     repo (https://github.com/CW-Huang/CP-Flow)
     For details of the logdet estimator, see
     ``Convex potential flows: Universal probability distributions
     with optimal transport and convex optimization``
+
     Parameters
     ----------
     picnn
@@ -93,6 +95,7 @@ class SequentialNet(SequentialFlow):
     layers and provides energy score computation
     This class is based on SequentialFlow of the CP-Flow repo
     (https://github.com/CW-Huang/CP-Flow)
+
     Parameters
     ----------
     networks
@@ -115,6 +118,7 @@ class SequentialNet(SequentialFlow):
         """
         Auxiliary function for energy score computation
         Drawing samples conditioned on the hidden state
+
         Parameters
         ----------
         hidden_state
@@ -158,6 +162,7 @@ class SequentialNet(SequentialFlow):
         h_i is the hidden state associated with z_i,
         and es_num_samples is the number of samples drawn
         for each of w, w', w'' in energy score approximation
+
         Parameters
         ----------
         z
@@ -223,6 +228,7 @@ class MQF2Distribution(Distribution):
     Distribution class for the model MQF2 proposed in the paper
     ``Multivariate Quantile Function Forecaster``
     by Kan, Aubet, Januschowski, Park, Benidis, Ruthotto, Gasthaus
+
     Parameters
     ----------
     picnn
@@ -289,6 +295,7 @@ class MQF2Distribution(Distribution):
         over the observations z
         Then, reshapes the observations into a 2-dimensional tensor for
         further computation
+
         Parameters
         ----------
         z
@@ -316,6 +323,7 @@ class MQF2Distribution(Distribution):
         """
         Computes the log likelihood  log(g(z)) + logdet(dg(z)/dz),
         where g is the gradient of the picnn
+
         Parameters
         ----------
         z
@@ -345,6 +353,7 @@ class MQF2Distribution(Distribution):
         h_i is the hidden state associated with z_i,
         and es_num_samples is the number of samples drawn
         for each of w, w', w'' in energy score approximation
+
         Parameters
         ----------
         z
@@ -369,6 +378,7 @@ class MQF2Distribution(Distribution):
     def rsample(self, sample_shape: torch.Size = torch.Size()) -> torch.Tensor:
         """
         Generates the sample paths
+
         Parameters
         ----------
         sample_shape
@@ -376,7 +386,7 @@ class MQF2Distribution(Distribution):
         Returns
         -------
         sample_paths
-            Tesnor of shape (batch_size, *sample_shape, prediction_length)
+            Tesnor of shape (batch_size, * sample_shape, prediction_length)
         """
 
         numel_batch = self.numel_batch
@@ -406,6 +416,7 @@ class MQF2Distribution(Distribution):
     def quantile(self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Generates the predicted paths associated with the quantile levels alpha
+
         Parameters
         ----------
         alpha
