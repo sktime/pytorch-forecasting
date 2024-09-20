@@ -133,6 +133,17 @@ dev = [
   "pandoc>=2.3,<3.0.0",
 ]
 
+# docs - dependencies for building the documentation
+docs = [
+  "sphinx>3.2",
+  "pydata-sphinx-theme",
+  "nbsphinx",
+  "pandoc",
+  "nbconvert",
+  "recommonmark",
+  "docutils",
+]
+
 github-actions = ["pytest-github-actions-annotate-failures"]
 
 [tool.setuptools.packages.find]
