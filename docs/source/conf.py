@@ -141,11 +141,11 @@ mathjax_path = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?
 
 # theme options
 html_theme_options = {
-    "github_url": "https://github.com/jdb78/pytorch-forecasting",
+    "github_url": "https://github.com/sktime/pytorch-forecasting",
     "navbar_end": ["navbar-icon-links.html", "search-field.html"],
     "show_nav_level": 2,
     "header_links_before_dropdown": 10,
-    "external_links": [{"name": "GitHub", "url": "https://github.com/jdb78/pytorch-forecasting"}],
+    "external_links": [{"name": "GitHub", "url": "https://github.com/sktime/pytorch-forecasting"}],
 }
 
 html_sidebars = {
