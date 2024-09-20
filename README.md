@@ -10,8 +10,8 @@ _PyTorch Forecasting_ is a PyTorch-based package for forecasting with state-of-t
 | **CI/CD** | [![github-actions](https://img.shields.io/github/actions/workflow/status/sktime/pytorch-forecasting/pypi_release.yml?logo=github)](https://github.com/sktime/pytorch-forecasting/actions/workflows/pypi_release.yml) [![readthedocs](https://img.shields.io/readthedocs/pytorch-forecasting?logo=readthedocs)](https://pytorch-forecasting.readthedocs.io) [![platform](https://img.shields.io/conda/pn/conda-forge/pytorch-forecasting)](https://github.com/sktime/pytorch-forecasting) [![Code Coverage][coverage-image]][coverage-url] |
 | **Code** | [![!pypi](https://img.shields.io/pypi/v/pytorch-forecasting?color=orange)](https://pypi.org/project/pytorch-forecasting/) [![!conda](https://img.shields.io/conda/vn/conda-forge/pytorch-forecasting)](https://anaconda.org/conda-forge/pytorch-forecasting) [![!python-versions](https://img.shields.io/pypi/pyversions/pytorch-forecasting)](https://www.python.org/) [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)  |
 
-[coverage-image]: https://codecov.io/gh/sktime/pytorch-forecasting/branch/master/graph/badge.svg
-[coverage-url]: https://codecov.io/github/sktime/pytorch-forecasting?branch=master
+[coverage-image]: https://codecov.io/gh/sktime/pytorch-forecasting/branch/main/graph/badge.svg
+[coverage-url]: https://codecov.io/github/sktime/pytorch-forecasting?branch=main
 
 ---
 
