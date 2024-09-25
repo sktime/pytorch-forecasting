@@ -79,10 +79,10 @@ def _get_deps_info(deps=None, source="distributions"):
         of the import as present in the current python environment
     """
     if deps is None:
-        deps = ["sktime"]
+        deps = ["pytorch-forecasting"]
 
     if source == "distributions":
-        from sktime.utils.dependencies._dependencies import _get_installed_packages
+        from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
         KEY_ALIAS = {"sklearn": "scikit-learn", "skbase": "scikit-base"}
 
