@@ -4,11 +4,7 @@ import pathlib
 import uuid
 
 from pytorch_forecasting.utils._dependencies import _check_soft_dependencies
-from pytorch_forecasting.utils._maint._show_versions import (
-    DEFAULT_DEPS_TO_SHOW,
-    _get_deps_info,
-    show_versions,
-)
+from pytorch_forecasting.utils._maint._show_versions import DEFAULT_DEPS_TO_SHOW, _get_deps_info, show_versions
 
 
 def test_show_versions_runs():
