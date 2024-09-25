@@ -63,7 +63,6 @@ from pytorch_forecasting.utils import (
 )
 from pytorch_forecasting.utils._maint._show_versions import show_versions
 
-
 __all__ = [
     "TimeSeriesDataSet",
     "GroupNormalizer",
