@@ -12,6 +12,13 @@ def test_show_versions_runs():
     assert show_versions() is None
 
 
+def test_show_versions_import_loc():
+    """Test that show_version can be imported from root."""
+    from pytorch_forecasting import show_versions as show_versions_imported
+
+    assert show_versions == show_versions_imported
+
+
 def test_deps_info():
     """Test that _get_deps_info returns package/version dict as per contract."""
     deps_info = _get_deps_info()
