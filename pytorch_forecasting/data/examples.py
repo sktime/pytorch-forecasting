@@ -8,7 +8,7 @@ from urllib.request import urlretrieve
 import numpy as np
 import pandas as pd
 
-BASE_URL = "https://github.com/jdb78/pytorch-forecasting/raw/master/examples/data/"
+BASE_URL = "https://github.com/sktime/pytorch-forecasting/raw/main/examples/data/"
 
 DATA_PATH = Path(__file__).parent
 
