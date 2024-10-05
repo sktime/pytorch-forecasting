@@ -1,3 +1,40 @@
+[tool.ruff]
+line-length = 120
+exclude = [
+  "docs/build/",
+  "node_modules/",
+  ".eggs/",
+  "versioneer.py",
+  "venv/",
+  ".venv/",
+  ".git/",
+  ".history/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C4", "S"]
+extend-ignore = [
+  "E203",
+  "E402",
+  "E731",
+  "E741",
+  "C406",
+  "C408",
+  "C409",
+  "C416",
+  "C419",
+  "S101",
+  "S301",
+  "S310",
+  "S101",
+  "F401",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pytorch_forecasting"]
+combine-as-imports = true
+force-sort-within-sections = true
+
 [tool.black]
 line-length = 120
 include = '\.pyi?$'
@@ -23,7 +60,7 @@ exclude = '''
 '''
 
 [tool.nbqa.mutate]
-isort = 1
+ruff = 1
 black = 1
 
 [project]
@@ -107,10 +144,9 @@ dev = [
   # checks and make tools
   "pre-commit >=3.2.0,<4.0.0",
   "invoke",
-  "flake8",
   "mypy",
   "pylint",
-  "isort",
+  "ruff",
   # pytest
   "pytest",
   "pytest-xdist",
