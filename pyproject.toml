@@ -14,20 +14,14 @@ exclude = [
 [tool.ruff.lint]
 select = ["E", "F", "W", "C4", "S"]
 extend-ignore = [
-  "E203",
-  "E402",
-  "E731",
-  "E741",
-  "C406",
-  "C408",
-  "C409",
-  "C416",
-  "C419",
-  "S101",
-  "S301",
-  "S310",
-  "S101",
-  "F401",
+  "E203", # space before : (needed for how black formats slicing)
+  "E402", # module level import not at top of file
+  "E731", # do not assign a lambda expression, use a def
+  "E741", # ignore not easy to read variables like i l I etc.
+  "C406", # Unnecessary list literal - rewrite as a dict literal.
+  "C408", # Unnecessary dict call - rewrite as a literal.
+  "C409", # Unnecessary list passed to tuple() - rewrite as a tuple literal.
+  "F401", # unused imports
 ]
 
 [tool.ruff.lint.isort]
