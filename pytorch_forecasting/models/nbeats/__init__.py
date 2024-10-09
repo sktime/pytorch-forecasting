@@ -268,6 +268,10 @@ class NBeats(BaseModel):
         if not mpl_available:
             return None
 
+        # Don't log figures if add_figure is not available
+        if not hasattr(self.logger.experiment, "add_figure"):
+            return None
+
         label = ["val", "train"][self.training]
         if self.log_interval > 0 and batch_idx % self.log_interval == 0:
             fig = self.plot_interpretation(x, out, idx=0)

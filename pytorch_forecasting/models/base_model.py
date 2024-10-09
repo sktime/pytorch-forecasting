@@ -976,6 +976,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             if not mpl_available:
                 return None  # don't log matplotlib plots if not available
 
+            # Don't log figures if add_figure is not available
+            if not hasattr(self.logger.experiment, "add_figure"):
+                return None
+
             for idx in log_indices:
                 fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True, **kwargs)
                 tag = f"{self.current_stage} prediction"
@@ -1147,6 +1151,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         mpl_available = _check_matplotlib("log_gradient_flow", raise_error=False)
 
         if not mpl_available:
+            return None
+
+        # Don't log figures if add_figure is not available
+        if not hasattr(self.logger.experiment, "add_figure"):
             return None
 
         import matplotlib.pyplot as plt

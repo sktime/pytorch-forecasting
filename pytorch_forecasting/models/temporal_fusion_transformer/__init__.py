@@ -821,6 +821,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         if not mpl_available:
             return None
 
+        # Don't log figures if add_figure is not available
+        if not hasattr(self.logger.experiment, "add_figure"):
+            return None
+
         import matplotlib.pyplot as plt
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
