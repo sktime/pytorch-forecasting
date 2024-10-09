@@ -2,7 +2,6 @@ __all__ = ["AutoRegressiveBaseModel"]
 
 from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
-from loguru import logger
 import torch
 from torch import Tensor
 
@@ -33,20 +32,16 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
             Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]: tuple of rescaled prediction and
                 normalized prediction (e.g. for input into next auto-regressive step)
         """
-        logger.trace(f"normalized_prediction_parameters={normalized_prediction_parameters.size()}")
         B = normalized_prediction_parameters.size(0)
         D = normalized_prediction_parameters.size(-1)
         single_prediction = to_list(normalized_prediction_parameters)[0].ndim == 2
-        logger.trace(f"single_prediction={single_prediction}")
         if single_prediction:  # add time dimension as it is expected
             normalized_prediction_parameters = apply_to_list(normalized_prediction_parameters, lambda x: x.unsqueeze(1))
         # transform into real space
         prediction_parameters = self.transform_output(
             prediction=normalized_prediction_parameters, target_scale=target_scale, **kwargs
         )
-        logger.trace(
-            f"prediction_parameters ({len(prediction_parameters)}): {[p.size() for p in prediction_parameters]}"
-        )
+
         # sample value(s) from distribution and  select first sample
         if isinstance(self.loss, DistributionLoss) or (
             isinstance(self.loss, MultiLoss) and isinstance(self.loss[0], DistributionLoss)
@@ -61,23 +56,18 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
                 prediction = self.loss.sample(normalized_prediction_parameters, 1)
         else:
             prediction = prediction_parameters
-        logger.trace(f"prediction ({len(prediction)}): {[p.size() for p in prediction]}")
         # normalize prediction prediction
         normalized_prediction = self.output_transformer.transform(prediction, target_scale=target_scale)
         if isinstance(normalized_prediction, list):
-            logger.trace(f"normalized_prediction: {[p.size() for p in normalized_prediction]}")
             input_target = normalized_prediction[-1]  # torch.cat(normalized_prediction, dim=-1)  # dim=-1
         else:
-            logger.trace(f"normalized_prediction: {normalized_prediction.size()}")
             input_target = normalized_prediction  # set next input target to normalized prediction
-        logger.trace(f"input_target: {input_target.size()}")
         assert input_target.size(0) == B
         assert input_target.size(-1) == D, f"{input_target.size()} but D={D}"
         # remove time dimension
         if single_prediction:
             prediction = apply_to_list(prediction, lambda x: x.squeeze(1))
             input_target = input_target.squeeze(1)
-        logger.trace(f"input_target: {input_target.size()}")
         return prediction, input_target
 
     def decode_autoregressive(
@@ -124,29 +114,19 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
                 idx, lagged_targets=normalized_output, hidden_state=current_hidden_state, **kwargs
             )
             assert isinstance(current_target, Tensor)
-            logger.trace(f"current_target: {current_target.size()}")
             # get prediction and its normalized version for the next step
             prediction, current_target = self.output_to_prediction(
                 current_target, target_scale=target_scale, n_samples=n_samples
             )
-            logger.trace(f"current_target: {current_target.size()}")
-            if isinstance(prediction, Tensor):
-                logger.trace(f"prediction ({type(prediction)}): {prediction.size()}")
-            else:
-                logger.trace(f"prediction ({type(prediction)}|{len(prediction)}): {[p.size() for p in prediction]}")
+
             # save normalized output for lagged targets
             normalized_output.append(current_target)
             # set output to unnormalized samples, append each target as n_batch_samples x n_random_samples
             output.append(prediction)
-            # Check things before finishing
-            if isinstance(prediction, Tensor):
-                logger.trace(f"output ({len(output)}): {[o.size() for o in output]}")  # type: ignore
-            else:
-                logger.trace(f"output ({len(output)}): {[{len(o)} for o in output]}")
+
         if isinstance(self.hparams.target, str):
             # Here, output is List[Tensor]
             final_output = torch.stack(output, dim=1)  # type: ignore
-            logger.trace(f"final_output: {final_output.size()}")
             return final_output
         # For multi-targets: output is List[List[Tensor]]
         # final_output_multitarget = [
@@ -156,12 +136,6 @@ class AutoRegressiveBaseModel(AutoRegressiveBaseModel_):  # pylint: disable=abst
         final_output_multitarget = torch.stack([out[0] for out in output], dim=1)
         if final_output_multitarget.dim() > 3:
             final_output_multitarget = final_output_multitarget.squeeze(2)
-        if isinstance(final_output_multitarget, Tensor):
-            logger.trace(f"final_output_multitarget: {final_output_multitarget.size()}")
-        else:
-            logger.trace(
-                f"final_output_multitarget ({type(final_output_multitarget)})"
-                f"{[o.size() for o in final_output_multitarget]}"
-            )
+
         r = [final_output_multitarget[..., i] for i in range(final_output_multitarget.size(-1))]
         return r

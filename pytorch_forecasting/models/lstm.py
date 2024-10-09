@@ -2,7 +2,6 @@ __all__ = ["LSTMModel"]
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-from loguru import logger
 import torch
 from torch import Tensor, nn
 
@@ -81,7 +80,6 @@ class LSTMModel(AutoRegressiveBaseModel):
         n_targets = len(target) if isinstance(target, (list, tuple)) else 1
         if input_size is None:
             input_size = n_targets
-        logger.debug(f"input_size={input_size} | n_targets={n_targets}")
         # arguments target and target_lags are required for autoregressive models
         # even though target_lags cannot be used without covariates
         # saves arguments in signature to `.hparams` attribute, mandatory call - do not skip this
@@ -154,7 +152,6 @@ class LSTMModel(AutoRegressiveBaseModel):
         """
         # again lag target by one
         input_vector = x["decoder_cont"].clone()  # (B,L,D)
-        logger.trace(f"input_vector: {input_vector.size()}")
         B, L, D = input_vector.size()
         input_vector[..., self.target_positions] = torch.roll(
             input_vector[..., self.target_positions], shifts=1, dims=1
@@ -169,20 +166,16 @@ class LSTMModel(AutoRegressiveBaseModel):
         # Training mode
         if self.training:  # training mode
             lstm_output, _ = self.lstm(input_vector, hidden_state, lengths=x["decoder_lengths"], enforce_sorted=False)
-            logger.trace(f"lstm_output ({type(lstm_output)}): {lstm_output.size()}")
             # transform into right shape
             out: Tensor = self.output_layer(lstm_output)
-            logger.trace(f"out ({type(out)}): {out.size()}")
             if self.n_targets > 1:
                 out = [out[:, :, i].view(B, L, -1) for i in range(D)]  # type: ignore
             prediction: List[Tensor] = self.transform_output(out, target_scale=x["target_scale"])
             # predictions are not yet rescaled
-            logger.trace(f"prediction ({type(prediction)}|{len(prediction)}): {[p.size() for p in prediction]})")
             return prediction
         # Prediction mode
         self._input_vector = input_vector
         n_decoder_steps = input_vector.size(1)
-        logger.trace(f"n_decoder_steps={n_decoder_steps}")
         first_target = input_vector[:, 0, :]  # self.target_positions?
         first_target = first_target.view(B, 1, D)
         target_scale = x["target_scale"]
@@ -194,10 +187,6 @@ class LSTMModel(AutoRegressiveBaseModel):
             n_decoder_steps=n_decoder_steps,
         )
         # predictions are already rescaled
-        if isinstance(output, Tensor):
-            logger.trace(f"output ({type(output)}): {output.size()}")
-        else:
-            logger.trace(f"output ({type(output)}|{len(output)}): {[o.size() for o in output]})")
         return output
 
     def forward(self, x: Dict[str, Tensor]) -> Dict[str, Union[Tensor, List[Tensor]]]:
@@ -232,31 +221,20 @@ class LSTMModel(AutoRegressiveBaseModel):
                 One-step-ahead prediction and tuple of `(h,c)` (hidden state, cell state).
         """
         B, _, D = self._input_vector.size()
-        logger.trace(f"idx: {idx}")
-        logger.trace(
-            f"lagged_targets ({type(lagged_targets)}|{len(lagged_targets)}): {[h.size() for h in lagged_targets]}"
-        )
-        logger.trace(f"hidden_state ({type(hidden_state)}): {[h.size() for h in hidden_state]}")
-        logger.trace(f"input_vector ({type(self._input_vector)}): {self._input_vector.size()}")
+
         # input has shape (B,L,D)
         x = self._input_vector[:, [idx]]
-        logger.trace(f"x ({type(x)}): {x.size()}")
         # take most recent target (i.e. lag=1)
         lag = lagged_targets[-1]
-        logger.trace(f"lag: {lag.size()}")
         assert lag.size(0) == B
         assert lag.size(-1) == D
         # make sure it has shape (B,D)
         lag = lag.view(B, D)
-        logger.trace(f"lag: {lag.size()}")
         # overwrite at target positions
         x[:, 0, :] = lag
-        logger.trace(f"x ({type(x)}): {x.size()}")
         lstm_output, hidden_state = self.lstm(x, hidden_state)
-        logger.trace(f"lstm_output ({type(lstm_output)}): {lstm_output.size()}")
         # transform into right shape
         prediction: Tensor = self.output_layer(lstm_output)[:, 0]  # take first timestep
         if self.n_targets > 1:
             prediction = prediction.view(B, 1, D)
-        logger.trace(f"prediction ({type(prediction)}): {prediction.size()}")
         return prediction, hidden_state

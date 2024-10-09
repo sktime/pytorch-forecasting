@@ -16,7 +16,6 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 from lightning.pytorch.tuner.lr_finder import _LRFinder
-from loguru import logger
 import numpy as np
 import optuna
 from optuna import Trial
@@ -232,7 +231,6 @@ def optimize_hyperparameters(
         kwargs.update(params)
         kwargs["loss"] = copy.deepcopy(loss)
         # Create model
-        logger.trace(f"Creating model with {kwargs.keys()}")
         model = model_class.from_dataset(
             train_dataloaders.dataset,
             log_interval=-1,
@@ -279,7 +277,6 @@ def optimize_hyperparameters(
         trainer.fit(model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders)
         # report result: choose logged metric
         metrics: dict = trainer.callback_metrics
-        logger.trace(f"Available metrics: {metrics.keys()}")
         try:
             metric_value: Tensor = metrics[monitor]
         except KeyError as ex:
