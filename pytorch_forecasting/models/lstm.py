@@ -1,6 +1,6 @@
 __all__ = ["LSTMModel"]
 
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from loguru import logger
 import torch
@@ -13,35 +13,68 @@ from ._base_autoregressive import AutoRegressiveBaseModel
 
 
 class LSTMModel(AutoRegressiveBaseModel):
-    """Simple LSTM model."""
+    """Simple LSTM model.
+
+    Args:
+        target (Union[str, Sequence[str]]):
+            Name (or list of names) of target variable(s).
+
+        target_lags (Dict[str, Dict[str, int]]): _description_
+
+        n_layers (int):
+            Number of LSTM layers.
+
+        hidden_size (int):
+            Hidden size for LSTM model.
+
+        dropout (float, optional):
+            Droput probability (<1). Defaults to 0.1.
+
+        input_size (int, optional):
+            Input size. Defaults to: inferred from `target`.
+
+        loss (Metric):
+            Loss criterion. Can be different for each target in multi-target setting thanks to
+            `MultiLoss`. Defaults to `MAE`.
+
+        **kwargs:
+            See :class:`pytorch_forecasting.models.base_model.AutoRegressiveBaseModel`.
+    """
 
     def __init__(
         self,
         target: Union[str, Sequence[str]],
-        target_lags: Dict[str, Dict[str, int]],
+        target_lags: Dict[str, Dict[str, int]],  # pylint: disable=unused-argument
         n_layers: int,
         hidden_size: int,
         dropout: float = 0.1,
-        input_size: int = None,
-        loss: Metric = None,
+        input_size: Optional[int] = None,
+        loss: Optional[Metric] = None,
         **kwargs: Any,
     ):
         """Prefer using the `LSTMModel.from_dataset()` method rather than this constructor.
+
         Args:
             target (Union[str, Sequence[str]]):
                 Name (or list of names) of target variable(s).
             target_lags (Dict[str, Dict[str, int]]): _description_
+
             n_layers (int):
                 Number of LSTM layers.
+
             hidden_size (int):
                 Hidden size for LSTM model.
+
             dropout (float, optional):
                 Droput probability (<1). Defaults to 0.1.
+
             input_size (int, optional):
                 Input size. Defaults to: inferred from `target`.
+
             loss (Metric):
                 Loss criterion. Can be different for each target in multi-target setting thanks to
                 `MultiLoss`. Defaults to `MAE`.
+
             **kwargs:
                 See :class:`pytorch_forecasting.models.base_model.AutoRegressiveBaseModel`.
         """
@@ -55,9 +88,9 @@ class LSTMModel(AutoRegressiveBaseModel):
         self.save_hyperparameters()
         # loss
         if loss is None:
-            loss = MultiLoss([MAE() for _ in range(n_targets)]) if n_targets > 1 else MAE()
+            loss = MultiLoss([MAE() for _ in range(n_targets)]) if n_targets > 1 else MAE()  # type: ignore
         # pass additional arguments to BaseModel.__init__, mandatory call - do not skip this
-        super().__init__(loss=loss, **kwargs)
+        super().__init__(loss=loss, **kwargs)  # type: ignore
         # use version of LSTM that can handle zero-length sequences
         self.lstm = LSTM(
             hidden_size=hidden_size,
@@ -168,15 +201,16 @@ class LSTMModel(AutoRegressiveBaseModel):
         return output
 
     def forward(self, x: Dict[str, Tensor]) -> Dict[str, Union[Tensor, List[Tensor]]]:
-        """_summary_
+        """
         Args:
-            x (Dict[str, torch.Tensor]): _description_
+            x (Dict[str, torch.Tensor]): Input dict.
+
         Returns:
-            Dict[str, torch.Tensor]: _description_
+            Dict[str, torch.Tensor]: Output dict.
         """
         hidden_state = self.encode(x)  # encode to hidden state
         output = self.decode(x, hidden_state)  # decode leveraging hidden state
-        out: Dict[str, torch.Tensor] = self.to_network_output(prediction=output)
+        out = self.to_network_output(prediction=output)
         return out
 
     def decode_one(

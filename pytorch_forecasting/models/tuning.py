@@ -1,5 +1,7 @@
 """
-Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedocs.io/>`_.
+Module for hyperparameter optimization.
+
+Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedocs.io/>`.
 """
 
 __all__ = ["optimize_hyperparameters"]
@@ -87,8 +89,9 @@ def optimize_hyperparameters(
     **kwargs: Any,
 ) -> optuna.Study:
     """
-    Optimize hyperparameters. Run hyperparameter optimization. Learning rate for is determined with the
-    PyTorch Lightning learning rate finder.
+    Optimize hyperparameters. Run hyperparameter optimization.
+
+    Learning rate for is determined with the PyTorch Lightning learning rate finder.
 
     Args:
         train_dataloaders (DataLoader):
@@ -98,65 +101,68 @@ def optimize_hyperparameters(
         model_path (str):
             Folder to which model checkpoints are saved.
         monitor (str):
-            Metric to return. The hyper-parameter (HP) tuner trains a model for a certain HP config, and
-            reads this metric to score configuration. By default, the lower the better.
+            Metric to return. The hyper-parameter (HP) tuner trains a model for a certain HP config,
+            and reads this metric to score configuration. By default, the lower the better.
         direction (str):
-            By default, direction is "minimize", meaning that lower values of the specified `monitor` are
-            better. You can change this, e.g. to "maximize".
+            By default, direction is "minimize", meaning that lower values of the specified
+            ``monitor`` are better. You can change this, e.g. to "maximize".
         max_epochs (int, optional):
             Maximum number of epochs to run training. Defaults to 20.
         n_trials (int, optional):
             Number of hyperparameter trials to run. Defaults to 100.
         timeout (float, optional):
-            Time in seconds after which training is stopped regardless of number of epochs or validation
-            metric. Defaults to 3600*8.0.
+            Time in seconds after which training is stopped regardless of number of epochs or
+            validation metric. Defaults to 3600*8.0.
         input_params (dict, optional):
-            A dictionary, where each `key` contains another dictionary with two keys: `"method"` and
-            `"ranges"`. Example:
-                >>> {"hidden_size": {
-                >>>     "method": "suggest_int",
-                >>>     "ranges": (16, 265),
-                >>> }}
-            The method key has to be a method of the `optuna.Trial` object. The ranges key are the input
-            ranges for the specified method.
+            A dictionary, where each ``key`` contains another dictionary with two keys: ``"method"``
+            and ``"ranges"``. Example:
+            >>> {"hidden_size": {
+                    "method": "suggest_int",
+                    "ranges": (16, 265),
+                }}
+            The method key has to be a method of the ``optuna.Trial`` object.
+            The ranges key are the input ranges for the specified method.
         input_params_generator (Callable, optional):
-            A function with the following signature: `fn(trial: optuna.Trial, **kwargs: Any) -> Dict[str, Any]
-            `, returning the parameter values to set up your model for the current trial/run.
+            A function with the following signature:
+            `fn(trial: optuna.Trial, **kwargs: Any) -> Dict[str, Any]`,
+            returning the parameter values to set up your model for the current trial/run.
             Example:
-                >>> def fn(trial: optuna.Trial, param_ranges: Tuple[int, int] = (16, 265)) -> Dict[str, Any]:
-                >>>     param = trial.suggest_int("param", *param_ranges, log=True)
-                >>>     model_params = {"param": param}
-                >>>     return model_params
-            Then, when your model is created (before training it and report the metrics for the current
-            combination of hyperparameters), these dictionary is used as follows:
-                >>> model = YourModelClass.from_dataset(
-                >>>     train_dataloaders.dataset,
-                >>>     log_interval=-1,
-                >>>     **model_params,
-                >>> )
+            >>> def fn(trial, param_ranges = (16, 265)) -> Dict[str, Any]:
+                    param = trial.suggest_int("param", *param_ranges, log=True)
+                    model_params = {"param": param}
+                    return model_params
+            Then, when your model is created (before training it and report the metrics for
+            the current combination of hyperparameters), these dictionary is used as follows:
+            >>> model = YourModelClass.from_dataset(
+                    train_dataloaders.dataset,
+                    log_interval=-1,
+                    **model_params,
+                )
         generator_params (dict, optional):
-            The additional parameters to be passed to the `input_params_generator` function, if required.
+            The additional parameters to be passed to the ``input_params_generator`` function,
+            if required.
         learning_rate_range (Tuple[float, float], optional):
             Learning rate range. Defaults to (1e-5, 1.0).
         use_learning_rate_finder (bool):
-            If to use learning rate finder or optimize as part of hyperparameters. Defaults to True.
+            If to use learning rate finder or optimize as part of hyperparameters.
+            Defaults to True.
         trainer_kwargs (Dict[str, Any], optional):
             Additional arguments to the
-            `PyTorch Lightning trainer <https://pytorch-lightning.readthedocs.io/en/latest/trainer.html>`
-            such as `limit_train_batches`. Defaults to {}.
+            PyTorch Lightning trainer such as ``limit_train_batches``.
+            Defaults to {}.
         log_dir (str, optional):
             Folder into which to log results for tensorboard. Defaults to "lightning_logs".
         study (optuna.Study, optional):
             Study to resume. Will create new study by default.
         verbose (Union[int, bool]):
             Level of verbosity.
-                * None: no change in verbosity level (equivalent to verbose=1 by optuna-set default).
+                * None: no change in verbosity level (equivalent to verbose=1).
                 * 0 or False: log only warnings.
                 * 1 or True: log pruning events.
                 * 2: optuna logging level at debug level.
             Defaults to None.
         pruner (optuna.pruners.BasePruner, optional):
-            The optuna pruner to use. Defaults to `optuna.pruners.SuccessiveHalvingPruner()`.
+            The optuna pruner to use. Defaults to ``optuna.pruners.SuccessiveHalvingPruner()``.
         **kwargs:
             Additional arguments for your model's class.
 
