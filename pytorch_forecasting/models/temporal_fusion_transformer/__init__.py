@@ -861,6 +861,11 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         Log embeddings to tensorboard
         """
+
+        # Don't log embeddings if add_embedding is not available
+        if not hasattr(self.logger.experiment, "add_embedding"):
+            return None
+
         for name, emb in self.input_embeddings.items():
             labels = self.hparams.embedding_labels[name]
             self.logger.experiment.add_embedding(
