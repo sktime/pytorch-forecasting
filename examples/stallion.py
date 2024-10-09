@@ -119,7 +119,7 @@ tft = TemporalFusionTransformer.from_dataset(
     log_val_interval=1,
     reduce_on_plateau_patience=3,
 )
-print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
+print(f"Number of parameters in network: {tft.size() / 1e3:.1f}k")
 
 # # find optimal learning rate
 # # remove logging and artificial epoch size
