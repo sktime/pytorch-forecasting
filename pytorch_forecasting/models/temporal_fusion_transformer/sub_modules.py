@@ -336,7 +336,8 @@ class VariableSelectionNetwork(nn.Module):
 
             outputs = var_outputs * sparse_weights
             outputs = outputs.sum(dim=-1)
-        else:  # for one input, do not perform variable selection but just encoding
+        elif self.num_inputs == 1:
+            # for one input, do not perform variable selection but just encoding
             name = next(iter(self.single_variable_grns.keys()))
             variable_embedding = x[name]
             if name in self.prescalers:
@@ -346,6 +347,12 @@ class VariableSelectionNetwork(nn.Module):
                 sparse_weights = torch.ones(outputs.size(0), outputs.size(1), 1, 1, device=outputs.device)  #
             else:  # ndim == 2 -> batch size, hidden size, n_variables
                 sparse_weights = torch.ones(outputs.size(0), 1, 1, device=outputs.device)
+        else:  # for no input
+            outputs = torch.zeros(context.size(), device=context.device)
+            if outputs.ndim == 3:  # -> batch size, time, hidden size, n_variables
+                sparse_weights = torch.zeros(outputs.size(0), outputs.size(1), 1, 0, device=outputs.device)
+            else:  # ndim == 2 -> batch size, hidden size, n_variables
+                sparse_weights = torch.zeros(outputs.size(0), 1, 0, device=outputs.device)
         return outputs, sparse_weights
 
 
