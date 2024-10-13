@@ -821,6 +821,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         if not mpl_available:
             return None
 
+        # Don't log figures if add_figure is not available
+        if not hasattr(self.logger.experiment, "add_figure"):
+            return None
+
         import matplotlib.pyplot as plt
 
         figs = self.plot_interpretation(interpretation)  # make interpretation figures
@@ -857,6 +861,11 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         Log embeddings to tensorboard
         """
+
+        # Don't log embeddings if add_embedding is not available
+        if not hasattr(self.logger.experiment, "add_embedding"):
+            return None
+
         for name, emb in self.input_embeddings.items():
             labels = self.hparams.embedding_labels[name]
             self.logger.experiment.add_embedding(
