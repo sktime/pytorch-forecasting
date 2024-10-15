@@ -65,7 +65,7 @@ trainer = pl.Trainer(
 net = NBeats.from_dataset(
     training, learning_rate=3e-2, log_interval=10, log_val_interval=1, log_gradient_flow=False, weight_decay=1e-2
 )
-print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
+print(f"Number of parameters in network: {net.size() / 1e3:.1f}k")
 
 # # find optimal learning rate
 # # remove logging and artificial epoch size

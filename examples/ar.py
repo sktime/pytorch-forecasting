@@ -85,7 +85,7 @@ deepar = DeepAR.from_dataset(
     log_val_interval=3,
     # reduce_on_plateau_patience=3,
 )
-print(f"Number of parameters in network: {deepar.size()/1e3:.1f}k")
+print(f"Number of parameters in network: {deepar.size() / 1e3:.1f}k")
 
 # # find optimal learning rate
 # deepar.hparams.log_interval = -1
