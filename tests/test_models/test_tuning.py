@@ -2,7 +2,7 @@ import os
 import sys
 import typing as ty
 
-from loguru import logger
+import optuna
 import pytest
 
 from pytorch_forecasting import TimeSeriesDataSet
@@ -10,14 +10,14 @@ from pytorch_forecasting.models import LSTMModel
 from pytorch_forecasting.models.tuning import optimize_hyperparameters
 
 
-def test_tuning_lst(timeseriesdataset_multitarget: TimeSeriesDataSet) -> None:
+def test_tuning_lst(timeseriesdataset_multitarget: TimeSeriesDataSet) -> optuna.Study:
     """Test we can tune a `LSTMModel` model."""
     # create dataloaders for model
     batch_size = 32
     train_dataloader = timeseriesdataset_multitarget.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
     val_dataloader = timeseriesdataset_multitarget.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
     # Create HP to explore
-    hp = {
+    hp: ty.Dict[str, ty.Dict[str, ty.Any]] = {
         "n_layers": {
             "method": "suggest_int",
             "ranges": (1, 8),
@@ -48,11 +48,8 @@ def test_tuning_lst(timeseriesdataset_multitarget: TimeSeriesDataSet) -> None:
         reduce_on_plateau_patience=4,
         use_learning_rate_finder=True,  # use Optuna to find ideal learning rate or use in-built learning rate finder
     )
-    # show best hyperparameters
-    logger.info(study.best_trial.params)
+    return study
 
 
 if __name__ == "__main__":
-    logger.remove()
-    logger.add(sys.stderr, level="TRACE")
     pytest.main([__file__, "-x", "-s"])
