@@ -31,9 +31,7 @@ name = "pytorch-forecasting"
 readme = "README.md"         # Markdown files are supported
 version = "1.1.1"            # is being replaced automatically
 
-authors = [
-  {name = "Jan Beitner"},
-]
+authors = [{ name = "Jan Beitner" }]
 requires-python = ">=3.8,<3.13"
 classifiers = [
   "Intended Audience :: Developers",
@@ -89,11 +87,7 @@ all_extras = [
   "statsmodels",
 ]
 
-tuning = [
-  "optuna >=3.1.0,<4.0.0",
-  "optuna-integration",
-  "statsmodels",
-]
+tuning = ["optuna >=3.1.0,<4.0.0", "optuna-integration", "statsmodels"]
 
 mqf2 = ["cpflows"]
 
@@ -134,15 +128,7 @@ dev = [
 ]
 
 # docs - dependencies for building the documentation
-docs = [
-  "sphinx>3.2",
-  "pydata-sphinx-theme",
-  "nbsphinx",
-  "pandoc",
-  "nbconvert",
-  "recommonmark",
-  "docutils",
-]
+docs = ["sphinx>3.2", "pydata-sphinx-theme", "nbsphinx", "pandoc", "nbconvert", "recommonmark", "docutils"]
 
 github-actions = ["pytest-github-actions-annotate-failures"]
 
@@ -151,6 +137,4 @@ exclude = ["build_tools"]
 
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [
-  "setuptools>=70.0.0",
-]
+requires = ["setuptools>=70.0.0"]

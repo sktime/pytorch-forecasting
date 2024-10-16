@@ -17,6 +17,8 @@ from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.rnn import RecurrentNetwork
 from pytorch_forecasting.models.temporal_fusion_transformer import TemporalFusionTransformer
 
+from .lstm import LSTMModel
+
 __all__ = [
     "NBeats",
     "NHiTS",
@@ -33,4 +35,5 @@ __all__ = [
     "GRU",
     "MultiEmbedding",
     "DecoderMLP",
+    "LSTMModel",
 ]
