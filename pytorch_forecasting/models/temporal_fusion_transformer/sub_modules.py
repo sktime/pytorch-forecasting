@@ -250,11 +250,11 @@ class VariableSelectionNetwork(nn.Module):
         self,
         input_sizes: Dict[str, int],
         hidden_size: int,
-        input_embedding_flags: Dict[str, bool] = {},
+        input_embedding_flags: Dict[str, bool] = None,
         dropout: float = 0.1,
         context_size: int = None,
-        single_variable_grns: Dict[str, GatedResidualNetwork] = {},
-        prescalers: Dict[str, nn.Linear] = {},
+        single_variable_grns: Dict[str, GatedResidualNetwork] = None,
+        prescalers: Dict[str, nn.Linear] = None,
     ):
         """
         Calcualte weights for ``num_inputs`` variables  which are each of size ``input_size``
@@ -263,7 +263,7 @@ class VariableSelectionNetwork(nn.Module):
 
         self.hidden_size = hidden_size
         self.input_sizes = input_sizes
-        self.input_embedding_flags = input_embedding_flags
+        self.input_embedding_flags = {} if input_embedding_flags is None else input_embedding_flags
         self.dropout = dropout
         self.context_size = context_size
 
@@ -285,7 +285,8 @@ class VariableSelectionNetwork(nn.Module):
                     self.dropout,
                     residual=False,
                 )
-
+        if single_variable_grns is None:
+            single_variable_grns = {}
         self.single_variable_grns = nn.ModuleDict()
         self.prescalers = nn.ModuleDict()
         for name, input_size in self.input_sizes.items():
@@ -300,6 +301,8 @@ class VariableSelectionNetwork(nn.Module):
                     output_size=self.hidden_size,
                     dropout=self.dropout,
                 )
+            if prescalers is None:
+                prescalers = {}
             if name in prescalers:  # reals need to be first scaled up
                 self.prescalers[name] = prescalers[name]
             elif not self.input_embedding_flags.get(name, False):
