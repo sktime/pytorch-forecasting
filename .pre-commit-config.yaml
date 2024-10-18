@@ -8,14 +8,11 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-ast
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
     hooks:
-      - id: flake8
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.10.1
-    hooks:
-      - id: isort
+      - id: ruff
+        args: [--fix]
   - repo: https://github.com/psf/black
     rev: 24.8.0
     hooks:
@@ -24,6 +21,5 @@ repos:
     rev: 1.8.7
     hooks:
       - id: nbqa-black
-      - id: nbqa-isort
-      - id: nbqa-flake8
+      - id: nbqa-ruff
       - id: nbqa-check-ast
