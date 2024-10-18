@@ -136,7 +136,7 @@ graph = ["networkx"]
 dev = [
   "pydocstyle >=6.1.1,<7.0.0",
   # checks and make tools
-  "pre-commit >=3.2.0,<4.0.0",
+  "pre-commit >=3.2.0,<5.0.0",
   "invoke",
   "mypy",
   "pylint",
