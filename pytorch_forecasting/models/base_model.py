@@ -564,7 +564,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         prediction: Union[torch.Tensor, List[torch.Tensor]],
         target_scale: Union[torch.Tensor, List[torch.Tensor]],
         loss: Optional[Metric] = None,
-    ) -> torch.Tensor:
+    ) -> Union[torch.Tensor, List[torch.Tensor]]:
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
 

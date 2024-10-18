@@ -2,6 +2,7 @@ import os
 import sys
 
 import numpy as np
+import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:skip
@@ -75,3 +76,29 @@ def test_dataset(test_data):
 def disable_mps(monkeypatch):
     """Disable MPS for all tests"""
     monkeypatch.setattr("torch._C._mps_is_available", lambda: False)
+
+
+@pytest.fixture(scope="session")
+def timeseriesdataset_multitarget() -> TimeSeriesDataSet:
+    """Dummy multi-target `TimeSeriesDataSet`."""
+    multi_target_test_data = pd.DataFrame(
+        dict(
+            target1=np.random.rand(30),
+            target2=np.random.rand(30),
+            group=np.repeat(np.arange(3), 10),
+            time_idx=np.tile(np.arange(10), 3),
+        )
+    )
+    dataset = TimeSeriesDataSet(
+        multi_target_test_data,
+        group_ids=["group"],
+        target=["target1", "target2"],
+        time_idx="time_idx",
+        min_encoder_length=5,
+        max_encoder_length=5,
+        min_prediction_length=1,
+        max_prediction_length=1,
+        time_varying_unknown_reals=["target1", "target2"],
+        target_normalizer="auto",
+    )
+    return dataset
