@@ -407,7 +407,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
         optimizer_params: Dict[str, Any] = None,
-        monotone_constraints: Dict[str, int] = None,
+        monotone_constaints: Dict[str, int] = None,
         output_transformer: Callable = None,
         optimizer=None,
     ):
@@ -432,7 +432,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
             optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
-            monotone_constraints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
+            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
@@ -446,8 +446,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_,
                 if pytorch_optimizer is installed, otherwise "adam".
         """
-        if monotone_constraints is None:
-            monotone_constraints = {}
+        if monotone_constaints is None:
+            monotone_constaints = {}
         super().__init__()
         # update hparams
         frame = inspect.currentframe()
@@ -1012,8 +1012,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Dict[str, Any] = None,
-        prediction_kwargs: Dict[str, Any] = None,
+        quantiles_kwargs: Optional[Dict[str, Any]] = None,
+        prediction_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -2305,8 +2305,8 @@ class AutoRegressiveBaseModel(BaseModel):
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Dict[str, Any] = None,
-        prediction_kwargs: Dict[str, Any] = None,
+        quantiles_kwargs: Optional[Dict[str, Any]] = None,
+        prediction_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Plot prediction of prediction vs actuals

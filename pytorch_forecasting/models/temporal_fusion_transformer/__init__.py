@@ -55,7 +55,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         log_val_interval: Union[int, float] = None,
         log_gradient_flow: bool = False,
         reduce_on_plateau_patience: int = 1000,
-        monotone_constraints: Optional[Dict[str, int]] = None,
+        monotone_constaints: Optional[Dict[str, int]] = None,
         share_single_variable_networks: bool = False,
         causal_attention: bool = True,
         logging_metrics: nn.ModuleList = None,
@@ -120,7 +120,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
                 failures
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-            monotone_constraints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
+            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
@@ -133,8 +133,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
-        if monotone_constraints is None:
-            monotone_constraints = {}
+        if monotone_constaints is None:
+            monotone_constaints = {}
         if embedding_labels is None:
             embedding_labels = {}
         if embedding_paddings is None:
