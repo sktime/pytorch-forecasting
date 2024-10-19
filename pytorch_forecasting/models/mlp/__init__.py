@@ -2,7 +2,7 @@
 Simple models based on fully connected networks
 """
 
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional
 
 import numpy as np
 import torch
@@ -29,18 +29,18 @@ class DecoderMLP(BaseModelWithCovariates):
         n_hidden_layers: int = 3,
         dropout: float = 0.1,
         norm: bool = True,
-        static_categoricals: List[str] = [],
-        static_reals: List[str] = [],
-        time_varying_categoricals_encoder: List[str] = [],
-        time_varying_categoricals_decoder: List[str] = [],
-        categorical_groups: Dict[str, List[str]] = {},
-        time_varying_reals_encoder: List[str] = [],
-        time_varying_reals_decoder: List[str] = [],
-        embedding_sizes: Dict[str, Tuple[int, int]] = {},
-        embedding_paddings: List[str] = [],
-        embedding_labels: Dict[str, np.ndarray] = {},
-        x_reals: List[str] = [],
-        x_categoricals: List[str] = [],
+        static_categoricals: Optional[List[str]] = None,
+        static_reals: Optional[List[str]] = None,
+        time_varying_categoricals_encoder: Optional[List[str]] = None,
+        time_varying_categoricals_decoder: Optional[List[str]] = None,
+        categorical_groups: Optional[Dict[str, List[str]]] = None,
+        time_varying_reals_encoder: Optional[List[str]] = None,
+        time_varying_reals_decoder: Optional[List[str]] = None,
+        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
+        embedding_paddings: Optional[List[str]] = None,
+        embedding_labels: Optional[Dict[str, np.ndarray]] = None,
+        x_reals: Optional[List[str]] = None,
+        x_categoricals: Optional[List[str]] = None,
         output_size: Union[int, List[int]] = 1,
         target: Union[str, List[str]] = None,
         loss: MultiHorizonMetric = None,
@@ -82,6 +82,30 @@ class DecoderMLP(BaseModelWithCovariates):
             loss = QuantileLoss()
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+        if static_categoricals is None:
+            static_categoricals = []
+        if static_reals is None:
+            static_reals = []
+        if time_varying_reals_encoder is None:
+            time_varying_categoricals_encoder = []
+        if time_varying_categoricals_decoder is None:
+            time_varying_reals_decoder = []
+        if categorical_groups is None:
+            categorical_groups = {}
+        if time_varying_reals_encoder is None:
+            time_varying_reals_encoder = []
+        if time_varying_reals_decoder is None:
+            time_varying_reals_decoder = []
+        if embedding_sizes is None:
+            embedding_sizes = {}
+        if embedding_paddings is None:
+            embedding_paddings = []
+        if embedding_labels is None:
+            embedding_labels = {}
+        if x_reals is None:
+            x_reals = []
+        if x_categoricals is None:
+            x_categoricals = []
         self.save_hyperparameters()
         # store loss function separately as it is a module
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
