@@ -40,7 +40,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         static_reals: Optional[List[str]] = None,
         time_varying_categoricals_encoder: Optional[List[str]] = None,
         time_varying_categoricals_decoder: Optional[List[str]] = None,
-        categorical_groups: Optional[Dict, List[str]] = None,
+        categorical_groups: Optional[Union[Dict, List[str]]] = None,
         time_varying_reals_encoder: Optional[List[str]] = None,
         time_varying_reals_decoder: Optional[List[str]] = None,
         x_reals: Optional[List[str]] = None,

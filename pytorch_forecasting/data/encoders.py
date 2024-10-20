@@ -2,7 +2,7 @@
 Encoders for encoding categorical variables and scaling continuous data.
 """
 
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union, Optional
 import warnings
 
 import numpy as np
@@ -397,7 +397,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         method: str = "standard",
         center: bool = True,
         transformation: Union[str, Tuple[Callable, Callable]] = None,
-        method_kwargs: Dict[str, Any] = None,
+        method_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Args:
@@ -728,11 +728,11 @@ class GroupNormalizer(TorchNormalizer):
     def __init__(
         self,
         method: str = "standard",
-        groups: List[str] = None,
+        groups: Optional[List[str]] = None,
         center: bool = True,
         scale_by_group: bool = False,
-        transformation: Union[str, Tuple[Callable, Callable]] = None,
-        method_kwargs: Dict[str, Any] = None,
+        transformation: Optional[Union[str, Tuple[Callable, Callable]]] = None,
+        method_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Group normalizer to normalize a given entry by groups. Can be used as target normalizer.

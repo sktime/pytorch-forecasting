@@ -8,7 +8,7 @@ defines a class that is able to handle a wide variety of timeseries data problem
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union, Optional
 import warnings
 
 import numpy as np
@@ -185,22 +185,22 @@ class TimeSeriesDataSet(Dataset):
         min_prediction_idx: int = None,
         min_prediction_length: int = None,
         max_prediction_length: int = 1,
-        static_categoricals: List[str] = None,
-        static_reals: List[str] = None,
-        time_varying_known_categoricals: List[str] = None,
-        time_varying_known_reals: List[str] = None,
-        time_varying_unknown_categoricals: List[str] = None,
-        time_varying_unknown_reals: List[str] = None,
-        variable_groups: Dict[str, List[int]] = None,
-        constant_fill_strategy: Dict[str, Union[str, float, int, bool]] = None,
+        static_categoricals: Optional[List[str]] = None,
+        static_reals: Optional[List[str]] = None,
+        time_varying_known_categoricals: Optional[List[str]] = None,
+        time_varying_known_reals: Optional[List[str]] = None,
+        time_varying_unknown_categoricals: Optional[List[str]] = None,
+        time_varying_unknown_reals: Optional[List[str]] = None,
+        variable_groups: Optional[Dict[str, List[int]]] = None,
+        constant_fill_strategy: Optional[Dict[str, Union[str, float, int, bool]]] = None,
         allow_missing_timesteps: bool = False,
-        lags: Dict[str, List[int]] = None,
+        lags: Optional[Dict[str, List[int]]] = None,
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None] = "auto",
-        categorical_encoders: Dict[str, NaNLabelEncoder] = None,
-        scalers: Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]] = None,
+        categorical_encoders: Optional[Dict[str, NaNLabelEncoder]] = None,
+        scalers: Optional[Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]]] = None,
         randomize_length: Union[None, Tuple[float, float], bool] = False,
         predict_mode: bool = False,
     ):

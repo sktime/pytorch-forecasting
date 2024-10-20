@@ -503,7 +503,7 @@ class CompositeMetric(LightningMetric):
     higher_is_better = False
     is_differentiable = True
 
-    def __init__(self, metrics: List[LightningMetric] = None, weights: List[float] = None):
+    def __init__(self, metrics: Optional[List[LightningMetric]] = None, weights: Optional[List[float]] = None):
         """
         Args:
             metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to None.
@@ -515,8 +515,8 @@ class CompositeMetric(LightningMetric):
             weights = [1.0 for _ in metrics]
         assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
 
-        self.metrics = metrics
-        self.weights = weights
+        self.metrics = list(metrics)
+        self.weights = list(weights)
 
         super().__init__()
 
