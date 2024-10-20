@@ -4,6 +4,7 @@ Implementation of ``nn.Modules`` for temporal fusion transformer.
 
 import math
 from typing import Dict, Tuple
+from copy import deepcopy
 
 import torch
 import torch.nn as nn
@@ -263,7 +264,7 @@ class VariableSelectionNetwork(nn.Module):
 
         self.hidden_size = hidden_size
         self.input_sizes = input_sizes
-        self.input_embedding_flags = {} if input_embedding_flags is None else input_embedding_flags
+        self.input_embedding_flags = {} if input_embedding_flags is None else deepcopy(input_embedding_flags)
         self.dropout = dropout
         self.context_size = context_size
 

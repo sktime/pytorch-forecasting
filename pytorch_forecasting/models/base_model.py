@@ -711,11 +711,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Dict[str, Any]: log dictionary to be returned by training and validation steps
         """
-        if prediction_kwargs is None:
-            prediction_kwargs = {}
-        if quantiles_kwargs is None:
-            quantiles_kwargs = {}
 
+        prediction_kwargs = {} if prediction_kwargs is None else deepcopy(prediction_kwargs)
+        quantiles_kwargs = {} if quantiles_kwargs is None else deepcopy(quantiles_kwargs)
         # log
         if isinstance(self.loss, DistributionLoss):
             prediction_kwargs.setdefault("n_samples", 20)
@@ -2327,10 +2325,8 @@ class AutoRegressiveBaseModel(BaseModel):
             matplotlib figure
         """
 
-        if quantiles_kwargs is None:
-            quantiles_kwargs = {}
-        if prediction_kwargs is None:
-            prediction_kwargs = {}
+        prediction_kwargs = {} if prediction_kwargs is None else deepcopy(prediction_kwargs)
+        quantiles_kwargs = {} if quantiles_kwargs is None else deepcopy(quantiles_kwargs)
 
         # get predictions
         if isinstance(self.loss, DistributionLoss):

@@ -352,17 +352,17 @@ class TimeSeriesDataSet(Dataset):
         self.target = target
         self.weight = weight
         self.time_idx = time_idx
-        self.group_ids = [] if group_ids is None else group_ids
-        self.static_categoricals = [] if static_categoricals is None else static_categoricals
-        self.static_reals = [] if static_reals is None else static_reals
+        self.group_ids = [] if group_ids is None else list(group_ids)
+        self.static_categoricals = [] if static_categoricals is None else list(static_categoricals)
+        self.static_reals = [] if static_reals is None else list(static_reals)
         self.time_varying_known_categoricals = (
-            [] if time_varying_known_categoricals is None else time_varying_known_categoricals
+            [] if time_varying_known_categoricals is None else list(time_varying_known_categoricals)
         )
-        self.time_varying_known_reals = [] if time_varying_known_reals is None else time_varying_known_reals
+        self.time_varying_known_reals = [] if time_varying_known_reals is None else list(time_varying_known_reals)
         self.time_varying_unknown_categoricals = (
-            [] if time_varying_unknown_categoricals is None else time_varying_unknown_categoricals
+            [] if time_varying_unknown_categoricals is None else list(time_varying_unknown_categoricals)
         )
-        self.time_varying_unknown_reals = [] if time_varying_unknown_reals is None else time_varying_unknown_reals
+        self.time_varying_unknown_reals = [] if time_varying_unknown_reals is None else list(time_varying_unknown_reals)
         self.add_relative_time_idx = add_relative_time_idx
 
         # set automatic defaults
@@ -375,15 +375,15 @@ class TimeSeriesDataSet(Dataset):
         if min_prediction_idx is None:
             min_prediction_idx = data[self.time_idx].min()
         self.min_prediction_idx = min_prediction_idx
-        self.constant_fill_strategy = {} if constant_fill_strategy is None else constant_fill_strategy
+        self.constant_fill_strategy = {} if constant_fill_strategy is None else deepcopy(constant_fill_strategy)
         self.predict_mode = predict_mode
         self.allow_missing_timesteps = allow_missing_timesteps
         self.target_normalizer = target_normalizer
-        self.categorical_encoders = {} if categorical_encoders is None else categorical_encoders
-        self.scalers = {} if scalers is None else scalers
+        self.categorical_encoders = {} if categorical_encoders is None else deepcopy(categorical_encoders)
+        self.scalers = {} if scalers is None else deepcopy(scalers)
         self.add_target_scales = add_target_scales
-        self.variable_groups = {} if variable_groups is None else variable_groups
-        self.lags = {} if lags is None else lags
+        self.variable_groups = {} if variable_groups is None else deepcopy(variable_groups)
+        self.lags = {} if lags is None else deepcopy(lags)
 
         # add_encoder_length
         if isinstance(add_encoder_length, str):

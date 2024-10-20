@@ -7,6 +7,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints
@@ -427,7 +428,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.transformation = transformation
-        self.method_kwargs = method_kwargs if method_kwargs is not None else {}
+        self.method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -655,7 +656,7 @@ class EncoderNormalizer(TorchNormalizer):
                   should be defined if ``reverse`` is not the inverse of the forward transformation. ``inverse_torch``
                   can be defined to provide a torch distribution transform for inverse transformations.
         """
-        method_kwargs = method_kwargs if method_kwargs is not None else {}
+        method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
         super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
         self.max_length = max_length
 
@@ -765,9 +766,9 @@ class GroupNormalizer(TorchNormalizer):
                   can be defined to provide a torch distribution transform for inverse transformations.
 
         """
-        self.groups = groups if groups is not None else []
+        self.groups = list(groups) if groups is not None else []
         self.scale_by_group = scale_by_group
-        method_kwargs = method_kwargs if method_kwargs is not None else {}
+        method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
         super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
 
     def fit(self, y: pd.Series, X: pd.DataFrame):
