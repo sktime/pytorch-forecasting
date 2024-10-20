@@ -899,9 +899,7 @@ class DistributionLoss(MultiHorizonMetric):
     distribution_class: distributions.Distribution
     distribution_arguments: List[str]
 
-    def __init__(
-        self, name: str = None, quantiles: Optional[List[float]] = None, reduction="mean"
-    ):
+    def __init__(self, name: str = None, quantiles: Optional[List[float]] = None, reduction="mean"):
         """
         Initialize metric
 
