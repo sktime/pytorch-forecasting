@@ -515,14 +515,24 @@ class CompositeMetric(LightningMetric):
             weights = [1.0 for _ in metrics]
         assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
 
-        self.metrics = list(metrics)
-        self.weights = list(weights)
+        self._metrics = list(metrics)
+        self._weights = list(weights)
 
         super().__init__()
 
     def __repr__(self):
         name = " + ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
         return name
+
+    @property
+    def metrics(self) -> List[LightningMetric]:
+        """List of metrics to combine."""
+        return self._metrics
+
+    @property
+    def weights(self) -> List[float]:
+        """List of weights / multipliers for weights."""
+        return self._weights
 
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
         """

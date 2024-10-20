@@ -428,7 +428,12 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.transformation = transformation
-        self.method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
+        self._method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
+
+    @property
+    def method_kwargs(self) -> Dict[str, Any]:
+        """Dictionary of method specific arguments."""
+        return self._method_kwargs
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -766,10 +771,15 @@ class GroupNormalizer(TorchNormalizer):
                   can be defined to provide a torch distribution transform for inverse transformations.
 
         """
-        self.groups = list(groups) if groups is not None else []
+        self._groups = list(groups) if groups is not None else []
         self.scale_by_group = scale_by_group
         method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
         super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
+
+    @property
+    def groups(self) -> List[str]:
+        """Group names to normalize by."""
+        return self._groups
 
     def fit(self, y: pd.Series, X: pd.DataFrame):
         """

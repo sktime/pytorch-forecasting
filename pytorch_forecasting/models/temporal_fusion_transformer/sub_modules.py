@@ -258,13 +258,13 @@ class VariableSelectionNetwork(nn.Module):
         prescalers: Dict[str, nn.Linear] = None,
     ):
         """
-        Calcualte weights for ``num_inputs`` variables  which are each of size ``input_size``
+        Calculate weights for ``num_inputs`` variables  which are each of size ``input_size``
         """
         super().__init__()
 
         self.hidden_size = hidden_size
         self.input_sizes = input_sizes
-        self.input_embedding_flags = {} if input_embedding_flags is None else deepcopy(input_embedding_flags)
+        self._input_embedding_flags = {} if input_embedding_flags is None else deepcopy(input_embedding_flags)
         self.dropout = dropout
         self.context_size = context_size
 
@@ -310,6 +310,10 @@ class VariableSelectionNetwork(nn.Module):
                 self.prescalers[name] = nn.Linear(1, input_size)
 
         self.softmax = nn.Softmax(dim=-1)
+
+    @property
+    def input_embedding_flags(self) -> Dict[str, bool]:
+        return self._input_embedding_flags
 
     @property
     def input_size_total(self):
