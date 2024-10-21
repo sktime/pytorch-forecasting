@@ -534,6 +534,11 @@ class CompositeMetric(LightningMetric):
         """List of weights / multipliers for weights."""
         return self._weights
 
+    @weights.setter
+    def weights(self, value: List[float]) -> None:
+        """Weights setter."""
+        self._weights = value
+
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
         """
         Update composite metric
