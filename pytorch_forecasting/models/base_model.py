@@ -95,7 +95,7 @@ def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
 
     # check if remaining dimensions are all equal
     if x[0].ndim > 2:
-        remaining_dimensions_equal = all([all([xi.size(i) == x[0].size(i) for xi in x]) for i in range(2, x[0].ndim)])
+        remaining_dimensions_equal = all(all(xi.size(i) == x[0].size(i) for xi in x) for i in range(2, x[0].ndim))
     else:
         remaining_dimensions_equal = True
 
@@ -796,7 +796,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constaints.keys()]
             )
             monotonicity = torch.tensor(
-                [val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype, device=gradient.device
+                list(self.hparams.monotone_constaints.values()), dtype=gradient.dtype, device=gradient.device
             )
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
@@ -1225,7 +1225,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
             from pytorch_optimizer import Ranger21
 
-            if any([isinstance(c, LearningRateFinder) for c in self.trainer.callbacks]):
+            if any(isinstance(c, LearningRateFinder) for c in self.trainer.callbacks):
                 # if finding learning rate, switch off warm up and cool down
                 optimizer_params.setdefault("num_warm_up_iterations", 0)
                 optimizer_params.setdefault("num_warm_down_iterations", 0)

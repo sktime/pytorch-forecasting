@@ -896,7 +896,7 @@ class GroupNormalizer(TorchNormalizer):
             self.missing_ = self.norm_.median().to_dict()
 
         if (
-            (self.scale_by_group and any([(self.norm_[group]["scale"] < 1e-7).any() for group in self.groups]))
+            (self.scale_by_group and any((self.norm_[group]["scale"] < 1e-7).any() for group in self.groups))
             or (not self.scale_by_group and isinstance(self.norm_["scale"], float) and self.norm_["scale"] < 1e-7)
             or (
                 not self.scale_by_group
@@ -1186,7 +1186,7 @@ class MultiNormalizer(TorchNormalizer):
         try:
             return super().__getattr__(name)
         except AttributeError as e:
-            attribute_exists = all([hasattr(norm, name) for norm in self.normalizers])
+            attribute_exists = all(hasattr(norm, name) for norm in self.normalizers)
             if attribute_exists:
                 # check if to return callable or not and return function if yes
                 if callable(getattr(self.normalizers[0], name)):

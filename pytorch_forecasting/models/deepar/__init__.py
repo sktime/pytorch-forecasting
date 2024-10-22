@@ -208,7 +208,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         new_kwargs.update(kwargs)
         assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
             not isinstance(dataset.target_normalizer, MultiNormalizer)
-            or all([not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer])
+            or all(not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer)
         ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
         if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
             assert (
@@ -230,7 +230,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         # create input vector
         if len(self.categoricals) > 0:
             embeddings = self.embeddings(x_cat)
-            flat_embeddings = torch.cat([emb for emb in embeddings.values()], dim=-1)
+            flat_embeddings = torch.cat(list(embeddings.values()), dim=-1)
             input_vector = flat_embeddings
 
         if len(self.reals) > 0:
