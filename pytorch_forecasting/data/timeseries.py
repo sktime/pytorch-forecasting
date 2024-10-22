@@ -103,7 +103,7 @@ def check_for_nonfinite(tensor: torch.Tensor, names: Union[str, List[str]]) -> t
     for name, na in zip(names, nans):
         if na > 0:
             raise ValueError(
-                f"{na} ({na/tensor.size(0):.2%}) of {name} "
+                f"{na} ({na / tensor.size(0):.2%}) of {name} "
                 "values were found to be NA or infinite (even after encoding). NA values are not allowed "
                 "`allow_missing_timesteps` refers to missing rows, not to missing values. Possible strategies to "
                 f"fix the issue are (a) dropping the variable {name}, "
