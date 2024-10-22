@@ -791,7 +791,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 [self.hparams.x_reals.index(name) for name in self.hparams.monotone_constaints.keys()]
             )
             monotonicity = torch.tensor(
-                [val for val in self.hparams.monotone_constaints.values()], dtype=gradient.dtype, device=gradient.device
+                list(self.hparams.monotone_constaints.values()), dtype=gradient.dtype, device=gradient.device
             )
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]

@@ -204,7 +204,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         # create input vector
         if len(self.categoricals) > 0:
             embeddings = self.embeddings(x_cat)
-            flat_embeddings = torch.cat([emb for emb in embeddings.values()], dim=-1)
+            flat_embeddings = torch.cat(list(embeddings.values()), dim=-1)
             input_vector = flat_embeddings
 
         if len(self.reals) > 0:
