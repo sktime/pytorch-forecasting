@@ -22,6 +22,7 @@ extend-ignore = [
   "C408", # Unnecessary dict call - rewrite as a literal.
   "C409", # Unnecessary list passed to tuple() - rewrite as a tuple literal.
   "F401", # unused imports
+  "S101", # use of assert
 ]
 
 [tool.ruff.lint.isort]
