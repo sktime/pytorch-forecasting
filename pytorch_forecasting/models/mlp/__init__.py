@@ -87,9 +87,9 @@ class DecoderMLP(BaseModelWithCovariates):
         if static_reals is None:
             static_reals = []
         if time_varying_reals_encoder is None:
-            time_varying_categoricals_encoder = []
+            time_varying_reals_encoder = []
         if time_varying_categoricals_decoder is None:
-            time_varying_reals_decoder = []
+            time_varying_categoricals_decoder = []
         if categorical_groups is None:
             categorical_groups = {}
         if time_varying_reals_encoder is None:
