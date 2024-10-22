@@ -153,7 +153,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         new_kwargs.update(cls.deduce_default_output_parameters(dataset=dataset, kwargs=kwargs, default_loss=MAE()))
         assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
             not isinstance(dataset.target_normalizer, MultiNormalizer)
-            or all([not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer])
+            or all(not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer)
         ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
         return super().from_dataset(
             dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
