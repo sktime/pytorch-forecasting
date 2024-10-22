@@ -429,7 +429,14 @@ def move_to_device(
         x on targeted device
     """
     if isinstance(device, str):
-        device = torch.device(device)
+        if device == "mps":
+            if hasattr(torch.backends, device):
+                if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+                    device = torch.device("mps")
+                else:
+                    device = torch.device("cpu")
+        else:
+            device = torch.device(device)
     if isinstance(x, dict):
         for name in x.keys():
             x[name] = move_to_device(x[name], device=device)

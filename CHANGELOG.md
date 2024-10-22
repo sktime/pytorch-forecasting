@@ -1,5 +1,12 @@
 # Release Notes
 
+## v1.1.1
+
+Hotfix for accidental package name change in `pyproject.toml`.
+
+The package name is now corrected to `pytorch-forecasting`.
+
+
 ## v1.1.0
 
 Maintenance update widening compatibility ranges and consolidating dependencies:
