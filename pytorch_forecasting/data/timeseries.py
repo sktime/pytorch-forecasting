@@ -8,7 +8,7 @@ defines a class that is able to handle a wide variety of timeseries data problem
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Tuple, Union, Optional
 import warnings
 
 import numpy as np
@@ -185,22 +185,22 @@ class TimeSeriesDataSet(Dataset):
         min_prediction_idx: int = None,
         min_prediction_length: int = None,
         max_prediction_length: int = 1,
-        static_categoricals: List[str] = [],
-        static_reals: List[str] = [],
-        time_varying_known_categoricals: List[str] = [],
-        time_varying_known_reals: List[str] = [],
-        time_varying_unknown_categoricals: List[str] = [],
-        time_varying_unknown_reals: List[str] = [],
-        variable_groups: Dict[str, List[int]] = {},
-        constant_fill_strategy: Dict[str, Union[str, float, int, bool]] = {},
+        static_categoricals: Optional[List[str]] = None,
+        static_reals: Optional[List[str]] = None,
+        time_varying_known_categoricals: Optional[List[str]] = None,
+        time_varying_known_reals: Optional[List[str]] = None,
+        time_varying_unknown_categoricals: Optional[List[str]] = None,
+        time_varying_unknown_reals: Optional[List[str]] = None,
+        variable_groups: Optional[Dict[str, List[int]]] = None,
+        constant_fill_strategy: Optional[Dict[str, Union[str, float, int, bool]]] = None,
         allow_missing_timesteps: bool = False,
-        lags: Dict[str, List[int]] = {},
+        lags: Optional[Dict[str, List[int]]] = None,
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None] = "auto",
-        categorical_encoders: Dict[str, NaNLabelEncoder] = {},
-        scalers: Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]] = {},
+        categorical_encoders: Optional[Dict[str, NaNLabelEncoder]] = None,
+        scalers: Optional[Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]]] = None,
         randomize_length: Union[None, Tuple[float, float], bool] = False,
         predict_mode: bool = False,
     ):
@@ -352,13 +352,19 @@ class TimeSeriesDataSet(Dataset):
         self.target = target
         self.weight = weight
         self.time_idx = time_idx
-        self.group_ids = [] + group_ids
-        self.static_categoricals = [] + static_categoricals
-        self.static_reals = [] + static_reals
-        self.time_varying_known_categoricals = [] + time_varying_known_categoricals
-        self.time_varying_known_reals = [] + time_varying_known_reals
-        self.time_varying_unknown_categoricals = [] + time_varying_unknown_categoricals
-        self.time_varying_unknown_reals = [] + time_varying_unknown_reals
+        self.group_ids = [] if group_ids is None else list(group_ids)
+        self._static_categoricals = [] if static_categoricals is None else list(static_categoricals)
+        self._static_reals = [] if static_reals is None else list(static_reals)
+        self._time_varying_known_categoricals = (
+            [] if time_varying_known_categoricals is None else list(time_varying_known_categoricals)
+        )
+        self._time_varying_known_reals = [] if time_varying_known_reals is None else list(time_varying_known_reals)
+        self._time_varying_unknown_categoricals = (
+            [] if time_varying_unknown_categoricals is None else list(time_varying_unknown_categoricals)
+        )
+        self._time_varying_unknown_reals = (
+            [] if time_varying_unknown_reals is None else list(time_varying_unknown_reals)
+        )
         self.add_relative_time_idx = add_relative_time_idx
 
         # set automatic defaults
@@ -371,15 +377,15 @@ class TimeSeriesDataSet(Dataset):
         if min_prediction_idx is None:
             min_prediction_idx = data[self.time_idx].min()
         self.min_prediction_idx = min_prediction_idx
-        self.constant_fill_strategy = {} if len(constant_fill_strategy) == 0 else constant_fill_strategy
+        self._constant_fill_strategy = {} if constant_fill_strategy is None else deepcopy(constant_fill_strategy)
         self.predict_mode = predict_mode
         self.allow_missing_timesteps = allow_missing_timesteps
         self.target_normalizer = target_normalizer
-        self.categorical_encoders = {} if len(categorical_encoders) == 0 else categorical_encoders
-        self.scalers = {} if len(scalers) == 0 else scalers
+        self._categorical_encoders = {} if categorical_encoders is None else deepcopy(categorical_encoders)
+        self._scalers = {} if scalers is None else deepcopy(scalers)
         self.add_target_scales = add_target_scales
-        self.variable_groups = {} if len(variable_groups) == 0 else variable_groups
-        self.lags = {} if len(lags) == 0 else lags
+        self._variable_groups = {} if variable_groups is None else deepcopy(variable_groups)
+        self._lags = {} if lags is None else deepcopy(lags)
 
         # add_encoder_length
         if isinstance(add_encoder_length, str):
@@ -412,7 +418,7 @@ class TimeSeriesDataSet(Dataset):
             ), "relative_time_idx is a protected column and must not be present in data"
             if "relative_time_idx" not in self.time_varying_known_reals and "relative_time_idx" not in self.reals:
                 self.time_varying_known_reals.append("relative_time_idx")
-            data.loc[:, "relative_time_idx"] = 0.0  # dummy - real value will be set dynamiclly in __getitem__()
+            data.loc[:, "relative_time_idx"] = 0.0  # dummy - real value will be set dynamically in __getitem__()
 
         # add decoder length to static real variables
         if self.add_encoder_length:
@@ -421,7 +427,7 @@ class TimeSeriesDataSet(Dataset):
             ), "encoder_length is a protected column and must not be present in data"
             if "encoder_length" not in self.time_varying_known_reals and "encoder_length" not in self.reals:
                 self.static_reals.append("encoder_length")
-            data.loc[:, "encoder_length"] = 0  # dummy - real value will be set dynamiclly in __getitem__()
+            data.loc[:, "encoder_length"] = 0  # dummy - real value will be set dynamically in __getitem__()
 
         # validate
         self._validate_data(data)
@@ -483,6 +489,61 @@ class TimeSeriesDataSet(Dataset):
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
+
+    @property
+    def static_categoricals(self) -> List[str]:
+        """List of categorical variables that do not change over time."""
+        return self._static_categoricals
+
+    @property
+    def static_reals(self) -> List[str]:
+        """list of continuous variables that do not change over time."""
+        return self._static_reals
+
+    @property
+    def time_varying_known_categoricals(self) -> List[str]:
+        """list of categorical variables that change over time and are known in the future."""
+        return self._time_varying_known_categoricals
+
+    @property
+    def time_varying_known_reals(self) -> List[str]:
+        """list of continuous variables that change over time and are known in the future."""
+        return self._time_varying_known_reals
+
+    @property
+    def time_varying_unknown_categoricals(self) -> List[str]:
+        """list of categorical variables that change over time and are not known in the future."""
+        return self._time_varying_unknown_categoricals
+
+    @property
+    def time_varying_unknown_reals(self) -> List[str]:
+        """list of continuous variables that change over time and are not known in the future."""
+        return self._time_varying_unknown_reals
+
+    @property
+    def constant_fill_strategy(self) -> Dict[str, Union[str, float, int, bool]]:
+        """Dictionary of column names with constants to fill in missing values if there are gaps in the sequence."""
+        return self._constant_fill_strategy
+
+    @property
+    def categorical_encoders(self) -> Dict[str, NaNLabelEncoder]:
+        """Dictionary of scikit learn label transformers."""
+        return self._categorical_encoders
+
+    @property
+    def scalers(self) -> Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]]:
+        """Dictionary of scikit learn scalers."""
+        return self._scalers
+
+    @property
+    def variable_groups(self) -> Dict[str, List[int]]:
+        """Dictionary mapping a name to a list of columns in the data."""
+        return self._variable_groups
+
+    @property
+    def lags(self) -> Dict[str, List[int]]:
+        """Dictionary of variable names mapped to list of time steps by which the variable should be lagged."""
+        return self._lags
 
     @property
     def dropout_categoricals(self) -> List[str]:

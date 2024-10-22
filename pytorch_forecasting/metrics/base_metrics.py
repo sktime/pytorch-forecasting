@@ -503,24 +503,41 @@ class CompositeMetric(LightningMetric):
     higher_is_better = False
     is_differentiable = True
 
-    def __init__(self, metrics: List[LightningMetric] = [], weights: List[float] = None):
+    def __init__(self, metrics: Optional[List[LightningMetric]] = None, weights: Optional[List[float]] = None):
         """
         Args:
-            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to [].
+            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to None.
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """
+        if metrics is None:
+            metrics = []
         if weights is None:
             weights = [1.0 for _ in metrics]
         assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
 
-        self.metrics = metrics
-        self.weights = weights
+        self._metrics = list(metrics)
+        self._weights = list(weights)
 
         super().__init__()
 
     def __repr__(self):
         name = " + ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
         return name
+
+    @property
+    def metrics(self) -> List[LightningMetric]:
+        """List of metrics to combine."""
+        return self._metrics
+
+    @property
+    def weights(self) -> List[float]:
+        """List of weights / multipliers for weights."""
+        return self._weights
+
+    @weights.setter
+    def weights(self, value: List[float]) -> None:
+        """Weights setter."""
+        self._weights = value
 
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
         """
@@ -897,9 +914,7 @@ class DistributionLoss(MultiHorizonMetric):
     distribution_class: distributions.Distribution
     distribution_arguments: List[str]
 
-    def __init__(
-        self, name: str = None, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98], reduction="mean"
-    ):
+    def __init__(self, name: str = None, quantiles: Optional[List[float]] = None, reduction="mean"):
         """
         Initialize metric
 
@@ -909,6 +924,8 @@ class DistributionLoss(MultiHorizonMetric):
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
         """
+        if quantiles is None:
+            quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
@@ -945,7 +962,7 @@ class DistributionLoss(MultiHorizonMetric):
 
         Args:
             y_pred: prediction output of network
-
+            n_samples (int): number of samples to draw
         Returns:
             torch.Tensor: mean prediction
         """

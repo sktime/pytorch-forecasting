@@ -2,11 +2,12 @@
 Encoders for encoding categorical variables and scaling continuous data.
 """
 
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union, Optional
 import warnings
 
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints
@@ -396,7 +397,7 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         method: str = "standard",
         center: bool = True,
         transformation: Union[str, Tuple[Callable, Callable]] = None,
-        method_kwargs: Dict[str, Any] = {},
+        method_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Args:
@@ -427,7 +428,12 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.transformation = transformation
-        self.method_kwargs = method_kwargs
+        self._method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
+
+    @property
+    def method_kwargs(self) -> Dict[str, Any]:
+        """Dictionary of method specific arguments."""
+        return self._method_kwargs
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -623,7 +629,7 @@ class EncoderNormalizer(TorchNormalizer):
         center: bool = True,
         max_length: Union[int, List[int]] = None,
         transformation: Union[str, Tuple[Callable, Callable]] = None,
-        method_kwargs: Dict[str, Any] = {},
+        method_kwargs: Dict[str, Any] = None,
     ):
         """
         Initialize
@@ -655,6 +661,7 @@ class EncoderNormalizer(TorchNormalizer):
                   should be defined if ``reverse`` is not the inverse of the forward transformation. ``inverse_torch``
                   can be defined to provide a torch distribution transform for inverse transformations.
         """
+        method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
         super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
         self.max_length = max_length
 
@@ -726,11 +733,11 @@ class GroupNormalizer(TorchNormalizer):
     def __init__(
         self,
         method: str = "standard",
-        groups: List[str] = [],
+        groups: Optional[List[str]] = None,
         center: bool = True,
         scale_by_group: bool = False,
-        transformation: Union[str, Tuple[Callable, Callable]] = None,
-        method_kwargs: Dict[str, Any] = {},
+        transformation: Optional[Union[str, Tuple[Callable, Callable]]] = None,
+        method_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Group normalizer to normalize a given entry by groups. Can be used as target normalizer.
@@ -764,9 +771,15 @@ class GroupNormalizer(TorchNormalizer):
                   can be defined to provide a torch distribution transform for inverse transformations.
 
         """
-        self.groups = groups
+        self._groups = list(groups) if groups is not None else []
         self.scale_by_group = scale_by_group
+        method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
         super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
+
+    @property
+    def groups(self) -> List[str]:
+        """Group names to normalize by."""
+        return self._groups
 
     def fit(self, y: pd.Series, X: pd.DataFrame):
         """

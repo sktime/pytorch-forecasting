@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional
 
 import torch
 import torch.nn as nn
@@ -35,8 +35,8 @@ class MultiEmbedding(nn.Module):
         self,
         embedding_sizes: Union[Dict[str, Tuple[int, int]], Dict[str, int], List[int], List[Tuple[int, int]]],
         x_categoricals: List[str] = None,
-        categorical_groups: Dict[str, List[str]] = {},
-        embedding_paddings: List[str] = [],
+        categorical_groups: Optional[Dict[str, List[str]]] = None,
+        embedding_paddings: Optional[List[str]] = None,
         max_embedding_size: int = None,
     ):
         """Embedding layer for categorical variables including groups of categorical variables.
@@ -70,6 +70,10 @@ class MultiEmbedding(nn.Module):
             max_embedding_size (int, optional): if embedding size defined by ``embedding_sizes`` is larger than
                 ``max_embedding_size``, it will be constrained. Defaults to None.
         """
+        if categorical_groups is None:
+            categorical_groups = {}
+        if embedding_paddings is None:
+            embedding_paddings = []
         super().__init__()
         if isinstance(embedding_sizes, dict):
             self.concat_output = False  # return dictionary of embeddings

@@ -407,7 +407,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
         optimizer_params: Dict[str, Any] = None,
-        monotone_constaints: Dict[str, int] = {},
+        monotone_constaints: Dict[str, int] = None,
         output_transformer: Callable = None,
         optimizer=None,
     ):
@@ -446,6 +446,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_,
                 if pytorch_optimizer is installed, otherwise "adam".
         """
+        if monotone_constaints is None:
+            monotone_constaints = {}
         super().__init__()
         # update hparams
         frame = inspect.currentframe()
@@ -690,8 +692,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         y: Tuple[torch.Tensor, torch.Tensor],
         out: Dict[str, torch.Tensor],
         batch_idx: int,
-        prediction_kwargs: Dict[str, Any] = {},
-        quantiles_kwargs: Dict[str, Any] = {},
+        prediction_kwargs: Optional[Dict[str, Any]] = None,
+        quantiles_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Create the log used in the training and validation step.
@@ -709,6 +711,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Dict[str, Any]: log dictionary to be returned by training and validation steps
         """
+
+        prediction_kwargs = {} if prediction_kwargs is None else deepcopy(prediction_kwargs)
+        quantiles_kwargs = {} if quantiles_kwargs is None else deepcopy(quantiles_kwargs)
         # log
         if isinstance(self.loss, DistributionLoss):
             prediction_kwargs.setdefault("n_samples", 20)
@@ -1005,8 +1010,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Dict[str, Any] = {},
-        prediction_kwargs: Dict[str, Any] = {},
+        quantiles_kwargs: Optional[Dict[str, Any]] = None,
+        prediction_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -1026,6 +1031,11 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             matplotlib figure
         """
+        if quantiles_kwargs is None:
+            quantiles_kwargs = {}
+        if prediction_kwargs is None:
+            prediction_kwargs = {}
+
         _check_matplotlib("plot_prediction")
 
         from matplotlib import pyplot as plt
@@ -2293,8 +2303,8 @@ class AutoRegressiveBaseModel(BaseModel):
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Dict[str, Any] = {},
-        prediction_kwargs: Dict[str, Any] = {},
+        quantiles_kwargs: Optional[Dict[str, Any]] = None,
+        prediction_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -2314,6 +2324,9 @@ class AutoRegressiveBaseModel(BaseModel):
         Returns:
             matplotlib figure
         """
+
+        prediction_kwargs = {} if prediction_kwargs is None else deepcopy(prediction_kwargs)
+        quantiles_kwargs = {} if quantiles_kwargs is None else deepcopy(quantiles_kwargs)
 
         # get predictions
         if isinstance(self.loss, DistributionLoss):
