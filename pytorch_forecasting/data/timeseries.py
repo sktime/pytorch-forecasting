@@ -353,18 +353,16 @@ class TimeSeriesDataSet(Dataset):
         self.weight = weight
         self.time_idx = time_idx
         self.group_ids = [] if group_ids is None else list(group_ids)
-        self._static_categoricals = [] if static_categoricals is None else list(static_categoricals)
-        self._static_reals = [] if static_reals is None else list(static_reals)
-        self._time_varying_known_categoricals = (
+        self.static_categoricals = [] if static_categoricals is None else list(static_categoricals)
+        self.static_reals = [] if static_reals is None else list(static_reals)
+        self.time_varying_known_categoricals = (
             [] if time_varying_known_categoricals is None else list(time_varying_known_categoricals)
         )
-        self._time_varying_known_reals = [] if time_varying_known_reals is None else list(time_varying_known_reals)
-        self._time_varying_unknown_categoricals = (
+        self.time_varying_known_reals = [] if time_varying_known_reals is None else list(time_varying_known_reals)
+        self.time_varying_unknown_categoricals = (
             [] if time_varying_unknown_categoricals is None else list(time_varying_unknown_categoricals)
         )
-        self._time_varying_unknown_reals = (
-            [] if time_varying_unknown_reals is None else list(time_varying_unknown_reals)
-        )
+        self.time_varying_unknown_reals = [] if time_varying_unknown_reals is None else list(time_varying_unknown_reals)
         self.add_relative_time_idx = add_relative_time_idx
 
         # set automatic defaults
@@ -377,15 +375,15 @@ class TimeSeriesDataSet(Dataset):
         if min_prediction_idx is None:
             min_prediction_idx = data[self.time_idx].min()
         self.min_prediction_idx = min_prediction_idx
-        self._constant_fill_strategy = {} if constant_fill_strategy is None else deepcopy(constant_fill_strategy)
+        self.constant_fill_strategy = {} if constant_fill_strategy is None else deepcopy(constant_fill_strategy)
         self.predict_mode = predict_mode
         self.allow_missing_timesteps = allow_missing_timesteps
         self.target_normalizer = target_normalizer
-        self._categorical_encoders = {} if categorical_encoders is None else deepcopy(categorical_encoders)
-        self._scalers = {} if scalers is None else deepcopy(scalers)
+        self.categorical_encoders = {} if categorical_encoders is None else deepcopy(categorical_encoders)
+        self.scalers = {} if scalers is None else deepcopy(scalers)
         self.add_target_scales = add_target_scales
-        self._variable_groups = {} if variable_groups is None else deepcopy(variable_groups)
-        self._lags = {} if lags is None else deepcopy(lags)
+        self.variable_groups = {} if variable_groups is None else deepcopy(variable_groups)
+        self.lags = {} if lags is None else deepcopy(lags)
 
         # add_encoder_length
         if isinstance(add_encoder_length, str):
@@ -489,61 +487,6 @@ class TimeSeriesDataSet(Dataset):
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
-
-    @property
-    def static_categoricals(self) -> List[str]:
-        """List of categorical variables that do not change over time."""
-        return self._static_categoricals
-
-    @property
-    def static_reals(self) -> List[str]:
-        """list of continuous variables that do not change over time."""
-        return self._static_reals
-
-    @property
-    def time_varying_known_categoricals(self) -> List[str]:
-        """list of categorical variables that change over time and are known in the future."""
-        return self._time_varying_known_categoricals
-
-    @property
-    def time_varying_known_reals(self) -> List[str]:
-        """list of continuous variables that change over time and are known in the future."""
-        return self._time_varying_known_reals
-
-    @property
-    def time_varying_unknown_categoricals(self) -> List[str]:
-        """list of categorical variables that change over time and are not known in the future."""
-        return self._time_varying_unknown_categoricals
-
-    @property
-    def time_varying_unknown_reals(self) -> List[str]:
-        """list of continuous variables that change over time and are not known in the future."""
-        return self._time_varying_unknown_reals
-
-    @property
-    def constant_fill_strategy(self) -> Dict[str, Union[str, float, int, bool]]:
-        """Dictionary of column names with constants to fill in missing values if there are gaps in the sequence."""
-        return self._constant_fill_strategy
-
-    @property
-    def categorical_encoders(self) -> Dict[str, NaNLabelEncoder]:
-        """Dictionary of scikit learn label transformers."""
-        return self._categorical_encoders
-
-    @property
-    def scalers(self) -> Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]]:
-        """Dictionary of scikit learn scalers."""
-        return self._scalers
-
-    @property
-    def variable_groups(self) -> Dict[str, List[int]]:
-        """Dictionary mapping a name to a list of columns in the data."""
-        return self._variable_groups
-
-    @property
-    def lags(self) -> Dict[str, List[int]]:
-        """Dictionary of variable names mapped to list of time steps by which the variable should be lagged."""
-        return self._lags
 
     @property
     def dropout_categoricals(self) -> List[str]:
