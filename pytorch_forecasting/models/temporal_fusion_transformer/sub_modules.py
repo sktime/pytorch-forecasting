@@ -264,7 +264,8 @@ class VariableSelectionNetwork(nn.Module):
 
         self.hidden_size = hidden_size
         self.input_sizes = input_sizes
-        self.input_embedding_flags = {} if input_embedding_flags is None else deepcopy(input_embedding_flags)
+        self.input_embedding_flags = input_embedding_flags
+        self._input_embedding_flags = {} if input_embedding_flags is None else deepcopy(input_embedding_flags)
         self.dropout = dropout
         self.context_size = context_size
 
@@ -293,7 +294,7 @@ class VariableSelectionNetwork(nn.Module):
         for name, input_size in self.input_sizes.items():
             if name in single_variable_grns:
                 self.single_variable_grns[name] = single_variable_grns[name]
-            elif self.input_embedding_flags.get(name, False):
+            elif self._input_embedding_flags.get(name, False):
                 self.single_variable_grns[name] = ResampleNorm(input_size, self.hidden_size)
             else:
                 self.single_variable_grns[name] = GatedResidualNetwork(
@@ -306,14 +307,14 @@ class VariableSelectionNetwork(nn.Module):
                 prescalers = {}
             if name in prescalers:  # reals need to be first scaled up
                 self.prescalers[name] = prescalers[name]
-            elif not self.input_embedding_flags.get(name, False):
+            elif not self._input_embedding_flags.get(name, False):
                 self.prescalers[name] = nn.Linear(1, input_size)
 
         self.softmax = nn.Softmax(dim=-1)
 
     @property
     def input_size_total(self):
-        return sum(size if name in self.input_embedding_flags else size for name, size in self.input_sizes.items())
+        return sum(size if name in self._input_embedding_flags else size for name, size in self.input_sizes.items())
 
     @property
     def num_inputs(self):

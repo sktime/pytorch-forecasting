@@ -428,7 +428,8 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
         assert method in ["standard", "robust", "identity"], f"method has invalid value {method}"
         self.center = center
         self.transformation = transformation
-        self.method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
+        self.method_kwargs = method_kwargs
+        self._method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
 
     def get_parameters(self, *args, **kwargs) -> torch.Tensor:
         """
@@ -497,17 +498,17 @@ class TorchNormalizer(InitialParameterRepresenterMixIn, BaseEstimator, Transform
 
         elif self.method == "robust":
             if isinstance(y_center, torch.Tensor):
-                self.center_ = y_center.quantile(self.method_kwargs.get("center", 0.5), dim=-1)
-                q_75 = y_scale.quantile(self.method_kwargs.get("upper", 0.75), dim=-1)
-                q_25 = y_scale.quantile(self.method_kwargs.get("lower", 0.25), dim=-1)
+                self.center_ = y_center.quantile(self._method_kwargs.get("center", 0.5), dim=-1)
+                q_75 = y_scale.quantile(self._method_kwargs.get("upper", 0.75), dim=-1)
+                q_25 = y_scale.quantile(self._method_kwargs.get("lower", 0.25), dim=-1)
             elif isinstance(y_center, np.ndarray):
-                self.center_ = np.percentile(y_center, self.method_kwargs.get("center", 0.5) * 100, axis=-1)
-                q_75 = np.percentile(y_scale, self.method_kwargs.get("upper", 0.75) * 100, axis=-1)
-                q_25 = np.percentile(y_scale, self.method_kwargs.get("lower", 0.25) * 100, axis=-1)
+                self.center_ = np.percentile(y_center, self._method_kwargs.get("center", 0.5) * 100, axis=-1)
+                q_75 = np.percentile(y_scale, self._method_kwargs.get("upper", 0.75) * 100, axis=-1)
+                q_25 = np.percentile(y_scale, self._method_kwargs.get("lower", 0.25) * 100, axis=-1)
             else:
-                self.center_ = np.percentile(y_center, self.method_kwargs.get("center", 0.5) * 100, axis=-1)
-                q_75 = np.percentile(y_scale, self.method_kwargs.get("upper", 0.75) * 100)
-                q_25 = np.percentile(y_scale, self.method_kwargs.get("lower", 0.25) * 100)
+                self.center_ = np.percentile(y_center, self._method_kwargs.get("center", 0.5) * 100, axis=-1)
+                q_75 = np.percentile(y_scale, self._method_kwargs.get("upper", 0.75) * 100)
+                q_25 = np.percentile(y_scale, self._method_kwargs.get("lower", 0.25) * 100)
             self.scale_ = (q_75 - q_25) / 2.0 + eps
         if not self.center and self.method != "identity":
             self.scale_ = self.center_
@@ -766,7 +767,8 @@ class GroupNormalizer(TorchNormalizer):
                   can be defined to provide a torch distribution transform for inverse transformations.
 
         """
-        self.groups = list(groups) if groups is not None else []
+        self.groups = groups
+        self._groups = list(groups) if groups is not None else []
         self.scale_by_group = scale_by_group
         method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
         super().__init__(method=method, center=center, transformation=transformation, method_kwargs=method_kwargs)
@@ -784,7 +786,7 @@ class GroupNormalizer(TorchNormalizer):
         """
         y = self.preprocess(y)
         eps = np.finfo(np.float16).eps
-        if len(self.groups) == 0:
+        if len(self._groups) == 0:
             assert not self.scale_by_group, "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
                 self.norm_ = {"center": np.mean(y), "scale": np.std(y) + eps}  # center and scale
@@ -792,9 +794,9 @@ class GroupNormalizer(TorchNormalizer):
                 quantiles = np.quantile(
                     y,
                     [
-                        self.method_kwargs.get("lower", 0.25),
-                        self.method_kwargs.get("center", 0.5),
-                        self.method_kwargs.get("upper", 0.75),
+                        self._method_kwargs.get("lower", 0.25),
+                        self._method_kwargs.get("center", 0.5),
+                        self._method_kwargs.get("upper", 0.75),
                     ],
                 )
                 self.norm_ = {
@@ -813,7 +815,7 @@ class GroupNormalizer(TorchNormalizer):
                     .groupby(g, observed=True)
                     .agg(center=("y", "mean"), scale=("y", "std"))
                     .assign(center=lambda x: x["center"], scale=lambda x: x.scale + eps)
-                    for g in self.groups
+                    for g in self._groups
                 }
             else:
                 self.norm_ = {
@@ -822,21 +824,21 @@ class GroupNormalizer(TorchNormalizer):
                     .groupby(g, observed=True)
                     .y.quantile(
                         [
-                            self.method_kwargs.get("lower", 0.25),
-                            self.method_kwargs.get("center", 0.5),
-                            self.method_kwargs.get("upper", 0.75),
+                            self._method_kwargs.get("lower", 0.25),
+                            self._method_kwargs.get("center", 0.5),
+                            self._method_kwargs.get("upper", 0.75),
                         ]
                     )
                     .unstack(-1)
                     .assign(
-                        center=lambda x: x[self.method_kwargs.get("center", 0.5)],
+                        center=lambda x: x[self._method_kwargs.get("center", 0.5)],
                         scale=lambda x: (
-                            x[self.method_kwargs.get("upper", 0.75)] - x[self.method_kwargs.get("lower", 0.25)]
+                            x[self._method_kwargs.get("upper", 0.75)] - x[self._method_kwargs.get("lower", 0.25)]
                         )
                         / 2.0
                         + eps,
                     )[["center", "scale"]]
-                    for g in self.groups
+                    for g in self._groups
                 }
             # calculate missings
             if not self.center:  # swap center and scale
@@ -852,29 +854,29 @@ class GroupNormalizer(TorchNormalizer):
         else:
             if self.method == "standard":
                 self.norm_ = (
-                    X[self.groups]
+                    X[self._groups]
                     .assign(y=y)
-                    .groupby(self.groups, observed=True)
+                    .groupby(self._groups, observed=True)
                     .agg(center=("y", "mean"), scale=("y", "std"))
                     .assign(center=lambda x: x["center"], scale=lambda x: x.scale + eps)
                 )
             else:
                 self.norm_ = (
-                    X[self.groups]
+                    X[self._groups]
                     .assign(y=y)
-                    .groupby(self.groups, observed=True)
+                    .groupby(self._groups, observed=True)
                     .y.quantile(
                         [
-                            self.method_kwargs.get("lower", 0.25),
-                            self.method_kwargs.get("center", 0.5),
-                            self.method_kwargs.get("upper", 0.75),
+                            self._method_kwargs.get("lower", 0.25),
+                            self._method_kwargs.get("center", 0.5),
+                            self._method_kwargs.get("upper", 0.75),
                         ]
                     )
                     .unstack(-1)
                     .assign(
-                        center=lambda x: x[self.method_kwargs.get("center", 0.5)],
+                        center=lambda x: x[self._method_kwargs.get("center", 0.5)],
                         scale=lambda x: (
-                            x[self.method_kwargs.get("upper", 0.75)] - x[self.method_kwargs.get("lower", 0.25)]
+                            x[self._method_kwargs.get("upper", 0.75)] - x[self._method_kwargs.get("lower", 0.25)]
                         )
                         / 2.0
                         + eps,
@@ -886,7 +888,7 @@ class GroupNormalizer(TorchNormalizer):
             self.missing_ = self.norm_.median().to_dict()
 
         if (
-            (self.scale_by_group and any((self.norm_[group]["scale"] < 1e-7).any() for group in self.groups))
+            (self.scale_by_group and any((self.norm_[group]["scale"] < 1e-7).any() for group in self._groups))
             or (not self.scale_by_group and isinstance(self.norm_["scale"], float) and self.norm_["scale"] < 1e-7)
             or (
                 not self.scale_by_group
@@ -976,13 +978,13 @@ class GroupNormalizer(TorchNormalizer):
         if isinstance(groups, list):
             groups = tuple(groups)
         if group_names is None:
-            group_names = self.groups
+            group_names = self._groups
         else:
             # filter group names
-            group_names = [name for name in group_names if name in self.groups]
-        assert len(group_names) == len(self.groups), "Passed groups and fitted do not match"
+            group_names = [name for name in group_names if name in self._groups]
+        assert len(group_names) == len(self._groups), "Passed groups and fitted do not match"
 
-        if len(self.groups) == 0:
+        if len(self._groups) == 0:
             params = np.array([self.norm_["center"], self.norm_["scale"]])
         elif self.scale_by_group:
             norm = np.array([1.0, 1.0])
@@ -991,7 +993,7 @@ class GroupNormalizer(TorchNormalizer):
                     norm = norm * self.norm_[group_name].loc[group].to_numpy()
                 except KeyError:
                     norm = norm * np.asarray([self.missing_[group_name][name] for name in self.names])
-            norm = np.power(norm, 1.0 / len(self.groups))
+            norm = np.power(norm, 1.0 / len(self._groups))
             params = norm
         else:
             try:
@@ -1010,7 +1012,7 @@ class GroupNormalizer(TorchNormalizer):
         Returns:
             pd.DataFrame: dataframe with scaling parameterswhere each row corresponds to the input dataframe
         """
-        if len(self.groups) == 0:
+        if len(self._groups) == 0:
             norm = np.asarray([self.norm_["center"], self.norm_["scale"]]).reshape(1, -1)
         elif self.scale_by_group:
             norm = [
@@ -1020,15 +1022,15 @@ class GroupNormalizer(TorchNormalizer):
                         .map(self.norm_[group_name][name])
                         .fillna(self.missing_[group_name][name])
                         .to_numpy()
-                        for group_name in self.groups
+                        for group_name in self._groups
                     ],
                     axis=0,
                 )
                 for name in self.names
             ]
-            norm = np.power(np.stack(norm, axis=1), 1.0 / len(self.groups))
+            norm = np.power(np.stack(norm, axis=1), 1.0 / len(self._groups))
         else:
-            norm = X[self.groups].set_index(self.groups).join(self.norm_).fillna(self.missing_).to_numpy()
+            norm = X[self._groups].set_index(self._groups).join(self.norm_).fillna(self.missing_).to_numpy()
         return norm
 
 

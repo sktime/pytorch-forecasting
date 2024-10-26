@@ -353,16 +353,24 @@ class TimeSeriesDataSet(Dataset):
         self.weight = weight
         self.time_idx = time_idx
         self.group_ids = [] if group_ids is None else list(group_ids)
-        self.static_categoricals = [] if static_categoricals is None else list(static_categoricals)
-        self.static_reals = [] if static_reals is None else list(static_reals)
-        self.time_varying_known_categoricals = (
+        self.static_categoricals = static_categoricals
+        self._static_categoricals = [] if static_categoricals is None else list(static_categoricals)
+        self.static_reals = static_reals
+        self._static_reals = [] if static_reals is None else list(static_reals)
+        self.time_varying_known_categoricals = time_varying_known_categoricals
+        self._time_varying_known_categoricals = (
             [] if time_varying_known_categoricals is None else list(time_varying_known_categoricals)
         )
-        self.time_varying_known_reals = [] if time_varying_known_reals is None else list(time_varying_known_reals)
-        self.time_varying_unknown_categoricals = (
+        self.time_varying_known_reals = time_varying_known_reals
+        self._time_varying_known_reals = [] if time_varying_known_reals is None else list(time_varying_known_reals)
+        self.time_varying_unknown_categoricals = time_varying_unknown_categoricals
+        self._time_varying_unknown_categoricals = (
             [] if time_varying_unknown_categoricals is None else list(time_varying_unknown_categoricals)
         )
-        self.time_varying_unknown_reals = [] if time_varying_unknown_reals is None else list(time_varying_unknown_reals)
+        self.time_varying_unknown_reals = time_varying_unknown_reals
+        self._time_varying_unknown_reals = (
+            [] if time_varying_unknown_reals is None else list(time_varying_unknown_reals)
+        )
         self.add_relative_time_idx = add_relative_time_idx
 
         # set automatic defaults
@@ -375,15 +383,20 @@ class TimeSeriesDataSet(Dataset):
         if min_prediction_idx is None:
             min_prediction_idx = data[self.time_idx].min()
         self.min_prediction_idx = min_prediction_idx
-        self.constant_fill_strategy = {} if constant_fill_strategy is None else deepcopy(constant_fill_strategy)
+        self.constant_fill_strategy = constant_fill_strategy
+        self._constant_fill_strategy = {} if constant_fill_strategy is None else deepcopy(constant_fill_strategy)
         self.predict_mode = predict_mode
         self.allow_missing_timesteps = allow_missing_timesteps
         self.target_normalizer = target_normalizer
-        self.categorical_encoders = {} if categorical_encoders is None else deepcopy(categorical_encoders)
-        self.scalers = {} if scalers is None else deepcopy(scalers)
+        self.categorical_encoders = categorical_encoders
+        self._categorical_encoders = {} if categorical_encoders is None else deepcopy(categorical_encoders)
+        self.scalers = scalers
+        self._scalers = {} if scalers is None else deepcopy(scalers)
         self.add_target_scales = add_target_scales
-        self.variable_groups = {} if variable_groups is None else deepcopy(variable_groups)
-        self.lags = {} if lags is None else deepcopy(lags)
+        self.variable_groups = variable_groups
+        self._variable_groups = {} if variable_groups is None else deepcopy(variable_groups)
+        self.lags = lags
+        self._lags = {} if lags is None else deepcopy(lags)
 
         # add_encoder_length
         if isinstance(add_encoder_length, str):
@@ -404,7 +417,7 @@ class TimeSeriesDataSet(Dataset):
 
         for target in self.target_names:
             assert (
-                target not in self.time_varying_known_reals
+                target not in self._time_varying_known_reals
             ), f"target {target} should be an unknown continuous variable in the future"
 
         # add time index relative to prediction position
@@ -414,8 +427,8 @@ class TimeSeriesDataSet(Dataset):
             assert (
                 "relative_time_idx" not in data.columns
             ), "relative_time_idx is a protected column and must not be present in data"
-            if "relative_time_idx" not in self.time_varying_known_reals and "relative_time_idx" not in self.reals:
-                self.time_varying_known_reals.append("relative_time_idx")
+            if "relative_time_idx" not in self._time_varying_known_reals and "relative_time_idx" not in self.reals:
+                self._time_varying_known_reals.append("relative_time_idx")
             data.loc[:, "relative_time_idx"] = 0.0  # dummy - real value will be set dynamically in __getitem__()
 
         # add decoder length to static real variables
@@ -423,8 +436,8 @@ class TimeSeriesDataSet(Dataset):
             assert (
                 "encoder_length" not in data.columns
             ), "encoder_length is a protected column and must not be present in data"
-            if "encoder_length" not in self.time_varying_known_reals and "encoder_length" not in self.reals:
-                self.static_reals.append("encoder_length")
+            if "encoder_length" not in self._time_varying_known_reals and "encoder_length" not in self.reals:
+                self._static_reals.append("encoder_length")
             data.loc[:, "encoder_length"] = 0  # dummy - real value will be set dynamically in __getitem__()
 
         # validate
@@ -433,40 +446,40 @@ class TimeSeriesDataSet(Dataset):
 
         # add lags
         assert self.min_lag > 0, "lags should be positive"
-        if len(self.lags) > 0:
+        if len(self._lags) > 0:
             # add variables
-            for name in self.lags:
+            for name in self._lags:
                 lagged_names = self._get_lagged_names(name)
                 for lagged_name in lagged_names:
                     assert (
                         lagged_name not in data.columns
                     ), f"{lagged_name} is a protected column and must not be present in data"
                 # add lags
-                if name in self.time_varying_known_reals:
+                if name in self._time_varying_known_reals:
                     for lagged_name in lagged_names:
-                        if lagged_name not in self.time_varying_known_reals:
-                            self.time_varying_known_reals.append(lagged_name)
-                elif name in self.time_varying_known_categoricals:
+                        if lagged_name not in self._time_varying_known_reals:
+                            self._time_varying_known_reals.append(lagged_name)
+                elif name in self._time_varying_known_categoricals:
                     for lagged_name in lagged_names:
-                        if lagged_name not in self.time_varying_known_categoricals:
-                            self.time_varying_known_categoricals.append(lagged_name)
-                elif name in self.time_varying_unknown_reals:
+                        if lagged_name not in self._time_varying_known_categoricals:
+                            self._time_varying_known_categoricals.append(lagged_name)
+                elif name in self._time_varying_unknown_reals:
                     for lagged_name, lag in lagged_names.items():
                         if lag < self.max_prediction_length:  # keep in unknown as if lag is too small
-                            if lagged_name not in self.time_varying_unknown_reals:
-                                self.time_varying_unknown_reals.append(lagged_name)
+                            if lagged_name not in self._time_varying_unknown_reals:
+                                self._time_varying_unknown_reals.append(lagged_name)
                         else:
-                            if lagged_name not in self.time_varying_known_reals:
+                            if lagged_name not in self._time_varying_known_reals:
                                 # switch to known so that lag can be used in decoder directly
-                                self.time_varying_known_reals.append(lagged_name)
-                elif name in self.time_varying_unknown_categoricals:
+                                self._time_varying_known_reals.append(lagged_name)
+                elif name in self._time_varying_unknown_categoricals:
                     for lagged_name, lag in lagged_names.items():
                         if lag < self.max_prediction_length:  # keep in unknown as if lag is too small
-                            if lagged_name not in self.time_varying_unknown_categoricals:
-                                self.time_varying_unknown_categoricals.append(lagged_name)
-                        if lagged_name not in self.time_varying_known_categoricals:
+                            if lagged_name not in self._time_varying_unknown_categoricals:
+                                self._time_varying_unknown_categoricals.append(lagged_name)
+                        if lagged_name not in self._time_varying_known_categoricals:
                             # switch to known so that lag can be used in decoder directly
-                            self.time_varying_known_categoricals.append(lagged_name)
+                            self._time_varying_known_categoricals.append(lagged_name)
                 else:
                     raise KeyError(f"lagged variable {name} is not a known nor unknown time-varying variable")
 
@@ -480,7 +493,7 @@ class TimeSeriesDataSet(Dataset):
         # preprocess data
         data = self._preprocess_data(data)
         for target in self.target_names:
-            assert target not in self.scalers, "Target normalizer is separate and not in scalers."
+            assert target not in self._scalers, "Target normalizer is separate and not in scalers."
 
         # create index
         self.index = self._construct_index(data, predict_mode=self.predict_mode)
@@ -494,7 +507,7 @@ class TimeSeriesDataSet(Dataset):
         list of categorical variables that are unknown when making a
         forecast without observed history
         """
-        return [name for name, encoder in self.categorical_encoders.items() if encoder.add_nan]
+        return [name for name, encoder in self._categorical_encoders.items() if encoder.add_nan]
 
     def _get_lagged_names(self, name: str) -> Dict[str, int]:
         """
@@ -506,7 +519,7 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             Dict[str, int]: dictionary mapping new variable names to lags
         """
-        return {f"{name}_lagged_by_{lag}": lag for lag in self.lags.get(name, [])}
+        return {f"{name}_lagged_by_{lag}": lag for lag in self._lags.get(name, [])}
 
     @property
     @lru_cache(None)
@@ -519,7 +532,7 @@ class TimeSeriesDataSet(Dataset):
                 mapped to variable that is lagged
         """
         vars = {}
-        for name in self.lags:
+        for name in self._lags:
             vars.update({lag_name: name for lag_name in self._get_lagged_names(name)})
         return vars
 
@@ -528,7 +541,7 @@ class TimeSeriesDataSet(Dataset):
     def lagged_targets(self) -> Dict[str, str]:
         """Subset of `lagged_variables` but only includes variables that are lagged targets."""
         vars = {}
-        for name in self.lags:
+        for name in self._lags:
             vars.update({lag_name: name for lag_name in self._get_lagged_names(name) if name in self.target_names})
         return vars
 
@@ -541,10 +554,10 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             int: minimum lag
         """
-        if len(self.lags) == 0:
+        if len(self._lags) == 0:
             return 1e9
         else:
-            return min([min(lag) for lag in self.lags.values()])
+            return min([min(lag) for lag in self._lags.values()])
 
     @property
     @lru_cache(None)
@@ -555,10 +568,10 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             int: maximum lag
         """
-        if len(self.lags) == 0:
+        if len(self._lags) == 0:
             return 0
         else:
-            return max([max(lag) for lag in self.lags.values()])
+            return max([max(lag) for lag in self._lags.values()])
 
     def _set_target_normalizer(self, data: pd.DataFrame):
         """
@@ -686,19 +699,19 @@ class TimeSeriesDataSet(Dataset):
             pd.DataFrame: pre-processed dataframe
         """
         # add lags to data
-        for name in self.lags:
+        for name in self._lags:
             # todo: add support for variable groups
             assert (
-                name not in self.variable_groups
-            ), f"lagged variables that are in {self.variable_groups} are not supported yet"
+                name not in self._variable_groups
+            ), f"lagged variables that are in {self._variable_groups} are not supported yet"
             for lagged_name, lag in self._get_lagged_names(name).items():
                 data[lagged_name] = data.groupby(self.group_ids, observed=True)[name].shift(lag)
 
         # encode group ids - this encoding
         for name, group_name in self._group_ids_mapping.items():
             # use existing encoder - but a copy of it not too loose current encodings
-            encoder = deepcopy(self.categorical_encoders.get(group_name, NaNLabelEncoder()))
-            self.categorical_encoders[group_name] = encoder.fit(data[name].to_numpy().reshape(-1), overwrite=False)
+            encoder = deepcopy(self._categorical_encoders.get(group_name, NaNLabelEncoder()))
+            self._categorical_encoders[group_name] = encoder.fit(data[name].to_numpy().reshape(-1), overwrite=False)
             data[group_name] = self.transform_values(name, data[name], inverse=False, group_id=True)
 
         # encode categoricals first to ensure that group normalizer for relies on encoded categories
@@ -711,25 +724,25 @@ class TimeSeriesDataSet(Dataset):
         for name in dict.fromkeys(group_ids_to_encode + self.categoricals):
             if name in self.lagged_variables:
                 continue  # do not encode here but only in transform
-            if name in self.variable_groups:  # fit groups
-                columns = self.variable_groups[name]
-                if name not in self.categorical_encoders:
-                    self.categorical_encoders[name] = NaNLabelEncoder().fit(data[columns].to_numpy().reshape(-1))
-                elif self.categorical_encoders[name] is not None:
+            if name in self._variable_groups:  # fit groups
+                columns = self._variable_groups[name]
+                if name not in self._categorical_encoders:
+                    self._categorical_encoders[name] = NaNLabelEncoder().fit(data[columns].to_numpy().reshape(-1))
+                elif self._categorical_encoders[name] is not None:
                     try:
-                        check_is_fitted(self.categorical_encoders[name])
+                        check_is_fitted(self._categorical_encoders[name])
                     except NotFittedError:
-                        self.categorical_encoders[name] = self.categorical_encoders[name].fit(
+                        self._categorical_encoders[name] = self._categorical_encoders[name].fit(
                             data[columns].to_numpy().reshape(-1)
                         )
             else:
-                if name not in self.categorical_encoders:
-                    self.categorical_encoders[name] = NaNLabelEncoder().fit(data[name])
-                elif self.categorical_encoders[name] is not None and name not in self.target_names:
+                if name not in self._categorical_encoders:
+                    self._categorical_encoders[name] = NaNLabelEncoder().fit(data[name])
+                elif self._categorical_encoders[name] is not None and name not in self.target_names:
                     try:
-                        check_is_fitted(self.categorical_encoders[name])
+                        check_is_fitted(self._categorical_encoders[name])
                     except NotFittedError:
-                        self.categorical_encoders[name] = self.categorical_encoders[name].fit(data[name])
+                        self._categorical_encoders[name] = self._categorical_encoders[name].fit(data[name])
 
         # encode them
         for name in dict.fromkeys(group_ids_to_encode + self.flat_categoricals):
@@ -812,23 +825,23 @@ class TimeSeriesDataSet(Dataset):
                             ), f"{feature_name} is a protected column and must not be present in data"
                             data[feature_name] = scales[target_idx][:, scale_idx].squeeze()
                             if feature_name not in self.reals:
-                                self.static_reals.append(feature_name)
+                                self._static_reals.append(feature_name)
 
         # rescale continuous variables apart from target
         for name in self.reals:
             if name in self.target_names or name in self.lagged_variables:
                 # lagged variables are only transformed - not fitted
                 continue
-            elif name not in self.scalers:
-                self.scalers[name] = StandardScaler().fit(data[[name]])
-            elif self.scalers[name] is not None:
+            elif name not in self._scalers:
+                self._scalers[name] = StandardScaler().fit(data[[name]])
+            elif self._scalers[name] is not None:
                 try:
-                    check_is_fitted(self.scalers[name])
+                    check_is_fitted(self._scalers[name])
                 except NotFittedError:
-                    if isinstance(self.scalers[name], GroupNormalizer):
-                        self.scalers[name] = self.scalers[name].fit(data[name], data)
+                    if isinstance(self._scalers[name], GroupNormalizer):
+                        self._scalers[name] = self._scalers[name].fit(data[name], data)
                     else:
-                        self.scalers[name] = self.scalers[name].fit(data[[name]])
+                        self._scalers[name] = self._scalers[name].fit(data[[name]])
 
         # encode after fitting
         for name in self.reals:
@@ -849,7 +862,7 @@ class TimeSeriesDataSet(Dataset):
 
         # encode constant values
         self.encoded_constant_fill_strategy = {}
-        for name, value in self.constant_fill_strategy.items():
+        for name, value in self._constant_fill_strategy.items():
             if name in self.target_names:
                 self.encoded_constant_fill_strategy[f"__target__{name}"] = value
             self.encoded_constant_fill_strategy[name] = self.transform_values(
@@ -887,7 +900,7 @@ class TimeSeriesDataSet(Dataset):
             if name in self.target_names:
                 transformer = self.target_normalizers[self.target_names.index(name)]
             else:
-                transformer = self.categorical_encoders.get(name, None)
+                transformer = self._categorical_encoders.get(name, None)
             return transformer
 
         elif name in self.reals:
@@ -895,7 +908,7 @@ class TimeSeriesDataSet(Dataset):
             if name in self.target_names:
                 transformer = self.target_normalizers[self.target_names.index(name)]
             else:
-                transformer = self.scalers.get(name, None)
+                transformer = self._scalers.get(name, None)
             return transformer
         else:
             return None
@@ -1040,7 +1053,9 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             List[str]: list of variables
         """
-        return self.static_categoricals + self.time_varying_known_categoricals + self.time_varying_unknown_categoricals
+        return (
+            self._static_categoricals + self._time_varying_known_categoricals + self._time_varying_unknown_categoricals
+        )
 
     @property
     def flat_categoricals(self) -> List[str]:
@@ -1052,8 +1067,8 @@ class TimeSeriesDataSet(Dataset):
         """
         categories = []
         for name in self.categoricals:
-            if name in self.variable_groups:
-                categories.extend(self.variable_groups[name])
+            if name in self._variable_groups:
+                categories.extend(self._variable_groups[name])
             else:
                 categories.append(name)
         return categories
@@ -1067,7 +1082,7 @@ class TimeSeriesDataSet(Dataset):
             Dict[str, str]: dictionary mapping from :py:meth:`~categorical` to :py:meth:`~flat_categoricals`.
         """
         groups = {}
-        for group_name, sublist in self.variable_groups.items():
+        for group_name, sublist in self._variable_groups.items():
             groups.update({name: group_name for name in sublist})
         return groups
 
@@ -1079,7 +1094,7 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             List[str]: list of variables
         """
-        return self.static_reals + self.time_varying_known_reals + self.time_varying_unknown_reals
+        return self._static_reals + self._time_varying_known_reals + self._time_varying_unknown_reals
 
     @property
     @lru_cache(None)
@@ -1131,8 +1146,8 @@ class TimeSeriesDataSet(Dataset):
             for name in inspect.signature(self.__class__.__init__).parameters.keys()
             if name not in ["data", "self"]
         }
-        kwargs["categorical_encoders"] = self.categorical_encoders
-        kwargs["scalers"] = self.scalers
+        kwargs["categorical_encoders"] = self._categorical_encoders
+        kwargs["scalers"] = self._scalers
         return kwargs
 
     @classmethod
@@ -1421,14 +1436,14 @@ class TimeSeriesDataSet(Dataset):
             "encoder",
         ], f"target has be one of 'all', 'decoder' or 'encoder' but target={target} instead"
 
-        if variable in self.static_categoricals or variable in self.static_categoricals:
+        if variable in self._static_categoricals or variable in self._static_categoricals:
             target = "all"
 
         if variable in self.target_names:
             raise NotImplementedError("Target variable is not supported")
         if self.weight is not None and self.weight == variable:
             raise NotImplementedError("Weight variable is not supported")
-        if isinstance(self.scalers.get(variable, self.categorical_encoders.get(variable)), TorchNormalizer):
+        if isinstance(self._scalers.get(variable, self._categorical_encoders.get(variable)), TorchNormalizer):
             raise NotImplementedError("TorchNormalizer (e.g. GroupNormalizer) is not supported")
 
         if self._overwrite_values is None:

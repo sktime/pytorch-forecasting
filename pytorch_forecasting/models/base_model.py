@@ -1710,43 +1710,45 @@ class BaseModelWithCovariates(BaseModel):
         # assert fixed encoder and decoder length for the moment
         if allowed_encoder_known_variable_names is None:
             allowed_encoder_known_variable_names = (
-                dataset.time_varying_known_categoricals + dataset.time_varying_known_reals
+                dataset._time_varying_known_categoricals + dataset._time_varying_known_reals
             )
 
         # embeddings
         embedding_labels = {
             name: encoder.classes_
-            for name, encoder in dataset.categorical_encoders.items()
+            for name, encoder in dataset._categorical_encoders.items()
             if name in dataset.categoricals
         }
         embedding_paddings = dataset.dropout_categoricals
         # determine embedding sizes based on heuristic
         embedding_sizes = {
             name: (len(encoder.classes_), get_embedding_size(len(encoder.classes_)))
-            for name, encoder in dataset.categorical_encoders.items()
+            for name, encoder in dataset._categorical_encoders.items()
             if name in dataset.categoricals
         }
         embedding_sizes.update(kwargs.get("embedding_sizes", {}))
         kwargs.setdefault("embedding_sizes", embedding_sizes)
 
         new_kwargs = dict(
-            static_categoricals=dataset.static_categoricals,
+            static_categoricals=dataset._static_categoricals,
             time_varying_categoricals_encoder=[
-                name for name in dataset.time_varying_known_categoricals if name in allowed_encoder_known_variable_names
+                name
+                for name in dataset._time_varying_known_categoricals
+                if name in allowed_encoder_known_variable_names
             ]
-            + dataset.time_varying_unknown_categoricals,
-            time_varying_categoricals_decoder=dataset.time_varying_known_categoricals,
-            static_reals=dataset.static_reals,
+            + dataset._time_varying_unknown_categoricals,
+            time_varying_categoricals_decoder=dataset._time_varying_known_categoricals,
+            static_reals=dataset._static_reals,
             time_varying_reals_encoder=[
-                name for name in dataset.time_varying_known_reals if name in allowed_encoder_known_variable_names
+                name for name in dataset._time_varying_known_reals if name in allowed_encoder_known_variable_names
             ]
-            + dataset.time_varying_unknown_reals,
-            time_varying_reals_decoder=dataset.time_varying_known_reals,
+            + dataset._time_varying_unknown_reals,
+            time_varying_reals_decoder=dataset._time_varying_known_reals,
             x_reals=dataset.reals,
             x_categoricals=dataset.flat_categoricals,
             embedding_labels=embedding_labels,
             embedding_paddings=embedding_paddings,
-            categorical_groups=dataset.variable_groups,
+            categorical_groups=dataset._variable_groups,
         )
         new_kwargs.update(kwargs)
         return super().from_dataset(dataset, **new_kwargs)
@@ -2069,7 +2071,7 @@ class AutoRegressiveBaseModel(BaseModel):
         """
         kwargs.setdefault("target", dataset.target)
         # check that lags for targets are the same
-        lags = {name: lag for name, lag in dataset.lags.items() if name in dataset.target_names}  # filter for targets
+        lags = {name: lag for name, lag in dataset._lags.items() if name in dataset.target_names}  # filter for targets
         target0 = dataset.target_names[0]
         lag = set(lags.get(target0, []))
         for target in dataset.target_names:

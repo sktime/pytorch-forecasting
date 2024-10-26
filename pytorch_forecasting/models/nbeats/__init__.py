@@ -227,8 +227,8 @@ class NBeats(BaseModel):
         assert (
             len(dataset.flat_categoricals) == 0
             and len(dataset.reals) == 1
-            and len(dataset.time_varying_unknown_reals) == 1
-            and dataset.time_varying_unknown_reals[0] == dataset.target
+            and len(dataset._time_varying_unknown_reals) == 1
+            and dataset._time_varying_unknown_reals[0] == dataset.target
         ), "The only variable as input should be the target which is part of time_varying_unknown_reals"
 
         # initialize class
