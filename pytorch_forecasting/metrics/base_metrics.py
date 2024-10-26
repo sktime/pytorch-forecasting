@@ -443,7 +443,7 @@ class MultiLoss(LightningMetric):
         try:
             return super().__getattr__(name)
         except AttributeError as e:
-            attribute_exists = all([hasattr(metric, name) for metric in self.metrics])
+            attribute_exists = all(hasattr(metric, name) for metric in self.metrics)
             if attribute_exists:
                 # check if to return callable or not and return function if yes
                 if callable(getattr(self.metrics[0], name)):
