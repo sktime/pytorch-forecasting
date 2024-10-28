@@ -83,10 +83,8 @@ you will need to set up:
 
 The following steps guide you through the process:
 
-1. Follow the Git workflow:
-
-Creating a fork and cloning the repository - initial one time setup
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Creating a fork and cloning the repository
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1.  Fork the `project
     repository <https://github.com/sktime/pytorch-forecasting>`__ by
@@ -124,7 +122,10 @@ Creating a fork and cloning the repository - initial one time setup
       > upstream  https://github.com/sktime/pytorch-forecasting.git (fetch)
       > upstream  https://github.com/sktime/pytorch-forecasting.git (push)
 
-2. Set up a new virtual environment. Our instructions will go through the commands to set up a ``conda`` environment which is recommended for ``pytorch-forecasting`` development.
+Setting up an editible virtual environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Set up a new virtual environment. Our instructions will go through the commands to set up a ``conda`` environment which is recommended for ``pytorch-forecasting`` development.
 The process will be similar for ``venv`` or other virtual environment managers.
 
   .. warning::
@@ -135,22 +136,25 @@ The process will be similar for ``venv`` or other virtual environment managers.
 
 In the ``conda`` terminal:
 
-3. Navigate to your local pytorch-forecasting folder, :code:`cd pytorch-forecasting` or similar
+2. Navigate to your local pytorch-forecasting folder, :code:`cd pytorch-forecasting` or similar
 
-4. Create a new environment with a supported python version: :code:`conda create -n pytorch-forecasting-dev python=3.11` (or :code:`python=3.12` etc)
+3. Create a new environment with a supported python version: :code:`conda create -n pytorch-forecasting-dev python=3.11` (or :code:`python=3.12` etc)
 
    .. warning::
        If you already have an environment called ``pytorch-forecasting-dev`` from a previous attempt you will first need to remove this.
 
-5. Activate the environment: :code:`conda activate pytorch-forecasting-dev`
+4. Activate the environment: :code:`conda activate pytorch-forecasting-dev`
 
-6. Build an editable version of pytorch-forecasting.
+5. Build an editable version of pytorch-forecasting.
 In order to install only the dev dependencies, :code:`pip install -e ".[dev]"`
 If you also want to install soft dependencies, install them individually, after the above,
 or instead use: :code:`pip install -e ".[all_extras,dev]"` to install all of them.
 
 Contribution Guidelines and Recommendations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------
+
+Submitting pull request best practices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To ensure that maintainers and other developers are able to help your issues or
 review your contributions/pull requests, please read the following guidelines below.
