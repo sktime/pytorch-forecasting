@@ -1,5 +1,5 @@
-Contribute
-==========
+Installation
+============
 
 Contributions to PyTorch Forecasting are very welcome! You do not have to be an expert in deep learning
 to contribute. If you find a bug - fix it! If you miss a feature - propose it!
