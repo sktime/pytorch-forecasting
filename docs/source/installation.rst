@@ -19,7 +19,7 @@ If you are working Windows, you can install PyTorch with
 
 .. code-block:: bash
 
-  pip install torch -f https://download.pytorch.org/whl/torch_stable.html
+    pip install torch -f https://download.pytorch.org/whl/torch_stable.html
 
 .. note::
   It is recommended to visit the Pytorch official page https://pytorch.org/get-started/locally/#start-locally to
@@ -29,24 +29,25 @@ If you are working Windows, you can install PyTorch with
 Otherwise, you can proceed with:
 
 .. code-block:: bash
-  pip install pytorch-forecasting
+    pip install pytorch-forecasting
 
 
 Alternatively, to install the package via ``conda``:
 .. code-block:: bash
-  conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
+    conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
 
 PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
 
 To install ``pytorch-forecasting`` with the use of the MQF2 loss (multivariate quantile loss), run:
+
 .. code-block:: bash
-  pip install pytorch-forecasting[mqf2]
+    pip install pytorch-forecasting[mqf2]
 
 
 To install the Pytorch Lightning library, please visit their `official page <https://lightning.ai/docs/pytorch/stable/starter/installation.html>`__ or run:
 
 .. code-block:: bash
-  pip install lightning
+    pip install lightning
 
 
 Obtaining a latest ``pytorch-forecasting`` version
