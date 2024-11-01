@@ -4,12 +4,12 @@ Installation
 ``pytorch-forecasting`` currently supports:
 
 * Python versions 3.8, 3.9, 3.10, 3.11, and 3.12.
-* Operating systems : ... ... and ...
+* Operating systems : Linux, macOS, and Windows
 
 Installing pytorch-forecasting
 ------------------------------
 
-``pytorch-forecasting`` is a library build off of the popular deep learning framework ``pytorch`` and
+``pytorch-forecasting`` is a library built on top of the popular deep learning framework ``pytorch`` and
 heavily uses the Pytorch Lightning library ``lightning`` for ease of training and multiple GPU usage.
 
 You'll need to install ``pytorch`` along or before with ``pytorch-forecasting`` in order to get a working
@@ -34,9 +34,10 @@ Otherwise, you can proceed with:
 
 
 Alternatively, to install the package via ``conda``:
+
 .. code-block:: bash
 
-    conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
+    conda install pytorch-forecasting pytorch>=2.0.0 -c pytorch -c conda-forge
 
 PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
 
@@ -174,7 +175,7 @@ review your contributions/pull requests, please read the following guidelines be
   adding a feature, or improving code, [BUG] - Bugfixes, [MNT] - CI: test framework, [DOC] -
   Documentation: writing or improving documentation or docstrings.
 
-* Adding references to other links or pull requests
+* Adding references to other links or pull requests.
   This helps to add context about previous or current issues/prs that relate to
   your contribution. This is done usually by including a full link or a hash tag '#1234'.
 
