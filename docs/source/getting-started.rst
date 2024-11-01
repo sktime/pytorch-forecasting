@@ -11,22 +11,29 @@ Installation
 
 If you are working Windows, you need to first install PyTorch with
 
-``pip install torch -f https://download.pytorch.org/whl/torch_stable.html``.
+.. code-block:: bash
+
+    pip install torch -f https://download.pytorch.org/whl/torch_stable.html
 
 Otherwise, you can proceed with
+.. code-block:: bash
 
-``pip install pytorch-forecasting``
+    pip install pytorch-forecasting
 
 
 Alternatively, to install the package via ``conda``:
 
-``conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge``
+.. code-block:: bash
+
+    conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
 
 PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
 
 To use the MQF2 loss (multivariate quantile loss), also install
 
-``pip install pytorch-forecasting[mqf2]``
+.. code-block:: bash
+
+    pip install pytorch-forecasting[mqf2]
 
 
 Usage
