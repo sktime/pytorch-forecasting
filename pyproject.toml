@@ -152,7 +152,7 @@ dev = [
   # jupyter notebook
   "ipykernel",
   "nbconvert",
-  "black[extras]",
+  "black[jupyter]",
   # documentatation
   "sphinx",
   "pydata-sphinx-theme",
