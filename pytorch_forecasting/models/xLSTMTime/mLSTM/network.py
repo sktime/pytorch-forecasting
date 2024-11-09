@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from .layer import mLSTMLayer
+from pytorch_forecasting.models.xLSTMTime.mLSTM.layer import mLSTMLayer
 
 
 class mLSTMNetwork(nn.Module):

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .cell import mLSTMCell
+from pytorch_forecasting.models.xLSTMTime.mLSTM.cell import mLSTMCell
 
 
 class mLSTMLayer(nn.Module):

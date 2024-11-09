@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .cell import sLSTMCell
+from pytorch_forecasting.models.xLSTMTime.sLSTM.cell import sLSTMCell
 
 
 class sLSTMLayer(nn.Module):
@@ -20,6 +20,10 @@ class sLSTMLayer(nn.Module):
         self.use_residual = use_residual
         self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        self.input_projection = None
+        if self.use_residual and input_size != hidden_size:
+            self.input_projection = nn.Linear(input_size, hidden_size, bias=False).to(self.device)
+
         self.cells = nn.ModuleList(
             [
                 sLSTMCell(
@@ -32,11 +36,6 @@ class sLSTMLayer(nn.Module):
                 for layer in range(num_layers)
             ]
         )
-
-        if self.use_residual:
-            self.res_proj = nn.ModuleList(
-                [nn.Linear(hidden_size, hidden_size, bias=False).to(self.device) for _ in range(num_layers)]
-            )
 
         if self.use_layer_norm:
             self.layer_norm_layers = nn.ModuleList(
@@ -67,16 +66,23 @@ class sLSTMLayer(nn.Module):
 
         for t in range(seq_len):
             input_t = x[t]
+            layer_input = input_t
+
             for layer in range(self.num_layers):
-                h[layer], c[layer] = self.cells[layer](input_t, h[layer], c[layer])
+                h[layer], c[layer] = self.cells[layer](layer_input, h[layer], c[layer])
 
                 if self.use_residual:
-                    h[layer] = h[layer] + self.res_proj[layer](input_t)
+                    if layer == 0 and self.input_projection is not None:
+                        residual = self.input_projection(layer_input)
+                    else:
+                        residual = layer_input if layer_input.size(-1) == self.hidden_size else 0
+                    h[layer] = h[layer] + residual
 
                 if self.use_layer_norm:
                     h[layer] = self.layer_norm_layers[layer](h[layer])
 
-                input_t = h[layer]
+                layer_input = h[layer]
+
             outputs.append(h[-1])
 
         output = torch.stack(outputs)

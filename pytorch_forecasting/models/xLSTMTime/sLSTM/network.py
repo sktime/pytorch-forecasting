@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from .layer import sLSTMLayer
+from pytorch_forecasting.models.xLSTMTime.sLSTM.layer import sLSTMLayer
 
 
 class sLSTMNetwork(nn.Module):
@@ -17,7 +17,7 @@ class sLSTMNetwork(nn.Module):
         self.dropout = dropout
         self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.slstm_layer = sLSTMLayer(input_size, hidden_size, num_layers, dropout, use_layer_norm, self.device)
+        self.slstm_layer = sLSTMLayer(input_size, hidden_size, num_layers, dropout, use_layer_norm, device=self.device)
         self.fc = nn.Linear(hidden_size, output_size).to(self.device)
 
     def forward(self, x, h=None, c=None):

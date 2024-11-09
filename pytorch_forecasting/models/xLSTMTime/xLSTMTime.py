@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Tuple, Union, Literal
-from mLSTM.network import mLSTMNetwork
-from sLSTM.network import sLSTMNetwork
+from pytorch_forecasting.models.xLSTMTime.mLSTM.network import mLSTMNetwork
+from pytorch_forecasting.models.xLSTMTime.sLSTM.network import sLSTMNetwork
 
 
 class SeriesDecomposition(nn.Module):
