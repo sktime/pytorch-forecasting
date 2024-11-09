@@ -10,7 +10,7 @@ class mLSTMCell(nn.Module):
         self.hidden_size = hidden_size
         self.layer_norm = layer_norm
 
-        self.device = device if device is not None else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.Wq = nn.Linear(input_size, hidden_size)
         self.Wk = nn.Linear(input_size, hidden_size)
@@ -55,13 +55,11 @@ class mLSTMCell(nn.Module):
         c_prev = c_prev.to(self.device)
         n_prev = n_prev.to(self.device)
 
-
         batch_size = x.size(0)
         assert x.dim() == 2, f"Input should be 2D (batch_size, input_size), got {x.dim()}D"
         assert h_prev.size() == (batch_size, self.hidden_size), f"h_prev shape mismatch: {h_prev.size()}"
         assert c_prev.size() == (batch_size, self.hidden_size), f"c_prev shape mismatch: {c_prev.size()}"
         assert n_prev.size() == (batch_size, self.hidden_size), f"n_prev shape mismatch: {n_prev.size()}"
-
 
         x = self.dropout(x)
         h_prev = self.dropout(h_prev)
@@ -100,6 +98,8 @@ class mLSTMCell(nn.Module):
         Initialize hidden, cell, and normalization states.
         """
         shape = (batch_size, self.hidden_size)
-        return (torch.zeros(shape, device=self.device),
-                torch.zeros(shape, device=self.device),
-                torch.zeros(shape, device=self.device))
+        return (
+            torch.zeros(shape, device=self.device),
+            torch.zeros(shape, device=self.device),
+            torch.zeros(shape, device=self.device),
+        )

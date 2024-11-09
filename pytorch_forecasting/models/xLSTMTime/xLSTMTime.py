@@ -28,9 +28,7 @@ class SeriesDecomposition(nn.Module):
         batch_size, seq_len, n_features = x.shape
         x_reshaped = x.reshape(batch_size * n_features, 1, seq_len)
 
-
         trend = self.avg_pool(x_reshaped)
-
 
         trend = trend.reshape(batch_size, seq_len, n_features)
         seasonal = x - trend
@@ -44,15 +42,15 @@ class xLSTMTime(nn.Module):
     """
 
     def __init__(
-            self,
-            input_size: int,
-            hidden_size: int,
-            output_size: int,
-            xlstm_type: Literal['slstm', 'mlstm'],
-            num_layers: int = 1,
-            decomposition_kernel: int = 25,
-            dropout: float = 0.1,
-            device: Optional[torch.device] = None
+        self,
+        input_size: int,
+        hidden_size: int,
+        output_size: int,
+        xlstm_type: Literal["slstm", "mlstm"],
+        num_layers: int = 1,
+        decomposition_kernel: int = 25,
+        dropout: float = 0.1,
+        device: Optional[torch.device] = None,
     ):
         """
         Initialize xLSTMTime model.
@@ -69,26 +67,25 @@ class xLSTMTime(nn.Module):
         """
         super(xLSTMTime, self).__init__()
 
-        if xlstm_type not in ['slstm', 'mlstm']:
+        if xlstm_type not in ["slstm", "mlstm"]:
             raise ValueError("xlstm_type must be either 'slstm' or 'mlstm'")
 
         self.xlstm_type = xlstm_type
-        self.device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.decomposition = SeriesDecomposition(decomposition_kernel)
         self.input_linear = nn.Linear(input_size * 2, hidden_size)
 
         self.batch_norm = nn.BatchNorm1d(hidden_size)
 
-        if xlstm_type == 'mlstm':
+        if xlstm_type == "mlstm":
             self.lstm = mLSTMNetwork(
                 input_size=hidden_size,
                 hidden_size=hidden_size,
                 num_layers=num_layers,
                 output_size=hidden_size,
                 dropout=dropout,
-                device=self.device
+                device=self.device,
             )
         else:  # slstm
             self.lstm = sLSTMNetwork(
@@ -97,17 +94,18 @@ class xLSTMTime(nn.Module):
                 num_layers=num_layers,
                 output_size=hidden_size,
                 dropout=dropout,
-                device=self.device
+                device=self.device,
             )
         self.output_linear = nn.Linear(hidden_size, output_size)
 
         self.instance_norm = nn.InstanceNorm1d(output_size)
 
     def forward(
-            self,
-            x: torch.Tensor,
-            hidden_states: Optional[
-                Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]] = None
+        self,
+        x: torch.Tensor,
+        hidden_states: Optional[
+            Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
+        ] = None,
     ) -> Tuple[torch.Tensor, Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]]:
         """
         Forward pass through the network.
@@ -141,10 +139,8 @@ class xLSTMTime(nn.Module):
         if isinstance(output, tuple):
             output = output[0]
 
-
         if output.dim() == 2:
             output = output.unsqueeze(0)
-
 
         output = self.output_linear(output)
 
@@ -155,10 +151,11 @@ class xLSTMTime(nn.Module):
         return output, hidden_states
 
     def predict(
-            self,
-            x: torch.Tensor,
-            hidden_states: Optional[
-                Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]] = None
+        self,
+        x: torch.Tensor,
+        hidden_states: Optional[
+            Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
+        ] = None,
     ) -> torch.Tensor:
         """
         Make predictions using the model.

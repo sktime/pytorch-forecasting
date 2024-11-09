@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import math
 
+
 class sLSTMCell(nn.Module):
     """Stabilized LSTM Cell"""
+
     def __init__(self, input_size, hidden_size, dropout=0.0, use_layer_norm=True, device=None):
         super(sLSTMCell, self).__init__()
         self.input_size = input_size
@@ -12,7 +14,7 @@ class sLSTMCell(nn.Module):
         self.use_layer_norm = use_layer_norm
         self.eps = 1e-6
 
-        self.device = device if device is not None else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.input_weights = nn.Linear(input_size, 4 * hidden_size).to(self.device)
         self.hidden_weights = nn.Linear(hidden_size, 4 * hidden_size).to(self.device)
@@ -25,9 +27,7 @@ class sLSTMCell(nn.Module):
 
         self.dropout_layer = nn.Dropout(dropout).to(self.device)
 
-
         self.reset_parameters()
-
 
         self.grad_clip = 5.0
 
@@ -88,5 +88,7 @@ class sLSTMCell(nn.Module):
         return h, c
 
     def init_hidden(self, batch_size):
-        return (torch.zeros(batch_size, self.hidden_size, device=self.device),
-                torch.zeros(batch_size, self.hidden_size, device=self.device))
+        return (
+            torch.zeros(batch_size, self.hidden_size, device=self.device),
+            torch.zeros(batch_size, self.hidden_size, device=self.device),
+        )

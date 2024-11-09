@@ -2,10 +2,12 @@ import torch.nn as nn
 import torch
 from .layer import sLSTMLayer
 
+
 class sLSTMNetwork(nn.Module):
     """
     Stabilized LSTM Network with multiple sLSTM layers.
     """
+
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.0, use_layer_norm=True, device=None):
         super(sLSTMNetwork, self).__init__()
         self.input_size = input_size
@@ -13,7 +15,7 @@ class sLSTMNetwork(nn.Module):
         self.num_layers = num_layers
         self.output_size = output_size
         self.dropout = dropout
-        self.device = device if device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.slstm_layer = sLSTMLayer(input_size, hidden_size, num_layers, dropout, use_layer_norm, self.device)
         self.fc = nn.Linear(hidden_size, output_size).to(self.device)
