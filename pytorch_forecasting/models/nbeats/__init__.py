@@ -2,7 +2,7 @@
 N-Beats model for timeseries forecasting without covariates.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import torch
 from torch import nn
@@ -18,12 +18,12 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 class NBeats(BaseModel):
     def __init__(
         self,
-        stack_types: List[str] = ["trend", "seasonality"],
-        num_blocks=[3, 3],
-        num_block_layers=[3, 3],
-        widths=[32, 512],
-        sharing: List[int] = [True, True],
-        expansion_coefficient_lengths: List[int] = [3, 7],
+        stack_types: Optional[List[str]] = None,
+        num_blocks: Optional[List[int]] = None,
+        num_block_layers: Optional[List[int]] = None,
+        widths: Optional[List[int]] = None,
+        sharing: Optional[List[bool]] = None,
+        expansion_coefficient_lengths: Optional[List[int]] = None,
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,
@@ -87,6 +87,18 @@ class NBeats(BaseModel):
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
+        if expansion_coefficient_lengths is None:
+            expansion_coefficient_lengths = [3, 7]
+        if sharing is None:
+            sharing = [True, True]
+        if widths is None:
+            widths = [32, 512]
+        if num_block_layers is None:
+            num_block_layers = [3, 3]
+        if num_blocks is None:
+            num_blocks = [3, 3]
+        if stack_types is None:
+            stack_types = ["trend", "seasonality"]
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if loss is None:
@@ -215,8 +227,8 @@ class NBeats(BaseModel):
         assert (
             len(dataset.flat_categoricals) == 0
             and len(dataset.reals) == 1
-            and len(dataset.time_varying_unknown_reals) == 1
-            and dataset.time_varying_unknown_reals[0] == dataset.target
+            and len(dataset._time_varying_unknown_reals) == 1
+            and dataset._time_varying_unknown_reals[0] == dataset.target
         ), "The only variable as input should be the target which is part of time_varying_unknown_reals"
 
         # initialize class

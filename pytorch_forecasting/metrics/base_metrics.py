@@ -503,23 +503,30 @@ class CompositeMetric(LightningMetric):
     higher_is_better = False
     is_differentiable = True
 
-    def __init__(self, metrics: List[LightningMetric] = [], weights: List[float] = None):
+    def __init__(self, metrics: Optional[List[LightningMetric]] = None, weights: Optional[List[float]] = None):
         """
         Args:
-            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to [].
+            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to None.
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """
+        self.metrics = metrics
+        self.weights = weights
+
+        if metrics is None:
+            metrics = []
         if weights is None:
             weights = [1.0 for _ in metrics]
         assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
 
-        self.metrics = metrics
-        self.weights = weights
+        self._metrics = list(metrics)
+        self._weights = list(weights)
 
         super().__init__()
 
     def __repr__(self):
-        name = " + ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
+        name = " + ".join(
+            [f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self._weights, self._metrics)]
+        )
         return name
 
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
@@ -533,7 +540,7 @@ class CompositeMetric(LightningMetric):
         Returns:
             torch.Tensor: metric value on which backpropagation can be applied
         """
-        for metric in self.metrics:
+        for metric in self._metrics:
             try:
                 metric.update(y_pred, y_actual, **kwargs)
             except TypeError:
@@ -547,7 +554,7 @@ class CompositeMetric(LightningMetric):
             torch.Tensor: metric
         """
         results = []
-        for weight, metric in zip(self.weights, self.metrics):
+        for weight, metric in zip(self._weights, self._metrics):
             results.append(metric.compute() * weight)
 
         if len(results) == 1:
@@ -570,7 +577,7 @@ class CompositeMetric(LightningMetric):
             torch.Tensor: metric value on which backpropagation can be applied
         """
         results = []
-        for weight, metric in zip(self.weights, self.metrics):
+        for weight, metric in zip(self._weights, self._metrics):
             try:
                 results.append(metric(y_pred, y_actual, **kwargs) * weight)
             except TypeError:
@@ -590,11 +597,11 @@ class CompositeMetric(LightningMetric):
         pass
 
     def reset(self) -> None:
-        for metric in self.metrics:
+        for metric in self._metrics:
             metric.reset()
 
     def persistent(self, mode: bool = False) -> None:
-        for metric in self.metrics:
+        for metric in self._metrics:
             metric.persistent(mode=mode)
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
@@ -610,7 +617,7 @@ class CompositeMetric(LightningMetric):
         Returns:
             torch.Tensor: point prediction
         """
-        return self.metrics[0].to_prediction(y_pred, **kwargs)
+        return self._metrics[0].to_prediction(y_pred, **kwargs)
 
     def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -625,20 +632,20 @@ class CompositeMetric(LightningMetric):
         Returns:
             torch.Tensor: prediction quantiles
         """
-        return self.metrics[0].to_quantiles(y_pred, **kwargs)
+        return self._metrics[0].to_quantiles(y_pred, **kwargs)
 
     def __add__(self, metric: LightningMetric):
         if isinstance(metric, self.__class__):
-            self.metrics.extend(metric.metrics)
-            self.weights.extend(metric.weights)
+            self._metrics.extend(metric._metrics)
+            self._weights.extend(metric._weights)
         else:
-            self.metrics.append(metric)
-            self.weights.append(1.0)
+            self._metrics.append(metric)
+            self._weights.append(1.0)
 
         return self
 
     def __mul__(self, multiplier: float):
-        self.weights = [w * multiplier for w in self.weights]
+        self._weights = [w * multiplier for w in self._weights]
         return self
 
     __rmul__ = __mul__
@@ -897,9 +904,7 @@ class DistributionLoss(MultiHorizonMetric):
     distribution_class: distributions.Distribution
     distribution_arguments: List[str]
 
-    def __init__(
-        self, name: str = None, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98], reduction="mean"
-    ):
+    def __init__(self, name: str = None, quantiles: Optional[List[float]] = None, reduction="mean"):
         """
         Initialize metric
 
@@ -909,6 +914,8 @@ class DistributionLoss(MultiHorizonMetric):
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
         """
+        if quantiles is None:
+            quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
@@ -945,7 +952,7 @@ class DistributionLoss(MultiHorizonMetric):
 
         Args:
             y_pred: prediction output of network
-
+            n_samples (int): number of samples to draw
         Returns:
             torch.Tensor: mean prediction
         """
