@@ -514,7 +514,7 @@ def repr_class(
     obj,
     attributes: Union[List[str], Dict[str, Any]],
     max_characters_before_break: int = 100,
-    extra_attributes: Dict[str, Any] = {},
+    extra_attributes: Dict[str, Any] = None,
 ) -> str:
     """Print class name and parameters.
 
@@ -527,6 +527,8 @@ def repr_class(
     Returns:
         str
     """
+    if extra_attributes is None:
+        extra_attributes = {}
     # get attributes
     if isinstance(attributes, (tuple, list)):
         attributes = {name: getattr(obj, name) for name in attributes if hasattr(obj, name)}

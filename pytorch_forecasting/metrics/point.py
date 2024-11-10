@@ -211,7 +211,8 @@ class MASE(MultiHorizonMetric):
     def loss(self, y_pred, target, scaling):
         return (self.to_prediction(y_pred) - target).abs() / scaling.unsqueeze(-1)
 
-    def calculate_scaling(self, target, lengths, encoder_target, encoder_lengths):
+    @staticmethod
+    def calculate_scaling(target, lengths, encoder_target, encoder_lengths):
         # calcualte mean(abs(diff(targets)))
         eps = 1e-6
         batch_size = target.size(0)

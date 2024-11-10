@@ -53,7 +53,7 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
     def __init__(
         self,
         name: str = None,
-        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
+        quantiles: Optional[List[float]] = None,
         reduction: str = "mean",
         rank: int = 10,
         sigma_init: float = 1.0,
@@ -71,6 +71,8 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
             sigma_init (float, optional): default value for diagonal covariance. Defaults to 1.0.
             sigma_minimum (float, optional): minimum value for diagonal covariance. Defaults to 1e-3.
         """
+        if quantiles is None:
+            quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
         self.rank = rank
         self.sigma_minimum = sigma_minimum
@@ -263,7 +265,7 @@ class MQF2DistributionLoss(DistributionLoss):
     def __init__(
         self,
         prediction_length: int,
-        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
+        quantiles: Optional[List[float]] = None,
         hidden_size: Optional[int] = 4,
         es_num_samples: int = 50,
         beta: float = 1.0,
@@ -286,6 +288,8 @@ class MQF2DistributionLoss(DistributionLoss):
             icnn_num_layers (int, optional): number of hidden layers in distribution estimating network. Defaults to 2.
             estimate_logdet (bool, optional): if to estimate log determinant. Defaults to False.
         """
+        if quantiles is None:
+            quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(quantiles=quantiles)
 
         from cpflows.flows import ActNorm
@@ -445,7 +449,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
 
     def __init__(
         self,
-        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
+        quantiles: Optional[List[float]] = None,
         input_size: Optional[int] = 16,
         hidden_size: Optional[int] = 32,
         n_loss_samples: Optional[int] = 64,
@@ -459,6 +463,8 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
             hidden_size (int, optional): hidden size per prediction length. Defaults to 64.
             n_loss_samples (int, optional): number of quantiles to sample to calculate loss.
         """
+        if quantiles is None:
+            quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(quantiles=quantiles)
         self.quantile_network = ImplicitQuantileNetwork(input_size=input_size, hidden_size=hidden_size)
         self.distribution_arguments = list(range(int(input_size)))
