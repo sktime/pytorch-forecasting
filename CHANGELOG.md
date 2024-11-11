@@ -6,7 +6,7 @@ Maintenance update and minor featuer additions.
 
 * support for `numpy 2.X`
 * end of life for `python 3.8`
-
+* fixed documentation build
 
 
 ## v1.1.1
