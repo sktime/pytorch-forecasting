@@ -1,5 +1,14 @@
 # Release Notes
 
+## v1.2.0
+
+Maintenance update and minor featuer additions.
+
+* support for `numpy 2.X`
+* end of life for `python 3.8`
+
+
+
 ## v1.1.1
 
 Hotfix for accidental package name change in `pyproject.toml`.
