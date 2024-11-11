@@ -30,7 +30,7 @@ Otherwise, you can proceed with:
 
 .. code-block:: bash
 
-    pip install pytorch-forecasting
+    pip install pytorch-forecasting --extra-index-url https://download.pytorch.org/whl/cpu
 
 
 Alternatively, to install the package via ``conda``:
