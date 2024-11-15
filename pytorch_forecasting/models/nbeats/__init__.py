@@ -277,7 +277,8 @@ class NBeats(BaseModel):
         """
         mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
 
-        if not mpl_available:
+        # Don't log figures if matplotlib or add_figure is not available
+        if not mpl_available or not self._logger_supports("add_figure"):
             return None
 
         label = ["val", "train"][self.training]
