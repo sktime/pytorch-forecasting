@@ -66,12 +66,11 @@ version = "1.2.0"            # is being replaced automatically
 authors = [
   {name = "Jan Beitner"},
 ]
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.9,<3.13"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -115,14 +114,14 @@ dependencies = [
 all_extras = [
   "cpflows",
   "matplotlib",
-  "optuna >=3.1.0,<4.0.0",
+  "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "pytorch_optimizer >=2.5.1,<4.0.0",
   "statsmodels",
 ]
 
 tuning = [
-  "optuna >=3.1.0,<4.0.0",
+  "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "statsmodels",
 ]

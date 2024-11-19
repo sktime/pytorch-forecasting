@@ -955,6 +955,18 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         else:
             return self.hparams.log_val_interval
 
+    def _logger_supports(self, method: str) -> bool:
+        """Whether logger supports method.
+
+        Returns
+        -------
+        supports_method : bool
+            True if attribute self.logger.experiment.method exists, False otherwise.
+        """
+        if not hasattr(self, "logger") or not hasattr(self.logger, "experiment"):
+            return False
+        return hasattr(self.logger.experiment, method)
+
     def log_prediction(
         self, x: Dict[str, torch.Tensor], out: Dict[str, torch.Tensor], batch_idx: int, **kwargs
     ) -> None:
@@ -980,6 +992,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
             if not mpl_available:
                 return None  # don't log matplotlib plots if not available
+
+            # Don't log figures if add_figure is not available
+            if not self._logger_supports("add_figure"):
+                return None
 
             for idx in log_indices:
                 fig = self.plot_prediction(x, out, idx=idx, add_loss_to_title=True, **kwargs)
@@ -1156,7 +1172,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         mpl_available = _check_matplotlib("log_gradient_flow", raise_error=False)
 
-        if not mpl_available:
+        # Don't log figures if matplotlib or add_figure is not available
+        if not mpl_available or not self._logger_supports("add_figure"):
             return None
 
         import matplotlib.pyplot as plt
