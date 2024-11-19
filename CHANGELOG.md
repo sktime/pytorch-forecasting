@@ -2,11 +2,12 @@
 
 ## v1.2.0
 
-Maintenance update and minor featuer additions.
+Maintenance update, minor feature additions and bugfixes.
 
 * support for `numpy 2.X`
 * end of life for `python 3.8`
 * fixed documentation build
+* bugfixes
 
 ### Dependency changes
 
