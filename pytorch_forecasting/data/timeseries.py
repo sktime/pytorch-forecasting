@@ -323,10 +323,13 @@ class TimeSeriesDataSet(Dataset):
                 distribution.
                 If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples around minimum encoder length.
                 Defaults to False otherwise.
-            predict_mode (bool): if to only iterate over each timeseries once (only the last provided samples).
-                Effectively, this will take choose for each time series identified by ``group_ids``
+            predict_mode (bool): If True, the TimeSeriesDataSet will only create one sequence per time series (i.e. only from the latest provided samples).
+                Effectively, this will select each time series identified by ``group_ids``
                 the last ``max_prediction_length`` samples of each time series as
                 prediction samples and everthing previous up to ``max_encoder_length`` samples as encoder samples.
+                If False, the TimeSeriesDataSet will create subsequences by sliding a window over the data samples.
+                For training use cases, it's preferable to set predict_mode=False to get all subseries.
+                On the other hand, predict_mode = True is ideal for validation cases.
         """
         super().__init__()
         self.max_encoder_length = max_encoder_length
