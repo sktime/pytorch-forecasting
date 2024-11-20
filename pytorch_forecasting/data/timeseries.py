@@ -323,7 +323,8 @@ class TimeSeriesDataSet(Dataset):
                 distribution.
                 If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples around minimum encoder length.
                 Defaults to False otherwise.
-            predict_mode (bool): If True, the TimeSeriesDataSet will only create one sequence per time series (i.e. only from the latest provided samples).
+            predict_mode (bool): If True, the TimeSeriesDataSet will only create one sequence
+                per time series (i.e. only from the latest provided samples).
                 Effectively, this will select each time series identified by ``group_ids``
                 the last ``max_prediction_length`` samples of each time series as
                 prediction samples and everthing previous up to ``max_encoder_length`` samples as encoder samples.
