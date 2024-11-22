@@ -425,7 +425,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             loss (Metric, optional): metric to optimize, can also be list of metrics. Defaults to SMAPE().
             logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
                 Defaults to [].
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
+            reduce_on_plateau_patience (int): patience (in steps) after which learning rate is reduced by a factor of 2. Defaults
                 to 1000
             reduce_on_plateau_reduction (float): reduction in learning rate when encountering plateau. Defaults to 2.0.
             reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
@@ -1066,6 +1066,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         # for each target, plot
         figs = []
+        ax_provided = ax is not None
         for y_raw, y_hat, y_quantile, encoder_target, decoder_target in zip(
             y_raws, y_hats, y_quantiles, encoder_targets, decoder_targets
         ):
@@ -1085,7 +1086,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # move to cpu
             y = y.detach().cpu()
             # create figure
-            if ax is None:
+            if (ax is None) or (not ax_provided):
                 fig, ax = plt.subplots()
             else:
                 fig = ax.get_figure()
@@ -1121,13 +1122,16 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     ax.fill_between(x_pred, y_quantile[:, i], y_quantile[:, -i - 1], alpha=0.15, fc=pred_color)
                 else:
                     quantiles = torch.tensor([[y_quantile[0, i]], [y_quantile[0, -i - 1]]])
-                    ax.errorbar(
-                        x_pred,
-                        y[[-n_pred]],
-                        yerr=quantiles - y[-n_pred],
-                        c=pred_color,
-                        capsize=1.0,
-                    )
+                    try:
+                        ax.errorbar(
+                            x_pred,
+                            y[[-n_pred]],
+                            yerr=quantiles - y[-n_pred],
+                            c=pred_color,
+                            capsize=1.0,
+                        )
+                    except ValueError:
+                        print(f"Warning: could not plot error bars. Quantiles: {quantiles}, y: {y}, yerr: {quantiles - y[-n_pred]}")
 
             if add_loss_to_title is not False:
                 if isinstance(add_loss_to_title, bool):
@@ -1308,7 +1312,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     min_lr=self.hparams.reduce_on_plateau_min_lr,
                 ),
                 "monitor": "val_loss",  # Default: val_loss
-                "interval": "epoch",
+                "interval": "step",
                 "frequency": 1,
                 "strict": False,
             }
