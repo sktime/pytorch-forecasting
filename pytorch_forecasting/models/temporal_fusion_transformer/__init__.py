@@ -755,7 +755,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 encoder_length = x["encoder_lengths"][0]
                 ax2.plot(
                     torch.arange(-encoder_length, 0),
-                    interpretation["attention"][0, -encoder_length:].detach().cpu(),
+                    interpretation["attention"][0, :-encoder_length].detach().cpu(),
                     alpha=0.2,
                     color="k",
                 )
