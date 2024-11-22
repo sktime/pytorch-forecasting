@@ -25,6 +25,18 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
 from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
+def fig2img(fig):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from PIL import Image
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
+
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
     def __init__(
@@ -856,8 +868,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         label = self.current_stage
         # log to tensorboard
         for name, fig in figs.items():
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
+            self.logger.experiment.log_image(
+                run_id=self.logger.run_id,
+                image=fig2img(fig), 
+                artifact_file=f"{label.capitalize()}_{name}_step_{self.global_step}.png"
             )
 
         # log lengths of encoder/decoder
@@ -878,8 +892,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             ax.set_ylabel("Number of samples")
             ax.set_title(f"{type.capitalize()} length distribution in {label} epoch")
 
-            self.logger.experiment.add_figure(
-                f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
+            self.logger.experiment.log_image(
+                run_id=self.logger.run_id,
+                image=fig2img(fig), 
+                artifact_file=f"{label.capitalize()}_{type}_length_distribution_step_{self.global_step}.png", 
             )
 
     def log_embeddings(self):

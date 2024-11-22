@@ -341,6 +341,19 @@ class PredictCallback(BasePredictionWriter):
             return None
 
 
+def fig2img(fig):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from PIL import Image
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
+
+
 class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMixIn):
     """
     BaseModel from which new timeseries models should inherit from.
@@ -1006,16 +1019,16 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     tag += f" of item {idx} in batch {batch_idx}"
                 if isinstance(fig, (list, tuple)):
                     for idx, f in enumerate(fig):
-                        self.logger.experiment.add_figure(
-                            f"{self.target_names[idx]} {tag}",
-                            f,
-                            global_step=self.global_step,
+                        self.logger.experiment.log_image(
+                            run_id=self.logger.run_id,
+                            image=fig2img(f), 
+                            artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                         )
                 else:
-                    self.logger.experiment.add_figure(
-                        tag,
-                        fig,
-                        global_step=self.global_step,
+                    self.logger.experiment.log_image(
+                        run_id=self.logger.run_id,
+                        image=fig2img(fig), 
+                        artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
 
     def plot_prediction(
@@ -1184,7 +1197,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         ax.set_ylabel("Average gradient")
         ax.set_yscale("log")
         ax.set_title("Gradient flow")
-        self.logger.experiment.add_figure("Gradient flow", fig, global_step=self.global_step)
+        self.logger.experiment.log_image(run_id=self.logger.run_id, image=fig2img(fig), artifact_file=f"gradient_flow.png")
 
     def on_after_backward(self):
         """

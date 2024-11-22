@@ -19,6 +19,18 @@ from pytorch_forecasting.utils import create_mask, to_list
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
+def fig2img(fig):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from PIL import Image
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
+
 class NHiTS(BaseModelWithCovariates):
     def __init__(
         self,
@@ -579,17 +591,17 @@ class NHiTS(BaseModelWithCovariates):
                 name += f"step {self.global_step}"
             else:
                 name += f"batch {batch_idx}"
-            self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
+            self.logger.experiment.log_image(image=fig, artifact_file=f"{name}.png")
             if isinstance(fig, (list, tuple)):
                 for idx, f in enumerate(fig):
-                    self.logger.experiment.add_figure(
-                        f"{self.target_names[idx]} {name}",
-                        f,
-                        global_step=self.global_step,
+                    self.logger.experiment.log_image(
+                        run_id=self.logger.run_id,
+                        image=fig2img(f), 
+                        artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
                 else:
-                    self.logger.experiment.add_figure(
-                        name,
-                        fig,
-                        global_step=self.global_step,
+                    self.logger.experiment.log_image(
+                        run_id=self.logger.run_id,
+                        image=fig2img(fig), 
+                        artifact_file=f"{self.target_names[idx]}_{tag}_step_{self.global_step}.png"
                     )
