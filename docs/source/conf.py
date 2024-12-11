@@ -180,3 +180,8 @@ intersphinx_mapping = {
 suppress_warnings = [
     "autosummary.import_cycle",
 ]
+
+# -----------nbsphinx extension ----------
+nbsphinx_execute = "never"  # always
+nbsphinx_allow_errors = False  # False
+nbsphinx_timeout = 600  # seconds
