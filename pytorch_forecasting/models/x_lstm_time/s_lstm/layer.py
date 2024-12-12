@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
-from pytorch_forecasting.models.xLSTMTime.sLSTM.cell import sLSTMCell
+from pytorch_forecasting.models.x_lstm_time.s_lstm.cell import sLSTMCell
 
 
 class sLSTMLayer(nn.Module):
     """
-    Enhanced sLSTM Layer that supports multiple sLSTM cells across timesteps and residual connections.
+    Enhanced s_lstm Layer that supports multiple s_lstm cells across timesteps and residual connections.
     """
 
     def __init__(
@@ -44,7 +44,7 @@ class sLSTMLayer(nn.Module):
 
     def forward(self, x, h=None, c=None):
         """
-        Forward pass through the sLSTM layer for each time step in sequence.
+        Forward pass through the s_lstm layer for each time step in sequence.
         Args:
             x: input tensor (seq_len, batch_size, input_size)
             h: initial hidden states (num_layers, batch_size, hidden_size)

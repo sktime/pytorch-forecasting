@@ -1,17 +1,15 @@
 import pytest
 import torch
 import torch.nn as nn
-from typing import Tuple, List
 
-from sympy.stats.sampling.sample_numpy import numpy
-
-from pytorch_forecasting.models.xLSTMTime.mLSTM.cell import mLSTMCell
-from pytorch_forecasting.models.xLSTMTime.mLSTM.layer import mLSTMLayer
-from pytorch_forecasting.models.xLSTMTime.mLSTM.network import mLSTMNetwork
-from pytorch_forecasting.models.xLSTMTime.sLSTM.cell import sLSTMCell
-from pytorch_forecasting.models.xLSTMTime.sLSTM.layer import sLSTMLayer
-from pytorch_forecasting.models.xLSTMTime.sLSTM.network import sLSTMNetwork
-from pytorch_forecasting.models.xLSTMTime.xLSTMTime import xLSTMTime, SeriesDecomposition
+from pytorch_forecasting.models.x_lstm_time.m_lstm.cell import mLSTMCell
+from pytorch_forecasting.models.x_lstm_time.m_lstm.layer import mLSTMLayer
+from pytorch_forecasting.models.x_lstm_time.m_lstm.network import mLSTMNetwork
+from pytorch_forecasting.models.x_lstm_time.s_lstm.cell import sLSTMCell
+from pytorch_forecasting.models.x_lstm_time.s_lstm.layer import sLSTMLayer
+from pytorch_forecasting.models.x_lstm_time.s_lstm.network import sLSTMNetwork
+from pytorch_forecasting.models.x_lstm_time.series_decomp import SeriesDecomposition
+from pytorch_forecasting.models.x_lstm_time import xLSTMTime
 
 
 # Fixtures for common test parameters
@@ -75,7 +73,7 @@ class TestSeriesDecomposition:
         torch.testing.assert_close(trend + seasonal, sample_input, rtol=1e-4, atol=1e-4)
 
 
-# Test mLSTM Components
+# Test m_lstm Components
 class TestMLSTM:
     def test_cell_initialization(self, input_size, hidden_size, device):
         cell = mLSTMCell(input_size, hidden_size, device=device)
@@ -110,7 +108,7 @@ class TestMLSTM:
         assert output.shape == (output_size, sample_input.shape[0])
 
 
-# Test sLSTM Components
+# Test s_lstm Components
 class TestSLSTM:
     def test_cell_initialization(self, input_size, hidden_size, device):
         cell = sLSTMCell(input_size, hidden_size, device=device)
@@ -143,7 +141,7 @@ class TestSLSTM:
         assert output.shape == (output_size, sample_input.shape[0])
 
 
-# Test xLSTMTime
+# Test x_lstm_time
 class TestXLSTMTime:
     @pytest.mark.parametrize("xlstm_type", ["mlstm", "slstm"])
     def test_initialization(self, input_size, hidden_size, output_size, xlstm_type, device):
@@ -172,13 +170,13 @@ class TestXLSTMTime:
         assert output.shape == (1, sample_input.shape[0], output_size)
 
         if xlstm_type == "mlstm":
-            assert len(hidden_states) == 3  # h, c, n for mLSTM
+            assert len(hidden_states) == 3  # h, c, n for m_lstm
             h, c, n = hidden_states
             assert h.shape == (1, sample_input.shape[0], hidden_size)
             assert c.shape == (1, sample_input.shape[0], hidden_size)
             assert n.shape == (1, sample_input.shape[0], hidden_size)
         else:
-            assert len(hidden_states) == 2  # h, c for sLSTM
+            assert len(hidden_states) == 2  # h, c for s_lstm
             h, c = hidden_states
             assert torch.stack(h).shape == (1, sample_input.shape[0], hidden_size)
             assert torch.stack(c).shape == (1, sample_input.shape[0], hidden_size)

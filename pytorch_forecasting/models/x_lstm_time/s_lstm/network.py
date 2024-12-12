@@ -1,11 +1,11 @@
 import torch.nn as nn
 import torch
-from pytorch_forecasting.models.xLSTMTime.sLSTM.layer import sLSTMLayer
+from pytorch_forecasting.models.x_lstm_time.s_lstm.layer import sLSTMLayer
 
 
 class sLSTMNetwork(nn.Module):
     """
-    Stabilized LSTM Network with multiple sLSTM layers.
+    Stabilized LSTM Network with multiple s_lstm layers.
     """
 
     def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.0, use_layer_norm=True, device=None):
@@ -22,7 +22,7 @@ class sLSTMNetwork(nn.Module):
 
     def forward(self, x, h=None, c=None):
         """
-        Forward pass through the sLSTM network.
+        Forward pass through the s_lstm network.
         Args:
             x: input tensor (seq_len, batch_size, input_size)
             h: initial hidden states (num_layers, batch_size, hidden_size)

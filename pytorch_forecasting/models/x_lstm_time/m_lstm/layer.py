@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from pytorch_forecasting.models.xLSTMTime.mLSTM.cell import mLSTMCell
+from pytorch_forecasting.models.x_lstm_time.m_lstm.cell import mLSTMCell
 
 
 class mLSTMLayer(nn.Module):
@@ -40,7 +40,7 @@ class mLSTMLayer(nn.Module):
 
     def forward(self, x, h=None, c=None, n=None):
         """
-        Forward pass for the mLSTM layer.
+        Forward pass for the m_lstm layer.
         """
 
         x = x.to(self.device).transpose(0, 1)
