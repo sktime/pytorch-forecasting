@@ -26,8 +26,6 @@ class xLSTMTime(AutoRegressiveBaseModel):
         **kwargs,
     ):
 
-        if device is None:
-            device = "cpu"
         if "target" in kwargs:
             del kwargs["target"]
         if "target_lags" in kwargs:
