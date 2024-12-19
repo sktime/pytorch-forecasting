@@ -4,12 +4,13 @@ from copy import copy
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.models.tide.sub_modules import _TideModule 
+from pytorch_forecasting.models.tide.sub_modules import _TideModule
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
 
 from torch import nn
 import torch
+
 
 class TiDEModel(BaseModelWithCovariates):
     def __init__(
@@ -41,40 +42,41 @@ class TiDEModel(BaseModelWithCovariates):
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
-        
         """An implementation of the TiDE model.
 
         TiDE shares similarities with Transformers (implemented in :class:TransformerModel), but aims to deliver
-        better performance with reduced computational requirements by utilizing MLP-based encoder-decoder architectures without
-        attention mechanisms.
+        better performance with reduced computational requirements by utilizing MLP-based encoder-decoder architectures
+        without attention mechanisms.
 
-        This model supports future covariates (known for output_chunk_length points after the prediction time) and static covariates.
+        This model supports future covariates (known for output_chunk_length points after the prediction time) and
+        static covariates.
 
-        The encoder and decoder are constructed using residual blocks. The number of residual blocks in the encoder and decoder
-        can be specified with `num_encoder_layers` and `num_decoder_layers` respectively. The layer width in the residual blocks
-        can be adjusted using `hidden_size`, while the layer width in the temporal decoder can be controlled via 
-        `temporal_decoder_hidden`.
+        The encoder and decoder are constructed using residual blocks. The number of residual blocks in the encoder and
+        decoder can be specified with `num_encoder_layers` and `num_decoder_layers` respectively. The layer width in the
+        residual blocks can be adjusted using `hidden_size`, while the layer width in the temporal decoder can be
+        controlled via `temporal_decoder_hidden`.
 
         Parameters
         ----------
         input_chunk_length (int): Number of past time steps to use as input for the model (per chunk).
             This applies to the target series and future covariates (if supported by the model).
         output_chunk_length (int): Number of time steps the internal model predicts simultaneously (per chunk).
-            This also determines how many future values from future covariates are used as input (if supported by the model).
+            This also determines how many future values from future covariates are used as input
+            (if supported by the model).
         num_encoder_layers (int): Number of residual blocks in the encoder. Defaults to 2.
         num_decoder_layers (int): Number of residual blocks in the decoder. Defaults to 2.
         decoder_output_dim (int): Dimensionality of the decoder's output. Defaults to 16.
-        hidden_size (int): Size of hidden layers in the encoder and decoder. Typically ranges from 32 to 128 when no covariates
-            are used. Defaults to 128.
+        hidden_size (int): Size of hidden layers in the encoder and decoder. Typically ranges from 32 to 128 when
+            no covariates are used. Defaults to 128.
         temporal_width_future (int): Width of the output layer in the residual block for future covariate projections.
             If set to 0, bypasses feature projection and uses raw feature data. Defaults to 4.
-        temporal_hidden_size_future (int): Width of the hidden layer in the residual block for future covariate projections.
-            Defaults to 32.
+        temporal_hidden_size_future (int): Width of the hidden layer in the residual block for future covariate
+            projections. Defaults to 32.
         temporal_decoder_hidden (int): Width of the layers in the temporal decoder. Defaults to 32.
         use_layer_norm (bool): Whether to apply layer normalization in residual blocks. Defaults to False.
         dropout (float): Dropout probability for fully connected layers. Defaults to 0.1.
-        output_size: Union[int, List[int]]: included as its required by deduce_default_output_parameters in from_dataset function.
-            Defaults to 1.
+        output_size: Union[int, List[int]]: included as its required by deduce_default_output_parameters in
+            from_dataset function. Defaults to 1.
         static_categoricals (List[str]): names of static categorical variables
         static_reals (List[str]): names of static continuous variables
         time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
@@ -94,10 +96,10 @@ class TiDEModel(BaseModelWithCovariates):
         logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
             Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         **kwargs
-            Allows optional arguments to configure pytorch_lightning.Module, pytorch_lightning.Trainer, and 
+            Allows optional arguments to configure pytorch_lightning.Module, pytorch_lightning.Trainer, and
             pytorch-forecasting's :class:BaseModelWithCovariates.
         """
-             
+
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
@@ -126,7 +128,7 @@ class TiDEModel(BaseModelWithCovariates):
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
 
         # loss and logging_metrics are ignored as they are modules and stored before calling save_hyperparameters
-        self.save_hyperparameters(ignore=["loss","logging_metrics"])
+        self.save_hyperparameters(ignore=["loss", "logging_metrics"])
         super().__init__(logging_metrics=logging_metrics, **kwargs)
         self.output_dim = len(self.target_names)
 
@@ -138,20 +140,20 @@ class TiDEModel(BaseModelWithCovariates):
         )
 
         self.model = _TideModule(
-            output_dim = self.output_dim,
-            future_cov_dim= self.encoder_covariate_size,
-            static_cov_dim= self.static_size,
-            output_chunk_length= output_chunk_length,
-            input_chunk_length= input_chunk_length,
-            num_encoder_layers = num_encoder_layers,
-            num_decoder_layers = num_decoder_layers,
-            decoder_output_dim = decoder_output_dim,
-            hidden_size= hidden_size,
-            temporal_decoder_hidden= temporal_decoder_hidden,
-            temporal_width_future= temporal_width_future,
-            use_layer_norm= use_layer_norm,
-            dropout= dropout,
-            temporal_hidden_size_future= temporal_hidden_size_future
+            output_dim=self.output_dim,
+            future_cov_dim=self.encoder_covariate_size,
+            static_cov_dim=self.static_size,
+            output_chunk_length=output_chunk_length,
+            input_chunk_length=input_chunk_length,
+            num_encoder_layers=num_encoder_layers,
+            num_decoder_layers=num_decoder_layers,
+            decoder_output_dim=decoder_output_dim,
+            hidden_size=hidden_size,
+            temporal_decoder_hidden=temporal_decoder_hidden,
+            temporal_width_future=temporal_width_future,
+            use_layer_norm=use_layer_norm,
+            dropout=dropout,
+            temporal_hidden_size_future=temporal_hidden_size_future,
         )
 
     @property
@@ -186,7 +188,7 @@ class TiDEModel(BaseModelWithCovariates):
         return len(self.hparams.static_reals) + sum(
             self.embeddings.output_size[name] for name in self.hparams.static_categoricals
         )
-    
+
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         """
@@ -247,7 +249,7 @@ class TiDEModel(BaseModelWithCovariates):
                 [encoder_features[name] for name in self.encoder_variables if name not in self.target_names],
                 dim=2,
             )
-            input_vector = torch.concat( (encoder_y,encoder_x_t),dim=2)
+            input_vector = torch.concat((encoder_y, encoder_x_t), dim=2)
 
         else:
             encoder_x_t = None
@@ -268,13 +270,13 @@ class TiDEModel(BaseModelWithCovariates):
         x_in = (input_vector, decoder_x_t, x_s)
         prediction = self.model(x_in)
 
-        if self.output_dim > 1: # for multivariate targets
+        if self.output_dim > 1:  # for multivariate targets
             # adjust prefictions dimensions according to format required for consequent processes
             # from (batch size, seq len, output_dim) to (output_dim, batch size, seq len)
-            prediction = prediction.permute(2,0,1)
+            prediction = prediction.permute(2, 0, 1)
             prediction = [i.clone().detach().requires_grad_(True) for i in prediction]
 
         # rescale predictions into target space
         prediction = self.transform_output(prediction, target_scale=x["target_scale"])
-        #transform output to format processed by other functions
+        # transform output to format processed by other functions
         return self.to_network_output(prediction=prediction)

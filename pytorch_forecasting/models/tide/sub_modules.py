@@ -12,6 +12,7 @@ MixedCovariatesTrainTensorType = Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
 ]
 
+
 class _ResidualBlock(nn.Module):
     def __init__(
         self,
@@ -50,6 +51,7 @@ class _ResidualBlock(nn.Module):
             x = self.layer_norm(x)
 
         return x
+
 
 class _TideModule(nn.Module):
     def __init__(
@@ -103,8 +105,9 @@ class _TideModule(nn.Module):
         Inputs
         ------
         x
-            A tuple of Tensors (x_past, x_future, x_static) where x_past represents the input/past sequence, 
-            and x_future represents the output/future sequence. The input dimensions are (batch_size, time_steps, components).
+            A tuple of Tensors (x_past, x_future, x_static) where x_past represents the input/past sequence,
+            and x_future represents the output/future sequence. The input dimensions are
+            (batch_size, time_steps, components).
         Outputs
         -------
         y
@@ -149,11 +152,7 @@ class _TideModule(nn.Module):
         else:
             historical_future_covariates_flat_dim = 0
 
-        encoder_dim = (
-            self.input_chunk_length * output_dim
-            + historical_future_covariates_flat_dim
-            + static_cov_dim
-        )
+        encoder_dim = self.input_chunk_length * output_dim + historical_future_covariates_flat_dim + static_cov_dim
 
         self.encoders = nn.Sequential(
             _ResidualBlock(
@@ -189,8 +188,7 @@ class _TideModule(nn.Module):
             # add decoder output layer
             _ResidualBlock(
                 input_dim=hidden_size,
-                output_dim=decoder_output_dim
-                * self.output_chunk_length,
+                output_dim=decoder_output_dim * self.output_chunk_length,
                 hidden_size=hidden_size,
                 use_layer_norm=use_layer_norm,
                 dropout=dropout,
@@ -211,13 +209,9 @@ class _TideModule(nn.Module):
             dropout=dropout,
         )
 
-        self.lookback_skip = nn.Linear(
-            self.input_chunk_length, self.output_chunk_length 
-        )
+        self.lookback_skip = nn.Linear(self.input_chunk_length, self.output_chunk_length)
 
-    def forward(
-        self, x_in: Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]
-    ) -> torch.Tensor:
+    def forward(self, x_in: Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]) -> torch.Tensor:
         """TiDE model forward pass.
         Parameters
         ----------
@@ -253,9 +247,7 @@ class _TideModule(nn.Module):
             )
             if self.temporal_width_future:
                 # project input features across all input and output time steps
-                x_dynamic_future_covariates = self.future_cov_projection(
-                    x_dynamic_future_covariates
-                )
+                x_dynamic_future_covariates = self.future_cov_projection(x_dynamic_future_covariates)
         else:
             x_dynamic_future_covariates = None
 
@@ -278,11 +270,7 @@ class _TideModule(nn.Module):
         # stack and temporally decode with future covariate last output steps
         temporal_decoder_input = [
             decoded,
-            (
-                x_dynamic_future_covariates[:, -self.output_chunk_length :, :]
-                if self.future_cov_dim > 0
-                else None
-            ),
+            (x_dynamic_future_covariates[:, -self.output_chunk_length :, :] if self.future_cov_dim > 0 else None),
         ]
         temporal_decoder_input = [t for t in temporal_decoder_input if t is not None]
 
@@ -295,9 +283,7 @@ class _TideModule(nn.Module):
         skip = self.lookback_skip(x_lookback.transpose(1, 2)).transpose(1, 2)
 
         # add skip connection
-        y = temporal_decoded + skip.reshape_as(
-            temporal_decoded
-        )  # skip.view(temporal_decoded.shape)
+        y = temporal_decoded + skip.reshape_as(temporal_decoded)  # skip.view(temporal_decoded.shape)
 
         y = y.view(-1, self.output_chunk_length, self.output_dim)
         return y
