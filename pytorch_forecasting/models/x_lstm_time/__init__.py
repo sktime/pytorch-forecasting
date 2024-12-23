@@ -114,15 +114,16 @@ class xLSTMTime(AutoRegressiveBaseModel):
         return self.to_network_output(prediction=output)
 
     def predict(
-        self,
-        x: torch.Tensor,
-        hidden_states: Optional[
-            Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
-        ] = None,
+            self,
+            x: Dict[str, torch.Tensor],
+            hidden_states: Optional[
+                Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
+            ] = None,
     ) -> torch.Tensor:
 
-        output, _ = self.forward(x, hidden_states)
-        return output
+        network_output = self.forward(x, hidden_states)
+        prediction = network_output["prediction"]
+        return prediction
 
     @classmethod
     def from_dataset(cls, dataset, **kwargs):
