@@ -2,12 +2,12 @@
 Encoders for encoding categorical variables and scaling continuous data.
 """
 
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union, Optional
+from copy import deepcopy
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import warnings
 
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints

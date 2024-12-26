@@ -2,9 +2,9 @@
 Implementation of ``nn.Modules`` for temporal fusion transformer.
 """
 
+from copy import deepcopy
 import math
 from typing import Dict, Tuple
-from copy import deepcopy
 
 import torch
 import torch.nn as nn

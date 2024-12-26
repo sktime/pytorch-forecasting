@@ -2,7 +2,7 @@
 Simple models based on fully connected networks
 """
 
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
