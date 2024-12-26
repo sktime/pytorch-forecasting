@@ -26,7 +26,10 @@ from pytorch_forecasting.metrics import (
     MultivariateDistributionLoss,
     NormalDistributionLoss,
 )
-from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates, Prediction
+from pytorch_forecasting.models.base_model import (
+    AutoRegressiveBaseModelWithCovariates,
+    Prediction,
+)
 from pytorch_forecasting.models.nn import HiddenState, MultiEmbedding, get_rnn
 from pytorch_forecasting.utils import apply_to_list, to_list
 
@@ -153,15 +156,19 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         )
 
         lagged_target_names = [l for lags in target_lags.values() for l in lags]
-        assert set(self.encoder_variables) - set(to_list(target)) - set(lagged_target_names) == set(
-            self.decoder_variables
-        ) - set(lagged_target_names), "Encoder and decoder variables have to be the same apart from target variable"
+        assert set(self.encoder_variables) - set(to_list(target)) - set(
+            lagged_target_names
+        ) == set(self.decoder_variables) - set(
+            lagged_target_names
+        ), "Encoder and decoder variables have to be the same apart from target variable"
         for targeti in to_list(target):
             assert (
                 targeti in time_varying_reals_encoder
             ), f"target {targeti} has to be real"  # todo: remove this restriction
         assert (isinstance(target, str) and isinstance(loss, DistributionLoss)) or (
-            isinstance(target, (list, tuple)) and isinstance(loss, MultiLoss) and len(loss) == len(target)
+            isinstance(target, (list, tuple))
+            and isinstance(loss, MultiLoss)
+            and len(loss) == len(target)
         ), "number of targets should be equivalent to number of loss metrics"
 
         rnn_class = get_rnn(cell_type)
@@ -178,10 +185,15 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         # add linear layers for argument projects
         if isinstance(target, str):  # single target
-            self.distribution_projector = nn.Linear(self.hparams.hidden_size, len(self.loss.distribution_arguments))
+            self.distribution_projector = nn.Linear(
+                self.hparams.hidden_size, len(self.loss.distribution_arguments)
+            )
         else:  # multi target
             self.distribution_projector = nn.ModuleList(
-                [nn.Linear(self.hparams.hidden_size, len(args)) for args in self.loss.distribution_arguments]
+                [
+                    nn.Linear(self.hparams.hidden_size, len(args))
+                    for args in self.loss.distribution_arguments
+                ]
             )
 
     @classmethod
@@ -204,22 +216,33 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         new_kwargs = {}
         if dataset.multi_target:
-            new_kwargs.setdefault("loss", MultiLoss([NormalDistributionLoss()] * len(dataset.target_names)))
+            new_kwargs.setdefault(
+                "loss",
+                MultiLoss([NormalDistributionLoss()] * len(dataset.target_names)),
+            )
         new_kwargs.update(kwargs)
         assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
             not isinstance(dataset.target_normalizer, MultiNormalizer)
-            or all(not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer)
+            or all(
+                not isinstance(normalizer, NaNLabelEncoder)
+                for normalizer in dataset.target_normalizer
+            )
         ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
         if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
             assert (
                 dataset.min_prediction_length == dataset.max_prediction_length
             ), "Multivariate models require constant prediction lenghts"
         return super().from_dataset(
-            dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
+            dataset,
+            allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,
+            **new_kwargs,
         )
 
     def construct_input_vector(
-        self, x_cat: torch.Tensor, x_cont: torch.Tensor, one_off_target: torch.Tensor = None
+        self,
+        x_cat: torch.Tensor,
+        x_cont: torch.Tensor,
+        one_off_target: torch.Tensor = None,
     ) -> torch.Tensor:
         """
         Create input vector into RNN network
@@ -271,11 +294,15 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         hidden_state: HiddenState,
         lengths: torch.Tensor = None,
     ):
-        decoder_output, hidden_state = self.rnn(x, hidden_state, lengths=lengths, enforce_sorted=False)
+        decoder_output, hidden_state = self.rnn(
+            x, hidden_state, lengths=lengths, enforce_sorted=False
+        )
         if isinstance(self.hparams.target, str):  # single target
             output = self.distribution_projector(decoder_output)
         else:
-            output = [projector(decoder_output) for projector in self.distribution_projector]
+            output = [
+                projector(decoder_output) for projector in self.distribution_projector
+            ]
         return output, hidden_state
 
     def decode(
@@ -292,7 +319,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         sampling new targets from past predictions iteratively
         """
         if n_samples is None:
-            output, _ = self.decode_all(input_vector, hidden_state, lengths=decoder_lengths)
+            output, _ = self.decode_all(
+                input_vector, hidden_state, lengths=decoder_lengths
+            )
             output = self.transform_output(output, target_scale=target_scale)
         else:
             # run in eval, i.e. simulation mode
@@ -301,7 +330,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             # repeat for n_samples
             input_vector = input_vector.repeat_interleave(n_samples, 0)
             hidden_state = self.rnn.repeat_interleave(hidden_state, n_samples)
-            target_scale = apply_to_list(target_scale, lambda x: x.repeat_interleave(n_samples, 0))
+            target_scale = apply_to_list(
+                target_scale, lambda x: x.repeat_interleave(n_samples, 0)
+            )
 
             # define function to run at every decoding step
             def decode_one(
@@ -315,7 +346,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                     if idx > lag:
                         x[:, 0, lag_positions] = lagged_targets[-lag]
                 prediction, hidden_state = self.decode_all(x, hidden_state)
-                prediction = apply_to_list(prediction, lambda x: x[:, 0])  # select first time step
+                prediction = apply_to_list(
+                    prediction, lambda x: x[:, 0]
+                )  # select first time step
                 return prediction, hidden_state
 
             # make predictions which are fed into next step
@@ -329,10 +362,17 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             )
             # reshape predictions for n_samples:
             # from n_samples * batch_size x time steps to batch_size x time steps x n_samples
-            output = apply_to_list(output, lambda x: x.reshape(-1, n_samples, input_vector.size(1)).permute(0, 2, 1))
+            output = apply_to_list(
+                output,
+                lambda x: x.reshape(-1, n_samples, input_vector.size(1)).permute(
+                    0, 2, 1
+                ),
+            )
         return output
 
-    def forward(self, x: Dict[str, torch.Tensor], n_samples: int = None) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x: Dict[str, torch.Tensor], n_samples: int = None
+    ) -> Dict[str, torch.Tensor]:
         """
         Forward network
         """
@@ -342,7 +382,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             x["decoder_cat"],
             x["decoder_cont"],
             one_off_target=x["encoder_cont"][
-                torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
+                torch.arange(
+                    x["encoder_cont"].size(0), device=x["encoder_cont"].device
+                ),
                 x["encoder_lengths"] - 1,
                 self.target_positions.unsqueeze(-1),
             ].T.contiguous(),
@@ -361,7 +403,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         return self.to_network_output(prediction=output)
 
     def create_log(self, x, y, out, batch_idx):
-        n_samples = [self.hparams.n_validation_samples, self.hparams.n_plotting_samples][self.training]
+        n_samples = [
+            self.hparams.n_validation_samples,
+            self.hparams.n_plotting_samples,
+        ][self.training]
         log = super().create_log(
             x,
             y,

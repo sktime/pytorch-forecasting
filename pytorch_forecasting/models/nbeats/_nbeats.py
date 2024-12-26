@@ -11,7 +11,11 @@ from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
-from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
+from pytorch_forecasting.models.nbeats.sub_modules import (
+    NBEATSGenericBlock,
+    NBEATSSeasonalBlock,
+    NBEATSTrendBlock,
+)
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
@@ -156,11 +160,25 @@ class NBeats(BaseModel):
         target = x["encoder_cont"][..., 0]
 
         timesteps = self.hparams.context_length + self.hparams.prediction_length
-        generic_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
-        trend_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
-        seasonal_forecast = [torch.zeros((target.size(0), timesteps), dtype=torch.float32, device=self.device)]
+        generic_forecast = [
+            torch.zeros(
+                (target.size(0), timesteps), dtype=torch.float32, device=self.device
+            )
+        ]
+        trend_forecast = [
+            torch.zeros(
+                (target.size(0), timesteps), dtype=torch.float32, device=self.device
+            )
+        ]
+        seasonal_forecast = [
+            torch.zeros(
+                (target.size(0), timesteps), dtype=torch.float32, device=self.device
+            )
+        ]
         forecast = torch.zeros(
-            (target.size(0), self.hparams.prediction_length), dtype=torch.float32, device=self.device
+            (target.size(0), self.hparams.prediction_length),
+            dtype=torch.float32,
+            device=self.device,
         )
 
         backcast = target  # initialize backcast
@@ -185,12 +203,21 @@ class NBeats(BaseModel):
 
         return self.to_network_output(
             prediction=self.transform_output(forecast, target_scale=x["target_scale"]),
-            backcast=self.transform_output(prediction=target - backcast, target_scale=x["target_scale"]),
-            trend=self.transform_output(torch.stack(trend_forecast, dim=0).sum(0), target_scale=x["target_scale"]),
-            seasonality=self.transform_output(
-                torch.stack(seasonal_forecast, dim=0).sum(0), target_scale=x["target_scale"]
+            backcast=self.transform_output(
+                prediction=target - backcast, target_scale=x["target_scale"]
             ),
-            generic=self.transform_output(torch.stack(generic_forecast, dim=0).sum(0), target_scale=x["target_scale"]),
+            trend=self.transform_output(
+                torch.stack(trend_forecast, dim=0).sum(0),
+                target_scale=x["target_scale"],
+            ),
+            seasonality=self.transform_output(
+                torch.stack(seasonal_forecast, dim=0).sum(0),
+                target_scale=x["target_scale"],
+            ),
+            generic=self.transform_output(
+                torch.stack(generic_forecast, dim=0).sum(0),
+                target_scale=x["target_scale"],
+            ),
         )
 
     @classmethod
@@ -205,11 +232,16 @@ class NBeats(BaseModel):
         Returns:
             NBeats
         """
-        new_kwargs = {"prediction_length": dataset.max_prediction_length, "context_length": dataset.max_encoder_length}
+        new_kwargs = {
+            "prediction_length": dataset.max_prediction_length,
+            "context_length": dataset.max_encoder_length,
+        }
         new_kwargs.update(kwargs)
 
         # validate arguments
-        assert isinstance(dataset.target, str), "only one target is allowed (passed as string to dataset)"
+        assert isinstance(
+            dataset.target, str
+        ), "only one target is allowed (passed as string to dataset)"
         assert not isinstance(
             dataset.target_normalizer, NaNLabelEncoder
         ), "only regression tasks are supported - target must not be categorical"
@@ -221,8 +253,12 @@ class NBeats(BaseModel):
             dataset.max_prediction_length == dataset.min_prediction_length
         ), "only fixed prediction length is allowed, but max_prediction_length != min_prediction_length"
 
-        assert dataset.randomize_length is None, "length has to be fixed, but randomize_length is not None"
-        assert not dataset.add_relative_time_idx, "add_relative_time_idx has to be False"
+        assert (
+            dataset.randomize_length is None
+        ), "length has to be fixed, but randomize_length is not None"
+        assert (
+            not dataset.add_relative_time_idx
+        ), "add_relative_time_idx has to be False"
 
         assert (
             len(dataset.flat_categoricals) == 0
@@ -240,17 +276,26 @@ class NBeats(BaseModel):
         """
         log, out = super().step(x, y, batch_idx=batch_idx)
 
-        if self.hparams.backcast_loss_ratio > 0 and not self.predicting:  # add loss from backcast
+        if (
+            self.hparams.backcast_loss_ratio > 0 and not self.predicting
+        ):  # add loss from backcast
             backcast = out["backcast"]
             backcast_weight = (
-                self.hparams.backcast_loss_ratio * self.hparams.prediction_length / self.hparams.context_length
+                self.hparams.backcast_loss_ratio
+                * self.hparams.prediction_length
+                / self.hparams.context_length
             )
             backcast_weight = backcast_weight / (backcast_weight + 1)  # normalize
             forecast_weight = 1 - backcast_weight
             if isinstance(self.loss, MASE):
-                backcast_loss = self.loss(backcast, x["encoder_target"], x["decoder_target"]) * backcast_weight
+                backcast_loss = (
+                    self.loss(backcast, x["encoder_target"], x["decoder_target"])
+                    * backcast_weight
+                )
             else:
-                backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
+                backcast_loss = (
+                    self.loss(backcast, x["encoder_target"]) * backcast_weight
+                )
             label = ["val", "train"][self.training]
             self.log(
                 f"{label}_backcast_loss",
@@ -326,10 +371,18 @@ class NBeats(BaseModel):
         else:
             fig = ax[0].get_figure()
 
-        time = torch.arange(-self.hparams.context_length, self.hparams.prediction_length)
+        time = torch.arange(
+            -self.hparams.context_length, self.hparams.prediction_length
+        )
 
         # plot target vs prediction
-        ax[0].plot(time, torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]]).detach().cpu(), label="target")
+        ax[0].plot(
+            time,
+            torch.cat([x["encoder_target"][idx], x["decoder_target"][idx]])
+            .detach()
+            .cpu(),
+            label="target",
+        )
         ax[0].plot(
             time,
             torch.cat(

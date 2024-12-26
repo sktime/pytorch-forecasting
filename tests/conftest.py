@@ -47,7 +47,9 @@ def test_data():
         "beer_capital",
         "music_fest",
     ]
-    data[special_days] = data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
+    data[special_days] = (
+        data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
+    )
 
     data = data[lambda x: x.time_idx < 10]  # downsample
     return data
