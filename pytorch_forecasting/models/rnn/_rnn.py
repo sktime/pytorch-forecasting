@@ -11,7 +11,16 @@ import torch.nn as nn
 
 from pytorch_forecasting.data.encoders import MultiNormalizer, NaNLabelEncoder
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, MultiLoss, QuantileLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    MASE,
+    RMSE,
+    SMAPE,
+    MultiHorizonMetric,
+    MultiLoss,
+    QuantileLoss,
+)
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
 from pytorch_forecasting.models.nn import HiddenState, MultiEmbedding, get_rnn
 from pytorch_forecasting.utils import apply_to_list, to_list
@@ -123,15 +132,19 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         )
 
         lagged_target_names = [l for lags in target_lags.values() for l in lags]
-        assert set(self.encoder_variables) - set(to_list(target)) - set(lagged_target_names) == set(
-            self.decoder_variables
-        ) - set(lagged_target_names), "Encoder and decoder variables have to be the same apart from target variable"
+        assert set(self.encoder_variables) - set(to_list(target)) - set(
+            lagged_target_names
+        ) == set(self.decoder_variables) - set(
+            lagged_target_names
+        ), "Encoder and decoder variables have to be the same apart from target variable"
         for targeti in to_list(target):
             assert (
                 targeti in time_varying_reals_encoder
             ), f"target {targeti} has to be real"  # todo: remove this restriction
         assert (isinstance(target, str) and isinstance(loss, MultiHorizonMetric)) or (
-            isinstance(target, (list, tuple)) and isinstance(loss, MultiLoss) and len(loss) == len(target)
+            isinstance(target, (list, tuple))
+            and isinstance(loss, MultiLoss)
+            and len(loss) == len(target)
         ), "number of targets should be equivalent to number of loss metrics"
 
         rnn_class = get_rnn(cell_type)
@@ -148,14 +161,23 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
 
         # add linear layers for argument projects
         if isinstance(target, str):  # single target
-            self.output_projector = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
-            assert not isinstance(self.loss, QuantileLoss), "QuantileLoss does not work with recurrent network"
+            self.output_projector = nn.Linear(
+                self.hparams.hidden_size, self.hparams.output_size
+            )
+            assert not isinstance(
+                self.loss, QuantileLoss
+            ), "QuantileLoss does not work with recurrent network"
         else:  # multi target
             self.output_projector = nn.ModuleList(
-                [nn.Linear(self.hparams.hidden_size, size) for size in self.hparams.output_size]
+                [
+                    nn.Linear(self.hparams.hidden_size, size)
+                    for size in self.hparams.output_size
+                ]
             )
             for l in self.loss:
-                assert not isinstance(l, QuantileLoss), "QuantileLoss does not work with recurrent network"
+                assert not isinstance(
+                    l, QuantileLoss
+                ), "QuantileLoss does not work with recurrent network"
 
     @classmethod
     def from_dataset(
@@ -176,17 +198,29 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             Recurrent network
         """
         new_kwargs = copy(kwargs)
-        new_kwargs.update(cls.deduce_default_output_parameters(dataset=dataset, kwargs=kwargs, default_loss=MAE()))
+        new_kwargs.update(
+            cls.deduce_default_output_parameters(
+                dataset=dataset, kwargs=kwargs, default_loss=MAE()
+            )
+        )
         assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
             not isinstance(dataset.target_normalizer, MultiNormalizer)
-            or all(not isinstance(normalizer, NaNLabelEncoder) for normalizer in dataset.target_normalizer)
+            or all(
+                not isinstance(normalizer, NaNLabelEncoder)
+                for normalizer in dataset.target_normalizer
+            )
         ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
         return super().from_dataset(
-            dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
+            dataset,
+            allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,
+            **new_kwargs,
         )
 
     def construct_input_vector(
-        self, x_cat: torch.Tensor, x_cont: torch.Tensor, one_off_target: torch.Tensor = None
+        self,
+        x_cat: torch.Tensor,
+        x_cont: torch.Tensor,
+        one_off_target: torch.Tensor = None,
     ) -> torch.Tensor:
         """
         Create input vector into RNN network
@@ -238,7 +272,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         hidden_state: HiddenState,
         lengths: torch.Tensor = None,
     ):
-        decoder_output, hidden_state = self.rnn(x, hidden_state, lengths=lengths, enforce_sorted=False)
+        decoder_output, hidden_state = self.rnn(
+            x, hidden_state, lengths=lengths, enforce_sorted=False
+        )
         if isinstance(self.hparams.target, str):  # single target
             output = self.output_projector(decoder_output)
         else:
@@ -259,7 +295,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         sampling new targets from past predictions iteratively
         """
         if self.training:
-            output, _ = self.decode_all(input_vector, hidden_state, lengths=decoder_lengths)
+            output, _ = self.decode_all(
+                input_vector, hidden_state, lengths=decoder_lengths
+            )
             output = self.transform_output(output, target_scale=target_scale)
         else:
             # run in eval, i.e. simulation mode
@@ -278,7 +316,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
                     if idx > lag:
                         x[:, 0, lag_positions] = lagged_targets[-lag]
                 prediction, hidden_state = self.decode_all(x, hidden_state)
-                prediction = apply_to_list(prediction, lambda x: x[:, 0])  # select first time step
+                prediction = apply_to_list(
+                    prediction, lambda x: x[:, 0]
+                )  # select first time step
                 return prediction, hidden_state
 
             # make predictions which are fed into next step
@@ -291,7 +331,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             )
         return output
 
-    def forward(self, x: Dict[str, torch.Tensor], n_samples: int = None) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x: Dict[str, torch.Tensor], n_samples: int = None
+    ) -> Dict[str, torch.Tensor]:
         """
         Forward network
         """
@@ -301,7 +343,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             x["decoder_cat"],
             x["decoder_cont"],
             one_off_target=x["encoder_cont"][
-                torch.arange(x["encoder_cont"].size(0), device=x["encoder_cont"].device),
+                torch.arange(
+                    x["encoder_cont"].size(0), device=x["encoder_cont"].device
+                ),
                 x["encoder_lengths"] - 1,
                 self.target_positions.unsqueeze(-1),
             ].T.contiguous(),

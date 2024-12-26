@@ -9,7 +9,15 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    MASE,
+    RMSE,
+    SMAPE,
+    MultiHorizonMetric,
+    QuantileLoss,
+)
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.mlp.submodules import FullyConnectedModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
@@ -148,15 +156,20 @@ class DecoderMLP(BaseModelWithCovariates):
             if name in self.decoder_variables + self.static_variables
         ]
 
-    def forward(self, x: Dict[str, torch.Tensor], n_samples: int = None) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x: Dict[str, torch.Tensor], n_samples: int = None
+    ) -> Dict[str, torch.Tensor]:
         """
         Forward network
         """
         # x is a batch generated based on the TimeSeriesDataset
         batch_size = x["decoder_lengths"].size(0)
-        embeddings = self.input_embeddings(x["decoder_cat"])  # returns dictionary with embedding tensors
+        embeddings = self.input_embeddings(
+            x["decoder_cat"]
+        )  # returns dictionary with embedding tensors
         network_input = torch.cat(
-            [x["decoder_cont"][..., self.decoder_reals_positions]] + list(embeddings.values()),
+            [x["decoder_cont"][..., self.decoder_reals_positions]]
+            + list(embeddings.values()),
             dim=-1,
         )
         prediction = self.mlp(network_input.view(-1, self.mlp.input_size)).view(
@@ -174,6 +187,8 @@ class DecoderMLP(BaseModelWithCovariates):
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
-        new_kwargs = cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss())
+        new_kwargs = cls.deduce_default_output_parameters(
+            dataset, kwargs, QuantileLoss()
+        )
         kwargs.update(new_kwargs)
         return super().from_dataset(dataset, **kwargs)

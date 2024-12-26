@@ -11,7 +11,15 @@ from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric, MultiLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    MASE,
+    RMSE,
+    SMAPE,
+    MultiHorizonMetric,
+    MultiLoss,
+)
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
@@ -178,14 +186,20 @@ class NHiTS(BaseModelWithCovariates):
         # provide default downsampling sizes
         n_stacks = len(n_blocks)
         if pooling_sizes is None:
-            pooling_sizes = np.exp2(np.round(np.linspace(0.49, np.log2(prediction_length / 2), n_stacks)))
+            pooling_sizes = np.exp2(
+                np.round(np.linspace(0.49, np.log2(prediction_length / 2), n_stacks))
+            )
             pooling_sizes = [int(x) for x in pooling_sizes[::-1]]
             # remove zero from pooling_sizes
             pooling_sizes = max(pooling_sizes, [1] * len(pooling_sizes))
         if downsample_frequencies is None:
-            downsample_frequencies = [min(prediction_length, int(np.power(x, 1.5))) for x in pooling_sizes]
+            downsample_frequencies = [
+                min(prediction_length, int(np.power(x, 1.5))) for x in pooling_sizes
+            ]
             # remove zero from downsample_frequencies
-            downsample_frequencies = max(downsample_frequencies, [1] * len(downsample_frequencies))
+            downsample_frequencies = max(
+                downsample_frequencies, [1] * len(downsample_frequencies)
+            )
 
         # set static hidden size
         if static_hidden_size is None:
@@ -235,8 +249,11 @@ class NHiTS(BaseModelWithCovariates):
         Returns:
             int: size of time-dependent covariates used by the decoder
         """
-        return len(set(self.hparams.time_varying_reals_decoder) - set(self.target_names)) + sum(
-            self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_decoder
+        return len(
+            set(self.hparams.time_varying_reals_decoder) - set(self.target_names)
+        ) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_decoder
         )
 
     @property
@@ -246,8 +263,11 @@ class NHiTS(BaseModelWithCovariates):
         Returns:
             int: size of time-dependent covariates used by the encoder
         """
-        return len(set(self.hparams.time_varying_reals_encoder) - set(self.target_names)) + sum(
-            self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder
+        return len(
+            set(self.hparams.time_varying_reals_encoder) - set(self.target_names)
+        ) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_encoder
         )
 
     @property
@@ -258,7 +278,8 @@ class NHiTS(BaseModelWithCovariates):
             int: size of static covariates
         """
         return len(self.hparams.static_reals) + sum(
-            self.embeddings.output_size[name] for name in self.hparams.static_categoricals
+            self.embeddings.output_size[name]
+            for name in self.hparams.static_categoricals
         )
 
     @property
@@ -283,29 +304,43 @@ class NHiTS(BaseModelWithCovariates):
         """
         # covariates
         if self.encoder_covariate_size > 0:
-            encoder_features = self.extract_features(x, self.embeddings, period="encoder")
+            encoder_features = self.extract_features(
+                x, self.embeddings, period="encoder"
+            )
             encoder_x_t = torch.concat(
-                [encoder_features[name] for name in self.encoder_variables if name not in self.target_names],
+                [
+                    encoder_features[name]
+                    for name in self.encoder_variables
+                    if name not in self.target_names
+                ],
                 dim=2,
             )
         else:
             encoder_x_t = None
 
         if self.decoder_covariate_size > 0:
-            decoder_features = self.extract_features(x, self.embeddings, period="decoder")
-            decoder_x_t = torch.concat([decoder_features[name] for name in self.decoder_variables], dim=2)
+            decoder_features = self.extract_features(
+                x, self.embeddings, period="decoder"
+            )
+            decoder_x_t = torch.concat(
+                [decoder_features[name] for name in self.decoder_variables], dim=2
+            )
         else:
             decoder_x_t = None
 
         # statics
         if self.static_size > 0:
-            x_s = torch.concat([encoder_features[name][:, 0] for name in self.static_variables], dim=1)
+            x_s = torch.concat(
+                [encoder_features[name][:, 0] for name in self.static_variables], dim=1
+            )
         else:
             x_s = None
 
         # target
         encoder_y = x["encoder_cont"][..., self.target_positions]
-        encoder_mask = create_mask(x["encoder_lengths"].max(), x["encoder_lengths"], inverse=True)
+        encoder_mask = create_mask(
+            x["encoder_lengths"].max(), x["encoder_lengths"], inverse=True
+        )
 
         # run model
         forecast, backcast, block_forecasts, block_backcasts = self.model(
@@ -321,18 +356,25 @@ class NHiTS(BaseModelWithCovariates):
             forecast = forecast.split(self.hparams.output_size, dim=2)
             backcast = backcast.split(1, dim=2)
             block_backcasts = tuple(
-                self.transform_output(block.squeeze(3).split(1, dim=2), target_scale=x["target_scale"])
+                self.transform_output(
+                    block.squeeze(3).split(1, dim=2), target_scale=x["target_scale"]
+                )
                 for block in block_backcasts.split(1, dim=3)
             )
             block_forecasts = tuple(
                 self.transform_output(
-                    block.squeeze(3).split(self.hparams.output_size, dim=2), target_scale=x["target_scale"]
+                    block.squeeze(3).split(self.hparams.output_size, dim=2),
+                    target_scale=x["target_scale"],
                 )
                 for block in block_forecasts.split(1, dim=3)
             )
         else:
             block_backcasts = tuple(
-                self.transform_output(block.squeeze(3), target_scale=x["target_scale"], loss=MultiHorizonMetric())
+                self.transform_output(
+                    block.squeeze(3),
+                    target_scale=x["target_scale"],
+                    loss=MultiHorizonMetric(),
+                )
                 for block in block_backcasts.split(1, dim=3)
             )
             block_forecasts = tuple(
@@ -375,17 +417,25 @@ class NHiTS(BaseModelWithCovariates):
             dataset.max_prediction_length == dataset.min_prediction_length
         ), "only fixed prediction length is allowed, but max_prediction_length != min_prediction_length"
 
-        assert dataset.randomize_length is None, "length has to be fixed, but randomize_length is not None"
-        assert not dataset.add_relative_time_idx, "add_relative_time_idx has to be False"
+        assert (
+            dataset.randomize_length is None
+        ), "length has to be fixed, but randomize_length is not None"
+        assert (
+            not dataset.add_relative_time_idx
+        ), "add_relative_time_idx has to be False"
 
         new_kwargs = copy(kwargs)
         new_kwargs.update(
-            {"prediction_length": dataset.max_prediction_length, "context_length": dataset.max_encoder_length}
+            {
+                "prediction_length": dataset.max_prediction_length,
+                "context_length": dataset.max_encoder_length,
+            }
         )
         new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, MASE()))
 
         assert (new_kwargs.get("backcast_loss_ratio", 0) == 0) | (
-            isinstance(new_kwargs["output_size"], int) and new_kwargs["output_size"] == 1
+            isinstance(new_kwargs["output_size"], int)
+            and new_kwargs["output_size"] == 1
         ) or all(
             o == 1 for o in new_kwargs["output_size"]
         ), "output sizes can only be of size 1, i.e. point forecasts if backcast_loss_ratio > 0"
@@ -399,10 +449,14 @@ class NHiTS(BaseModelWithCovariates):
         """
         log, out = super().step(x, y, batch_idx=batch_idx)
 
-        if self.hparams.backcast_loss_ratio > 0 and not self.predicting:  # add loss from backcast
+        if (
+            self.hparams.backcast_loss_ratio > 0 and not self.predicting
+        ):  # add loss from backcast
             backcast = out["backcast"]
             backcast_weight = (
-                self.hparams.backcast_loss_ratio * self.hparams.prediction_length / self.hparams.context_length
+                self.hparams.backcast_loss_ratio
+                * self.hparams.prediction_length
+                / self.hparams.context_length
             )
             backcast_weight = backcast_weight / (backcast_weight + 1)  # normalize
             forecast_weight = 1 - backcast_weight
@@ -417,7 +471,9 @@ class NHiTS(BaseModelWithCovariates):
                     * backcast_weight
                 )
             else:
-                backcast_loss = self.loss(backcast, x["encoder_target"]) * backcast_weight
+                backcast_loss = (
+                    self.loss(backcast, x["encoder_target"]) * backcast_weight
+                )
             label = ["val", "train"][self.training]
             self.log(
                 f"{label}_backcast_loss",
@@ -467,7 +523,9 @@ class NHiTS(BaseModelWithCovariates):
         from matplotlib import pyplot as plt
 
         if not isinstance(self.loss, MultiLoss):  # not multi-target
-            prediction = self.to_prediction(dict(prediction=output["prediction"][[idx]].detach()))[0].cpu()
+            prediction = self.to_prediction(
+                dict(prediction=output["prediction"][[idx]].detach())
+            )[0].cpu()
             block_forecasts = [
                 self.to_prediction(dict(prediction=block[[idx]].detach()))[0].cpu()
                 for block in output["block_forecasts"]
@@ -475,8 +533,12 @@ class NHiTS(BaseModelWithCovariates):
         elif isinstance(output["prediction"], (tuple, list)):  # multi-target
             figs = []
             # predictions and block forecasts need to be converted
-            prediction = [p[[idx]].detach() for p in output["prediction"]]  # select index
-            prediction = self.to_prediction(dict(prediction=prediction))  # transform to prediction
+            prediction = [
+                p[[idx]].detach() for p in output["prediction"]
+            ]  # select index
+            prediction = self.to_prediction(
+                dict(prediction=prediction)
+            )  # transform to prediction
             prediction = [p[0].cpu() for p in prediction]  # select first and only index
 
             block_forecasts = [
@@ -493,11 +555,16 @@ class NHiTS(BaseModelWithCovariates):
 
                 figs.append(
                     self.plot_interpretation(
-                        dict(encoder_target=x["encoder_target"][i], decoder_target=x["decoder_target"][i]),
+                        dict(
+                            encoder_target=x["encoder_target"][i],
+                            decoder_target=x["decoder_target"][i],
+                        ),
                         dict(
                             backcast=output["backcast"][i],
                             prediction=prediction[i],
-                            block_backcasts=[block[i] for block in output["block_backcasts"]],
+                            block_backcasts=[
+                                block[i] for block in output["block_backcasts"]
+                            ],
                             block_forecasts=[block[i] for block in block_forecasts],
                         ),
                         idx=idx,
@@ -506,7 +573,9 @@ class NHiTS(BaseModelWithCovariates):
                 )
             return figs
         else:
-            prediction = output["prediction"]  # multi target that has already been transformed
+            prediction = output[
+                "prediction"
+            ]  # multi target that has already been transformed
             block_forecasts = output["block_forecasts"]
 
         if ax is None:
@@ -518,7 +587,11 @@ class NHiTS(BaseModelWithCovariates):
         # target
         prop_cycle = iter(plt.rcParams["axes.prop_cycle"])
         color = next(prop_cycle)["color"]
-        ax[0].plot(torch.arange(-self.hparams.context_length, 0), x["encoder_target"][idx].detach().cpu(), c=color)
+        ax[0].plot(
+            torch.arange(-self.hparams.context_length, 0),
+            x["encoder_target"][idx].detach().cpu(),
+            c=color,
+        )
         ax[0].plot(
             torch.arange(self.hparams.prediction_length),
             x["decoder_target"][idx].detach().cpu(),

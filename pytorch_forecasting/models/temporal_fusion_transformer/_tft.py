@@ -11,7 +11,14 @@ from torch import nn
 from torchmetrics import Metric as LightningMetric
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    RMSE,
+    SMAPE,
+    MultiHorizonMetric,
+    QuantileLoss,
+)
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nn import LSTM, MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
@@ -22,7 +29,14 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
-from pytorch_forecasting.utils import create_mask, detach, integer_histogram, masked_op, padded_stack, to_list
+from pytorch_forecasting.utils import (
+    create_mask,
+    detach,
+    integer_histogram,
+    masked_op,
+    padded_stack,
+    to_list,
+)
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
@@ -167,7 +181,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             loss = QuantileLoss()
         self.save_hyperparameters()
         # store loss function separately as it is a module
-        assert isinstance(loss, LightningMetric), "Loss has to be a PyTorch Lightning `Metric`"
+        assert isinstance(
+            loss, LightningMetric
+        ), "Loss has to be a PyTorch Lightning `Metric`"
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # processing inputs
@@ -183,7 +199,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # continuous variable processing
         self.prescalers = nn.ModuleDict(
             {
-                name: nn.Linear(1, self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size))
+                name: nn.Linear(
+                    1,
+                    self.hparams.hidden_continuous_sizes.get(
+                        name, self.hparams.hidden_continuous_size
+                    ),
+                )
                 for name in self.reals
             }
         )
@@ -191,39 +212,50 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # variable selection
         # variable selection for static variables
         static_input_sizes = {
-            name: self.input_embeddings.output_size[name] for name in self.hparams.static_categoricals
+            name: self.input_embeddings.output_size[name]
+            for name in self.hparams.static_categoricals
         }
         static_input_sizes.update(
             {
-                name: self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
+                name: self.hparams.hidden_continuous_sizes.get(
+                    name, self.hparams.hidden_continuous_size
+                )
                 for name in self.hparams.static_reals
             }
         )
         self.static_variable_selection = VariableSelectionNetwork(
             input_sizes=static_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={name: True for name in self.hparams.static_categoricals},
+            input_embedding_flags={
+                name: True for name in self.hparams.static_categoricals
+            },
             dropout=self.hparams.dropout,
             prescalers=self.prescalers,
         )
 
         # variable selection for encoder and decoder
         encoder_input_sizes = {
-            name: self.input_embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder
+            name: self.input_embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_encoder
         }
         encoder_input_sizes.update(
             {
-                name: self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
+                name: self.hparams.hidden_continuous_sizes.get(
+                    name, self.hparams.hidden_continuous_size
+                )
                 for name in self.hparams.time_varying_reals_encoder
             }
         )
 
         decoder_input_sizes = {
-            name: self.input_embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_decoder
+            name: self.input_embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_decoder
         }
         decoder_input_sizes.update(
             {
-                name: self.hparams.hidden_continuous_sizes.get(name, self.hparams.hidden_continuous_size)
+                name: self.hparams.hidden_continuous_sizes.get(
+                    name, self.hparams.hidden_continuous_size
+                )
                 for name in self.hparams.time_varying_reals_decoder
             }
         )
@@ -250,24 +282,32 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         self.encoder_variable_selection = VariableSelectionNetwork(
             input_sizes=encoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={name: True for name in self.hparams.time_varying_categoricals_encoder},
+            input_embedding_flags={
+                name: True for name in self.hparams.time_varying_categoricals_encoder
+            },
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
             single_variable_grns=(
-                {} if not self.hparams.share_single_variable_networks else self.shared_single_variable_grns
+                {}
+                if not self.hparams.share_single_variable_networks
+                else self.shared_single_variable_grns
             ),
         )
 
         self.decoder_variable_selection = VariableSelectionNetwork(
             input_sizes=decoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={name: True for name in self.hparams.time_varying_categoricals_decoder},
+            input_embedding_flags={
+                name: True for name in self.hparams.time_varying_categoricals_decoder
+            },
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
             single_variable_grns=(
-                {} if not self.hparams.share_single_variable_networks else self.shared_single_variable_grns
+                {}
+                if not self.hparams.share_single_variable_networks
+                else self.shared_single_variable_grns
             ),
         )
 
@@ -298,7 +338,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # for post lstm static enrichment
         self.static_context_enrichment = GatedResidualNetwork(
-            self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.dropout
+            self.hparams.hidden_size,
+            self.hparams.hidden_size,
+            self.hparams.hidden_size,
+            self.hparams.dropout,
         )
 
         # lstm encoder (history) and decoder (future) for local processing
@@ -319,10 +362,14 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
 
         # skip connection for lstm
-        self.post_lstm_gate_encoder = GatedLinearUnit(self.hparams.hidden_size, dropout=self.hparams.dropout)
+        self.post_lstm_gate_encoder = GatedLinearUnit(
+            self.hparams.hidden_size, dropout=self.hparams.dropout
+        )
         self.post_lstm_gate_decoder = self.post_lstm_gate_encoder
         # self.post_lstm_gate_decoder = GatedLinearUnit(self.hparams.hidden_size, dropout=self.hparams.dropout)
-        self.post_lstm_add_norm_encoder = AddNorm(self.hparams.hidden_size, trainable_add=False)
+        self.post_lstm_add_norm_encoder = AddNorm(
+            self.hparams.hidden_size, trainable_add=False
+        )
         # self.post_lstm_add_norm_decoder = AddNorm(self.hparams.hidden_size, trainable_add=True)
         self.post_lstm_add_norm_decoder = self.post_lstm_add_norm_encoder
 
@@ -337,24 +384,36 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # attention for long-range processing
         self.multihead_attn = InterpretableMultiHeadAttention(
-            d_model=self.hparams.hidden_size, n_head=self.hparams.attention_head_size, dropout=self.hparams.dropout
+            d_model=self.hparams.hidden_size,
+            n_head=self.hparams.attention_head_size,
+            dropout=self.hparams.dropout,
         )
         self.post_attn_gate_norm = GateAddNorm(
             self.hparams.hidden_size, dropout=self.hparams.dropout, trainable_add=False
         )
         self.pos_wise_ff = GatedResidualNetwork(
-            self.hparams.hidden_size, self.hparams.hidden_size, self.hparams.hidden_size, dropout=self.hparams.dropout
+            self.hparams.hidden_size,
+            self.hparams.hidden_size,
+            self.hparams.hidden_size,
+            dropout=self.hparams.dropout,
         )
 
         # output processing -> no dropout at this late stage
-        self.pre_output_gate_norm = GateAddNorm(self.hparams.hidden_size, dropout=None, trainable_add=False)
+        self.pre_output_gate_norm = GateAddNorm(
+            self.hparams.hidden_size, dropout=None, trainable_add=False
+        )
 
         if self.n_targets > 1:  # if to run with multiple targets
             self.output_layer = nn.ModuleList(
-                [nn.Linear(self.hparams.hidden_size, output_size) for output_size in self.hparams.output_size]
+                [
+                    nn.Linear(self.hparams.hidden_size, output_size)
+                    for output_size in self.hparams.output_size
+                ]
             )
         else:
-            self.output_layer = nn.Linear(self.hparams.hidden_size, self.hparams.output_size)
+            self.output_layer = nn.Linear(
+                self.hparams.hidden_size, self.hparams.output_size
+            )
 
     @classmethod
     def from_dataset(
@@ -378,11 +437,15 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # update defaults
         new_kwargs = copy(kwargs)
         new_kwargs["max_encoder_length"] = dataset.max_encoder_length
-        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss()))
+        new_kwargs.update(
+            cls.deduce_default_output_parameters(dataset, kwargs, QuantileLoss())
+        )
 
         # create class and return
         return super().from_dataset(
-            dataset, allowed_encoder_known_variable_names=allowed_encoder_known_variable_names, **new_kwargs
+            dataset,
+            allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,
+            **new_kwargs,
         )
 
     def expand_static_context(self, context, timesteps):
@@ -391,7 +454,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         return context[:, None].expand(-1, timesteps, -1)
 
-    def get_attention_mask(self, encoder_lengths: torch.LongTensor, decoder_lengths: torch.LongTensor):
+    def get_attention_mask(
+        self, encoder_lengths: torch.LongTensor, decoder_lengths: torch.LongTensor
+    ):
         """
         Returns causal mask to apply for self-attention layer.
         """
@@ -402,7 +467,11 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             # indices for which is predicted
             predict_step = torch.arange(0, decoder_length, device=self.device)[:, None]
             # do not attend to steps to self or after prediction
-            decoder_mask = (attend_step >= predict_step).unsqueeze(0).expand(encoder_lengths.size(0), -1, -1)
+            decoder_mask = (
+                (attend_step >= predict_step)
+                .unsqueeze(0)
+                .expand(encoder_lengths.size(0), -1, -1)
+            )
         else:
             # there is value in attending to future forecasts if they are made with knowledge currently
             #   available
@@ -410,9 +479,17 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             #   matter in the future than the past)
             #   or alternatively using the same layer but allowing forward attention - i.e. only
             #   masking out non-available data and self
-            decoder_mask = create_mask(decoder_length, decoder_lengths).unsqueeze(1).expand(-1, decoder_length, -1)
+            decoder_mask = (
+                create_mask(decoder_length, decoder_lengths)
+                .unsqueeze(1)
+                .expand(-1, decoder_length, -1)
+            )
         # do not attend to steps where data is padded
-        encoder_mask = create_mask(encoder_lengths.max(), encoder_lengths).unsqueeze(1).expand(-1, decoder_length, -1)
+        encoder_mask = (
+            create_mask(encoder_lengths.max(), encoder_lengths)
+            .unsqueeze(1)
+            .expand(-1, decoder_length, -1)
+        )
         # combine masks along attended time - first encoder and then decoder
         mask = torch.cat(
             (
@@ -429,8 +506,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         encoder_lengths = x["encoder_lengths"]
         decoder_lengths = x["decoder_lengths"]
-        x_cat = torch.cat([x["encoder_cat"], x["decoder_cat"]], dim=1)  # concatenate in time dimension
-        x_cont = torch.cat([x["encoder_cont"], x["decoder_cont"]], dim=1)  # concatenate in time dimension
+        x_cat = torch.cat(
+            [x["encoder_cat"], x["decoder_cat"]], dim=1
+        )  # concatenate in time dimension
+        x_cont = torch.cat(
+            [x["encoder_cont"], x["decoder_cont"]], dim=1
+        )  # concatenate in time dimension
         timesteps = x_cont.size(1)  # encode + decode length
         max_encoder_length = int(encoder_lengths.max())
         input_vectors = self.input_embeddings(x_cat)
@@ -445,32 +526,46 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # Embedding and variable selection
         if len(self.static_variables) > 0:
             # static embeddings will be constant over entire batch
-            static_embedding = {name: input_vectors[name][:, 0] for name in self.static_variables}
-            static_embedding, static_variable_selection = self.static_variable_selection(static_embedding)
+            static_embedding = {
+                name: input_vectors[name][:, 0] for name in self.static_variables
+            }
+            static_embedding, static_variable_selection = (
+                self.static_variable_selection(static_embedding)
+            )
         else:
             static_embedding = torch.zeros(
-                (x_cont.size(0), self.hparams.hidden_size), dtype=self.dtype, device=self.device
+                (x_cont.size(0), self.hparams.hidden_size),
+                dtype=self.dtype,
+                device=self.device,
             )
-            static_variable_selection = torch.zeros((x_cont.size(0), 0), dtype=self.dtype, device=self.device)
+            static_variable_selection = torch.zeros(
+                (x_cont.size(0), 0), dtype=self.dtype, device=self.device
+            )
 
         static_context_variable_selection = self.expand_static_context(
             self.static_context_variable_selection(static_embedding), timesteps
         )
 
         embeddings_varying_encoder = {
-            name: input_vectors[name][:, :max_encoder_length] for name in self.encoder_variables
+            name: input_vectors[name][:, :max_encoder_length]
+            for name in self.encoder_variables
         }
-        embeddings_varying_encoder, encoder_sparse_weights = self.encoder_variable_selection(
-            embeddings_varying_encoder,
-            static_context_variable_selection[:, :max_encoder_length],
+        embeddings_varying_encoder, encoder_sparse_weights = (
+            self.encoder_variable_selection(
+                embeddings_varying_encoder,
+                static_context_variable_selection[:, :max_encoder_length],
+            )
         )
 
         embeddings_varying_decoder = {
-            name: input_vectors[name][:, max_encoder_length:] for name in self.decoder_variables  # select decoder
+            name: input_vectors[name][:, max_encoder_length:]
+            for name in self.decoder_variables  # select decoder
         }
-        embeddings_varying_decoder, decoder_sparse_weights = self.decoder_variable_selection(
-            embeddings_varying_decoder,
-            static_context_variable_selection[:, max_encoder_length:],
+        embeddings_varying_decoder, decoder_sparse_weights = (
+            self.decoder_variable_selection(
+                embeddings_varying_decoder,
+                static_context_variable_selection[:, max_encoder_length:],
+            )
         )
 
         # LSTM
@@ -478,11 +573,16 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         input_hidden = self.static_context_initial_hidden_lstm(static_embedding).expand(
             self.hparams.lstm_layers, -1, -1
         )
-        input_cell = self.static_context_initial_cell_lstm(static_embedding).expand(self.hparams.lstm_layers, -1, -1)
+        input_cell = self.static_context_initial_cell_lstm(static_embedding).expand(
+            self.hparams.lstm_layers, -1, -1
+        )
 
         # run local encoder
         encoder_output, (hidden, cell) = self.lstm_encoder(
-            embeddings_varying_encoder, (input_hidden, input_cell), lengths=encoder_lengths, enforce_sorted=False
+            embeddings_varying_encoder,
+            (input_hidden, input_cell),
+            lengths=encoder_lengths,
+            enforce_sorted=False,
         )
 
         # run local decoder
@@ -495,17 +595,22 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         # skip connection over lstm
         lstm_output_encoder = self.post_lstm_gate_encoder(encoder_output)
-        lstm_output_encoder = self.post_lstm_add_norm_encoder(lstm_output_encoder, embeddings_varying_encoder)
+        lstm_output_encoder = self.post_lstm_add_norm_encoder(
+            lstm_output_encoder, embeddings_varying_encoder
+        )
 
         lstm_output_decoder = self.post_lstm_gate_decoder(decoder_output)
-        lstm_output_decoder = self.post_lstm_add_norm_decoder(lstm_output_decoder, embeddings_varying_decoder)
+        lstm_output_decoder = self.post_lstm_add_norm_decoder(
+            lstm_output_decoder, embeddings_varying_decoder
+        )
 
         lstm_output = torch.cat([lstm_output_encoder, lstm_output_decoder], dim=1)
 
         # static enrichment
         static_context_enrichment = self.static_context_enrichment(static_embedding)
         attn_input = self.static_enrichment(
-            lstm_output, self.expand_static_context(static_context_enrichment, timesteps)
+            lstm_output,
+            self.expand_static_context(static_context_enrichment, timesteps),
         )
 
         # Attention
@@ -513,11 +618,15 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             q=attn_input[:, max_encoder_length:],  # query only for predictions
             k=attn_input,
             v=attn_input,
-            mask=self.get_attention_mask(encoder_lengths=encoder_lengths, decoder_lengths=decoder_lengths),
+            mask=self.get_attention_mask(
+                encoder_lengths=encoder_lengths, decoder_lengths=decoder_lengths
+            ),
         )
 
         # skip connection over attention
-        attn_output = self.post_attn_gate_norm(attn_output, attn_input[:, max_encoder_length:])
+        attn_output = self.post_attn_gate_norm(
+            attn_output, attn_input[:, max_encoder_length:]
+        )
 
         output = self.pos_wise_ff(attn_output)
 
@@ -604,8 +713,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 decoder_attention[idx, :, :, :decoder_length] = x[..., :decoder_length]
         else:
             decoder_attention = out["decoder_attention"].clone()
-            decoder_mask = create_mask(out["decoder_attention"].size(1), out["decoder_lengths"])
-            decoder_attention[decoder_mask[..., None, None].expand_as(decoder_attention)] = float("nan")
+            decoder_mask = create_mask(
+                out["decoder_attention"].size(1), out["decoder_lengths"]
+            )
+            decoder_attention[
+                decoder_mask[..., None, None].expand_as(decoder_attention)
+            ] = float("nan")
 
         if isinstance(out["encoder_attention"], (list, tuple)):
             # same game for encoder attention
@@ -620,17 +733,17 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             # scatter into tensor
             for idx, x in enumerate(out["encoder_attention"]):
                 encoder_length = out["encoder_lengths"][idx]
-                encoder_attention[idx, :, :, self.hparams.max_encoder_length - encoder_length :] = x[
-                    ..., :encoder_length
-                ]
+                encoder_attention[
+                    idx, :, :, self.hparams.max_encoder_length - encoder_length :
+                ] = x[..., :encoder_length]
         else:
             # roll encoder attention (so start last encoder value is on the right)
             encoder_attention = out["encoder_attention"].clone()
             shifts = encoder_attention.size(3) - out["encoder_lengths"]
             new_index = (
-                torch.arange(encoder_attention.size(3), device=encoder_attention.device)[None, None, None].expand_as(
-                    encoder_attention
-                )
+                torch.arange(
+                    encoder_attention.size(3), device=encoder_attention.device
+                )[None, None, None].expand_as(encoder_attention)
                 - shifts[:, None, None, None]
             ) % encoder_attention.size(3)
             encoder_attention = torch.gather(encoder_attention, dim=3, index=new_index)
@@ -641,7 +754,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                         torch.full(
                             (
                                 *encoder_attention.shape[:-1],
-                                self.hparams.max_encoder_length - out["encoder_lengths"].max(),
+                                self.hparams.max_encoder_length
+                                - out["encoder_lengths"].max(),
                             ),
                             float("nan"),
                             dtype=encoder_attention.dtype,
@@ -657,7 +771,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         attention[attention < 1e-5] = float("nan")
 
         # histogram of decode and encode lengths
-        encoder_length_histogram = integer_histogram(out["encoder_lengths"], min=0, max=self.hparams.max_encoder_length)
+        encoder_length_histogram = integer_histogram(
+            out["encoder_lengths"], min=0, max=self.hparams.max_encoder_length
+        )
         decoder_length_histogram = integer_histogram(
             out["decoder_lengths"], min=1, max=out["decoder_variables"].size(1)
         )
@@ -665,7 +781,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # mask where decoder and encoder where not applied when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze(-2).clone()
         encode_mask = create_mask(encoder_variables.size(1), out["encoder_lengths"])
-        encoder_variables = encoder_variables.masked_fill(encode_mask.unsqueeze(-1), 0.0).sum(dim=1)
+        encoder_variables = encoder_variables.masked_fill(
+            encode_mask.unsqueeze(-1), 0.0
+        ).sum(dim=1)
         encoder_variables /= (
             out["encoder_lengths"]
             .where(out["encoder_lengths"] > 0, torch.ones_like(out["encoder_lengths"]))
@@ -674,7 +792,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         decoder_variables = out["decoder_variables"].squeeze(-2).clone()
         decode_mask = create_mask(decoder_variables.size(1), out["decoder_lengths"])
-        decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
+        decoder_variables = decoder_variables.masked_fill(
+            decode_mask.unsqueeze(-1), 0.0
+        ).sum(dim=1)
         decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
 
         # static variables need no masking
@@ -683,7 +803,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # average over heads + only keep prediction attention and attention on observed timesteps
         attention = masked_op(
             attention[
-                :, attention_prediction_horizon, :, : self.hparams.max_encoder_length + attention_prediction_horizon
+                :,
+                attention_prediction_horizon,
+                :,
+                : self.hparams.max_encoder_length + attention_prediction_horizon,
             ],
             op="mean",
             dim=1,
@@ -696,7 +819,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
             attention = masked_op(attention, dim=0, op=reduction)
         else:
-            attention = attention / masked_op(attention, dim=1, op="sum").unsqueeze(-1)  # renormalize
+            attention = attention / masked_op(attention, dim=1, op="sum").unsqueeze(
+                -1
+            )  # renormalize
 
         interpretation = dict(
             attention=attention.masked_fill(torch.isnan(attention), 0.0),
@@ -786,7 +911,11 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         attention = interpretation["attention"].detach().cpu()
         attention = attention / attention.sum(-1).unsqueeze(-1)
         ax.plot(
-            np.arange(-self.hparams.max_encoder_length, attention.size(0) - self.hparams.max_encoder_length), attention
+            np.arange(
+                -self.hparams.max_encoder_length,
+                attention.size(0) - self.hparams.max_encoder_length,
+            ),
+            attention,
         )
         ax.set_xlabel("Time index")
         ax.set_ylabel("Attention")
@@ -798,20 +927,30 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             fig, ax = plt.subplots(figsize=(7, len(values) * 0.25 + 2))
             order = np.argsort(values)
             values = values / values.sum(-1).unsqueeze(-1)
-            ax.barh(np.arange(len(values)), values[order] * 100, tick_label=np.asarray(labels)[order])
+            ax.barh(
+                np.arange(len(values)),
+                values[order] * 100,
+                tick_label=np.asarray(labels)[order],
+            )
             ax.set_title(title)
             ax.set_xlabel("Importance in %")
             plt.tight_layout()
             return fig
 
         figs["static_variables"] = make_selection_plot(
-            "Static variables importance", interpretation["static_variables"].detach().cpu(), self.static_variables
+            "Static variables importance",
+            interpretation["static_variables"].detach().cpu(),
+            self.static_variables,
         )
         figs["encoder_variables"] = make_selection_plot(
-            "Encoder variables importance", interpretation["encoder_variables"].detach().cpu(), self.encoder_variables
+            "Encoder variables importance",
+            interpretation["encoder_variables"].detach().cpu(),
+            self.encoder_variables,
         )
         figs["decoder_variables"] = make_selection_plot(
-            "Decoder variables importance", interpretation["decoder_variables"].detach().cpu(), self.decoder_variables
+            "Decoder variables importance",
+            interpretation["decoder_variables"].detach().cpu(),
+            self.decoder_variables,
         )
 
         return figs
@@ -823,12 +962,18 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # extract interpretations
         interpretation = {
             # use padded_stack because decoder length histogram can be of different length
-            name: padded_stack([x["interpretation"][name].detach() for x in outputs], side="right", value=0).sum(0)
+            name: padded_stack(
+                [x["interpretation"][name].detach() for x in outputs],
+                side="right",
+                value=0,
+            ).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
         # normalize attention with length histogram squared to account for: 1. zeros in attention and
         # 2. higher attention due to less values
-        attention_occurances = interpretation["encoder_length_histogram"][1:].flip(0).float().cumsum(0)
+        attention_occurances = (
+            interpretation["encoder_length_histogram"][1:].flip(0).float().cumsum(0)
+        )
         attention_occurances = attention_occurances / attention_occurances.max()
         attention_occurances = torch.cat(
             [
@@ -841,8 +986,12 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             ],
             dim=0,
         )
-        interpretation["attention"] = interpretation["attention"] / attention_occurances.pow(2).clamp(1.0)
-        interpretation["attention"] = interpretation["attention"] / interpretation["attention"].sum()
+        interpretation["attention"] = interpretation[
+            "attention"
+        ] / attention_occurances.pow(2).clamp(1.0)
+        interpretation["attention"] = (
+            interpretation["attention"] / interpretation["attention"].sum()
+        )
 
         mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
 
@@ -857,14 +1006,21 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # log to tensorboard
         for name, fig in figs.items():
             self.logger.experiment.add_figure(
-                f"{label.capitalize()} {name} importance", fig, global_step=self.global_step
+                f"{label.capitalize()} {name} importance",
+                fig,
+                global_step=self.global_step,
             )
 
         # log lengths of encoder/decoder
         for type in ["encoder", "decoder"]:
             fig, ax = plt.subplots()
             lengths = (
-                padded_stack([out["interpretation"][f"{type}_length_histogram"] for out in outputs])
+                padded_stack(
+                    [
+                        out["interpretation"][f"{type}_length_histogram"]
+                        for out in outputs
+                    ]
+                )
                 .sum(0)
                 .detach()
                 .cpu()
@@ -879,7 +1035,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             ax.set_title(f"{type.capitalize()} length distribution in {label} epoch")
 
             self.logger.experiment.add_figure(
-                f"{label.capitalize()} {type} length distribution", fig, global_step=self.global_step
+                f"{label.capitalize()} {type} length distribution",
+                fig,
+                global_step=self.global_step,
             )
 
     def log_embeddings(self):
@@ -894,5 +1052,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         for name, emb in self.input_embeddings.items():
             labels = self.hparams.embedding_labels[name]
             self.logger.experiment.add_embedding(
-                emb.weight.data.detach().cpu(), metadata=labels, tag=name, global_step=self.global_step
+                emb.weight.data.detach().cpu(),
+                metadata=labels,
+                tag=name,
+                global_step=self.global_step,
             )

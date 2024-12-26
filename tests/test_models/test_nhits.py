@@ -10,7 +10,9 @@ import pytest
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MQF2DistributionLoss, QuantileLoss
-from pytorch_forecasting.metrics.distributions import ImplicitQuantileNetworkDistributionLoss
+from pytorch_forecasting.metrics.distributions import (
+    ImplicitQuantileNetworkDistributionLoss,
+)
 from pytorch_forecasting.models import NHiTS
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
@@ -20,7 +22,9 @@ def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
+    )
 
     logger = TensorBoardLogger(tmp_path)
     if trainer_kwargs is None:
@@ -123,7 +127,9 @@ def test_integration(
         kwargs["loss"] = ImplicitQuantileNetworkDistributionLoss()
     elif dataloader == "multivariate-quantiles":
         dataloader = dataloaders_with_covariates
-        kwargs["loss"] = MQF2DistributionLoss(prediction_length=dataloader["train"].dataset.max_prediction_length)
+        kwargs["loss"] = MQF2DistributionLoss(
+            prediction_length=dataloader["train"].dataset.max_prediction_length
+        )
         kwargs["learning_rate"] = 1e-9
         kwargs["trainer_kwargs"] = dict(accelerator="cpu")
     else:
@@ -155,8 +161,12 @@ def test_pickle(model):
     reason="skip test if required package matplotlib not installed",
 )
 def test_interpretation(model, dataloaders_with_covariates):
-    raw_predictions = model.predict(dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True)
-    model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=0, add_loss_to_title=True)
+    raw_predictions = model.predict(
+        dataloaders_with_covariates["val"], mode="raw", return_x=True, fast_dev_run=True
+    )
+    model.plot_prediction(
+        raw_predictions.x, raw_predictions.output, idx=0, add_loss_to_title=True
+    )
     model.plot_interpretation(raw_predictions.x, raw_predictions.output, idx=0)
 
 
@@ -195,7 +205,9 @@ def test_prediction_length(max_prediction_length: int):
         forecaster,
         train_dataloaders=training_data_loader,
     )
-    validation_dataset = TimeSeriesDataSet.from_dataset(training_dataset, data, stop_randomization=True, predict=True)
+    validation_dataset = TimeSeriesDataSet.from_dataset(
+        training_dataset, data, stop_randomization=True, predict=True
+    )
     validation_data_loader = validation_dataset.to_dataloader(train=False)
     forecaster.predict(
         validation_data_loader,
