@@ -1,15 +1,15 @@
-from typing import Dict, List, Optional, Tuple, Union
 from copy import copy
+from typing import Dict, List, Optional, Tuple, Union
 
+import torch
+from torch import nn
+
+from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.models.tide.sub_modules import _TideModule
-from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.data.encoders import NaNLabelEncoder
-
-from torch import nn
-import torch
 
 
 class TiDEModel(BaseModelWithCovariates):
