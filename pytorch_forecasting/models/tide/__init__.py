@@ -163,8 +163,11 @@ class TiDEModel(BaseModelWithCovariates):
         Returns:
             int: size of time-dependent covariates used by the decoder
         """
-        return len(set(self.hparams.time_varying_reals_decoder) - set(self.target_names)) + sum(
-            self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_decoder
+        return len(
+            set(self.hparams.time_varying_reals_decoder) - set(self.target_names)
+        ) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_decoder
         )
 
     @property
@@ -174,8 +177,11 @@ class TiDEModel(BaseModelWithCovariates):
         Returns:
             int: size of time-dependent covariates used by the encoder
         """
-        return len(set(self.hparams.time_varying_reals_encoder) - set(self.target_names)) + sum(
-            self.embeddings.output_size[name] for name in self.hparams.time_varying_categoricals_encoder
+        return len(
+            set(self.hparams.time_varying_reals_encoder) - set(self.target_names)
+        ) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_encoder
         )
 
     @property
@@ -186,7 +192,8 @@ class TiDEModel(BaseModelWithCovariates):
             int: size of static covariates
         """
         return len(self.hparams.static_reals) + sum(
-            self.embeddings.output_size[name] for name in self.hparams.static_categoricals
+            self.embeddings.output_size[name]
+            for name in self.hparams.static_categoricals
         )
 
     @classmethod
@@ -215,12 +222,19 @@ class TiDEModel(BaseModelWithCovariates):
             dataset.max_prediction_length == dataset.min_prediction_length
         ), "only fixed prediction length is allowed, but max_prediction_length != min_prediction_length"
 
-        assert dataset.randomize_length is None, "length has to be fixed, but randomize_length is not None"
-        assert not dataset.add_relative_time_idx, "add_relative_time_idx has to be False"
+        assert (
+            dataset.randomize_length is None
+        ), "length has to be fixed, but randomize_length is not None"
+        assert (
+            not dataset.add_relative_time_idx
+        ), "add_relative_time_idx has to be False"
 
         new_kwargs = copy(kwargs)
         new_kwargs.update(
-            {"output_chunk_length": dataset.max_prediction_length, "input_chunk_length": dataset.max_encoder_length}
+            {
+                "output_chunk_length": dataset.max_prediction_length,
+                "input_chunk_length": dataset.max_encoder_length,
+            }
         )
         new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, MAE()))
         # initialize class
@@ -246,7 +260,11 @@ class TiDEModel(BaseModelWithCovariates):
         if self.encoder_covariate_size > 0:
             # encoder_features = self.extract_features(x, self.embeddings, period="encoder")
             encoder_x_t = torch.concat(
-                [encoder_features[name] for name in self.encoder_variables if name not in self.target_names],
+                [
+                    encoder_features[name]
+                    for name in self.encoder_variables
+                    if name not in self.target_names
+                ],
                 dim=2,
             )
             input_vector = torch.concat((encoder_y, encoder_x_t), dim=2)
@@ -256,14 +274,20 @@ class TiDEModel(BaseModelWithCovariates):
             input_vector = encoder_y
 
         if self.decoder_covariate_size > 0:
-            decoder_features = self.extract_features(x, self.embeddings, period="decoder")
-            decoder_x_t = torch.concat([decoder_features[name] for name in self.decoder_variables], dim=2)
+            decoder_features = self.extract_features(
+                x, self.embeddings, period="decoder"
+            )
+            decoder_x_t = torch.concat(
+                [decoder_features[name] for name in self.decoder_variables], dim=2
+            )
         else:
             decoder_x_t = None
 
         # statics
         if self.static_size > 0:
-            x_s = torch.concat([encoder_features[name][:, 0] for name in self.static_variables], dim=1)
+            x_s = torch.concat(
+                [encoder_features[name][:, 0] for name in self.static_variables], dim=1
+            )
         else:
             x_s = None
 
