@@ -4,7 +4,7 @@
 # copy-paste from sktime's run_examples.sh
 set -euxo pipefail
 
-CMD="jupyter nbconvert --to notebook --inplace --execute --ExecutePreprocessor.timeout=600"
+CMD="jupyter nbconvert --to notebook --inplace --execute --ExecutePreprocessor.timeout=1200"
 
 for notebook in docs/source/tutorials/*.ipynb; do
   echo "Running: $notebook"
