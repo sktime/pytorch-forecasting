@@ -12,7 +12,7 @@ Chapter 1 - Introduction
 .. _chapter1:
 
 .. list-table::
-   :widths: 25 50 15
+   :widths: 25 50 10
    :header-rows: 1
 
    * - Notebook
@@ -30,6 +30,9 @@ Chapter 2 - Time Series Models
 
 .. _chapter2:
 
+.. list-table::
+   :widths: 25 50 15
+   :header-rows: 1
    * - Notebook
      - Description
      - Link
@@ -52,6 +55,9 @@ Chapter 3 - Extra Tutorials
 
 .. _chapter3:
 
+.. list-table::
+   :widths: 25 50 15
+   :header-rows: 1
    * - Notebook
      - Description
      - Link
