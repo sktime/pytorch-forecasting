@@ -33,6 +33,7 @@ Chapter 2 - Time Series Models
 .. list-table::
    :widths: 25 50 10
    :header-rows: 1
+
    * - Notebook
      - Description
      - Link
@@ -58,6 +59,7 @@ Chapter 3 - Extra Tutorials
 .. list-table::
    :widths: 25 50 10
    :header-rows: 1
+
    * - Notebook
      - Description
      - Link
@@ -69,8 +71,8 @@ Chapter 3 - Extra Tutorials
    :titlesonly:
    :maxdepth: 2
 
-   tutorials/stallion
-   tutorials/ar
-   tutorials/building
-   tutorials/deepar
-   tutorials/nhits
+   .. tutorials/stallion
+   .. tutorials/ar
+   .. tutorials/building
+   .. tutorials/deepar
+   .. tutorials/nhits
