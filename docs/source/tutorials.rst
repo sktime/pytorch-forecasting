@@ -67,12 +67,13 @@ Chapter 3 - Extra Tutorials
      - Building your own custom models and metrics using `pytorch-forecasting`
      - `Link <https://pytorch-forecasting.readthedocs.io/en/stable/tutorials/building.html>`_
 
+
 .. toctree::
    :titlesonly:
-   :maxdepth: 2
+   :maxdepth: 1
 
-   .. tutorials/stallion
-   .. tutorials/ar
-   .. tutorials/building
-   .. tutorials/deepar
-   .. tutorials/nhits
+   tutorials/stallion
+   tutorials/ar
+   tutorials/building
+   tutorials/deepar
+   tutorials/nhits
