@@ -1,8 +1,9 @@
 """
 Timeseries datasets.
 
-Timeseries data is special and has to be processed and fed to algorithms in a special way. This module
-defines a class that is able to handle a wide variety of timeseries data problems.
+Timeseries data is special and has to be processed and passed in a special way.
+This module defines TimeSeriesDataSet,
+a class that is able to handle a wide variety of timeseries data problems.
 """
 
 from copy import copy as _copy, deepcopy
@@ -40,14 +41,20 @@ def _find_end_indices(
     """
     Identify end indices in series even if some values are missing.
 
-    Args:
-        diffs (np.ndarray): array of differences to next time step. nans should be filled up with ones
-        max_lengths (np.ndarray): maximum length of sequence by position.
-        min_length (int): minimum length of sequence.
+    Parameters
+    ----------
+    diffs : np.ndarray
+        array of differences to next time step. nans should be filled up with ones
+    max_lengths : np.ndarray
+        maximum length of sequence by position.
+    min_length : int
+        minimum length of sequence.
 
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: tuple of arrays where first is end indices and second is list of start
-            and end indices that are currently missing.
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        tuple of arrays where first is end indices and second is list of start
+        and end indices that are currently missing.
     """
     missing_start_ends = []
     end_indices = []
@@ -121,21 +128,202 @@ NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
 
 
 class TimeSeriesDataSet(Dataset):
-    """
-    PyTorch Dataset for fitting timeseries models.
+    """PyTorch Dataset for fitting timeseries models.
 
     The dataset automates common tasks such as
 
     * scaling and encoding of variables
     * normalizing the target variable
     * efficiently converting timeseries in pandas dataframes to torch tensors
-    * holding information about static and time-varying variables known and unknown in the future
+    * holding information about static and time-varying variables known and unknown in
+      the future
     * holding information about related categories (such as holidays)
     * downsampling for data augmentation
     * generating inference, validation and test datasets
-    * etc.
-    """
 
+    The :ref:`tutorial on passing data to models <passing-data>` is helpful to
+    understand the output of the dataset
+    and how it is coupled to models.
+
+    Each sample is a subsequence of a full time series. The subsequence consists of
+    encoder and decoder/prediction
+    timepoints for a given time series. This class constructs an index which defined
+    which subsequences exists and
+    can be samples from (``index`` attribute). The samples in the index are defined
+    by the various parameters.
+    to the class (encoder and prediction lengths, minimum prediction length, randomize
+    length and predict keywords).
+    How samples are
+    sampled into batches for training, is determined by the DataLoader.
+    The class provides the
+    :py:meth:`~TimeSeriesDataSet.to_dataloader` method
+    to convert the dataset into a dataloader.
+
+    Large datasets:
+
+    Currently the class is limited to in-memory operations (that can be sped up by an
+    existing installation of `numba <https://pypi.org/project/numba/>`_).
+    If you have extremely large data,
+    however, you can pass prefitted encoders and and scalers to it and a subset of
+    sequences to the class to
+    construct a valid dataset (plus, likely the EncoderNormalizer should be used to
+    normalize targets).
+    when fitting a network, you would then to create a custom DataLoader that rotates
+    through the datasets.
+    There are currently no in-built methods to do this.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        dataframe with sequence data - each row can be identified with
+        ``time_idx`` and the ``group_ids``
+
+    time_idx : str
+        integer typed column denoting the time index within ``data``.
+        This columns is used to determine the sequence of samples.
+        If there are no missings observations,
+        the time index should increase by ``+1`` for each subsequent sample.
+        The first time_idx for each series does not necessarily
+        have to be ``0`` but any value is allowed.
+
+    target : Union[str, List[str]]
+        column(s) in ``data`` denoting the forecasting target.
+        Can be categorical or continous dtype.
+
+    group_ids : List[str]
+        list of column names identifying a time series instance within ``data``
+        This means that the ``group_ids``
+        identify a sample together with the ``time_idx``.
+        If you have only one timeseries, set this to the
+        name of column that is constant.
+
+    weight : str, optional, default=None
+        column name for weights. Defaults to None.
+
+    max_encoder_length : int, optional, default=30
+        maximum length to encode.
+        This is the maximum history length used by the time series dataset.
+
+    min_encoder_length : int, optional, default=max_encoder_length
+        minimum allowed length to encode. Defaults to max_encoder_length.
+
+    min_prediction_idx : int, optional, default = first time_idx in data
+        minimum ``time_idx`` from where to start predictions.
+        This parameter can be useful to create a validation or test set.
+
+    max_prediction_length : int, optional, default=1
+        maximum prediction/decoder length
+        (choose this not too short as it can help convergence)
+
+    min_prediction_length : int, optional, default=max_prediction_length
+        minimum prediction/decoder length
+
+    static_categoricals : list of str, optional, default=None
+        list of categorical variables that do not change over time, in ``data``,
+        entries can be also lists which are then encoded together
+        (e.g. useful for product categories)
+
+    static_reals (List[str]): list of continuous variables that do not change over time
+    time_varying_known_categoricals (List[str]): list of categorical variables that change over
+        time and are known in the future, entries can be also lists which are then encoded together
+        (e.g. useful for special days or promotion categories)
+    time_varying_known_reals (List[str]): list of continuous variables that change over
+        time and are known in the future (e.g. price of a product, but not demand of a product)
+    time_varying_unknown_categoricals (List[str]): list of categorical variables that change over
+        time and are not known in the future, entries can be also lists which are then encoded together
+        (e.g. useful for weather categories). You might want to include your target here.
+    time_varying_unknown_reals (List[str]): list of continuous variables that change over
+        time and are not known in the future.  You might want to include your target here.
+    variable_groups (Dict[str, List[str]]): dictionary mapping a name to a list of columns in the data.
+        The name should be present
+        in a categorical or real class argument, to be able to encode or scale the columns by group.
+        This will effectively combine categorical variables is particularly useful if a categorical variable can
+        have multiple values at the same time. An example are holidays which can be overlapping.
+    constant_fill_strategy (Dict[str, Union[str, float, int, bool]]): dictionary of column names with
+        constants to fill in missing values if there are
+        gaps in the sequence (by default forward fill strategy is used). The values will be only used if
+        ``allow_missing_timesteps=True``. A common use case is to denote that demand was 0 if the sample
+        is not in the dataset.
+    allow_missing_timesteps (bool): if to allow missing timesteps that are automatically filled up. Missing
+        values
+        refer to gaps in the ``time_idx``, e.g. if a specific timeseries has only samples for
+        1, 2, 4, 5, the sample for 3 will be generated on-the-fly.
+        Allow missings does not deal with ``NA`` values. You should fill NA values before
+        passing the dataframe to the TimeSeriesDataSet.
+    lags (Dict[str, List[int]]): dictionary of variable names mapped to list of time steps by
+        which the variable should be lagged.
+        Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
+        add at least the target variables with the corresponding lags to improve performance.
+        Lags must be at not larger than the shortest time series as all time series will be cut by the largest
+        lag value to prevent NA values. A lagged variable has to appear in the time-varying variables. If you
+        only want the lagged but not the current value, lag it manually in your input data using
+        ``data[lagged_variable_name] = data.sort_values(time_idx).groupby(group_ids, observed=True).shift(lag)``
+        .
+        Defaults to no lags.
+    add_relative_time_idx (bool): if to add a relative time index as feature (i.e. for each sampled sequence,
+        the index will range from -encoder_length to prediction_length)
+    add_target_scales (bool): if to add scales for target to static real features (i.e. add the center and scale
+        of the unnormalized timeseries as features)
+    add_encoder_length (bool): if to add encoder length to list of static real variables.
+        Defaults to "auto", i.e. ``True`` if ``min_encoder_length != max_encoder_length``.
+
+    target_normalizer (Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str, list, tuple]):
+        transformer that take group_ids, target and time_idx to normalize targets.
+        You can choose from
+        :py:class:`~pytorch_forecasting.data.encoders.TorchNormalizer`,
+        :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer`,
+        :py:class:`~pytorch_forecasting.data.encoders.NaNLabelEncoder`,
+        :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`
+        (on which overfitting tests will fail)
+        or `None` for using no normalizer. For multiple targets, use a
+        :py:class`~pytorch_forecasting.data.encoders.MultiNormalizer`.
+        By default an appropriate normalizer is chosen automatically.
+
+    categorical_encoders : dict[str, BaseEstimator]
+        dictionary of scikit learn label transformers.
+        If you have unobserved categories in
+        the future  / a cold-start problem, you can use the
+        :py:class:`~pytorch_forecasting.data.encoders.NaNLabelEncoder` with
+        ``add_nan=True``.
+        Defaults effectively to sklearn's ``LabelEncoder()``.
+        Prefitted encoders will not be fit again.
+
+    scalers : optional, dict with str keys and torch or sklearn scalers as values
+        dictionary of scikit-learn or torch scalers.
+        Defaults to sklearn's ``StandardScaler()``.
+        Other options
+        are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
+        :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer`
+        or scikit-learn's ``StandarScaler()``,
+        ``RobustScaler()`` or ``None`` for using no normalizer / normalizer
+        with ``center=0`` and ``scale=1``
+        (``method="identity"``).
+        Prefittet encoders will not be fit again (with the exception of the
+        :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` that is
+        fit on every encoder sequence).
+
+    randomize_length : optional, None, bool, or tuple of float.
+        None or False if not to randomize lengths.
+        Tuple of beta distribution concentrations from which
+        probabilities are sampled that are used to sample new sequence lengths
+        with a binomial distribution.
+        If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples
+        around minimum encoder length.
+        Defaults to False otherwise.
+
+    predict_mode : bool
+        If True, the TimeSeriesDataSet will only create one sequence
+        per time series (i.e. only from the latest provided samples).
+        Effectively, this will select each time series identified by ``group_ids``
+        the last ``max_prediction_length`` samples of each time series as
+        prediction samples and everthing previous up to ``max_encoder_length``
+        samples as encoder samples.
+        If False, the TimeSeriesDataSet will create subsequences by sliding a
+        window over the data samples.
+        For training use cases, it's preferable to set predict_mode=False
+        to get all subseries.
+        On the other hand, predict_mode = True is ideal for validation cases.
+    """
     # todo: refactor:
     # - creating base class with minimal functionality
     # - "outsource" transformations -> use pytorch transformations as default
@@ -155,26 +343,33 @@ class TimeSeriesDataSet(Dataset):
     #     -> do we also need torch_sparse, etc.? -> can we avoid this? probably not
     # - networkx graph: define what makes sense from user perspective
     # - define conversion into pytorch geometric graph? is this a two-step process of
-    #     - encoding networkx graph and converting it into "unfilled" pytorch geometric graph
+    #     - encoding networkx graph and converting it into "unfilled" pytorch geometric
+    #       graph
     #     - then creating full graph in collate function on the fly?
-    #     - or is data already stored in pytorch geometric graph and we only cut through it?
+    #     - or is data already stored in pytorch geometric graph, only cut through it?
     #     - dataformat would change? Is is all timeseries data? + mask when valid?
     #     - then making cuts through the graph in sampling?
-    #     - would it be best in this case to re-think the timeseries class and design it as series of transformations?
+    #     - would it be best in this case to re-think the timeseries class and design it
+    #       as series of transformations?
     #     - what is the new master data? very off current state or very similar?
-    #     - current approach is storing data in long format which is memory efficient and using the index object to
+    #     - current approach is storing data in long format which is memory efficient
+    #       and using the index object to
     #       make sense of it when accessing. graphs would require wide format?
-    # - do NOT overengineer, i.e. support only usecase of single static graph, but only subset might be relevant
-    #     -> however, should think what happens if we want a dynamic graph. would this completely change the
+    # - do NOT overengineer, i.e. support only usecase of single static graph,
+    #   but only subset might be relevant
+    #     -> however, should think what happens if we want a dynamic graph. would this
+    #        completely change the
     #        data format?
 
     # decisions:
-    # - stay with long format and create graph on the fly even if hampering efficiency and performance
+    # - stay with long format and create graph on the fly even if hampering
+    #   efficiency and performance
     # - go with pytorch_geometric approach for future proofing
     # - directly convert networkx into pytorch_geometric graph
     # - sampling: support only time-synchronized.
     #     - sample randomly an instance from index as now.
-    #     - then get additional samples as per graph (that has been created) and available data
+    #     - then get additional samples as per graph (that has been created) and
+    #       available data
     #     - then collate into graph object
 
     def __init__(
@@ -217,199 +412,45 @@ class TimeSeriesDataSet(Dataset):
         randomize_length: Union[None, Tuple[float, float], bool] = False,
         predict_mode: bool = False,
     ):
-        """
-        Timeseries dataset holding data for models.
-
-        The :ref:`tutorial on passing data to models <passing-data>` is helpful to understand the output of the dataset
-        and how it is coupled to models.
-
-        Each sample is a subsequence of a full time series. The subsequence consists of encoder and decoder/prediction
-        timepoints for a given time series. This class constructs an index which defined which subsequences exists and
-        can be samples from (``index`` attribute). The samples in the index are defined by by the various parameters.
-        to the class (encoder and prediction lengths, minimum prediction length, randomize length and predict keywords).
-        How samples are
-        sampled into batches for training, is determined by the DataLoader. The class provides the
-        :py:meth:`~TimeSeriesDataSet.to_dataloader` method to convert the dataset into a dataloader.
-
-        Large datasets:
-
-            Currently the class is limited to in-memory operations (that can be sped up by an
-            existing installation of `numba <https://pypi.org/project/numba/>`_). If you have extremely large data,
-            however, you can pass prefitted encoders and and scalers to it and a subset of sequences to the class to
-            construct a valid dataset (plus, likely the EncoderNormalizer should be used to normalize targets).
-            when fitting a network, you would then to create a custom DataLoader that rotates through the datasets.
-            There is currently no in-built methods to do this.
-
-        Args:
-            data (pd.DataFrame): dataframe with sequence data - each row can be identified with
-                ``time_idx`` and the ``group_ids``
-            time_idx (str): integer column denoting the time index. This columns is used to determine
-                the sequence of samples.
-                If there no missings observations, the time index should increase by ``+1`` for each subsequent sample.
-                The first time_idx for each series does not necessarily have to be ``0`` but any value is allowed.
-            target (Union[str, List[str]]): column denoting the target or list of columns denoting the target -
-                categorical or continous.
-            group_ids (List[str]): list of column names identifying a time series. This means that the ``group_ids``
-                identify a sample together with the ``time_idx``. If you have only one timeseries, set this to the
-                name of column that is constant.
-            weight (str): column name for weights. Defaults to None.
-            max_encoder_length (int): maximum length to encode.
-                This is the maximum history length used by the time series dataset.
-            min_encoder_length (int): minimum allowed length to encode. Defaults to max_encoder_length.
-            min_prediction_idx (int): minimum ``time_idx`` from where to start predictions. This parameter
-                can be useful to create a validation or test set.
-            max_prediction_length (int): maximum prediction/decoder length (choose this not too short as it can help
-                convergence)
-            min_prediction_length (int): minimum prediction/decoder length. Defaults to max_prediction_length
-            static_categoricals (List[str]): list of categorical variables that do not change over time,
-                entries can be also lists which are then encoded together
-                (e.g. useful for product categories)
-            static_reals (List[str]): list of continuous variables that do not change over time
-            time_varying_known_categoricals (List[str]): list of categorical variables that change over
-                time and are known in the future, entries can be also lists which are then encoded together
-                (e.g. useful for special days or promotion categories)
-            time_varying_known_reals (List[str]): list of continuous variables that change over
-                time and are known in the future (e.g. price of a product, but not demand of a product)
-            time_varying_unknown_categoricals (List[str]): list of categorical variables that change over
-                time and are not known in the future, entries can be also lists which are then encoded together
-                (e.g. useful for weather categories). You might want to include your target here.
-            time_varying_unknown_reals (List[str]): list of continuous variables that change over
-                time and are not known in the future.  You might want to include your target here.
-            variable_groups (Dict[str, List[str]]): dictionary mapping a name to a list of columns in the data.
-                The name should be present
-                in a categorical or real class argument, to be able to encode or scale the columns by group.
-                This will effectively combine categorical variables is particularly useful if a categorical variable can
-                have multiple values at the same time. An example are holidays which can be overlapping.
-            constant_fill_strategy (Dict[str, Union[str, float, int, bool]]): dictionary of column names with
-                constants to fill in missing values if there are
-                gaps in the sequence (by default forward fill strategy is used). The values will be only used if
-                ``allow_missing_timesteps=True``. A common use case is to denote that demand was 0 if the sample
-                is not in the dataset.
-            allow_missing_timesteps (bool): if to allow missing timesteps that are automatically filled up. Missing
-                values
-                refer to gaps in the ``time_idx``, e.g. if a specific timeseries has only samples for
-                1, 2, 4, 5, the sample for 3 will be generated on-the-fly.
-                Allow missings does not deal with ``NA`` values. You should fill NA values before
-                passing the dataframe to the TimeSeriesDataSet.
-            lags (Dict[str, List[int]]): dictionary of variable names mapped to list of time steps by
-                which the variable should be lagged.
-                Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
-                add at least the target variables with the corresponding lags to improve performance.
-                Lags must be at not larger than the shortest time series as all time series will be cut by the largest
-                lag value to prevent NA values. A lagged variable has to appear in the time-varying variables. If you
-                only want the lagged but not the current value, lag it manually in your input data using
-                ``data[lagged_variable_name] = data.sort_values(time_idx).groupby(group_ids, observed=True).shift(lag)``
-                .
-                Defaults to no lags.
-            add_relative_time_idx (bool): if to add a relative time index as feature (i.e. for each sampled sequence,
-                the index will range from -encoder_length to prediction_length)
-            add_target_scales (bool): if to add scales for target to static real features (i.e. add the center and scale
-                of the unnormalized timeseries as features)
-            add_encoder_length (bool): if to add encoder length to list of static real variables.
-                Defaults to "auto", i.e. ``True`` if ``min_encoder_length != max_encoder_length``.
-            target_normalizer (Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer, str, list, tuple]):
-                transformer that take group_ids, target and time_idx to normalize targets.
-                You can choose from :py:class:`~pytorch_forecasting.data.encoders.TorchNormalizer`,
-                :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer`,
-                :py:class:`~pytorch_forecasting.data.encoders.NaNLabelEncoder`,
-                :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` (on which overfitting tests will fail)
-                or `None` for using no normalizer. For multiple targets, use a
-                :py:class`~pytorch_forecasting.data.encoders.MultiNormalizer`.
-                By default an appropriate normalizer is chosen automatically.
-            categorical_encoders (Dict[str, NaNLabelEncoder]): dictionary of scikit learn label transformers.
-                If you have unobserved categories in
-                the future  / a cold-start problem, you can use the
-                :py:class:`~pytorch_forecasting.data.encoders.NaNLabelEncoder` with
-                ``add_nan=True``. Defaults effectively to sklearn's ``LabelEncoder()``. Prefittet encoders will not
-                be fit again.
-            scalers (Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer]]): dictionary of
-                scikit-learn scalers. Defaults to sklearn's ``StandardScaler()``.
-                Other options are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
-                :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer` or scikit-learn's ``StandarScaler()``,
-                ``RobustScaler()`` or `None` for using no normalizer / normalizer with `center=0` and `scale=1`
-                (`method="identity"`).
-                Prefittet encoders will not be fit again (with the exception of the
-                :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` that is fit on every encoder sequence).
-            randomize_length (Union[None, Tuple[float, float], bool]): None or False if not to randomize lengths.
-                Tuple of beta distribution concentrations from which
-                probabilities are sampled that are used to sample new sequence lengths with a binomial
-                distribution.
-                If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples around minimum encoder length.
-                Defaults to False otherwise.
-            predict_mode (bool): If True, the TimeSeriesDataSet will only create one sequence
-                per time series (i.e. only from the latest provided samples).
-                Effectively, this will select each time series identified by ``group_ids``
-                the last ``max_prediction_length`` samples of each time series as
-                prediction samples and everthing previous up to ``max_encoder_length`` samples as encoder samples.
-                If False, the TimeSeriesDataSet will create subsequences by sliding a window over the data samples.
-                For training use cases, it's preferable to set predict_mode=False to get all subseries.
-                On the other hand, predict_mode = True is ideal for validation cases.
-        """
+        """Timeseries dataset holding data for models."""
         super().__init__()
+
         self.max_encoder_length = max_encoder_length
-        assert isinstance(
-            self.max_encoder_length, int
-        ), "max encoder length must be integer"
         if min_encoder_length is None:
             min_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
-        assert (
-            self.min_encoder_length <= self.max_encoder_length
-        ), "max encoder length has to be larger equals min encoder length"
-        assert isinstance(
-            self.min_encoder_length, int
-        ), "min encoder length must be integer"
         self.max_prediction_length = max_prediction_length
-        assert isinstance(
-            self.max_prediction_length, int
-        ), "max prediction length must be integer"
         if min_prediction_length is None:
             min_prediction_length = max_prediction_length
         self.min_prediction_length = min_prediction_length
-        assert (
-            self.min_prediction_length <= self.max_prediction_length
-        ), "max prediction length has to be larger equals min prediction length"
-        assert (
-            self.min_prediction_length > 0
-        ), "min prediction length must be larger than 0"
-        assert isinstance(
-            self.min_prediction_length, int
-        ), "min prediction length must be integer"
-        assert (
-            data[time_idx].dtype.kind == "i"
-        ), "Timeseries index should be of type integer"
+
         self.target = target
         self.weight = weight
         self.time_idx = time_idx
-        self.group_ids = [] if group_ids is None else list(group_ids)
+        self.group_ids = _coerce_to_list(group_ids)
+
         self.static_categoricals = static_categoricals
-        self._static_categoricals = (
-            [] if static_categoricals is None else list(static_categoricals)
-        )
+        self._static_categoricals = _coerce_to_list(static_categoricals)
+
         self.static_reals = static_reals
-        self._static_reals = [] if static_reals is None else list(static_reals)
+        self._static_reals = _coerce_to_list(static_reals)
+
         self.time_varying_known_categoricals = time_varying_known_categoricals
-        self._time_varying_known_categoricals = (
-            []
-            if time_varying_known_categoricals is None
-            else list(time_varying_known_categoricals)
+        self._time_varying_known_categoricals = _coerce_to_list(
+            time_varying_known_categoricals
         )
+
         self.time_varying_known_reals = time_varying_known_reals
-        self._time_varying_known_reals = (
-            [] if time_varying_known_reals is None else list(time_varying_known_reals)
-        )
+        self._time_varying_known_reals = _coerce_to_list(time_varying_known_reals)
+
         self.time_varying_unknown_categoricals = time_varying_unknown_categoricals
-        self._time_varying_unknown_categoricals = (
-            []
-            if time_varying_unknown_categoricals is None
-            else list(time_varying_unknown_categoricals)
+        self._time_varying_unknown_categoricals = _coerce_to_list(
+            time_varying_unknown_categoricals
         )
+
         self.time_varying_unknown_reals = time_varying_unknown_reals
-        self._time_varying_unknown_reals = (
-            []
-            if time_varying_unknown_reals is None
-            else list(time_varying_unknown_reals)
-        )
+        self._time_varying_unknown_reals = _coerce_to_list(time_varying_unknown_reals)
+
         self.add_relative_time_idx = add_relative_time_idx
 
         # set automatic defaults
@@ -418,40 +459,41 @@ class TimeSeriesDataSet(Dataset):
                 randomize_length = None
             else:
                 randomize_length = (0.2, 0.05)
+
         self.randomize_length = randomize_length
+
         if min_prediction_idx is None:
             min_prediction_idx = data[self.time_idx].min()
         self.min_prediction_idx = min_prediction_idx
+
         self.constant_fill_strategy = constant_fill_strategy
-        self._constant_fill_strategy = (
-            {} if constant_fill_strategy is None else deepcopy(constant_fill_strategy)
-        )
+        self._constant_fill_strategy = _coerce_to_dict(constant_fill_strategy)
+
         self.predict_mode = predict_mode
         self.allow_missing_timesteps = allow_missing_timesteps
         self.target_normalizer = target_normalizer
+
         self.categorical_encoders = categorical_encoders
-        self._categorical_encoders = (
-            {} if categorical_encoders is None else deepcopy(categorical_encoders)
-        )
+        self._categorical_encoders = _coerce_to_dict(categorical_encoders)
+
         self.scalers = scalers
-        self._scalers = {} if scalers is None else deepcopy(scalers)
+        self._scalers = _coerce_to_dict(scalers)
+
         self.add_target_scales = add_target_scales
         self.variable_groups = variable_groups
-        self._variable_groups = (
-            {} if variable_groups is None else deepcopy(variable_groups)
-        )
+        self._variable_groups = _coerce_to_dict(variable_groups)
+
         self.lags = lags
-        self._lags = {} if lags is None else deepcopy(lags)
+        self._lags = _coerce_to_dict(lags)
 
         # add_encoder_length
         if isinstance(add_encoder_length, str):
-            assert (
-                add_encoder_length == "auto"
-            ), f"Only 'auto' allowed for add_encoder_length but found {add_encoder_length}"
+            msg = (
+                f"Only 'auto' allowed for add_encoder_length "
+                f"but found {add_encoder_length}"
+            )
+            assert add_encoder_length == "auto", msg
             add_encoder_length = self.min_encoder_length != self.max_encoder_length
-        assert isinstance(
-            add_encoder_length, bool
-        ), f"add_encoder_length should be boolean or 'auto' but found {add_encoder_length}"
         self.add_encoder_length = add_encoder_length
 
         # target normalizer
@@ -460,10 +502,8 @@ class TimeSeriesDataSet(Dataset):
         # overwrite values
         self.reset_overwrite_values()
 
-        for target in self.target_names:
-            assert (
-                target not in self._time_varying_known_reals
-            ), f"target {target} should be an unknown continuous variable in the future"
+        # check parameters
+        self._check_params()
 
         # add time index relative to prediction position
         if self.add_relative_time_idx or self.add_encoder_length:
@@ -497,62 +537,15 @@ class TimeSeriesDataSet(Dataset):
 
         # validate
         self._validate_data(data)
-        assert data.index.is_unique, "data index has to be unique"
 
         # add lags
-        assert self.min_lag > 0, "lags should be positive"
         if len(self._lags) > 0:
-            # add variables
-            for name in self._lags:
-                lagged_names = self._get_lagged_names(name)
-                for lagged_name in lagged_names:
-                    assert (
-                        lagged_name not in data.columns
-                    ), f"{lagged_name} is a protected column and must not be present in data"
-                # add lags
-                if name in self._time_varying_known_reals:
-                    for lagged_name in lagged_names:
-                        if lagged_name not in self._time_varying_known_reals:
-                            self._time_varying_known_reals.append(lagged_name)
-                elif name in self._time_varying_known_categoricals:
-                    for lagged_name in lagged_names:
-                        if lagged_name not in self._time_varying_known_categoricals:
-                            self._time_varying_known_categoricals.append(lagged_name)
-                elif name in self._time_varying_unknown_reals:
-                    for lagged_name, lag in lagged_names.items():
-                        if (
-                            lag < self.max_prediction_length
-                        ):  # keep in unknown as if lag is too small
-                            if lagged_name not in self._time_varying_unknown_reals:
-                                self._time_varying_unknown_reals.append(lagged_name)
-                        else:
-                            if lagged_name not in self._time_varying_known_reals:
-                                # switch to known so that lag can be used in decoder directly
-                                self._time_varying_known_reals.append(lagged_name)
-                elif name in self._time_varying_unknown_categoricals:
-                    for lagged_name, lag in lagged_names.items():
-                        if (
-                            lag < self.max_prediction_length
-                        ):  # keep in unknown as if lag is too small
-                            if (
-                                lagged_name
-                                not in self._time_varying_unknown_categoricals
-                            ):
-                                self._time_varying_unknown_categoricals.append(
-                                    lagged_name
-                                )
-                        if lagged_name not in self._time_varying_known_categoricals:
-                            # switch to known so that lag can be used in decoder directly
-                            self._time_varying_known_categoricals.append(lagged_name)
-                else:
-                    raise KeyError(
-                        f"lagged variable {name} is not a known nor unknown time-varying variable"
-                    )
+            self._set_lagged_variables()
 
         # filter data
         if min_prediction_idx is not None:
-            # filtering for min_prediction_idx will be done on subsequence level ensuring
-            # minimal decoder index is always >= min_prediction_idx
+            # filtering for min_prediction_idx will be done on subsequence level,
+            # ensuring that minimal decoder index is always >= min_prediction_idx
             data = data[
                 lambda x: x[self.time_idx]
                 >= self.min_prediction_idx - self.max_encoder_length - self.max_lag
@@ -572,6 +565,93 @@ class TimeSeriesDataSet(Dataset):
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
 
+    def _check_params(self):
+        """Check parameters of self against assumptions."""
+        assert isinstance(
+            self.max_encoder_length, int
+        ), "max encoder length must be integer"
+        assert (
+            self.min_encoder_length <= self.max_encoder_length
+        ), "max encoder length has to be larger equals min encoder length"
+        assert isinstance(
+            self.min_encoder_length, int
+        ), "min encoder length must be integer"
+        assert isinstance(
+            self.max_prediction_length, int
+        ), "max prediction length must be integer"
+        assert (
+            self.min_prediction_length <= self.max_prediction_length
+        ), "max prediction length has to be larger equals min prediction length"
+        assert (
+            self.min_prediction_length > 0
+        ), "min prediction length must be larger than 0"
+        assert isinstance(
+            self.min_prediction_length, int
+        ), "min prediction length must be integer"
+        msg = (
+            f"add_encoder_length should be boolean or 'auto' "
+            f"but found {self.add_encoder_length}"
+        )
+        assert isinstance(self.add_encoder_length, bool), msg
+
+        for target in self.target_names:
+            assert (
+                target not in self._time_varying_known_reals
+            ), f"target {target} should be an unknown continuous variable in the future"
+
+        assert self.min_lag > 0, "lags should be positive"
+
+    def _set_lagged_variables(self):
+        """Add lagged variables to lists of variables.
+
+        Generates lagged variables and adds them to the appropriate lists
+        of time-varying variables.
+        """
+        # add variables
+        for name in self._lags:
+            lagged_names = self._get_lagged_names(name)
+
+            # add lags
+            if name in self._time_varying_known_reals:
+                for lagged_name in lagged_names:
+                    if lagged_name not in self._time_varying_known_reals:
+                        self._time_varying_known_reals.append(lagged_name)
+            elif name in self._time_varying_known_categoricals:
+                for lagged_name in lagged_names:
+                    if lagged_name not in self._time_varying_known_categoricals:
+                        self._time_varying_known_categoricals.append(lagged_name)
+            elif name in self._time_varying_unknown_reals:
+                for lagged_name, lag in lagged_names.items():
+                    if (
+                        lag < self.max_prediction_length
+                    ):  # keep in unknown as if lag is too small
+                        if lagged_name not in self._time_varying_unknown_reals:
+                            self._time_varying_unknown_reals.append(lagged_name)
+                    else:
+                        if lagged_name not in self._time_varying_known_reals:
+                            # switch to known so lag can be used in decoder directly
+                            self._time_varying_known_reals.append(lagged_name)
+            elif name in self._time_varying_unknown_categoricals:
+                for lagged_name, lag in lagged_names.items():
+                    if (
+                        lag < self.max_prediction_length
+                    ):  # keep in unknown as if lag is too small
+                        if (
+                            lagged_name
+                            not in self._time_varying_unknown_categoricals
+                        ):
+                            self._time_varying_unknown_categoricals.append(
+                                lagged_name
+                            )
+                    if lagged_name not in self._time_varying_known_categoricals:
+                        # switch to known so that lag can be used in decoder directly
+                        self._time_varying_known_categoricals.append(lagged_name)
+            else:
+                raise KeyError(
+                    f"lagged variable {name} is not a known "
+                    "nor unknown time-varying variable"
+                )
+
     @property
     def dropout_categoricals(self) -> List[str]:
         """
@@ -588,23 +668,28 @@ class TimeSeriesDataSet(Dataset):
         """
         Generate names for lagged variables
 
-        Args:
-            name (str): name of variable to lag
+        Parameters
+        ----------
+        name : str
+            name of variable to lag
 
-        Returns:
-            Dict[str, int]: dictionary mapping new variable names to lags
+        Returns
+        -------
+        Dict[str, int]
+            dictionary mapping new variable names to lags
         """
         return {f"{name}_lagged_by_{lag}": lag for lag in self._lags.get(name, [])}
 
     @property
     @lru_cache(None)
     def lagged_variables(self) -> Dict[str, str]:
-        """
-        Lagged variables.
+        """Lagged variables.
 
-        Returns:
-            Dict[str, str]: dictionary of variable names corresponding to lagged variables
-                mapped to variable that is lagged
+        Parameters
+        ----------
+        Dict[str, str]
+            dictionary of variable names corresponding to lagged variables,
+            mapped to variable that is lagged
         """
         vars = {}
         for name in self._lags:
@@ -614,7 +699,14 @@ class TimeSeriesDataSet(Dataset):
     @property
     @lru_cache(None)
     def lagged_targets(self) -> Dict[str, str]:
-        """Subset of `lagged_variables` but only includes variables that are lagged targets."""
+        """Subset of lagged_variables to variables that are lagged targets.
+
+        Parameters
+        ----------
+        Dict[str, str]
+            dictionary of variable names corresponding to lagged variables,
+            mapped to variable that is lagged
+        """
         vars = {}
         for name in self._lags:
             vars.update(
@@ -632,8 +724,9 @@ class TimeSeriesDataSet(Dataset):
         """
         Minimum number of time steps variables are lagged.
 
-        Returns:
-            int: minimum lag
+        Returns
+        -------
+        int: minimum lag
         """
         if len(self._lags) == 0:
             return 1e9
@@ -646,8 +739,9 @@ class TimeSeriesDataSet(Dataset):
         """
         Maximum number of time steps variables are lagged.
 
-        Returns:
-            int: maximum lag
+        Returns
+        -------
+        int: maximum lag
         """
         if len(self._lags) == 0:
             return 0
@@ -655,11 +749,11 @@ class TimeSeriesDataSet(Dataset):
             return max([max(lag) for lag in self._lags.values()])
 
     def _set_target_normalizer(self, data: pd.DataFrame):
-        """
-        Determine target normalizer.
+        """Determine target normalizer.
 
-        Args:
-            data (pd.DataFrame): input data
+        Parameters
+        ----------
+        data (pd.DataFrame): input data
         """
         if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
             normalizers = []
@@ -700,12 +794,15 @@ class TimeSeriesDataSet(Dataset):
         ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
         assert isinstance(
             self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)
-        ), f"target_normalizer has to be either None or of class TorchNormalizer but found {self.target_normalizer}"
+        ), (
+            f"target_normalizer has to be either None or of "
+            f"class TorchNormalizer but found {self.target_normalizer}"
+        )
         assert not self.multi_target or isinstance(
             self.target_normalizer, MultiNormalizer
         ), (
-            "multiple targets / list of targets requires MultiNormalizer as target_normalizer "
-            f"but found {self.target_normalizer}"
+            "multiple targets / list of targets requires MultiNormalizer as "
+            f"target_normalizer but found {self.target_normalizer}"
         )
 
     @property
@@ -714,7 +811,9 @@ class TimeSeriesDataSet(Dataset):
         """
         Mapping of group id names to group ids used to identify series in dataset -
         group ids can also be used for target normalizer.
-        The former can change from training to validation and test dataset while the later must not.
+
+        The former can change from training to validation and test dataset
+        while the later must not.
         """
         return {name: f"__group_id__{name}" for name in self.group_ids}
 
@@ -729,10 +828,11 @@ class TimeSeriesDataSet(Dataset):
         return list(self._group_ids_mapping.values())
 
     def _validate_data(self, data: pd.DataFrame):
-        """
-        Validate that data will not cause hick-ups later on.
-        """
-        # check for numeric categoricals which can cause hick-ups in logging in tensorboard
+        """Validate assumptions on data.."""
+        assert (
+            data[self.time_idx].dtype.kind == "i"
+        ), "Timeseries index should be of type integer"
+        # numeric categoricals which can cause issues in tensorborad logging
         category_columns = data.head(1).select_dtypes("category").columns
         object_columns = data.head(1).select_dtypes(object).columns
         for name in self.flat_categoricals:
@@ -746,14 +846,30 @@ class TimeSeriesDataSet(Dataset):
                 )
             ):
                 raise ValueError(
-                    f"Data type of category {name} was found to be numeric - use a string type / categorified string"
+                    f"Data type of category {name} was found to be numeric"
+                    " - use a string type / categorified string"
                 )
         # check for "." in column names
         columns_with_dot = data.columns[data.columns.str.contains(r"\.")]
         if len(columns_with_dot) > 0:
             raise ValueError(
-                f"column names must not contain '.' characters. Names {columns_with_dot.tolist()} are invalid"
+                f"column names must not contain '.' characters. "
+                f"Names {columns_with_dot.tolist()} are invalid"
             )
+
+        assert data.index.is_unique, "data index has to be unique"
+
+        if len(self._lags) > 0:
+            for name in self._lags:
+                lagged_names = self._get_lagged_names(name)
+                for lagged_name in lagged_names:
+                    assert (
+                        lagged_name not in data.columns
+                    ), (
+                        f"{lagged_name} is a protected column and must not be "
+                        "present in data"
+                    )
+
 
     def save(self, fname: str) -> None:
         """
@@ -2263,3 +2379,23 @@ class TimeSeriesDataSet(Dataset):
             attributes=self.get_parameters(),
             extra_attributes=dict(length=len(self)),
         )
+
+
+def _coerce_to_list(obj):
+    """Coerce object to list.
+
+    None is coerced to empty list, otherwise list constructor is used.
+    """
+    if obj is None:
+        return []
+    return list(obj)
+
+
+def _coerce_to_dict(obj):
+    """Coerce object to dict.
+
+    None is coerce to empty dict, otherwise deepcopy is used.
+    """
+    if obj is None:
+        return {}
+    return deepcopy(obj)
