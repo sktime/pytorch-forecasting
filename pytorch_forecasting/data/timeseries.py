@@ -115,11 +115,14 @@ def check_for_nonfinite(
         if na > 0:
             raise ValueError(
                 f"{na} ({na / tensor.size(0):.2%}) of {name} "
-                "values were found to be NA or infinite (even after encoding). NA values are not allowed "
-                "`allow_missing_timesteps` refers to missing rows, not to missing values. Possible strategies to "
+                "values were found to be NA or infinite (even after encoding). "
+                "NA values are not allowed "
+                "`allow_missing_timesteps` refers to missing rows, not to missing "
+                "values. Possible strategies to "
                 f"fix the issue are (a) dropping the variable {name}, "
                 "(b) using `NaNLabelEncoder(add_nan=True)` for categorical variables, "
-                "(c) filling missing values and/or (d) optionally adding a variable indicating filled values"
+                "(c) filling missing values and/or (d) optionally adding a variable "
+                "indicating filled values"
             )
     return tensor
 
@@ -2266,54 +2269,66 @@ class TimeSeriesDataSet(Dataset):
 
             **kwargs: additional arguments to ``DataLoader()``
 
-        Returns:
-            DataLoader: dataloader that returns Tuple.
-                First entry is ``x``, a dictionary of tensors with the entries (and shapes in brackets)
+        Returns
+        -------
+        DataLoader: dataloader that returns Tuple.
+            First entry is ``x``, a dictionary of tensors with the entries,
+            and shapes in brackets.
 
-                * encoder_cat (batch_size x n_encoder_time_steps x n_features): long tensor of encoded
-                  categoricals for encoder
-                * encoder_cont (batch_size x n_encoder_time_steps x n_features): float tensor of scaled continuous
-                  variables for encoder
-                * encoder_target (batch_size x n_encoder_time_steps or list thereof with each entry for a different
-                  target):
-                  float tensor with unscaled continous target or encoded categorical target,
-                  list of tensors for multiple targets
-                * encoder_lengths (batch_size): long tensor with lengths of the encoder time series. No entry will
-                  be greater than n_encoder_time_steps
-                * decoder_cat (batch_size x n_decoder_time_steps x n_features): long tensor of encoded
-                  categoricals for decoder
-                * decoder_cont (batch_size x n_decoder_time_steps x n_features): float tensor of scaled continuous
-                  variables for decoder
-                * decoder_target (batch_size x n_decoder_time_steps or list thereof with each entry for a different
-                  target):
-                  float tensor with unscaled continous target or encoded categorical target for decoder
-                  - this corresponds to first entry of ``y``, list of tensors for multiple targets
-                * decoder_lengths (batch_size): long tensor with lengths of the decoder time series. No entry will
-                  be greater than n_decoder_time_steps
-                * group_ids (batch_size x number_of_ids): encoded group ids that identify a time series in the dataset
-                * target_scale (batch_size x scale_size or list thereof with each entry for a different target):
-                  parameters used to normalize the target.
-                  Typically these are mean and standard deviation. Is list of tensors for multiple targets.
+            * encoder_cat : long (batch_size x n_encoder_time_steps x n_features)
+                long tensor of encoded categoricals for encoder
+            * encoder_cont : float (batch_size x n_encoder_time_steps x n_features)
+                float tensor of scaled continuous variables for encoder
+            * encoder_target : float (batch_size x n_encoder_time_steps) or list thereof
+                if list, each entry for a different target.
+                float tensor with unscaled continous target
+                or encoded categorical target,
+                list of tensors for multiple targets
+            * encoder_lengths : long (batch_size)
+                long tensor with lengths of the encoder time series. No entry will
+                be greater than n_encoder_time_steps
+            * decoder_cat : long (batch_size x n_decoder_time_steps x n_features)
+                long tensor of encoded categoricals for decoder
+            * decoder_cont : float (batch_size x n_decoder_time_steps x n_features)
+                float tensor of scaled continuous variables for decoder
+            * decoder_target : float (batch_size x n_decoder_time_steps) or list thereof
+                if list, with each entry for a different target.
+                float tensor with unscaled continous target or encoded categorical
+                target for decoder
+                - this corresponds to first entry of ``y``,
+                list of tensors for multiple targets
+            * decoder_lengths : long (batch_size)
+                long tensor with lengths of the decoder time series. No entry will
+                be greater than n_decoder_time_steps
+            * group_ids : float (batch_size x number_of_ids)
+                encoded group ids that identify a time series in the dataset
+            * target_scale : float (batch_size x scale_size) or list thereof.
+                if list, with each entry for a different target.
+                parameters used to normalize the target.
+                Typically these are mean and standard deviation.
+                Is list of tensors for multiple targets.
 
+            Second entry is ``y``, a tuple of the form (``target``, `weight`)
 
-                Second entry is ``y``, a tuple of the form (``target``, `weight`)
+            * target : float (batch_size x n_decoder_time_steps) or list thereof
+                if list, with each entry for a different target.
+                unscaled (continuous) or encoded (categories) targets,
+                list of tensors for multiple targets
+            * weight : None or float (batch_size x n_decoder_time_steps)
+                weights for each target, None if no weight is used (= equal weights)
 
-                * target (batch_size x n_decoder_time_steps or list thereof with each entry for a different target):
-                  unscaled (continuous) or encoded (categories) targets, list of tensors for multiple targets
-                * weight (None or batch_size x n_decoder_time_steps): weight
+        Example
+        -------
+        Weight by samples for training:
 
-        Example:
+        .. code-block:: python
 
-            Weight by samples for training:
+            from torch.utils.data import WeightedRandomSampler
 
-            .. code-block:: python
-
-                from torch.utils.data import WeightedRandomSampler
-
-                # length of probabilties for sampler have to be equal to the length of the index
-                probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
-                sampler = WeightedRandomSampler(probabilities, len(probabilities))
-                dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)
+            # length of probabilties for sampler have to be equal to the length of index
+            probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
+            sampler = WeightedRandomSampler(probabilities, len(probabilities))
+            dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)
         """
         default_kwargs = dict(
             shuffle=train,
@@ -2336,7 +2351,8 @@ class TimeSeriesDataSet(Dataset):
                     )
                 else:
                     raise ValueError(
-                        f"batch_sampler {sampler} unknown - see docstring for valid batch_sampler"
+                        f"batch_sampler {sampler} unknown - "
+                        "see docstring for valid batch_sampler"
                     )
             del kwargs["batch_size"]
             del kwargs["shuffle"]
