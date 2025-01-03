@@ -324,6 +324,7 @@ class TimeSeriesDataSet(Dataset):
         to get all subseries.
         On the other hand, predict_mode = True is ideal for validation cases.
     """
+
     # todo: refactor:
     # - creating base class with minimal functionality
     # - "outsource" transformations -> use pytorch transformations as default
@@ -636,13 +637,8 @@ class TimeSeriesDataSet(Dataset):
                     if (
                         lag < self.max_prediction_length
                     ):  # keep in unknown as if lag is too small
-                        if (
-                            lagged_name
-                            not in self._time_varying_unknown_categoricals
-                        ):
-                            self._time_varying_unknown_categoricals.append(
-                                lagged_name
-                            )
+                        if lagged_name not in self._time_varying_unknown_categoricals:
+                            self._time_varying_unknown_categoricals.append(lagged_name)
                     if lagged_name not in self._time_varying_known_categoricals:
                         # switch to known so that lag can be used in decoder directly
                         self._time_varying_known_categoricals.append(lagged_name)
@@ -792,9 +788,7 @@ class TimeSeriesDataSet(Dataset):
             not isinstance(self.target_normalizer, EncoderNormalizer)
             or self.min_encoder_length >= self.target_normalizer.min_length
         ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
-        assert isinstance(
-            self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)
-        ), (
+        assert isinstance(self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)), (
             f"target_normalizer has to be either None or of "
             f"class TorchNormalizer but found {self.target_normalizer}"
         )
@@ -863,13 +857,10 @@ class TimeSeriesDataSet(Dataset):
             for name in self._lags:
                 lagged_names = self._get_lagged_names(name)
                 for lagged_name in lagged_names:
-                    assert (
-                        lagged_name not in data.columns
-                    ), (
+                    assert lagged_name not in data.columns, (
                         f"{lagged_name} is a protected column and must not be "
                         "present in data"
                     )
-
 
     def save(self, fname: str) -> None:
         """
