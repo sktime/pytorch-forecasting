@@ -2250,24 +2250,27 @@ class TimeSeriesDataSet(Dataset):
         batch_sampler: Union[Sampler, str] = None,
         **kwargs,
     ) -> DataLoader:
-        """
-        Get dataloader from dataset.
+        """Construct dataloader from dataset, for use in models.
 
-        The
+        Parameters
+        ----------
+        train : bool, optional, default=Trze
+            whether dataloader is used for training (True) or prediction (False).
+            Will shuffle and drop last batch if True. Defaults to True.
+        batch_size : int, optional, default=64
+            batch size for training model. Defaults to 64.
+        batch_sampler : Sampler, str, or None, optional, default=None
+            torch batch sampler or string. One of
 
-        Args:
-            train (bool, optional): if dataloader is used for training or prediction
-                Will shuffle and drop last batch if True. Defaults to True.
-            batch_size (int): batch size for training model. Defaults to 64.
-            batch_sampler (Union[Sampler, str]): batch sampler or string. One of
+            * "synchronized": ensure that samples in decoder are aligned in time.
+                Does not support missing values in dataset.
+                This makes only sense if the underlying algorithm makes use of
+                values aligned in time.
+            * PyTorch Sampler instance: any PyTorch sampler,
+                e.g., ``the WeightedRandomSampler()``
+            * None: samples are taken randomly from times series.
 
-                * "synchronized": ensure that samples in decoder are aligned in time. Does not support missing
-                  values in dataset. This makes only sense if the underlying algorithm makes use of values aligned
-                  in time.
-                * PyTorch Sampler instance: any PyTorch sampler, e.g. the WeightedRandomSampler()
-                * None: samples are taken randomly from times series.
-
-            **kwargs: additional arguments to ``DataLoader()``
+        **kwargs: additional arguments passed to ``DataLoader`` constructor
 
         Returns
         -------
