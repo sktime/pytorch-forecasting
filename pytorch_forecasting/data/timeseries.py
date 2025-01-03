@@ -1173,21 +1173,27 @@ class TimeSeriesDataSet(Dataset):
         group_id: bool = False,
         **kwargs,
     ) -> np.ndarray:
-        """
-        Scale and encode values.
+        """Scale and encode values.
 
-        Args:
-            name (str): name of variable
-            values (Union[pd.Series, torch.Tensor, np.ndarray]): values to encode/scale
-            data (pd.DataFrame, optional): extra data used for scaling (e.g. dataframe with groups columns).
-                Defaults to None.
-            inverse (bool, optional): if to conduct inverse transformation. Defaults to False.
-            group_id (bool, optional): If the passed name refers to a group id (different encoders are used for these).
-                Defaults to False.
-            **kwargs: additional arguments for transform/inverse_transform method
+        Parameters
+        ----------
+        name : str
+            name of variable
+        values : Union[pd.Series, torch.Tensor, np.ndarray]
+            values to encode/scale
+        data : pd.DataFrame, optional, default=None
+            extra data used for scaling (e.g. dataframe with groups columns), by default None
+        inverse : bool, optional, default=False
+            whether transform is plain (True), or inverse (False)
+        group_id : bool, optional, default=False
+            whether the passed name refers to a group id -
+            different encoders are used for these
+        **kwargs: additional arguments for transform/inverse_transform method
 
-        Returns:
-            np.ndarray: (de/en)coded/(de)scaled values
+        Returns
+        -------
+        np.ndarray
+            (de/en)coded/(de)scaled values
         """
         transformer = self.get_transformer(name, group_id=group_id)
         if transformer is None:
@@ -1473,20 +1479,30 @@ class TimeSeriesDataSet(Dataset):
         predict: bool = False,
         **update_kwargs,
     ):
-        """
-        Generate dataset with different underlying data but same variable encoders and scalers, etc.
+        """Generate dataset with different data, same variable encoders, scalers, etc.
 
-        Args:
-            parameters (Dict[str, Any]): dataset parameters which to use for the new dataset
-            data (pd.DataFrame): data from which new dataset will be generated
-            stop_randomization (bool, optional): If to stop randomizing encoder and decoder lengths,
-                e.g. useful for validation set. Defaults to False.
-            predict (bool, optional): If to predict the decoder length on the last entries in the
-                time index (i.e. one prediction per group only). Defaults to False.
-            **kwargs: keyword arguments overriding parameters
+        Returns TimeSeriesDataSet with same parameters as self, but different data.
+        May override parameters with update_kwargs.
 
-        Returns:
-            TimeSeriesDataSet: new dataset
+        Parameters
+        ----------
+        parameters : Dict[str, Any]
+            dataset parameters which to use for the new dataset
+        data : pd.DataFrame
+            data from which new dataset will be generated
+        stop_randomization : bool, optional, default=None
+            Whether to stop randomizing encoder and decoder lengths,
+            useful for validation set.
+        predict : bool, optional, default=False
+            Whether to predict the decoder length on the last entries in the
+            time index (i.e. one prediction per group only).
+        **update_kwargs
+            keyword arguments overrides, passed to constructor of the new dataset
+
+        Returns
+        -------
+        TimeSeriesDataSet
+            new dataset
         """
         parameters = deepcopy(parameters)
         if predict:
@@ -1755,15 +1771,19 @@ class TimeSeriesDataSet(Dataset):
         variable: str,
         target: Union[str, slice] = "decoder",
     ) -> None:
-        """
-        Convenience method to quickly overwrite values in decoder or encoder (or both) for a specific variable.
+        """Overwrite values in decoder or encoder (or both) for a specific variable.
 
-        Args:
-            values (Union[float, torch.Tensor]): values to use for overwrite.
-            variable (str): variable whose values should be overwritten.
-            target (Union[str, slice], optional): positions to overwrite. One of "decoder", "encoder" or "all" or
-                a slice object which is directly used to overwrite indices, e.g. ``slice(-5, None)`` will overwrite
-                the last 5 values. Defaults to "decoder".
+        Parameters
+        ----------
+        values : Union[float, torch.Tensor]
+            values to use for overwrite.
+        variable : str
+            variable whose values should be overwritten.
+        target : Union[str, slice], optional)
+            positions to overwrite. One of "decoder", "encoder" or "all" or
+            a slice object which is directly used to overwrite indices,
+            e.g., ``slice(-5, None)`` will overwrite
+            the last 5 values. Defaults to "decoder".
         """
         values = torch.tensor(
             self.transform_values(
