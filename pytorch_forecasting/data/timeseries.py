@@ -510,8 +510,6 @@ class TimeSeriesDataSet(Dataset):
         self._check_params()
 
         # add time index relative to prediction position
-        if self.add_relative_time_idx or self.add_encoder_length:
-            data = data.copy()  # only copies indices (underlying data is NOT copied)
         if self.add_relative_time_idx:
             assert (
                 "relative_time_idx" not in data.columns
@@ -521,9 +519,6 @@ class TimeSeriesDataSet(Dataset):
                 and "relative_time_idx" not in self.reals
             ):
                 self._time_varying_known_reals.append("relative_time_idx")
-            data.loc[:, "relative_time_idx"] = (
-                0.0  # dummy - real value will be set dynamically in __getitem__()
-            )
 
         # add decoder length to static real variables
         if self.add_encoder_length:
@@ -535,6 +530,15 @@ class TimeSeriesDataSet(Dataset):
                 and "encoder_length" not in self.reals
             ):
                 self._static_reals.append("encoder_length")
+
+        # add columns for additional features
+        if self.add_relative_time_idx or self.add_encoder_length:
+            data = data.copy()  # only copies indices (underlying data is NOT copied)
+        if self.add_relative_time_idx:
+            data.loc[:, "relative_time_idx"] = (
+                0.0  # dummy - real value will be set dynamically in __getitem__()
+            )
+        if self.add_encoder_length:
             data.loc[:, "encoder_length"] = (
                 0  # dummy - real value will be set dynamically in __getitem__()
             )
@@ -558,10 +562,10 @@ class TimeSeriesDataSet(Dataset):
 
         # preprocess data
         data = self._preprocess_data(data)
+
+        msg = "Target normalizer is separate and not in scalers."
         for target in self.target_names:
-            assert (
-                target not in self._scalers
-            ), "Target normalizer is separate and not in scalers."
+            assert target not in self._scalers, msg
 
         # create index
         self.index = self._construct_index(data, predict_mode=self.predict_mode)
@@ -1846,29 +1850,25 @@ class TimeSeriesDataSet(Dataset):
             Tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
         index = self.index.iloc[idx]
-        # get index data
-        data_cont = self.data["reals"][index.index_start : index.index_end + 1].clone()
-        data_cat = self.data["categoricals"][
-            index.index_start : index.index_end + 1
-        ].clone()
-        time = self.data["time"][index.index_start : index.index_end + 1].clone()
-        target = [
-            d[index.index_start : index.index_end + 1].clone()
-            for d in self.data["target"]
-        ]
+
+        # slice data based on index
+        idx_slice = slice(index.index_start, index.index_end + 1)
+
+        data_cont = self.data["reals"][idx_slice].clone()
+        data_cat = self.data["categoricals"][idx_slice].clone()
+        time = self.data["time"][idx_slice].clone()
+        target = [d[idx_slice].clone() for d in self.data["target"]]
         groups = self.data["groups"][index.index_start].clone()
         if self.data["weight"] is None:
             weight = None
         else:
-            weight = self.data["weight"][
-                index.index_start : index.index_end + 1
-            ].clone()
+            weight = self.data["weight"][idx_slice].clone()
         # get target scale in the form of a list
         target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
         if not isinstance(self.target_normalizer, MultiNormalizer):
             target_scale = [target_scale]
 
-        # fill in missing values (if not all time indices are specified
+        # fill in missing values (if not all time indices are specified)
         sequence_length = len(time)
         if sequence_length < index.sequence_length:
             assert (
