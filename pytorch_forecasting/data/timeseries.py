@@ -1770,16 +1770,13 @@ class TimeSeriesDataSet(Dataset):
                 variable, np.asarray(values).reshape(-1), inverse=False
             )
         ).squeeze()
-        assert target in [
-            "all",
-            "decoder",
-            "encoder",
-        ], f"target has be one of 'all', 'decoder' or 'encoder' but target={target} instead"
+        msg = (
+            f"target has be one of 'all', 'decoder' or 'encoder' "
+            f"but got target={target} instead"
+        )
+        assert target in ["all", "decoder", "encoder"], msg
 
-        if (
-            variable in self._static_categoricals
-            or variable in self._static_categoricals
-        ):
+        if variable in self._static_categoricals or variable in self._static_reals:
             target = "all"
 
         if variable in self.target_names:
@@ -1811,15 +1808,19 @@ class TimeSeriesDataSet(Dataset):
         time_last: Union[int, pd.Series, np.ndarray],
         sequence_length: Union[int, pd.Series, np.ndarray],
     ) -> Union[int, pd.Series, np.ndarray]:
-        """
-        Calculate length of decoder.
+        """Calculate length of decoder.
 
-        Args:
-            time_last (Union[int, pd.Series, np.ndarray]): last time index of the sequence
-            sequence_length (Union[int, pd.Series, np.ndarray]): total length of the sequence
+        Parameters
+        ----------
+        time_last : Union[int, pd.Series, np.ndarray]
+            last time index of the sequence
+        sequence_length : Union[int, pd.Series, np.ndarray]
+            total length of the sequence
 
-        Returns:
-            Union[int, pd.Series, np.ndarray]: decoder length(s)
+        Returns
+        -------
+        Union[int, pd.Series, np.ndarray]
+            decoder length(s)
         """
         if isinstance(time_last, int):
             decoder_length = min(
@@ -2069,9 +2070,11 @@ class TimeSeriesDataSet(Dataset):
                 idx = self.reals.index(self._overwrite_values["variable"])
                 data_cont[positions, idx] = self._overwrite_values["values"]
             else:
-                assert (
-                    self._overwrite_values["variable"] in self.flat_categoricals
-                ), "overwrite values variable has to be either in real or categorical variables"
+                msg = (
+                    "overwrite values variable has to be "
+                    "either in real or categorical variables"
+                )
+                assert self._overwrite_values["variable"] in self.flat_categoricals, msg
                 idx = self.flat_categoricals.index(self._overwrite_values["variable"])
                 data_cat[positions, idx] = self._overwrite_values["values"]
 
@@ -2109,12 +2112,43 @@ class TimeSeriesDataSet(Dataset):
         """
         Collate function to combine items into mini-batch for dataloader.
 
-        Args:
-            batches (List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]): List of samples generated with
-                :py:meth:`~__getitem__`.
+        Parameters
+        ----------
+        batches (List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]):
+            List of samples generated with :py:meth:`~__getitem__`.
 
-        Returns:
-            Tuple[Dict[str, torch.Tensor], Tuple[Union[torch.Tensor, List[torch.Tensor]], torch.Tensor]: minibatch
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            dictionary of minibatches with keys:
+
+            * encoder_cat: (batch_size, encoder_length, num_categorical),
+                categorical variables for encoder
+            * encoder_cont: (batch_size, encoder_length, num_real),
+                continuous variables for encoder
+            * encoder_target: (batch_size, encoder_length, num_target),
+                target variables for encoder
+            * encoder_lengths: (batch_size), length of encoder
+            * decoder_cat: (batch_size, decoder_length, num_categorical),
+                categorical variables for decoder
+            * decoder_cont: (batch_size, decoder_length, num_real),
+                continuous variables for decoder
+            * decoder_target: (batch_size, decoder_length, num_target),
+                target variables for decoder
+            * decoder_lengths: (batch_size), length of decoder
+            * decoder_time_idx: (batch_size, decoder_length),
+                time index for decoder
+            * groups: (batch_size), group ids
+            * target_scale: (batch_size, num_target),
+                scale of target variables
+
+        Tuple[torch.Tensor, torch.Tensor]
+            minibatch, 2-tuple with entries:
+
+            * target: (batch_size, decoder_length, num_target),
+                target variables
+            * weight: (batch_size, decoder_length),
+                weights for target variables
         """
         # collate function for dataloader
         # lengths
