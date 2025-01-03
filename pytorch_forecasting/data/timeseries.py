@@ -1650,19 +1650,23 @@ class TimeSeriesDataSet(Dataset):
         return df_index
 
     def filter(self, filter_func: Callable, copy: bool = True) -> "TimeSeriesDataSet":
-        """
-        Filter subsequences in dataset.
+        """Filter subsequences in dataset.
 
         Uses interpretable version of index :py:meth:`~decoded_index`
         to filter subsequences in dataset.
 
-        Args:
-            filter_func (Callable): function to filter. Should take :py:meth:`~decoded_index`
-                dataframe as only argument which contains group ids and time index columns.
-            copy (bool): if to return copy of dataset or filter inplace.
+        Parameters
+        ----------
+        filter_func : Callable
+            function to filter. Should take :py:meth:`~decoded_index`
+            dataframe as only argument which contains group ids and time index columns.
+        copy : bool, optional, default=True
+            whether to return copy of dataset (True) or filter inplace (False).
 
-        Returns:
-            TimeSeriesDataSet: filtered dataset
+        Returns
+        -------
+        TimeSeriesDataSet
+            filtered dataset
         """
         # calculate filter
         filtered_index = self.index[np.asarray(filter_func(self.decoded_index))]
@@ -1726,17 +1730,21 @@ class TimeSeriesDataSet(Dataset):
         length: int = None,
         min_length: int = None,
     ):
-        """
-        Plot expected randomized length distribution.
+        """Plot expected randomized length distribution.
 
-        Args:
-            betas (Tuple[float, float], optional): Tuple of betas, e.g. ``(0.2, 0.05)`` to use for randomization.
-                Defaults to ``randomize_length`` of dataset.
-            length (int, optional): . Defaults to ``max_encoder_length``.
-            min_length (int, optional): [description]. Defaults to ``min_encoder_length``.
+        Parameters
+        ----------
+        betas : Tuple[float, float], optional, default=randomize_length of dataset
+            Tuple of betas, e.g. ``(0.2, 0.05)`` to use for randomization.
+        length : int, optional, default=max_encoder_length of dataset
+            Length of sequence to plot.
+        min_length : int, optional, default=min_encoder_length of dataset
+            Minimum length of sequence to plot.
 
-        Returns:
-            Tuple[plt.Figure, torch.Tensor]: tuple of figure and histogram based on 1000 samples
+        Returns
+        -------
+        Tuple[plt.Figure, torch.Tensor]
+            tuple of figure and histogram based on 1000 samples
         """
         _check_matplotlib("plot_randomization")
 
