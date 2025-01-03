@@ -1510,7 +1510,8 @@ class TimeSeriesDataSet(Dataset):
                 stop_randomization = True
             elif not stop_randomization:
                 warnings.warn(
-                    "If predicting, no randomization should be possible - setting stop_randomization=True",
+                    "If predicting, no randomization should be possible - "
+                    "setting stop_randomization=True",
                     UserWarning,
                 )
                 stop_randomization = True
@@ -1527,16 +1528,21 @@ class TimeSeriesDataSet(Dataset):
         return new
 
     def _construct_index(self, data: pd.DataFrame, predict_mode: bool) -> pd.DataFrame:
-        """
-        Create index of samples.
+        """Create index of samples returned by getitem dunder.
 
-        Args:
-            data (pd.DataFrame): preprocessed data
-            predict_mode (bool): if to create one same per group with prediction length equals ``max_decoder_length``
+        Parameters
+        ----------
+        data : pd.DataFrame
+            preprocessed data
+        predict_mode : bool
+            whether to create one sample per group
+            with prediction length equals ``max_decoder_length``
 
-        Returns:
-            pd.DataFrame: index dataframe for timesteps and index dataframe for groups.
-                It contains a list of all possible subsequences.
+        Returns
+        -------
+        pd.DataFrame
+            index dataframe for timesteps and index dataframe for groups.
+            It contains a list of all possible subsequences.
         """
         g = data.groupby(self._group_ids, observed=True)
 
@@ -1568,12 +1574,15 @@ class TimeSeriesDataSet(Dataset):
             upper=df_index["count"] + df_index.time_first - 1
         )
 
-        # if there are missing timesteps, we cannot say directly what is the last timestep to include
+        # if there are missing timesteps, we cannot say directly what
+        # is the last timestep to include
         # therefore we iterate until it is found
         if (df_index["time_diff_to_next"] != 1).any():
-            assert (
-                self.allow_missing_timesteps
-            ), "Time difference between steps has been idenfied as larger than 1 - set allow_missing_timesteps=True"
+            msg = (
+                "Time difference between steps has been idenfied as larger than 1 - "
+                "set allow_missing_timesteps=True"
+            )
+            assert self.allow_missing_timesteps, msg
 
         df_index["index_end"], missing_sequences = _find_end_indices(
             diffs=df_index.time_diff_to_next.to_numpy(),
@@ -1581,7 +1590,8 @@ class TimeSeriesDataSet(Dataset):
             min_length=min_sequence_length,
         )
         # add duplicates but mostly with shorter sequence length for start of timeseries
-        # while the previous steps have ensured that we start a sequence on every time step, the missing_sequences
+        # while the previous steps have ensured that we start a sequence on every time
+        # step, the missing_sequences
         # ensure that there is a sequence that finishes on every timestep
         if len(missing_sequences) > 0:
             shortened_sequences = df_index.iloc[missing_sequences[:, 0]].assign(
@@ -1605,7 +1615,7 @@ class TimeSeriesDataSet(Dataset):
             # sequence must be at least of minimal prediction length
             lambda x: (x.sequence_length >= min_sequence_length)
             &
-            # prediction must be for after minimal prediction index + length of prediction
+            # prediction must be for minimal prediction index + length of prediction
             (
                 x["sequence_length"] + x["time"]
                 >= self.min_prediction_idx + self.min_prediction_length
@@ -1614,8 +1624,10 @@ class TimeSeriesDataSet(Dataset):
 
         if (
             predict_mode
-        ):  # keep longest element per series (i.e. the first element that spans to the end of the series)
-            # filter all elements that are longer than the allowed maximum sequence length
+        ):  # keep longest element per series
+            # (i.e., the first element that spans to the end of the series)
+            # filter all elements that are longer
+            # than the allowed maximum sequence length
             df_index = df_index[
                 lambda x: (x["time_last"] - x["time"] + 1 <= max_sequence_length)
                 & (x["sequence_length"] >= min_sequence_length)
@@ -1636,16 +1648,20 @@ class TimeSeriesDataSet(Dataset):
                     name, missing_groups[id], inverse=True, group_id=True
                 )
             warnings.warn(
-                "Min encoder length and/or min_prediction_idx and/or min prediction length and/or lags are "
-                "too large for "
-                f"{len(missing_groups)} series/groups which therefore are not present in the dataset index. "
+                "Min encoder length and/or min_prediction_idx and/or min "
+                "prediction length and/or lags are too large for "
+                f"{len(missing_groups)} series/groups which therefore are not present"
+                " in the dataset index. "
                 "This means no predictions can be made for those series. "
-                f"First 10 removed groups: {list(missing_groups.iloc[:10].to_dict(orient='index').values())}",
+                f"First 10 removed groups: "
+                f"{list(missing_groups.iloc[:10].to_dict(orient='index').values())}",
                 UserWarning,
             )
-        assert (
-            len(df_index) > 0
-        ), "filters should not remove entries all entries - check encoder/decoder lengths and lags"
+        msg = (
+            "filters should not remove entries all entries - "
+            "check encoder/decoder lengths and lags"
+        )
+        assert len(df_index) > 0, msg
 
         return df_index
 
