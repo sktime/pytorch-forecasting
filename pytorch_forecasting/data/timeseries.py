@@ -544,7 +544,9 @@ class TimeSeriesDataSet(Dataset):
         self._data_properties = self._data_properties(data)
 
         # target normalizer
-        self.target_normalizer = self._target_normalizer(self._data_properties)
+        self.target_normalizer = self._target_normalizer(
+            self._data_properties, self.target_normalizer
+        )
 
         # add time index relative to prediction position
         if self.add_relative_time_idx:
@@ -835,7 +837,7 @@ class TimeSeriesDataSet(Dataset):
         else:
             return max([max(lag) for lag in self._lags.values()])
 
-    def _target_normalizer(self, data_properties):
+    def _target_normalizer(self, data_properties, target_normalizer):
         """Determine target normalizer.
 
         Determines normalizers for variables based on self.target_normalizer setting.
@@ -859,17 +861,20 @@ class TimeSeriesDataSet(Dataset):
         ----------
         data_properties : dict
             Dictionary of data properties as returned by self._data_properties(data)
+        target_normalizer : Union[NORMALIZER, str, list, tuple, None]
+            Normalizer for target variable. If "auto", the normalizer is determined
+            as above.
 
         Returns
         -------
         TorchNormalizer
             Normalizer for target variable, determined as above.
         """
-        if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
+        if isinstance(target_normalizer, str) and target_normalizer == "auto":
             target_normalizer = self._get_auto_normalizer(data_properties)
-        elif isinstance(self.target_normalizer, (tuple, list)):
+        elif isinstance(target_normalizer, (tuple, list)):
             target_normalizer = MultiNormalizer(self.target_normalizer)
-        elif self.target_normalizer is None:
+        elif target_normalizer is None:
             target_normalizer = TorchNormalizer(method="identity")
 
         # validation
