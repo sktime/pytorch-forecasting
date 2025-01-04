@@ -534,14 +534,17 @@ class TimeSeriesDataSet(Dataset):
             add_encoder_length = self.min_encoder_length != self.max_encoder_length
         self.add_encoder_length = add_encoder_length
 
-        # target normalizer
-        self._set_target_normalizer(data)
-
         # overwrite values
         self.reset_overwrite_values()
 
         # check parameters
         self._check_params()
+
+        # get metadata from data
+        self._data_properties = self._data_properties(data)
+
+        # target normalizer
+        self.target_normalizer = self._target_normalizer(self._data_properties)
 
         # add time index relative to prediction position
         if self.add_relative_time_idx:
@@ -642,6 +645,53 @@ class TimeSeriesDataSet(Dataset):
             ), f"target {target} should be an unknown continuous variable in the future"
 
         assert self.min_lag > 0, "lags should be positive"
+
+    def _data_properties(self, data):
+        """Returns a dict with properties of the data used later.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+
+        Returns
+        -------
+        dict
+            dictionary with properties of the data.
+            The following fields are returned:
+
+            * columns : list[str]
+                list of columns in the data
+            * target_type : dict[str, str]
+                type of target variable, categorial or real.
+                Keys are target variable names in self.target_names.
+                Value is either "categorical" or "real".
+            * target_positive : dict[str, bool]
+                whether target variable is positive.
+                Keys are target variable names in self.target_names that are real.
+                Value is True if all values of the target variable are positive.
+                Computed and returned only if target_normalizer is "auto".
+            * target_skew : dict[str, float]
+                skew of target variable.
+                Keys are target variable names in self.target_names that are
+                real and positive. Value is the skew of the target variable.
+                Computed and returned only if target_normalizer is "auto".
+        """
+        target_norm = self.target_normalizer
+        details_required = isinstance(target_norm, str) and target_norm == "auto"
+
+        props = {"target_type": {}, "target_skew": {}, "target_positive": {}}
+        props["columns"] = data.columns.tolist()
+        for target in self.target_names:
+            if data[target].dtype.kind != "f":  # category
+                props["target_type"][target] = "categorical"
+            else:
+                props["target_type"][target] = "real"
+
+                if details_required:
+                    props["target_positive"][target] = (data[target] > 0).all()
+                    if props["target_positive"][target]:
+                        props["target_skew"][target] = data[target].skew()
+        return props
 
     def _set_lagged_variables(self):
         """Add lagged variables to lists of variables.
@@ -785,60 +835,103 @@ class TimeSeriesDataSet(Dataset):
         else:
             return max([max(lag) for lag in self._lags.values()])
 
-    def _set_target_normalizer(self, data: pd.DataFrame):
+    def _target_normalizer(self, data_properties):
         """Determine target normalizer.
+
+        Determines normalizers for variables based on self.target_normalizer setting.
+
+        Coerces normalizers to torch normalizer, and deals with the "auto" setting.
+
+        In the auto case, the normalizer for a variable x is determined as follows:
+
+        * if x is categorical, a NaNLabelEncoder is used
+        * if x is real and max_encoder_length > 20 and min_encoder_length > 1,
+            an EncoderNormalizer is used, otherwise a GroupNormalizer is used.
+            The transformation used in it is determined as follows:
+        * if x is real and positive, a log transformation is used if the skew of x is
+            larger than 2.5, otherwise a ReLU transformation is used
+        * if x is real and not positive, no transformation is used
+
+        The "auto" case uses metadata from the data passed in ``data_properties``,
+        otherwise the ``data_properties`` are not used.
 
         Parameters
         ----------
-        data (pd.DataFrame): input data
+        data_properties : dict
+            Dictionary of data properties as returned by self._data_properties(data)
+
+        Returns
+        -------
+        TorchNormalizer
+            Normalizer for target variable, determined as above.
         """
         if isinstance(self.target_normalizer, str) and self.target_normalizer == "auto":
-            normalizers = []
-            for target in self.target_names:
-                if data[target].dtype.kind != "f":  # category
-                    normalizers.append(NaNLabelEncoder())
-                    if self.add_target_scales:
-                        warnings.warn(
-                            "Target scales will be only added for continous targets",
-                            UserWarning,
-                        )
-                else:
-                    data_positive = (data[target] > 0).all()
-                    if data_positive:
-                        if data[target].skew() > 2.5:
-                            transformer = "log"
-                        else:
-                            transformer = "relu"
-                    else:
-                        transformer = None
-                    if self.max_encoder_length > 20 and self.min_encoder_length > 1:
-                        normalizers.append(
-                            EncoderNormalizer(transformation=transformer)
-                        )
-                    else:
-                        normalizers.append(GroupNormalizer(transformation=transformer))
-            if self.multi_target:
-                self.target_normalizer = MultiNormalizer(normalizers)
-            else:
-                self.target_normalizer = normalizers[0]
+            target_normalizer = self._get_auto_normalizer(data_properties)
         elif isinstance(self.target_normalizer, (tuple, list)):
-            self.target_normalizer = MultiNormalizer(self.target_normalizer)
+            target_normalizer = MultiNormalizer(self.target_normalizer)
         elif self.target_normalizer is None:
-            self.target_normalizer = TorchNormalizer(method="identity")
+            target_normalizer = TorchNormalizer(method="identity")
+
+        # validation
         assert (
-            not isinstance(self.target_normalizer, EncoderNormalizer)
-            or self.min_encoder_length >= self.target_normalizer.min_length
+            not isinstance(target_normalizer, EncoderNormalizer)
+            or self.min_encoder_length >= target_normalizer.min_length
         ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
-        assert isinstance(self.target_normalizer, (TorchNormalizer, NaNLabelEncoder)), (
+        assert isinstance(target_normalizer, (TorchNormalizer, NaNLabelEncoder)), (
             f"target_normalizer has to be either None or of "
-            f"class TorchNormalizer but found {self.target_normalizer}"
+            f"class TorchNormalizer but found {target_normalizer}"
         )
         assert not self.multi_target or isinstance(
             self.target_normalizer, MultiNormalizer
         ), (
             "multiple targets / list of targets requires MultiNormalizer as "
-            f"target_normalizer but found {self.target_normalizer}"
+            f"target_normalizer but found {target_normalizer}"
         )
+        return target_normalizer
+
+    def _get_auto_normalizer(self, data_properties):
+        """Get normalizer for auto setting, using data_properties.
+
+        See docstring of _set_target_normalizer for details.
+
+        Parameters
+        ----------
+        data_properties : dict
+            Dictionary of data properties as returned by self._data_properties(data)
+
+        Returns
+        -------
+        TorchNormalizer
+            Normalizer for target variable
+        """
+        normalizers = []
+        for target in self.target_names:
+            if data_properties["target_type"][target] == "categorical":
+                normalizers.append(NaNLabelEncoder())
+                if self.add_target_scales:
+                    warnings.warn(
+                        "Target scales will be only added for continous targets",
+                        UserWarning,
+                    )
+            else:  # real
+                if data_properties["target_positive"][target]:
+                    if data_properties["target_skew"][target] > 2.5:
+                        transformer = "log"
+                    else:
+                        transformer = "relu"
+                else:
+                    transformer = None
+                if self.max_encoder_length > 20 and self.min_encoder_length > 1:
+                    normalizers.append(
+                        EncoderNormalizer(transformation=transformer)
+                    )
+                else:
+                    normalizers.append(GroupNormalizer(transformation=transformer))
+        if self.multi_target:
+            target_normalizer = MultiNormalizer(normalizers)
+        else:
+            target_normalizer = normalizers[0]
+        return target_normalizer
 
     @property
     @lru_cache(None)
