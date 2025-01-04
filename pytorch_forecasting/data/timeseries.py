@@ -964,7 +964,8 @@ class TimeSeriesDataSet(Dataset):
                 name, data[name], inverse=False, group_id=True
             )
 
-        # encode categoricals first to ensure that group normalizer for relies on encoded categories
+        # encode categoricals first to ensure
+        # that group normalizer relies on encoded categories
         if isinstance(
             self.target_normalizer, (GroupNormalizer, MultiNormalizer)
         ):  # if we use a group normalizer, group_ids must be encoded as well
@@ -1687,9 +1688,8 @@ class TimeSeriesDataSet(Dataset):
             )
         ]
 
-        if (
-            predict_mode
-        ):  # keep longest element per series
+        if predict_mode:
+            # keep longest element per series
             # (i.e., the first element that spans to the end of the series)
             # filter all elements that are longer
             # than the allowed maximum sequence length
