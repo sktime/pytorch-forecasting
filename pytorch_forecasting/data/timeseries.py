@@ -1422,7 +1422,7 @@ class TimeSeriesDataSet(Dataset):
 
         # get target
         if isinstance(self.target_normalizer, NaNLabelEncoder):
-            target = _to_tensor(f"__target__{self.target}")
+            target = [_to_tensor(f"__target__{self.target}")]
         else:
             if not isinstance(self.target, str):  # multi-target
                 target = [_to_tensor(f"__target__{name}") for name in self.target_names]
