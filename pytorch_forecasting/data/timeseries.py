@@ -1428,7 +1428,7 @@ class TimeSeriesDataSet(Dataset):
                 target = [_to_tensor(f"__target__{self.target}")]
 
         # continuous covariates
-        continuous = _to_tensor(self.reals, long=False)
+        continuous = _to_tensor(self.reals)
 
         tensors = dict(
             reals=continuous,
