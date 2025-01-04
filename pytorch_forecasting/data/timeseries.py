@@ -922,9 +922,7 @@ class TimeSeriesDataSet(Dataset):
                 else:
                     transformer = None
                 if self.max_encoder_length > 20 and self.min_encoder_length > 1:
-                    normalizers.append(
-                        EncoderNormalizer(transformation=transformer)
-                    )
+                    normalizers.append(EncoderNormalizer(transformation=transformer))
                 else:
                     normalizers.append(GroupNormalizer(transformation=transformer))
         if self.multi_target:
