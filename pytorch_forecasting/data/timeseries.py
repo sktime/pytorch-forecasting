@@ -612,6 +612,9 @@ class TimeSeriesDataSet(Dataset):
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
 
+        # check that all tensors are finite
+        self._check_tensors(self.data)
+
     def _check_params(self):
         """Check parameters of self against assumptions."""
         assert isinstance(
@@ -1385,82 +1388,47 @@ class TimeSeriesDataSet(Dataset):
             dictionary of tensors for continous, categorical data, groups, target and
             time index
         """
-        index = check_for_nonfinite(
-            torch.tensor(data[self._group_ids].to_numpy(np.int64), dtype=torch.int64),
-            self.group_ids,
-        )
-        time = check_for_nonfinite(
-            torch.tensor(data["__time_idx__"].to_numpy(np.int64), dtype=torch.int64),
-            self.time_idx,
-        )
 
-        # categorical covariates
-        categorical = check_for_nonfinite(
-            torch.tensor(
-                data[self.flat_categoricals].to_numpy(np.int64), dtype=torch.int64
-            ),
-            self.flat_categoricals,
-        )
+        def _to_tensor(cols, long=False):
+            """Convert data[cols] to torch tensor.
 
-        # get weight
-        if self.weight is not None:
-            weight = check_for_nonfinite(
-                torch.tensor(
-                    data["__weight__"].to_numpy(dtype=np.float64),
-                    dtype=torch.float,
-                ),
-                self.weight,
-            )
-        else:
-            weight = None
+            Converts sub-frames to numpy and then to torch tensor.
+            Makes the following choices for types:
+
+            * float columns are converted to torch.float
+            * integer columns are converted to torch.int64 or torch.long,
+              depending on the long argument
+            """
+            if not isinstance(cols, list) and cols not in data.columns:
+                return None
+            if isinstance(cols, list):
+                dtypekind = data.dtype[cols[0]].kind
+            else:
+                dtypekind = data.dtype[cols].kind
+            if not long:
+                return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.int64)
+            elif dtypekind in "bi":
+                return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.long)
+            else:
+                return torch.tensor(data[cols].to_numpy(np.float64), dtype=torch.float)
+
+        index = _to_tensor(self._group_ids, long=False)
+        time = _to_tensor("__time_idx__", long=False)
+        categorical = _to_tensor(self.flat_categoricals, long=False)
+
+        weight = _to_tensor("__weight__", long=True)
 
         # get target
         if isinstance(self.target_normalizer, NaNLabelEncoder):
-            target = [
-                check_for_nonfinite(
-                    torch.tensor(
-                        data[f"__target__{self.target}"].to_numpy(dtype=np.int64),
-                        dtype=torch.long,
-                    ),
-                    self.target,
-                )
-            ]
+            target = _to_tensor(f"__target__{self.target}", long=True)
         else:
             if not isinstance(self.target, str):  # multi-target
-                target = [
-                    check_for_nonfinite(
-                        torch.tensor(
-                            data[f"__target__{name}"].to_numpy(
-                                dtype=[np.float64, np.int64][
-                                    data[name].dtype.kind in "bi"
-                                ]
-                            ),
-                            dtype=[torch.float, torch.long][
-                                data[name].dtype.kind in "bi"
-                            ],
-                        ),
-                        name,
-                    )
-                    for name in self.target_names
-                ]
+                target = [_to_tensor(f"__target__{name}") for name in self.target_names]
             else:
-                target = [
-                    check_for_nonfinite(
-                        torch.tensor(
-                            data[f"__target__{self.target}"].to_numpy(dtype=np.float64),
-                            dtype=torch.float,
-                        ),
-                        self.target,
-                    )
-                ]
+                target = [_to_tensor(f"__target__{self.target}")]
 
         # continuous covariates
-        continuous = check_for_nonfinite(
-            torch.tensor(
-                data[self.reals].to_numpy(dtype=np.float64), dtype=torch.float
-            ),
-            self.reals,
-        )
+        continuous = _to_tensor(self.reals, long=False)
 
         tensors = dict(
             reals=continuous,
@@ -1470,8 +1438,27 @@ class TimeSeriesDataSet(Dataset):
             weight=weight,
             time=time,
         )
-
         return tensors
+
+    def _check_tensors(self, tensors):
+        """Check for non-finite values in tensors."""
+        var_names_dict = {
+            "reals": self.reals,
+            "categoricals": self.flat_categoricals,
+            "groups": self.group_ids,
+            "target": self.target_names,
+            "weight": self.weight,
+            "time": self.time_idx,
+        }
+
+        for key, tensor in tensors.items():
+            var_names = var_names_dict[key]
+            if tensor is not None:
+                if isinstance(tensor, list):
+                    for idx, target_tensor in enumerate(tensor):
+                        check_for_nonfinite(target_tensor, var_names[idx])
+                else:
+                    check_for_nonfinite(tensor, var_names)
 
     @property
     def categoricals(self) -> List[str]:
