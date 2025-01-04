@@ -1288,7 +1288,6 @@ class TimeSeriesDataSet(Dataset):
             dictionary of tensors for continous, categorical data, groups, target and
             time index
         """
-
         index = check_for_nonfinite(
             torch.tensor(data[self._group_ids].to_numpy(np.int64), dtype=torch.int64),
             self.group_ids,
