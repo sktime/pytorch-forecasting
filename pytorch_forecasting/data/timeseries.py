@@ -95,7 +95,7 @@ def check_for_nonfinite(
     tensor: torch.Tensor, names: Union[str, List[str]]
 ) -> torch.Tensor:
     """
-    Check if 2D tensor contains NAs or inifinite values.
+    Check if 2D tensor contains NAs or infinite values.
 
     Args:
         names (Union[str, List[str]]): name(s) of column(s) (used for error messages)
@@ -106,10 +106,10 @@ def check_for_nonfinite(
     """
     if isinstance(names, str):
         names = [names]
-        assert tensor.ndim == 1
+        assert tensor.ndim == 1, names
         nans = (~torch.isfinite(tensor).unsqueeze(-1)).sum(0)
     else:
-        assert tensor.ndim == 2
+        assert tensor.ndim == 2, names
         nans = (~torch.isfinite(tensor)).sum(0)
     for name, na in zip(names, nans):
         if na > 0:
