@@ -1401,9 +1401,9 @@ class TimeSeriesDataSet(Dataset):
             """
             if not isinstance(cols, list) and cols not in data.columns:
                 return None
-            if isinstance(cols, list):
-                if len(cols) == 0:
-                    return []
+            if isinstance(cols, list) and len(cols) == 0:
+                dtypekind = "f"
+            elif isinstance(cols, list):  # and len(cols) > 0
                 dtypekind = data.dtypes[cols[0]].kind
             else:
                 dtypekind = data.dtypes[cols].kind
