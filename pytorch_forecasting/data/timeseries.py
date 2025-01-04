@@ -1402,9 +1402,9 @@ class TimeSeriesDataSet(Dataset):
             if not isinstance(cols, list) and cols not in data.columns:
                 return None
             if isinstance(cols, list):
-                dtypekind = data.dtype[cols[0]].kind
+                dtypekind = data.dtypes[cols[0]].kind
             else:
-                dtypekind = data.dtype[cols].kind
+                dtypekind = data.dtypes[cols].kind
             if not long:
                 return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.int64)
             elif dtypekind in "bi":
