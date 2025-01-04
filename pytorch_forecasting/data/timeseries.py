@@ -1389,7 +1389,7 @@ class TimeSeriesDataSet(Dataset):
             time index
         """
 
-        def _to_tensor(cols, long=False):
+        def _to_tensor(cols, long=True):
             """Convert data[cols] to torch tensor.
 
             Converts sub-frames to numpy and then to torch tensor.
@@ -1416,11 +1416,11 @@ class TimeSeriesDataSet(Dataset):
         time = _to_tensor("__time_idx__", long=False)
         categorical = _to_tensor(self.flat_categoricals, long=False)
 
-        weight = _to_tensor("__weight__", long=True)
+        weight = _to_tensor("__weight__")
 
         # get target
         if isinstance(self.target_normalizer, NaNLabelEncoder):
-            target = _to_tensor(f"__target__{self.target}", long=True)
+            target = _to_tensor(f"__target__{self.target}")
         else:
             if not isinstance(self.target, str):  # multi-target
                 target = [_to_tensor(f"__target__{name}") for name in self.target_names]
