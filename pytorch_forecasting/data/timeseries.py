@@ -544,7 +544,7 @@ class TimeSeriesDataSet(Dataset):
         self._data_properties = self._data_properties(data)
 
         # target normalizer
-        self.target_normalizer = self._target_normalizer(
+        self.target_normalizer = self._set_target_normalizer(
             self._data_properties, self.target_normalizer
         )
 
@@ -837,7 +837,7 @@ class TimeSeriesDataSet(Dataset):
         else:
             return max([max(lag) for lag in self._lags.values()])
 
-    def _target_normalizer(self, data_properties, target_normalizer):
+    def _set_target_normalizer(self, data_properties, target_normalizer):
         """Determine target normalizer.
 
         Determines normalizers for variables based on self.target_normalizer setting.
@@ -887,7 +887,7 @@ class TimeSeriesDataSet(Dataset):
             f"class TorchNormalizer but found {target_normalizer}"
         )
         assert not self.multi_target or isinstance(
-            self.target_normalizer, MultiNormalizer
+            target_normalizer, MultiNormalizer
         ), (
             "multiple targets / list of targets requires MultiNormalizer as "
             f"target_normalizer but found {target_normalizer}"
