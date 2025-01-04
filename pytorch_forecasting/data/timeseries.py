@@ -906,9 +906,12 @@ class TimeSeriesDataSet(Dataset):
         # add lags to data
         for name in self._lags:
             # todo: add support for variable groups
-            assert (
-                name not in self._variable_groups
-            ), f"lagged variables that are in {self._variable_groups} are not supported yet"
+            msg = (
+                f"lagged variables that are in {self._variable_groups} "
+                "are not supported yet"
+            )
+            assert name not in self._variable_groups, msg
+
             for lagged_name, lag in self._get_lagged_names(name).items():
                 data[lagged_name] = data.groupby(self.group_ids, observed=True)[
                     name
@@ -1063,9 +1066,12 @@ class TimeSeriesDataSet(Dataset):
                     ):
                         for scale_idx, name in enumerate(["center", "scale"]):
                             feature_name = f"{target}_{name}"
-                            assert (
-                                feature_name not in data.columns
-                            ), f"{feature_name} is a protected column and must not be present in data"
+                            msg = (
+                                f"{feature_name} is a protected column "
+                                "and must not be present in data"
+                            )
+                            assert feature_name not in data.columns, msg
+
                             data[feature_name] = scales[target_idx][
                                 :, scale_idx
                             ].squeeze()
@@ -1421,11 +1427,14 @@ class TimeSeriesDataSet(Dataset):
         return target_normalizers
 
     def get_parameters(self) -> Dict[str, Any]:
-        """
-        Get parameters that can be used with :py:meth:`~from_parameters` to create a new dataset with the same scalers.
+        """Get parameters of self as dict.
 
-        Returns:
-            Dict[str, Any]: dictionary of parameters
+        These can be used with :py:meth:`~from_parameters`
+        to create a new dataset with the same scalers.
+
+        Returns
+        -------
+        Dict[str, Any]: dictionary of parameters
         """
         kwargs = {
             name: getattr(self, name)
@@ -1445,22 +1454,31 @@ class TimeSeriesDataSet(Dataset):
         predict: bool = False,
         **update_kwargs,
     ):
-        """
-        Generate dataset with different underlying data but same variable encoders and scalers, etc.
+        """Construct dataset with different data, same variable encoders, scalers, etc.
 
         Calls :py:meth:`~from_parameters` under the hood.
 
-        Args:
-            dataset (TimeSeriesDataSet): dataset from which to copy parameters
-            data (pd.DataFrame): data from which new dataset will be generated
-            stop_randomization (bool, optional): If to stop randomizing encoder and decoder lengths,
-                e.g. useful for validation set. Defaults to False.
-            predict (bool, optional): If to predict the decoder length on the last entries in the
-                time index (i.e. one prediction per group only). Defaults to False.
-            **kwargs: keyword arguments overriding parameters in the original dataset
+        May override parameters with update_kwargs.
 
-        Returns:
-            TimeSeriesDataSet: new dataset
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            dataset from which to copy parameters
+        data : pd.DataFrame
+            data from which new dataset will be generated
+        stop_randomization : bool, optional, default=None
+            Whether to stop randomizing encoder and decoder lengths,
+            useful for validation set.
+        predict : bool, optional, default=False
+            Whether to predict the decoder length on the last entries in the
+            time index (i.e. one prediction per group only).
+        **update_kwargs
+            keyword arguments overrides, passed to constructor of the new dataset
+
+        Returns
+        -------
+        TimeSeriesDataSet
+            new dataset
         """
         return cls.from_parameters(
             dataset.get_parameters(),
@@ -1479,7 +1497,7 @@ class TimeSeriesDataSet(Dataset):
         predict: bool = False,
         **update_kwargs,
     ):
-        """Generate dataset with different data, same variable encoders, scalers, etc.
+        """Construct dataset with different data, same variable encoders, scalers, etc.
 
         Returns TimeSeriesDataSet with same parameters as self, but different data.
         May override parameters with update_kwargs.
