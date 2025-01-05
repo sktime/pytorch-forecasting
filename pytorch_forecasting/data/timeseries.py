@@ -731,8 +731,10 @@ class TimeSeriesDataSet(Dataset):
     def _set_lagged_variables(self):
         """Add lagged variables to lists of variables.
 
-        Generates lagged variables and adds them to the appropriate lists
-        of time-varying variables.
+        * generates lagged variable names and adds them to the appropriate lists
+          of time-varying variables, typed by known/unknown and categorical/real
+        * checks that all lagged variables passed by user adhere to the 
+          naming convention of lags
         """
         var_name_dict = {
             ("real", "known"): "_time_varying_known_reals",
