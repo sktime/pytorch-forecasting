@@ -471,6 +471,8 @@ class TimeSeriesDataSet(Dataset):
         """Timeseries dataset holding data for models."""
         super().__init__()
 
+        # write variables to self and handle defaults
+        # -------------------------------------------
         self.max_encoder_length = max_encoder_length
         if min_encoder_length is None:
             min_encoder_length = max_encoder_length
@@ -558,6 +560,9 @@ class TimeSeriesDataSet(Dataset):
         # check parameters
         self._check_params()
 
+        # data preprocessing in pandas
+        # ----------------------------
+
         # get metadata from data
         self._data_properties = self._data_properties(data)
 
@@ -624,8 +629,15 @@ class TimeSeriesDataSet(Dataset):
         for target in self.target_names:
             assert target not in self._scalers, msg
 
+        # index for getitem based resampling
+        # ----------------------------------
+        # NOTE: this should be refactored and probably in a DataLoader
+
         # create index
         self.index = self._construct_index(data, predict_mode=self.predict_mode)
+
+        # data conversion to torch tensors
+        # --------------------------------
 
         # convert to torch tensor for high performance data loading later
         self.data = self._data_to_tensors(data)
