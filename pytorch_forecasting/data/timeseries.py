@@ -734,45 +734,44 @@ class TimeSeriesDataSet(Dataset):
         Generates lagged variables and adds them to the appropriate lists
         of time-varying variables.
         """
-        # add variables
-        for name in self._lags:
-            lagged_names = self._get_lagged_names(name)
+        var_name_dict = {
+            ("real", "known"): "_time_varying_known_reals",
+            ("real", "unknown"): "_time_varying_unknown_reals",
+            ("cat", "known"): "_time_varying_known_categoricals",
+            ("cat", "unknown"): "_time_varying_unknown_categoricals",
+        }
 
-            # add lags
-            if name in self._time_varying_known_reals:
-                for lagged_name in lagged_names:
-                    if lagged_name not in self._time_varying_known_reals:
-                        self._time_varying_known_reals.append(lagged_name)
-            elif name in self._time_varying_known_categoricals:
-                for lagged_name in lagged_names:
-                    if lagged_name not in self._time_varying_known_categoricals:
-                        self._time_varying_known_categoricals.append(lagged_name)
-            elif name in self._time_varying_unknown_reals:
-                for lagged_name, lag in lagged_names.items():
-                    if (
-                        lag < self.max_prediction_length
-                    ):  # keep in unknown as if lag is too small
-                        if lagged_name not in self._time_varying_unknown_reals:
-                            self._time_varying_unknown_reals.append(lagged_name)
-                    else:
-                        if lagged_name not in self._time_varying_known_reals:
-                            # switch to known so lag can be used in decoder directly
-                            self._time_varying_known_reals.append(lagged_name)
-            elif name in self._time_varying_unknown_categoricals:
-                for lagged_name, lag in lagged_names.items():
-                    if (
-                        lag < self.max_prediction_length
-                    ):  # keep in unknown as if lag is too small
-                        if lagged_name not in self._time_varying_unknown_categoricals:
-                            self._time_varying_unknown_categoricals.append(lagged_name)
-                    if lagged_name not in self._time_varying_known_categoricals:
-                        # switch to known so that lag can be used in decoder directly
-                        self._time_varying_known_categoricals.append(lagged_name)
-            else:
+        def _attr(realcat, known):
+            return getattr(self, var_name_dict[(realcat, known)])
+
+        def _append_if_new(lst, x):
+            if x not in lst:
+                lst.append(x)
+
+        # check that all names passed in self._lags appear as variables
+        all_time_varying_var_names = [x for kw in var_name_dict for x in _attr(*kw)]
+        for name in self._lags:
+            if name not in all_time_varying_var_names:
                 raise KeyError(
                     f"lagged variable {name} is not a known "
                     "nor unknown time-varying variable"
                 )
+
+        # add lagged variables to type indicators
+        for name in self._lags:
+            lagged_names = self._get_lagged_names(name)
+
+            # add lags
+            for realcat, known in var_name_dict:
+                var_names = _attr(realcat, known)
+
+                if name in var_names:
+                    for lagged_name, lag in lagged_names.items():
+                        # if lag is longer than horizon, lagged var becomes future-known
+                        if known or lag < self.max_prediction_length:
+                            _append_if_new(var_names, lagged_name)
+                        elif lag < self.max_prediction_length:
+                            _append_if_new(_attr(realcat, "known"), lagged_name)
 
     @property
     def dropout_categoricals(self) -> List[str]:
