@@ -733,7 +733,7 @@ class TimeSeriesDataSet(Dataset):
 
         * generates lagged variable names and adds them to the appropriate lists
           of time-varying variables, typed by known/unknown and categorical/real
-        * checks that all lagged variables passed by user adhere to the 
+        * checks that all lagged variables passed by user adhere to the
           naming convention of lags
         """
         var_name_dict = {
@@ -1686,7 +1686,7 @@ class TimeSeriesDataSet(Dataset):
         TimeSeriesDataSet
             new dataset
         """
-        parameters = deepcopy(parameters)´
+        parameters = deepcopy(parameters)
 
         if predict:
             if not stop_randomization:
