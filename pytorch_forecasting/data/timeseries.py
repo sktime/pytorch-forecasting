@@ -1689,7 +1689,7 @@ class TimeSeriesDataSet(Dataset):
         parameters = deepcopy(parameters)
 
         if predict:
-            if not stop_randomization:
+            if isinstance(stop_randomization, bool) and not stop_randomization:
                 warnings.warn(
                     "If predicting, no randomization should be possible - "
                     "setting stop_randomization=True",
