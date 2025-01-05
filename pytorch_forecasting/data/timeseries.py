@@ -94,15 +94,33 @@ except ImportError:
 def check_for_nonfinite(
     tensor: torch.Tensor, names: Union[str, List[str]]
 ) -> torch.Tensor:
-    """
-    Check if 2D tensor contains NAs or infinite values.
+    """Check if tensor contains NAs or infinite values and has correct dimension.
 
-    Args:
-        names (Union[str, List[str]]): name(s) of column(s) (used for error messages)
-        tensor (torch.Tensor): tensor to check
+    Checks:
 
-    Returns:
-        torch.Tensor: returns tensor if checks yield no issues
+    * whether tensor is finite, otherwise raises ValueError
+    * checks whether dimension of tensor is correct. If tensor is a str,
+      tensor.ndim has to be 1, and if tensor is a list, tensor.ndim has to be 2.
+      Otherwise raises AssertionError.
+
+    Parameters
+    ----------
+    names : str or list of str
+        name(s) of column(s) to check
+    tensor : torch.Tensor
+        tensor to check
+
+    Returns
+    -------
+    torch.Tensor
+        returns tensor unchanged, if checks yield no issues
+
+    Raises
+    ------
+    ValueError
+        if tensor contains NAs or infinite values
+    AssertionError
+        if tensor has incorrect dimension, see above
     """
     if isinstance(names, str):
         names = [names]
@@ -665,7 +683,7 @@ class TimeSeriesDataSet(Dataset):
             The following fields are returned:
 
             * columns : list[str]
-                list of columns in the data
+                list of column names in the data
             * target_type : dict[str, str]
                 type of target variable, categorial or real.
                 Keys are target variable names in self.target_names.
