@@ -1685,22 +1685,22 @@ class TimeSeriesDataSet(Dataset):
         TimeSeriesDataSet
             new dataset
         """
-        parameters = deepcopy(parameters)
+        parameters = deepcopy(parameters)´
+
         if predict:
-            if stop_randomization is None:
-                stop_randomization = True
-            elif not stop_randomization:
+            if not stop_randomization:
                 warnings.warn(
                     "If predicting, no randomization should be possible - "
                     "setting stop_randomization=True",
                     UserWarning,
                 )
-                stop_randomization = True
             parameters["min_prediction_length"] = parameters["max_prediction_length"]
             parameters["predict_mode"] = True
-        elif stop_randomization is None:
-            stop_randomization = False
 
+        # this treats cases for randomize_length randomization:
+        # if predict mode, always turned off, i.e., always stop_ransomization=True
+        # otherwise, None defaults to False
+        stop_randomization = predict or stop_randomization
         if stop_randomization:
             parameters["randomize_length"] = None
         parameters.update(update_kwargs)
