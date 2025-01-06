@@ -102,7 +102,9 @@ def optimize_hyperparameters(
     import statsmodels.api as sm
 
     # need to inherit from callback for this to work
-    class PyTorchLightningPruningCallbackAdjusted(PyTorchLightningPruningCallback, pl.Callback):  # noqa: E501
+    class PyTorchLightningPruningCallbackAdjusted(
+        PyTorchLightningPruningCallback, pl.Callback
+    ):  # noqa: E501
         pass
 
     if pruner is None:
@@ -129,12 +131,16 @@ def optimize_hyperparameters(
     def objective(trial: optuna.Trial) -> float:
         # Filenames for each trial must be made unique in order to access each checkpoint.
         checkpoint_callback = ModelCheckpoint(
-            dirpath=os.path.join(model_path, "trial_{}".format(trial.number)), filename="{epoch}", monitor="val_loss"
+            dirpath=os.path.join(model_path, "trial_{}".format(trial.number)),
+            filename="{epoch}",
+            monitor="val_loss",
         )
 
         learning_rate_callback = LearningRateMonitor()
         logger = TensorBoardLogger(log_dir, name="optuna", version=trial.number)
-        gradient_clip_val = trial.suggest_loguniform("gradient_clip_val", *gradient_clip_val_range)
+        gradient_clip_val = trial.suggest_loguniform(
+            "gradient_clip_val", *gradient_clip_val_range
+        )
         default_trainer_kwargs = dict(
             accelerator="auto",
             max_epochs=max_epochs,
@@ -166,7 +172,9 @@ def optimize_hyperparameters(
                 min(hidden_continuous_size_range[1], hidden_size),
                 log=True,
             ),
-            attention_head_size=trial.suggest_int("attention_head_size", *attention_head_size_range),
+            attention_head_size=trial.suggest_int(
+                "attention_head_size", *attention_head_size_range
+            ),
             log_interval=-1,
             **kwargs,
         )
@@ -191,7 +199,9 @@ def optimize_hyperparameters(
             )
 
             loss_finite = np.isfinite(res.results["loss"])
-            if loss_finite.sum() > 3:  # at least 3 valid values required for learning rate finder
+            if (
+                loss_finite.sum() > 3
+            ):  # at least 3 valid values required for learning rate finder
                 lr_smoothed, loss_smoothed = sm.nonparametric.lowess(
                     np.asarray(res.results["loss"])[loss_finite],
                     np.asarray(res.results["lr"])[loss_finite],
@@ -204,12 +214,18 @@ def optimize_hyperparameters(
                 optimal_lr = res.results["lr"][optimal_idx]
             optuna_logger.info(f"Using learning rate of {optimal_lr:.3g}")
             # add learning rate artificially
-            model.hparams.learning_rate = trial.suggest_uniform("learning_rate", optimal_lr, optimal_lr)
+            model.hparams.learning_rate = trial.suggest_uniform(
+                "learning_rate", optimal_lr, optimal_lr
+            )
         else:
-            model.hparams.learning_rate = trial.suggest_loguniform("learning_rate", *learning_rate_range)
+            model.hparams.learning_rate = trial.suggest_loguniform(
+                "learning_rate", *learning_rate_range
+            )
 
         # fit
-        trainer.fit(model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders)
+        trainer.fit(
+            model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders
+        )
 
         # report result
         return trainer.callback_metrics["val_loss"].item()
