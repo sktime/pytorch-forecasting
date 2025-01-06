@@ -51,9 +51,16 @@ class TimeDistributedInterpolation(nn.Module):
             self.gate = nn.Sigmoid()
 
     def interpolate(self, x):
-        upsampled = F.interpolate(
-            x.unsqueeze(1), self.output_size, mode="linear", align_corners=True
-        ).squeeze(1)
+        if x.device.type == "mps":
+            x = x.to("cpu")
+            upsampled = F.interpolate(
+                x.unsqueeze(1), self.output_size, mode="linear", align_corners=True
+            ).squeeze(1)
+            upsampled = upsampled.to("mps")
+        else:
+            upsampled = F.interpolate(
+                x.unsqueeze(1), self.output_size, mode="linear", align_corners=True
+            ).squeeze(1)
         if self.trainable:
             upsampled = upsampled * self.gate(self.mask.unsqueeze(0)) * 2.0
         return upsampled
@@ -284,7 +291,8 @@ class VariableSelectionNetwork(nn.Module):
         prescalers: Dict[str, nn.Linear] = None,
     ):
         """
-        Calculate weights for ``num_inputs`` variables  which are each of size ``input_size``
+        Calculate weights for ``num_inputs`` variables  which are each of size
+        ``input_size``
         """
         super().__init__()
 
