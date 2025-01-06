@@ -111,33 +111,21 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             else (thetas_dim // 2, thetas_dim // 2 + 1)
         )
         s1_b = torch.tensor(
-            [
-                np.cos(2 * np.pi * i * backcast_linspace)
-                for i in self.get_frequencies(p1)
-            ],
+            np.cos(2 * np.pi * self.get_frequencies(p1)[:, None] * backcast_linspace),
             dtype=torch.float32,
         )  # H/2-1
         s2_b = torch.tensor(
-            [
-                np.sin(2 * np.pi * i * backcast_linspace)
-                for i in self.get_frequencies(p2)
-            ],
+            np.sin(2 * np.pi * self.get_frequencies(p2)[:, None] * backcast_linspace),
             dtype=torch.float32,
         )
         self.register_buffer("S_backcast", torch.cat([s1_b, s2_b]))
 
         s1_f = torch.tensor(
-            [
-                np.cos(2 * np.pi * i * forecast_linspace)
-                for i in self.get_frequencies(p1)
-            ],
+            np.cos(2 * np.pi * self.get_frequencies(p1)[:, None] * forecast_linspace),
             dtype=torch.float32,
         )  # H/2-1
         s2_f = torch.tensor(
-            [
-                np.sin(2 * np.pi * i * forecast_linspace)
-                for i in self.get_frequencies(p2)
-            ],
+            np.sin(2 * np.pi * self.get_frequencies(p2)[:, None] * forecast_linspace),
             dtype=torch.float32,
         )
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
@@ -183,14 +171,15 @@ class NBEATSTrendBlock(NBEATSBlock):
         norm = np.sqrt(
             forecast_length / thetas_dim
         )  # ensure range of predictions is comparable to input
-
+        thetas_dims_range = np.array(range(thetas_dim))
         coefficients = torch.tensor(
-            [backcast_linspace**i for i in range(thetas_dim)], dtype=torch.float32
+            backcast_linspace ** thetas_dims_range[:, None],
+            dtype=torch.float32,
         )
         self.register_buffer("T_backcast", coefficients * norm)
-
         coefficients = torch.tensor(
-            [forecast_linspace**i for i in range(thetas_dim)], dtype=torch.float32
+            forecast_linspace ** thetas_dims_range[:, None],
+            dtype=torch.float32,
         )
         self.register_buffer("T_forecast", coefficients * norm)
 
