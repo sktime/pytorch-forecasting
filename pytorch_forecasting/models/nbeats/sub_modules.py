@@ -18,7 +18,9 @@ def linear(input_size, output_size, bias=True, dropout: int = None):
         return lin
 
 
-def linspace(backcast_length: int, forecast_length: int, centered: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+def linspace(
+    backcast_length: int, forecast_length: int, centered: bool = False
+) -> Tuple[np.ndarray, np.ndarray]:
     if centered:
         norm = max(backcast_length, forecast_length)
         start = -backcast_length
@@ -27,7 +29,9 @@ def linspace(backcast_length: int, forecast_length: int, centered: bool = False)
         norm = backcast_length + forecast_length
         start = 0
         stop = backcast_length + forecast_length - 1
-    lin_space = np.linspace(start / norm, stop / norm, backcast_length + forecast_length, dtype=np.float32)
+    lin_space = np.linspace(
+        start / norm, stop / norm, backcast_length + forecast_length, dtype=np.float32
+    )
     b_ls = lin_space[:backcast_length]
     f_ls = lin_space[backcast_length:]
     return b_ls, f_ls
@@ -97,22 +101,44 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             dropout=dropout,
         )
 
-        backcast_linspace, forecast_linspace = linspace(backcast_length, forecast_length, centered=False)
+        backcast_linspace, forecast_linspace = linspace(
+            backcast_length, forecast_length, centered=False
+        )
 
-        p1, p2 = (thetas_dim // 2, thetas_dim // 2) if thetas_dim % 2 == 0 else (thetas_dim // 2, thetas_dim // 2 + 1)
+        p1, p2 = (
+            (thetas_dim // 2, thetas_dim // 2)
+            if thetas_dim % 2 == 0
+            else (thetas_dim // 2, thetas_dim // 2 + 1)
+        )
         s1_b = torch.tensor(
-            [np.cos(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p1)], dtype=torch.float32
+            [
+                np.cos(2 * np.pi * i * backcast_linspace)
+                for i in self.get_frequencies(p1)
+            ],
+            dtype=torch.float32,
         )  # H/2-1
         s2_b = torch.tensor(
-            [np.sin(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p2)], dtype=torch.float32
+            [
+                np.sin(2 * np.pi * i * backcast_linspace)
+                for i in self.get_frequencies(p2)
+            ],
+            dtype=torch.float32,
         )
         self.register_buffer("S_backcast", torch.cat([s1_b, s2_b]))
 
         s1_f = torch.tensor(
-            [np.cos(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p1)], dtype=torch.float32
+            [
+                np.cos(2 * np.pi * i * forecast_linspace)
+                for i in self.get_frequencies(p1)
+            ],
+            dtype=torch.float32,
         )  # H/2-1
         s2_f = torch.tensor(
-            [np.sin(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p2)], dtype=torch.float32
+            [
+                np.sin(2 * np.pi * i * forecast_linspace)
+                for i in self.get_frequencies(p2)
+            ],
+            dtype=torch.float32,
         )
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
 
@@ -126,7 +152,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         return backcast, forecast
 
     def get_frequencies(self, n):
-        return np.linspace(0, (self.backcast_length + self.forecast_length) / self.min_period, n)
+        return np.linspace(
+            0, (self.backcast_length + self.forecast_length) / self.min_period, n
+        )
 
 
 class NBEATSTrendBlock(NBEATSBlock):
@@ -149,13 +177,21 @@ class NBEATSTrendBlock(NBEATSBlock):
             dropout=dropout,
         )
 
-        backcast_linspace, forecast_linspace = linspace(backcast_length, forecast_length, centered=True)
-        norm = np.sqrt(forecast_length / thetas_dim)  # ensure range of predictions is comparable to input
+        backcast_linspace, forecast_linspace = linspace(
+            backcast_length, forecast_length, centered=True
+        )
+        norm = np.sqrt(
+            forecast_length / thetas_dim
+        )  # ensure range of predictions is comparable to input
 
-        coefficients = torch.tensor([backcast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
+        coefficients = torch.tensor(
+            [backcast_linspace**i for i in range(thetas_dim)], dtype=torch.float32
+        )
         self.register_buffer("T_backcast", coefficients * norm)
 
-        coefficients = torch.tensor([forecast_linspace**i for i in range(thetas_dim)], dtype=torch.float32)
+        coefficients = torch.tensor(
+            [forecast_linspace**i for i in range(thetas_dim)], dtype=torch.float32
+        )
         self.register_buffer("T_forecast", coefficients * norm)
 
     def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:

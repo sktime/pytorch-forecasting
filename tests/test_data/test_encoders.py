@@ -37,9 +37,15 @@ def test_NaNLabelEncoder(data, allow_nan):
         with pytest.raises(KeyError):
             encoder.transform(transform_data)
     else:
-        assert encoder.transform(transform_data)[0] == 0, "First value should be translated to 0 if nan"
-        assert encoder.transform(transform_data)[-1] == 0, "Last value should be translated to 0 if nan"
-        assert encoder.transform(fit_data)[0] > 0, "First value should not be 0 if not nan"
+        assert (
+            encoder.transform(transform_data)[0] == 0
+        ), "First value should be translated to 0 if nan"
+        assert (
+            encoder.transform(transform_data)[-1] == 0
+        ), "Last value should be translated to 0 if nan"
+        assert (
+            encoder.transform(fit_data)[0] > 0
+        ), "First value should not be 0 if not nan"
 
 
 def test_NaNLabelEncoder_add():
@@ -80,11 +86,16 @@ def test_EncoderNormalizer(kwargs):
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
         assert (
-            normalizer.inverse_transform(torch.as_tensor(normalizer.fit_transform(data))) >= 0
+            normalizer.inverse_transform(
+                torch.as_tensor(normalizer.fit_transform(data))
+            )
+            >= 0
         ).all(), "Inverse transform should yield only positive values"
     else:
         assert torch.isclose(
-            normalizer.inverse_transform(torch.as_tensor(normalizer.fit_transform(data))),
+            normalizer.inverse_transform(
+                torch.as_tensor(normalizer.fit_transform(data))
+            ),
             torch.as_tensor(data),
             atol=1e-5,
         ).all(), "Inverse transform should reverse transform"
@@ -107,7 +118,9 @@ def test_EncoderNormalizer(kwargs):
 )
 def test_GroupNormalizer(kwargs, groups):
     data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 0.0, 1.1]))
-    defaults = dict(method="standard", transformation=None, center=True, scale_by_group=False)
+    defaults = dict(
+        method="standard", transformation=None, center=True, scale_by_group=False
+    )
     defaults.update(kwargs)
     kwargs = defaults
     kwargs["groups"] = groups
@@ -122,7 +135,9 @@ def test_GroupNormalizer(kwargs, groups):
     )
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p", "log"]:
-        assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
+        assert (
+            normalizer(test_data) >= 0
+        ).all(), "Inverse transform should yield only positive values"
     else:
         assert torch.isclose(
             normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5
@@ -136,7 +151,11 @@ def test_EncoderNormalizer_with_limited_history():
 
 
 def test_MultiNormalizer_fitted():
-    data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1], c=[1.1, 1.1, 1.0, 5.0, 1.1]))
+    data = pd.DataFrame(
+        dict(
+            a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1], c=[1.1, 1.1, 1.0, 5.0, 1.1]
+        )
+    )
 
     normalizer = MultiNormalizer([GroupNormalizer(groups=["a"]), TorchNormalizer()])
 
@@ -160,8 +179,17 @@ def test_TorchNormalizer_dtype_consistency():
     """
     parameters = torch.tensor([[[366.4587]]])
     target_scale = torch.tensor([[427875.7500, 80367.4766]], dtype=torch.float64)
-    assert TorchNormalizer()(dict(prediction=parameters, target_scale=target_scale)).dtype == torch.float32
-    assert TorchNormalizer().transform(parameters, target_scale=target_scale).dtype == torch.float32
+    assert (
+        TorchNormalizer()(dict(prediction=parameters, target_scale=target_scale)).dtype
+        == torch.float32
+    )
+    assert (
+        TorchNormalizer().transform(parameters, target_scale=target_scale).dtype
+        == torch.float32
+    )
 
     y = np.array([1, 2, 3], dtype=np.float32)
-    assert TorchNormalizer(method="identity").fit(y).get_parameters().dtype == torch.float32
+    assert (
+        TorchNormalizer(method="identity").fit(y).get_parameters().dtype
+        == torch.float32
+    )

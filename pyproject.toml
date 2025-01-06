@@ -1,77 +1,16 @@
-[tool.ruff]
-line-length = 120
-exclude = [
-  "docs/build/",
-  "node_modules/",
-  ".eggs/",
-  "versioneer.py",
-  "venv/",
-  ".venv/",
-  ".git/",
-  ".history/",
-]
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "C4", "S"]
-extend-ignore = [
-  "E203", # space before : (needed for how black formats slicing)
-  "E402", # module level import not at top of file
-  "E731", # do not assign a lambda expression, use a def
-  "E741", # ignore not easy to read variables like i l I etc.
-  "C406", # Unnecessary list literal - rewrite as a dict literal.
-  "C408", # Unnecessary dict call - rewrite as a literal.
-  "C409", # Unnecessary list passed to tuple() - rewrite as a tuple literal.
-  "F401", # unused imports
-  "S101", # use of assert
-]
-
-[tool.ruff.lint.isort]
-known-first-party = ["pytorch_forecasting"]
-combine-as-imports = true
-force-sort-within-sections = true
-
-[tool.black]
-line-length = 120
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | docs/build/
-  | node_modules/
-  | venve/
-  | .venv/
-)
-'''
-
-[tool.nbqa.mutate]
-ruff = 1
-black = 1
-
 [project]
 name = "pytorch-forecasting"
 readme = "README.md"         # Markdown files are supported
-version = "1.1.1"            # is being replaced automatically
+version = "1.2.0"            # is being replaced automatically
 
 authors = [
   {name = "Jan Beitner"},
 ]
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.9,<3.13"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -115,14 +54,14 @@ dependencies = [
 all_extras = [
   "cpflows",
   "matplotlib",
-  "optuna >=3.1.0,<4.0.0",
+  "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "pytorch_optimizer >=2.5.1,<4.0.0",
   "statsmodels",
 ]
 
 tuning = [
-  "optuna >=3.1.0,<4.0.0",
+  "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "statsmodels",
 ]
@@ -185,3 +124,67 @@ build-backend = "setuptools.build_meta"
 requires = [
   "setuptools>=70.0.0",
 ]
+
+[tool.ruff]
+line-length = 88
+exclude = [
+  "docs/build/",
+  "node_modules/",
+  ".eggs/",
+  "versioneer.py",
+  "venv/",
+  ".venv/",
+  ".git/",
+  ".history/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C4", "S"]
+extend-select = [
+  "I", # isort
+  "C4", # https://pypi.org/project/flake8-comprehensions
+]
+extend-ignore = [
+  "E203", # space before : (needed for how black formats slicing)
+  "E402", # module level import not at top of file
+  "E731", # do not assign a lambda expression, use a def
+  "E741", # ignore not easy to read variables like i l I etc.
+  "C406", # Unnecessary list literal - rewrite as a dict literal.
+  "C408", # Unnecessary dict call - rewrite as a literal.
+  "C409", # Unnecessary list passed to tuple() - rewrite as a tuple literal.
+  "F401", # unused imports
+  "S101", # use of assert
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pytorch_forecasting"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.black]
+line-length = 88
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | docs/build/
+  | node_modules/
+  | venve/
+  | .venv/
+)
+'''
+
+[tool.nbqa.mutate]
+ruff = 1
+black = 1
