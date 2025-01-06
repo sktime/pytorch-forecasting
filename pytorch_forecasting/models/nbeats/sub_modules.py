@@ -142,7 +142,7 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             ),
             dtype=torch.float32,
         )  # H/2-1
-        s2_f = torch.from_numpy(
+        s2_f = torch.tensor(
             np.array(
                 [
                     np.sin(2 * np.pi * i * forecast_linspace)
@@ -150,6 +150,7 @@ class NBEATSSeasonalBlock(NBEATSBlock):
                 ],
                 dtype=np.float32,
             ),
+            dtype=torch.float32,
         )
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
 
