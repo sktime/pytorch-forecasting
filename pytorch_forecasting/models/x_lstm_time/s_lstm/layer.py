@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+
 from pytorch_forecasting.models.x_lstm_time.s_lstm.cell import sLSTMCell
 
 
@@ -9,7 +10,14 @@ class sLSTMLayer(nn.Module):
     """
 
     def __init__(
-        self, input_size, hidden_size, num_layers=1, dropout=0.0, use_layer_norm=True, use_residual=True, device=None
+        self,
+        input_size,
+        hidden_size,
+        num_layers=1,
+        dropout=0.0,
+        use_layer_norm=True,
+        use_residual=True,
+        device=None,
     ):
         super(sLSTMLayer, self).__init__()
         self.input_size = input_size
@@ -18,11 +26,17 @@ class sLSTMLayer(nn.Module):
         self.dropout = dropout
         self.use_layer_norm = use_layer_norm
         self.use_residual = use_residual
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = (
+            device
+            if device
+            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        )
 
         self.input_projection = None
         if self.use_residual and input_size != hidden_size:
-            self.input_projection = nn.Linear(input_size, hidden_size, bias=False).to(self.device)
+            self.input_projection = nn.Linear(input_size, hidden_size, bias=False).to(
+                self.device
+            )
 
         self.cells = nn.ModuleList(
             [
@@ -75,7 +89,11 @@ class sLSTMLayer(nn.Module):
                     if layer == 0 and self.input_projection is not None:
                         residual = self.input_projection(layer_input)
                     else:
-                        residual = layer_input if layer_input.size(-1) == self.hidden_size else 0
+                        residual = (
+                            layer_input
+                            if (layer_input.size(-1) == self.hidden_size)
+                            else 0
+                        )
                     h[layer] = h[layer] + residual
 
                 if self.use_layer_norm:
@@ -95,6 +113,12 @@ class sLSTMLayer(nn.Module):
     def init_hidden(self, batch_size):
         """Initialize hidden and cell states for each layer."""
         return (
-            [torch.zeros(batch_size, self.hidden_size, device=self.device) for _ in range(self.num_layers)],
-            [torch.zeros(batch_size, self.hidden_size, device=self.device) for _ in range(self.num_layers)],
+            [
+                torch.zeros(batch_size, self.hidden_size, device=self.device)
+                for _ in range(self.num_layers)
+            ],
+            [
+                torch.zeros(batch_size, self.hidden_size, device=self.device)
+                for _ in range(self.num_layers)
+            ],
         )

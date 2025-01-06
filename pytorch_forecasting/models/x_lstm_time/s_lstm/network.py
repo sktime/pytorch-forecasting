@@ -1,5 +1,6 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+
 from pytorch_forecasting.models.x_lstm_time.s_lstm.layer import sLSTMLayer
 
 
@@ -8,16 +9,36 @@ class sLSTMNetwork(nn.Module):
     Stabilized LSTM Network with multiple s_lstm layers.
     """
 
-    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.0, use_layer_norm=True, device=None):
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        num_layers,
+        output_size,
+        dropout=0.0,
+        use_layer_norm=True,
+        device=None,
+    ):
         super(sLSTMNetwork, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.output_size = output_size
         self.dropout = dropout
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = (
+            device
+            if device
+            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        )
 
-        self.slstm_layer = sLSTMLayer(input_size, hidden_size, num_layers, dropout, use_layer_norm, device=self.device)
+        self.slstm_layer = sLSTMLayer(
+            input_size,
+            hidden_size,
+            num_layers,
+            dropout,
+            use_layer_norm,
+            device=self.device,
+        )
         self.fc = nn.Linear(hidden_size, output_size).to(self.device)
 
     def forward(self, x, h=None, c=None):

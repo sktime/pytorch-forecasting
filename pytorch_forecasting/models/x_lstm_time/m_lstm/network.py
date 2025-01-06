@@ -1,5 +1,6 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+
 from pytorch_forecasting.models.x_lstm_time.m_lstm.layer import mLSTMLayer
 
 
@@ -16,10 +17,18 @@ class mLSTMNetwork(nn.Module):
         device=None,
     ):
         super(mLSTMNetwork, self).__init__()
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device or torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
 
         self.mlstm_layer = mLSTMLayer(
-            input_size, hidden_size, num_layers, dropout, use_layer_norm, use_residual, self.device
+            input_size,
+            hidden_size,
+            num_layers,
+            dropout,
+            use_layer_norm,
+            use_residual,
+            self.device,
         )
         self.fc = nn.Linear(hidden_size, output_size)
 

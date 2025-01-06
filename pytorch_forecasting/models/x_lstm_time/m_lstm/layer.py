@@ -1,11 +1,19 @@
 import torch
 import torch.nn as nn
+
 from pytorch_forecasting.models.x_lstm_time.m_lstm.cell import mLSTMCell
 
 
 class mLSTMLayer(nn.Module):
     def __init__(
-        self, input_size, hidden_size, num_layers, dropout=0.2, layer_norm=True, residual_conn=True, device=None
+        self,
+        input_size,
+        hidden_size,
+        num_layers,
+        dropout=0.2,
+        layer_norm=True,
+        residual_conn=True,
+        device=None,
     ):
         super(mLSTMLayer, self).__init__()
         self.input_size = input_size
@@ -13,13 +21,21 @@ class mLSTMLayer(nn.Module):
         self.num_layers = num_layers
         self.layer_norm = layer_norm
         self.residual_conn = residual_conn
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device or torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
 
         self.dropout = nn.Dropout(dropout).to(self.device)
 
         self.cells = nn.ModuleList(
             [
-                mLSTMCell(input_size if i == 0 else hidden_size, hidden_size, dropout, layer_norm, self.device)
+                mLSTMCell(
+                    input_size if i == 0 else hidden_size,
+                    hidden_size,
+                    dropout,
+                    layer_norm,
+                    self.device,
+                )
                 for i in range(num_layers)
             ]
         )

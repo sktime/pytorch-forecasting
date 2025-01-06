@@ -1,11 +1,13 @@
-from pytorch_forecasting.models.base_model import AutoRegressiveBaseModel
 from copy import copy
-from typing import Optional, Tuple, Union, Literal, Dict
-from pytorch_forecasting.metrics import SMAPE, Metric
+from typing import Dict, Literal, Optional, Tuple, Union
+
 import torch
 from torch import nn
-from pytorch_forecasting.models.x_lstm_time.s_lstm.network import sLSTMNetwork
+
+from pytorch_forecasting.metrics import SMAPE, Metric
+from pytorch_forecasting.models.base_model import AutoRegressiveBaseModel
 from pytorch_forecasting.models.x_lstm_time.m_lstm.network import mLSTMNetwork
+from pytorch_forecasting.models.x_lstm_time.s_lstm.network import sLSTMNetwork
 
 
 class SeriesDecomposition(nn.Module):
@@ -15,7 +17,9 @@ class SeriesDecomposition(nn.Module):
         super(SeriesDecomposition, self).__init__()
         self.kernel_size = kernel_size
         self.padding = kernel_size // 2
-        self.avg_pool = nn.AvgPool1d(kernel_size=kernel_size, stride=1, padding=self.padding)
+        self.avg_pool = nn.AvgPool1d(
+            kernel_size=kernel_size, stride=1, padding=self.padding
+        )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -64,7 +68,9 @@ class xLSTMTime(AutoRegressiveBaseModel):
             raise ValueError("xlstm_type must be either 'slstm' or 'mlstm'")
 
         self.xlstm_type = xlstm_type
-        self._device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._device = device or torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
         self.to(self._device)
 
         self.decomposition = SeriesDecomposition(decomposition_kernel)
@@ -99,7 +105,10 @@ class xLSTMTime(AutoRegressiveBaseModel):
         self,
         x: Dict[str, torch.Tensor],
         hidden_states: Optional[
-            Union[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]
+            Union[
+                Tuple[torch.Tensor, torch.Tensor],
+                Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+            ]
         ] = None,
     ) -> Dict[str, torch.Tensor]:
         encoder_cont = x["encoder_cont"]
@@ -111,7 +120,9 @@ class xLSTMTime(AutoRegressiveBaseModel):
         concatenated_features = x.shape[-1]
 
         if self.input_linear is None:
-            self.input_linear = nn.Linear(concatenated_features, self.input_projection_size).to(self.device)
+            self.input_linear = nn.Linear(
+                concatenated_features, self.input_projection_size
+            ).to(self.device)
 
         x = self.input_linear(x)
 
@@ -143,6 +154,8 @@ class xLSTMTime(AutoRegressiveBaseModel):
     @classmethod
     def from_dataset(cls, dataset, **kwargs):
         new_kwargs = copy(kwargs)
-        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, SMAPE()))
+        new_kwargs.update(
+            cls.deduce_default_output_parameters(dataset, kwargs, SMAPE())
+        )
 
         return super().from_dataset(dataset, **kwargs)
