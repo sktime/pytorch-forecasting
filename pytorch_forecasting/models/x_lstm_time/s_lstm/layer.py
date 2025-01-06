@@ -5,8 +5,37 @@ from pytorch_forecasting.models.x_lstm_time.s_lstm.cell import sLSTMCell
 
 
 class sLSTMLayer(nn.Module):
-    """
-    Enhanced s_lstm Layer that supports multiple s_lstm cells.
+    """Implements the sLSTM Layer, which consists of multiple stacked sLSTM cells.
+
+    This layer is designed for sequence modeling tasks, supporting multiple layers
+    with optional residual connections and layer normalization.
+
+    Parameters
+    ----------
+    input_size : int
+        Number of features in the input.
+    hidden_size : int
+        Number of features in the hidden state of each sLSTM cell.
+    num_layers : int, optional
+        Number of stacked sLSTM layers, by default 1.
+    dropout : float, optional
+        Dropout probability for the input of each sLSTM cell, by default 0.0.
+    use_layer_norm : bool, optional
+        Whether to use layer normalization for each sLSTM cell, by default True.
+    use_residual : bool, optional
+        Whether to use residual connections in each sLSTM layer, by default True.
+    device : torch.device, optional
+        The device to run the computations on
+
+    Attributes
+    ----------
+    cells : nn.ModuleList
+        List of sLSTMCell objects, one for each layer.
+    input_projection : nn.Linear or None
+        Linear layer for projecting input to match hidden state size,
+        used when residual connections are enabled.
+    layer_norm_layers : nn.ModuleList
+        List of LayerNorm layers, one for each sLSTM layer (if use_layer_norm is True).
     """
 
     def __init__(
@@ -57,15 +86,25 @@ class sLSTMLayer(nn.Module):
             )
 
     def forward(self, x, h=None, c=None):
-        """
-        Forward pass through the s_lstm layer for each time step in sequence.
-        Args:
-            x: input tensor (seq_len, batch_size, input_size)
-            h: initial hidden states (num_layers, batch_size, hidden_size)
-            c: initial cell states (num_layers, batch_size, hidden_size)
-        Returns:
-            output: tensor of hidden states (seq_len, batch_size, hidden_size)
-            (h, c): final hidden and cell states
+        """Forward pass through the sLSTM Layer.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The number of features in the input.
+        h : list of torch.Tensor, optional
+            Initial hidden states for each layer.
+            If None, hidden states are initialized to zeros.
+        c : list of torch.Tensor, optional
+            Initial cell states for each layer.
+            If None, cell states are initialized to zeros.
+
+        Returns
+        -------
+        output : torch.Tensor
+            Tensor containing hidden states for each time step.
+        (h, c) : tuple of lists
+            Final hidden and cell states for each layer.
         """
         seq_len, batch_size, _ = x.size()
 

@@ -5,6 +5,46 @@ import torch.nn as nn
 
 
 class mLSTMCell(nn.Module):
+    """Implements the Matrix Long Short-Term Memory (mLSTM) Cell.
+
+    Implements the mLSTM algorithm as described in the paper:
+    (https://arxiv.org/pdf/2407.10240).
+
+    Parameters
+    ----------
+    input_size : int
+        Size of the input feature vector.
+    hidden_size : int
+        Number of hidden units in the LSTM cell.
+    dropout : float, optional
+        Dropout rate applied to inputs and hidden states, by default 0.2.
+    layer_norm : bool, optional
+        If True, apply Layer Normalization to gates and interactions, by default True.
+    device : torch.device, optional
+        Device for computation (CPU or CUDA), by default uses GPU if available.
+
+
+    Attributes
+    ----------
+    Wq : nn.Linear
+        Linear layer for computing the query vector.
+    Wk : nn.Linear
+        Linear layer for computing the key vector.
+    Wv : nn.Linear
+        Linear layer for computing the value vector.
+    Wi : nn.Linear
+        Linear layer for the input gate.
+    Wf : nn.Linear
+        Linear layer for the forget gate.
+    Wo : nn.Linear
+        Linear layer for the output gate.
+    dropout : nn.Dropout
+        Dropout regularization layer.
+    ln_q, ln_k, ln_v, ln_i, ln_f, ln_o : nn.LayerNorm
+        Optional layer normalization layers for respective computations.
+    device : torch.device
+        Device used for computation.
+    """
     def __init__(
         self, input_size, hidden_size, dropout=0.2, layer_norm=True, device=None
     ):
@@ -56,6 +96,29 @@ class mLSTMCell(nn.Module):
         self.tanh = nn.Tanh()
 
     def forward(self, x, h_prev, c_prev, n_prev):
+        """Compute the next hidden, cell, and normalized states in the mLSTM cell.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, input_size).
+        h_prev : torch.Tensor
+            Previous hidden state of shape (batch_size, hidden_size).
+        c_prev : torch.Tensor
+            Previous cell state of shape (batch_size, hidden_size).
+        n_prev : torch.Tensor
+            Previous normalized state of shape (batch_size, hidden_size).
+
+        Returns
+        -------
+        tuple of torch.Tensor:
+        h : torch.Tensor
+            Current hidden state of shape (batch_size, hidden_size).
+        c : torch.Tensor
+            Current cell state of shape (batch_size, hidden_size).
+        n : torch.Tensor
+            Current normalized state of shape (batch_size, hidden_size).
+        """
 
         x = x.to(self.device)
         h_prev = h_prev.to(self.device)

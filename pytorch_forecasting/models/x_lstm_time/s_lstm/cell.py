@@ -5,7 +5,49 @@ import torch.nn as nn
 
 
 class sLSTMCell(nn.Module):
-    """Stabilized LSTM Cell"""
+    """Implements the stabilized LSTM cell
+
+    Implements the sLSTM algorithm as described in the paper:
+    (https://arxiv.org/pdf/2407.10240).
+
+    Parameters
+    ----------
+    input_size : int
+        Number of input features for the cell.
+    hidden_size : int
+        Number of features in the hidden state of the cell.
+    dropout : float, optional
+        Dropout probability for the cell's input and hidden state, by default 0.0.
+    use_layer_norm : bool, optional
+        Whether to use layer normalization for the cell's internal computations, by default True.
+    device : torch.device, optional
+        The device to run the computations on
+
+    Attributes
+    ----------
+    input_weights : nn.Linear
+        Linear layer for processing input features into gate computations.
+    hidden_weights : nn.Linear
+        Linear layer for processing hidden state features into gate computations.
+    ln_cell : nn.LayerNorm
+        Layer normalization for the cell state, applied if use_layer_norm is True.
+    ln_hidden : nn.LayerNorm
+        Layer normalization for the output hidden state, applied if use_layer_norm is True.
+    ln_input : nn.LayerNorm
+        Layer normalization for input gates, applied if use_layer_norm is True.
+    ln_hidden_update : nn.LayerNorm
+        Layer normalization for hidden state gates, applied if use_layer_norm is True.
+    dropout_layer : nn.Dropout
+        Dropout layer applied to inputs and hidden states.
+    grad_clip : float
+        Gradient clipping threshold to improve training stability.
+    eps : float
+        Small constant for numerical stability in calculations.
+    tanh : nn.Tanh
+        Tanh activation function.
+    sigmoid : nn.Sigmoid
+        Sigmoid activation function.
+    """
 
     def __init__(
         self, input_size, hidden_size, dropout=0.0, use_layer_norm=True, device=None
@@ -57,7 +99,24 @@ class sLSTMCell(nn.Module):
         return exp_val / normalizer
 
     def forward(self, x, h_prev, c_prev):
-        """Forward pass with stabilized exponential gating"""
+        """Forward pass with stabilized exponential gating.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The number of features in the input.
+        h_prev : torch.Tensor
+            Previous hidden state tensor.
+        c_prev : torch.Tensor
+            Previous cell state tensor.
+
+        Returns
+        -------
+        h : torch.Tensor
+            Updated hidden state tensor.
+        c : torch.Tensor
+            Updated cell state tensor.
+        """
         x = x.to(self.device)
         h_prev = h_prev.to(self.device)
         c_prev = c_prev.to(self.device)

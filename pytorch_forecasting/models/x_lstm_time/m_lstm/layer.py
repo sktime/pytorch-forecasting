@@ -5,6 +5,37 @@ from pytorch_forecasting.models.x_lstm_time.m_lstm.cell import mLSTMCell
 
 
 class mLSTMLayer(nn.Module):
+    """Implements a mLSTM (Matrix LSTM) layer.
+
+    This class stacks multiple mLSTM cells to form a deep recurrent layer.
+    It supports residual connections, layer normalization, and dropout.
+
+    Parameters
+    ----------
+    input_size : int
+        The number of features in the input.
+    hidden_size : int
+        The number of features in the hidden state.
+    num_layers : int
+        The number of mLSTM layers to stack.
+    dropout : float, optional
+        Dropout probability applied to the inputs and intermediate layers,
+        by default 0.2.
+    layer_norm : bool, optional
+        Whether to use layer normalization in each mLSTM cell, by default True.
+    residual_conn : bool, optional
+        Whether to enable residual connections between layers, by default True.
+    device : torch.device, optional
+        The device to run the computations on
+
+    Attributes
+    ----------
+    cells : nn.ModuleList
+        A list containing all mLSTM cells in the layer.
+    dropout : nn.Dropout
+        Dropout layer applied between layers.
+
+    """
     def __init__(
         self,
         input_size,
@@ -55,8 +86,32 @@ class mLSTMLayer(nn.Module):
         )
 
     def forward(self, x, h=None, c=None, n=None):
-        """
-        Forward pass for the m_lstm layer.
+        """Forward pass through the mLSTM layer.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, seq_len, input_size).
+        h : torch.Tensor, optional
+            Initial hidden states for all layers, shape (num_layers, batch_size, hidden_size).
+            If None, initialized to zeros, by default None.
+        c : torch.Tensor, optional
+            Initial cell states for all layers, shape (num_layers, batch_size, hidden_size).
+            If None, initialized to zeros, by default None.
+        n : torch.Tensor, optional
+            Initial normalized states for all layers, shape (num_layers, batch_size, hidden_size).
+            If None, initialized to zeros, by default None.
+
+        Returns
+        -------
+        tuple
+            output : torch.Tensor
+                Final output tensor from the last layer, shape (batch_size, seq_len, hidden_size).
+            (h, c, n) : tuple of torch.Tensor
+                Final hidden, cell, and normalized states for all layers:
+                - h : torch.Tensor, shape (num_layers, batch_size, hidden_size).
+                - c : torch.Tensor, shape (num_layers, batch_size, hidden_size).
+                - n : torch.Tensor, shape (num_layers, batch_size, hidden_size).
         """
 
         x = x.to(self.device).transpose(0, 1)

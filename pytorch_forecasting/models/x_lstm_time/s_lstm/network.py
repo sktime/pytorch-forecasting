@@ -5,8 +5,34 @@ from pytorch_forecasting.models.x_lstm_time.s_lstm.layer import sLSTMLayer
 
 
 class sLSTMNetwork(nn.Module):
-    """
-    Stabilized LSTM Network with multiple s_lstm layers.
+    """ Implements the Stabilized LSTM Network with multiple sLSTM layers.
+
+    This network combines sLSTM layers with a fully connected output layer for
+    prediction.
+
+    Parameters
+    ----------
+    input_size : int
+        Number of features in the input.
+    hidden_size : int
+        Number of features in the hidden state of each sLSTM layer.
+    num_layers : int
+        Number of stacked sLSTM layers in the network.
+    output_size : int
+        Number of features in the output prediction.
+    dropout : float, optional
+        Dropout probability for the input of each sLSTM layer, by default 0.0.
+    use_layer_norm : bool, optional
+        Whether to use layer normalization in each sLSTM layer, by default True.
+    device : torch.device, optional
+        Device to run the computations on
+
+    Attributes
+    ----------
+    slstm_layer : sLSTMLayer
+        Stacked sLSTM layers used for processing input sequences.
+    fc : nn.Linear
+        Fully connected layer to generate the final output predictions.
     """
 
     def __init__(
@@ -43,14 +69,25 @@ class sLSTMNetwork(nn.Module):
 
     def forward(self, x, h=None, c=None):
         """
-        Forward pass through the s_lstm network.
-        Args:
-            x: input tensor (seq_len, batch_size, input_size)
-            h: initial hidden states (num_layers, batch_size, hidden_size)
-            c: initial cell states (num_layers, batch_size, hidden_size)
-        Returns:
-            output: tensor of output predictions (seq_len, batch_size, output_size)
-            (h, c): final hidden and cell states
+        Forward pass through the sLSTM network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+           The number of features in the input.
+        h : list of torch.Tensor, optional
+            Initial hidden states for each layer.
+            If None, hidden states are initialized to zeros.
+        c : list of torch.Tensor, optional
+            Initial cell states for each layer.
+            If None, cell states are initialized to zeros.
+
+        Returns
+        -------
+        output : torch.Tensor
+            Tensor containing the final output predictions.
+        (h, c) : tuple of lists
+            Final hidden and cell states for each layer.
         """
         output, (h, c) = self.slstm_layer(x, h, c)
         output = self.fc(output[-1])
