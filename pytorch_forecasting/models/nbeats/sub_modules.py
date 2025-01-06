@@ -110,7 +110,7 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             if thetas_dim % 2 == 0
             else (thetas_dim // 2, thetas_dim // 2 + 1)
         )
-        s1_b = torch.from_numpy(
+        s1_b = torch.tensor(
             np.array(
                 [
                     np.cos(2 * np.pi * i * backcast_linspace)
@@ -118,8 +118,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
                 ],
                 dtype=np.float32,
             ),
+            dtype=torch.float32,
         )  # H/2-1
-        s2_b = torch.from_numpy(
+        s2_b = torch.tensor(
             np.array(
                 [
                     np.sin(2 * np.pi * i * backcast_linspace)
@@ -127,10 +128,11 @@ class NBEATSSeasonalBlock(NBEATSBlock):
                 ],
                 dtype=np.float32,
             ),
+            dtype=torch.float32,
         )
         self.register_buffer("S_backcast", torch.cat([s1_b, s2_b]))
 
-        s1_f = torch.from_numpy(
+        s1_f = torch.tensor(
             np.array(
                 [
                     np.cos(2 * np.pi * i * forecast_linspace)
@@ -138,6 +140,7 @@ class NBEATSSeasonalBlock(NBEATSBlock):
                 ],
                 dtype=np.float32,
             ),
+            dtype=torch.float32,
         )  # H/2-1
         s2_f = torch.from_numpy(
             np.array(
@@ -192,16 +195,18 @@ class NBEATSTrendBlock(NBEATSBlock):
             forecast_length / thetas_dim
         )  # ensure range of predictions is comparable to input
 
-        coefficients = torch.from_numpy(
+        coefficients = torch.tensor(
             np.array(
                 [backcast_linspace**i for i in range(thetas_dim)], dtype=np.float32
             ),
+            dtype=torch.float32,
         )
         self.register_buffer("T_backcast", coefficients * norm)
-        coefficients = torch.from_numpy(
+        coefficients = torch.tensor(
             np.array(
                 [forecast_linspace**i for i in range(thetas_dim)], dtype=np.float32
             ),
+            dtype=torch.float32,
         )
         self.register_buffer("T_forecast", coefficients * norm)
 
