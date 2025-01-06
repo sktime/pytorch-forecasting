@@ -6,7 +6,7 @@ from pytorch_forecasting.models.x_lstm_time.s_lstm.cell import sLSTMCell
 
 class sLSTMLayer(nn.Module):
     """
-    Enhanced s_lstm Layer that supports multiple s_lstm cells across timesteps and residual connections.
+    Enhanced s_lstm Layer that supports multiple s_lstm cells.
     """
 
     def __init__(
