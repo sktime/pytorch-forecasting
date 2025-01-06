@@ -105,20 +105,48 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             backcast_length, forecast_length, centered=False
         )
 
-        p1, p2 = (thetas_dim // 2, thetas_dim // 2) if thetas_dim % 2 == 0 else (thetas_dim // 2, thetas_dim // 2 + 1)
-        s1_b = torch.from_numpy(np.array(
-            [np.cos(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p1)], dtype=np.float32),
+        p1, p2 = (
+            (thetas_dim // 2, thetas_dim // 2)
+            if thetas_dim % 2 == 0
+            else (thetas_dim // 2, thetas_dim // 2 + 1)
+        )
+        s1_b = torch.from_numpy(
+            np.array(
+                [
+                    np.cos(2 * np.pi * i * backcast_linspace)
+                    for i in self.get_frequencies(p1)
+                ],
+                dtype=np.float32,
+            ),
         )  # H/2-1
-        s2_b = torch.from_numpy(np.array(
-            [np.sin(2 * np.pi * i * backcast_linspace) for i in self.get_frequencies(p2)], dtype=np.float32),
+        s2_b = torch.from_numpy(
+            np.array(
+                [
+                    np.sin(2 * np.pi * i * backcast_linspace)
+                    for i in self.get_frequencies(p2)
+                ],
+                dtype=np.float32,
+            ),
         )
         self.register_buffer("S_backcast", torch.cat([s1_b, s2_b]))
 
-        s1_f = torch.from_numpy(np.array(
-            [np.cos(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p1)], dtype=np.float32),
+        s1_f = torch.from_numpy(
+            np.array(
+                [
+                    np.cos(2 * np.pi * i * forecast_linspace)
+                    for i in self.get_frequencies(p1)
+                ],
+                dtype=np.float32,
+            ),
         )  # H/2-1
-        s2_f = torch.from_numpy(np.array(
-            [np.sin(2 * np.pi * i * forecast_linspace) for i in self.get_frequencies(p2)], dtype=np.float32),
+        s2_f = torch.from_numpy(
+            np.array(
+                [
+                    np.sin(2 * np.pi * i * forecast_linspace)
+                    for i in self.get_frequencies(p2)
+                ],
+                dtype=np.float32,
+            ),
         )
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
 
@@ -165,12 +193,16 @@ class NBEATSTrendBlock(NBEATSBlock):
         )  # ensure range of predictions is comparable to input
 
         coefficients = torch.from_numpy(
-                np.array([backcast_linspace**i for i in range(thetas_dim)], dtype=np.float32),
-                )
+            np.array(
+                [backcast_linspace**i for i in range(thetas_dim)], dtype=np.float32
+            ),
+        )
         self.register_buffer("T_backcast", coefficients * norm)
         coefficients = torch.from_numpy(
-                np.array([forecast_linspace**i for i in range(thetas_dim)], dtype=np.float32),
-                )
+            np.array(
+                [forecast_linspace**i for i in range(thetas_dim)], dtype=np.float32
+            ),
+        )
         self.register_buffer("T_forecast", coefficients * norm)
 
     def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
