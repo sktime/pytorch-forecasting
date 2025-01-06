@@ -1,24 +1,17 @@
 ![PyTorch Forecasting](./docs/source/_static/logo.svg)
 
-[pypi-image]: https://badge.fury.io/py/pytorch-forecasting.svg
-[pypi-url]: https://pypi.python.org/pypi/pytorch-forecasting
-[conda-image]: https://img.shields.io/conda/v/conda-forge/pytorch-forecasting
-[conda-url]: https://anaconda.org/conda-forge/pytorch-forecasting
-[build-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/test.yml/badge.svg?branch=master
-[build-url]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/test.yml?query=branch%3Amaster
-[linter-image]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/code_quality.yml/badge.svg?branch=master
-[linter-url]: https://github.com/jdb78/pytorch-forecasting/actions/workflows/code_quality.yml?query=branch%3Amaster
-[docs-image]: https://readthedocs.org/projects/pytorch-forecasting/badge/?version=latest
-[docs-url]: https://pytorch-forecasting.readthedocs.io
-[coverage-image]: https://codecov.io/gh/jdb78/pytorch-forecasting/branch/master/graph/badge.svg
-[coverage-url]: https://codecov.io/github/jdb78/pytorch-forecasting?branch=master
+_PyTorch Forecasting_ is a PyTorch-based package for forecasting with state-of-the-art deep learning architectures. It provides a high-level API and uses [PyTorch Lightning](https://pytorch-lightning.readthedocs.io/) to scale training on GPU or CPU, with automatic logging.
 
-[![PyPI Version][pypi-image]][pypi-url] [![Conda Version][conda-image]][conda-url] [![Docs Status][docs-image]][docs-url] [![Linter Status][linter-image]][linter-url] [![Build Status][build-image]][build-url] [![Code Coverage][coverage-image]][coverage-url]
 
-**[Documentation](https://pytorch-forecasting.readthedocs.io)** | **[Tutorials](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials.html)** | **[Release Notes](https://pytorch-forecasting.readthedocs.io/en/latest/CHANGELOG.html)**
+|  | **[Documentation](https://pytorch-forecasting.readthedocs.io)** · **[Tutorials](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials.html)** · **[Release Notes](https://pytorch-forecasting.readthedocs.io/en/latest/CHANGELOG.html)** |
+|---|---|
+| **Open&#160;Source** | [![MIT](https://img.shields.io/github/license/sktime/pytorch-forecasting)](https://github.com/sktime/pytorch-forecasting/blob/master/LICENSE) |
+| **Community** | [![!discord](https://img.shields.io/static/v1?logo=discord&label=discord&message=chat&color=lightgreen)](https://discord.com/invite/54ACzaFsn7) [![!slack](https://img.shields.io/static/v1?logo=linkedin&label=LinkedIn&message=news&color=lightblue)](https://www.linkedin.com/company/scikit-time/) |
+| **CI/CD** | [![github-actions](https://img.shields.io/github/actions/workflow/status/sktime/pytorch-forecasting/pypi_release.yml?logo=github)](https://github.com/sktime/pytorch-forecasting/actions/workflows/pypi_release.yml) [![readthedocs](https://img.shields.io/readthedocs/pytorch-forecasting?logo=readthedocs)](https://pytorch-forecasting.readthedocs.io) [![platform](https://img.shields.io/conda/pn/conda-forge/pytorch-forecasting)](https://github.com/sktime/pytorch-forecasting) [![Code Coverage][coverage-image]][coverage-url] |
+| **Code** | [![!pypi](https://img.shields.io/pypi/v/pytorch-forecasting?color=orange)](https://pypi.org/project/pytorch-forecasting/) [![!conda](https://img.shields.io/conda/vn/conda-forge/pytorch-forecasting)](https://anaconda.org/conda-forge/pytorch-forecasting) [![!python-versions](https://img.shields.io/pypi/pyversions/pytorch-forecasting)](https://www.python.org/) [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)  |
 
-_PyTorch Forecasting_ is a PyTorch-based package for forecasting time series with state-of-the-art network architectures. It provides a high-level API for training networks on pandas data frames and leverages
-[PyTorch Lightning](https://pytorch-lightning.readthedocs.io/) for scalable training on (multiple) GPUs, CPUs and for automatic logging.
+[coverage-image]: https://codecov.io/gh/sktime/pytorch-forecasting/branch/main/graph/badge.svg
+[coverage-url]: https://codecov.io/github/sktime/pytorch-forecasting?branch=main
 
 ---
 
@@ -34,7 +27,6 @@ Specifically, the package provides
 - Multiple neural network architectures for timeseries forecasting that have been enhanced
   for real-world deployment and come with in-built interpretation capabilities
 - Multi-horizon timeseries metrics
-- Ranger optimizer for faster model training
 - Hyperparameter tuning with [optuna](https://optuna.readthedocs.io/)
 
 The package is built on [pytorch-lightning](https://pytorch-lightning.readthedocs.io/) to allow training on CPUs, single and multiple GPUs out-of-the-box.
@@ -86,11 +78,12 @@ Networks can be trained with the [PyTorch Lighning Trainer](https://pytorch-ligh
 
 ```python
 # imports for training
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
+import lightning.pytorch as pl
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 # import dataset, network to train and metric to optimize
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, QuantileLoss
+from lightning.pytorch.tuner import Tuner
 
 # load data: this is pandas dataframe with at least a column for
 # * the target (what you want to predict)
@@ -133,7 +126,7 @@ early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience
 lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(
     max_epochs=100,
-    gpus=0,  # run on CPU, if on multiple GPUs, use accelerator="ddp"
+    accelerator="auto",  # run on CPU, if on multiple GPUs, use strategy="ddp"
     gradient_clip_val=0.1,
     limit_train_batches=30,  # 30 batches per epoch
     callbacks=[lr_logger, early_stop_callback],
@@ -160,7 +153,7 @@ tft = TemporalFusionTransformer.from_dataset(
 print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
 # find the optimal learning rate
-res = trainer.lr_find(
+res = Tuner(trainer).lr_find(
     tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
 )
 # and plot the result - always visually confirm that the suggested learning rate makes sense

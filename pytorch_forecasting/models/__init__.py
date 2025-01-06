@@ -1,6 +1,7 @@
 """
 Models for timeseries forecasting.
 """
+
 from pytorch_forecasting.models.base_model import (
     AutoRegressiveBaseModel,
     AutoRegressiveBaseModelWithCovariates,
@@ -14,7 +15,9 @@ from pytorch_forecasting.models.nbeats import NBeats
 from pytorch_forecasting.models.nhits import NHiTS
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.rnn import RecurrentNetwork
-from pytorch_forecasting.models.temporal_fusion_transformer import TemporalFusionTransformer
+from pytorch_forecasting.models.temporal_fusion_transformer import (
+    TemporalFusionTransformer,
+)
 
 __all__ = [
     "NBeats",

@@ -1,6 +1,7 @@
 """
 Implementations of flexible GRU and LSTM that can handle sequences of length 0.
 """
+
 from abc import ABC, abstractmethod
 from typing import Tuple, Type, Union
 
@@ -20,7 +21,10 @@ class RNN(ABC, nn.RNNBase):
 
     @abstractmethod
     def handle_no_encoding(
-        self, hidden_state: HiddenState, no_encoding: torch.BoolTensor, initial_hidden_state: HiddenState
+        self,
+        hidden_state: HiddenState,
+        no_encoding: torch.BoolTensor,
+        initial_hidden_state: HiddenState,
     ) -> HiddenState:
         """
         Mask the hidden_state where there is no encoding.
@@ -49,7 +53,9 @@ class RNN(ABC, nn.RNNBase):
         pass
 
     @abstractmethod
-    def repeat_interleave(self, hidden_state: HiddenState, n_samples: int) -> HiddenState:
+    def repeat_interleave(
+        self, hidden_state: HiddenState, n_samples: int
+    ) -> HiddenState:
         """
         Duplicate the hidden_state n_samples times.
 
@@ -88,7 +94,9 @@ class RNN(ABC, nn.RNNBase):
                 Output is packed sequence if input has been a packed sequence.
         """
         if isinstance(x, rnn.PackedSequence) or lengths is None:
-            assert lengths is None, "cannot combine x of type PackedSequence with lengths argument"
+            assert (
+                lengths is None
+            ), "cannot combine x of type PackedSequence with lengths argument"
             return super().forward(x, hx=hx)
         else:
             min_length = lengths.min()
@@ -98,15 +106,30 @@ class RNN(ABC, nn.RNNBase):
             if max_length == 0:
                 hidden_state = self.init_hidden_state(x)
                 if self.batch_first:
-                    out = torch.zeros(lengths.size(0), x.size(1), self.hidden_size, dtype=x.dtype, device=x.device)
+                    out = torch.zeros(
+                        lengths.size(0),
+                        x.size(1),
+                        self.hidden_size,
+                        dtype=x.dtype,
+                        device=x.device,
+                    )
                 else:
-                    out = torch.zeros(x.size(0), lengths.size(0), self.hidden_size, dtype=x.dtype, device=x.device)
+                    out = torch.zeros(
+                        x.size(0),
+                        lengths.size(0),
+                        self.hidden_size,
+                        dtype=x.dtype,
+                        device=x.device,
+                    )
                 return out, hidden_state
             else:
                 pack_lengths = lengths.where(lengths > 0, torch.ones_like(lengths))
                 packed_out, hidden_state = super().forward(
                     rnn.pack_padded_sequence(
-                        x, pack_lengths.cpu(), enforce_sorted=enforce_sorted, batch_first=self.batch_first
+                        x,
+                        pack_lengths.cpu(),
+                        enforce_sorted=enforce_sorted,
+                        batch_first=self.batch_first,
                     ),
                     hx=hx,
                 )
@@ -120,10 +143,14 @@ class RNN(ABC, nn.RNNBase):
                     else:
                         initial_hidden_state = hx
                     # propagate initial hidden state when sequence length was 0
-                    hidden_state = self.handle_no_encoding(hidden_state, no_encoding, initial_hidden_state)
+                    hidden_state = self.handle_no_encoding(
+                        hidden_state, no_encoding, initial_hidden_state
+                    )
 
                 # return unpacked sequence
-                out, _ = rnn.pad_packed_sequence(packed_out, batch_first=self.batch_first)
+                out, _ = rnn.pad_packed_sequence(
+                    packed_out, batch_first=self.batch_first
+                )
                 return out, hidden_state
 
 
@@ -131,7 +158,10 @@ class LSTM(RNN, nn.LSTM):
     """LSTM that can handle zero-length sequences"""
 
     def handle_no_encoding(
-        self, hidden_state: HiddenState, no_encoding: torch.BoolTensor, initial_hidden_state: HiddenState
+        self,
+        hidden_state: HiddenState,
+        no_encoding: torch.BoolTensor,
+        initial_hidden_state: HiddenState,
     ) -> HiddenState:
         hidden, cell = hidden_state
         hidden = hidden.masked_scatter(no_encoding, initial_hidden_state[0])
@@ -156,7 +186,9 @@ class LSTM(RNN, nn.LSTM):
         )
         return hidden, cell
 
-    def repeat_interleave(self, hidden_state: HiddenState, n_samples: int) -> HiddenState:
+    def repeat_interleave(
+        self, hidden_state: HiddenState, n_samples: int
+    ) -> HiddenState:
         hidden, cell = hidden_state
         hidden = hidden.repeat_interleave(n_samples, 1)
         cell = cell.repeat_interleave(n_samples, 1)
@@ -167,7 +199,10 @@ class GRU(RNN, nn.GRU):
     """GRU that can handle zero-length sequences"""
 
     def handle_no_encoding(
-        self, hidden_state: HiddenState, no_encoding: torch.BoolTensor, initial_hidden_state: HiddenState
+        self,
+        hidden_state: HiddenState,
+        no_encoding: torch.BoolTensor,
+        initial_hidden_state: HiddenState,
     ) -> HiddenState:
         return hidden_state.masked_scatter(no_encoding, initial_hidden_state)
 
@@ -184,7 +219,9 @@ class GRU(RNN, nn.GRU):
         )
         return hidden
 
-    def repeat_interleave(self, hidden_state: HiddenState, n_samples: int) -> HiddenState:
+    def repeat_interleave(
+        self, hidden_state: HiddenState, n_samples: int
+    ) -> HiddenState:
         return hidden_state.repeat_interleave(n_samples, 1)
 
 
@@ -205,5 +242,7 @@ def get_rnn(cell_type: Union[Type[RNN], str]) -> Type[RNN]:
     elif cell_type == "GRU":
         rnn = GRU
     else:
-        raise ValueError(f"RNN type {cell_type} is not supported. supported: [LSTM, GRU]")
+        raise ValueError(
+            f"RNN type {cell_type} is not supported. supported: [LSTM, GRU]"
+        )
     return rnn

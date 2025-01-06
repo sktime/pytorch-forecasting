@@ -1,9 +1,15 @@
 """Classes and functions for the MQF2 metric."""
+
 from typing import List, Optional, Tuple
 
 from cpflows.flows import DeepConvexFlow, SequentialFlow
 import torch
-from torch.distributions import AffineTransform, Distribution, Normal, TransformedDistribution
+from torch.distributions import (
+    AffineTransform,
+    Distribution,
+    Normal,
+    TransformedDistribution,
+)
 import torch.nn.functional as F
 
 
@@ -11,12 +17,13 @@ class DeepConvexNet(DeepConvexFlow):
     r"""
     Class that takes a partially input convex neural network (picnn)
     as input and equips it with functions of logdet
-    computation (both estimation and exact computation)
+    computation (both estimation and exact computation).
     This class is based on DeepConvexFlow of the CP-Flow
     repo (https://github.com/CW-Huang/CP-Flow)
     For details of the logdet estimator, see
     ``Convex potential flows: Universal probability distributions
     with optimal transport and convex optimization``
+
     Parameters
     ----------
     picnn
@@ -65,14 +72,19 @@ class DeepConvexNet(DeepConvexFlow):
         self.is_energy_score = is_energy_score
         self.estimate_logdet = estimate_logdet
 
-    def get_potential(self, x: torch.Tensor, context: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def get_potential(
+        self, x: torch.Tensor, context: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         n = x.size(0)
         output = self.picnn(x, context)
 
         if self.is_energy_score:
             return output
         else:
-            return F.softplus(self.w1) * output + F.softplus(self.w0) * (x.view(n, -1) ** 2).sum(1, keepdim=True) / 2
+            return (
+                F.softplus(self.w1) * output
+                + F.softplus(self.w0) * (x.view(n, -1) ** 2).sum(1, keepdim=True) / 2
+            )
 
     def forward_transform(
         self,
@@ -82,7 +94,9 @@ class DeepConvexNet(DeepConvexFlow):
         extra: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if self.estimate_logdet:
-            return self.forward_transform_stochastic(x, logdet, context=context, extra=extra)
+            return self.forward_transform_stochastic(
+                x, logdet, context=context, extra=extra
+            )
         else:
             return self.forward_transform_bruteforce(x, logdet, context=context)
 
@@ -93,6 +107,7 @@ class SequentialNet(SequentialFlow):
     layers and provides energy score computation
     This class is based on SequentialFlow of the CP-Flow repo
     (https://github.com/CW-Huang/CP-Flow)
+
     Parameters
     ----------
     networks
@@ -103,7 +118,9 @@ class SequentialNet(SequentialFlow):
         super().__init__(networks)
         self.networks = self.flows
 
-    def forward(self, x: torch.Tensor, context: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, context: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         for network in self.networks:
             if isinstance(network, DeepConvexNet):
                 x = network.forward(x, context=context)
@@ -115,6 +132,7 @@ class SequentialNet(SequentialFlow):
         """
         Auxiliary function for energy score computation
         Drawing samples conditioned on the hidden state
+
         Parameters
         ----------
         hidden_state
@@ -135,7 +153,9 @@ class SequentialNet(SequentialFlow):
         standard_normal = Normal(zero, one)
 
         samples = self.forward(
-            standard_normal.sample([num_samples * dimension]).view(num_samples, dimension),
+            standard_normal.sample([num_samples * dimension]).view(
+                num_samples, dimension
+            ),
             context=hidden_state,
         )
 
@@ -158,6 +178,7 @@ class SequentialNet(SequentialFlow):
         h_i is the hidden state associated with z_i,
         and es_num_samples is the number of samples drawn
         for each of w, w', w'' in energy score approximation
+
         Parameters
         ----------
         z
@@ -179,7 +200,9 @@ class SequentialNet(SequentialFlow):
 
         # (numel_batch * dimension * es_num_samples x hidden_size)
 
-        hidden_state_repeat = hidden_state.repeat_interleave(repeats=es_num_samples, dim=0)
+        hidden_state_repeat = hidden_state.repeat_interleave(
+            repeats=es_num_samples, dim=0
+        )
 
         w = self.es_sample(hidden_state_repeat, dimension)
         w_prime = self.es_sample(hidden_state_repeat, dimension)
@@ -223,6 +246,7 @@ class MQF2Distribution(Distribution):
     Distribution class for the model MQF2 proposed in the paper
     ``Multivariate Quantile Function Forecaster``
     by Kan, Aubet, Januschowski, Park, Benidis, Ruthotto, Gasthaus
+
     Parameters
     ----------
     picnn
@@ -264,7 +288,6 @@ class MQF2Distribution(Distribution):
         threshold_input: float = 100.0,
         validate_args: bool = False,
     ) -> None:
-
         self.picnn = picnn
         self.hidden_state = hidden_state
         self.prediction_length = prediction_length
@@ -275,7 +298,9 @@ class MQF2Distribution(Distribution):
 
         super().__init__(batch_shape=self.batch_shape, validate_args=validate_args)
 
-        self.context_length = self.hidden_state.shape[-2] if len(self.hidden_state.shape) > 2 else 1
+        self.context_length = (
+            self.hidden_state.shape[-2] if len(self.hidden_state.shape) > 2 else 1
+        )
         self.numel_batch = self.get_numel(self.batch_shape)
 
         # mean zero and std one
@@ -290,6 +315,7 @@ class MQF2Distribution(Distribution):
         over the observations z
         Then, reshapes the observations into a 2-dimensional tensor for
         further computation
+
         Parameters
         ----------
         z
@@ -317,6 +343,7 @@ class MQF2Distribution(Distribution):
         """
         Computes the log likelihood  log(g(z)) + logdet(dg(z)/dz),
         where g is the gradient of the picnn
+
         Parameters
         ----------
         z
@@ -331,7 +358,9 @@ class MQF2Distribution(Distribution):
         z = torch.clamp(z, min=-self.threshold_input, max=self.threshold_input)
         z = self.stack_sliding_view(z)
 
-        loss = self.picnn.logp(z, self.hidden_state.reshape(-1, self.hidden_state.shape[-1]))
+        loss = self.picnn.logp(
+            z, self.hidden_state.reshape(-1, self.hidden_state.shape[-1])
+        )
 
         return loss
 
@@ -346,6 +375,7 @@ class MQF2Distribution(Distribution):
         h_i is the hidden state associated with z_i,
         and es_num_samples is the number of samples drawn
         for each of w, w', w'' in energy score approximation
+
         Parameters
         ----------
         z
@@ -361,15 +391,20 @@ class MQF2Distribution(Distribution):
         beta = self.beta
 
         z = self.stack_sliding_view(z)
-        reshaped_hidden_state = self.hidden_state.reshape(-1, self.hidden_state.shape[-1])
+        reshaped_hidden_state = self.hidden_state.reshape(
+            -1, self.hidden_state.shape[-1]
+        )
 
-        loss = self.picnn.energy_score(z, reshaped_hidden_state, es_num_samples=es_num_samples, beta=beta)
+        loss = self.picnn.energy_score(
+            z, reshaped_hidden_state, es_num_samples=es_num_samples, beta=beta
+        )
 
         return loss
 
     def rsample(self, sample_shape: torch.Size = torch.Size()) -> torch.Tensor:
         """
         Generates the sample paths
+
         Parameters
         ----------
         sample_shape
@@ -377,7 +412,7 @@ class MQF2Distribution(Distribution):
         Returns
         -------
         sample_paths
-            Tesnor of shape (batch_size, *sample_shape, prediction_length)
+            Tesnor of shape (batch_size, * sample_shape, prediction_length)
         """
 
         numel_batch = self.numel_batch
@@ -386,7 +421,9 @@ class MQF2Distribution(Distribution):
         num_samples_per_batch = MQF2Distribution.get_numel(sample_shape)
         num_samples = num_samples_per_batch * numel_batch
 
-        hidden_state_repeat = self.hidden_state.repeat_interleave(repeats=num_samples_per_batch, dim=0)
+        hidden_state_repeat = self.hidden_state.repeat_interleave(
+            repeats=num_samples_per_batch, dim=0
+        )
 
         alpha = torch.rand(
             (num_samples, prediction_length),
@@ -404,9 +441,12 @@ class MQF2Distribution(Distribution):
         )
         return samples
 
-    def quantile(self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def quantile(
+        self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         Generates the predicted paths associated with the quantile levels alpha
+
         Parameters
         ----------
         alpha
@@ -504,11 +544,13 @@ class TransformedMQF2Distribution(TransformedDistribution):
 
         return loss * (repeated_scale**beta)
 
-    def quantile(self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def quantile(
+        self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         result = self.base_dist.quantile(alpha, hidden_state=hidden_state)
-        result = result.reshape(self.base_dist.hidden_state.size(0), -1, self.base_dist.prediction_length).transpose(
-            0, 1
-        )
+        result = result.reshape(
+            self.base_dist.hidden_state.size(0), -1, self.base_dist.prediction_length
+        ).transpose(0, 1)
         for transform in self.transforms:
             # transform separate for each prediction horizon
             result = transform(result)

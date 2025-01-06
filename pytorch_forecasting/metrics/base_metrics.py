@@ -1,8 +1,9 @@
 """
 Base classes for metrics - only for inheritance.
 """
+
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import warnings
 
 from sklearn.base import BaseEstimator
@@ -27,7 +28,13 @@ class Metric(LightningMetric):
     higher_is_better = False
     is_differentiable = True
 
-    def __init__(self, name: str = None, quantiles: List[float] = None, reduction="mean", **kwargs):
+    def __init__(
+        self,
+        name: str = None,
+        quantiles: List[float] = None,
+        reduction="mean",
+        **kwargs,
+    ):
         """
         Initialize metric
 
@@ -62,7 +69,10 @@ class Metric(LightningMetric):
         raise NotImplementedError()
 
     def rescale_parameters(
-        self, parameters: torch.Tensor, target_scale: torch.Tensor, encoder: BaseEstimator
+        self,
+        parameters: torch.Tensor,
+        target_scale: torch.Tensor,
+        encoder: BaseEstimator,
     ) -> torch.Tensor:
         """
         Rescale normalized parameters into the scale required for the output.
@@ -89,13 +99,17 @@ class Metric(LightningMetric):
         """
         if y_pred.ndim == 3:
             if self.quantiles is None:
-                assert y_pred.size(-1) == 1, "Prediction should only have one extra dimension"
+                assert (
+                    y_pred.size(-1) == 1
+                ), "Prediction should only have one extra dimension"
                 y_pred = y_pred[..., 0]
             else:
                 y_pred = y_pred.mean(-1)
         return y_pred
 
-    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
+    def to_quantiles(
+        self, y_pred: torch.Tensor, quantiles: List[float] = None
+    ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
@@ -115,10 +129,14 @@ class Metric(LightningMetric):
         elif y_pred.ndim == 3:
             if y_pred.size(2) > 1:  # single dimension means all quantiles are the same
                 assert quantiles is not None, "quantiles are not defined"
-                y_pred = torch.quantile(y_pred, torch.tensor(quantiles, device=y_pred.device), dim=2).permute(1, 2, 0)
+                y_pred = torch.quantile(
+                    y_pred, torch.tensor(quantiles, device=y_pred.device), dim=2
+                ).permute(1, 2, 0)
             return y_pred
         else:
-            raise ValueError(f"prediction has 1 or more than 3 dimensions: {y_pred.ndim}")
+            raise ValueError(
+                f"prediction has 1 or more than 3 dimensions: {y_pred.ndim}"
+            )
 
     def __add__(self, metric: LightningMetric):
         composite_metric = CompositeMetric(metrics=[self])
@@ -174,9 +192,13 @@ class TorchMetricWrapper(Metric):
     def persistent(self, mode: bool = False) -> None:
         self.torchmetric.persistent(mode=mode)
 
-    def _convert(self, y_pred: torch.Tensor, target: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _convert(
+        self, y_pred: torch.Tensor, target: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         # unpack target into target and weights
-        if isinstance(target, (list, tuple)) and not isinstance(target, rnn.PackedSequence):
+        if isinstance(target, (list, tuple)) and not isinstance(
+            target, rnn.PackedSequence
+        ):
             target, weight = target
             if weight is not None:
                 raise NotImplementedError(
@@ -199,7 +221,9 @@ class TorchMetricWrapper(Metric):
         target = target.flatten()
         return y_pred, target
 
-    def update(self, y_pred: torch.Tensor, target: torch.Tensor, **kwargs) -> torch.Tensor:
+    def update(
+        self, y_pred: torch.Tensor, target: torch.Tensor, **kwargs
+    ) -> torch.Tensor:
         # flatten target and prediction
         y_pred_flattened, target_flattened = self._convert(y_pred, target)
 
@@ -219,7 +243,9 @@ class TorchMetricWrapper(Metric):
         return f"WrappedTorchmetric({repr(self.torchmetric)})"
 
 
-def convert_torchmetric_to_pytorch_forecasting_metric(metric: LightningMetric) -> Metric:
+def convert_torchmetric_to_pytorch_forecasting_metric(
+    metric: LightningMetric,
+) -> Metric:
     """
     If necessary, convert a torchmetric to a PyTorch Forecasting metric that
     works with PyTorch Forecasting models.
@@ -254,9 +280,13 @@ class MultiLoss(LightningMetric):
         assert len(metrics) > 0, "at least one metric has to be specified"
         if weights is None:
             weights = [1.0 for _ in metrics]
-        assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
+        assert len(weights) == len(
+            metrics
+        ), "Number of weights has to match number of metrics"
 
-        self.metrics = [convert_torchmetric_to_pytorch_forecasting_metric(m) for m in metrics]
+        self.metrics = [
+            convert_torchmetric_to_pytorch_forecasting_metric(m) for m in metrics
+        ]
         self.weights = weights
 
         super().__init__()
@@ -264,7 +294,12 @@ class MultiLoss(LightningMetric):
     def __repr__(self):
         name = (
             f"{self.__class__.__name__}("
-            + ", ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
+            + ", ".join(
+                [
+                    f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m)
+                    for w, m in zip(self.weights, self.metrics)
+                ]
+            )
             + ")"
         )
         return name
@@ -360,7 +395,11 @@ class MultiLoss(LightningMetric):
     def _wrap_compute(self, compute: Callable) -> Callable:
         return compute
 
-    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+    def _sync_dist(
+        self,
+        dist_sync_fn: Optional[Callable] = None,
+        process_group: Optional[Any] = None,
+    ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
 
@@ -442,7 +481,7 @@ class MultiLoss(LightningMetric):
         try:
             return super().__getattr__(name)
         except AttributeError as e:
-            attribute_exists = all([hasattr(metric, name) for metric in self.metrics])
+            attribute_exists = all(hasattr(metric, name) for metric in self.metrics)
             if attribute_exists:
                 # check if to return callable or not and return function if yes
                 if callable(getattr(self.metrics[0], name)):
@@ -454,17 +493,23 @@ class MultiLoss(LightningMetric):
                         results = []
                         for idx, m in enumerate(self.metrics):
                             new_args = [
-                                arg[idx]
-                                if isinstance(arg, (list, tuple))
-                                and not isinstance(arg, rnn.PackedSequence)
-                                and len(arg) == n
-                                else arg
+                                (
+                                    arg[idx]
+                                    if isinstance(arg, (list, tuple))
+                                    and not isinstance(arg, rnn.PackedSequence)
+                                    and len(arg) == n
+                                    else arg
+                                )
                                 for arg in args
                             ]
                             new_kwargs = {
-                                key: val[idx]
-                                if isinstance(val, list) and not isinstance(val, rnn.PackedSequence) and len(val) == n
-                                else val
+                                key: (
+                                    val[idx]
+                                    if isinstance(val, list)
+                                    and not isinstance(val, rnn.PackedSequence)
+                                    and len(val) == n
+                                    else val
+                                )
                                 for key, val in kwargs.items()
                             }
                             results.append(getattr(m, name)(*new_args, **new_kwargs))
@@ -496,23 +541,39 @@ class CompositeMetric(LightningMetric):
     higher_is_better = False
     is_differentiable = True
 
-    def __init__(self, metrics: List[LightningMetric] = [], weights: List[float] = None):
+    def __init__(
+        self,
+        metrics: Optional[List[LightningMetric]] = None,
+        weights: Optional[List[float]] = None,
+    ):
         """
         Args:
-            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to [].
+            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to None.
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """
-        if weights is None:
-            weights = [1.0 for _ in metrics]
-        assert len(weights) == len(metrics), "Number of weights has to match number of metrics"
-
         self.metrics = metrics
         self.weights = weights
+
+        if metrics is None:
+            metrics = []
+        if weights is None:
+            weights = [1.0 for _ in metrics]
+        assert len(weights) == len(
+            metrics
+        ), "Number of weights has to match number of metrics"
+
+        self._metrics = list(metrics)
+        self._weights = list(weights)
 
         super().__init__()
 
     def __repr__(self):
-        name = " + ".join([f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m) for w, m in zip(self.weights, self.metrics)])
+        name = " + ".join(
+            [
+                f"{w:.3g} * {repr(m)}" if w != 1.0 else repr(m)
+                for w, m in zip(self._weights, self._metrics)
+            ]
+        )
         return name
 
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs):
@@ -526,7 +587,7 @@ class CompositeMetric(LightningMetric):
         Returns:
             torch.Tensor: metric value on which backpropagation can be applied
         """
-        for metric in self.metrics:
+        for metric in self._metrics:
             try:
                 metric.update(y_pred, y_actual, **kwargs)
             except TypeError:
@@ -540,7 +601,7 @@ class CompositeMetric(LightningMetric):
             torch.Tensor: metric
         """
         results = []
-        for weight, metric in zip(self.weights, self.metrics):
+        for weight, metric in zip(self._weights, self._metrics):
             results.append(metric.compute() * weight)
 
         if len(results) == 1:
@@ -563,7 +624,7 @@ class CompositeMetric(LightningMetric):
             torch.Tensor: metric value on which backpropagation can be applied
         """
         results = []
-        for weight, metric in zip(self.weights, self.metrics):
+        for weight, metric in zip(self._weights, self._metrics):
             try:
                 results.append(metric(y_pred, y_actual, **kwargs) * weight)
             except TypeError:
@@ -578,16 +639,20 @@ class CompositeMetric(LightningMetric):
     def _wrap_compute(self, compute: Callable) -> Callable:
         return compute
 
-    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+    def _sync_dist(
+        self,
+        dist_sync_fn: Optional[Callable] = None,
+        process_group: Optional[Any] = None,
+    ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
 
     def reset(self) -> None:
-        for metric in self.metrics:
+        for metric in self._metrics:
             metric.reset()
 
     def persistent(self, mode: bool = False) -> None:
-        for metric in self.metrics:
+        for metric in self._metrics:
             metric.persistent(mode=mode)
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
@@ -603,7 +668,7 @@ class CompositeMetric(LightningMetric):
         Returns:
             torch.Tensor: point prediction
         """
-        return self.metrics[0].to_prediction(y_pred, **kwargs)
+        return self._metrics[0].to_prediction(y_pred, **kwargs)
 
     def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """
@@ -618,20 +683,20 @@ class CompositeMetric(LightningMetric):
         Returns:
             torch.Tensor: prediction quantiles
         """
-        return self.metrics[0].to_quantiles(y_pred, **kwargs)
+        return self._metrics[0].to_quantiles(y_pred, **kwargs)
 
     def __add__(self, metric: LightningMetric):
         if isinstance(metric, self.__class__):
-            self.metrics.extend(metric.metrics)
-            self.weights.extend(metric.weights)
+            self._metrics.extend(metric._metrics)
+            self._weights.extend(metric._weights)
         else:
-            self.metrics.append(metric)
-            self.weights.append(1.0)
+            self._metrics.append(metric)
+            self._weights.append(1.0)
 
         return self
 
     def __mul__(self, multiplier: float):
-        self.weights = [w * multiplier for w in self.weights]
+        self._weights = [w * multiplier for w in self._weights]
         return self
 
     __rmul__ = __mul__
@@ -650,7 +715,9 @@ class AggregationMetric(Metric):
         super().__init__(**kwargs)
         self.metric = metric
 
-    def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs) -> torch.Tensor:
+    def update(
+        self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs
+    ) -> torch.Tensor:
         """
         Calculate composite metric
 
@@ -666,9 +733,13 @@ class AggregationMetric(Metric):
         self.metric.update(y_pred_mean, y_mean, **kwargs)
 
     @staticmethod
-    def _calculate_mean(y_pred: torch.Tensor, y_actual: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _calculate_mean(
+        y_pred: torch.Tensor, y_actual: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         # extract target and weight
-        if isinstance(y_actual, (tuple, list)) and not isinstance(y_actual, rnn.PackedSequence):
+        if isinstance(y_actual, (tuple, list)) and not isinstance(
+            y_actual, rnn.PackedSequence
+        ):
             target, weight = y_actual
         else:
             target = y_actual
@@ -693,7 +764,6 @@ class AggregationMetric(Metric):
             y_mean = target.mean(0)
             y_pred_mean = y_pred.mean(0)
         else:
-
             # calculate weighted sums
             y_mean = (target * unsqueeze_like(weight, y_pred)).sum(0) / weight.sum(0)
 
@@ -723,7 +793,11 @@ class AggregationMetric(Metric):
     def _wrap_compute(self, compute: Callable) -> Callable:
         return compute
 
-    def _sync_dist(self, dist_sync_fn: Optional[Callable] = None, process_group: Optional[Any] = None) -> None:
+    def _sync_dist(
+        self,
+        dist_sync_fn: Optional[Callable] = None,
+        process_group: Optional[Any] = None,
+    ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
 
@@ -741,10 +815,20 @@ class MultiHorizonMetric(Metric):
 
     def __init__(self, reduction: str = "mean", **kwargs) -> None:
         super().__init__(reduction=reduction, **kwargs)
-        self.add_state("losses", default=torch.tensor(0.0), dist_reduce_fx="sum" if reduction != "none" else "cat")
-        self.add_state("lengths", default=torch.tensor(0), dist_reduce_fx="sum" if reduction != "none" else "mean")
+        self.add_state(
+            "losses",
+            default=torch.tensor(0.0),
+            dist_reduce_fx="sum" if reduction != "none" else "cat",
+        )
+        self.add_state(
+            "lengths",
+            default=torch.tensor(0),
+            dist_reduce_fx="sum" if reduction != "none" else "mean",
+        )
 
-    def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
+    def loss(
+        self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor
+    ) -> torch.Tensor:
         """
         Calculate loss without reduction. Override in derived classes
 
@@ -771,7 +855,9 @@ class MultiHorizonMetric(Metric):
             torch.Tensor: loss as a single number for backpropagation
         """
         # unpack weight
-        if isinstance(target, (list, tuple)) and not isinstance(target, rnn.PackedSequence):
+        if isinstance(target, (list, tuple)) and not isinstance(
+            target, rnn.PackedSequence
+        ):
             target, weight = target
         else:
             weight = None
@@ -780,7 +866,12 @@ class MultiHorizonMetric(Metric):
         if isinstance(target, rnn.PackedSequence):
             target, lengths = unpack_sequence(target)
         else:
-            lengths = torch.full((target.size(0),), fill_value=target.size(1), dtype=torch.long, device=target.device)
+            lengths = torch.full(
+                (target.size(0),),
+                fill_value=target.size(1),
+                dtype=torch.long,
+                device=target.device,
+            )
 
         losses = self.loss(y_pred, target)
         # weight samples
@@ -809,7 +900,9 @@ class MultiHorizonMetric(Metric):
         loss = self.reduce_loss(self.losses, lengths=self.lengths)
         return loss
 
-    def mask_losses(self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None) -> torch.Tensor:
+    def mask_losses(
+        self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None
+    ) -> torch.Tensor:
         """
         Mask losses.
 
@@ -825,7 +918,9 @@ class MultiHorizonMetric(Metric):
             reduction = self.reduction
         if losses.ndim > 0:
             # mask loss
-            mask = torch.arange(losses.size(1), device=losses.device).unsqueeze(0) >= lengths.unsqueeze(-1)
+            mask = torch.arange(losses.size(1), device=losses.device).unsqueeze(
+                0
+            ) >= lengths.unsqueeze(-1)
             if losses.ndim > 2:
                 mask = mask.unsqueeze(-1)
                 dim_normalizer = losses.size(-1)
@@ -838,7 +933,9 @@ class MultiHorizonMetric(Metric):
                 losses = losses.masked_fill(mask, 0.0) / dim_normalizer
         return losses
 
-    def reduce_loss(self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None) -> torch.Tensor:
+    def reduce_loss(
+        self, losses: torch.Tensor, lengths: torch.Tensor, reduction: str = None
+    ) -> torch.Tensor:
         """
         Reduce loss.
 
@@ -892,7 +989,10 @@ class DistributionLoss(MultiHorizonMetric):
     distribution_arguments: List[str]
 
     def __init__(
-        self, name: str = None, quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98], reduction="mean"
+        self,
+        name: str = None,
+        quantiles: Optional[List[float]] = None,
+        reduction="mean",
     ):
         """
         Initialize metric
@@ -903,6 +1003,8 @@ class DistributionLoss(MultiHorizonMetric):
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
         """
+        if quantiles is None:
+            quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
@@ -939,7 +1041,7 @@ class DistributionLoss(MultiHorizonMetric):
 
         Args:
             y_pred: prediction output of network
-
+            n_samples (int): number of samples to draw
         Returns:
             torch.Tensor: mean prediction
         """
@@ -968,7 +1070,9 @@ class DistributionLoss(MultiHorizonMetric):
             samples = samples.transpose(0, 1)
         return samples
 
-    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None, n_samples: int = 100) -> torch.Tensor:
+    def to_quantiles(
+        self, y_pred: torch.Tensor, quantiles: List[float] = None, n_samples: int = 100
+    ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
@@ -985,10 +1089,14 @@ class DistributionLoss(MultiHorizonMetric):
             quantiles = self.quantiles
         try:
             distribution = self.map_x_to_distribution(y_pred)
-            quantiles = distribution.icdf(torch.tensor(quantiles, device=y_pred.device)[:, None, None]).permute(1, 2, 0)
+            quantiles = distribution.icdf(
+                torch.tensor(quantiles, device=y_pred.device)[:, None, None]
+            ).permute(1, 2, 0)
         except NotImplementedError:  # resort to derive quantiles empirically
             samples = torch.sort(self.sample(y_pred, n_samples), -1).values
-            quantiles = torch.quantile(samples, torch.tensor(quantiles, device=samples.device), dim=2).permute(1, 2, 0)
+            quantiles = torch.quantile(
+                samples, torch.tensor(quantiles, device=samples.device), dim=2
+            ).permute(1, 2, 0)
         return quantiles
 
 

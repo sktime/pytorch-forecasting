@@ -1,6 +1,7 @@
 """
 Implementation of ``nn.Modules`` for N-Beats model.
 """
+
 from typing import Tuple
 
 import numpy as np
@@ -17,7 +18,9 @@ def linear(input_size, output_size, bias=True, dropout: int = None):
         return lin
 
 
-def linspace(backcast_length: int, forecast_length: int, centered: bool = False) -> Tuple[np.ndarray, np.ndarray]:
+def linspace(
+    backcast_length: int, forecast_length: int, centered: bool = False
+) -> Tuple[np.ndarray, np.ndarray]:
     if centered:
         norm = max(backcast_length, forecast_length)
         start = -backcast_length
@@ -26,7 +29,9 @@ def linspace(backcast_length: int, forecast_length: int, centered: bool = False)
         norm = backcast_length + forecast_length
         start = 0
         stop = backcast_length + forecast_length - 1
-    lin_space = np.linspace(start / norm, stop / norm, backcast_length + forecast_length, dtype=np.float32)
+    lin_space = np.linspace(
+        start / norm, stop / norm, backcast_length + forecast_length, dtype=np.float32
+    )
     b_ls = lin_space[:backcast_length]
     f_ls = lin_space[backcast_length:]
     return b_ls, f_ls
@@ -96,7 +101,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             dropout=dropout,
         )
 
-        backcast_linspace, forecast_linspace = linspace(backcast_length, forecast_length, centered=False)
+        backcast_linspace, forecast_linspace = linspace(
+            backcast_length, forecast_length, centered=False
+        )
 
         p1, p2 = (thetas_dim // 2, thetas_dim // 2) if thetas_dim % 2 == 0 else (thetas_dim // 2, thetas_dim // 2 + 1)
         s1_b = torch.from_numpy(np.array(
@@ -125,7 +132,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         return backcast, forecast
 
     def get_frequencies(self, n):
-        return np.linspace(0, (self.backcast_length + self.forecast_length) / self.min_period, n)
+        return np.linspace(
+            0, (self.backcast_length + self.forecast_length) / self.min_period, n
+        )
 
 
 class NBEATSTrendBlock(NBEATSBlock):
@@ -148,8 +157,12 @@ class NBEATSTrendBlock(NBEATSBlock):
             dropout=dropout,
         )
 
-        backcast_linspace, forecast_linspace = linspace(backcast_length, forecast_length, centered=True)
-        norm = np.sqrt(forecast_length / thetas_dim)  # ensure range of predictions is comparable to input
+        backcast_linspace, forecast_linspace = linspace(
+            backcast_length, forecast_length, centered=True
+        )
+        norm = np.sqrt(
+            forecast_length / thetas_dim
+        )  # ensure range of predictions is comparable to input
 
         coefficients = torch.from_numpy(
                 np.array([backcast_linspace**i for i in range(thetas_dim)], dtype=np.float32),

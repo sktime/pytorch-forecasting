@@ -9,23 +9,32 @@ Installation
 
 .. _install:
 
-If you are working windows, you need to first install PyTorch with
+If you are working Windows, you need to first install PyTorch with
 
-``pip install torch -f https://download.pytorch.org/whl/torch_stable.html``.
+.. code-block:: bash
+
+    pip install torch -f https://download.pytorch.org/whl/torch_stable.html
 
 Otherwise, you can proceed with
 
-``pip install pytorch-forecasting``
+.. code-block:: bash
+
+    pip install pytorch-forecasting
 
 
-Alternatively, to installl the package via conda:
+Alternatively, to install the package via ``conda``:
 
-``conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge``
+.. code-block:: bash
+
+    conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
 
 PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
 
 To use the MQF2 loss (multivariate quantile loss), also install
-`pip install pytorch-forecasting[mqf2]`
+
+.. code-block:: bash
+
+    pip install pytorch-forecasting[mqf2]
 
 
 Usage
@@ -46,7 +55,7 @@ The general setup for training and testing a model is
    directly if you do not wish to load the entire training dataset at inference time.
 
 #. Instantiate a model using the its ``.from_dataset()`` method.
-#. Create a ``pytorch_lightning.Trainer()`` object.
+#. Create a ``lightning.Trainer()`` object.
 #. Find the optimal learning rate with its ``.tuner.lr_find()`` method.
 #. Train the model with early stopping on the training dataset and use the tensorboard logs
    to understand if it has converged with acceptable accuracy.
@@ -65,9 +74,9 @@ Example
 
 .. code-block:: python
 
-    import pytorch_lightning as pl
-    from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor
-
+    import lightning.pytorch as pl
+    from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
+    from lightning.pytorch.tuner import Tuner
     from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 
     # load data
@@ -105,7 +114,7 @@ Example
     lr_logger = LearningRateMonitor()
     trainer = pl.Trainer(
         max_epochs=100,
-        gpus=0,
+        accelerator="auto",
         gradient_clip_val=0.1,
         limit_train_batches=30,
         callbacks=[lr_logger, early_stop_callback],
@@ -127,7 +136,7 @@ Example
     print(f"Number of parameters in network: {tft.size()/1e3:.1f}k")
 
     # find optimal learning rate (set limit_train_batches to 1.0 and log_interval = -1)
-    res = trainer.tuner.lr_find(
+    res = Tuner(trainer).lr_find(
         tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, early_stop_threshold=1000.0, max_lr=0.3,
     )
 
