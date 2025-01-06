@@ -5,7 +5,7 @@ from pytorch_forecasting.models.x_lstm_time.s_lstm.layer import sLSTMLayer
 
 
 class sLSTMNetwork(nn.Module):
-    """ Implements the Stabilized LSTM Network with multiple sLSTM layers.
+    """Implements the Stabilized LSTM Network with multiple sLSTM layers.
 
     This network combines sLSTM layers with a fully connected output layer for
     prediction.

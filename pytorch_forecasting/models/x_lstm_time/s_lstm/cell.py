@@ -19,7 +19,8 @@ class sLSTMCell(nn.Module):
     dropout : float, optional
         Dropout probability for the cell's input and hidden state, by default 0.0.
     use_layer_norm : bool, optional
-        Whether to use layer normalization for the cell's internal computations, by default True.
+        Whether to use layer normalization for the cell's internal computations,
+        by default True.
     device : torch.device, optional
         The device to run the computations on
 
@@ -32,7 +33,8 @@ class sLSTMCell(nn.Module):
     ln_cell : nn.LayerNorm
         Layer normalization for the cell state, applied if use_layer_norm is True.
     ln_hidden : nn.LayerNorm
-        Layer normalization for the output hidden state, applied if use_layer_norm is True.
+        Layer normalization for the output hidden state,
+        applied if use_layer_norm is True.
     ln_input : nn.LayerNorm
         Layer normalization for input gates, applied if use_layer_norm is True.
     ln_hidden_update : nn.LayerNorm

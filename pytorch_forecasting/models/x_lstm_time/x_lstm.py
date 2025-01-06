@@ -78,10 +78,9 @@ class xLSTMTime(AutoRegressiveBaseModel):
 
         self.input_projection_size = input_projection_size or hidden_size
 
-        self.input_linear = nn.Linear(
-            input_size * 2,
-            self.input_projection_size
-        ).to(self.device)
+        self.input_linear = nn.Linear(input_size * 2, self.input_projection_size).to(
+            self.device
+        )
 
         if xlstm_type == "mlstm":
             self.lstm = mLSTMNetwork(
@@ -121,7 +120,6 @@ class xLSTMTime(AutoRegressiveBaseModel):
         trend, seasonal = self.decomposition(encoder_cont)
 
         x = torch.cat([trend, seasonal], dim=-1)
-
 
         x = self.input_linear(x)
 

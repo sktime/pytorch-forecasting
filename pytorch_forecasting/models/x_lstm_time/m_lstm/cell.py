@@ -45,6 +45,7 @@ class mLSTMCell(nn.Module):
     device : torch.device
         Device used for computation.
     """
+
     def __init__(
         self, input_size, hidden_size, dropout=0.2, layer_norm=True, device=None
     ):
@@ -101,23 +102,23 @@ class mLSTMCell(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Input tensor of shape (batch_size, input_size).
+            The number of features in the input.
         h_prev : torch.Tensor
-            Previous hidden state of shape (batch_size, hidden_size).
+            Previous hidden state
         c_prev : torch.Tensor
-            Previous cell state of shape (batch_size, hidden_size).
+            Previous cell state
         n_prev : torch.Tensor
-            Previous normalized state of shape (batch_size, hidden_size).
+            Previous normalized state
 
         Returns
         -------
         tuple of torch.Tensor:
         h : torch.Tensor
-            Current hidden state of shape (batch_size, hidden_size).
+            Current hidden state
         c : torch.Tensor
-            Current cell state of shape (batch_size, hidden_size).
+            Current cell state
         n : torch.Tensor
-            Current normalized state of shape (batch_size, hidden_size).
+            Current normalized state
         """
 
         x = x.to(self.device)

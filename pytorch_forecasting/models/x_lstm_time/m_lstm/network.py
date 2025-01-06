@@ -37,6 +37,7 @@ class mLSTMNetwork(nn.Module):
 
 
     """
+
     def __init__(
         self,
         input_size,
@@ -70,27 +71,27 @@ class mLSTMNetwork(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Input tensor of shape (batch_size, seq_len, input_size).
+           The number of features in the input.
         h : torch.Tensor, optional
-            Initial hidden states for all layers, shape (num_layers, batch_size, hidden_size).
+            Initial hidden states for all layers.
             If None, initialized to zeros, by default None.
         c : torch.Tensor, optional
-            Initial cell states for all layers, shape (num_layers, batch_size, hidden_size).
+            Initial cell states for all layers.
             If None, initialized to zeros, by default None.
         n : torch.Tensor, optional
-            Initial normalized states for all layers, shape (num_layers, batch_size, hidden_size).
+            Initial normalized states for all layers.
             If None, initialized to zeros, by default None.
 
         Returns
         -------
         tuple
             output : torch.Tensor
-                Final output tensor from the fully connected layer, shape (batch_size, output_size).
+                Final output tensor from the fully connected layer.
             (h, c, n) : tuple of torch.Tensor
                 Final hidden, cell, and normalized states for all layers:
-                - h : torch.Tensor, shape (num_layers, batch_size, hidden_size).
-                - c : torch.Tensor, shape (num_layers, batch_size, hidden_size).
-                - n : torch.Tensor, shape (num_layers, batch_size, hidden_size).
+                - h : torch.Tensor
+                - c : torch.Tensor
+                - n : torch.Tensor
         """
         output, (h, c, n) = self.mlstm_layer(x, h, c, n)
 
