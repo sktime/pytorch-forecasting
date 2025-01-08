@@ -42,13 +42,21 @@ training = TimeSeriesDataSet(
     add_target_scales=False,
 )
 
-validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training_cutoff)
+validation = TimeSeriesDataSet.from_dataset(
+    training, data, min_prediction_idx=training_cutoff
+)
 batch_size = 128
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
+train_dataloader = training.to_dataloader(
+    train=True, batch_size=batch_size, num_workers=2
+)
+val_dataloader = validation.to_dataloader(
+    train=False, batch_size=batch_size, num_workers=2
+)
 
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
+early_stop_callback = EarlyStopping(
+    monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min"
+)
 trainer = pl.Trainer(
     max_epochs=100,
     accelerator="auto",
@@ -63,9 +71,14 @@ trainer = pl.Trainer(
 
 
 net = NBeats.from_dataset(
-    training, learning_rate=3e-2, log_interval=10, log_val_interval=1, log_gradient_flow=False, weight_decay=1e-2
+    training,
+    learning_rate=3e-2,
+    log_interval=10,
+    log_val_interval=1,
+    log_gradient_flow=False,
+    weight_decay=1e-2,
 )
-print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
+print(f"Number of parameters in network: {net.size() / 1e3:.1f}k")
 
 # # find optimal learning rate
 # # remove logging and artificial epoch size

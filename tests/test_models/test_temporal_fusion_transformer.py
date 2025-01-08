@@ -23,7 +23,9 @@ from pytorch_forecasting.metrics import (
     TweedieLoss,
 )
 from pytorch_forecasting.models import TemporalFusionTransformer
-from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
+    optimize_hyperparameters,
+)
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
@@ -40,7 +42,11 @@ from test_models.conftest import make_dataloaders
 
 
 def test_integration(multiple_dataloaders_with_covariates, tmp_path):
-    _integration(multiple_dataloaders_with_covariates, tmp_path, trainer_kwargs=dict(accelerator="cpu"))
+    _integration(
+        multiple_dataloaders_with_covariates,
+        tmp_path,
+        trainer_kwargs=dict(accelerator="cpu"),
+    )
 
 
 def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
@@ -54,7 +60,9 @@ def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
 
 
 def test_distribution_loss(data_with_covariates, tmp_path):
-    data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    data_with_covariates = data_with_covariates.assign(
+        volume=lambda x: x.volume.round()
+    )
     dataloaders_with_covariates = make_dataloaders(
         data_with_covariates,
         target="volume",
@@ -76,7 +84,9 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     reason="Test skipped if required package cpflows not available",
 )
 def test_mqf2_loss(data_with_covariates, tmp_path):
-    data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    data_with_covariates = data_with_covariates.assign(
+        volume=lambda x: x.volume.round()
+    )
     dataloaders_with_covariates = make_dataloaders(
         data_with_covariates,
         target="volume",
@@ -84,10 +94,14 @@ def test_mqf2_loss(data_with_covariates, tmp_path):
         time_varying_unknown_reals=["volume"],
         static_categoricals=["agency"],
         add_relative_time_idx=True,
-        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False, transformation="log1p"),
+        target_normalizer=GroupNormalizer(
+            groups=["agency", "sku"], center=False, transformation="log1p"
+        ),
     )
 
-    prediction_length = dataloaders_with_covariates["train"].dataset.min_prediction_length
+    prediction_length = dataloaders_with_covariates[
+        "train"
+    ].dataset.min_prediction_length
 
     _integration(
         dataloaders_with_covariates,
@@ -103,7 +117,9 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
+    )
 
     # check training
     logger = TensorBoardLogger(tmp_path)
@@ -139,7 +155,11 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         elif isinstance(train_dataloader.dataset.target_normalizer, MultiNormalizer):
             loss = MultiLoss(
                 [
-                    CrossEntropy() if isinstance(normalizer, NaNLabelEncoder) else QuantileLoss()
+                    (
+                        CrossEntropy()
+                        if isinstance(normalizer, NaNLabelEncoder)
+                        else QuantileLoss()
+                    )
                     for normalizer in train_dataloader.dataset.target_normalizer.normalizers
                 ]
             )
@@ -172,7 +192,9 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                 assert len(test_outputs) > 0
 
             # check loading
-            net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+            net = TemporalFusionTransformer.load_from_checkpoint(
+                trainer.checkpoint_callback.best_model_path
+            )
 
             # check prediction
             predictions = net.predict(
@@ -194,11 +216,15 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                     for xi in x.values():
                         check(xi)
                 else:
-                    assert pred_len == x.shape[0], "first dimension should be prediction length"
+                    assert (
+                        pred_len == x.shape[0]
+                    ), "first dimension should be prediction length"
 
             check(predictions.output)
             if isinstance(predictions.output, torch.Tensor):
-                assert predictions.output.ndim == 2, "shape of predictions should be batch_size x timesteps"
+                assert (
+                    predictions.output.ndim == 2
+                ), "shape of predictions should be batch_size x timesteps"
             else:
                 assert all(
                     p.ndim == 2 for p in predictions.output
@@ -247,7 +273,9 @@ def test_tensorboard_graph_log(dataloaders_with_covariates, model, tmp_path):
 
 def test_init_shared_network(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
-    net = TemporalFusionTransformer.from_dataset(dataset, share_single_variable_networks=True)
+    net = TemporalFusionTransformer.from_dataset(
+        dataset, share_single_variable_networks=True
+    )
     net.predict(dataset, fast_dev_run=True)
 
 
@@ -288,15 +316,26 @@ def test_pickle(model):
     pickle.loads(pkl)
 
 
-@pytest.mark.parametrize("kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")])
-def test_predict_dependency(model, dataloaders_with_covariates, data_with_covariates, kwargs):
+@pytest.mark.parametrize(
+    "kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")]
+)
+def test_predict_dependency(
+    model, dataloaders_with_covariates, data_with_covariates, kwargs
+):
     train_dataset = dataloaders_with_covariates["train"].dataset
     data_with_covariates = data_with_covariates.copy()
     dataset = TimeSeriesDataSet.from_dataset(
-        train_dataset, data_with_covariates[lambda x: x.agency == data_with_covariates.agency.iloc[0]], predict=True
+        train_dataset,
+        data_with_covariates[lambda x: x.agency == data_with_covariates.agency.iloc[0]],
+        predict=True,
     )
     model.predict_dependency(dataset, variable="discount", values=[0.1, 0.0], **kwargs)
-    model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique()[:2], **kwargs)
+    model.predict_dependency(
+        dataset,
+        variable="agency",
+        values=data_with_covariates.agency.unique()[:2],
+        **kwargs,
+    )
 
 
 @pytest.mark.skipif(
@@ -305,7 +344,9 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
 )
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
-    averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)
+    averages = model.calculate_prediction_actual_by_variable(
+        prediction.x, prediction.output
+    )
     model.plot_prediction_actual_by_variable(averages)
 
 
@@ -360,7 +401,9 @@ def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
     )
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(max_epochs=1, gradient_clip_val=1e-6, logger=logger)
-    trainer.fit(net, train_dataloaders=dataset.to_dataloader(batch_size=4, num_workers=0))
+    trainer.fit(
+        net, train_dataloaders=dataset.to_dataloader(batch_size=4, num_workers=0)
+    )
 
     # choose small batch size to provoke issue
     res = net.predict(dataset.to_dataloader(batch_size=2, num_workers=0), mode="raw")
@@ -400,7 +443,9 @@ SKIP_HYPEPARAM_TEST = (
     reason="Test skipped on Win due to bug #1632, or if missing required packages",
 )
 @pytest.mark.parametrize("use_learning_rate_finder", [True, False])
-def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tmp_path, use_learning_rate_finder):
+def test_hyperparameter_optimization_integration(
+    dataloaders_with_covariates, tmp_path, use_learning_rate_finder
+):
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
     try:

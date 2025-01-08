@@ -42,13 +42,17 @@ def _integration(
         add_relative_time_idx=True,
     )
     data_loader_default_kwargs.update(data_loader_kwargs)
-    dataloaders_with_covariates = make_dataloaders(data_with_covariates, **data_loader_default_kwargs)
+    dataloaders_with_covariates = make_dataloaders(
+        data_with_covariates, **data_loader_default_kwargs
+    )
 
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
     test_dataloader = dataloaders_with_covariates["test"]
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
+    )
 
     logger = TensorBoardLogger(tmp_path)
     if trainer_kwargs is None:
@@ -100,7 +104,11 @@ def _integration(
         shutil.rmtree(tmp_path, ignore_errors=True)
 
     net.predict(
-        val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True, trainer_kwargs=trainer_kwargs
+        val_dataloader,
+        fast_dev_run=True,
+        return_index=True,
+        return_decoder_lengths=True,
+        trainer_kwargs=trainer_kwargs,
     )
 
 
@@ -112,23 +120,36 @@ def _integration(
         dict(
             loss=LogNormalDistributionLoss(),
             clip_target=True,
-            data_loader_kwargs=dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log")),
+            data_loader_kwargs=dict(
+                target_normalizer=GroupNormalizer(
+                    groups=["agency", "sku"], transformation="log"
+                )
+            ),
         ),
         dict(
             loss=NegativeBinomialDistributionLoss(),
             clip_target=False,
-            data_loader_kwargs=dict(target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False)),
+            data_loader_kwargs=dict(
+                target_normalizer=GroupNormalizer(
+                    groups=["agency", "sku"], center=False
+                )
+            ),
         ),
         dict(
             loss=BetaDistributionLoss(),
             clip_target=True,
             data_loader_kwargs=dict(
-                target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="logit")
+                target_normalizer=GroupNormalizer(
+                    groups=["agency", "sku"], transformation="logit"
+                )
             ),
         ),
         dict(
             data_loader_kwargs=dict(
-                lags={"volume": [2, 5]}, target="volume", time_varying_unknown_reals=["volume"], min_encoder_length=2
+                lags={"volume": [2, 5]},
+                target="volume",
+                time_varying_unknown_reals=["volume"],
+                min_encoder_length=2,
             )
         ),
         dict(
@@ -141,19 +162,28 @@ def _integration(
         dict(
             loss=ImplicitQuantileNetworkDistributionLoss(hidden_size=8),
         ),
-        dict(loss=MultivariateNormalDistributionLoss(), trainer_kwargs=dict(accelerator="cpu")),
+        dict(
+            loss=MultivariateNormalDistributionLoss(),
+            trainer_kwargs=dict(accelerator="cpu"),
+        ),
         dict(
             loss=MultivariateNormalDistributionLoss(),
             data_loader_kwargs=dict(
-                target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log1p")
+                target_normalizer=GroupNormalizer(
+                    groups=["agency", "sku"], transformation="log1p"
+                )
             ),
             trainer_kwargs=dict(accelerator="cpu"),
         ),
     ],
 )
 def test_integration(data_with_covariates, tmp_path, kwargs):
-    if "loss" in kwargs and isinstance(kwargs["loss"], NegativeBinomialDistributionLoss):
-        data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    if "loss" in kwargs and isinstance(
+        kwargs["loss"], NegativeBinomialDistributionLoss
+    ):
+        data_with_covariates = data_with_covariates.assign(
+            volume=lambda x: x.volume.round()
+        )
     _integration(data_with_covariates, tmp_path, **kwargs)
 
 
@@ -171,20 +201,37 @@ def model(dataloaders_with_covariates):
 
 
 def test_predict_average(model, dataloaders_with_covariates):
-    prediction = model.predict(dataloaders_with_covariates["val"], fast_dev_run=True, mode="prediction", n_samples=100)
+    prediction = model.predict(
+        dataloaders_with_covariates["val"],
+        fast_dev_run=True,
+        mode="prediction",
+        n_samples=100,
+    )
     assert prediction.ndim == 2, "expected averaging of samples"
 
 
 def test_predict_samples(model, dataloaders_with_covariates):
-    prediction = model.predict(dataloaders_with_covariates["val"], fast_dev_run=True, mode="samples", n_samples=100)
+    prediction = model.predict(
+        dataloaders_with_covariates["val"],
+        fast_dev_run=True,
+        mode="samples",
+        n_samples=100,
+    )
     assert prediction.size()[-1] == 100, "expected raw samples"
 
 
-@pytest.mark.parametrize("loss", [NormalDistributionLoss(), MultivariateNormalDistributionLoss()])
+@pytest.mark.parametrize(
+    "loss", [NormalDistributionLoss(), MultivariateNormalDistributionLoss()]
+)
 def test_pickle(dataloaders_with_covariates, loss):
     dataset = dataloaders_with_covariates["train"].dataset
     model = DeepAR.from_dataset(
-        dataset, hidden_size=5, learning_rate=0.15, log_gradient_flow=True, log_interval=1000, loss=loss
+        dataset,
+        hidden_size=5,
+        learning_rate=0.15,
+        log_gradient_flow=True,
+        log_interval=1000,
+        loss=loss,
     )
     pkl = pickle.dumps(model)
     pickle.loads(pkl)
