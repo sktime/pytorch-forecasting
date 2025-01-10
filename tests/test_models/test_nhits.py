@@ -59,7 +59,8 @@ def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
             train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader,
         )
-        # todo: testing somehow disables grad computation even though it is explicitly turned on
+        # todo: testing somehow disables grad computation even though
+        # it is explicitly turned on
         #       loss is calculated as "grad" for MQF2
         if not isinstance(net.loss, MQF2DistributionLoss):
             test_outputs = trainer.test(net, dataloaders=test_dataloader)
@@ -153,7 +154,7 @@ def model(dataloaders_with_covariates):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa : S301
 
 
 @pytest.mark.skipif(

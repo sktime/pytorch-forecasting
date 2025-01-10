@@ -85,7 +85,7 @@ def init_weights(module, initialization):
         elif initialization == "glorot_normal":
             torch.nn.init.xavier_normal_(module.weight)
         elif initialization == "lecun_normal":
-            pass  # torch.nn.init.normal_(module.weight, 0.0, std=1/np.sqrt(module.weight.numel()))
+            pass  # torch.nn.init.normal_(module.weight, 0.0, std=1/np.sqrt(module.weight.numel())) # noqa: E501
         else:
             assert 1 < 0, f"Initialization {initialization} not found"
 
@@ -188,7 +188,8 @@ class NHiTSBlock(nn.Module):
         ]
         layers = hidden_layers + output_layer
 
-        # static_size is computed with data, static_hidden_size is provided by user, if 0 no statics are used
+        # static_size is computed with data, static_hidden_size is provided by user,
+        # if 0 no statics are used
         if (self.static_size > 0) and (self.static_hidden_size > 0):
             self.static_encoder = StaticFeaturesEncoder(
                 in_features=static_size, out_features=static_hidden_size
@@ -387,7 +388,7 @@ class NHiTS(nn.Module):
         decoder_x_t,
         x_s,
     ):
-        residuals = encoder_y  # .flip(dims=(1,))  # todo: check if flip is required or should be rather replaced by scatter
+        residuals = encoder_y  # .flip(dims=(1,))  # todo: check if flip is required or should be rather replaced by scatter # noqa: E501
         # encoder_x_t = encoder_x_t.flip(dims=(-1,))
         # encoder_mask = encoder_mask.flip(dims=(-1,))
         encoder_mask = encoder_mask.unsqueeze(-1)

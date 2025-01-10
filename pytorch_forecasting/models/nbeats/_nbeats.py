@@ -90,7 +90,7 @@ class NBeats(BaseModel):
             logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
             **kwargs: additional arguments to :py:class:`~BaseModel`.
-        """
+        """  # noqa: E501
         if expansion_coefficient_lengths is None:
             expansion_coefficient_lengths = [3, 7]
         if sharing is None:
@@ -198,7 +198,7 @@ class NBeats(BaseModel):
             # update backcast and forecast
             backcast = (
                 backcast - backcast_block
-            )  # do not use backcast -= backcast_block as this signifies an inline operation
+            )  # do not use backcast -= backcast_block as this signifies an inline operation # noqa : E501
             forecast = forecast + forecast_block
 
         return self.to_network_output(
@@ -231,7 +231,7 @@ class NBeats(BaseModel):
 
         Returns:
             NBeats
-        """
+        """  # noqa: E501
         new_kwargs = {
             "prediction_length": dataset.max_prediction_length,
             "context_length": dataset.max_encoder_length,
@@ -245,13 +245,15 @@ class NBeats(BaseModel):
         assert not isinstance(
             dataset.target_normalizer, NaNLabelEncoder
         ), "only regression tasks are supported - target must not be categorical"
-        assert (
-            dataset.min_encoder_length == dataset.max_encoder_length
-        ), "only fixed encoder length is allowed, but min_encoder_length != max_encoder_length"
+        assert dataset.min_encoder_length == dataset.max_encoder_length, (
+            "only fixed encoder length is allowed,"
+            " but min_encoder_length != max_encoder_length"
+        )
 
-        assert (
-            dataset.max_prediction_length == dataset.min_prediction_length
-        ), "only fixed prediction length is allowed, but max_prediction_length != min_prediction_length"
+        assert dataset.max_prediction_length == dataset.min_prediction_length, (
+            "only fixed prediction length is allowed,"
+            " but max_prediction_length != min_prediction_length"
+        )
 
         assert (
             dataset.randomize_length is None
@@ -265,7 +267,10 @@ class NBeats(BaseModel):
             and len(dataset.reals) == 1
             and len(dataset._time_varying_unknown_reals) == 1
             and dataset._time_varying_unknown_reals[0] == dataset.target
-        ), "The only variable as input should be the target which is part of time_varying_unknown_reals"
+        ), (
+            "The only variable as input should be the"
+            " target which is part of time_varying_unknown_reals"
+        )
 
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
@@ -361,7 +366,7 @@ class NBeats(BaseModel):
 
         Returns:
             plt.Figure: matplotlib figure
-        """
+        """  # noqa: E501
         _check_matplotlib("plot_interpretation")
 
         import matplotlib.pyplot as plt

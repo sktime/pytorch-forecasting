@@ -148,7 +148,7 @@ class NHiTS(BaseModelWithCovariates):
             logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
             **kwargs: additional arguments to :py:class:`~BaseModel`.
-        """
+        """  # noqa: E501
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
@@ -389,8 +389,8 @@ class NHiTS(BaseModelWithCovariates):
             backcast=self.transform_output(
                 backcast, target_scale=x["target_scale"], loss=MultiHorizonMetric()
             ),  # (n_outputs x) n_samples x n_timesteps x 1
-            block_backcasts=block_backcasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x 1
-            block_forecasts=block_forecasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x output_size
+            block_backcasts=block_backcasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x 1 # noqa: E501
+            block_forecasts=block_forecasts,  # n_blocks x (n_outputs x) n_samples x n_timesteps x output_size # noqa: E501
         )
 
     @classmethod
@@ -404,18 +404,20 @@ class NHiTS(BaseModelWithCovariates):
 
         Returns:
             NBeats
-        """
+        """  # noqa: E501
         # validate arguments
         assert not isinstance(
             dataset.target_normalizer, NaNLabelEncoder
         ), "only regression tasks are supported - target must not be categorical"
-        assert (
-            dataset.min_encoder_length == dataset.max_encoder_length
-        ), "only fixed encoder length is allowed, but min_encoder_length != max_encoder_length"
+        assert dataset.min_encoder_length == dataset.max_encoder_length, (
+            "only fixed encoder length is allowed,"
+            " but min_encoder_length != max_encoder_length"
+        )
 
-        assert (
-            dataset.max_prediction_length == dataset.min_prediction_length
-        ), "only fixed prediction length is allowed, but max_prediction_length != min_prediction_length"
+        assert dataset.max_prediction_length == dataset.min_prediction_length, (
+            "only fixed prediction length is allowed,"
+            " but max_prediction_length != min_prediction_length"
+        )
 
         assert (
             dataset.randomize_length is None
@@ -436,9 +438,10 @@ class NHiTS(BaseModelWithCovariates):
         assert (new_kwargs.get("backcast_loss_ratio", 0) == 0) | (
             isinstance(new_kwargs["output_size"], int)
             and new_kwargs["output_size"] == 1
-        ) or all(
-            o == 1 for o in new_kwargs["output_size"]
-        ), "output sizes can only be of size 1, i.e. point forecasts if backcast_loss_ratio > 0"
+        ) or all(o == 1 for o in new_kwargs["output_size"]), (
+            "output sizes can only be of size 1, i.e."
+            " point forecasts if backcast_loss_ratio > 0"
+        )
 
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
@@ -517,7 +520,7 @@ class NHiTS(BaseModelWithCovariates):
 
         Returns:
             plt.Figure: matplotlib figure
-        """
+        """  # noqa: E501
         _check_matplotlib("plot_interpretation")
 
         from matplotlib import pyplot as plt

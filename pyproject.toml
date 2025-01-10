@@ -136,7 +136,9 @@ exclude = [
   ".venv/",
   ".git/",
   ".history/",
+  "docs/source/tutorials/",
 ]
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C4", "S"]
@@ -188,3 +190,6 @@ exclude = '''
 [tool.nbqa.mutate]
 ruff = 1
 black = 1
+
+[tool.nbqa.exclude]
+ruff = "docs/source/tutorials/" # ToDo: Remove this when fixing notebooks
