@@ -163,6 +163,11 @@ known-first-party = ["pytorch_forecasting"]
 combine-as-imports = true
 force-sort-within-sections = true
 
+[tool.ruff.lint.per-file-ignores]
+"pytorch_forecasting/data/timeseries.py" = [
+  "E501", # Line too long being fixed in #1746 To be removed after merging
+]
+
 [tool.black]
 line-length = 88
 include = '\.pyi?$'
