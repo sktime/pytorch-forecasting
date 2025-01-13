@@ -8,7 +8,8 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
-from pytorch_forecasting.data.encoders import NaNLabelEncoder
+
+# from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import NBEATSGenericBlock, NBEATSSeasonalBlock, NBEATSTrendBlock
@@ -26,6 +27,19 @@ class NBeats(BaseModel):
         expansion_coefficient_lengths: Optional[List[int]] = None,
         prediction_length: int = 1,
         context_length: int = 1,
+        use_kan: bool = False,
+        num_grids: int = 5,
+        k: int = 3,
+        noise_scale: float = 0.5,
+        scale_base_mu: float = 0.0,
+        scale_base_sigma: float = 1.0,
+        scale_sp: float = 1.0,
+        base_fun: callable = torch.nn.SiLU(),
+        grid_eps: float = 0.02,
+        grid_range: List[int] = [-1, 1],
+        sp_trainable: bool = True,
+        sb_trainable: bool = True,
+        sparse_init: bool = False,
         dropout: float = 0.1,
         learning_rate: float = 1e-2,
         log_interval: int = -1,
@@ -76,6 +90,24 @@ class NBeats(BaseModel):
             prediction_length: Length of the prediction. Also known as 'horizon'.
             context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
                 Should be between 1-10 times the prediction length.
+            num_grids :  Parameter for KAN layer. the number of grid intervals = G. Default: 5.
+            k : Parameter for KAN layer. the order of piecewise polynomial. Default: 3.
+            noise_scale : Parameter for KAN layer. the scale of noise injected at initialization. Default: 0.1.
+            scale_base_mu : Parameter for KAN layer. the scale of the residual function b(x) is intialized to be
+                N(scale_base_mu, scale_base_sigma^2). Deafult: 0.0
+            scale_base_sigma : Parameter for KAN layer. the scale of the residual function b(x) is intialized to be
+                N(scale_base_mu, scale_base_sigma^2). Deafult: 1.0
+            scale_sp : Parameter for KAN layer. the scale of the base function spline(x). Deafult: 1.0
+            base_fun : Parameter for KAN layer. residual function b(x). Default: torch.nn.SiLU()
+            grid_eps : Parameter for KAN layer. When grid_eps = 1, the grid is uniform; when grid_eps = 0,
+                the grid is partitioned using percentiles of samples. 0 < grid_eps < 1 interpolates between the
+                two extremes. Deafult: 0.02
+            grid_range : Parameter for KAN layer. list/np.array of shape (2,). setting the range of grids.
+                Default: [-1,1].
+            sp_trainable : Parameter for KAN layer. If true, scale_sp is trainable. Default: True.
+            sb_trainable : Parameter for KAN layer. If true, scale_base is trainable. Default: True.
+            sparse_init : Parameter for KAN layer. if sparse_init = True, sparse initialization is applied.
+                Default: False.
             backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.
                 A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
                 forecast lengths). Defaults to 0.0, i.e. no weight.
@@ -103,6 +135,23 @@ class NBeats(BaseModel):
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if loss is None:
             loss = MASE()
+        # Bundle KAN parameters into a dictionary
+        self.kan_params = {
+            "use_kan": use_kan,
+            "num_grids": num_grids,
+            "k": k,
+            "noise_scale": noise_scale,
+            "scale_base_mu": scale_base_mu,
+            "scale_base_sigma": scale_base_sigma,
+            "scale_sp": scale_sp,
+            "base_fun": base_fun,
+            "grid_eps": grid_eps,
+            "grid_range": grid_range,
+            "sp_trainable": sp_trainable,
+            "sb_trainable": sb_trainable,
+            "sparse_init": sparse_init,
+        }
+
         self.save_hyperparameters()
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
@@ -118,6 +167,7 @@ class NBeats(BaseModel):
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
+                        kan_params=self.hparams.kan_params,
                     )
                 elif stack_type == "seasonality":
                     net_block = NBEATSSeasonalBlock(
@@ -127,6 +177,7 @@ class NBeats(BaseModel):
                         forecast_length=prediction_length,
                         min_period=self.hparams.expansion_coefficient_lengths[stack_id],
                         dropout=self.hparams.dropout,
+                        kan_params=self.hparams.kan_params,
                     )
                 elif stack_type == "trend":
                     net_block = NBEATSTrendBlock(
@@ -136,6 +187,7 @@ class NBeats(BaseModel):
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
+                        kan_params=self.hparams.kan_params,
                     )
                 else:
                     raise ValueError(f"Unknown stack type {stack_type}")
@@ -374,3 +426,195 @@ class NBeats(BaseModel):
 
         fig.legend()
         return fig
+
+
+# from sktime.datasets import load_airline
+# import pandas as pd
+# from pytorch_forecasting.data import TimeSeriesDataSet
+# import lightning.pytorch as pl
+# from lightning.pytorch.callbacks import EarlyStopping
+
+# # Load the airline dataset
+# y = load_airline()
+
+# # Convert to DataFrame and reset index for clarity
+# df = y.reset_index()
+
+# # Add a 'time_idx' column with values same as the index of rows
+# df["time_idx"] = df.index
+
+# # Display the DataFrame
+# data = df.drop(columns=["Period"])
+# data["series"] = 0
+# # data["value"] = data["Number of airline passengers"]+20
+
+
+# # create dataset and dataloaders
+# max_encoder_length = 60
+# max_prediction_length = 20
+
+# training_cutoff = data["time_idx"].max() - max_prediction_length
+
+# context_length = max_encoder_length
+# prediction_length = max_prediction_length
+
+# training = TimeSeriesDataSet(
+#     data[lambda x: x.time_idx <= training_cutoff],
+#     time_idx="time_idx",
+#     target="Number of airline passengers",
+#     categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
+#     group_ids=["series"],
+#     # only unknown variable is "value" - and N-Beats can also not take any additional variables
+#     time_varying_unknown_reals=["Number of airline passengers"],
+#     max_encoder_length=context_length,
+#     max_prediction_length=prediction_length,
+# )
+# print("hazrat")
+# validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training_cutoff + 1)
+# batch_size = 2
+# train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
+# val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+
+# pl.seed_everything(42)
+# trainer = pl.Trainer(accelerator="auto", gradient_clip_val=0.01)
+# net = NBeats.from_dataset(
+#     training,
+#     learning_rate=1e-3,
+#     log_interval=10,
+#     log_val_interval=1,
+#     weight_decay=1e-2,
+#     widths=[32, 512],
+#     backcast_loss_ratio=1.0,
+# )
+
+# early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
+# trainer = pl.Trainer(
+#     max_epochs=2,
+#     accelerator="auto",
+#     enable_model_summary=True,
+#     gradient_clip_val=0.1,
+#     callbacks=[early_stop_callback],
+#     limit_train_batches=150,
+# )
+
+# trainer.fit(
+#     net,
+#     train_dataloaders=train_dataloader,
+#     val_dataloaders=val_dataloader,
+# )
+
+# best_model_path = trainer.checkpoint_callback.best_model_path
+# best_model = NBeats.load_from_checkpoint(best_model_path)
+
+# # for x, y in iter(val_dataloader):
+# #     for y in y:
+# #         print(y,type(y))
+# # actuals = torch.cat([y for x, y in iter(val_dataloader)]).to("cpu")
+# # actuals = [y_tensors[0]  for _, y_tensors in iter(val_dataloader)][0]
+
+# # print(actuals)
+
+# # predictions = best_model.predict(val_dataloader, trainer_kwargs=dict(accelerator="cpu"))
+# # print(predictions)
+# # predictions_tensor = torch.cat(predictions)
+# # actuals_tensor = torch.cat(actuals)
+
+# # # Calculate the absolute error and mean
+# # error = (actuals_tensor - predictions_tensor).abs().mean()
+
+# # print(f"Mean absolute error: {error}")
+# import matplotlib.pyplot as plt
+
+# raw_predictions = best_model.predict(val_dataloader, mode="raw", return_x=True)
+
+# for idx in range(10):  # plot 10 examples
+#     figure = best_model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=idx, add_loss_to_title=True)
+#     plt.show()
+
+
+import warnings
+
+warnings.filterwarnings("ignore")
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
+import pandas as pd
+import torch
+
+from pytorch_forecasting import TimeSeriesDataSet
+from pytorch_forecasting.data import NaNLabelEncoder
+from pytorch_forecasting.data.examples import generate_ar_data
+
+
+data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=100, seed=42)
+data["static"] = 2
+data["date"] = pd.Timestamp("2020-01-01") + pd.to_timedelta(data.time_idx, "D")
+data.head()
+
+# create dataset and dataloaders
+max_encoder_length = 60
+max_prediction_length = 20
+
+training_cutoff = data["time_idx"].max() - max_prediction_length
+
+context_length = max_encoder_length
+prediction_length = max_prediction_length
+
+training = TimeSeriesDataSet(
+    data[lambda x: x.time_idx <= training_cutoff],
+    time_idx="time_idx",
+    target="value",
+    categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
+    group_ids=["series"],
+    # only unknown variable is "value" - and N-Beats can also not take any additional variables
+    time_varying_unknown_reals=["value"],
+    max_encoder_length=context_length,
+    max_prediction_length=prediction_length,
+)
+
+validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training_cutoff + 1)
+batch_size = 128
+train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
+val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+
+pl.seed_everything(42)
+trainer = pl.Trainer(accelerator="auto", gradient_clip_val=0.01)
+# net = NBeats.from_dataset(training, learning_rate=3e-2, weight_decay=1e-2, widths=[32, 512], backcast_loss_ratio=0.1)
+net = NBeats.from_dataset(
+    training,
+    learning_rate=1e-3,
+    log_interval=10,
+    log_val_interval=1,
+    weight_decay=1e-2,
+    widths=[32, 512],
+    backcast_loss_ratio=1.0,
+    num_block_layers=[3, 3],
+)
+
+early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
+trainer = pl.Trainer(
+    max_epochs=1,
+    accelerator="auto",
+    enable_model_summary=True,
+    gradient_clip_val=0.1,
+    callbacks=[early_stop_callback],
+    limit_train_batches=150,
+)
+
+trainer.fit(
+    net,
+    train_dataloaders=train_dataloader,
+    val_dataloaders=val_dataloader,
+)
+
+best_model_path = trainer.checkpoint_callback.best_model_path
+best_model = NBeats.load_from_checkpoint(best_model_path)
+
+raw_predictions = best_model.predict(val_dataloader, mode="raw", return_x=True)
+print(best_model)
+import matplotlib.pyplot as plt
+
+raw_predictions = best_model.predict(val_dataloader, mode="raw", return_x=True)
+
+for idx in range(10):  # plot 10 examples
+    figure = best_model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=idx, add_loss_to_title=True)
+    plt.show()
