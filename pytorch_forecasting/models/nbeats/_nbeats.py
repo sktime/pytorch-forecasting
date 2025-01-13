@@ -175,7 +175,7 @@ class NBeats(BaseModel):
             "sparse_init": sparse_init,
         }
 
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["loss", "logging_metrics"])
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # setup stacks
@@ -190,7 +190,7 @@ class NBeats(BaseModel):
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
-                        kan_params=self.hparams.kan_params,
+                        kan_params=self.kan_params,
                     )
                 elif stack_type == "seasonality":
                     net_block = NBEATSSeasonalBlock(
@@ -200,7 +200,7 @@ class NBeats(BaseModel):
                         forecast_length=prediction_length,
                         min_period=self.hparams.expansion_coefficient_lengths[stack_id],
                         dropout=self.hparams.dropout,
-                        kan_params=self.hparams.kan_params,
+                        kan_params=self.kan_params,
                     )
                 elif stack_type == "trend":
                     net_block = NBEATSTrendBlock(
@@ -210,7 +210,7 @@ class NBeats(BaseModel):
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
-                        kan_params=self.hparams.kan_params,
+                        kan_params=self.kan_params,
                     )
                 else:
                     raise ValueError(f"Unknown stack type {stack_type}")

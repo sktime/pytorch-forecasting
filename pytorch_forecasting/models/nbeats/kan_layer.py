@@ -1,9 +1,9 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 
 
-def B_batch(x, grid, k=0, extend=True, device="cpu"):
+def B_batch(x, grid, k=0, extend=True):
     """
     evaludate x on B-spline bases
 
@@ -16,14 +16,14 @@ def B_batch(x, grid, k=0, extend=True, device="cpu"):
         k : int
             the piecewise polynomial order of splines.
         extend : bool
-            If True, k points are extended on both ends. If False, no extension (zero boundary condition). Default: True
-        device : str
-            devicde
+            If True, k points are extended on both ends. If False, no extension
+            (zero boundary condition). Default: True
 
     Returns:
     --------
         spline values : 3D torch.tensor
-            shape (batch, in_dim, G+k). G: the number of grid intervals, k: spline order.
+            shape (batch, in_dim, G+k). G: the number of grid intervals,
+            k: spline order.
 
     Example
     -------
@@ -41,16 +41,20 @@ def B_batch(x, grid, k=0, extend=True, device="cpu"):
     else:
         B_km1 = B_batch(x[:, :, 0], grid=grid[0], k=k - 1)
 
-        value = (x - grid[:, :, : -(k + 1)]) / (grid[:, :, k:-1] - grid[:, :, : -(k + 1)]) * B_km1[:, :, :-1] + (
-            grid[:, :, k + 1 :] - x
-        ) / (grid[:, :, k + 1 :] - grid[:, :, 1:(-k)]) * B_km1[:, :, 1:]
+        value = (x - grid[:, :, : -(k + 1)]) / (
+            grid[:, :, k:-1] - grid[:, :, : -(k + 1)]
+        ) * B_km1[:, :, :-1] + (grid[:, :, k + 1 :] - x) / (
+            grid[:, :, k + 1 :] - grid[:, :, 1:(-k)]
+        ) * B_km1[
+            :, :, 1:
+        ]
 
     # in case grid is degenerate
     value = torch.nan_to_num(value)
     return value
 
 
-def coef2curve(x_eval, grid, coef, k, device="cpu"):
+def coef2curve(x_eval, grid, coef, k):
     """
     converting B-spline coefficients to B-spline curves. Evaluate x on B-spline curves
     (summing up B_batch results over B-spline basis).
@@ -65,8 +69,6 @@ def coef2curve(x_eval, grid, coef, k, device="cpu"):
             shape (in_dim, out_dim, G+k)
         k : int
             the piecewise polynomial order of splines.
-        device : str
-            devicde
 
     Returns:
     --------
@@ -76,7 +78,7 @@ def coef2curve(x_eval, grid, coef, k, device="cpu"):
     """
 
     b_splines = B_batch(x_eval, grid, k=k)
-    y_eval = torch.einsum("ijk,jlk->ijl", b_splines, coef.to(b_splines.device))
+    y_eval = torch.einsum("ijk,jlk->ijl", b_splines, coef.to(b_splines))
 
     return y_eval
 
@@ -121,7 +123,7 @@ def curve2coef(x_eval, y_eval, grid, k):
     XtX = torch.einsum('ijmn,ijnp->ijmp', mat.permute(0,1,3,2), mat)
     Xty = torch.einsum('ijmn,ijnp->ijmp', mat.permute(0,1,3,2), y_eval)
     n1, n2, n = XtX.shape[0], XtX.shape[1], XtX.shape[2]
-    identity = torch.eye(n,n)[None, None, :, :].expand(n1, n2, n, n).to(device)
+    identity = torch.eye(n,n)[None, None, :, :].expand(n1, n2, n, n)
     A = XtX + lamb * identity
     B = Xty
     coef = (A.pinverse() @ B)[:,:,:,0]"""
@@ -164,38 +166,6 @@ def sparse_mask(in_dim, out_dim):
 class KANLayer(nn.Module):
     """
     KANLayer class
-
-
-    Attributes:
-    -----------
-        in_dim: int
-            input dimension
-        out_dim: int
-            output dimension
-        num: int
-            the number of grid intervals
-        k: int
-            the piecewise polynomial order of splines
-        noise_scale: float
-            spline scale at initialization
-        coef: 2D torch.tensor
-            coefficients of B-spline bases
-        scale_base_mu: float
-            magnitude of the residual function b(x) is drawn from N(mu, sigma^2), mu = sigma_base_mu
-        scale_base_sigma: float
-            magnitude of the residual function b(x) is drawn from N(mu, sigma^2), mu = sigma_base_sigma
-        scale_sp: float
-            mangitude of the spline function spline(x)
-        base_fun: fun
-            residual function b(x)
-        mask: 1D torch.float
-            mask of spline functions. setting some element of the mask to zero means setting the
-            corresponding activation to zero function.
-        grid_eps: float in [0,1]
-            a hyperparameter used in update_grid_from_samples. When grid_eps = 1, the grid is uniform;
-            when grid_eps = 0, the grid is partitioned using percentiles of samples. 0 < grid_eps < 1
-            interpolates between the two extremes.
-            the id of activation functions that are locked
     """
 
     def __init__(
@@ -213,7 +183,6 @@ class KANLayer(nn.Module):
         grid_range=[-1, 1],
         sp_trainable=True,
         sb_trainable=True,
-        device="cpu",
         sparse_init=False,
     ):
         """'
@@ -232,16 +201,19 @@ class KANLayer(nn.Module):
             noise_scale : float
                 the scale of noise injected at initialization. Default: 0.1.
             scale_base_mu : float
-                the scale of the residual function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
+                the scale of the residual function b(x) is intialized to be
+                N(scale_base_mu, scale_base_sigma^2).
             scale_base_sigma : float
-                the scale of the residual function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
+                the scale of the residual function b(x) is intialized to be
+                N(scale_base_mu, scale_base_sigma^2).
             scale_sp : float
                 the scale of the base function spline(x).
             base_fun : function
                 residual function b(x). Default: torch.nn.SiLU()
             grid_eps : float
-                When grid_eps = 1, the grid is uniform; when grid_eps = 0, the grid is partitioned using
-                percentiles of samples. 0 < grid_eps < 1 interpolates between the two extremes.
+                When grid_eps = 1, the grid is uniform; when grid_eps = 0, the grid is
+                partitioned using percentiles of samples. 0 < grid_eps < 1 interpolates
+                between the two extremes.
             grid_range : list/np.array of shape (2,)
                 setting the range of grids. Default: [-1,1].
             sp_trainable : bool
@@ -268,21 +240,36 @@ class KANLayer(nn.Module):
         self.num = num
         self.k = k
 
-        grid = torch.linspace(grid_range[0], grid_range[1], steps=num + 1)[None, :].expand(self.in_dim, num + 1)
+        grid = torch.linspace(grid_range[0], grid_range[1], steps=num + 1)[
+            None, :
+        ].expand(self.in_dim, num + 1)
         grid = extend_grid(grid, k_extend=k)
         self.grid = torch.nn.Parameter(grid).requires_grad_(False)
-        noises = (torch.rand(self.num + 1, self.in_dim, self.out_dim) - 1 / 2) * noise_scale / num
+        noises = (
+            (torch.rand(self.num + 1, self.in_dim, self.out_dim) - 1 / 2)
+            * noise_scale
+            / num
+        )
 
-        self.coef = torch.nn.Parameter(curve2coef(self.grid[:, k:-k].permute(1, 0), noises, self.grid, k))
+        self.coef = torch.nn.Parameter(
+            curve2coef(self.grid[:, k:-k].permute(1, 0), noises, self.grid, k)
+        )
 
         if sparse_init:
-            self.mask = torch.nn.Parameter(sparse_mask(in_dim, out_dim)).requires_grad_(False)
+            self.mask = torch.nn.Parameter(sparse_mask(in_dim, out_dim)).requires_grad_(
+                False
+            )
         else:
-            self.mask = torch.nn.Parameter(torch.ones(in_dim, out_dim)).requires_grad_(False)
+            self.mask = torch.nn.Parameter(torch.ones(in_dim, out_dim)).requires_grad_(
+                False
+            )
 
         self.scale_base = torch.nn.Parameter(
             scale_base_mu * 1 / np.sqrt(in_dim)
-            + scale_base_sigma * (torch.rand(in_dim, out_dim) * 2 - 1) * 1 / np.sqrt(in_dim)
+            + scale_base_sigma
+            * (torch.rand(in_dim, out_dim) * 2 - 1)
+            * 1
+            / np.sqrt(in_dim)
         ).requires_grad_(sb_trainable)
         self.scale_sp = torch.nn.Parameter(
             torch.ones(in_dim, out_dim) * scale_sp * 1 / np.sqrt(in_dim) * self.mask
@@ -307,7 +294,8 @@ class KANLayer(nn.Module):
             y : 2D torch.float
                 outputs, shape (number of samples, output dimension)
             preacts : 3D torch.float
-                fan out x into activations, shape (number of sampels, output dimension, input dimension)
+                fan out x into activations, shape (number of sampels,
+                output dimension, input dimension)
             postacts : 3D torch.float
                 the outputs of activation functions with preacts as inputs
             postspline : 3D torch.float
@@ -324,7 +312,10 @@ class KANLayer(nn.Module):
 
         base = self.base_fun(x)  # (batch, in_dim)
         y = coef2curve(x_eval=x, grid=self.grid, coef=self.coef, k=self.k)
-        y = self.scale_base[None, :, :] * base[:, :, None] + self.scale_sp[None, :, :] * y
+        y = (
+            self.scale_base[None, :, :] * base[:, :, None]
+            + self.scale_sp[None, :, :] * y
+        )
         y = self.mask[None, :, :] * y
         y = torch.sum(y, dim=1)
         return y
@@ -352,8 +343,8 @@ class KANLayer(nn.Module):
         """
 
         batch = x.shape[0]
-        # x = torch.einsum('ij,k->ikj', x, torch.ones(self.out_dim, ).to(self.device)).reshape(batch, self.size)
-        # .permute(1, 0)
+        # x = torch.einsum('ij,k->ikj', x, torch.ones(self.out_dim, ))
+        # .reshape(batch, self.size).permute(1, 0)
         x_pos = torch.sort(x, dim=0)[0]
         y_eval = coef2curve(x_pos, self.grid, self.coef, self.k)
         num_interval = self.grid.shape[1] - 1 - 2 * self.k
@@ -362,16 +353,16 @@ class KANLayer(nn.Module):
             ids = [int(batch / num_interval * i) for i in range(num_interval)] + [-1]
             grid_adaptive = x_pos[ids, :].permute(1, 0)
             margin = 0.00
-            h = (grid_adaptive[:, [-1]] - grid_adaptive[:, [0]] + 2 * margin) / num_interval
+            h = (
+                grid_adaptive[:, [-1]] - grid_adaptive[:, [0]] + 2 * margin
+            ) / num_interval
             grid_uniform = (
                 grid_adaptive[:, [0]]
                 - margin
                 + h
                 * torch.arange(
                     num_interval + 1,
-                )[
-                    None, :
-                ].to(x.device)
+                )[None, :]
             )
             grid = self.grid_eps * grid_uniform + (1 - self.grid_eps) * grid_adaptive
             return grid
@@ -384,8 +375,6 @@ class KANLayer(nn.Module):
             y_eval = coef2curve(x_pos, self.grid, self.coef, self.k)
 
         self.grid.data = extend_grid(grid, k_extend=self.k)
-        # print('x_pos 2', x_pos.shape)
-        # print('y_eval 2', y_eval.shape)
         self.coef.data = curve2coef(x_pos, y_eval, self.grid, self.k)
 
     def initialize_grid_from_parent(self, parent, x, mode="sample"):
@@ -424,7 +413,8 @@ class KANLayer(nn.Module):
             ids = [int(batch / num_interval * i) for i in range(num_interval)] + [-1]
             grid_adaptive = x_pos[ids, :].permute(1,0)
             h = (grid_adaptive[:,[-1]] - grid_adaptive[:,[0]])/num_interval
-            grid_uniform = grid_adaptive[:,[0]] + h * torch.arange(num_interval+1,)[None, :].to(x.device)
+            grid_uniform = grid_adaptive[:,[0]] + h * torch.arange(num_interval+1,)
+            [None, :]
             grid = self.grid_eps * grid_uniform + (1 - self.grid_eps) * grid_adaptive
             return grid"""
 
@@ -433,11 +423,14 @@ class KANLayer(nn.Module):
             x_pos = parent.grid[:, parent.k : -parent.k]
             # print('x_pos', x_pos)
             sp2 = KANLayer(
-                in_dim=1, out_dim=self.in_dim, k=1, num=x_pos.shape[1] - 1, scale_base_mu=0.0, scale_base_sigma=0.0
-            ).to(x.device)
+                in_dim=1,
+                out_dim=self.in_dim,
+                k=1,
+                num=x_pos.shape[1] - 1,
+                scale_base_mu=0.0,
+                scale_base_sigma=0.0,
+            )
 
-            # print('sp2_grid', sp2.grid[:,sp2.k:-sp2.k].permute(1,0).expand(-1,self.in_dim))
-            # print('sp2_coef_shape', sp2.coef.shape)
             sp2_coef = curve2coef(
                 sp2.grid[:, sp2.k : -sp2.k].permute(1, 0).expand(-1, self.in_dim),
                 x_pos.permute(1, 0).unsqueeze(dim=2),
@@ -445,7 +438,7 @@ class KANLayer(nn.Module):
                 k=1,
             ).permute(1, 0, 2)
             sp2.coef.data = sp2_coef
-            percentile = torch.linspace(-1, 1, self.num + 1).to(self.device)
+            percentile = torch.linspace(-1, 1, self.num + 1)
             grid = sp2(percentile.unsqueeze(dim=1))[0].permute(1, 0)
             return grid
 
@@ -482,7 +475,9 @@ class KANLayer(nn.Module):
         >>> kanlayer_small.in_dim, kanlayer_small.out_dim
         (2, 3)
         """
-        spb = KANLayer(len(in_id), len(out_id), self.num, self.k, base_fun=self.base_fun)
+        spb = KANLayer(
+            len(in_id), len(out_id), self.num, self.k, base_fun=self.base_fun
+        )
         spb.grid.data = self.grid[in_id]
         spb.coef.data = self.coef[in_id][:, out_id]
         spb.scale_base.data = self.scale_base[in_id][:, out_id]
@@ -495,7 +490,8 @@ class KANLayer(nn.Module):
 
     def swap(self, i1, i2, mode="in"):
         """
-        swap the i1 neuron with the i2 neuron in input (if mode == 'in') or output (if mode == 'out')
+        swap the i1 neuron with the i2 neuron in input (if mode == 'in') or output
+        (if mode == 'out')
 
         Args:
         -----
