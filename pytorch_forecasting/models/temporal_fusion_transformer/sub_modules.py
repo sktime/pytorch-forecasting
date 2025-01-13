@@ -285,7 +285,7 @@ class VariableSelectionNetwork(nn.Module):
     ):
         """
         Calculate weights for ``num_inputs`` variables  which are each of size ``input_size``
-        """
+        """  # noqa: E501
         super().__init__()
 
         self.hidden_size = hidden_size

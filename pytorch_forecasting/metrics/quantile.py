@@ -12,7 +12,7 @@ class QuantileLoss(MultiHorizonMetric):
     Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calculated as
 
     Defined as ``max(q * (y-y_pred), (1-q) * (y_pred-y))``
-    """
+    """  # noqa: E501
 
     def __init__(
         self,

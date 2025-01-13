@@ -75,7 +75,7 @@ class MultiEmbedding(nn.Module):
                 embedding vector. Defaults to empty list.
             max_embedding_size (int, optional): if embedding size defined by ``embedding_sizes`` is larger than
                 ``max_embedding_size``, it will be constrained. Defaults to None.
-        """
+        """  # noqa: E501
         if categorical_groups is None:
             categorical_groups = {}
         if embedding_paddings is None:
@@ -94,7 +94,10 @@ class MultiEmbedding(nn.Module):
                 ), "categorical_groups must be in embedding_sizes."
                 assert not any(
                     name in embedding_sizes for name in categorical_group_variables
-                ), "group variables in categorical_groups must not be in embedding_sizes."
+                ), (
+                    "group variables in categorical_groups"
+                    " must not be in embedding_sizes."
+                )
                 assert all(
                     name in x_categoricals for name in categorical_group_variables
                 ), "group variables in categorical_groups must be in x_categoricals."
@@ -103,13 +106,13 @@ class MultiEmbedding(nn.Module):
                 for name in embedding_sizes
                 if name not in categorical_group_variables
             ), (
-                "all variables in embedding_sizes must be in x_categoricals - but only if"
-                "not already in categorical_groups."
+                "all variables in embedding_sizes must be in x_categoricals - "
+                "but only if not already in categorical_groups."
             )
         else:
             assert (
                 x_categoricals is None and len(categorical_groups) == 0
-            ), "If embedding_sizes is not a dictionary, categorical_groups and x_categoricals must be empty."
+            ), "If embedding_sizes is not a dictionary, categorical_groups and x_categoricals must be empty."  # noqa: E501
             # number embeddings based on order
             embedding_sizes = {
                 str(name): size for name, size in enumerate(embedding_sizes)
@@ -193,7 +196,7 @@ class MultiEmbedding(nn.Module):
                 of shape batch x (optional) time x embedding_size if ``embedding_size`` is given as dictionary.
                 Otherwise, returns the embedding of shape batch x (optional) time x sum(embedding_sizes).
                 Query attribute ``output_size`` to get the size of the output(s).
-        """
+        """  # noqa: E501
         input_vectors = {}
         for name, emb in self.embeddings.items():
             if name in self.categorical_groups:
