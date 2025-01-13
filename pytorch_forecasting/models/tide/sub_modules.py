@@ -76,7 +76,8 @@ class _TideModule(nn.Module):
         Parameters
         ----------
         input_dim
-            The total number of input features, including the target and optional covariates.
+            The total number of input features, including the target
+            and optional covariates.
         output_dim
             The number of output features in the target.
         future_cov_dim
@@ -96,7 +97,8 @@ class _TideModule(nn.Module):
         temporal_width_future
             The dimensionality of the embedding space for future covariates.
         temporal_hidden_size_future
-            The size of the hidden layers in the Residual Block projecting future covariates.
+            The size of the hidden layers in the Residual Block projecting
+            future covariates.
         use_layer_norm
             Indicates whether to apply layer normalization in the Residual Blocks.
         dropout
@@ -105,13 +107,15 @@ class _TideModule(nn.Module):
         Inputs
         ------
         x
-            A tuple of Tensors (x_past, x_future, x_static) where x_past represents the input/past sequence,
+            A tuple of Tensors (x_past, x_future, x_static)
+            where x_past represents the input/past sequence,
             and x_future represents the output/future sequence. The input dimensions are
             (batch_size, time_steps, components).
         Outputs
         -------
         y
-            A Tensor with dimensions (batch_size, output_chunk_length, output_dim) representing the model's output.
+            A Tensor with dimensions (batch_size, output_chunk_length, output_dim)
+            epresenting the model's output.
         """
         super().__init__()
 
@@ -130,7 +134,8 @@ class _TideModule(nn.Module):
         self.temporal_width_future = temporal_width_future
         self.temporal_hidden_size_future = temporal_hidden_size_future or hidden_size
 
-        # future covariates handling: either feature projection, raw features, or no features
+        # future covariates handling: either feature projection,
+        # raw features, or no features
         self.future_cov_projection = None
         if future_cov_dim > 0 and self.temporal_width_future:
             # residual block for future covariates feature projection
@@ -224,8 +229,10 @@ class _TideModule(nn.Module):
         Parameters
         ----------
         x_in
-            comes as tuple (x_past, x_future, x_static) where x_past is the input/past chunk and x_future
-            is the output/future chunk. Input dimensions are (batch_size, time_steps, components)
+            comes as tuple (x_past, x_future, x_static)
+            where x_past is the input/past chunk and x_future
+            is the output/future chunk. Input dimensions are
+            (batch_size, time_steps, components)
         Returns
         -------
         torch.Tensor
@@ -240,7 +247,8 @@ class _TideModule(nn.Module):
         x_lookback = x[:, :, : self.output_dim]
 
         # future covariates: feature projection or raw features
-        # historical future covariates need to be extracted from x and stacked with part of future covariates
+        # historical future covariates need to be extracted from x and
+        # stacked with part of future covariates
         if self.future_cov_dim > 0:
             x_dynamic_future_covariates = torch.cat(
                 [
@@ -292,8 +300,8 @@ class _TideModule(nn.Module):
         temporal_decoded = self.temporal_decoder(temporal_decoder_input)
 
         # pass x_lookback through self.lookback_skip but swap the last two dimensions
-        # this is needed because the skip connection is applied across the input time steps
-        # and not across the output time steps
+        # this is needed because the skip connection is applied across
+        # the input time steps and not across the output time steps
         skip = self.lookback_skip(x_lookback.transpose(1, 2)).transpose(1, 2)
 
         # add skip connection

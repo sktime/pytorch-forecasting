@@ -160,7 +160,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                         if isinstance(normalizer, NaNLabelEncoder)
                         else QuantileLoss()
                     )
-                    for normalizer in train_dataloader.dataset.target_normalizer.normalizers
+                    for normalizer in train_dataloader.dataset.target_normalizer.normalizers  # noqa : E501
                 ]
             )
         else:
@@ -185,7 +185,8 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                 train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
-            # todo: testing somehow disables grad computation even though it is explicitly turned on -
+            # todo: testing somehow disables grad computation
+            # even though it is explicitly turned on -
             #       loss is calculated as "grad" for MQF2
             if not isinstance(net.loss, MQF2DistributionLoss):
                 test_outputs = trainer.test(net, dataloaders=test_dataloader)
@@ -313,7 +314,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301
 
 
 @pytest.mark.parametrize(

@@ -36,7 +36,7 @@ class RNN(ABC, nn.RNNBase):
 
         Returns:
             HiddenState: hidden state with propagated initial hidden state where appropriate
-        """
+        """  # noqa: E501
         pass
 
     @abstractmethod
@@ -92,7 +92,7 @@ class RNN(ABC, nn.RNNBase):
         Returns:
             Tuple[Union[rnn.PackedSequence, torch.Tensor], HiddenState]: output and hidden state.
                 Output is packed sequence if input has been a packed sequence.
-        """
+        """  # noqa: E501
         if isinstance(x, rnn.PackedSequence) or lengths is None:
             assert (
                 lengths is None
@@ -133,7 +133,8 @@ class RNN(ABC, nn.RNNBase):
                     ),
                     hx=hx,
                 )
-                # replace hidden cell with initial input if encoder_length is zero to determine correct initial state
+                # replace hidden cell with initial input if encoder_length
+                # is zero to determine correct initial state
                 if min_length == 0:
                     no_encoding = (lengths == 0)[
                         None, :, None

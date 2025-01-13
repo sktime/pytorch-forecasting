@@ -98,7 +98,7 @@ print(f"Number of parameters in network: {deepar.size() / 1e3:.1f}k")
 # deepar.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
 # res = Tuner(trainer).lr_find(
-#     deepar, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+#     deepar, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2 # noqa: E501
 # )
 
 # print(f"suggested learning rate: {res.suggestion()}")
