@@ -248,7 +248,8 @@ def test_from_dataset_equivalence(test_data):
         test_data[lambda x: x.time_idx > x.time_idx.min() + 2],
         predict=True,
     )
-    # ensure validation1 and validation2 datasets are exactly the same despite different data inputs
+    # ensure validation1 and validation2 datasets are exactly
+    # the same despite different data inputs
     for v1, v2 in zip(
         iter(validation1.to_dataloader(train=False)),
         iter(validation2.to_dataloader(train=False)),
@@ -564,7 +565,7 @@ def test_graph_sampler(test_dataset):
                     != indices["sequence_id"].iloc[sub_group_idx]
                 ]
                 # filter duplicate timeseries
-                # indices = indices.sort_values("sequence_length").drop_duplicates("sequence_id", keep="last")
+                # indices = indices.sort_values("sequence_length").drop_duplicates("sequence_id", keep="last") # noqa : E501
 
                 # calculate distances for corresponding groups
                 group_distances = torch.cdist(

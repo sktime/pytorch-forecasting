@@ -86,7 +86,7 @@ def model(dataloaders_fixed_window_without_covariates):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301
 
 
 @pytest.mark.skipif(
