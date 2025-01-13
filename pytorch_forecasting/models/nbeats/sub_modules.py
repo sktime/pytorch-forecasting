@@ -4,11 +4,12 @@ Implementation of ``nn.Modules`` for N-Beats model.
 
 from typing import Tuple
 
-from kan_layer import KANLayer
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from pytorch_forecasting.models.nbeats.kan_layer import KANLayer
 
 
 def linear(input_size, output_size, bias=True, dropout: int = None):
