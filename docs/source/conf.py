@@ -145,7 +145,9 @@ html_theme_options = {
     "navbar_end": ["navbar-icon-links.html", "search-field.html"],
     "show_nav_level": 2,
     "header_links_before_dropdown": 10,
-    "external_links": [{"name": "GitHub", "url": "https://github.com/sktime/pytorch-forecasting"}],
+    "external_links": [
+        {"name": "GitHub", "url": "https://github.com/sktime/pytorch-forecasting"}
+    ],
 }
 
 html_sidebars = {

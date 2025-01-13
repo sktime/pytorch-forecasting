@@ -62,7 +62,9 @@ def fetch_latest_release():  # noqa: D103
     """
     import httpx
 
-    response = httpx.get(f"{GITHUB_REPOS}/{OWNER}/{REPO}/releases/latest", headers=HEADERS)
+    response = httpx.get(
+        f"{GITHUB_REPOS}/{OWNER}/{REPO}/releases/latest", headers=HEADERS
+    )
 
     if response.status_code == 200:
         return response.json()
@@ -91,7 +93,9 @@ def fetch_pull_requests_since_last_release() -> list[dict]:
     all_pulls = []
     while not is_exhausted:
         pulls = fetch_merged_pull_requests(page=page)
-        all_pulls.extend([p for p in pulls if parser.parse(p["merged_at"]) > published_at])
+        all_pulls.extend(
+            [p for p in pulls if parser.parse(p["merged_at"]) > published_at]
+        )
         is_exhausted = any(parser.parse(p["updated_at"]) < published_at for p in pulls)
         page += 1
     return all_pulls
@@ -101,7 +105,9 @@ def github_compare_tags(tag_left: str, tag_right: str = "HEAD"):
     """Compare commit between two tags."""
     import httpx
 
-    response = httpx.get(f"{GITHUB_REPOS}/{OWNER}/{REPO}/compare/{tag_left}...{tag_right}")
+    response = httpx.get(
+        f"{GITHUB_REPOS}/{OWNER}/{REPO}/compare/{tag_left}...{tag_right}"
+    )
     if response.status_code == 200:
         return response.json()
     else:
@@ -135,7 +141,9 @@ def assign_prs(prs, categs: list[dict[str, list[str]]]):
     #             if any(l.startswith("module") for l in pr_labels):
     #                 print(i, pr_labels)
 
-    assigned["Other"] = list(set(range(len(prs))) - {i for _, j in assigned.items() for i in j})
+    assigned["Other"] = list(
+        set(range(len(prs))) - {i for _, j in assigned.items() for i in j}
+    )
 
     return assigned
 

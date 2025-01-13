@@ -40,12 +40,20 @@ class GroupedSampler(Sampler):
         # Since collections.abc.Iterable does not check for `__getitem__`, which
         # is one way for an object to be an iterable, we don't do an `isinstance`
         # check here.
-        if not isinstance(batch_size, int) or isinstance(batch_size, bool) or batch_size <= 0:
+        if (
+            not isinstance(batch_size, int)
+            or isinstance(batch_size, bool)
+            or batch_size <= 0
+        ):
             raise ValueError(
-                "batch_size should be a positive integer value, " "but got batch_size={}".format(batch_size)
+                "batch_size should be a positive integer value, "
+                "but got batch_size={}".format(batch_size)
             )
         if not isinstance(drop_last, bool):
-            raise ValueError("drop_last should be a boolean value, but got " "drop_last={}".format(drop_last))
+            raise ValueError(
+                "drop_last should be a boolean value, but got "
+                "drop_last={}".format(drop_last)
+            )
         self.sampler = sampler
         self.batch_size = batch_size
         self.drop_last = drop_last
@@ -78,7 +86,9 @@ class GroupedSampler(Sampler):
             if self.drop_last:
                 self._group_sizes[name] = len(group) // self.batch_size
             else:
-                self._group_sizes[name] = (len(group) + self.batch_size - 1) // self.batch_size
+                self._group_sizes[name] = (
+                    len(group) + self.batch_size - 1
+                ) // self.batch_size
             if self._group_sizes[name] == 0:
                 self._group_sizes[name] = 1
                 warns.append(name)
@@ -90,9 +100,13 @@ class GroupedSampler(Sampler):
             )
         # create index from which can be sampled: index is equal to number of batches
         # associate index with prediction time
-        self._group_index = np.repeat(list(self._group_sizes.keys()), list(self._group_sizes.values()))
+        self._group_index = np.repeat(
+            list(self._group_sizes.keys()), list(self._group_sizes.values())
+        )
         # associate index with batch within prediction time group
-        self._sub_group_index = np.concatenate([np.arange(size) for size in self._group_sizes.values()])
+        self._sub_group_index = np.concatenate(
+            [np.arange(size) for size in self._group_sizes.values()]
+        )
 
     def __iter__(self):
         if self.shuffle:  # shuffle samples
@@ -127,7 +141,9 @@ class TimeSynchronizedBatchSampler(GroupedSampler):
         index = data_source.index
         # get groups, i.e. group all samples by first predict time
         last_time = data_source.data["time"][index["index_end"].to_numpy()].numpy()
-        decoder_lengths = data_source.calculate_decoder_length(last_time, index.sequence_length)
+        decoder_lengths = data_source.calculate_decoder_length(
+            last_time, index.sequence_length
+        )
         first_prediction_time = index.time + index.sequence_length - decoder_lengths + 1
         groups = pd.RangeIndex(0, len(index.index)).groupby(first_prediction_time)
         return groups
