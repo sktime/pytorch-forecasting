@@ -488,9 +488,15 @@ def test_no_exogenous_variable():
         time_varying_unknown_reals=["target"],
         time_varying_known_reals=[],
     )
-    validation_dataset = TimeSeriesDataSet.from_dataset(training_dataset, data, stop_randomization=True, predict=True)
-    training_data_loader = training_dataset.to_dataloader(train=True, batch_size=8, num_workers=0)
-    validation_data_loader = validation_dataset.to_dataloader(train=False, batch_size=8, num_workers=0)
+    validation_dataset = TimeSeriesDataSet.from_dataset(
+        training_dataset, data, stop_randomization=True, predict=True
+    )
+    training_data_loader = training_dataset.to_dataloader(
+        train=True, batch_size=8, num_workers=0
+    )
+    validation_data_loader = validation_dataset.to_dataloader(
+        train=False, batch_size=8, num_workers=0
+    )
     forecaster = TemporalFusionTransformer.from_dataset(
         training_dataset,
         log_interval=1,

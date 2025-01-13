@@ -388,13 +388,19 @@ class VariableSelectionNetwork(nn.Module):
                     outputs.size(0), outputs.size(1), 1, 1, device=outputs.device
                 )  #
             else:  # ndim == 2 -> batch size, hidden size, n_variables
-                sparse_weights = torch.ones(outputs.size(0), 1, 1, device=outputs.device)
+                sparse_weights = torch.ones(
+                    outputs.size(0), 1, 1, device=outputs.device
+                )
         else:  # for no input
             outputs = torch.zeros(context.size(), device=context.device)
             if outputs.ndim == 3:  # -> batch size, time, hidden size, n_variables
-                sparse_weights = torch.zeros(outputs.size(0), outputs.size(1), 1, 0, device=outputs.device)
+                sparse_weights = torch.zeros(
+                    outputs.size(0), outputs.size(1), 1, 0, device=outputs.device
+                )
             else:  # ndim == 2 -> batch size, hidden size, n_variables
-                sparse_weights = torch.zeros(outputs.size(0), 1, 0, device=outputs.device)
+                sparse_weights = torch.zeros(
+                    outputs.size(0), 1, 0, device=outputs.device
+                )
         return outputs, sparse_weights
 
 
