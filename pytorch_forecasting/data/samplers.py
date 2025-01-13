@@ -1,6 +1,6 @@
 """
 Samplers for sampling time series from the :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`
-"""
+"""  # noqa: E501
 
 import warnings
 
@@ -16,7 +16,7 @@ class GroupedSampler(Sampler):
 
     This means that the items from the different groups are always sampled together.
     This is an abstract class. Implement the :py:meth:`~get_groups` method which creates groups to be sampled from.
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
@@ -36,7 +36,7 @@ class GroupedSampler(Sampler):
             batch_size (int, optional): Number of samples in a mini-batch. This is rather the maximum number
                 of samples. Because mini-batches are grouped by prediction time, chances are that there
                 are multiple where batch size will be smaller than the maximum. Defaults to 64.
-        """
+        """  # noqa: E501
         # Since collections.abc.Iterable does not check for `__getitem__`, which
         # is one way for an object to be an iterable, we don't do an `isinstance`
         # check here.
@@ -71,7 +71,7 @@ class GroupedSampler(Sampler):
 
         Returns:
             dict-like: dictionary-like object with data_source.index as values and group names as keys
-        """
+        """  # noqa: E501
         raise NotImplementedError()
 
     def construct_batch_groups(self, groups):
@@ -94,7 +94,8 @@ class GroupedSampler(Sampler):
                 warns.append(name)
         if len(warns) > 0:
             warnings.warn(
-                f"Less than {self.batch_size} samples available for {len(warns)} prediction times. "
+                f"Less than {self.batch_size} samples available for "
+                f"{len(warns)} prediction times. "
                 f"Use batch size smaller than {self.batch_size}. "
                 f"First 10 prediction times with small batch sizes: {warns[:10]}"
             )
@@ -134,7 +135,7 @@ class TimeSynchronizedBatchSampler(GroupedSampler):
 
     Time-synchornisation means that the time index of the first decoder samples are aligned across the batch.
     This sampler does not support missing values in the dataset.
-    """
+    """  # noqa: E501
 
     def get_groups(self, sampler: Sampler):
         data_source = sampler.data_source

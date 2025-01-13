@@ -59,7 +59,8 @@ def groupby_apply(
         return_histogram: if to return histogram on top
 
     Returns:
-        tensor of size ``bins`` with aggregated values and optionally with counts of values
+        tensor of size ``bins`` with aggregated values
+        and optionally with counts of values
     """
     if reduction == "mean":
         reduce = torch.mean
@@ -94,7 +95,7 @@ def profile(
         profile_fname (str): path where to save profile (`.txt` file will be saved with line profile)
         filter (str, optional): filter name (e.g. module name) to filter profile. Defaults to "".
         period (float, optional): frequency of calling profiler in seconds. Defaults to 0.0001.
-    """
+    """  # noqa : E501
     import vmprof
     from vmprof.show import LinesPrinter
 
@@ -243,7 +244,7 @@ def unpack_sequence(
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor]: tuple of unpacked sequence and length of samples
-    """
+    """  # noqa : E501
     if isinstance(sequence, rnn.PackedSequence):
         sequence, lengths = rnn.pad_packed_sequence(sequence, batch_first=True)
         # batch sizes reside on the CPU by default -> we need to bring them to GPU
@@ -267,7 +268,7 @@ def concat_sequences(
 
     Returns:
         Union[torch.Tensor, rnn.PackedSequence]: concatenated sequence
-    """
+    """  # noqa : E501
     if isinstance(sequences[0], rnn.PackedSequence):
         return rnn.pack_sequence(sequences, enforce_sorted=False)
     elif isinstance(sequences[0], torch.Tensor):
@@ -298,7 +299,7 @@ def padded_stack(
 
     Returns:
         torch.Tensor: stacked tensor
-    """
+    """  # noqa : E501
     full_size = max([x.size(-1) for x in tensors])
 
     def make_padding(pad):
@@ -370,8 +371,8 @@ def apply_to_list(obj: Union[List[Any], Any], func: Callable) -> Union[List[Any]
         func (Callable): function to apply
 
     Returns:
-        Union[List[Any], Any]: list of objects or object depending on function output and
-            if input ``obj`` is of type list/tuple
+        Union[List[Any], Any]: list of objects or object depending on function output
+            and if input ``obj`` is of type list/tuple
     """
     if isinstance(obj, (list, tuple)) and not isinstance(obj, rnn.PackedSequence):
         return [func(o) for o in obj]
@@ -412,7 +413,7 @@ class OutputMixIn:
 
 
 class TupleOutputMixIn:
-    """MixIn to give output a namedtuple-like access capabilities with ``to_network_output() function``."""
+    """MixIn to give output a namedtuple-like access capabilitieswith ``to_network_output() function``."""  # noqa : E501
 
     def to_network_output(self, **results):
         """
@@ -459,7 +460,7 @@ def move_to_device(
 
     Returns:
         x on targeted device
-    """
+    """  # noqa: E501
     if isinstance(device, str):
         if device == "mps":
             if hasattr(torch.backends, device):
@@ -531,7 +532,7 @@ def masked_op(
 
     Returns:
         torch.Tensor: tensor with averaged out dimension
-    """
+    """  # noqa : E501
     if mask is None:
         mask = ~torch.isnan(tensor)
     masked = tensor.masked_fill(~mask, 0.0)
@@ -560,7 +561,7 @@ def repr_class(
 
     Returns:
         str
-    """
+    """  # noqa E501
     if extra_attributes is None:
         extra_attributes = {}
     # get attributes

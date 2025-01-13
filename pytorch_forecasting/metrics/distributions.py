@@ -1,4 +1,4 @@
-"""Metrics that allow the parametric forecast of parameters of uni- and multivariate distributions."""
+"""Metrics that allow the parametric forecast of parameters of uni- and multivariate distributions."""  # noqa: E501
 
 from typing import List, Optional
 
@@ -87,7 +87,7 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
             rank (int): rank of low-rank approximation for covariance matrix. Defaults to 10.
             sigma_init (float, optional): default value for diagonal covariance. Defaults to 1.0.
             sigma_minimum (float, optional): minimum value for diagonal covariance. Defaults to 1e-3.
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
@@ -106,9 +106,10 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         self._cov_factor_scale: float = np.sqrt(self.rank)
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
-        assert (
-            x.device.type != "mps"
-        ), "MPS accelerator has a bug https://github.com/pytorch/pytorch/issues/98074, use cpu or gpu"
+        assert x.device.type != "mps", (
+            "MPS accelerator has a bug"
+            " https://github.com/pytorch/pytorch/issues/98074, use cpu or gpu"
+        )
         x = x.permute(1, 0, 2)
         distr = self.distribution_class(
             loc=x[..., 2],
@@ -182,9 +183,10 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
         target_scale: torch.Tensor,
         encoder: BaseEstimator,
     ) -> torch.Tensor:
-        assert (
-            not encoder.center
-        ), "NegativeBinomialDistributionLoss is not compatible with `center=True` normalization"
+        assert not encoder.center, (
+            "NegativeBinomialDistributionLoss is not"
+            " compatible with `center=True` normalization"
+        )
         assert encoder.transformation not in [
             "logit",
             "log",
@@ -216,7 +218,7 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
 
         Returns:
             torch.Tensor: mean prediction
-        """
+        """  # noqa: E501
         return y_pred[..., 0]
 
 
@@ -243,7 +245,10 @@ class LogNormalDistributionLoss(DistributionLoss):
         assert isinstance(encoder.transformation, str) and encoder.transformation in [
             "log",
             "log1p",
-        ], f"Log distribution requires log scaling but found `transformation={encoder.transform}`"
+        ], (
+            "Log distribution requires log scaling but found"
+            f" `transformation={encoder.transform}`"
+        )
 
         assert encoder.transformation not in [
             "logit"
@@ -306,16 +311,19 @@ class BetaDistributionLoss(DistributionLoss):
         scaled_mean = encoder(
             dict(prediction=parameters[..., 0], target_scale=target_scale)
         )
-        # need to first transform target scale standard deviation in logit space to real space
-        # we assume a normal distribution in logit space (we used a logit transform and a standard scaler)
-        # and know that the variance of the beta distribution is limited by `scaled_mean * (1 - scaled_mean)`
+        # need to first transform target scale standard deviation in
+        # logit space to real space
+        # we assume a normal distribution in logit space
+        # (we used a logit transform and a standard scaler)
+        # and know that the variance of the beta distribution is
+        # limited by `scaled_mean * (1 - scaled_mean)`
         scaled_mean = (
             scaled_mean * (1 - 2 * self.eps) + self.eps
         )  # ensure that mean is not exactly 0 or 1
         mean_derivative = scaled_mean * (1 - scaled_mean)
 
         # we can approximate variance as
-        # torch.pow(torch.tanh(target_scale[..., 1].unsqueeze(1) * torch.sqrt(mean_derivative)), 2) * mean_derivative
+        # torch.pow(torch.tanh(target_scale[..., 1].unsqueeze(1) * torch.sqrt(mean_derivative)), 2) * mean_derivative # noqa: E501
         # shape is (positive) parameter * mean_derivative / var
         shape_scaler = (
             torch.pow(
@@ -365,7 +373,7 @@ class MQF2DistributionLoss(DistributionLoss):
             icnn_hidden_size (int, optional): hidden size of distribution estimating network. Defaults to 20.
             icnn_num_layers (int, optional): number of hidden layers in distribution estimating network. Defaults to 2.
             estimate_logdet (bool, optional): if to estimate log determinant. Defaults to False.
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(quantiles=quantiles)
@@ -485,7 +493,7 @@ class MQF2DistributionLoss(DistributionLoss):
 
         Returns:
             torch.Tensor: prediction quantiles (last dimension)
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
         distribution = self.map_x_to_distribution(y_pred)
@@ -562,7 +570,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
             input_size (int, optional): input size per prediction length. Defaults to 16.
             hidden_size (int, optional): hidden size per prediction length. Defaults to 64.
             n_loss_samples (int, optional): number of quantiles to sample to calculate loss.
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(quantiles=quantiles)
@@ -574,7 +582,8 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
 
     def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         eps = 1e-3
-        # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities)
+        # for a couple of random quantiles
+        # (excl. 0 and 1 as they would lead to infinities)
         quantiles = torch.rand(size=(n_samples,), device=y_pred.device).clamp(
             eps, 1 - eps
         )
@@ -594,7 +603,8 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
             torch.Tensor: metric value on which backpropagation can be applied
         """
         eps = 1e-3
-        # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities)
+        # for a couple of random quantiles
+        # (excl. 0 and 1 as they would lead to infinities)
         quantiles = torch.rand(size=(self.n_loss_samples,), device=y_pred.device).clamp(
             eps, 1 - eps
         )
@@ -623,7 +633,8 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         if n_samples is None:
             return self.to_quantiles(y_pred, quantiles=[0.5]).squeeze(-1)
         else:
-            # for a couple of random quantiles (excl. 0 and 1 as they would lead to infinities) make prediction
+            # for a couple of random quantiles
+            # (excl. 0 and 1 as they would lead to infinities) make prediction
             return self.sample(y_pred, n_samples=n_samples).mean(-1)
 
     def to_quantiles(
@@ -639,7 +650,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
 
         Returns:
             torch.Tensor: prediction quantiles (last dimension)
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
         quantiles = torch.as_tensor(quantiles, device=y_pred.device)

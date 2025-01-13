@@ -85,7 +85,7 @@ class DecoderMLP(BaseModelWithCovariates):
                 Defaults to QuantileLoss.
             logging_metrics (nn.ModuleList, optional): Metrics to log during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
-        """
+        """  # noqa: E501
         if loss is None:
             loss = QuantileLoss()
         if logging_metrics is None:
