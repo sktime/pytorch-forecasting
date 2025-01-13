@@ -30,7 +30,7 @@ class PoissonLoss(MultiHorizonMetric):
     Note that in this example, the data is log1p-transformed before normalized but not re-transformed.
     The PoissonLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
     The result is the model prediction.
-    """
+    """  # noqa: E501
 
     def loss(
         self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor
@@ -145,7 +145,7 @@ class CrossEntropy(MultiHorizonMetric):
 
         Returns:
             torch.Tensor: prediction quantiles
-        """
+        """  # noqa: E501
         return y_pred
 
 
@@ -170,7 +170,7 @@ class MASE(MultiHorizonMetric):
 
     Defined as ``(y_pred - target).abs() / all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
     ``all_targets`` are here the concatenated encoder and decoder targets
-    """
+    """  # noqa: E501
 
     def update(
         self,
@@ -191,7 +191,7 @@ class MASE(MultiHorizonMetric):
 
         Returns:
             torch.Tensor: loss as a single number for backpropagation
-        """
+        """  # noqa: E501
         # unpack weight
         if isinstance(target, (list, tuple)):
             weight = target[1]
@@ -306,7 +306,7 @@ class TweedieLoss(MultiHorizonMetric):
     Note that in this example, the data is log1p-transformed before normalized but not re-transformed.
     The TweedieLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
     The result is the model prediction.
-    """
+    """  # noqa: E501
 
     def __init__(self, reduction="mean", p: float = 1.5, **kwargs):
         """

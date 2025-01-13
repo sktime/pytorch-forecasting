@@ -1,6 +1,6 @@
 """
 The temporal fusion transformer is a powerful predictive model for forecasting timeseries
-"""
+"""  # noqa: E501
 
 from copy import copy
 from typing import Dict, List, Optional, Tuple, Union
@@ -146,7 +146,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are logged during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
             **kwargs: additional arguments to :py:class:`~BaseModel`.
-        """
+        """  # noqa: E501
         if monotone_constaints is None:
             monotone_constaints = {}
         if embedding_labels is None:
@@ -366,11 +366,13 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             self.hparams.hidden_size, dropout=self.hparams.dropout
         )
         self.post_lstm_gate_decoder = self.post_lstm_gate_encoder
-        # self.post_lstm_gate_decoder = GatedLinearUnit(self.hparams.hidden_size, dropout=self.hparams.dropout)
+        # self.post_lstm_gate_decoder = GatedLinearUnit(
+        #           self.hparams.hidden_size, dropout=self.hparams.dropout)
         self.post_lstm_add_norm_encoder = AddNorm(
             self.hparams.hidden_size, trainable_add=False
         )
-        # self.post_lstm_add_norm_decoder = AddNorm(self.hparams.hidden_size, trainable_add=True)
+        # self.post_lstm_add_norm_decoder = AddNorm(
+        #                               self.hparams.hidden_size, trainable_add=True)
         self.post_lstm_add_norm_decoder = self.post_lstm_add_norm_encoder
 
         # static enrichment and processing past LSTM
@@ -432,7 +434,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         Returns:
             TemporalFusionTransformer
-        """
+        """  # noqa: E501
         # add maximum encoder length
         # update defaults
         new_kwargs = copy(kwargs)
@@ -473,12 +475,14 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 .expand(encoder_lengths.size(0), -1, -1)
             )
         else:
-            # there is value in attending to future forecasts if they are made with knowledge currently
-            #   available
-            #   one possibility is here to use a second attention layer for future attention (assuming different effects
-            #   matter in the future than the past)
-            #   or alternatively using the same layer but allowing forward attention - i.e. only
-            #   masking out non-available data and self
+            # there is value in attending to future forecasts if
+            # they are made with knowledge currently available
+            #   one possibility is here to use a second attention layer
+            # for future attention
+            # (assuming different effects matter in the future than the past)
+            #  or alternatively using the same layer but
+            # allowing forward attention - i.e. only
+            #  masking out non-available data and self
             decoder_mask = (
                 create_mask(decoder_length, decoder_lengths)
                 .unsqueeze(1)
@@ -630,7 +634,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         output = self.pos_wise_ff(attn_output)
 
-        # skip connection over temporal fusion decoder (not LSTM decoder despite the LSTM output contains
+        # skip connection over temporal fusion decoder (not LSTM decoder
+        # despite the LSTM output contains
         # a skip from the variable selection network)
         output = self.pre_output_gate_norm(output, lstm_output[:, max_encoder_length:])
         if self.n_targets > 1:  # if to use multi-target architecture
@@ -664,7 +669,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         interpretation = self.interpret_output(
             detach(out),
             reduction="sum",
-            attention_prediction_horizon=0,  # attention only for first prediction horizon
+            attention_prediction_horizon=0,  # attention only for first prediction horizon # noqa: E501
         )
         return interpretation
 
@@ -692,7 +697,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
         Returns:
             interpretations that can be plotted with ``plot_interpretation()``
-        """
+        """  # noqa: E501
         # take attention and concatenate if a list to proper attention object
         batch_size = len(out["decoder_attention"])
         if isinstance(out["decoder_attention"], (list, tuple)):
@@ -778,7 +783,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             out["decoder_lengths"], min=1, max=out["decoder_variables"].size(1)
         )
 
-        # mask where decoder and encoder where not applied when averaging variable selection weights
+        # mask where decoder and encoder where not applied
+        # when averaging variable selection weights
         encoder_variables = out["encoder_variables"].squeeze(-2).clone()
         encode_mask = create_mask(encoder_variables.size(1), out["encoder_lengths"])
         encoder_variables = encoder_variables.masked_fill(
@@ -800,7 +806,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # static variables need no masking
         static_variables = out["static_variables"].squeeze(1)
         # attention is batch x time x heads x time_to_attend
-        # average over heads + only keep prediction attention and attention on observed timesteps
+        # average over heads + only keep prediction attention and
+        # attention on observed timesteps
         attention = masked_op(
             attention[
                 :,
@@ -961,7 +968,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """
         # extract interpretations
         interpretation = {
-            # use padded_stack because decoder length histogram can be of different length
+            # use padded_stack because decoder
+            # length histogram can be of different length
             name: padded_stack(
                 [x["interpretation"][name].detach() for x in outputs],
                 side="right",
@@ -969,7 +977,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             ).sum(0)
             for name in outputs[0]["interpretation"].keys()
         }
-        # normalize attention with length histogram squared to account for: 1. zeros in attention and
+        # normalize attention with length histogram squared to account for:
+        # 1. zeros in attention and
         # 2. higher attention due to less values
         attention_occurances = (
             interpretation["encoder_length_histogram"][1:].flip(0).float().cumsum(0)

@@ -86,7 +86,7 @@ def optimize_hyperparameters(
 
     Returns:
         optuna.Study: optuna study results
-    """
+    """  # noqa : E501
     pkgs = _get_installed_packages()
 
     if "optuna" not in pkgs or "statsmodels" not in pkgs:
@@ -125,11 +125,12 @@ def optimize_hyperparameters(
 
     loss = kwargs.get(
         "loss", QuantileLoss()
-    )  # need a deepcopy of loss as it will otherwise propagate from one trial to the next
+    )  # need a deepcopy of loss as it will otherwise propagate from one trial to the next # noqa : E501
 
     # create objective function
     def objective(trial: optuna.Trial) -> float:
-        # Filenames for each trial must be made unique in order to access each checkpoint.
+        # Filenames for each trial must be made unique
+        # in order to access each checkpoint.
         checkpoint_callback = ModelCheckpoint(
             dirpath=os.path.join(model_path, "trial_{}".format(trial.number)),
             filename="{epoch}",

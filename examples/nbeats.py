@@ -87,7 +87,7 @@ print(f"Number of parameters in network: {net.size() / 1e3:.1f}k")
 # trainer.limit_train_batches = 1.0
 # # run learning rate finder
 # res = Tuner(trainer).lr_find(
-#     net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+#     net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2 # noqa: E501
 # )
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)
