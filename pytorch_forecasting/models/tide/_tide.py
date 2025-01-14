@@ -98,7 +98,7 @@ class TiDEModel(BaseModelWithCovariates):
         **kwargs
             Allows optional arguments to configure pytorch_lightning.Module, pytorch_lightning.Trainer, and
             pytorch-forecasting's :class:BaseModelWithCovariates.
-        """
+        """  # noqa: E501
 
         if static_categoricals is None:
             static_categoricals = []
@@ -127,7 +127,8 @@ class TiDEModel(BaseModelWithCovariates):
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
 
-        # loss and logging_metrics are ignored as they are modules and stored before calling save_hyperparameters
+        # loss and logging_metrics are ignored as they are modules
+        # and stored before calling save_hyperparameters
         self.save_hyperparameters(ignore=["loss", "logging_metrics"])
         super().__init__(logging_metrics=logging_metrics, **kwargs)
         self.output_dim = len(self.target_names)
@@ -207,20 +208,22 @@ class TiDEModel(BaseModelWithCovariates):
 
         Returns:
             TiDE
-        """
+        """  # noqa: E501
 
         # validate arguments
         assert not isinstance(
             dataset.target_normalizer, NaNLabelEncoder
         ), "only regression tasks are supported - target must not be categorical"
 
-        assert (
-            dataset.min_encoder_length == dataset.max_encoder_length
-        ), "only fixed encoder length is allowed, but min_encoder_length != max_encoder_length"
+        assert dataset.min_encoder_length == dataset.max_encoder_length, (
+            "only fixed encoder length is allowed,"
+            " but min_encoder_length != max_encoder_length"
+        )
 
-        assert (
-            dataset.max_prediction_length == dataset.min_prediction_length
-        ), "only fixed prediction length is allowed, but max_prediction_length != min_prediction_length"
+        assert dataset.max_prediction_length == dataset.min_prediction_length, (
+            "only fixed prediction length is allowed,"
+            " but max_prediction_length != min_prediction_length"
+        )
 
         assert (
             dataset.randomize_length is None
@@ -258,7 +261,8 @@ class TiDEModel(BaseModelWithCovariates):
         encoder_features = self.extract_features(x, self.embeddings, period="encoder")
 
         if self.encoder_covariate_size > 0:
-            # encoder_features = self.extract_features(x, self.embeddings, period="encoder")
+            # encoder_features = self.extract_features(
+            #                   x, self.embeddings, period="encoder")
             encoder_x_t = torch.concat(
                 [
                     encoder_features[name]
@@ -295,8 +299,10 @@ class TiDEModel(BaseModelWithCovariates):
         prediction = self.model(x_in)
 
         if self.output_dim > 1:  # for multivariate targets
-            # adjust prefictions dimensions according to format required for consequent processes
-            # from (batch size, seq len, output_dim) to (output_dim, batch size, seq len)
+            # adjust prefictions dimensions according
+            # to format required for consequent processes
+            # from (batch size, seq len, output_dim) to
+            # (output_dim, batch size, seq len)
             prediction = prediction.permute(2, 0, 1)
             prediction = [i.clone().detach().requires_grad_(True) for i in prediction]
 

@@ -141,4 +141,4 @@ def model(dataloaders_with_covariates):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301

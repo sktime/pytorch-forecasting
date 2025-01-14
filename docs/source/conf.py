@@ -94,11 +94,14 @@ def get_by_name(string: str):
     """
     Import by name and return imported module/function/class
 
-    Args:
-        string (str): module/function/class to import, e.g. 'pandas.read_csv' will return read_csv function as
-        defined by pandas
+    Parameters
+    ----------
+    string (str):
+        module/function/class to import, e.g. 'pandas.read_csv'
+        will return read_csv function as defined by pandas
 
-    Returns:
+    Returns
+    -------
         imported object
     """
     class_name = string.split(".")[-1]

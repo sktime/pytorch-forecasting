@@ -6,6 +6,7 @@ import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
+import pandas as pd
 import pytest
 import torch
 
@@ -159,7 +160,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                         if isinstance(normalizer, NaNLabelEncoder)
                         else QuantileLoss()
                     )
-                    for normalizer in train_dataloader.dataset.target_normalizer.normalizers
+                    for normalizer in train_dataloader.dataset.target_normalizer.normalizers  # noqa : E501
                 ]
             )
         else:
@@ -184,7 +185,8 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                 train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
-            # todo: testing somehow disables grad computation even though it is explicitly turned on -
+            # todo: testing somehow disables grad computation
+            # even though it is explicitly turned on -
             #       loss is calculated as "grad" for MQF2
             if not isinstance(net.loss, MQF2DistributionLoss):
                 test_outputs = trainer.test(net, dataloaders=test_dataloader)
@@ -312,7 +314,7 @@ def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301
 
 
 @pytest.mark.parametrize(
@@ -466,3 +468,56 @@ def test_hyperparameter_optimization_integration(
         )
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_no_exogenous_variable():
+    data = pd.DataFrame(
+        {
+            "target": np.ones(1600),
+            "group_id": np.repeat(np.arange(16), 100),
+            "time_idx": np.tile(np.arange(100), 16),
+        }
+    )
+    training_dataset = TimeSeriesDataSet(
+        data=data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=10,
+        max_prediction_length=5,
+        time_varying_unknown_reals=["target"],
+        time_varying_known_reals=[],
+    )
+    validation_dataset = TimeSeriesDataSet.from_dataset(
+        training_dataset, data, stop_randomization=True, predict=True
+    )
+    training_data_loader = training_dataset.to_dataloader(
+        train=True, batch_size=8, num_workers=0
+    )
+    validation_data_loader = validation_dataset.to_dataloader(
+        train=False, batch_size=8, num_workers=0
+    )
+    forecaster = TemporalFusionTransformer.from_dataset(
+        training_dataset,
+        log_interval=1,
+    )
+    from lightning.pytorch import Trainer
+
+    trainer = Trainer(
+        max_epochs=2,
+        limit_train_batches=8,
+        limit_val_batches=8,
+    )
+    trainer.fit(
+        forecaster,
+        train_dataloaders=training_data_loader,
+        val_dataloaders=validation_data_loader,
+    )
+    best_model_path = trainer.checkpoint_callback.best_model_path
+    best_model = TemporalFusionTransformer.load_from_checkpoint(best_model_path)
+    best_model.predict(
+        validation_data_loader,
+        return_x=True,
+        return_y=True,
+        return_index=True,
+    )

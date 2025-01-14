@@ -22,7 +22,7 @@ class Metric(LightningMetric):
     for details of how to implement a new metric
 
     Other metrics should inherit from this base class
-    """
+    """  # noqa: E501
 
     full_state_update = False
     higher_is_better = False
@@ -42,7 +42,7 @@ class Metric(LightningMetric):
             name (str): metric name. Defaults to class name.
             quantiles (List[float], optional): quantiles for probability range. Defaults to None.
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
-        """
+        """  # noqa: E501
         self.quantiles = quantiles
         self.reduction = reduction
         if name is None:
@@ -84,7 +84,7 @@ class Metric(LightningMetric):
 
         Returns:
             torch.Tensor: parameters in real/not normalized space
-        """
+        """  # noqa: E501
         return encoder(dict(prediction=parameters, target_scale=target_scale))
 
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
@@ -120,7 +120,7 @@ class Metric(LightningMetric):
 
         Returns:
             torch.Tensor: prediction quantiles
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
 
@@ -166,14 +166,14 @@ class TorchMetricWrapper(Metric):
     Wrap a torchmetric to work with PyTorch Forecasting.
 
     Does not support weighting of errors and only supports metrics for point predictions.
-    """
+    """  # noqa: E501
 
     def __init__(self, torchmetric: LightningMetric, reduction: str = None, **kwargs):
         """
         Args:
             torchmetric (LightningMetric): Torchmetric to wrap.
             reduction (str, optional): use reduction with torchmetric directly. Defaults to None.
-        """
+        """  # noqa: E501
         super().__init__(**kwargs)
         if reduction is not None:
             raise ValueError("use reduction with torchmetric directly")
@@ -231,7 +231,8 @@ class TorchMetricWrapper(Metric):
         self.torchmetric.update(y_pred_flattened, target_flattened, **kwargs)
 
     def forward(self, y_pred, target, **kwargs):
-        # need this explicitly to avoid backpropagation errors because of sketchy caching
+        # need this explicitly to avoid backpropagation
+        # errors because of sketchy caching
         y_pred_flattened, target_flattened = self._convert(y_pred, target)
         return self.torchmetric.forward(y_pred_flattened, target_flattened, **kwargs)
 
@@ -276,7 +277,7 @@ class MultiLoss(LightningMetric):
         Args:
             metrics (List[LightningMetric], optional): list of metrics to combine.
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
-        """
+        """  # noqa: E501
         assert len(metrics) > 0, "at least one metric has to be specified"
         if weights is None:
             weights = [1.0 for _ in metrics]
@@ -477,7 +478,7 @@ class MultiLoss(LightningMetric):
 
         Returns:
             attributes of this class or list of attributes of underlying class
-        """
+        """  # noqa: E501
         try:
             return super().__getattr__(name)
         except AttributeError as e:
@@ -488,7 +489,8 @@ class MultiLoss(LightningMetric):
                     n = len(self.metrics)
 
                     def func(*args, **kwargs):
-                        # if arg/kwarg is list and of length metric, then apply each part to a metric. otherwise
+                        # if arg/kwarg is list and of length metric,
+                        # then apply each part to a metric. otherwise
                         # pass it directly to all metrics
                         results = []
                         for idx, m in enumerate(self.metrics):
@@ -535,7 +537,7 @@ class CompositeMetric(LightningMetric):
         .. code-block:: python
 
             composite_metric = SMAPE() + 0.4 * MAE()
-    """
+    """  # noqa: E501
 
     full_state_update = False
     higher_is_better = False
@@ -550,7 +552,7 @@ class CompositeMetric(LightningMetric):
         Args:
             metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to None.
             weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
-        """
+        """  # noqa: E501
         self.metrics = metrics
         self.weights = weights
 
@@ -913,7 +915,7 @@ class MultiHorizonMetric(Metric):
 
         Returns:
             torch.Tensor: masked losses
-        """
+        """  # noqa: E501
         if reduction is None:
             reduction = self.reduction
         if losses.ndim > 0:
@@ -946,7 +948,7 @@ class MultiHorizonMetric(Metric):
 
         Returns:
             torch.Tensor: reduced loss
-        """
+        """  # noqa: E501
         if reduction is None:
             reduction = self.reduction
         if reduction == "none":
@@ -962,9 +964,10 @@ class MultiHorizonMetric(Metric):
             "Loss should not be nan - i.e. something went wrong "
             "in calculating the loss (e.g. log of a negative number)"
         )
-        assert torch.isfinite(
-            loss
-        ), "Loss should not be infinite - i.e. something went wrong (e.g. input is not in log space)"
+        assert torch.isfinite(loss), (
+            "Loss should not be infinite - i.e."
+            " something went wrong (e.g. input is not in log space)"
+        )
         return loss
 
 
@@ -983,7 +986,7 @@ class DistributionLoss(MultiHorizonMetric):
         distribution_arguments (List[str]): list of parameter names for the distribution
 
     Further, implement the methods :py:meth:`~map_x_to_distribution` and :py:meth:`~rescale_parameters`.
-    """
+    """  # noqa: E501
 
     distribution_class: distributions.Distribution
     distribution_arguments: List[str]
@@ -1002,7 +1005,7 @@ class DistributionLoss(MultiHorizonMetric):
             quantiles (List[float], optional): quantiles for probability range.
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(name=name, quantiles=quantiles, reduction=reduction)
@@ -1017,7 +1020,7 @@ class DistributionLoss(MultiHorizonMetric):
         Returns:
             distributions.Distribution: torch probability distribution as defined in the
                 class attribute ``distribution_class``
-        """
+        """  # noqa: E501
         raise NotImplementedError("implement this method")
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
@@ -1061,7 +1064,7 @@ class DistributionLoss(MultiHorizonMetric):
 
         Returns:
             torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
-        """
+        """  # noqa: E501
         dist = self.map_x_to_distribution(y_pred)
         samples = dist.sample((n_samples,))
         if samples.ndim == 3:
@@ -1084,7 +1087,7 @@ class DistributionLoss(MultiHorizonMetric):
 
         Returns:
             torch.Tensor: prediction quantiles (last dimension)
-        """
+        """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
         try:
@@ -1106,7 +1109,7 @@ class MultivariateDistributionLoss(DistributionLoss):
     Class should be inherited for all multivariate distribution losses, i.e. if a batch of values
     is predicted in one go and the batch dimension is not independent, but the time dimension still
     remains independent.
-    """
+    """  # noqa: E501
 
     def sample(self, y_pred, n_samples: int) -> torch.Tensor:
         """
@@ -1118,11 +1121,11 @@ class MultivariateDistributionLoss(DistributionLoss):
 
         Returns:
             torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
-        """
+        """  # noqa: E501
         dist = self.map_x_to_distribution(y_pred)
         samples = dist.sample((n_samples,)).permute(
             2, 1, 0
-        )  # returned as (n_samples, n_timesteps, batch_size), so reshape to (batch_size, n_timesteps, n_samples)
+        )  # returned as (n_samples, n_timesteps, batch_size), so reshape to (batch_size, n_timesteps, n_samples) # noqa: E501
         return samples
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
