@@ -432,7 +432,7 @@ class MQF2Distribution(Distribution):
             layout=self.hidden_state.layout,
         ).clamp(
             min=1e-4, max=1 - 1e-4
-        )  # prevent numerical issues by preventing to sample beyond 0.1% and 99.9% percentiles
+        )  # prevent numerical issues by preventing to sample beyond 0.1% and 99.9% percentiles # noqa: E501
 
         samples = (
             self.quantile(alpha, hidden_state_repeat)

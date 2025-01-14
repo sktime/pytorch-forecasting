@@ -2,7 +2,7 @@
 `DeepAR: Probabilistic forecasting with autoregressive recurrent networks
 <https://www.sciencedirect.com/science/article/pii/S0169207019301888>`_
 which is the one of the most popular forecasting algorithms and is often used as a baseline
-"""
+"""  # noqa: E501
 
 from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
@@ -108,7 +108,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 Defaults to :py:class:`~pytorch_forecasting.metrics.NormalDistributionLoss`.
             logging_metrics (nn.ModuleList, optional): Metrics to log during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
-        """
+        """  # noqa: E501
         if loss is None:
             loss = NormalDistributionLoss()
         if logging_metrics is None:
@@ -158,9 +158,10 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         lagged_target_names = [l for lags in target_lags.values() for l in lags]
         assert set(self.encoder_variables) - set(to_list(target)) - set(
             lagged_target_names
-        ) == set(self.decoder_variables) - set(
-            lagged_target_names
-        ), "Encoder and decoder variables have to be the same apart from target variable"
+        ) == set(self.decoder_variables) - set(lagged_target_names), (
+            "Encoder and decoder variables have to be"
+            " the same apart from target variable"
+        )
         for targeti in to_list(target):
             assert (
                 targeti in time_varying_reals_encoder
@@ -213,7 +214,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
         Returns:
             DeepAR network
-        """
+        """  # noqa: E501
         new_kwargs = {}
         if dataset.multi_target:
             new_kwargs.setdefault(
@@ -227,7 +228,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 not isinstance(normalizer, NaNLabelEncoder)
                 for normalizer in dataset.target_normalizer
             )
-        ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction
+        ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction # noqa: E501
         if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
             assert (
                 dataset.min_prediction_length == dataset.max_prediction_length
@@ -248,7 +249,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         Create input vector into RNN network
 
         Args:
-            one_off_target: tensor to insert into first position of target. If None (default), remove first time step.
+            one_off_target: tensor to insert into first position of target.
+                If None (default), remove first time step.
         """
         # create input vector
         if len(self.categoricals) > 0:
@@ -361,7 +363,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 n_samples=n_samples,
             )
             # reshape predictions for n_samples:
-            # from n_samples * batch_size x time steps to batch_size x time steps x n_samples
+            # from n_samples * batch_size x time steps
+            # to batch_size x time steps x n_samples
             output = apply_to_list(
                 output,
                 lambda x: x.reshape(-1, n_samples, input_vector.size(1)).permute(
@@ -462,7 +465,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         Returns:
             Prediction: if one of the ```return`` arguments is present,
                 prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
-        """
+        """  # noqa: E501
         if isinstance(mode, str):
             if mode in ["prediction", "quantiles"]:
                 if mode_kwargs is None:
