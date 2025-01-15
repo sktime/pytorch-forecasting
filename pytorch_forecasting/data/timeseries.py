@@ -2668,3 +2668,140 @@ def _coerce_to_dict(obj):
     if obj is None:
         return {}
     return deepcopy(obj)
+
+
+def _flatten_list_of_lists(lst):
+    """Flatten list of lists."""
+    return [item for sublist in lst for item in sublist]
+
+
+class TimeSeries(Dataset):
+    """PyTorch Dataset for storing raw time series from a pandas DataFrame.
+
+    This dataset follows the base raw time series dataset API in pytorch-forecasting.
+
+    A single sample corresponds to the i-th time series instance in the dataset.
+
+    Sampling returns a dictionary, which always has following str-keyed entries:
+
+    * group: tensor of shape (n_groups)
+    * time: tensor of shape (n_timepoints)
+    * time_fut: tensor of shape (n_timepoints_future)
+    * target: tensor of shape (n_timepoints, n_targets)
+    * x_num_u: tensor of shape (n_timepoints, n_numerical_unknown_features)
+    * x_cat_u: tensor of shape (n_timepoints, n_categorical_unknown_features)
+    * x_num_k: tensor of shape (n_timepoints, n_numerical_known_features)
+    * x_cat_k: tensor of shape (n_timepoints, n_categorical_known_features)
+    * x_num_k_fut: tensor of shape (n_timepoints_future, n_numerical_known_features)
+    * x_cat_k_fut: tensor of shape (n_timepoints_future, n_categorical_known_features)
+    * static_num: tensor of shape (n_static_numerical_features)
+    * static_cat: tensor of shape (n_static_categorical_features)
+    * col_num_u: list of str of length (n_numerical_unknown_features)
+      Names of columns of ``x_num_u``, in same order as columns in ``x_num_u``.
+    * col_cat_u: list of str of length (n_categorical_unknown_features)
+      Names of columns of ``x_cat_u``, in same order as columns in ``x_cat_u``.
+    * col_num_k: list of str of length (n_numerical_known_features)
+      Names of columns of ``x_num_k`` and ``x_num_k_fut``, in same order as columns.
+    * col_cat_k: list of str of length (n_categorical_known_features)
+      Names of columns of ``x_cat_k`` and ``x_cat_k_fut``, in same order as columns.
+
+    Optionally, the following str-keyed entries can be included:
+
+    * weight: tensor of shape (n_timepoints), only if weight is not None
+    * weight_fut: tensor of shape (n_timepoints_future), only if weight is not None
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        data frame with sequence data.
+        Column names must all be str, and contain str as referred to below.
+
+    data_future : pd.DataFrame, optional, default=None
+        data rame with future data.
+        Column names must all be str, and contain str as referred to below.
+        May contain only columns that are in time, group, weight, known, or static.
+
+    time : str, optional, default = first col not in group_ids, weight, target, static.
+        integer typed column denoting the time index within ``data``.
+        This columns is used to determine the sequence of samples.
+        If there are no missings observations,
+        the time index should increase by ``+1`` for each subsequent sample.
+        The first time_idx for each series does not necessarily
+        have to be ``0`` but any value is allowed.
+
+    target : str or List[str], optional, default = last column (at iloc -1)
+        column(s) in ``data`` denoting the forecasting target.
+        Can be categorical or numerical dtype.
+
+    group : List[str], optional, default = None
+        list of column names identifying a time series instance within ``data``.
+        This means that the ``group`` together uniquely identify an instance,
+        and ``group`` together with ``time`` uniquely identify a single observation
+        within a time series instance.
+        If ``None``, the dataset is assumed to be a single time series.
+
+    weight : str, optional, default=None
+        column name for weights.
+        If ``None``, it is assumed that there is no weight column.
+
+    num : list of str, optional, default = all columns with dtype in "fi"
+        list of numerical variables in ``data``,
+        list may also contain list of str, which are then grouped together.
+
+    cat : list of str, optional, default = all columns with dtype in "Obc"
+        list of categorical variables in ``data``,
+        list may also contain list of str, which are then grouped together
+        (e.g. useful for product categories).
+
+    known : list of str, optional, default = all variables
+        list of variables that change over time and are known in the future,
+        list may also contain list of str, which are then grouped together
+        (e.g. useful for special days or promotion categories).
+
+    unknown : list of str, optional, default = no variables
+        list of variables that are not known in the future,
+        list may also contain list of str, which are then grouped together
+        (e.g. useful for weather categories).
+
+    static : list of str, optional, default = all variables not in known, unknown
+        list of variables that do not change over time,
+        list may also contain list of str, which are then grouped together.
+    """
+
+    def __init__(
+        self,
+        data: pd.DataFrame,
+        data_future: Optional[pd.DataFrame] = None,
+        time: Optional[str] = None,
+        target: Optional[Union[str, List[str]]] = None,
+        group: Optional[List[str]] = None,
+        weight: Optional[str] = None,
+        num: Optional[List[Union[str, List[str]]]] = None,
+        cat: Optional[List[Union[str, List[str]]]] = None,
+        known: Optional[List[Union[str, List[str]]]] = None,
+        unknown: Optional[List[Union[str, List[str]]]] = None,
+        static: Optional[List[Union[str, List[str]]]] = None,
+    ):
+
+        self.data = data
+        self.data_future = data_future
+        self.time = time
+        self.target = _coerce_to_list(target)
+        self.group = _coerce_to_list(group)
+        self.weight = weight
+        self.num = _coerce_to_list(num)
+        self.cat = _coerce_to_list(cat)
+        self.known = _coerce_to_list(known)
+        self.unknown = _coerce_to_list(unknown)
+        self.static = _coerce_to_list(static)
+
+        super().__init__()
+
+        self._len = self.data.groupby(_flatten_list_of_lists(self.group))
+
+    def __len__(self):
+        """Length = number of different time series instances."""
+        return len(self._len)
+
+    def __getitem__(self, idx):
+        """Return dict of tensors as specified."""
