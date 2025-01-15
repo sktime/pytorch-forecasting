@@ -2685,25 +2685,52 @@ class TimeSeries(Dataset):
     Sampling returns a dictionary, which always has following str-keyed entries:
 
     * group: tensor of shape (n_groups)
-    * time: tensor of shape (n_timepoints)
-    * time_fut: tensor of shape (n_timepoints_future)
-    * target: tensor of shape (n_timepoints, n_targets)
-    * x_num_u: tensor of shape (n_timepoints, n_numerical_unknown_features)
-    * x_cat_u: tensor of shape (n_timepoints, n_categorical_unknown_features)
-    * x_num_k: tensor of shape (n_timepoints, n_numerical_known_features)
-    * x_cat_k: tensor of shape (n_timepoints, n_categorical_known_features)
-    * x_num_k_fut: tensor of shape (n_timepoints_future, n_numerical_known_features)
-    * x_cat_k_fut: tensor of shape (n_timepoints_future, n_categorical_known_features)
-    * static_num: tensor of shape (n_static_numerical_features)
-    * static_cat: tensor of shape (n_static_categorical_features)
-    * col_num_u: list of str of length (n_numerical_unknown_features)
-      Names of columns of ``x_num_u``, in same order as columns in ``x_num_u``.
-    * col_cat_u: list of str of length (n_categorical_unknown_features)
-      Names of columns of ``x_cat_u``, in same order as columns in ``x_cat_u``.
-    * col_num_k: list of str of length (n_numerical_known_features)
-      Names of columns of ``x_num_k`` and ``x_num_k_fut``, in same order as columns.
-    * col_cat_k: list of str of length (n_categorical_known_features)
-      Names of columns of ``x_cat_k`` and ``x_cat_k_fut``, in same order as columns.
+    * t: tensor of shape (n_timepoints)
+      Time index for each time point in the past or present. Aligned with ``y``,
+      and ``x`` not ending in ``f``.
+    * tf: tensor of shape (n_timepoints_future)
+      Time index for each time point in the future. Aligned with ``y``.
+    * y: tensor of shape (n_timepoints, n_targets)
+      Target values for each time point. Rows are time points, aligned with ``t``.
+      Columns are targets, aligned with ``col_t``.
+    * xnu: tensor of shape (n_timepoints, n_numerical_unknown_features)
+      Numerical, future-unknown, time-varying features.
+      Rows are time points, aligned with ``t``.
+      Columns are features, aligned with ``col_xnu``.
+    * xcu: tensor of shape (n_timepoints, n_categorical_unknown_features)
+      Categorical, future-unknown, time-varying features.
+      Rows are time points, aligned with ``t``.
+      Columns are features, aligned with ``col_xnu``.
+    * xnk: tensor of shape (n_timepoints, n_numerical_known_features)
+      Numerical, future-known, time-varying features.
+      Rows are time points, aligned with ``t``.
+      Columns are features, aligned with ``col_xnu``.
+    * xck: tensor of shape (n_timepoints, n_categorical_known_features)
+      Categorical, future-known, time-varying features.
+      Rows are time points, aligned with ``t``.
+      Columns are features, aligned with ``col_xnu``.
+    * xnf: tensor of shape (n_timepoints_future, n_numerical_known_features)
+      Numerical, future-known, time-varying features, in the future.
+      Rows are time points, aligned with ``tf``.
+      Columns are features, aligned with ``col_xnu``.
+    * xcf: tensor of shape (n_timepoints_future, n_categorical_known_features)
+      Categorical, future-known, time-varying features, in the future.
+      Rows are time points, aligned with ``tf``.
+      Columns are features, aligned with ``col_xnu``.
+    * stn: tensor of shape (n_static_numerical_features)
+      Static numerical features.
+    * stc: tensor of shape (n_static_categorical_features)
+      Static categorical features.
+    * col_y: list of str of length (n_targets)
+      Names of columns of ``y``, in same order as columns in ``y``.
+    * col_xu: list of str of length (n_numerical_unknown_features)
+      Names of columns of ``xnu``, in same order as columns in ``xnu``.
+    * col_cu: list of str of length (n_categorical_unknown_features)
+      Names of columns of ``xcu``, in same order as columns in ``xcu``.
+    * col_nk: list of str of length (n_numerical_known_features)
+      Names of columns of ``xnk`` and ``xnf``, in same order as columns.
+    * col_ck: list of str of length (n_categorical_known_features)
+      Names of columns of ``xck`` and ``xcf``, in same order as columns.
 
     Optionally, the following str-keyed entries can be included:
 
