@@ -2,70 +2,25 @@ name: Lint
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
-  linter-black:
-      name: Check code formatting with Black
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v2
-        - name: Set up Python 3.8
-          uses: actions/setup-python@v2
-          with:
-            python-version: 3.8
-        - name: Install Black
-          run: pip install black[jupyter]
-        - name: Run Black
-          run: black --check .
-
-  imports-check-isort:
-    name: Check valid import formatting with isort
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install isort
-        run: pip install isort==5.6.4
-      - name: Run isort
-        run: isort --check-only --diff .
-
-  linter-flake8:
-    name: Check valid formatting with flake8
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
-      - name: Install dependencies
-        run: pip install flake8
-      - name: Run checks
-        run: flake8
-
-
   pre-commit-hooks:
     name: Check that pre-commit hooks pass
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - name: repository checkout step
+        uses: actions/checkout@v4
+      - name: python environment step
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
-      - name: Install dependencies
-        run: pip install pre-commit
-
-      - name: Run checks
-        run: pre-commit run --all-files
+          python-version: "3.11"
+      - name: install pre-commit
+        run: python3 -m pip install pre-commit
+      - id: changed-files
+        name: identify modified files
+        uses: tj-actions/changed-files@v44
+      - name: run pre-commit hooks on modified files
+        run: pre-commit run --color always --files ${{ steps.changed-files.outputs.all_changed_files }} --show-diff-on-failure

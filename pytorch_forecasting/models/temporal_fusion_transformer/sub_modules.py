@@ -1,8 +1,10 @@
 """
 Implementation of ``nn.Modules`` for temporal fusion transformer.
 """
+
+from copy import deepcopy
 import math
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -20,20 +22,26 @@ class TimeDistributed(nn.Module):
             return self.module(x)
 
         # Squash samples and timesteps into a single axis
-        x_reshape = x.contiguous().view(-1, x.size(-1))  # (samples * timesteps, input_size)
+        x_reshape = x.contiguous().view(
+            -1, x.size(-1)
+        )  # (samples * timesteps, input_size)
 
         y = self.module(x_reshape)
 
         # We have to reshape Y
         if self.batch_first:
-            y = y.contiguous().view(x.size(0), -1, y.size(-1))  # (samples, timesteps, output_size)
+            y = y.contiguous().view(
+                x.size(0), -1, y.size(-1)
+            )  # (samples, timesteps, output_size)
         else:
             y = y.view(-1, x.size(1), y.size(-1))  # (timesteps, samples, output_size)
         return y
 
 
 class TimeDistributedInterpolation(nn.Module):
-    def __init__(self, output_size: int, batch_first: bool = False, trainable: bool = False):
+    def __init__(
+        self, output_size: int, batch_first: bool = False, trainable: bool = False
+    ):
         super().__init__()
         self.output_size = output_size
         self.batch_first = batch_first
@@ -43,7 +51,9 @@ class TimeDistributedInterpolation(nn.Module):
             self.gate = nn.Sigmoid()
 
     def interpolate(self, x):
-        upsampled = F.interpolate(x.unsqueeze(1), self.output_size, mode="linear", align_corners=True).squeeze(1)
+        upsampled = F.interpolate(
+            x.unsqueeze(1), self.output_size, mode="linear", align_corners=True
+        ).squeeze(1)
         if self.trainable:
             upsampled = upsampled * self.gate(self.mask.unsqueeze(0)) * 2.0
         return upsampled
@@ -53,13 +63,17 @@ class TimeDistributedInterpolation(nn.Module):
             return self.interpolate(x)
 
         # Squash samples and timesteps into a single axis
-        x_reshape = x.contiguous().view(-1, x.size(-1))  # (samples * timesteps, input_size)
+        x_reshape = x.contiguous().view(
+            -1, x.size(-1)
+        )  # (samples * timesteps, input_size)
 
         y = self.interpolate(x_reshape)
 
         # We have to reshape Y
         if self.batch_first:
-            y = y.contiguous().view(x.size(0), -1, y.size(-1))  # (samples, timesteps, output_size)
+            y = y.contiguous().view(
+                x.size(0), -1, y.size(-1)
+            )  # (samples, timesteps, output_size)
         else:
             y = y.view(-1, x.size(1), y.size(-1))  # (timesteps, samples, output_size)
 
@@ -97,7 +111,9 @@ class GatedLinearUnit(nn.Module):
 
 
 class ResampleNorm(nn.Module):
-    def __init__(self, input_size: int, output_size: int = None, trainable_add: bool = True):
+    def __init__(
+        self, input_size: int, output_size: int = None, trainable_add: bool = True
+    ):
         super().__init__()
 
         self.input_size = input_size
@@ -105,7 +121,9 @@ class ResampleNorm(nn.Module):
         self.output_size = output_size or input_size
 
         if self.input_size != self.output_size:
-            self.resample = TimeDistributedInterpolation(self.output_size, batch_first=True, trainable=False)
+            self.resample = TimeDistributedInterpolation(
+                self.output_size, batch_first=True, trainable=False
+            )
 
         if self.trainable_add:
             self.mask = nn.Parameter(torch.zeros(self.output_size, dtype=torch.float))
@@ -124,7 +142,9 @@ class ResampleNorm(nn.Module):
 
 
 class AddNorm(nn.Module):
-    def __init__(self, input_size: int, skip_size: int = None, trainable_add: bool = True):
+    def __init__(
+        self, input_size: int, skip_size: int = None, trainable_add: bool = True
+    ):
         super().__init__()
 
         self.input_size = input_size
@@ -132,7 +152,9 @@ class AddNorm(nn.Module):
         self.skip_size = skip_size or input_size
 
         if self.input_size != self.skip_size:
-            self.resample = TimeDistributedInterpolation(self.input_size, batch_first=True, trainable=False)
+            self.resample = TimeDistributedInterpolation(
+                self.input_size, batch_first=True, trainable=False
+            )
 
         if self.trainable_add:
             self.mask = nn.Parameter(torch.zeros(self.input_size, dtype=torch.float))
@@ -166,8 +188,12 @@ class GateAddNorm(nn.Module):
         self.skip_size = skip_size or self.hidden_size
         self.dropout = dropout
 
-        self.glu = GatedLinearUnit(self.input_size, hidden_size=self.hidden_size, dropout=self.dropout)
-        self.add_norm = AddNorm(self.hidden_size, skip_size=self.skip_size, trainable_add=trainable_add)
+        self.glu = GatedLinearUnit(
+            self.input_size, hidden_size=self.hidden_size, dropout=self.dropout
+        )
+        self.add_norm = AddNorm(
+            self.hidden_size, skip_size=self.skip_size, trainable_add=trainable_add
+        )
 
     def forward(self, x, skip):
         output = self.glu(x)
@@ -223,7 +249,9 @@ class GatedResidualNetwork(nn.Module):
             if "bias" in name:
                 torch.nn.init.zeros_(p)
             elif "fc1" in name or "fc2" in name:
-                torch.nn.init.kaiming_normal_(p, a=0, mode="fan_in", nonlinearity="leaky_relu")
+                torch.nn.init.kaiming_normal_(
+                    p, a=0, mode="fan_in", nonlinearity="leaky_relu"
+                )
             elif "context" in name:
                 torch.nn.init.xavier_uniform_(p)
 
@@ -249,20 +277,23 @@ class VariableSelectionNetwork(nn.Module):
         self,
         input_sizes: Dict[str, int],
         hidden_size: int,
-        input_embedding_flags: Dict[str, bool] = {},
+        input_embedding_flags: Dict[str, bool] = None,
         dropout: float = 0.1,
         context_size: int = None,
-        single_variable_grns: Dict[str, GatedResidualNetwork] = {},
-        prescalers: Dict[str, nn.Linear] = {},
+        single_variable_grns: Dict[str, GatedResidualNetwork] = None,
+        prescalers: Dict[str, nn.Linear] = None,
     ):
         """
-        Calcualte weights for ``num_inputs`` variables  which are each of size ``input_size``
-        """
+        Calculate weights for ``num_inputs`` variables  which are each of size ``input_size``
+        """  # noqa: E501
         super().__init__()
 
         self.hidden_size = hidden_size
         self.input_sizes = input_sizes
         self.input_embedding_flags = input_embedding_flags
+        self._input_embedding_flags = (
+            {} if input_embedding_flags is None else deepcopy(input_embedding_flags)
+        )
         self.dropout = dropout
         self.context_size = context_size
 
@@ -284,14 +315,17 @@ class VariableSelectionNetwork(nn.Module):
                     self.dropout,
                     residual=False,
                 )
-
+        if single_variable_grns is None:
+            single_variable_grns = {}
         self.single_variable_grns = nn.ModuleDict()
         self.prescalers = nn.ModuleDict()
         for name, input_size in self.input_sizes.items():
             if name in single_variable_grns:
                 self.single_variable_grns[name] = single_variable_grns[name]
-            elif self.input_embedding_flags.get(name, False):
-                self.single_variable_grns[name] = ResampleNorm(input_size, self.hidden_size)
+            elif self._input_embedding_flags.get(name, False):
+                self.single_variable_grns[name] = ResampleNorm(
+                    input_size, self.hidden_size
+                )
             else:
                 self.single_variable_grns[name] = GatedResidualNetwork(
                     input_size,
@@ -299,16 +333,21 @@ class VariableSelectionNetwork(nn.Module):
                     output_size=self.hidden_size,
                     dropout=self.dropout,
                 )
+            if prescalers is None:
+                prescalers = {}
             if name in prescalers:  # reals need to be first scaled up
                 self.prescalers[name] = prescalers[name]
-            elif not self.input_embedding_flags.get(name, False):
+            elif not self._input_embedding_flags.get(name, False):
                 self.prescalers[name] = nn.Linear(1, input_size)
 
         self.softmax = nn.Softmax(dim=-1)
 
     @property
     def input_size_total(self):
-        return sum(size if name in self.input_embedding_flags else size for name, size in self.input_sizes.items())
+        return sum(
+            size if name in self._input_embedding_flags else size
+            for name, size in self.input_sizes.items()
+        )
 
     @property
     def num_inputs(self):
@@ -335,23 +374,42 @@ class VariableSelectionNetwork(nn.Module):
 
             outputs = var_outputs * sparse_weights
             outputs = outputs.sum(dim=-1)
-        else:  # for one input, do not perform variable selection but just encoding
+        elif self.num_inputs == 1:
+            # for one input, do not perform variable selection but just encoding
             name = next(iter(self.single_variable_grns.keys()))
             variable_embedding = x[name]
             if name in self.prescalers:
                 variable_embedding = self.prescalers[name](variable_embedding)
-            outputs = self.single_variable_grns[name](variable_embedding)  # fast forward if only one variable
+            outputs = self.single_variable_grns[name](
+                variable_embedding
+            )  # fast forward if only one variable
             if outputs.ndim == 3:  # -> batch size, time, hidden size, n_variables
-                sparse_weights = torch.ones(outputs.size(0), outputs.size(1), 1, 1, device=outputs.device)  #
+                sparse_weights = torch.ones(
+                    outputs.size(0), outputs.size(1), 1, 1, device=outputs.device
+                )  #
             else:  # ndim == 2 -> batch size, hidden size, n_variables
-                sparse_weights = torch.ones(outputs.size(0), 1, 1, device=outputs.device)
+                sparse_weights = torch.ones(
+                    outputs.size(0), 1, 1, device=outputs.device
+                )
+        else:  # for no input
+            outputs = torch.zeros(context.size(), device=context.device)
+            if outputs.ndim == 3:  # -> batch size, time, hidden size, n_variables
+                sparse_weights = torch.zeros(
+                    outputs.size(0), outputs.size(1), 1, 0, device=outputs.device
+                )
+            else:  # ndim == 2 -> batch size, hidden size, n_variables
+                sparse_weights = torch.zeros(
+                    outputs.size(0), 1, 0, device=outputs.device
+                )
         return outputs, sparse_weights
 
 
 class PositionalEncoder(torch.nn.Module):
     def __init__(self, d_model, max_seq_len=160):
         super().__init__()
-        assert d_model % 2 == 0, "model dimension has to be multiple of 2 (encode sin(pos) and cos(pos))"
+        assert (
+            d_model % 2 == 0
+        ), "model dimension has to be multiple of 2 (encode sin(pos) and cos(pos))"
         self.d_model = d_model
         pe = torch.zeros(max_seq_len, d_model)
         for pos in range(max_seq_len):
@@ -384,7 +442,9 @@ class ScaledDotProductAttention(nn.Module):
         attn = torch.bmm(q, k.permute(0, 2, 1))  # query-key overlap
 
         if self.scale:
-            dimension = torch.as_tensor(k.size(-1), dtype=attn.dtype, device=attn.device).sqrt()
+            dimension = torch.as_tensor(
+                k.size(-1), dtype=attn.dtype, device=attn.device
+            ).sqrt()
             attn = attn / dimension
 
         if mask is not None:
@@ -407,8 +467,12 @@ class InterpretableMultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
         self.v_layer = nn.Linear(self.d_model, self.d_v)
-        self.q_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_q) for _ in range(self.n_head)])
-        self.k_layers = nn.ModuleList([nn.Linear(self.d_model, self.d_k) for _ in range(self.n_head)])
+        self.q_layers = nn.ModuleList(
+            [nn.Linear(self.d_model, self.d_q) for _ in range(self.n_head)]
+        )
+        self.k_layers = nn.ModuleList(
+            [nn.Linear(self.d_model, self.d_k) for _ in range(self.n_head)]
+        )
         self.attention = ScaledDotProductAttention()
         self.w_h = nn.Linear(self.d_v, self.d_model, bias=False)
 

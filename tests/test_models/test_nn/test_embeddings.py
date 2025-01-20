@@ -1,5 +1,3 @@
-import itertools
-
 import pytest
 import torch
 
@@ -22,7 +20,9 @@ from pytorch_forecasting import MultiEmbedding
 def test_MultiEmbedding(kwargs):
     x = torch.randint(0, 10, size=(4, 3))
     embedding = MultiEmbedding(**kwargs)
-    assert embedding.input_size == x.size(1), "Input size should be equal to number of features"
+    assert embedding.input_size == x.size(
+        1
+    ), "Input size should be equal to number of features"
     out = embedding(x)
     if isinstance(out, dict):
         assert isinstance(kwargs["embedding_sizes"], dict)
