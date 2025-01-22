@@ -2682,60 +2682,51 @@ class TimeSeries(Dataset):
 
     A single sample corresponds to the i-th time series instance in the dataset.
 
-    Sampling returns a dictionary, which always has following str-keyed entries:
+    Sampling via ``__getitem__`` returns a dictionary,
+    which always has following str-keyed entries:
 
-    * group: tensor of shape (n_groups)
     * t: tensor of shape (n_timepoints)
       Time index for each time point in the past or present. Aligned with ``y``,
       and ``x`` not ending in ``f``.
-    * tf: tensor of shape (n_timepoints_future)
-      Time index for each time point in the future. Aligned with ``y``.
     * y: tensor of shape (n_timepoints, n_targets)
       Target values for each time point. Rows are time points, aligned with ``t``.
       Columns are targets, aligned with ``col_t``.
-    * xnu: tensor of shape (n_timepoints, n_numerical_unknown_features)
-      Numerical, future-unknown, time-varying features.
-      Rows are time points, aligned with ``t``.
-      Columns are features, aligned with ``col_xnu``.
-    * xcu: tensor of shape (n_timepoints, n_categorical_unknown_features)
-      Categorical, future-unknown, time-varying features.
-      Rows are time points, aligned with ``t``.
-      Columns are features, aligned with ``col_xnu``.
-    * xnk: tensor of shape (n_timepoints, n_numerical_known_features)
-      Numerical, future-known, time-varying features.
-      Rows are time points, aligned with ``t``.
-      Columns are features, aligned with ``col_xnu``.
-    * xck: tensor of shape (n_timepoints, n_categorical_known_features)
-      Categorical, future-known, time-varying features.
-      Rows are time points, aligned with ``t``.
-      Columns are features, aligned with ``col_xnu``.
-    * xnf: tensor of shape (n_timepoints_future, n_numerical_known_features)
-      Numerical, future-known, time-varying features, in the future.
-      Rows are time points, aligned with ``tf``.
-      Columns are features, aligned with ``col_xnu``.
-    * xcf: tensor of shape (n_timepoints_future, n_categorical_known_features)
-      Categorical, future-known, time-varying features, in the future.
-      Rows are time points, aligned with ``tf``.
-      Columns are features, aligned with ``col_xnu``.
-    * stn: tensor of shape (n_static_numerical_features)
-      Static numerical features.
-    * stc: tensor of shape (n_static_categorical_features)
-      Static categorical features.
-    * col_y: list of str of length (n_targets)
+    * x: tensor of shape (n_timepoints, n_features)
+      Features for each time point. Rows are time points, aligned with ``t``.
+    * group: tensor of shape (n_groups)
+      Group ids for time series instance.
+    * st: tensor of shape (n_static_features)
+      Static features.
+
+    * y_cols: list of str of length (n_targets)
       Names of columns of ``y``, in same order as columns in ``y``.
-    * col_xu: list of str of length (n_numerical_unknown_features)
-      Names of columns of ``xnu``, in same order as columns in ``xnu``.
-    * col_cu: list of str of length (n_categorical_unknown_features)
-      Names of columns of ``xcu``, in same order as columns in ``xcu``.
-    * col_nk: list of str of length (n_numerical_known_features)
-      Names of columns of ``xnk`` and ``xnf``, in same order as columns.
-    * col_ck: list of str of length (n_categorical_known_features)
-      Names of columns of ``xck`` and ``xcf``, in same order as columns.
+    * x_cols: list of str of length (n_features)
+      Names of columns of ``x``, in same order as columns in ``x``.
+    * st_cols: list of str of length (n_static_features)
+      Names of entries of ``st``, in same order as entries in ``st``.
+    * y_types: list of str of length (n_targets)
+      Types of columns of ``y``, in same order as columns in ``y``.
+      Types can be "c" for categorical, "n" for numerical.
+    * x_types: list of str of length (n_features)
+      Types of columns of ``x``, in same order as columns in ``x``.
+      Types can be "c" for categorical, "n" for numerical.
+    * st_types: list of str of length (n_static_features)
+      Types of entries of ``st``, in same order as entries in ``st``.
+    * x_k: list of int of length (n_features)
+      Whether the feature is known in the future, encoded by 0 or 1,
+      in same order as columns in ``x``.
+      0 means the feature is not known in the future, 1 means it is known.
 
     Optionally, the following str-keyed entries can be included:
 
+    * t_f: tensor of shape (n_timepoints_future)
+      Time index for each time point in the future.
+      Aligned with ``x_f``.
+    * x_f: tensor of shape (n_timepoints_future, n_features)
+      Known features for each time point in the future.
+      Rows are time points, aligned with ``t_f``.
     * weight: tensor of shape (n_timepoints), only if weight is not None
-    * weight_fut: tensor of shape (n_timepoints_future), only if weight is not None
+    * weight_f: tensor of shape (n_timepoints_future), only if weight is not None
 
     Parameters
     ----------
