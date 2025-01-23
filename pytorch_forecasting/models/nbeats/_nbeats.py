@@ -40,6 +40,19 @@ class NBeats(BaseModel):
         reduce_on_plateau_patience: int = 1000,
         backcast_loss_ratio: float = 0.0,
         logging_metrics: nn.ModuleList = None,
+        use_kan: bool = False,
+        num: int = 5,
+        k: int = 3,
+        noise_scale: float = 0.5,
+        scale_base_mu: float = 0.0,
+        scale_base_sigma: float = 1.0,
+        scale_sp: float = 1.0,
+        base_fun: callable = None,
+        grid_eps: float = 0.02,
+        grid_range: List[int] = None,
+        sp_trainable: bool = True,
+        sb_trainable: bool = True,
+        sparse_init: bool = False,
         **kwargs,
     ):
         """
@@ -47,48 +60,90 @@ class NBeats(BaseModel):
 
         Based on the article
         `N-BEATS: Neural basis expansion analysis for interpretable time series
-        forecasting <http://arxiv.org/abs/1905.10437>`_. The network has (if used as ensemble) outperformed all
-        other methods
-        including ensembles of traditional statical methods in the M4 competition. The M4 competition is arguably
-        the most
-        important benchmark for univariate time series forecasting.
+        forecasting <http://arxiv.org/abs/1905.10437>`_. The network has (if
+        used as ensemble) outperformed all other methods including ensembles of
+        traditional statical methods in the M4 competition. The M4 competition is
+        arguably the most important benchmark for univariate time series forecasting.
 
-        The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently shown to consistently outperform
-        N-BEATS.
+        The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently
+        shown to consistently outperform N-BEATS.
 
         Args:
-            stack_types: One of the following values: “generic”, “seasonality" or “trend". A list of strings
-                of length 1 or ‘num_stacks’. Default and recommended value
-                for generic mode: [“generic”] Recommended value for interpretable mode: [“trend”,”seasonality”]
-            num_blocks: The number of blocks per stack. A list of ints of length 1 or ‘num_stacks’.
-                Default and recommended value for generic mode: [1] Recommended value for interpretable mode: [3]
-            num_block_layers: Number of fully connected layers with ReLu activation per block. A list of ints of length
-                1 or ‘num_stacks’.
-                Default and recommended value for generic mode: [4] Recommended value for interpretable mode: [4]
-            width: Widths of the fully connected layers with ReLu activation in the blocks.
-                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [512]
-                Recommended value for interpretable mode: [256, 2048]
+            stack_types: One of the following values: “generic”, “seasonality" or
+                “trend". A list of strings of length 1 or ‘num_stacks’. Default and
+                recommended value for generic mode: [“generic”] Recommended value for
+                interpretable mode: [“trend”,”seasonality”].
+            num_blocks: The number of blocks per stack. A list of ints of length 1 or
+                ‘num_stacks’. Default and recommended value for generic mode: [1]
+                Recommended value for interpretable mode: [3]
+            num_block_layers: Number of fully connected layers with ReLu activation per
+                block.
+                A list of ints of length 1 or ‘num_stacks’. Default and recommended
+                value for generic mode: [4] Recommended value for interpretable mode:
+                [4].
+            width: Widths of the fully connected layers with ReLu activation in the
+                blocks. A list of ints of length 1 or ‘num_stacks’. Default and
+                recommended value for generic mode: [512]. Recommended value for
+                interpretable mode: [256, 2048]
             sharing: Whether the weights are shared with the other blocks per stack.
-                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [False]
-                Recommended value for interpretable mode: [True]
-            expansion_coefficient_length: If the type is “G” (generic), then the length of the expansion
-                coefficient.
-                If type is “T” (trend), then it corresponds to the degree of the polynomial. If the type is “S”
-                (seasonal) then this is the minimum period allowed, e.g. 2 for changes every timestep.
-                A list of ints of length 1 or ‘num_stacks’. Default value for generic mode: [32] Recommended value for
+                A list of ints of length 1 or ‘num_stacks’. Default and recommended
+                value for generic mode: [False]. Recommended value for interpretable
+                mode: [True].
+            expansion_coefficient_length: If the type is “G” (generic), then the length
+                of the expansion coefficient.
+                If type is “T” (trend), then it corresponds to the degree of the
+                polynomial.
+                If the type is “S” (seasonal) then this is the minimum period allowed,
+                e.g. 2 for changes every timestep. A list of ints of length 1 or
+                ‘num_stacks’. Default value for generic mode: [32] Recommended value for
                 interpretable mode: [3]
             prediction_length: Length of the prediction. Also known as 'horizon'.
-            context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
+            context_length: Number of time units that condition the predictions.
+                Also known as 'lookback period'.
                 Should be between 1-10 times the prediction length.
-            backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.
-                A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
-                forecast lengths). Defaults to 0.0, i.e. no weight.
+            backcast_loss_ratio: weight of backcast in comparison to forecast when
+                calculating the loss. A weight of 1.0 means that forecast and
+                backcast loss is weighted the same (regardless of backcast and forecast
+                lengths). Defaults to 0.0, i.e. no weight.
             loss: loss to optimize. Defaults to MASE().
-            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
-                failures
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
-                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+            log_gradient_flow: if to log gradient flow, this takes time and should be
+                only done to diagnose training failures.
+            reduce_on_plateau_patience (int): patience after which learning rate is
+                reduced by a factor of 10
+            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that
+                are logged during training. Defaults to
+                nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
+            num :  Parameter for KAN layer. the number of grid intervals = G.
+                Default: 5. used when use_kan is True.
+            k : Parameter for KAN layer. the order of piecewise polynomial. Default: 3.
+                used when use_kan is True.
+            noise_scale : Parameter for KAN layer. the scale of noise injected at
+                initialization. Default: 0.1. used when use_kan is True.
+            scale_base_mu : Parameter for KAN layer. the scale of the residual
+                function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
+                Deafult: 0.0. used when use_kan is True.
+            scale_base_sigma : Parameter for KAN layer. the scale of the residual
+                function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
+                Deafult: 1.0. used when use_kan is True.
+            scale_sp : Parameter for KAN layer. the scale of the base function
+                spline(x). Deafult: 1.0. used when use_kan is True.
+            base_fun : Parameter for KAN layer. residual function b(x).
+                Default: None. used when use_kan is True.
+            grid_eps : Parameter for KAN layer. When grid_eps = 1, the grid is uniform;
+                when grid_eps = 0, the grid is partitioned using percentiles of samples.
+                0 < grid_eps < 1 interpolates between the two extremes. Deafult: 0.02.
+                used when use_kan is True.
+            grid_range : Parameter for KAN layer. list/np.array of shape (2,). setting
+                the range of grids. Default: None. used when use_kan is True.
+            sp_trainable : Parameter for KAN layer. If true, scale_sp is trainable.
+                Default: True. used when use_kan is True.
+            sb_trainable : Parameter for KAN layer. If true, scale_base is trainable.
+                Default: True. used when use_kan is True.
+            sparse_init : Parameter for KAN layer. if sparse_init = True, sparse
+                initialization is applied. Default: False. used when use_kan is True.
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """  # noqa: E501
         if expansion_coefficient_lengths is None:
@@ -103,11 +158,32 @@ class NBeats(BaseModel):
             num_blocks = [3, 3]
         if stack_types is None:
             stack_types = ["trend", "seasonality"]
+        if base_fun is None:
+            base_fun = torch.nn.SiLU()
+        if grid_range is None:
+            grid_range = [-1, 1]
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if loss is None:
             loss = MASE()
-        self.save_hyperparameters()
+        # Bundle KAN parameters into a dictionary
+        self.kan_params = {
+            "num": num,
+            "k": k,
+            "noise_scale": noise_scale,
+            "scale_base_mu": scale_base_mu,
+            "scale_base_sigma": scale_base_sigma,
+            "scale_sp": scale_sp,
+            "base_fun": base_fun,
+            "grid_eps": grid_eps,
+            "grid_range": grid_range,
+            "sp_trainable": sp_trainable,
+            "sb_trainable": sb_trainable,
+            "sparse_init": sparse_init,
+        }
+        self.use_kan = use_kan
+
+        self.save_hyperparameters(ignore=["loss", "logging_metrics"])
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # setup stacks
@@ -122,6 +198,8 @@ class NBeats(BaseModel):
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
+                        kan_params=self.kan_params,
+                        use_kan=use_kan,
                     )
                 elif stack_type == "seasonality":
                     net_block = NBEATSSeasonalBlock(
@@ -131,6 +209,8 @@ class NBeats(BaseModel):
                         forecast_length=prediction_length,
                         min_period=self.hparams.expansion_coefficient_lengths[stack_id],
                         dropout=self.hparams.dropout,
+                        kan_params=self.kan_params,
+                        use_kan=use_kan,
                     )
                 elif stack_type == "trend":
                     net_block = NBEATSTrendBlock(
@@ -140,6 +220,8 @@ class NBeats(BaseModel):
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
+                        kan_params=self.kan_params,
+                        use_kan=use_kan,
                     )
                 else:
                     raise ValueError(f"Unknown stack type {stack_type}")
@@ -220,10 +302,26 @@ class NBeats(BaseModel):
             ),
         )
 
+    def update_kan_grid(self):
+        """
+        Updates grid of KAN layers when using KAN layers in NBEATSBlock.
+        """
+        if self.use_kan:
+            for block in self.net_blocks:
+                # updation logic taken from
+                # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
+                for i, layer in enumerate(block.fc):
+                    # update basis KAN layers' grid
+                    layer.update_grid_from_samples(block.outputs[i])
+                # update theta backward and theta forward KAN layers' grid
+                block.theta_b_fc.update_grid_from_samples(block.outputs[i + 1])
+                block.theta_f_fc.update_grid_from_samples(block.outputs[i + 1])
+
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         """
-        Convenience function to create network from :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        Convenience function to create network from :py:class
+        `~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
         Args:
             dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
@@ -359,10 +457,11 @@ class NBeats(BaseModel):
             x (Dict[str, torch.Tensor]): network input
             output (Dict[str, torch.Tensor]): network output
             idx (int): index of sample for which to plot the interpretation.
-            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which to plot the interpretation.
-                Defaults to None.
-            plot_seasonality_and_generic_on_secondary_axis (bool, optional): if to plot seasonality and
-                generic forecast on secondary axis in second panel. Defaults to False.
+            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which
+                to plot the interpretation. Defaults to None.
+            plot_seasonality_and_generic_on_secondary_axis (bool, optional): if to plot
+                seasonality and generic forecast on secondary axis in second panel.
+                Defaults to False.
 
         Returns:
             plt.Figure: matplotlib figure
