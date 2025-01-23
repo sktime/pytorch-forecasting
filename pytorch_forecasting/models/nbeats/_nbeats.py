@@ -30,19 +30,6 @@ class NBeats(BaseModel):
         expansion_coefficient_lengths: Optional[List[int]] = None,
         prediction_length: int = 1,
         context_length: int = 1,
-        use_kan: bool = False,
-        num_grids: int = 5,
-        k: int = 3,
-        noise_scale: float = 0.5,
-        scale_base_mu: float = 0.0,
-        scale_base_sigma: float = 1.0,
-        scale_sp: float = 1.0,
-        base_fun: callable = torch.nn.SiLU(),
-        grid_eps: float = 0.02,
-        grid_range: List[int] = [-1, 1],
-        sp_trainable: bool = True,
-        sb_trainable: bool = True,
-        sparse_init: bool = False,
         dropout: float = 0.1,
         learning_rate: float = 1e-2,
         log_interval: int = -1,
@@ -53,6 +40,19 @@ class NBeats(BaseModel):
         reduce_on_plateau_patience: int = 1000,
         backcast_loss_ratio: float = 0.0,
         logging_metrics: nn.ModuleList = None,
+        use_kan: bool = False,
+        num: int = 5,
+        k: int = 3,
+        noise_scale: float = 0.5,
+        scale_base_mu: float = 0.0,
+        scale_base_sigma: float = 1.0,
+        scale_sp: float = 1.0,
+        base_fun: callable = None,
+        grid_eps: float = 0.02,
+        grid_range: List[int] = None,
+        sp_trainable: bool = True,
+        sb_trainable: bool = True,
+        sparse_init: bool = False,
         **kwargs,
     ):
         """
@@ -101,33 +101,6 @@ class NBeats(BaseModel):
             context_length: Number of time units that condition the predictions.
                 Also known as 'lookback period'.
                 Should be between 1-10 times the prediction length.
-            num_grids :  Parameter for KAN layer. the number of grid intervals = G.
-                Default: 5.
-            k : Parameter for KAN layer. the order of piecewise polynomial. Default: 3.
-            noise_scale : Parameter for KAN layer. the scale of noise injected at
-                initialization. Default: 0.1.
-            scale_base_mu : Parameter for KAN layer. the scale of the residual
-                function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
-                Deafult: 0.0
-            scale_base_sigma : Parameter for KAN layer. the scale of the residual
-                function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
-                Deafult: 1.0
-            scale_sp : Parameter for KAN layer. the scale of the base function
-                spline(x). Deafult: 1.0
-            base_fun : Parameter for KAN layer. residual function b(x).
-                Default: torch.nn.SiLU()
-            grid_eps : Parameter for KAN layer. When grid_eps = 1, the grid is uniform;
-                when grid_eps = 0, the grid is partitioned using percentiles of samples.
-                0 < grid_eps < 1 interpolates between the two extremes. Deafult: 0.02
-            grid_range : Parameter for KAN layer. list/np.array of shape (2,). setting
-                the range of grids.
-                Default: [-1,1].
-            sp_trainable : Parameter for KAN layer. If true, scale_sp is trainable.
-                Default: True.
-            sb_trainable : Parameter for KAN layer. If true, scale_base is trainable.
-                Default: True.
-            sparse_init : Parameter for KAN layer. if sparse_init = True, sparse
-                initialization is applied. Default: False.
             backcast_loss_ratio: weight of backcast in comparison to forecast when
                 calculating the loss. A weight of 1.0 means that forecast and
                 backcast loss is weighted the same (regardless of backcast and forecast
@@ -140,6 +113,37 @@ class NBeats(BaseModel):
             logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that
                 are logged during training. Defaults to
                 nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
+            num :  Parameter for KAN layer. the number of grid intervals = G.
+                Default: 5. used when use_kan is True.
+            k : Parameter for KAN layer. the order of piecewise polynomial. Default: 3.
+                used when use_kan is True.
+            noise_scale : Parameter for KAN layer. the scale of noise injected at
+                initialization. Default: 0.1. used when use_kan is True.
+            scale_base_mu : Parameter for KAN layer. the scale of the residual
+                function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
+                Deafult: 0.0. used when use_kan is True.
+            scale_base_sigma : Parameter for KAN layer. the scale of the residual
+                function b(x) is intialized to be N(scale_base_mu, scale_base_sigma^2).
+                Deafult: 1.0. used when use_kan is True.
+            scale_sp : Parameter for KAN layer. the scale of the base function
+                spline(x). Deafult: 1.0. used when use_kan is True.
+            base_fun : Parameter for KAN layer. residual function b(x).
+                Default: None. used when use_kan is True.
+            grid_eps : Parameter for KAN layer. When grid_eps = 1, the grid is uniform;
+                when grid_eps = 0, the grid is partitioned using percentiles of samples.
+                0 < grid_eps < 1 interpolates between the two extremes. Deafult: 0.02.
+                used when use_kan is True.
+            grid_range : Parameter for KAN layer. list/np.array of shape (2,). setting
+                the range of grids. Default: None. used when use_kan is True.
+            sp_trainable : Parameter for KAN layer. If true, scale_sp is trainable.
+                Default: True. used when use_kan is True.
+            sb_trainable : Parameter for KAN layer. If true, scale_base is trainable.
+                Default: True. used when use_kan is True.
+            sparse_init : Parameter for KAN layer. if sparse_init = True, sparse
+                initialization is applied. Default: False. used when use_kan is True.
             **kwargs: additional arguments to :py:class:`~BaseModel`.
         """  # noqa: E501
         if expansion_coefficient_lengths is None:
@@ -154,14 +158,17 @@ class NBeats(BaseModel):
             num_blocks = [3, 3]
         if stack_types is None:
             stack_types = ["trend", "seasonality"]
+        if base_fun is None:
+            base_fun = torch.nn.SiLU()
+        if grid_range is None:
+            grid_range = [-1, 1]
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if loss is None:
             loss = MASE()
         # Bundle KAN parameters into a dictionary
         self.kan_params = {
-            "use_kan": use_kan,
-            "num_grids": num_grids,
+            "num": num,
             "k": k,
             "noise_scale": noise_scale,
             "scale_base_mu": scale_base_mu,
@@ -174,6 +181,7 @@ class NBeats(BaseModel):
             "sb_trainable": sb_trainable,
             "sparse_init": sparse_init,
         }
+        self.use_kan = use_kan
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics"])
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
@@ -191,6 +199,7 @@ class NBeats(BaseModel):
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
                         kan_params=self.kan_params,
+                        use_kan=use_kan,
                     )
                 elif stack_type == "seasonality":
                     net_block = NBEATSSeasonalBlock(
@@ -201,6 +210,7 @@ class NBeats(BaseModel):
                         min_period=self.hparams.expansion_coefficient_lengths[stack_id],
                         dropout=self.hparams.dropout,
                         kan_params=self.kan_params,
+                        use_kan=use_kan,
                     )
                 elif stack_type == "trend":
                     net_block = NBEATSTrendBlock(
@@ -211,6 +221,7 @@ class NBeats(BaseModel):
                         forecast_length=prediction_length,
                         dropout=self.hparams.dropout,
                         kan_params=self.kan_params,
+                        use_kan=use_kan,
                     )
                 else:
                     raise ValueError(f"Unknown stack type {stack_type}")
@@ -290,6 +301,21 @@ class NBeats(BaseModel):
                 target_scale=x["target_scale"],
             ),
         )
+
+    def update_kan_grid(self):
+        """
+        Updates grid of KAN layers when using KAN layers in NBEATSBlock.
+        """
+        if self.use_kan:
+            for block in self.net_blocks:
+                # updation logic taken from
+                # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
+                for i, layer in enumerate(block.fc):
+                    # update basis KAN layers' grid
+                    layer.update_grid_from_samples(block.outputs[i])
+                # update theta backward and theta forward KAN layers' grid
+                block.theta_b_fc.update_grid_from_samples(block.outputs[i + 1])
+                block.theta_f_fc.update_grid_from_samples(block.outputs[i + 1])
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):

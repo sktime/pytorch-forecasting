@@ -1,3 +1,6 @@
+# The following implementation of KANLayer is inspired by the pykan library.
+# Reference: https://github.com/KindXiaoming/pykan/blob/master/kan/KANLayer.py
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -105,7 +108,6 @@ def curve2coef(x_eval, y_eval, grid, k):
         coef : 3D torch.tensor
             shape (in_dim, out_dim, G+k)
     """
-    # print('haha', x_eval.shape, y_eval.shape, grid.shape)
     batch = x_eval.shape[0]
     in_dim = x_eval.shape[1]
     out_dim = y_eval.shape[2]
@@ -117,16 +119,6 @@ def curve2coef(x_eval, y_eval, grid, k):
         coef = torch.linalg.lstsq(mat, y_eval).solution[:, :, :, 0]
     except Exception as e:
         print(f"lstsq failed with error: {e}")
-
-    # manual psuedo-inverse
-    """lamb=1e-8
-    XtX = torch.einsum('ijmn,ijnp->ijmp', mat.permute(0,1,3,2), mat)
-    Xty = torch.einsum('ijmn,ijnp->ijmp', mat.permute(0,1,3,2), y_eval)
-    n1, n2, n = XtX.shape[0], XtX.shape[1], XtX.shape[2]
-    identity = torch.eye(n,n)[None, None, :, :].expand(n1, n2, n, n)
-    A = XtX + lamb * identity
-    B = Xty
-    coef = (A.pinverse() @ B)[:,:,:,0]"""
 
     return coef
 
@@ -343,8 +335,6 @@ class KANLayer(nn.Module):
         """
 
         batch = x.shape[0]
-        # x = torch.einsum('ij,k->ikj', x, torch.ones(self.out_dim, ))
-        # .reshape(batch, self.size).permute(1, 0)
         x_pos = torch.sort(x, dim=0)[0]
         y_eval = coef2curve(x_pos, self.grid, self.coef, self.k)
         num_interval = self.grid.shape[1] - 1 - 2 * self.k
@@ -368,7 +358,6 @@ class KANLayer(nn.Module):
             return grid
 
         grid = get_grid(num_interval)
-
         if mode == "grid":
             sample_grid = get_grid(2 * num_interval)
             x_pos = sample_grid.permute(1, 0)
@@ -376,153 +365,3 @@ class KANLayer(nn.Module):
 
         self.grid.data = extend_grid(grid, k_extend=self.k)
         self.coef.data = curve2coef(x_pos, y_eval, self.grid, self.k)
-
-    def initialize_grid_from_parent(self, parent, x, mode="sample"):
-        """
-        update grid from a parent KANLayer & samples
-
-        Args:
-        -----
-            parent : KANLayer
-                a parent KANLayer (whose grid is usually coarser than the current model)
-            x : 2D torch.float
-                inputs, shape (number of samples, input dimension)
-
-        Returns:
-        --------
-            None
-
-        Example
-        -------
-        >>> batch = 100
-        >>> parent_model = KANLayer(in_dim=1, out_dim=1, num=5, k=3)
-        >>> print(parent_model.grid.data)
-        >>> model = KANLayer(in_dim=1, out_dim=1, num=10, k=3)
-        >>> x = torch.normal(0,1,size=(batch, 1))
-        >>> model.initialize_grid_from_parent(parent_model, x)
-        >>> print(model.grid.data)
-        """
-        # shrink grid
-        x_pos = torch.sort(x, dim=0)[0]
-        y_eval = coef2curve(x_pos, parent.grid, parent.coef, parent.k)
-        num_interval = self.grid.shape[1] - 1 - 2 * self.k
-
-        """
-        # based on samples
-        def get_grid(num_interval):
-            ids = [int(batch / num_interval * i) for i in range(num_interval)] + [-1]
-            grid_adaptive = x_pos[ids, :].permute(1,0)
-            h = (grid_adaptive[:,[-1]] - grid_adaptive[:,[0]])/num_interval
-            grid_uniform = grid_adaptive[:,[0]] + h * torch.arange(num_interval+1,)
-            [None, :]
-            grid = self.grid_eps * grid_uniform + (1 - self.grid_eps) * grid_adaptive
-            return grid"""
-
-        # based on interpolating parent grid
-        def get_grid(num_interval):
-            x_pos = parent.grid[:, parent.k : -parent.k]
-            # print('x_pos', x_pos)
-            sp2 = KANLayer(
-                in_dim=1,
-                out_dim=self.in_dim,
-                k=1,
-                num=x_pos.shape[1] - 1,
-                scale_base_mu=0.0,
-                scale_base_sigma=0.0,
-            )
-
-            sp2_coef = curve2coef(
-                sp2.grid[:, sp2.k : -sp2.k].permute(1, 0).expand(-1, self.in_dim),
-                x_pos.permute(1, 0).unsqueeze(dim=2),
-                sp2.grid[:, :],
-                k=1,
-            ).permute(1, 0, 2)
-            sp2.coef.data = sp2_coef
-            percentile = torch.linspace(-1, 1, self.num + 1)
-            grid = sp2(percentile.unsqueeze(dim=1))[0].permute(1, 0)
-            return grid
-
-        grid = get_grid(num_interval)
-
-        if mode == "grid":
-            sample_grid = get_grid(2 * num_interval)
-            x_pos = sample_grid.permute(1, 0)
-            y_eval = coef2curve(x_pos, parent.grid, parent.coef, parent.k)
-
-        grid = extend_grid(grid, k_extend=self.k)
-        self.grid.data = grid
-        self.coef.data = curve2coef(x_pos, y_eval, self.grid, self.k)
-
-    def get_subset(self, in_id, out_id):
-        """
-        get a smaller KANLayer from a larger KANLayer (used for pruning)
-
-        Args:
-        -----
-            in_id : list
-                id of selected input neurons
-            out_id : list
-                id of selected output neurons
-
-        Returns:
-        --------
-            spb : KANLayer
-
-        Example
-        -------
-        >>> kanlayer_large = KANLayer(in_dim=10, out_dim=10, num=5, k=3)
-        >>> kanlayer_small = kanlayer_large.get_subset([0,9],[1,2,3])
-        >>> kanlayer_small.in_dim, kanlayer_small.out_dim
-        (2, 3)
-        """
-        spb = KANLayer(
-            len(in_id), len(out_id), self.num, self.k, base_fun=self.base_fun
-        )
-        spb.grid.data = self.grid[in_id]
-        spb.coef.data = self.coef[in_id][:, out_id]
-        spb.scale_base.data = self.scale_base[in_id][:, out_id]
-        spb.scale_sp.data = self.scale_sp[in_id][:, out_id]
-        spb.mask.data = self.mask[in_id][:, out_id]
-
-        spb.in_dim = len(in_id)
-        spb.out_dim = len(out_id)
-        return spb
-
-    def swap(self, i1, i2, mode="in"):
-        """
-        swap the i1 neuron with the i2 neuron in input (if mode == 'in') or output
-        (if mode == 'out')
-
-        Args:
-        -----
-            i1 : int
-            i2 : int
-            mode : str
-                mode = 'in' or 'out'
-
-        Returns:
-        --------
-            None
-
-        Example
-        -------
-        >>> from kan.KANLayer import *
-        >>> model = KANLayer(in_dim=2, out_dim=2, num=5, k=3)
-        >>> print(model.coef)
-        >>> model.swap(0,1,mode='in')
-        >>> print(model.coef)
-        """
-        with torch.no_grad():
-
-            def swap_(data, i1, i2, mode="in"):
-                if mode == "in":
-                    data[i1], data[i2] = data[i2].clone(), data[i1].clone()
-                elif mode == "out":
-                    data[:, i1], data[:, i2] = data[:, i2].clone(), data[:, i1].clone()
-
-            if mode == "in":
-                swap_(self.grid.data, i1, i2, mode="in")
-            swap_(self.coef.data, i1, i2, mode=mode)
-            swap_(self.scale_base.data, i1, i2, mode=mode)
-            swap_(self.scale_sp.data, i1, i2, mode=mode)
-            swap_(self.mask.data, i1, i2, mode=mode)

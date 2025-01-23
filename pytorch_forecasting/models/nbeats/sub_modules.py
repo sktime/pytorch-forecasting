@@ -54,7 +54,8 @@ class NBEATSBlock(nn.Module):
         backcast_length=10,
         forecast_length=5,
         dropout=0.1,
-        kan_params={},
+        kan_params=None,
+        use_kan=False,
     ):
         """
         Initialize NBeatsSeasonalBlock
@@ -70,7 +71,7 @@ class NBEATSBlock(nn.Module):
             dropout: The dropout rate applied to the fully connected mlp layers to
                 prevent overfitting. Default: 0.1.
             kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: empty dictionary.
+                (used for modeling using KAN). Default: None.
                 Contains:
                     num_grids (int): The number of grid intervals for KAN.
                     k (int): The order of the piecewise polynomial for KAN.
@@ -89,6 +90,9 @@ class NBEATSBlock(nn.Module):
                     sp_trainable (bool): If True, the scale_sp is trainable.
                     sb_trainable (bool): If True, the scale_base is trainable.
                     sparse_init (bool): If True, applies sparse initialization.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
         """
         super().__init__()
         self.units = units
@@ -96,24 +100,14 @@ class NBEATSBlock(nn.Module):
         self.backcast_length = backcast_length
         self.forecast_length = forecast_length
         self.kan_params = kan_params
+        self.use_kan = use_kan
 
-        if self.kan_params["use_kan"]:
+        if self.use_kan:
             layers = [
                 KANLayer(
                     in_dim=backcast_length,
                     out_dim=units,
-                    num=self.kan_params["num_grids"],
-                    k=self.kan_params["k"],
-                    noise_scale=self.kan_params["noise_scale"],
-                    scale_base_mu=self.kan_params["scale_base_mu"],
-                    scale_base_sigma=self.kan_params["scale_base_sigma"],
-                    scale_sp=self.kan_params["scale_sp"],
-                    base_fun=self.kan_params["base_fun"],
-                    grid_eps=self.kan_params["grid_eps"],
-                    grid_range=self.kan_params["grid_range"],
-                    sp_trainable=self.kan_params["sp_trainable"],
-                    sb_trainable=self.kan_params["sb_trainable"],
-                    sparse_init=self.kan_params["sparse_init"],
+                    **self.kan_params,
                 )
             ]
 
@@ -123,18 +117,7 @@ class NBEATSBlock(nn.Module):
                     KANLayer(
                         in_dim=units,
                         out_dim=units,
-                        num=self.kan_params["num_grids"],
-                        k=self.kan_params["k"],
-                        noise_scale=self.kan_params["noise_scale"],
-                        scale_base_mu=self.kan_params["scale_base_mu"],
-                        scale_base_sigma=self.kan_params["scale_base_sigma"],
-                        scale_sp=self.kan_params["scale_sp"],
-                        base_fun=self.kan_params["base_fun"],
-                        grid_eps=self.kan_params["grid_eps"],
-                        grid_range=self.kan_params["grid_range"],
-                        sp_trainable=self.kan_params["sp_trainable"],
-                        sb_trainable=self.kan_params["sb_trainable"],
-                        sparse_init=self.kan_params["sparse_init"],
+                        **self.kan_params,
                     )
                 )
 
@@ -145,18 +128,7 @@ class NBEATSBlock(nn.Module):
             self.theta_f_fc = self.theta_b_fc = KANLayer(
                 in_dim=units,
                 out_dim=thetas_dim,
-                num=self.kan_params["num_grids"],
-                k=self.kan_params["k"],
-                noise_scale=self.kan_params["noise_scale"],
-                scale_base_mu=self.kan_params["scale_base_mu"],
-                scale_base_sigma=self.kan_params["scale_base_sigma"],
-                scale_sp=self.kan_params["scale_sp"],
-                base_fun=self.kan_params["base_fun"],
-                grid_eps=self.kan_params["grid_eps"],
-                grid_range=self.kan_params["grid_range"],
-                sp_trainable=self.kan_params["sp_trainable"],
-                sb_trainable=self.kan_params["sb_trainable"],
-                sparse_init=self.kan_params["sparse_init"],
+                **self.kan_params,
             )
 
         else:
@@ -173,7 +145,17 @@ class NBEATSBlock(nn.Module):
         """
         Pass through the fully connected mlp/kan layers and returns the output.
         """
-        return self.fc(x)
+        # outputs logic taken from
+        # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
+        self.outputs = []
+        self.outputs.append(x.clone().detach())
+        for layer in self.fc:
+            x = layer(x)  # Pass data through the current layer
+            # store outputs for updating grids of theta_fc when using KAN
+            self.outputs.append(x.clone().detach())
+        # for updating grids of theta_b_fc and theta_f_fc when using KAN
+        self.outputs.append(x.clone().detach())
+        return x  # Return final output
 
 
 class NBEATSSeasonalBlock(NBEATSBlock):
@@ -187,7 +169,8 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         nb_harmonics=None,
         min_period=1,
         dropout=0.1,
-        kan_params={},
+        kan_params=None,
+        use_kan=False,
     ):
         """
         Initialize NBeatsSeasonalBlock
@@ -207,7 +190,7 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             dropout: The dropout rate applied to the fully connected mlp layers to
                 prevent overfitting. Default: 0.1.
             kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: empty dictionary.
+                (used for modeling using KAN). Default: None.
                 Contains:
                     num_grids (int): The number of grid intervals for KAN.
                     k (int): The order of the piecewise polynomial for KAN.
@@ -226,6 +209,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
                     sp_trainable (bool): If True, the scale_sp is trainable.
                     sb_trainable (bool): If True, the scale_base is trainable.
                     sparse_init (bool): If True, applies sparse initialization.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
         """
         if nb_harmonics:
             thetas_dim = nb_harmonics
@@ -241,6 +227,7 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             forecast_length=forecast_length,
             dropout=dropout,
             kan_params=kan_params,
+            use_kan=use_kan,
         )
 
         backcast_linspace, forecast_linspace = linspace(
@@ -302,7 +289,8 @@ class NBEATSTrendBlock(NBEATSBlock):
         backcast_length=10,
         forecast_length=5,
         dropout=0.1,
-        kan_params={},
+        kan_params=None,
+        use_kan=False,
     ):
         """
         Initialize NBeatsSeasonalBlock
@@ -319,7 +307,7 @@ class NBEATSTrendBlock(NBEATSBlock):
             dropout: The dropout rate applied to the fully connected mlp layers to
                 prevent overfitting. Default: 0.1.
             kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: empty dictionary.
+                (used for modeling using KAN). Default: None.
                 Contains:
                     num_grids (int): The number of grid intervals for KAN.
                     k (int): The order of the piecewise polynomial for KAN.
@@ -338,6 +326,9 @@ class NBEATSTrendBlock(NBEATSBlock):
                     sp_trainable (bool): If True, the scale_sp is trainable.
                     sb_trainable (bool): If True, the scale_base is trainable.
                     sparse_init (bool): If True, applies sparse initialization.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
         """
         super().__init__(
             units=units,
@@ -347,6 +338,7 @@ class NBEATSTrendBlock(NBEATSBlock):
             forecast_length=forecast_length,
             dropout=dropout,
             kan_params=kan_params,
+            use_kan=use_kan,
         )
 
         backcast_linspace, forecast_linspace = linspace(
@@ -386,7 +378,8 @@ class NBEATSGenericBlock(NBEATSBlock):
         backcast_length=10,
         forecast_length=5,
         dropout=0.1,
-        kan_params={},
+        kan_params=None,
+        use_kan=False,
     ):
         """
         Initialize NBeatsSeasonalBlock
@@ -403,7 +396,7 @@ class NBEATSGenericBlock(NBEATSBlock):
             dropout: The dropout rate applied to the fully connected mlp layers to
                 prevent overfitting. Default: 0.1.
             kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: empty dictionary.
+                (used for modeling using KAN). Default: None.
                 Contains:
                     num_grids (int): The number of grid intervals for KAN.
                     k (int): The order of the piecewise polynomial for KAN.
@@ -422,6 +415,9 @@ class NBEATSGenericBlock(NBEATSBlock):
                     sp_trainable (bool): If True, the scale_sp is trainable.
                     sb_trainable (bool): If True, the scale_base is trainable.
                     sparse_init (bool): If True, applies sparse initialization.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
         """
         super().__init__(
             units=units,
@@ -431,6 +427,7 @@ class NBEATSGenericBlock(NBEATSBlock):
             forecast_length=forecast_length,
             dropout=dropout,
             kan_params=kan_params,
+            use_kan=use_kan,
         )
 
         self.backcast_fc = nn.Linear(thetas_dim, backcast_length)
