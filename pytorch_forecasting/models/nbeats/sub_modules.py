@@ -151,9 +151,9 @@ class NBEATSBlock(nn.Module):
         self.outputs.append(x.clone().detach())
         for layer in self.fc:
             x = layer(x)  # Pass data through the current layer
-            # store outputs for updating grids of theta_fc when using KAN
+            # storing outputs for updating grids of self.fc when using KAN
             self.outputs.append(x.clone().detach())
-        # for updating grids of theta_b_fc and theta_f_fc when using KAN
+        # storing for updating grids of theta_b_fc and theta_f_fc when using KAN
         self.outputs.append(x.clone().detach())
         return x  # Return final output
 
