@@ -46,6 +46,7 @@ from pytorch_forecasting.models import (
     NHiTS,
     RecurrentNetwork,
     TemporalFusionTransformer,
+    TiDEModel,
     get_rnn,
 )
 from pytorch_forecasting.utils import (
@@ -70,6 +71,7 @@ __all__ = [
     "NaNLabelEncoder",
     "MultiNormalizer",
     "TemporalFusionTransformer",
+    "TiDEModel",
     "NBeats",
     "NHiTS",
     "Baseline",
