@@ -1,6 +1,6 @@
 """
 Time-series Dense Encoder (TiDE)
-------
+--------------------------------
 """
 
 from typing import Optional, Tuple
@@ -226,6 +226,7 @@ class _TideModule(nn.Module):
         self, x_in: Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]
     ) -> torch.Tensor:
         """TiDE model forward pass.
+
         Parameters
         ----------
         x_in
