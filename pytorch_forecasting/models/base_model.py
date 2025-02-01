@@ -958,6 +958,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     loss = self.loss(prediction, y)
             else:
                 loss = None
+        # ensure that loss has require_grad
+        if loss is not None and loss.device.type == "mps":
+            loss.requires_grad_(True)
         self.log(
             f"{self.current_stage}_loss",
             loss,
