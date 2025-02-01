@@ -349,10 +349,7 @@ class KANLayer(nn.Module):
             grid_uniform = (
                 grid_adaptive[:, [0]]
                 - margin
-                + h
-                * torch.arange(
-                    num_interval + 1,
-                )[None, :]
+                + h * torch.arange(num_interval + 1, device=h.device)[None, :]
             )
             grid = self.grid_eps * grid_uniform + (1 - self.grid_eps) * grid_adaptive
             return grid

@@ -6,6 +6,10 @@ class GridUpdateCallback(Callback):
     Custom callback to update the grid of the model during training at regular
     intervals.
 
+    Example:
+        See the full example in:
+        `examples/nbeats_with_kan.py`
+
     Attributes:
         update_interval (int): The frequency at which the grid is updated.
     """
