@@ -42,9 +42,9 @@ dependencies = [
 #     - mqf2 - dependencies for multivariate quantile loss
 #     - graph - dependencies for graph based forecasting
 # - dev - the developer dependency set, for contributors to pytorch-forecasting
-# - CI related: e.g., dev, github-actions. Not for users of sktime.
+# - CI related: e.g., dev, github-actions. Not for users.
 #
-# soft dependencies are not required for the core functionality of sktime
+# soft dependencies are not required for the core functionality of pytorch-forecasting
 # but are required by popular estimators, e.g., prophet, tbats, etc.
 
 # all soft dependencies
