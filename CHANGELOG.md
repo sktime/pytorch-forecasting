@@ -34,6 +34,7 @@ Feature and maintenance update.
 * [DOC] Correct argument for optimizer `ranger` in `Temporal Fusion Transformer` tutorial by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1724
 * [DOC] Fixed typo "monotone_constaints" by @Luke-Chesley in https://github.com/sktime/pytorch-forecasting/pull/1516
 * [DOC] minor fixes in documentation by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1763
+* [DOC] improve and add `tide` model to docs by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1762
 
 ### Maintenance
 
@@ -50,6 +51,7 @@ Feature and maintenance update.
 @julian-fong,
 @Luke-Chesley,
 @madprogramer,
+@PranavBhatP,
 @Sohaib-Ahmed21,
 @xiaokongkong,
 @XinyuWuu
