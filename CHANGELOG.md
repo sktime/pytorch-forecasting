@@ -1,5 +1,48 @@
 # Release Notes
 
+## v1.3.0
+
+Feature and maintenance update
+
+### Highlights
+
+* `python 3.13` support
+* `tide` model
+* bugfixes for TFT
+
+### Enhancements
+
+* [ENH] Tide model. by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1734
+* [ENH] refactor `__init__` modules to no longer contain classes - preparatory commit by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1739
+* [ENH] refactor `__init__` modules to no longer contain classes by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1738
+* [ENH] extend package author attribution requirement in license to present by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1737
+* [ENH] linting tide model by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1742
+* [ENH] move tide model - part 1 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1743
+* [ENH] move tide model - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1744
+* [ENH] clean-up refactor of `TimeSeriesDataSet` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1746
+
+### Fixes
+
+* [BUG] Bugfix when no exogenous variable is passed to TFT by @XinyuWuu in https://github.com/sktime/pytorch-forecasting/pull/1667
+* [BUG] Fix issue when training TFT model on mac M1 mps device. element 0 of tensors does not require grad and does not have a grad_fn by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1725
+
+### Documentation
+
+* [DOC] Fix the spelling error of holding by @xiaokongkong in https://github.com/sktime/pytorch-forecasting/pull/1719
+* [DOC] Updated documentation on `TimeSeriesDataSet.predict_mode` by @madprogramer in https://github.com/sktime/pytorch-forecasting/pull/1720
+* [DOC] General PR to improve docs by @julian-fong in https://github.com/sktime/pytorch-forecasting/pull/1705
+* [DOC] Correct argument for optimizer `ranger` in `Temporal Fusion Transformer` tutorial by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1724
+* [DOC] Fixed typo "monotone_constaints" by @Luke-Chesley in https://github.com/sktime/pytorch-forecasting/pull/1516
+* [DOC] minor fixes in documentation by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1763
+
+### Maintenance
+
+* [MNT] update linting: limit line length to 88, add `isort` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1740
+* [MNT] update nbeats/sub_modules.py to remove overhead in tensor creation by @d-schmitt in https://github.com/sktime/pytorch-forecasting/pull/1580
+* [MNT] Temporary fix for lint errors to conform to the recent changes in linting rules see #1749 by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1748
+* [MNT] python 3.13 support by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1691
+
+
 ## v1.2.0
 
 Maintenance update, minor feature additions and bugfixes.
