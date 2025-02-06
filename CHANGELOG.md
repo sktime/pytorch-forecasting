@@ -43,6 +43,18 @@ Feature and maintenance update
 * [MNT] python 3.13 support by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1691
 
 
+### All Contributors
+
+@d-schmitt,
+@fkiraly,
+@fnhirwa,
+@julian-fong,
+@Luke-Chesley,
+@madprogramer,
+@Sohaib-Ahmed21,
+@xiaokongkong,
+@XinyuWuu
+
 ## v1.2.0
 
 Maintenance update, minor feature additions and bugfixes.
