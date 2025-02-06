@@ -7,10 +7,16 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 from pandas.core.common import SettingWithCopyWarning
 
-from pytorch_forecasting import GroupNormalizer, TemporalFusionTransformer, TimeSeriesDataSet
+from pytorch_forecasting import (
+    GroupNormalizer,
+    TemporalFusionTransformer,
+    TimeSeriesDataSet,
+)
 from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.metrics import QuantileLoss
-from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
+    optimize_hyperparameters,
+)
 
 warnings.simplefilter("error", category=SettingWithCopyWarning)
 
@@ -22,9 +28,13 @@ data["log_volume"] = np.log(data.volume + 1e-8)
 
 data["time_idx"] = data["date"].dt.year * 12 + data["date"].dt.month
 data["time_idx"] -= data["time_idx"].min()
-data["avg_volume_by_sku"] = data.groupby(["time_idx", "sku"], observed=True).volume.transform("mean")
-data["avg_volume_by_agency"] = data.groupby(["time_idx", "agency"], observed=True).volume.transform("mean")
-# data = data[lambda x: (x.sku == data.iloc[0]["sku"]) & (x.agency == data.iloc[0]["agency"])]
+data["avg_volume_by_sku"] = data.groupby(
+    ["time_idx", "sku"], observed=True
+).volume.transform("mean")
+data["avg_volume_by_agency"] = data.groupby(
+    ["time_idx", "agency"], observed=True
+).volume.transform("mean")
+# data = data[lambda x: (x.sku == data.iloc[0]["sku"]) & (x.agency == data.iloc[0]["agency"])] # noqa: E501
 special_days = [
     "easter_day",
     "good_friday",
@@ -39,7 +49,9 @@ special_days = [
     "beer_capital",
     "music_fest",
 ]
-data[special_days] = data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
+data[special_days] = (
+    data[special_days].apply(lambda x: x.map({0: "", 1: x.name})).astype("category")
+)
 
 training_cutoff = data["time_idx"].max() - 6
 max_encoder_length = 36
@@ -50,14 +62,17 @@ training = TimeSeriesDataSet(
     time_idx="time_idx",
     target="volume",
     group_ids=["agency", "sku"],
-    min_encoder_length=max_encoder_length // 2,  # allow encoder lengths from 0 to max_prediction_length
+    min_encoder_length=max_encoder_length
+    // 2,  # allow encoder lengths from 0 to max_prediction_length
     max_encoder_length=max_encoder_length,
     min_prediction_length=1,
     max_prediction_length=max_prediction_length,
     static_categoricals=["agency", "sku"],
     static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
     time_varying_known_categoricals=["special_days", "month"],
-    variable_groups={"special_days": special_days},  # group of categorical variables can be treated as one variable
+    variable_groups={
+        "special_days": special_days
+    },  # group of categorical variables can be treated as one variable
     time_varying_known_reals=["time_idx", "price_regular", "discount_in_percent"],
     time_varying_unknown_categoricals=[],
     time_varying_unknown_reals=[
@@ -78,17 +93,25 @@ training = TimeSeriesDataSet(
 )
 
 
-validation = TimeSeriesDataSet.from_dataset(training, data, predict=True, stop_randomization=True)
+validation = TimeSeriesDataSet.from_dataset(
+    training, data, predict=True, stop_randomization=True
+)
 batch_size = 64
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+train_dataloader = training.to_dataloader(
+    train=True, batch_size=batch_size, num_workers=0
+)
+val_dataloader = validation.to_dataloader(
+    train=False, batch_size=batch_size, num_workers=0
+)
 
 
 # save datasets
 training.save("t raining.pkl")
 validation.save("validation.pkl")
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
+early_stop_callback = EarlyStopping(
+    monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min"
+)
 lr_logger = LearningRateMonitor()
 logger = TensorBoardLogger(log_graph=True)
 
@@ -128,7 +151,7 @@ print(f"Number of parameters in network: {tft.size() / 1e3:.1f}k")
 # trainer.limit_train_batches = 1.0
 # # run learning rate finder
 # res = Tuner(trainer).lr_find(
-#     tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+#     tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2 # noqa: E501
 # )
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)

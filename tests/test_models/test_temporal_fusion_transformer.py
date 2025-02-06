@@ -6,6 +6,7 @@ import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
+import pandas as pd
 import pytest
 import torch
 
@@ -22,7 +23,9 @@ from pytorch_forecasting.metrics import (
     TweedieLoss,
 )
 from pytorch_forecasting.models import TemporalFusionTransformer
-from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
+from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
+    optimize_hyperparameters,
+)
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
@@ -39,7 +42,11 @@ from test_models.conftest import make_dataloaders
 
 
 def test_integration(multiple_dataloaders_with_covariates, tmp_path):
-    _integration(multiple_dataloaders_with_covariates, tmp_path, trainer_kwargs=dict(accelerator="cpu"))
+    _integration(
+        multiple_dataloaders_with_covariates,
+        tmp_path,
+        trainer_kwargs=dict(accelerator="cpu"),
+    )
 
 
 def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
@@ -53,7 +60,9 @@ def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
 
 
 def test_distribution_loss(data_with_covariates, tmp_path):
-    data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    data_with_covariates = data_with_covariates.assign(
+        volume=lambda x: x.volume.round()
+    )
     dataloaders_with_covariates = make_dataloaders(
         data_with_covariates,
         target="volume",
@@ -75,7 +84,9 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     reason="Test skipped if required package cpflows not available",
 )
 def test_mqf2_loss(data_with_covariates, tmp_path):
-    data_with_covariates = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    data_with_covariates = data_with_covariates.assign(
+        volume=lambda x: x.volume.round()
+    )
     dataloaders_with_covariates = make_dataloaders(
         data_with_covariates,
         target="volume",
@@ -83,10 +94,14 @@ def test_mqf2_loss(data_with_covariates, tmp_path):
         time_varying_unknown_reals=["volume"],
         static_categoricals=["agency"],
         add_relative_time_idx=True,
-        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False, transformation="log1p"),
+        target_normalizer=GroupNormalizer(
+            groups=["agency", "sku"], center=False, transformation="log1p"
+        ),
     )
 
-    prediction_length = dataloaders_with_covariates["train"].dataset.min_prediction_length
+    prediction_length = dataloaders_with_covariates[
+        "train"
+    ].dataset.min_prediction_length
 
     _integration(
         dataloaders_with_covariates,
@@ -102,7 +117,9 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
+    )
 
     # check training
     logger = TensorBoardLogger(tmp_path)
@@ -122,10 +139,10 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
     )
     # test monotone constraints automatically
     if "discount_in_percent" in train_dataloader.dataset.reals:
-        monotone_constaints = {"discount_in_percent": +1}
+        monotone_constraints = {"discount_in_percent": +1}
         cuda_context = torch.backends.cudnn.flags(enabled=False)
     else:
-        monotone_constaints = {}
+        monotone_constraints = {}
         cuda_context = nullcontext()
 
     kwargs.setdefault("learning_rate", 0.15)
@@ -138,8 +155,12 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         elif isinstance(train_dataloader.dataset.target_normalizer, MultiNormalizer):
             loss = MultiLoss(
                 [
-                    CrossEntropy() if isinstance(normalizer, NaNLabelEncoder) else QuantileLoss()
-                    for normalizer in train_dataloader.dataset.target_normalizer.normalizers
+                    (
+                        CrossEntropy()
+                        if isinstance(normalizer, NaNLabelEncoder)
+                        else QuantileLoss()
+                    )
+                    for normalizer in train_dataloader.dataset.target_normalizer.normalizers  # noqa : E501
                 ]
             )
         else:
@@ -154,7 +175,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
             log_interval=5,
             log_val_interval=1,
             log_gradient_flow=True,
-            monotone_constaints=monotone_constaints,
+            monotone_constraints=monotone_constraints,
             **kwargs,
         )
         net.size()
@@ -164,14 +185,17 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                 train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
-            # todo: testing somehow disables grad computation even though it is explicitly turned on -
+            # todo: testing somehow disables grad computation
+            # even though it is explicitly turned on -
             #       loss is calculated as "grad" for MQF2
             if not isinstance(net.loss, MQF2DistributionLoss):
                 test_outputs = trainer.test(net, dataloaders=test_dataloader)
                 assert len(test_outputs) > 0
 
             # check loading
-            net = TemporalFusionTransformer.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+            net = TemporalFusionTransformer.load_from_checkpoint(
+                trainer.checkpoint_callback.best_model_path
+            )
 
             # check prediction
             predictions = net.predict(
@@ -193,11 +217,15 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                     for xi in x.values():
                         check(xi)
                 else:
-                    assert pred_len == x.shape[0], "first dimension should be prediction length"
+                    assert (
+                        pred_len == x.shape[0]
+                    ), "first dimension should be prediction length"
 
             check(predictions.output)
             if isinstance(predictions.output, torch.Tensor):
-                assert predictions.output.ndim == 2, "shape of predictions should be batch_size x timesteps"
+                assert (
+                    predictions.output.ndim == 2
+                ), "shape of predictions should be batch_size x timesteps"
             else:
                 assert all(
                     p.ndim == 2 for p in predictions.output
@@ -246,7 +274,9 @@ def test_tensorboard_graph_log(dataloaders_with_covariates, model, tmp_path):
 
 def test_init_shared_network(dataloaders_with_covariates):
     dataset = dataloaders_with_covariates["train"].dataset
-    net = TemporalFusionTransformer.from_dataset(dataset, share_single_variable_networks=True)
+    net = TemporalFusionTransformer.from_dataset(
+        dataset, share_single_variable_networks=True
+    )
     net.predict(dataset, fast_dev_run=True)
 
 
@@ -284,18 +314,29 @@ def test_distribution(dataloaders_with_covariates, tmp_path, strategy):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301
 
 
-@pytest.mark.parametrize("kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")])
-def test_predict_dependency(model, dataloaders_with_covariates, data_with_covariates, kwargs):
+@pytest.mark.parametrize(
+    "kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")]
+)
+def test_predict_dependency(
+    model, dataloaders_with_covariates, data_with_covariates, kwargs
+):
     train_dataset = dataloaders_with_covariates["train"].dataset
     data_with_covariates = data_with_covariates.copy()
     dataset = TimeSeriesDataSet.from_dataset(
-        train_dataset, data_with_covariates[lambda x: x.agency == data_with_covariates.agency.iloc[0]], predict=True
+        train_dataset,
+        data_with_covariates[lambda x: x.agency == data_with_covariates.agency.iloc[0]],
+        predict=True,
     )
     model.predict_dependency(dataset, variable="discount", values=[0.1, 0.0], **kwargs)
-    model.predict_dependency(dataset, variable="agency", values=data_with_covariates.agency.unique()[:2], **kwargs)
+    model.predict_dependency(
+        dataset,
+        variable="agency",
+        values=data_with_covariates.agency.unique()[:2],
+        **kwargs,
+    )
 
 
 @pytest.mark.skipif(
@@ -304,7 +345,9 @@ def test_predict_dependency(model, dataloaders_with_covariates, data_with_covari
 )
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     prediction = model.predict(dataloaders_with_covariates["val"], return_x=True)
-    averages = model.calculate_prediction_actual_by_variable(prediction.x, prediction.output)
+    averages = model.calculate_prediction_actual_by_variable(
+        prediction.x, prediction.output
+    )
     model.plot_prediction_actual_by_variable(averages)
 
 
@@ -359,7 +402,9 @@ def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
     )
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(max_epochs=1, gradient_clip_val=1e-6, logger=logger)
-    trainer.fit(net, train_dataloaders=dataset.to_dataloader(batch_size=4, num_workers=0))
+    trainer.fit(
+        net, train_dataloaders=dataset.to_dataloader(batch_size=4, num_workers=0)
+    )
 
     # choose small batch size to provoke issue
     res = net.predict(dataset.to_dataloader(batch_size=2, num_workers=0), mode="raw")
@@ -399,7 +444,9 @@ SKIP_HYPEPARAM_TEST = (
     reason="Test skipped on Win due to bug #1632, or if missing required packages",
 )
 @pytest.mark.parametrize("use_learning_rate_finder", [True, False])
-def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tmp_path, use_learning_rate_finder):
+def test_hyperparameter_optimization_integration(
+    dataloaders_with_covariates, tmp_path, use_learning_rate_finder
+):
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
     try:
@@ -421,3 +468,56 @@ def test_hyperparameter_optimization_integration(dataloaders_with_covariates, tm
         )
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_no_exogenous_variable():
+    data = pd.DataFrame(
+        {
+            "target": np.ones(1600),
+            "group_id": np.repeat(np.arange(16), 100),
+            "time_idx": np.tile(np.arange(100), 16),
+        }
+    )
+    training_dataset = TimeSeriesDataSet(
+        data=data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=10,
+        max_prediction_length=5,
+        time_varying_unknown_reals=["target"],
+        time_varying_known_reals=[],
+    )
+    validation_dataset = TimeSeriesDataSet.from_dataset(
+        training_dataset, data, stop_randomization=True, predict=True
+    )
+    training_data_loader = training_dataset.to_dataloader(
+        train=True, batch_size=8, num_workers=0
+    )
+    validation_data_loader = validation_dataset.to_dataloader(
+        train=False, batch_size=8, num_workers=0
+    )
+    forecaster = TemporalFusionTransformer.from_dataset(
+        training_dataset,
+        log_interval=1,
+    )
+    from lightning.pytorch import Trainer
+
+    trainer = Trainer(
+        max_epochs=2,
+        limit_train_batches=8,
+        limit_val_batches=8,
+    )
+    trainer.fit(
+        forecaster,
+        train_dataloaders=training_data_loader,
+        val_dataloaders=validation_data_loader,
+    )
+    best_model_path = trainer.checkpoint_callback.best_model_path
+    best_model = TemporalFusionTransformer.load_from_checkpoint(best_model_path)
+    best_model.predict(
+        validation_data_loader,
+        return_x=True,
+        return_y=True,
+        return_index=True,
+    )

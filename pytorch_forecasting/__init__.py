@@ -2,7 +2,7 @@
 PyTorch Forecasting package for timeseries forecasting with PyTorch.
 """
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 
 from pytorch_forecasting.data import (
     EncoderNormalizer,

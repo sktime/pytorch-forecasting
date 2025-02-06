@@ -51,14 +51,20 @@ validation = TimeSeriesDataSet.from_dataset(
     stop_randomization=True,
 )
 batch_size = 64
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=0)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
+train_dataloader = training.to_dataloader(
+    train=True, batch_size=batch_size, num_workers=0
+)
+val_dataloader = validation.to_dataloader(
+    train=False, batch_size=batch_size, num_workers=0
+)
 
 # save datasets
 training.save("training.pkl")
 validation.save("validation.pkl")
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=5, verbose=False, mode="min")
+early_stop_callback = EarlyStopping(
+    monitor="val_loss", min_delta=1e-4, patience=5, verbose=False, mode="min"
+)
 lr_logger = LearningRateMonitor()
 
 trainer = pl.Trainer(
@@ -92,7 +98,7 @@ print(f"Number of parameters in network: {deepar.size() / 1e3:.1f}k")
 # deepar.hparams.log_val_interval = -1
 # trainer.limit_train_batches = 1.0
 # res = Tuner(trainer).lr_find(
-#     deepar, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+#     deepar, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2 # noqa: E501
 # )
 
 # print(f"suggested learning rate: {res.suggestion()}")

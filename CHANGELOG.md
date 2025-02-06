@@ -1,5 +1,62 @@
 # Release Notes
 
+## v1.2.0
+
+Maintenance update, minor feature additions and bugfixes.
+
+* support for `numpy 2.X`
+* end of life for `python 3.8`
+* fixed documentation build
+* bugfixes
+
+### Dependency changes
+
+* `pytorch-forecasting` is now compatible with `numpy 2.X` (core dependency)
+* `optuna` (tuning soft dependency) bounds have been update to `>=3.1.0,<5.0.0`
+
+### Fixes
+
+* [BUG] fix `AttributeError: 'ExperimentWriter' object has no attribute 'add_figure'` by @ewth in https://github.com/sktime/pytorch-forecasting/pull/1694
+
+### Documentation
+
+* [DOC] typo fixes in changelog by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1660
+* [DOC] update URLs to `sktime` org by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1674
+
+### Maintenance
+
+* [MNT] handle `mps backend` for lower versions of pytorch and fix `mps` failure on `macOS-latest` runner by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1648
+* [MNT] updates the actions in the doc build CI by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1673
+* [MNT] fixes to `readthedocs.yml` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1676
+* [MNT] updates references in CI and doc locations to `main` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1677
+* [MNT] `show_versions` utility by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1688
+* [MNT] Relax `numpy` bound to `numpy<3.0.0` by @XinyuWuu in https://github.com/sktime/pytorch-forecasting/pull/1624
+* [MNT] fix `pre-commit` failures on `main` by @ewth in https://github.com/sktime/pytorch-forecasting/pull/1696
+* [MNT] Move linting to ruff by @airookie17 in https://github.com/sktime/pytorch-forecasting/pull/1692
+1693
+* [MNT] `ruff` linting - allow use of assert (S101) by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1701
+* [MNT] `ruff` - fix list related linting failures C416 and C419 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1702
+* [MNT] Delete poetry.lock by @benHeid in https://github.com/sktime/pytorch-forecasting/pull/1704
+* [MNT] fix `black` doesn't have `extras` dependency by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1697
+* [MNT] Remove mutable objects from defaults by @eugenio-mercuriali in https://github.com/sktime/pytorch-forecasting/pull/1699
+* [MNT] remove docs build in ci for all pr by @yarnabrina in https://github.com/sktime/pytorch-forecasting/pull/1712
+* [MNT] EOL for python 3.8 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1661
+* [MNT] remove `poetry.lock` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1651
+* [MNT] update `pre-commit` requirement from `<4.0.0,>=3.2.0` to `>=3.2.0,<5.0.0` by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/
+* [MNT] update optuna requirement from `<4.0.0,>=3.1.0` to `>=3.1.0,<5.0.0` by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/1715
+* [MNT] CODEOWNERS file by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1710
+
+### All Contributors
+
+@airookie17,
+@benHeid,
+@eugenio-mercuriali,
+@ewth,
+@fkiraly,
+@fnhirwa,
+@XinyuWuu,
+@yarnabrina
+
 ## v1.1.1
 
 Hotfix for accidental package name change in `pyproject.toml`.
@@ -18,14 +75,14 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Dependency changes
 
-* the following are no longer core dependencies and have been changed to optional dependencies : `optuna`, `statsmodels`, `pytorch-optimize`, `matplotlib`. Environments relying on functionality requiring these dependencies need to be updated to instlal these explicitly.
+* the following are no longer core dependencies and have been changed to optional dependencies : `optuna`, `statsmodels`, `pytorch-optimize`, `matplotlib`. Environments relying on functionality requiring these dependencies need to be updated to install these explicitly.
 * `optuna` bounds have been updated to `optuna >=3.1.0,<4.0.0`
 * `optuna-integrate` is now an additional soft dependency, in case of `optuna >=3.3.0`
 
 ### Deprecations and removals
 
 * from 1.2.0, the default optimizer will be changed from `"ranger"` to `"adam"` to avoid non-`torch` dependencies in defaults. `pytorch-optimize` optimizers can still be used. Users should set the optimizer explicitly to continue using `"ranger"`.
-*  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure tha `matplotlib` is installed.
+*  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure that `matplotlib` is installed.
 
 ## v1.0.0 Update to pytorch 2.0 (10/04/2023)
 
