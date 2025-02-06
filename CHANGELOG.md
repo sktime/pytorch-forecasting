@@ -42,7 +42,6 @@ Feature and maintenance update
 * [MNT] Temporary fix for lint errors to conform to the recent changes in linting rules see #1749 by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1748
 * [MNT] python 3.13 support by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1691
 
-
 ### All Contributors
 
 @d-schmitt,
@@ -54,6 +53,7 @@ Feature and maintenance update
 @Sohaib-Ahmed21,
 @xiaokongkong,
 @XinyuWuu
+
 
 ## v1.2.0
 
