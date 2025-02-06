@@ -2,7 +2,7 @@
 
 ## v1.3.0
 
-Feature and maintenance update
+Feature and maintenance update.
 
 ### Highlights
 
