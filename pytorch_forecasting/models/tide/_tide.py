@@ -63,64 +63,59 @@ class TiDEModel(BaseModelWithCovariates):
         the residual blocks can be adjusted using `hidden_size`, while the layer width
         in the temporal decoder can be controlled via `temporal_decoder_hidden`.
 
-        Args:
-            input_chunk_length:
-                Number of past time steps for input
-            output_chunk_length:
-                Number of time steps to predict simultaneously
-            num_encoder_layers:
-                Number of residual blocks in encoder. Defaults to 2
-            num_decoder_layers:
-                Number of residual blocks in decoder. Defaults to 2
-            decoder_output_dim:
-                Dimensionality of decoder output. Defaults to 16
-            hidden_size:
-                Size of hidden layers in encoder/decoder. Defaults to 128
-            temporal_width_future:
-                Width of output layer for future covariate projections. Defaults to 4
-            temporal_hidden_size_future:
-                Width of hidden layer for future covariate projections. Defaults to 32
-            temporal_decoder_hidden: Width of temporal decoder layers. Defaults to 32
-            use_layer_norm:
-                Whether to use layer normalization. Defaults to False
-            dropout:
-                Dropout probability. Defaults to 0.1
-            output_size:
-                Size of output. Defaults to 1
-            static_categoricals:
-                Names of static categorical variables. Defaults to None
-            static_reals:
-                Names of static continuous variables. Defaults to None
-            time_varying_categoricals_encoder:
-                Names of categorical variables for encoder. Defaults to None
-            time_varying_categoricals_decoder:
-                Names of categorical variables for decoder. Defaults to None
-            categorical_groups:
-                Dictionary mapping grouped categorical variables. Defaults to None
-            time_varying_reals_encoder:
-                Names of continuous variables for encoder. Defaults to None
-            time_varying_reals_decoder:
-                Names of continuous variables for decoder. Defaults to None
-            embedding_sizes: optional (default=None)
-                Dictionary mapping categorical variables to embedding sizes.
-            embedding_paddings: optional (default=None)
-                Names of categorical variables with zero-padded embeddings
-            embedding_labels:
-                Dictionary mapping indices to categorical labels. Defaults to None
-            x_reals:
-                Order of continuous variables in tensor. Defaults to None
-            x_categoricals:
-                Order of categorical variables in tensor. Defaults to None
-            logging_metrics:
-                Metrics logged during training. Defaults to standard metrics
-            **kwargs:
-                Additional arguments for pytorch_lightning.Module and
-                BaseModelWithCovariates
+        Parameters
+        ----------
+        input_chunk_length :int
+            Number of past time steps to use as input for themodel (per chunk).
+            This applies to the target series and future covariates
+            (if supported by the model).
+        output_chunk_length : int
+            Number of time steps the internal model predicts simultaneously (per chunk).
+            This also determines how many future values from future covariates
+            are used as input (if supported by the model).
+        num_encoder_layers : int, default=2
+            Number of residual blocks in the encoder
+        num_decoder_layers : int, default=2
+            Number of residual blocks in the decoder
+        decoder_output_dim : int, default=16
+            Dimensionality of the decoder's output
+        hidden_size : int, default=128
+            Size of hidden layers in the encoder and decoder.
+            Typically ranges from 32 to 128 when no covariates are used.
+        temporal_width_future (int): Width of the output layer in the residual block for future covariate projections.
+            If set to 0, bypasses feature projection and uses raw feature data. Defaults to 4.
+        temporal_hidden_size_future (int): Width of the hidden layer in the residual block for future covariate
+            projections. Defaults to 32.
+        temporal_decoder_hidden (int): Width of the layers in the temporal decoder. Defaults to 32.
+        use_layer_norm (bool): Whether to apply layer normalization in residual blocks. Defaults to False.
+        dropout (float): Dropout probability for fully connected layers. Defaults to 0.1.
+        output_size: Union[int, List[int]]: included as its required by deduce_default_output_parameters in
+            from_dataset function. Defaults to 1.
+        static_categoricals (List[str]): names of static categorical variables
+        static_reals (List[str]): names of static continuous variables
+        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
+        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
+        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
+        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
+        x_reals (List[str]): order of continuous variables in tensor passed to forward function
+        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
+        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
+            where the first integer denotes the number of categorical classes and the second the embedding size
+        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
+        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
+            embedding vector filled with zeros
+        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
+            can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
+            as bag of embeddings
+        logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+            Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+        **kwargs
+            Allows optional arguments to configure pytorch_lightning.Module, pytorch_lightning.Trainer, and
+            pytorch-forecasting's :class:BaseModelWithCovariates.
 
         Note:
             The model supports future covariates and static covariates.
-        """
-
+        """ # noqa: E501
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
