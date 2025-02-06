@@ -1,6 +1,6 @@
 """
 Timeseries models share a number of common characteristics. This module implements these in a common base class.
-"""
+"""  # noqa: E501
 
 from collections import namedtuple
 from copy import deepcopy
@@ -119,7 +119,8 @@ def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
     else:
         # make list instead but warn
         warnings.warn(
-            f"Not all dimensions are equal for tensors shapes. Example tensor {x[0].shape}. "
+            "Not all dimensions are equal for tensors shapes."
+            f" Example tensor {x[0].shape}. "
             "Returning list instead of torch.Tensor.",
             UserWarning,
         )
@@ -146,7 +147,7 @@ def _concatenate_output(
     Returns:
         Dict[str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]]:
             concatenated output
-    """
+    """  # noqa: E501
     output_cat = {}
     for name in output[0].keys():
         v0 = output[0][name]
@@ -208,7 +209,7 @@ class Prediction(PredictTuple, OutputMixIn):
 
 
 class PredictCallback(BasePredictionWriter):
-    """Internally used callback to capture predictions and optionally write them to disk."""
+    """Internally used callback to capture predictions and optionally write them to disk."""  # noqa: E501
 
     # see base class predict function for documentation of parameters
     def __init__(
@@ -265,7 +266,10 @@ class PredictCallback(BasePredictionWriter):
                 out = out[self.mode[1]]
             else:
                 raise ValueError(
-                    f"If a tuple is specified, the first element must be 'raw' - got {self.mode[0]} instead"
+                    (
+                        "If a tuple is specified, the first element must be 'raw' - got"
+                        f" {self.mode[0]} instead"
+                    )
                 )
         elif self.mode == "prediction":
             out = pl_module.to_prediction(out, **self.mode_kwargs)
@@ -461,7 +465,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     prediction = self.transform_output(prediction=normalized_prediction, target_scale=x["target_scale"])
                     return self.to_network_output(prediction=prediction)
 
-    """
+    """  # noqa: E501
 
     CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY = "__special_save__"
 
@@ -479,9 +483,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
         optimizer_params: Dict[str, Any] = None,
-        monotone_constaints: Dict[str, int] = None,
+        monotone_constraints: Dict[str, int] = {},
         output_transformer: Callable = None,
-        optimizer=None,
+        optimizer="adam",
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -504,7 +508,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
             optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
-            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
+            monotone_constraints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
@@ -514,46 +518,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``
                 or ``pytorch_optimizer``.
                 Alternatively, a class or function can be passed which takes parameters as first argument and
-                a `lr` argument (optionally also `weight_decay`). Defaults to
-                `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_,
-                if pytorch_optimizer is installed, otherwise "adam".
-        """
-        if monotone_constaints is None:
-            monotone_constaints = {}
+                a `lr` argument (optionally also `weight_decay`). Defaults to "adam".
+        """  # noqa: E501
+        if monotone_constraints is None:
+            monotone_constraints = {}
         super().__init__()
         # update hparams
         frame = inspect.currentframe()
         init_args = get_init_args(frame)
-
-        # TODO 1.2.0: remove warnings and change default optimizer to "adam"
-        if init_args["optimizer"] is None:
-            ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
-            if ptopt_in_env:
-                init_args["optimizer"] = "ranger"
-                warnings.warn(
-                    "In pytorch-forecasting models, from version 1.2.0, "
-                    "the default optimizer will be 'adam', in order to "
-                    "minimize the number of dependencies in default parameter settings. "
-                    "Users who wish to ensure their code continues using 'ranger' as optimizer "
-                    "should ensure that pytorch_optimizer is installed, and set the optimizer "
-                    "parameter explicitly to 'ranger'.",
-                    stacklevel=2,
-                )
-            else:
-                init_args["optimizer"] = "adam"
-                warnings.warn(
-                    "In pytorch-forecasting models, on versions 1.1.X, "
-                    "the default optimizer defaults to 'adam', "
-                    "if pytorch_optimizer is not installed, "
-                    "otherwise it defaults to 'ranger' from pytorch_optimizer. "
-                    "From version 1.2.0, the default optimizer will be 'adam' "
-                    "regardless of whether pytorch_optimizer is installed, in order to "
-                    "minimize the number of dependencies in default parameter settings. "
-                    "Users who wish to ensure their code continues using 'ranger' as optimizer "
-                    "should ensure that pytorch_optimizer is installed, and set the optimizer "
-                    "parameter explicitly to 'ranger'.",
-                    stacklevel=2,
-                )
 
         self.save_hyperparameters(
             {
@@ -629,7 +601,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Available inside lightning loops.
         :return: current trainer stage. One of ["train", "val", "test", "predict", "sanity_check"]
-        """
+        """  # noqa: E501
         return STAGE_STATES.get(self.trainer.state.stage, None)
 
     @property
@@ -663,14 +635,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Returns:
             torch.Tensor: rescaled prediction
-        """
+        """  # noqa: E501
         if loss is None:
             loss = self.loss
         if isinstance(loss, MultiLoss):
             out = loss.rescale_parameters(
                 prediction,
                 target_scale=target_scale,
-                encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder
+                encoder=self.output_transformer.normalizers,  # need to use normalizer per encoder # noqa: E501
             )
         else:
             out = loss.rescale_parameters(
@@ -804,7 +776,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Returns:
             Dict[str, Any]: log dictionary to be returned by training and validation steps
-        """
+        """  # noqa: E501
 
         prediction_kwargs = (
             {} if prediction_kwargs is None else deepcopy(prediction_kwargs)
@@ -850,7 +822,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]: tuple where the first
                 entry is a dictionary to which additional logging results can be added for consumption in the
                 ``on_epoch_end`` hook and the second entry is the model's output.
-        """
+        """  # noqa: E501
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
             if isinstance(y[0], (list, tuple)):
@@ -877,7 +849,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     y[1],
                 )
 
-        if self.training and len(self.hparams.monotone_constaints) > 0:
+        if self.training and len(self.hparams.monotone_constraints) > 0:
             # calculate gradient with respect to continous decoder features
             x["decoder_cont"].requires_grad_(True)
             assert not torch._C._get_cudnn_enabled(), (
@@ -907,18 +879,19 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             indices = torch.tensor(
                 [
                     self.hparams.x_reals.index(name)
-                    for name in self.hparams.monotone_constaints.keys()
+                    for name in self.hparams.monotone_constraints.keys()
                 ]
             )
             monotonicity = torch.tensor(
-                list(self.hparams.monotone_constaints.values()),
+                list(self.hparams.monotone_constraints.values()),
                 dtype=gradient.dtype,
                 device=gradient.device,
             )
             # add additionl loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
             monotinicity_loss = gradient.clamp_max(0).mean()
-            # multiply monotinicity loss by large number to ensure relevance and take to the power of 2
+            # multiply monotinicity loss by large number
+            # to ensure relevance and take to the power of 2
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
             if not self.predicting:
@@ -951,6 +924,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     loss = self.loss(prediction, y)
             else:
                 loss = None
+        # ensure that loss has require_grad
+        if loss is not None and loss.device.type == "mps":
+            loss.requires_grad_(True)
         self.log(
             f"{self.current_stage}_loss",
             loss,
@@ -977,7 +953,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             y (torch.Tensor): y as passed to the loss function by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
             prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
-        """
+        """  # noqa: E501
         # logging losses - for each target
         if prediction_kwargs is None:
             prediction_kwargs = {}
@@ -1060,7 +1036,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     # The conversion to a named tuple can be directly achieved with the `to_network_output` function.
                     return self.to_network_output(prediction=prediction)
 
-        """
+        """  # noqa: E501
         raise NotImplementedError()
 
     def on_epoch_end(self, outputs):
@@ -1182,7 +1158,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Returns:
             matplotlib figure
-        """
+        """  # noqa: E501
         if quantiles_kwargs is None:
             quantiles_kwargs = {}
         if prediction_kwargs is None:
@@ -1369,7 +1345,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Returns:
             Tuple[List]: first entry is list of optimizers and second is list of schedulers
-        """
+        """  # noqa: E501
         ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
         # either set a schedule of lrs or find it dynamically
         if self.hparams.optimizer_params is None:
@@ -1410,7 +1386,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             if not ptopt_in_env:
                 raise ImportError(
                     "optimizer 'ranger' requires pytorch_optimizer in the evironment. "
-                    "Please install pytorch_optimizer with `pip install pytorch_optimizer`."
+                    "Please install pytorch_optimizer with"
+                    "`pip install pytorch_optimizer`."
                 )
             from pytorch_optimizer import Ranger21
 
@@ -1430,7 +1407,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     ),
                 )
             else:
-                # if finding not limiting train batches, set iterations to dataloader length
+                # if finding not limiting train batches,
+                # set iterations to dataloader length
                 optimizer_params.setdefault(
                     "num_iterations", self.trainer.num_training_batches
                 )
@@ -1476,7 +1454,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     )
             else:
                 raise ValueError(
-                    f"Optimizer of self.hparams.optimizer={self.hparams.optimizer} unknown"
+                    (
+                        f"Optimizer of self.hparams.optimizer={self.hparams.optimizer}"
+                        " unknown"
+                    )
                 )
         else:
             raise ValueError(
@@ -1527,7 +1508,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Returns:
             BaseModel: Model that can be trained
-        """
+        """  # noqa: E501
         if "output_transformer" not in kwargs:
             kwargs["output_transformer"] = dataset.target_normalizer
         if "dataset_parameters" not in kwargs:
@@ -1691,7 +1672,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Prediction: if one of the ```return`` arguments is present,
                 prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
-        """
+        """  # noqa: E501
         # convert to dataloader
         if isinstance(data, pd.DataFrame):
             data = TimeSeriesDataSet.from_parameters(
@@ -1731,9 +1712,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         )
         trainer_kwargs.setdefault("enable_progress_bar", False)
         trainer_kwargs.setdefault("inference_mode", False)
-        assert (
-            "fast_dev_run" not in trainer_kwargs
-        ), "fast_dev_run should be passed as argument to predict and not in trainer_kwargs"
+        assert "fast_dev_run" not in trainer_kwargs, (
+            "fast_dev_run should be passed as"
+            " argument to predict and not in trainer_kwargs"
+        )
         log_level_lighting = logging.getLogger("lightning").getEffectiveLevel()
         log_level_pytorch_lightning = logging.getLogger(
             "pytorch_lightning"
@@ -1781,7 +1763,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Returns:
             Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]: output
-        """
+        """  # noqa: E501
         values = np.asarray(values)
         if isinstance(data, pd.DataFrame):  # convert to dataframe
             data = TimeSeriesDataSet.from_parameters(
@@ -1884,7 +1866,7 @@ class BaseModelWithCovariates(BaseModel):
         categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
             can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
             as bag of embeddings
-    """
+    """  # noqa: E501
 
     @property
     def target_positions(self) -> torch.LongTensor:
@@ -1973,7 +1955,7 @@ class BaseModelWithCovariates(BaseModel):
 
         Returns:
             LightningModule
-        """
+        """  # noqa: E501
         # assert fixed encoder and decoder length for the moment
         if allowed_encoder_known_variable_names is None:
             allowed_encoder_known_variable_names = (
@@ -2039,7 +2021,7 @@ class BaseModelWithCovariates(BaseModel):
 
         Returns:
             torch.Tensor: tensor with selected variables
-        """
+        """  # noqa: E501
         # select period
         if period == "encoder":
             x_cat = x["encoder_cat"]
@@ -2091,7 +2073,7 @@ class BaseModelWithCovariates(BaseModel):
 
         Returns:
             dictionary that can be used to plot averages with :py:meth:`~plot_prediction_actual_by_variable`
-        """
+        """  # noqa: E501
         support = {}  # histogram
         # averages
         averages_actual = {}
@@ -2218,7 +2200,7 @@ class BaseModelWithCovariates(BaseModel):
 
         Returns:
             Union[Dict[str, plt.Figure], plt.Figure]: matplotlib figure
-        """
+        """  # noqa: E501
         _check_matplotlib("plot_prediction_actual_by_variable")
 
         from matplotlib import pyplot as plt
@@ -2278,7 +2260,8 @@ class BaseModelWithCovariates(BaseModel):
                 else:
                     scaler = self.dataset_parameters["scalers"][name]
                 x = np.linspace(-data["std"], data["std"], bins)
-                # reversing normalization for group normalizer is not possible without sample level information
+                # reversing normalization for group normalizer
+                # is not possible without sample level information
                 if not isinstance(scaler, (GroupNormalizer, EncoderNormalizer)):
                     x = scaler.inverse_transform(x.reshape(-1, 1)).reshape(-1)
                     ax.set_xlabel(f"Normalized {name}")
@@ -2353,7 +2336,7 @@ class AutoRegressiveBaseModel(BaseModel):
             Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
             add at least the target variables with the corresponding lags to improve performance.
             Defaults to no lags, i.e. an empty dictionary.
-    """
+    """  # noqa: E501
 
     @classmethod
     def from_dataset(
@@ -2370,7 +2353,7 @@ class AutoRegressiveBaseModel(BaseModel):
 
         Returns:
             LightningModule
-        """
+        """  # noqa: E501
         kwargs.setdefault("target", dataset.target)
         # check that lags for targets are the same
         lags = {
@@ -2411,7 +2394,7 @@ class AutoRegressiveBaseModel(BaseModel):
         Returns:
             Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]: tuple of rescaled prediction and
                 normalized prediction (e.g. for input into next auto-regressive step)
-        """
+        """  # noqa: E501
         single_prediction = to_list(normalized_prediction_parameters)[0].ndim == 2
         if single_prediction:  # add time dimension as it is expected
             normalized_prediction_parameters = apply_to_list(
@@ -2574,7 +2557,7 @@ class AutoRegressiveBaseModel(BaseModel):
                         # predictions are already rescaled
                         return output
 
-        """
+        """  # noqa: E501
         # make predictions which are fed into next step
         output = []
         current_target = first_target
@@ -2597,7 +2580,8 @@ class AutoRegressiveBaseModel(BaseModel):
             )
             # save normalized output for lagged targets
             normalized_output.append(current_target)
-            # set output to unnormalized samples, append each target as n_batch_samples x n_random_samples
+            # set output to unnormalized samples, append each target as
+            # n_batch_samples x n_random_samples
 
             output.append(prediction)
         if isinstance(self.hparams.target, str):
@@ -2653,7 +2637,7 @@ class AutoRegressiveBaseModel(BaseModel):
 
         Returns:
             matplotlib figure
-        """
+        """  # noqa: E501
 
         prediction_kwargs = (
             {} if prediction_kwargs is None else deepcopy(prediction_kwargs)
@@ -2685,10 +2669,11 @@ class AutoRegressiveBaseModel(BaseModel):
 
         Returns:
             Dict[int, torch.LongTensor]: dictionary mapping integer lags to tensor of variable positions.
-        """
+        """  # noqa: E501
         raise Exception(
             "lagged targets can only be used with class inheriting "
-            "from AutoRegressiveBaseModelWithCovariates but not from AutoRegressiveBaseModel"
+            "from AutoRegressiveBaseModelWithCovariates but not"
+            " from AutoRegressiveBaseModel"
         )
 
 
@@ -2723,7 +2708,7 @@ class AutoRegressiveBaseModelWithCovariates(
         categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
             can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
             as bag of embeddings
-    """
+    """  # noqa: E501
 
     @property
     def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:
@@ -2732,7 +2717,7 @@ class AutoRegressiveBaseModelWithCovariates(
 
         Returns:
             Dict[int, torch.LongTensor]: dictionary mapping integer lags to tensor of variable positions.
-        """
+        """  # noqa: E501
         # todo: expand for categorical targets
         if len(self.hparams.target_lags) == 0:
             return {}

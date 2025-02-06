@@ -1,12 +1,12 @@
 [project]
 name = "pytorch-forecasting"
 readme = "README.md"         # Markdown files are supported
-version = "1.2.0"            # is being replaced automatically
+version = "1.3.0"            # is being replaced automatically
 
 authors = [
   {name = "Jan Beitner"},
 ]
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9,<3.14"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
@@ -15,6 +15,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Mathematics",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -42,9 +43,9 @@ dependencies = [
 #     - mqf2 - dependencies for multivariate quantile loss
 #     - graph - dependencies for graph based forecasting
 # - dev - the developer dependency set, for contributors to pytorch-forecasting
-# - CI related: e.g., dev, github-actions. Not for users of sktime.
+# - CI related: e.g., dev, github-actions. Not for users.
 #
-# soft dependencies are not required for the core functionality of sktime
+# soft dependencies are not required for the core functionality of pytorch-forecasting
 # but are required by popular estimators, e.g., prophet, tbats, etc.
 
 # all soft dependencies
@@ -136,7 +137,9 @@ exclude = [
   ".venv/",
   ".git/",
   ".history/",
+  "docs/source/tutorials/",
 ]
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C4", "S"]
@@ -160,6 +163,11 @@ extend-ignore = [
 known-first-party = ["pytorch_forecasting"]
 combine-as-imports = true
 force-sort-within-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+"pytorch_forecasting/data/timeseries.py" = [
+  "E501", # Line too long being fixed in #1746 To be removed after merging
+]
 
 [tool.black]
 line-length = 88
@@ -188,3 +196,6 @@ exclude = '''
 [tool.nbqa.mutate]
 ruff = 1
 black = 1
+
+[tool.nbqa.exclude]
+ruff = "docs/source/tutorials/" # ToDo: Remove this when fixing notebooks

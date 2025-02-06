@@ -234,4 +234,4 @@ def test_pickle(dataloaders_with_covariates, loss):
         loss=loss,
     )
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301

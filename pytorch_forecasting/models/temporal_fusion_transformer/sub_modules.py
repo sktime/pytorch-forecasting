@@ -51,9 +51,16 @@ class TimeDistributedInterpolation(nn.Module):
             self.gate = nn.Sigmoid()
 
     def interpolate(self, x):
-        upsampled = F.interpolate(
-            x.unsqueeze(1), self.output_size, mode="linear", align_corners=True
-        ).squeeze(1)
+        if x.device.type == "mps":
+            x = x.to("cpu")
+            upsampled = F.interpolate(
+                x.unsqueeze(1), self.output_size, mode="linear", align_corners=True
+            ).squeeze(1)
+            upsampled = upsampled.to("mps")
+        else:
+            upsampled = F.interpolate(
+                x.unsqueeze(1), self.output_size, mode="linear", align_corners=True
+            ).squeeze(1)
         if self.trainable:
             upsampled = upsampled * self.gate(self.mask.unsqueeze(0)) * 2.0
         return upsampled
@@ -284,7 +291,8 @@ class VariableSelectionNetwork(nn.Module):
         prescalers: Dict[str, nn.Linear] = None,
     ):
         """
-        Calculate weights for ``num_inputs`` variables  which are each of size ``input_size``
+        Calculate weights for ``num_inputs`` variables  which are each of size
+        ``input_size``
         """
         super().__init__()
 
@@ -374,7 +382,8 @@ class VariableSelectionNetwork(nn.Module):
 
             outputs = var_outputs * sparse_weights
             outputs = outputs.sum(dim=-1)
-        else:  # for one input, do not perform variable selection but just encoding
+        elif self.num_inputs == 1:
+            # for one input, do not perform variable selection but just encoding
             name = next(iter(self.single_variable_grns.keys()))
             variable_embedding = x[name]
             if name in self.prescalers:
@@ -389,6 +398,16 @@ class VariableSelectionNetwork(nn.Module):
             else:  # ndim == 2 -> batch size, hidden size, n_variables
                 sparse_weights = torch.ones(
                     outputs.size(0), 1, 1, device=outputs.device
+                )
+        else:  # for no input
+            outputs = torch.zeros(context.size(), device=context.device)
+            if outputs.ndim == 3:  # -> batch size, time, hidden size, n_variables
+                sparse_weights = torch.zeros(
+                    outputs.size(0), outputs.size(1), 1, 0, device=outputs.device
+                )
+            else:  # ndim == 2 -> batch size, hidden size, n_variables
+                sparse_weights = torch.zeros(
+                    outputs.size(0), 1, 0, device=outputs.device
                 )
         return outputs, sparse_weights
 

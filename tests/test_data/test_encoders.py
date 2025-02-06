@@ -176,7 +176,7 @@ def test_TorchNormalizer_dtype_consistency():
     """
     - Ensures that even for float64 `target_scale`, the transformation will not change the prediction dtype.
     - Ensure that target_scale will be of type float32 if method is 'identity'
-    """
+    """  # noqa: E501
     parameters = torch.tensor([[[366.4587]]])
     target_scale = torch.tensor([[427875.7500, 80367.4766]], dtype=torch.float64)
     assert (

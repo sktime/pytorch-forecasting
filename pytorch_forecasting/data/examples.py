@@ -28,7 +28,7 @@ def _get_data_by_filename(fname: str) -> Path:
     # check if file exists - download if necessary
     if not full_fname.exists():
         url = BASE_URL + fname
-        urlretrieve(url, full_fname)
+        urlretrieve(url, full_fname)  # noqa: S310
 
     return full_fname
 
@@ -82,7 +82,7 @@ def generate_ar_data(
 
     Returns:
         pd.DataFrame: data
-    """
+    """  # noqa: E501
     # sample parameters
     np.random.seed(seed)
     linear_trends = np.random.normal(size=n_series)[:, None] / timesteps

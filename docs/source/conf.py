@@ -94,11 +94,14 @@ def get_by_name(string: str):
     """
     Import by name and return imported module/function/class
 
-    Args:
-        string (str): module/function/class to import, e.g. 'pandas.read_csv' will return read_csv function as
-        defined by pandas
+    Parameters
+    ----------
+    string (str):
+        module/function/class to import, e.g. 'pandas.read_csv'
+        will return read_csv function as defined by pandas
 
-    Returns:
+    Returns
+    -------
         imported object
     """
     class_name = string.split(".")[-1]
@@ -182,3 +185,8 @@ intersphinx_mapping = {
 suppress_warnings = [
     "autosummary.import_cycle",
 ]
+
+# -----------nbsphinx extension ----------
+nbsphinx_execute = "never"  # always
+nbsphinx_allow_errors = False  # False
+nbsphinx_timeout = 600  # seconds

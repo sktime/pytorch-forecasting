@@ -181,12 +181,16 @@ class TransformMixIn:
     ) -> Dict[str, Callable]:
         """Return transformation functions.
 
-        Args:
-            transformation (Union[str, Dict[str, Callable]]): name of transformation or
-                dictionary with transformation information.
+        Parameters
+        ----------
+        transformation: Union[str, Dict[str, Callable]]
+            name of transformation or dictionary with transformation information.
 
-        Returns:
-            Dict[str, Callable]: dictionary with transformation functions (forward, reverse, inverse and inverse_torch)
+        Returns
+        -------
+        Dict[str, Callable]
+            dictionary with transformation functions
+            (forward, reverse, inverse and inverse_torch)
         """
         if isinstance(transformation, str):
             transform = cls.TRANSFORMATIONS[transformation]
@@ -204,8 +208,15 @@ class TransformMixIn:
 
         Uses ``transform`` attribute to determine how to apply transform.
 
-        Returns:
-            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
+        Parameters
+        ----------
+        y: Union[pd.Series, pd.DataFrame, np.ndarray, torch.Tensor]
+            input data
+
+        Returns
+        -------
+        Union[np.ndarray, torch.Tensor]
+            return rescaled series with type depending on input type
         """
         if self.transformation is None:
             return y
@@ -229,8 +240,15 @@ class TransformMixIn:
 
         Uses ``transform`` attribute to determine how to apply inverse transform.
 
-        Returns:
-            Union[np.ndarray, torch.Tensor]: return rescaled series with type depending on input type
+        Parameters
+        ----------
+        y: Union[pd.Series, np.ndarray, torch.Tensor]
+            input data
+
+        Returns
+        -------
+        Union[np.ndarray, torch.Tensor]
+            return rescaled series with type depending on input type
         """
         if self.transformation is None:
             pass
@@ -249,15 +267,18 @@ class NaNLabelEncoder(
 ):
     """
     Labelencoder that can optionally always encode nan and unknown classes (in transform) as class ``0``
-    """
+    """  # noqa: E501
 
     def __init__(self, add_nan: bool = False, warn: bool = True):
         """
         init NaNLabelEncoder
 
-        Args:
-            add_nan: if to force encoding of nan at 0
-            warn: if to warn if additional nans are added because items are unknown
+        Returns
+        -------
+        add_nan
+            if to force encoding of nan at 0
+        warn
+            if to warn if additional nans are added because items are unknown
         """
         self.add_nan = add_nan
         self.warn = warn
@@ -267,12 +288,17 @@ class NaNLabelEncoder(
         """
         Fit and transform data.
 
-        Args:
-            y (pd.Series): input data
-            overwrite (bool): if to overwrite current mappings or if to add to it.
+        Parameters
+        ----------
+        y: pd.Series
+            input data
+        overwrite: bool
+            if to overwrite current mappings or if to add to it.
 
-        Returns:
-            np.ndarray: encoded data
+        Returns
+        -------
+        np.ndarray
+            encoded data
         """
         self.fit(y, overwrite=overwrite)
         return self.transform(y)
@@ -280,14 +306,18 @@ class NaNLabelEncoder(
     @staticmethod
     def is_numeric(y: pd.Series) -> bool:
         """
-        Determine if series is numeric or not. Will also return True if series is a categorical type with
-        underlying integers.
+        Determine if series is numeric or not. Will also return True
+        if series is a categorical type with underlying integers.
 
-        Args:
-            y (pd.Series): series for which to carry out assessment
+        Parameters
+        ----------
+        y: pd.Series
+            series for which to carry out assessment
 
-        Returns:
-            bool: True if series is numeric
+        Returns
+        -------
+        bool
+            True if series is numeric
         """
         return y.dtype.kind in "bcif" or (
             isinstance(y.dtype, pd.CategoricalDtype)
@@ -298,12 +328,16 @@ class NaNLabelEncoder(
         """
         Fit transformer
 
-        Args:
-            y (pd.Series): input data to fit on
-            overwrite (bool): if to overwrite current mappings or if to add to it.
+        Parameters
+        ----------
+        y: pd.Series
+            input data to fit on
+        overwrite: bool
+            whether to overwrite current mappings or if to add to it.
 
-        Returns:
-            NaNLabelEncoder: self
+        Returns
+        -------
+        NaNLabelEncoder: self
         """
         if not overwrite and hasattr(self, "classes_"):
             offset = len(self.classes_)
@@ -341,23 +375,33 @@ class NaNLabelEncoder(
         """
         Encode iterable with integers.
 
-        Args:
-            y (Iterable): iterable to encode
-            return_norm: only exists for compatability with other encoders - returns a tuple if true.
-            target_scale: only exists for compatability with other encoders - has no effect.
-            ignore_na (bool): if to ignore na values and map them to zeros
-                (this is different to `add_nan=True` option which maps ONLY NAs to zeros
-                while this options maps the first class and NAs to zeros)
+        Parameters
+        ----------
+        y: Iterable
+            iterable to encode
+        return_norm
+            only exists for compatability with other encoders - returns a tuple if true.
+        target_scale
+            only exists for compatability with other encoders - has no effect.
+        ignore_na: bool
+            if to ignore na values and map them to zeros
+            (this is different to `add_nan=True` option which maps ONLY NAs to zeros
+            while this options maps the first class and NAs to zeros)
 
-        Returns:
-            Union[torch.Tensor, np.ndarray]: returns encoded data as torch tensor or numpy array depending on input type
+        Returns
+        -------
+        Union[torch.Tensor, np.ndarray]
+            returns encoded data as torch tensor or numpy array depending on input type
         """
         if self.add_nan:
             if self.warn:
                 cond = np.array([item not in self.classes_ for item in y])
                 if cond.any():
                     warnings.warn(
-                        f"Found {np.unique(np.asarray(y)[cond]).size} unknown classes which were set to NaN",
+                        (
+                            f"Found {np.unique(np.asarray(y)[cond]).size} "
+                            "unknown classes which were set to NaN"
+                        ),
                         UserWarning,
                     )
 
@@ -372,7 +416,8 @@ class NaNLabelEncoder(
                     encoded = [self.classes_[v] for v in y]
                 except KeyError as e:
                     raise KeyError(
-                        f"Unknown category '{e.args[0]}' encountered. Set `add_nan=True` to allow unknown categories"
+                        f"Unknown category '{e.args[0]}' encountered. "
+                        "Set `add_nan=True` to allow unknown categories"
                     )
 
         if isinstance(y, torch.Tensor):
@@ -389,14 +434,20 @@ class NaNLabelEncoder(
         """
         Decode data, i.e. transform from integers to labels.
 
-        Args:
-            y (Union[torch.Tensor, np.ndarray]): encoded data
+        Parameters
+        ----------
+        y: Union[torch.Tensor, np.ndarray]
+            encoded data
 
-        Raises:
-            KeyError: if unknown elements should be decoded
+        Raises
+        ------
+        KeyError
+            if unknown elements should be decoded
 
-        Returns:
-            np.ndarray: decoded data
+        Returns
+        -------
+        np.ndarray
+            decoded data
         """
         if y.max() >= len(self.classes_vector_):
             raise KeyError("New unknown values detected")
@@ -405,17 +456,23 @@ class NaNLabelEncoder(
         decoded = self.classes_vector_[y]
         return decoded
 
-    def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def __call__(self, data: dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Extract prediction from network output. Does not map back to input
         categories as this would require a numpy tensor without grad-abilities.
 
-        Args:
-            data (Dict[str, torch.Tensor]): Dictionary with entries
-                * prediction: data to de-scale
+        Parameters
+        ----------
+        data: dict[str, torch.Tensor]
+            Dictionary with entries
 
-        Returns:
-            torch.Tensor: prediction
+            * prediction: data to de-scale
+            * target_scale: center and scale of data
+
+        Returns
+        -------
+        torch.Tensor
+            prediction
         """
         return data["prediction"]
 
@@ -425,8 +482,10 @@ class NaNLabelEncoder(
 
         All parameters are unused - exists for compatability.
 
-        Returns:
-            np.ndarray: zero array.
+        Returns
+        -------
+        np.ndarray
+            zero array.
         """
         return np.zeros(2, dtype=np.float64)
 
@@ -446,30 +505,42 @@ class TorchNormalizer(
         method_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        Args:
-            method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
-                or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
-            method_kwargs (Dict[str, Any], optional): Dictionary of method specific arguments as listed below
-                * "robust" method: "upper", "lower", "center" quantiles defaulting to 0.75, 0.25 and 0.5
-            center (bool, optional): If to center the output to zero. Defaults to True.
-            transformation (Union[str, Dict[str, Callable]] optional): Transform values before
-                applying normalizer. Available options are
+        Parameters
+        ----------
+        method: str, optional, default="standard"
+            method to rescale series. Either "identity", "standard" (standard scaling)
+            or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
+        method_kwargs: Dict[str, Any], optional, default=None
+            Dictionary of method specific arguments as listed below
 
-                * None (default): No transformation of values
-                * log: Estimate in log-space leading to a multiplicative model
-                * log1p: Estimate in log-space but add 1 to values before transforming for stability
-                  (e.g. if many small values <<1 are present).
-                  Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
-                * logit: Apply logit transformation on values that are between 0 and 1
-                * count: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
-                * softplus: Apply softplus to output (inverse transformation) and inverse softplus to input
-                    (transformation)
-                * relu: Apply max(0, x) to output
-                * Dict[str, Callable] of PyTorch functions that transforms and inversely transforms values.
-                  ``forward`` and ``reverse`` entries are required. ``inverse`` transformation is optional and
-                  should be defined if ``reverse`` is not the inverse of the forward transformation. ``inverse_torch``
-                  can be defined to provide a torch distribution transform for inverse transformations.
-        """
+            - "robust" method: "upper", "lower", "center" quantiles defaulting to 0.75, 0.25 and 0.5
+
+        center: bool, optional, default=True
+            If to center the output to zero. Defaults to True.
+        transformation: Union[str, Dict[str, Callable]] optional, default=None
+            Transform values before applying normalizer. Available options are
+
+            - None (default): No transformation of values
+            - log: Estimate in log-space leading to a multiplicative model
+            - log1p: Estimate in log-space but add 1 to values before transforming for stability
+
+                (e.g. if many small values <<1 are present).
+                Note, that inverse transform is still only `torch.exp()` and
+                not `torch.expm1()`.
+
+            - logit: Apply logit transformation on values that are between 0 and 1
+            - count: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
+            - softplus: Apply softplus to output (inverse transformation) and inverse softplus to input (transformation)
+            - relu: Apply max(0, x) to output
+            - Dict[str, Callable] of PyTorch functions that transforms and inversely transforms values.
+
+                ``forward`` and ``reverse`` entries are required. ``inverse``
+                transformation is optional and
+                should be defined if ``reverse`` is not the
+                inverse of the forward transformation. ``inverse_torch``
+                can be defined to provide a torch distribution transform for
+                inverse transformations.
+        """  # noqa E501
         self.method = method
         assert method in [
             "standard",
@@ -487,8 +558,10 @@ class TorchNormalizer(
         """
         Returns parameters that were used for encoding.
 
-        Returns:
-            torch.Tensor: First element is center of data and second is scale
+        Returns
+        -------
+        torch.Tensor
+            First element is center of data and second is scale
         """
         return torch.stack(
             [torch.as_tensor(self.center_), torch.as_tensor(self.scale_)], dim=-1
@@ -498,11 +571,14 @@ class TorchNormalizer(
         """
         Fit transformer, i.e. determine center and scale of data
 
-        Args:
-            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
+        Parameters
+        ----------
+        y: Union[pd.Series, np.ndarray, torch.Tensor]
+            input data
 
-        Returns:
-            TorchNormalizer: self
+        Returns
+        -------
+        TorchNormalizer: self
         """
         y = self.preprocess(y)
         self._set_parameters(y_center=y, y_scale=y)
@@ -516,9 +592,12 @@ class TorchNormalizer(
         """
         Calculate parameters for scale and center based on input timeseries
 
-        Args:
-            y_center (Union[pd.Series, np.ndarray, torch.Tensor]): timeseries for calculating center
-            y_scale (Union[pd.Series, np.ndarray, torch.Tensor]): timeseries for calculating scale
+        Parameters
+        ----------
+        y_center: Union[pd.Series, np.ndarray, torch.Tensor]
+            timeseries for calculating center
+        y_scale: Union[pd.Series, np.ndarray, torch.Tensor]
+            timeseries for calculating scale
         """
         if isinstance(y_center, torch.Tensor):
             eps = torch.finfo(y_center.dtype).eps
@@ -529,8 +608,10 @@ class TorchNormalizer(
                 self.center_ = torch.zeros(y_center.size()[:-1])
                 self.scale_ = torch.ones(y_scale.size()[:-1])
             elif isinstance(y_center, (np.ndarray, pd.Series, pd.DataFrame)):
-                # numpy default type is numpy.float64 while torch default type is torch.float32 (if not changed)
-                # therefore, we first generate torch tensors (with torch default type) and then
+                # numpy default type is numpy.float64 while torch default
+                # type is torch.float32 (if not changed)
+                # therefore, we first generate torch tensors
+                # (with torch default type) and then
                 # convert them to numpy arrays
                 self.center_ = torch.zeros(y_center.shape[:-1]).numpy()
                 self.scale_ = torch.ones(y_scale.shape[:-1]).numpy()
@@ -548,7 +629,8 @@ class TorchNormalizer(
             else:
                 self.center_ = np.mean(y_center)
                 self.scale_ = np.std(y_scale) + eps
-            # correct numpy scalar dtype promotion, e.g. fix type from `np.float32(0.0) + 1e-8` gives `np.float64(1e-8)`
+            # correct numpy scalar dtype promotion, e.g. fix type from
+            # `np.float32(0.0) + 1e-8` gives `np.float64(1e-8)`
             if isinstance(self.scale_, np.ndarray):
                 self.scale_ = self.scale_.astype(y_scale.dtype)
 
@@ -606,15 +688,20 @@ class TorchNormalizer(
         """
         Rescale data.
 
-        Args:
-            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
-            return_norm (bool, optional): [description]. Defaults to False.
-            target_scale (torch.Tensor): target scale to use instead of fitted center and scale
+        Parameters
+        ----------
+        y: Union[pd.Series, np.ndarray, torch.Tensor]
+            input data
+        return_norm: bool, optional, default=False
+            [description]. Defaults to False.
+        target_scale: torch.Tensor, optional, default=None
+            target scale to use instead of fitted center and scale
 
-        Returns:
-            Union[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray], Union[np.ndarray, torch.Tensor]]: rescaled
-                data with type depending on input type. returns second element if ``return_norm=True``
-        """
+        Returns
+        -------
+        Union[Tuple[Union[np.ndarray, torch.Tensor],np.ndarray],Union[np.ndarray, torch.Tensor]]
+            rescaled data with type depending on input type. returns second element if ``return_norm=True``
+        """  # noqa: E501
         y = self.preprocess(y)
         # get center and scale
         if target_scale is None:
@@ -643,11 +730,15 @@ class TorchNormalizer(
         """
         Inverse scale.
 
-        Args:
-            y (torch.Tensor): scaled data
+        Parameters
+        ----------
+        y: torch.Tensor
+            scaled data
 
-        Returns:
-            torch.Tensor: de-scaled data
+        Returns
+        -------
+        torch.Tensor
+            de-scaled data
         """
         return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
 
@@ -655,13 +746,18 @@ class TorchNormalizer(
         """
         Inverse transformation but with network output as input.
 
-        Args:
-            data (Dict[str, torch.Tensor]): Dictionary with entries
-                * prediction: data to de-scale
-                * target_scale: center and scale of data
+        Parameters
+        ----------
+        data: Dict[str, torch.Tensor]
+            Dictionary with entries
 
-        Returns:
-            torch.Tensor: de-scaled data
+            * prediction: data to de-scale
+            * target_scale: center and scale of data
+
+        Returns
+        -------
+        torch.Tensor
+            de-scaled data
         """
         # ensure output dtype matches input dtype
         dtype = data["prediction"].dtype
@@ -703,33 +799,42 @@ class EncoderNormalizer(TorchNormalizer):
         """
         Initialize
 
-        Args:
-            method (str, optional): method to rescale series. Either "identity", "standard" (standard scaling)
-                or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
-            method_kwargs (Dict[str, Any], optional): Dictionary of method specific arguments as listed below
+        Parameters
+        ----------
+        method: str, optional, default="standard"
+            method to rescale series. Either "identity", "standard" (standard scaling)
+            or "robust" (scale using quantiles 0.25-0.75). Defaults to "standard".
+        method_kwargs: Dict[str, Any], optional, default=None
+            Dictionary of method specific arguments as listed below
+
                 * "robust" method: "upper", "lower", "center" quantiles defaulting to 0.75, 0.25 and 0.5
-            center (bool, optional): If to center the output to zero. Defaults to True.
-            max_length(Union[int, List[int]], optional): Maximum length to take into account for calculating
-                parameters. If tuple, first length is maximum length for calculating center and second is maximum
-                length for calculating scale. Defaults to entire length of time series.
-            transformation (Union[str, Tuple[Callable, Callable]] optional): Transform values before
-                applying normalizer. Available options are
+
+        center: bool, optional, default=True
+            If to center the output to zero. Defaults to True.
+        max_length: Union[int, List[int]], optional
+            Maximum length to take into account for calculating parameters.
+            If tuple, first length is maximum length for calculating center and second is maximum
+            length for calculating scale. Defaults to entire length of time series.
+        transformation: Union[str, Tuple[Callable, Callable]] optional:
+            Transform values before applying normalizer. Available options are
 
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
                 * log1p: Estimate in log-space but add 1 to values before transforming for stability
+
                     (e.g. if many small values <<1 are present).
                     Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
+
                 * logit: Apply logit transformation on values that are between 0 and 1
                 * count: Apply softplus to output (inverse transformation) and x + 1 to input (transformation)
-                * softplus: Apply softplus to output (inverse transformation) and inverse softplus to input
-                    (transformation)
+                * softplus: Apply softplus to output (inverse transformation) and inverse softplus to input (transformation)
                 * relu: Apply max(0, x) to output
                 * Dict[str, Callable] of PyTorch functions that transforms and inversely transforms values.
+
                   ``forward`` and ``reverse`` entries are required. ``inverse`` transformation is optional and
                   should be defined if ``reverse`` is not the inverse of the forward transformation. ``inverse_torch``
                   can be defined to provide a torch distribution transform for inverse transformations.
-        """
+        """  # noqa: E501
         method_kwargs = deepcopy(method_kwargs) if method_kwargs is not None else {}
         super().__init__(
             method=method,
@@ -743,11 +848,14 @@ class EncoderNormalizer(TorchNormalizer):
         """
         Fit transformer, i.e. determine center and scale of data
 
-        Args:
-            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
+        Parameters
+        ----------
+        y: Union[pd.Series, np.ndarray, torch.Tensor]
+            input data
 
-        Returns:
-            TorchNormalizer: self
+        Returns
+        -------
+        TorchNormalizer: self
         """
         # reduce size of time series - take only max length
         if self.max_length is None:
@@ -784,12 +892,17 @@ class EncoderNormalizer(TorchNormalizer):
         """
         Slice pandas data frames, numpy arrays and tensors.
 
-        Args:
-            x (Union[pd.Series, np.ndarray, torch.Tensor]): object to slice
-            s (slice): slice, e.g. ``slice(None, -5)```
+        Parameters
+        ----------
+        x: Union[pd.Series, np.ndarray, torch.Tensor]
+            object to slice
+        s: slice
+            slice, e.g. ``slice(None, -5)```
 
-        Returns:
-            Union[pd.Series, np.ndarray, torch.Tensor]: sliced object
+        Returns
+        -------
+        Union[pd.Series, np.ndarray, torch.Tensor]
+            sliced object
         """
 
         if isinstance(x, (pd.DataFrame, pd.Series)):
@@ -802,8 +915,8 @@ class GroupNormalizer(TorchNormalizer):
     """
     Normalizer that scales by groups.
 
-    For each group a scaler is fitted and applied. This scaler can be used as target normalizer or
-    also to normalize any other variable.
+    For each group a scaler is fitted and applied. This scaler can be used
+    as target normalizer or also to normalize any other variable.
     """
 
     def __init__(
@@ -818,23 +931,33 @@ class GroupNormalizer(TorchNormalizer):
         """
         Group normalizer to normalize a given entry by groups. Can be used as target normalizer.
 
-        Args:
-            method (str, optional): method to rescale series. Either "standard" (standard scaling) or "robust"
-                (scale using quantiles 0.25-0.75). Defaults to "standard".
-            method_kwargs (Dict[str, Any], optional): Dictionary of method specific arguments as listed below
+        Parameters
+        ----------
+        method: str, optional, default="standard"
+            method to rescale series. Either "standard" (standard scaling) or "robust"
+            (scale using quantiles 0.25-0.75). Defaults to "standard".
+        method_kwargs: Dict[str, Any], optional, default=None
+            Dictionary of method specific arguments as listed below
+
                 * "robust" method: "upper", "lower", "center" quantiles defaulting to 0.75, 0.25 and 0.5
-            groups (List[str], optional): Group names to normalize by. Defaults to [].
-            center (bool, optional): If to center the output to zero. Defaults to True.
-            scale_by_group (bool, optional): If to scale the output by group, i.e. norm is calculated as
-                ``(group1_norm * group2_norm * ...) ^ (1 / n_groups)``. Defaults to False.
-            transformation (Union[str, Tuple[Callable, Callable]] optional): Transform values before
-                applying normalizer. Available options are
+
+        groups: List[str], optional, default=[]
+            Group names to normalize by. Defaults to [].
+        center: bool, optional, default=True
+            If to center the output to zero. Defaults to True.
+        scale_by_group: bool, optional
+            If to scale the output by group, i.e. norm is calculated as
+            ``(group1_norm * group2_norm * ...) ^ (1 / n_groups)``. Defaults to False.
+        transformation: Union[str, Tuple[Callable, Callable]] optional, default=None):
+            Transform values before applying normalizer. Available options are
 
                 * None (default): No transformation of values
                 * log: Estimate in log-space leading to a multiplicative model
                 * log1p: Estimate in log-space but add 1 to values before transforming for stability
+
                     (e.g. if many small values <<1 are present).
                     Note, that inverse transform is still only `torch.exp()` and not `torch.expm1()`.
+
                 * logit: Apply logit transformation on values that are between 0 and 1
                 * count: Apply softplus to output (inverse transformation) and x + 1 to input
                     (transformation)
@@ -846,7 +969,7 @@ class GroupNormalizer(TorchNormalizer):
                   should be defined if ``reverse`` is not the inverse of the forward transformation. ``inverse_torch``
                   can be defined to provide a torch distribution transform for inverse transformations.
 
-        """
+        """  # noqa: E501
         self.groups = groups
         self._groups = list(groups) if groups is not None else []
         self.scale_by_group = scale_by_group
@@ -862,12 +985,16 @@ class GroupNormalizer(TorchNormalizer):
         """
         Determine scales for each group
 
-        Args:
-            y (pd.Series): input data
-            X (pd.DataFrame): dataframe with columns for each group defined in ``groups`` parameter.
+        Parameters
+        ----------
+        y: pd.Series
+            input data
+        X: pd.DataFrame
+            dataframe with columns for each group defined in ``groups`` parameter.
 
-        Returns:
-            self
+        Returns
+        -------
+        self
         """
         y = self.preprocess(y)
         eps = np.finfo(np.float16).eps
@@ -1014,8 +1141,10 @@ class GroupNormalizer(TorchNormalizer):
         """
         Names of determined scales.
 
-        Returns:
-            List[str]: list of names
+        Returns
+        -------
+        List[str]
+            list of names
         """
         return ["center", "scale"]
 
@@ -1025,21 +1154,26 @@ class GroupNormalizer(TorchNormalizer):
         """
         Fit normalizer and scale input data.
 
-        Args:
-            y (pd.Series): data to scale
-            X (pd.DataFrame): dataframe with ``groups`` columns
-            return_norm (bool, optional): If to return . Defaults to False.
+        Parameters
+        ----------
+        y: pd.Series
+            data to scale
+        X: pd.DataFrame
+            dataframe with ``groups`` columns
+        return_norm: bool, optional, default=False
+            If to return . Defaults to False.
 
-        Returns:
-            Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
-                as second element
+        Returns
+        -------
+        Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]
+            Scaled data, if ``return_norm=True``, returns also scales as second element
         """
         return self.fit(y, X).transform(y, X, return_norm=return_norm)
 
     def inverse_transform(self, y: pd.Series, X: pd.DataFrame):
         """
         Rescaling data to original scale - not implemented - call class with target scale instead.
-        """
+        """  # noqa: E501
         raise NotImplementedError()
 
     def transform(
@@ -1052,15 +1186,21 @@ class GroupNormalizer(TorchNormalizer):
         """
         Scale input data.
 
-        Args:
-            y (pd.Series): data to scale
-            X (pd.DataFrame): dataframe with ``groups`` columns
-            return_norm (bool, optional): If to return . Defaults to False.
-            target_scale (torch.Tensor): target scale to use instead of fitted center and scale
+        Parameters
+        ----------
+        y: pd.Series
+            data to scale
+        X: pd.DataFrame
+            dataframe with ``groups`` columns
+        return_norm: bool, optional, default=False
+            If to return . Defaults to False.
+        target_scale: torch.Tensor
+            target scale to use instead of fitted center and scale
 
-        Returns:
-            Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]: Scaled data, if ``return_norm=True``, returns also scales
-                as second element
+        Returns
+        -------
+        Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]
+            Scaled data, if ``return_norm=True``, returns also scales as second element
         """
         # # check if arguments are wrong way round
         if isinstance(y, pd.DataFrame) and not isinstance(X, pd.DataFrame):
@@ -1076,13 +1216,18 @@ class GroupNormalizer(TorchNormalizer):
         """
         Get fitted scaling parameters for a given group.
 
-        Args:
-            groups (Union[torch.Tensor, list, tuple]): group ids for which to get parameters
-            group_names (List[str], optional): Names of groups corresponding to positions
-                in ``groups``. Defaults to None, i.e. the instance attribute ``groups``.
+        Parameters
+        ----------
+        groups: Union[torch.Tensor, list, tuple]
+            group ids for which to get parameters
+        group_names: List[str], optional, default=None
+            Names of groups corresponding to positions in ``groups``.
+            Defaults to None, i.e. the instance attribute ``groups``.
 
-        Returns:
-            np.ndarray: parameters used for scaling
+        Returns
+        -------
+        np.ndarray
+            parameters used for scaling
         """
         if isinstance(groups, torch.Tensor):
             groups = groups.tolist()
@@ -1121,11 +1266,16 @@ class GroupNormalizer(TorchNormalizer):
         """
         Get scaling parameters for multiple groups.
 
-        Args:
-            X (pd.DataFrame): dataframe with ``groups`` columns
+        Parameters
+        ----------
+        X: pd.DataFrame
+            dataframe with ``groups`` columns
 
-        Returns:
-            pd.DataFrame: dataframe with scaling parameterswhere each row corresponds to the input dataframe
+        Returns
+        -------
+        pd.DataFrame
+            dataframe with scaling parameterswhere each row corresponds
+            to the input dataframe
         """
         if len(self._groups) == 0:
             norm = np.asarray([self.norm_["center"], self.norm_["scale"]]).reshape(
@@ -1166,8 +1316,10 @@ class MultiNormalizer(TorchNormalizer):
 
     def __init__(self, normalizers: List[TorchNormalizer]):
         """
-        Args:
-            normalizers (List[TorchNormalizer]): list of normalizers to apply to targets
+        Parameters
+        ----------
+        normalizers: List[TorchNormalizer]
+            list of normalizers to apply to targets
         """
         self.normalizers = normalizers
 
@@ -1177,11 +1329,14 @@ class MultiNormalizer(TorchNormalizer):
         """
         Fit transformer, i.e. determine center and scale of data
 
-        Args:
-            y (Union[pd.Series, np.ndarray, torch.Tensor]): input data
+        Parameters
+        ----------
+        y: Union[pd.Series, np.ndarray, torch.Tensor]
+            input data
 
-        Returns:
-            MultiNormalizer: self
+        Returns
+        -------
+        MultiNormalizer: self
         """
         if isinstance(y, pd.DataFrame):
             y = y.to_numpy()
@@ -1199,8 +1354,10 @@ class MultiNormalizer(TorchNormalizer):
         """
         Return normalizer.
 
-        Args:
-            idx (int): metric index
+        Parameters
+        ----------
+        idx: int
+            metric index
         """
         return self.normalizers[idx]
 
@@ -1229,17 +1386,23 @@ class MultiNormalizer(TorchNormalizer):
         """
         Scale input data.
 
-        Args:
-            y (Union[pd.DataFrame, np.ndarray, torch.Tensor]): data to scale
-            X (pd.DataFrame): dataframe with ``groups`` columns. Only necessary if :py:class:`~GroupNormalizer`
-                is among normalizers
-            return_norm (bool, optional): If to return . Defaults to False.
-            target_scale (List[torch.Tensor]): target scale to use instead of fitted center and scale
+        Parameters
+        ----------
+        y: Union[pd.DataFrame, np.ndarray, torch.Tensor]
+            data to scale
+        X: pd.DataFrame
+            dataframe with ``groups`` columns. Only necessary
+            if :py:class:`~GroupNormalizer` is among normalizers
+        return_norm: bool, optional
+            If to return . Defaults to False.
+        target_scale: List[torch.Tensor]
+            target scale to use instead of fitted center and scale
 
-        Returns:
-            Union[List[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray]], List[Union[np.ndarray, torch.Tensor]]]:
+        Returns
+        -------
+        Union[List[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray]], List[Union[np.ndarray, torch.Tensor]]]
                 List of scaled data, if ``return_norm=True``, returns also scales as second element
-        """
+        """  # noqa: E501
         if isinstance(y, pd.DataFrame):
             y = y.to_numpy().transpose()
 
@@ -1270,13 +1433,18 @@ class MultiNormalizer(TorchNormalizer):
         """
         Inverse transformation but with network output as input.
 
-        Args:
-            data (Dict[str, Union[List[torch.Tensor], torch.Tensor]]): Dictionary with entries
-                * prediction: list of data to de-scale
-                * target_scale: list of center and scale of data
+        Parameters
+        ----------
+        data: Dict[str, Union[List[torch.Tensor], torch.Tensor]])
+            Dictionary with entries
 
-        Returns:
-            List[torch.Tensor]: list of de-scaled data
+            * prediction: list of data to de-scale
+            * target_scale: list of center and scale of data
+
+        Returns
+        -------
+        List[torch.Tensor]
+            list of de-scaled data
         """
         denormalized = [
             normalizer(
@@ -1293,8 +1461,10 @@ class MultiNormalizer(TorchNormalizer):
         """
         Returns parameters that were used for encoding.
 
-        Returns:
-            List[torch.Tensor]: First element is center of data and second is scale
+        Returns
+        -------
+        List[torch.Tensor]
+            First element is center of data and second is scale
         """
         return [
             normalizer.get_parameters(*args, **kwargs)
@@ -1305,16 +1475,20 @@ class MultiNormalizer(TorchNormalizer):
         """
         Return dynamically attributes.
 
-        Return attributes if defined in this class. If not, create dynamically attributes based on
-        attributes of underlying normalizers that are lists. Create functions if necessary.
-        Arguments to functions are distributed to the functions if they are lists and their length
-        matches the number of normalizers. Otherwise, they are directly passed to each callable of the
-        normalizers.
+        Return attributes if defined in this class. If not,
+        create dynamically attributes based on attributes of underlying normalizers
+        that are lists. Create functions if necessary. Arguments to functions are
+        distributed to the functions if they are lists and their length matches the
+        number of normalizers. Otherwise, they are directly passed to each callable of
+        the normalizers.
 
-        Args:
-            name (str): name of attribute
+        Parameters
+        name: str
+            name of attribute
 
-        Returns:
+        Returns
+        -------
+        ret
             attributes of this class or list of attributes of underlying class
         """
         try:
@@ -1327,7 +1501,8 @@ class MultiNormalizer(TorchNormalizer):
                     n = len(self.normalizers)
 
                     def func(*args, **kwargs):
-                        # if arg/kwarg is list and of length normalizers, then apply each part to a normalizer.
+                        # if arg/kwarg is list and of length normalizers,
+                        # then apply each part to a normalizer.
                         #  otherwise pass it directly to all normalizers
                         results = []
                         for idx, norm in enumerate(self.normalizers):
