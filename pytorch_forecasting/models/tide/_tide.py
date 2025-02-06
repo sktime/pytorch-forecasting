@@ -115,7 +115,7 @@ class TiDEModel(BaseModelWithCovariates):
 
         Note:
             The model supports future covariates and static covariates.
-        """ # noqa: E501
+        """  # noqa: E501
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
