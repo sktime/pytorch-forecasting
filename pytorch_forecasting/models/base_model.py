@@ -485,7 +485,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         optimizer_params: Dict[str, Any] = None,
         monotone_constraints: Dict[str, int] = {},
         output_transformer: Callable = None,
-        optimizer=None,
+        optimizer="adam",
     ):
         """
         BaseModel for timeseries forecasting from which to inherit from
@@ -518,9 +518,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``
                 or ``pytorch_optimizer``.
                 Alternatively, a class or function can be passed which takes parameters as first argument and
-                a `lr` argument (optionally also `weight_decay`). Defaults to
-                `"ranger" <https://pytorch-optimizers.readthedocs.io/en/latest/optimizer_api.html#ranger21>`_,
-                if pytorch_optimizer is installed, otherwise "adam".
+                a `lr` argument (optionally also `weight_decay`). Defaults to "adam".
         """  # noqa: E501
         if monotone_constraints is None:
             monotone_constraints = {}
@@ -528,38 +526,6 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         # update hparams
         frame = inspect.currentframe()
         init_args = get_init_args(frame)
-
-        # TODO 1.2.0: remove warnings and change default optimizer to "adam"
-        if init_args["optimizer"] is None:
-            ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
-            if ptopt_in_env:
-                init_args["optimizer"] = "ranger"
-                warnings.warn(
-                    "In pytorch-forecasting models, from version 1.2.0, "
-                    "the default optimizer will be 'adam', in order to "
-                    "minimize the number of dependencies in default"
-                    " parameter settings. Users who wish to ensure their"
-                    " code continues using 'ranger' as optimizer should ensure"
-                    " that pytorch_optimizer is installed, and set the optimizer "
-                    "parameter explicitly to 'ranger'.",
-                    stacklevel=2,
-                )
-            else:
-                init_args["optimizer"] = "adam"
-                warnings.warn(
-                    "In pytorch-forecasting models, on versions 1.1.X, "
-                    "the default optimizer defaults to 'adam', "
-                    "if pytorch_optimizer is not installed, "
-                    "otherwise it defaults to 'ranger' from pytorch_optimizer. "
-                    "From version 1.2.0, the default optimizer will be 'adam' "
-                    "regardless of whether pytorch_optimizer is installed, in order to "
-                    "minimize the number of dependencies in default parameter"
-                    " settings. Users who wish to ensure their code continues"
-                    " using 'ranger' as optimizer should ensure that pytorch_optimizer"
-                    " is installed, and set the optimizer "
-                    "parameter explicitly to 'ranger'.",
-                    stacklevel=2,
-                )
 
         self.save_hyperparameters(
             {

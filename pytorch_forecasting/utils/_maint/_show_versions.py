@@ -57,7 +57,7 @@ def _get_deps_info(deps=None, source="distributions"):
     Parameters
     ----------
     deps : optional, list of strings with package names
-        if None, behaves as deps = ["sktime"].
+        if None, behaves as deps = ["pytorch-forecasting"].
 
     source : str, optional one of "distributions" (default) or "import"
         source of version information
