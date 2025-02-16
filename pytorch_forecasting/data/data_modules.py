@@ -62,8 +62,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
     randomize_length : Union[None, Tuple[float, float], bool], default=False
         Whether to randomize input sequence length.
-    predict_mode : bool, default=False
-        Whether the module is in prediction mode.
     batch_size : int, default=32
         Batch size for DataLoader.
     num_workers : int, default=0
@@ -314,7 +312,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self.val_processed, self.val_windows, self.add_relative_time_idx
                 )
 
-        if stage is None or stage == "test":
+        elif stage is None or stage == "test":
             if not hasattr(self, "test_dataset"):
                 self.test_processed = self._preprocess_data(self._test_indices)
                 self.test_windows = self._create_windows(self.test_processed)
@@ -322,6 +320,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
                     self.test_processed, self.test_windows, self.add_relative_time_idx
                 )
+        elif stage == "predict":
+            predict_indices = torch.arange(len(self.time_series_dataset))
+            self.predict_processed = self._preprocess_data(predict_indices)
+            self.predict_windows = self._create_windows(self.predict_processed)
+            self.predict_dataset = self._ProcessedEncoderDecoderDataset(
+                self.predict_processed, self.predict_windows, self.add_relative_time_idx
+            )
 
     def train_dataloader(self):
         return DataLoader(
@@ -343,6 +348,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            collate_fn=self.collate_fn,
+        )
+
+    def predict_dataloader(self):
+        return DataLoader(
+            self.predict_dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             collate_fn=self.collate_fn,
