@@ -2668,3 +2668,213 @@ def _coerce_to_dict(obj):
     if obj is None:
         return {}
     return deepcopy(obj)
+
+
+class TimeSeries(Dataset):
+    """PyTorch Dataset for time series data stored in pandas DataFrame.
+
+    ``__getitem__`` returns:
+
+    * ``t``: tensor of shape (n_timepoints)
+      Time index for each time point in the past or present. Aligned with ``y``,
+      and ``x`` not ending in ``f``.
+    * ``y``: tensor of shape (n_timepoints, n_targets)
+      Target values for each time point. Rows are time points, aligned with ``t``.
+    * ``x``: tensor of shape (n_timepoints, n_features)
+      Features for each time point. Rows are time points, aligned with ``t``.
+    * ``group``: tensor of shape (n_groups)
+      Group identifiers for time series instances.
+    * ``st``: tensor of shape (n_static_features)
+      Static features.
+
+    Optionally, the following str-keyed entries can be included:
+
+    * ``t_f``: tensor of shape (n_timepoints_future)
+        Time index for each time point in the future.
+        Aligned with ``x_f``.
+    * ``x_f``: tensor of shape (n_timepoints_future, n_features)
+        Known features for each time point in the future.
+        Rows are time points, aligned with ``t_f``.
+    * ``weights``: tensor of shape (n_timepoints), only if weight is not None
+    * ``weight_f``: tensor of shape (n_timepoints_future), only if weight is
+        not None.
+
+    -----------------------------------------------------------------------------------
+
+    ``get_metadata`` returns metadata:
+
+    * ``cols``: dict { 'y': list[str], 'x': list[str], 'st': list[str] }
+      Names of columns for y, x, and static features.
+      List elements are in same order as column dimensions.
+      Columns not appearing are assumed to be named (x0, x1, etc.),
+      (y0, y1, etc.), (st0, st1, etc.).
+    * ``col_type``: dict[str, str]
+      maps column names to data types "F" (numerical) and "C" (categorical).
+      Column names not occurring are assumed "F".
+    * ``col_known``: dict[str, str]
+      maps column names to "K" (future known) or "U" (future unknown).
+      Column names not occurring are assumed "K".
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        data frame with sequence data.
+        Column names must all be str, and contain str as referred to below.
+    data_future : pd.DataFrame, optional, default=None
+        data frame with future data.
+        Column names must all be str, and contain str as referred to below.
+        May contain only columns that are in time, group, weight, known, or static.
+    time : str, optional, default = first col not in group_ids, weight, target, static.
+        integer typed column denoting the time index within ``data``.
+        This column is used to determine the sequence of samples.
+        If there are no missing observations,
+        the time index should increase by ``+1`` for each subsequent sample.
+        The first time_idx for each series does not necessarily
+        have to be ``0`` but any value is allowed.
+    target : str or List[str], optional, default = last column (at iloc -1)
+        column(s) in ``data`` denoting the forecasting target.
+        Can be categorical or numerical dtype.
+    group : List[str], optional, default = None
+        list of column names identifying a time series instance within ``data``.
+        This means that the ``group`` together uniquely identify an instance,
+        and ``group`` together with ``time`` uniquely identify a single observation
+        within a time series instance.
+        If ``None``, the dataset is assumed to be a single time series.
+    weight : str, optional, default=None
+        column name for weights.
+        If ``None``, it is assumed that there is no weight column.
+    num : list of str, optional, default = all columns with dtype in "fi"
+        list of numerical variables in ``data``,
+        list may also contain list of str, which are then grouped together.
+    cat : list of str, optional, default = all columns with dtype in "Obc"
+        list of categorical variables in ``data``,
+        list may also contain list of str, which are then grouped together
+        (e.g. useful for product categories).
+    known : list of str, optional, default = all variables
+        list of variables that change over time and are known in the future,
+        list may also contain list of str, which are then grouped together
+        (e.g. useful for special days or promotion categories).
+    unknown : list of str, optional, default = no variables
+        list of variables that are not known in the future,
+        list may also contain list of str, which are then grouped together
+        (e.g. useful for weather categories).
+    static : list of str, optional, default = all variables not in known, unknown
+        list of variables that do not change over time,
+        list may also contain list of str, which are then grouped together.
+    """
+
+    def __init__(
+        self,
+        data: pd.DataFrame,
+        data_future: Optional[pd.DataFrame] = None,
+        time: Optional[str] = None,
+        target: Optional[Union[str, List[str]]] = None,
+        group: Optional[List[str]] = None,
+        weight: Optional[str] = None,
+        num: Optional[List[Union[str, List[str]]]] = None,
+        cat: Optional[List[Union[str, List[str]]]] = None,
+        known: Optional[List[Union[str, List[str]]]] = None,
+        unknown: Optional[List[Union[str, List[str]]]] = None,
+        static: Optional[List[Union[str, List[str]]]] = None,
+    ):
+
+        self.data = data
+        self.data_future = data_future
+        self.time = time
+        self.target = _coerce_to_list(target)
+        self.group = _coerce_to_list(group)
+        self.weight = weight
+        self.num = _coerce_to_list(num)
+        self.cat = _coerce_to_list(cat)
+        self.known = _coerce_to_list(known)
+        self.unknown = _coerce_to_list(unknown)
+        self.static = _coerce_to_list(static)
+
+        self.feature_cols = [
+            col
+            for col in data.columns
+            if col not in [self.time] + self.group + [self.weight] + self.target
+        ]
+        if self.group:
+            self._groups = self.data.groupby(self.group).groups
+            self._group_ids = list(self._groups.keys())
+        else:
+            self._groups = {"_single_group": self.data.index}
+            self._group_ids = ["_single_group"]
+
+        self._prepare_metadata()
+
+    def _prepare_metadata(self):
+        """Prepare metadata for the dataset."""
+        self.metadata = {
+            "cols": {
+                "y": self.target,
+                "x": self.feature_cols,
+                "st": self.static,
+            },
+            "col_type": {},
+            "col_known": {},
+        }
+
+        all_cols = self.target + self.feature_cols + self.static
+        for col in all_cols:
+            self.metadata["col_type"][col] = "C" if col in self.cat else "F"
+
+            self.metadata["col_known"][col] = "K" if col in self.known else "U"
+
+    def __len__(self) -> int:
+        """Return number of time series in the dataset."""
+        return len(self._group_ids)
+
+    def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
+        """Get time series data for given index."""
+        group_id = self._group_ids[index]
+
+        if self.group:
+            mask = self._groups[group_id]
+            data = self.data.loc[mask]
+        else:
+            data = self.data
+
+        result = {
+            "t": data[self.time].values,
+            "y": torch.tensor(data[self.target].values),
+            "x": torch.tensor(data[self.feature_cols].values),
+            "group": torch.tensor([hash(str(group_id))]),
+            "st": torch.tensor(data[self.static].iloc[0].values if self.static else []),
+        }
+
+        if self.data_future is not None:
+            if self.group:
+                future_mask = self.data_future.groupby(self.group).groups[group_id]
+                future_data = self.data_future.loc[future_mask]
+            else:
+                future_data = self.data_future
+
+            result.update(
+                {
+                    "t_f": torch.tensor(future_data[self.time].values),
+                    "x_f": torch.tensor(future_data[self.known].values),
+                }
+            )
+
+            if self.weight:
+                result["weight_f"] = torch.tensor(future_data[self.weight].values)
+
+        if self.weight:
+            result["weights"] = torch.tensor(data[self.weight].values)
+
+        return result
+
+    def get_metadata(self) -> Dict:
+        """Return metadata about the dataset.
+
+        Returns
+        -------
+        Dict
+            Dictionary containing:
+            - cols: column names for y, x, and static features
+            - col_type: mapping of columns to their types (F/C)
+            - col_known: mapping of columns to their future known status (K/U)
+        """
+        return self.metadata
