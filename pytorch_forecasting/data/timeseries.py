@@ -2657,6 +2657,8 @@ def _coerce_to_list(obj):
     """
     if obj is None:
         return []
+    if isinstance(obj, str):
+        return [obj]
     return list(obj)
 
 

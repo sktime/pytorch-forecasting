@@ -379,5 +379,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "target_scale": torch.stack([x["target_scale"] for x, _ in batch]),
         }
 
+        if "static_categorical_features" in batch[0][0]:
+            x_batch["static_categorical_features"] = torch.stack(
+                [x["static_categorical_features"] for x, _ in batch]
+            )
+            x_batch["static_continuous_features"] = torch.stack(
+                [x["static_continuous_features"] for x, _ in batch]
+            )
+
         y_batch = torch.stack([y for _, y in batch])
         return x_batch, y_batch
