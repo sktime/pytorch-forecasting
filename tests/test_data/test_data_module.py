@@ -155,7 +155,7 @@ def test_initialization(sample_timeseries_data):
     assert len(datamodule.categorical_indices) == 3  # category_1, category_2
     assert len(datamodule.continuous_indices) == 5  # value_1, value_2, static_feat
 
-    # You might also want to verify the actual indices are correct
+    # Verify the actual indices are correct
     metadata = sample_timeseries_data.get_metadata()
     feature_cols = metadata["cols"]["x"]
 
