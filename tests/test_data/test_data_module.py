@@ -152,8 +152,12 @@ def test_initialization(sample_timeseries_data):
     assert datamodule.batch_size == 32
 
     # Check correct identification of categorical and continuous features
-    assert len(datamodule.categorical_indices) == 3  # category_1, category_2
-    assert len(datamodule.continuous_indices) == 5  # value_1, value_2, static_feat
+    assert (
+        len(datamodule.categorical_indices) == 3
+    )  # category_1, category_2, known_future_2
+    assert (
+        len(datamodule.continuous_indices) == 5
+    )  # value_1, value_2, static_feat, known_future_1, unknown_future_1
 
     # Verify the actual indices are correct
     metadata = sample_timeseries_data.get_metadata()
