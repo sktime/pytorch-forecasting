@@ -145,17 +145,20 @@ class NBEATSBlock(nn.Module):
         """
         Pass through the fully connected mlp/kan layers and returns the output.
         """
-        # outputs logic taken from
-        # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
-        self.outputs = []
-        self.outputs.append(x.clone().detach())
-        for layer in self.fc:
-            x = layer(x)  # Pass data through the current layer
-            # storing outputs for updating grids of self.fc when using KAN
+        if self.use_kan:
+            # save outputs to be used in updating grid in kan layers during training
+            # outputs logic taken from
+            # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
+            self.outputs = []
             self.outputs.append(x.clone().detach())
-        # storing for updating grids of theta_b_fc and theta_f_fc when using KAN
-        self.outputs.append(x.clone().detach())
-        return x  # Return final output
+            for layer in self.fc:
+                x = layer(x)  # Pass data through the current layer
+                # storing outputs for updating grids of self.fc when using KAN
+                self.outputs.append(x.clone().detach())
+            # storing for updating grids of theta_b_fc and theta_f_fc when using KAN
+            self.outputs.append(x.clone().detach())
+            return x  # Return final output
+        return self.fc(x)
 
 
 class NBEATSSeasonalBlock(NBEATSBlock):

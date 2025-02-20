@@ -4,7 +4,7 @@ import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 import pandas as pd
 
-from pytorch_forecasting import NBeats, TimeSeriesDataSet
+from pytorch_forecasting import NBeatsKAN, TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.examples import generate_ar_data
 from pytorch_forecasting.models.nbeats.grid_callback import GridUpdateCallback
@@ -74,14 +74,13 @@ trainer = pl.Trainer(
 )
 
 
-net = NBeats.from_dataset(
+net = NBeatsKAN.from_dataset(
     training,
     learning_rate=3e-2,
     log_interval=10,
     log_val_interval=1,
     log_gradient_flow=False,
     weight_decay=1e-2,
-    use_kan=True,
 )
 print(f"Number of parameters in network: {net.size() / 1e3:.1f}k")
 
