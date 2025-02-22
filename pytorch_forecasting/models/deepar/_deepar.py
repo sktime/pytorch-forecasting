@@ -26,7 +26,7 @@ from pytorch_forecasting.metrics import (
     MultivariateDistributionLoss,
     NormalDistributionLoss,
 )
-from pytorch_forecasting.models.base_model import (
+from pytorch_forecasting.models.base import (
     AutoRegressiveBaseModelWithCovariates,
     Prediction,
 )

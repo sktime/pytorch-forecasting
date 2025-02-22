@@ -19,7 +19,7 @@ from pytorch_forecasting.metrics import (
     MultiHorizonMetric,
     QuantileLoss,
 )
-from pytorch_forecasting.models.base_model import BaseModelWithCovariates
+from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.nn import LSTM, MultiEmbedding
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,

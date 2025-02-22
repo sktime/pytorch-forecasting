@@ -21,7 +21,7 @@ from pytorch_forecasting.metrics import (
     MultiLoss,
     QuantileLoss,
 )
-from pytorch_forecasting.models.base_model import AutoRegressiveBaseModelWithCovariates
+from pytorch_forecasting.models.base import AutoRegressiveBaseModelWithCovariates
 from pytorch_forecasting.models.nn import HiddenState, MultiEmbedding, get_rnn
 from pytorch_forecasting.utils import apply_to_list, to_list
 
