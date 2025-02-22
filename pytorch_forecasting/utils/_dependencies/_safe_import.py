@@ -1,4 +1,7 @@
-"""Import a module/class, return a Mock object if import fails."""
+"""Import a module/class, return a Mock object if import fails.
+
+Copied from sktime/skbase.
+"""
 
 import importlib
 from unittest.mock import MagicMock
