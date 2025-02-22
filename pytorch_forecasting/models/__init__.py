@@ -2,7 +2,7 @@
 Models for timeseries forecasting.
 """
 
-from pytorch_forecasting.models.base_model import (
+from pytorch_forecasting.models.base import (
     AutoRegressiveBaseModel,
     AutoRegressiveBaseModelWithCovariates,
     BaseModel,

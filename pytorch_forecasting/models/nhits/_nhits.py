@@ -20,7 +20,7 @@ from pytorch_forecasting.metrics import (
     MultiHorizonMetric,
     MultiLoss,
 )
-from pytorch_forecasting.models.base_model import BaseModelWithCovariates
+from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.utils import create_mask, to_list
