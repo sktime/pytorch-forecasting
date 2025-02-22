@@ -107,7 +107,7 @@ dev = [
 
 # docs - dependencies for building the documentation
 docs = [
-  "sphinx>3.2",
+  "sphinx>3.2,<7.2.6",
   "pydata-sphinx-theme",
   "nbsphinx",
   "pandoc",
