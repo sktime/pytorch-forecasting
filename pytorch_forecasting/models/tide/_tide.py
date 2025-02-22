@@ -12,7 +12,7 @@ from torch import nn
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE
-from pytorch_forecasting.models.base_model import BaseModelWithCovariates
+from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.models.tide.sub_modules import _TideModule
 
