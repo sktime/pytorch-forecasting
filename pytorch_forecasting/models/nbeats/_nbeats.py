@@ -7,7 +7,7 @@ from typing import List, Optional
 from torch import nn
 
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
-from pytorch_forecasting.models.nbeats.nbeats_adapter import NBeatsAdapter
+from pytorch_forecasting.models.nbeats._nbeats_adapter import NBeatsAdapter
 from pytorch_forecasting.models.nbeats.sub_modules import (
     NBEATSGenericBlock,
     NBEATSSeasonalBlock,

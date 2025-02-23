@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pytorch_forecasting.models.nbeats.kan_layer import KANLayer
+from pytorch_forecasting.models.nbeats._kan_layer import KANLayer
 
 
 def linear(input_size, output_size, bias=True, dropout: int = None):

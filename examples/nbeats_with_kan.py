@@ -7,7 +7,7 @@ import pandas as pd
 from pytorch_forecasting import NBeatsKAN, TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.examples import generate_ar_data
-from pytorch_forecasting.models.nbeats.grid_callback import GridUpdateCallback
+from pytorch_forecasting.models.nbeats import GridUpdateCallback
 
 sys.path.append("..")
 
