@@ -387,7 +387,7 @@ class PredictCallback(BasePredictionWriter):
             if self.return_decoder_lengths:
                 output["decoder_lengths"] = torch.cat(self._decode_lengths, dim=0)
             if self.return_y:
-                y = concat_sequences([yi[0] for yi in self._y])
+                y = _torch_cat_na([yi[0] for yi in self._y])
                 if self._y[-1][1] is None:
                     weight = None
                 else:
