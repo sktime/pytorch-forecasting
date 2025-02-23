@@ -23,29 +23,8 @@ class DeepARMetadata(_BasePtForecaster):
         return DeepAR
 
     @classmethod
-    def get_test_params(cls, parameter_set="default"):
-        """Return testing parameter settings for the skbase object.
-
-        ``get_test_params`` is a unified interface point to store
-        parameter settings for testing purposes. This function is also
-        used in ``create_test_instance`` and ``create_test_instances_and_names``
-        to construct test instances.
-
-        ``get_test_params`` should return a single ``dict``, or a ``list`` of ``dict``.
-
-        Each ``dict`` is a parameter configuration for testing,
-        and can be used to construct an "interesting" test instance.
-        A call to ``cls(**params)`` should
-        be valid for all dictionaries ``params`` in the return of ``get_test_params``.
-
-        The ``get_test_params`` need not return fixed lists of dictionaries,
-        it can also return dynamic or stochastic parameter settings.
-
-        Parameters
-        ----------
-        parameter_set : str, default="default"
-            Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+    def get_test_train_params(cls):
+        """Return testing parameter settings for the trainer.
 
         Returns
         -------
