@@ -28,7 +28,7 @@ class PackageConfig:
 
     # package to search for objects
     # expected type: str, package/module name, relative to python environment root
-    package_name = "pytroch_forecasting"
+    package_name = "pytorch_forecasting"
 
     # list of object types (class names) to exclude
     # expected type: list of str, str are class names
