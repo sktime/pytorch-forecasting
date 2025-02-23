@@ -6,7 +6,6 @@ import shutil
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
-import pytest
 from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
 
 from pytorch_forecasting._registry import all_objects
@@ -276,11 +275,13 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
         self,
         object_metadata,
         trainer_kwargs,
-        data_with_covariates,
         tmp_path,
     ):
         """Fails for certain, for testing."""
         from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        from pytorch_forecasting.tests._data_scenarios import data_with_covariates
+
+        data_with_covariates = data_with_covariates()
 
         object_class = object_metadata.get_model_cls()
 

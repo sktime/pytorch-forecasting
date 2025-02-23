@@ -17,7 +17,6 @@ def gpus():
         return 0
 
 
-@pytest.fixture(scope="session")
 def data_with_covariates():
     data = get_stallion_data()
     data["month"] = data.date.dt.month.astype(str)
