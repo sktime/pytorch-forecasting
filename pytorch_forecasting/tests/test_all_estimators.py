@@ -127,7 +127,7 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         object_classes_to_test = [
             est for est in self._all_objects() if not self.is_excluded(test_name, est)
         ]
-        object_names = [est.__name__ for est in object_classes_to_test]
+        object_names = [est.name() for est in object_classes_to_test]
 
         return object_classes_to_test, object_names
 
@@ -156,21 +156,16 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         trainer_kwargs: dict
             ranges over all kwargs for the trainer
         """
-        # call _generate_object_class to get all the classes
-        object_meta_to_test, _ = self._generate_object_metadata(test_name=test_name)
+        if "object_metadata" in kwargs.keys():
+            obj_meta = kwargs["object_metadata"]
+        else:
+            return []
 
-        # create instances from the classes
-        train_kwargs_to_test = []
-        train_kwargs_names = []
-        # retrieve all object parameters if multiple, construct instances
-        for est in object_meta_to_test:
-            est_name = est.__name__
-            all_train_kwargs = est.get_test_train_params()
-            train_kwargs_to_test += all_train_kwargs
-            rg = range(len(all_train_kwargs))
-            train_kwargs_names += [f"{est_name}_{i}" for i in rg]
+        all_train_kwargs = obj_meta.get_test_train_params()
+        rg = range(len(all_train_kwargs))
+        train_kwargs_names = [str(i) for i in rg]
 
-        return train_kwargs_to_test, train_kwargs_names
+        return all_train_kwargs, train_kwargs_names
 
 
 def _integration(
@@ -278,10 +273,16 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
         doctest.run_docstring_examples(object_class, globals())
 
     def test_integration(
-        self, object_class, trainer_kwargs, data_with_covariates, tmp_path
+        self,
+        object_metadata,
+        trainer_kwargs,
+        data_with_covariates,
+        tmp_path,
     ):
         """Fails for certain, for testing."""
         from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+
+        object_class = object_metadata.get_model_cls()
 
         if "loss" in trainer_kwargs and isinstance(
             trainer_kwargs["loss"], NegativeBinomialDistributionLoss

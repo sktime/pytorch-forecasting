@@ -7,12 +7,14 @@ class DeepARMetadata(_BasePtForecaster):
     """DeepAR metadata container."""
 
     _tags = {
+        "info:name": "DeepAR",
+        "info:compute": 3,
+        "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
-        "info:compute": 3,
     }
 
     @classmethod

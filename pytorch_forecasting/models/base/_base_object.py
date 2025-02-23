@@ -28,6 +28,14 @@ class _BasePtForecaster(_BaseObject):
         raise NotImplementedError
 
     @classmethod
+    def name(cls):
+        """Get model name."""
+        name = cls.get_class_tags().get("info:name", None)
+        if name is None:
+            name = cls.get_model_cls().__name__
+        return name
+
+    @classmethod
     def create_test_instance(cls, parameter_set="default"):
         """Construct an instance of the class, using first test parameter set.
 
