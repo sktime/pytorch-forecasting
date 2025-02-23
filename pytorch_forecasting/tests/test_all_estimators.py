@@ -116,6 +116,7 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
 
 
 def _integration(
+        estimator_cls,
     data_with_covariates,
     tmp_path,
     cell_type="LSTM",
@@ -165,7 +166,7 @@ def _integration(
         **trainer_kwargs,
     )
 
-    net = DeepAR.from_dataset(
+    net = estimator_cls.from_dataset(
         train_dataloader.dataset,
         hidden_size=5,
         cell_type=cell_type,
@@ -185,7 +186,7 @@ def _integration(
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
         # check loading
-        net = DeepAR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        net = estimator_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         # check prediction
         net.predict(
