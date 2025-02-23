@@ -70,6 +70,9 @@ def _safe_import(import_path, pkg_name=None):
     if pkg_name is None:
         path_list = import_path.split(".")
         pkg_name = path_list[0]
+    else:
+        path_list = import_path.split(".")
+        path_list = [pkg_name] + path_list[1:]
 
     if pkg_name in _get_installed_packages():
         try:

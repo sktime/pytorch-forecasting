@@ -11,12 +11,8 @@ all_objects(object_types, filter_tags)
 __author__ = ["fkiraly"]
 # all_objects is based on the sklearn utility all_estimators
 
-
-from copy import deepcopy
-from operator import itemgetter
 from pathlib import Path
 
-import pandas as pd
 from skbase.lookup import all_objects as _all_objects
 
 from pytorch_forecasting.models.base import _BaseObject
@@ -117,17 +113,9 @@ def all_objects(
 
     Examples
     --------
-    >>> from skpro.registry import all_objects
+    >>> from pytorch_forecasting._registry import all_objects
     >>> # return a complete list of objects as pd.Dataframe
     >>> all_objects(as_dataframe=True)  # doctest: +SKIP
-    >>> # return all probabilistic regressors by filtering for object type
-    >>> all_objects("regressor_proba", as_dataframe=True)  # doctest: +SKIP
-    >>> # return all regressors which handle missing data in the input by tag filtering
-    >>> all_objects(
-    ...     "regressor_proba",
-    ...     filter_tags={"capability:missing": True},
-    ...     as_dataframe=True
-    ... )  # doctest: +SKIP
 
     References
     ----------
@@ -143,7 +131,7 @@ def all_objects(
     )
 
     result = []
-    ROOT = str(Path(__file__).parent.parent)  # skpro package root directory
+    ROOT = str(Path(__file__).parent.parent)  # package root directory
 
     if isinstance(filter_tags, str):
         filter_tags = {filter_tags: True}
@@ -173,7 +161,7 @@ def all_objects(
         as_dataframe=as_dataframe,
         return_tags=return_tags,
         suppress_import_stdout=suppress_import_stdout,
-        package_name="skpro",
+        package_name="pytorch_forecasting",
         path=ROOT,
         modules_to_ignore=MODULES_TO_IGNORE,
     )

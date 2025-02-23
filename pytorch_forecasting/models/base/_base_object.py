@@ -4,7 +4,7 @@ import inspect
 
 from pytorch_forecasting.utils._dependencies import _safe_import
 
-_SkbaseBaseObject = _safe_import("skbase._base_object._BaseObject")
+_SkbaseBaseObject = _safe_import("skbase.base.BaseObject", pkg_name="scikit-base")
 
 
 class _BaseObject(_SkbaseBaseObject):
