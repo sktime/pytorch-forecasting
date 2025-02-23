@@ -1,12 +1,14 @@
 """Automated tests based on the skbase test suite template."""
+
 from inspect import isclass
 
-from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
-from skbase.testing import TestAllObjects as _TestAllObjects
+from skbase.testing import (
+    BaseFixtureGenerator as _BaseFixtureGenerator,
+    TestAllObjects as _TestAllObjects,
+)
 
 from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
-
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
