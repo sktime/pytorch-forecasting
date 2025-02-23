@@ -5,7 +5,6 @@ This module exports the following methods for registry lookup:
 all_objects(object_types, filter_tags)
     lookup and filtering of objects
 """
-# copyright: skpro developers, BSD-3-Clause License (see LICENSE file)
 # based on the sktime module of same name
 
 __author__ = ["fkiraly"]
