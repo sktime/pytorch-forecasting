@@ -5,6 +5,7 @@ This module exports the following methods for registry lookup:
 all_objects(object_types, filter_tags)
     lookup and filtering of objects
 """
+
 # based on the sktime module of same name
 
 __author__ = ["fkiraly"]
