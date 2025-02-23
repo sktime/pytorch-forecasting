@@ -6,10 +6,8 @@ import shutil
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
-from skbase.testing import (
-    BaseFixtureGenerator as _BaseFixtureGenerator,
-    TestAllObjects as _TestAllObjects,
-)
+import pytest
+from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
 
 from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
@@ -110,9 +108,42 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
 
     # which sequence the conditional fixtures are generated in
     fixture_sequence = [
+        "object_metadata",
         "object_class",
         "object_instance",
     ]
+
+    def _generate_object_metadata(self, test_name, **kwargs):
+        """Return object class fixtures.
+
+        Fixtures parametrized
+        ---------------------
+        object_class: object inheriting from BaseObject
+            ranges over all object classes not excluded by self.excluded_tests
+        """
+        object_classes_to_test = [
+            est for est in self._all_objects() if not self.is_excluded(test_name, est)
+        ]
+        object_names = [est.__name__ for est in object_classes_to_test]
+
+        return object_classes_to_test, object_names
+
+    def _generate_object_class(self, test_name, **kwargs):
+        """Return object class fixtures.
+
+        Fixtures parametrized
+        ---------------------
+        object_class: object inheriting from BaseObject
+            ranges over all object classes not excluded by self.excluded_tests
+        """
+        all_metadata = self._all_objects()
+        all_cls = [est.get_model_cls() for est in all_metadata]
+        object_classes_to_test = [
+            est for est in all_cls if not self.is_excluded(test_name, est)
+        ]
+        object_names = [est.__name__ for est in object_classes_to_test]
+
+        return object_classes_to_test, object_names
 
 
 def _integration(
@@ -210,7 +241,7 @@ def _integration(
     )
 
 
-class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator, _TestAllObjects):
+class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
     def test_doctest_examples(self, object_class):
@@ -219,6 +250,6 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator, _TestAllObjects)
 
         doctest.run_docstring_examples(object_class, globals())
 
-    def certain_failure(self, object_class):
+    def test_certain_failure(self, object_class):
         """Fails for certain, for testing."""
         assert False
