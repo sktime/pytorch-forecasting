@@ -3,7 +3,7 @@
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class _DeepARMetadata(_BasePtForecaster):
+class DeepARMetadata(_BasePtForecaster):
     """DeepAR metadata container."""
 
     _tags = {
