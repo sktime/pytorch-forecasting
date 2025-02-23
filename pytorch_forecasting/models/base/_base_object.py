@@ -27,7 +27,6 @@ class _BasePtForecaster(_BaseObject):
         """Get model class."""
         raise NotImplementedError
 
-
     @classmethod
     def create_test_instance(cls, parameter_set="default"):
         """Construct an instance of the class, using first test parameter set.
