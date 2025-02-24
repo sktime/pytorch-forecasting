@@ -2,9 +2,7 @@ import sys
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
-from lightning.pytorch.tuner import Tuner
 import pandas as pd
-from sklearn.preprocessing import scale
 
 from pytorch_forecasting import NBeats, TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
@@ -44,13 +42,21 @@ training = TimeSeriesDataSet(
     add_target_scales=False,
 )
 
-validation = TimeSeriesDataSet.from_dataset(training, data, min_prediction_idx=training_cutoff)
+validation = TimeSeriesDataSet.from_dataset(
+    training, data, min_prediction_idx=training_cutoff
+)
 batch_size = 128
-train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
-val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
+train_dataloader = training.to_dataloader(
+    train=True, batch_size=batch_size, num_workers=2
+)
+val_dataloader = validation.to_dataloader(
+    train=False, batch_size=batch_size, num_workers=2
+)
 
 
-early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min")
+early_stop_callback = EarlyStopping(
+    monitor="val_loss", min_delta=1e-4, patience=10, verbose=False, mode="min"
+)
 trainer = pl.Trainer(
     max_epochs=100,
     accelerator="auto",
@@ -65,9 +71,14 @@ trainer = pl.Trainer(
 
 
 net = NBeats.from_dataset(
-    training, learning_rate=3e-2, log_interval=10, log_val_interval=1, log_gradient_flow=False, weight_decay=1e-2
+    training,
+    learning_rate=3e-2,
+    log_interval=10,
+    log_val_interval=1,
+    log_gradient_flow=False,
+    weight_decay=1e-2,
 )
-print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
+print(f"Number of parameters in network: {net.size() / 1e3:.1f}k")
 
 # # find optimal learning rate
 # # remove logging and artificial epoch size
@@ -76,7 +87,7 @@ print(f"Number of parameters in network: {net.size()/1e3:.1f}k")
 # trainer.limit_train_batches = 1.0
 # # run learning rate finder
 # res = Tuner(trainer).lr_find(
-#     net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2
+#     net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader, min_lr=1e-5, max_lr=1e2 # noqa: E501
 # )
 # print(f"suggested learning rate: {res.suggestion()}")
 # fig = res.plot(show=True, suggest=True)
