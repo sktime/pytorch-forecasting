@@ -31,7 +31,7 @@ and you should take into account. Here is an overview over the pros and cons of 
    :py:class:`~pytorch_forecasting.models.nhits.NHiTS`,                                                    "x",          "x",                "x",          "",               "",               "",           "",                            "",                        "",           1
    :py:class:`~pytorch_forecasting.models.deepar.DeepAR`,                                                  "x",          "x",                "x",          "",               "x",              "x",          "x [#deepvar]_ ",              "x",                       "",           3
    :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`,          "x",          "x",                "x",          "x",              "",               "x",          "",                            "x",                       "x",          4
-
+   :py:class:`~pytorch_forecasting.model.tide.TiDEModel`,                                                  "x",          "x",                "x",          "",               "",               "",           "",                            "x",                       "",           3
 
 .. [#deepvar] Accounting for correlations using a multivariate loss function which converts the network into a DeepVAR model.
 

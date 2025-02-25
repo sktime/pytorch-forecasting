@@ -1,3 +1,8 @@
+"""
+Implements the TiDE (Time-series Dense Encoder-decoder) model, which is designed for
+long-term time-series forecasting.
+"""
+
 from copy import copy
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -7,7 +12,7 @@ from torch import nn
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE
-from pytorch_forecasting.models.base_model import BaseModelWithCovariates
+from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.models.tide.sub_modules import _TideModule
 
@@ -44,30 +49,39 @@ class TiDEModel(BaseModelWithCovariates):
     ):
         """An implementation of the TiDE model.
 
-        TiDE shares similarities with Transformers (implemented in :class:TransformerModel), but aims to deliver
-        better performance with reduced computational requirements by utilizing MLP-based encoder-decoder architectures
-        without attention mechanisms.
+        TiDE shares similarities with Transformers
+        (implemented in :class:TransformerModel), but aims to deliver better performance
+        with reduced computational requirements by utilizing MLP-based encoder-decoder
+        architectures without attention mechanisms.
 
-        This model supports future covariates (known for output_chunk_length points after the prediction time) and
-        static covariates.
+        This model supports future covariates (known for output_chunk_length points
+        after the prediction time) andstatic covariates.
 
-        The encoder and decoder are constructed using residual blocks. The number of residual blocks in the encoder and
-        decoder can be specified with `num_encoder_layers` and `num_decoder_layers` respectively. The layer width in the
-        residual blocks can be adjusted using `hidden_size`, while the layer width in the temporal decoder can be
-        controlled via `temporal_decoder_hidden`.
+        The encoder and decoder are constructed using residual blocks. The number of
+        residual blocks in the encoder and decoder can be specified with
+        `num_encoder_layers` and `num_decoder_layers` respectively. The layer width in
+        the residual blocks can be adjusted using `hidden_size`, while the layer width
+        in the temporal decoder can be controlled via `temporal_decoder_hidden`.
 
         Parameters
         ----------
-        input_chunk_length (int): Number of past time steps to use as input for the model (per chunk).
-            This applies to the target series and future covariates (if supported by the model).
-        output_chunk_length (int): Number of time steps the internal model predicts simultaneously (per chunk).
-            This also determines how many future values from future covariates are used as input
+        input_chunk_length :int
+            Number of past time steps to use as input for themodel (per chunk).
+            This applies to the target series and future covariates
             (if supported by the model).
-        num_encoder_layers (int): Number of residual blocks in the encoder. Defaults to 2.
-        num_decoder_layers (int): Number of residual blocks in the decoder. Defaults to 2.
-        decoder_output_dim (int): Dimensionality of the decoder's output. Defaults to 16.
-        hidden_size (int): Size of hidden layers in the encoder and decoder. Typically ranges from 32 to 128 when
-            no covariates are used. Defaults to 128.
+        output_chunk_length : int
+            Number of time steps the internal model predicts simultaneously (per chunk).
+            This also determines how many future values from future covariates
+            are used as input (if supported by the model).
+        num_encoder_layers : int, default=2
+            Number of residual blocks in the encoder
+        num_decoder_layers : int, default=2
+            Number of residual blocks in the decoder
+        decoder_output_dim : int, default=16
+            Dimensionality of the decoder's output
+        hidden_size : int, default=128
+            Size of hidden layers in the encoder and decoder.
+            Typically ranges from 32 to 128 when no covariates are used.
         temporal_width_future (int): Width of the output layer in the residual block for future covariate projections.
             If set to 0, bypasses feature projection and uses raw feature data. Defaults to 4.
         temporal_hidden_size_future (int): Width of the hidden layer in the residual block for future covariate
@@ -98,8 +112,10 @@ class TiDEModel(BaseModelWithCovariates):
         **kwargs
             Allows optional arguments to configure pytorch_lightning.Module, pytorch_lightning.Trainer, and
             pytorch-forecasting's :class:BaseModelWithCovariates.
-        """  # noqa: E501
 
+        Note:
+            The model supports future covariates and static covariates.
+        """  # noqa: E501
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
@@ -200,7 +216,8 @@ class TiDEModel(BaseModelWithCovariates):
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         """
-        Convenience function to create network from :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        Convenience function to create network from
+        :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
         Args:
             dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
@@ -208,7 +225,7 @@ class TiDEModel(BaseModelWithCovariates):
 
         Returns:
             TiDE
-        """  # noqa: E501
+        """
 
         # validate arguments
         assert not isinstance(
