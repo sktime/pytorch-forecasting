@@ -23,12 +23,11 @@ Otherwise, you can proceed with
 
 
 Alternatively, to install the package via ``conda``:
-
 .. code-block:: bash
 
     conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
 
-PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is install from the pytorch channel.
+PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is installed from the pytorch channel.
 
 To use the MQF2 loss (multivariate quantile loss), also install
 
@@ -54,7 +53,7 @@ The general setup for training and testing a model is
    Similarly, a test dataset or later a dataset for inference can be created. You can store the dataset parameters
    directly if you do not wish to load the entire training dataset at inference time.
 
-#. Instantiate a model using the its ``.from_dataset()`` method.
+#. Instantiate a model using the ``.from_dataset()`` method.
 #. Create a ``lightning.Trainer()`` object.
 #. Find the optimal learning rate with its ``.tuner.lr_find()`` method.
 #. Train the model with early stopping on the training dataset and use the tensorboard logs
@@ -65,7 +64,7 @@ The general setup for training and testing a model is
 #. Load the model from the model checkpoint and apply it to new data.
 
 
-The :ref:`Tutorials <tutorials>` section provides detailled guidance and examples on how to use models and implement new ones.
+The :ref:`Tutorials <tutorials>` section provides detailed guidance and examples on how to use models and implement new ones.
 
 
 Example
