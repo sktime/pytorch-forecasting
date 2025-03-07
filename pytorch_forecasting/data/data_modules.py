@@ -141,29 +141,44 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             sample = self.time_series_dataset[idx.item()]
 
             target = sample["y"]
-            # if torch.isnan(target).any():
-            #     (f"Warning: NaNs detected. Sample index: {idx}, Value: {target}")
+            features = sample["x"]
+            times = sample["t"]
+            cutoff_time = sample["cutoff_time"]
+
+            time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
 
             if isinstance(target, torch.Tensor):
                 target = target.float()
             else:
                 target = torch.tensor(target, dtype=torch.float32)
 
-            features = sample["x"]
             if isinstance(features, torch.Tensor):
                 features = features.float()
             else:
                 features = torch.tensor(features, dtype=torch.float32)
 
+            features_imputed = features.clone()
+            for i in range(features.shape[1]):
+                if torch.isnan(features[:, i]).any():
+                    valid_values = features[time_mask, i]
+                    valid_values = valid_values[~torch.isnan(valid_values)]
+                    if len(valid_values) > 0:
+                        mean_value = valid_values.mean()
+                    else:
+                        mean_value = 0.0
+                    features_imputed[:, i] = torch.where(
+                        torch.isnan(features[:, i]), mean_value, features[:, i]
+                    )
+
             categorical = (
-                features[:, self.categorical_indices]
+                features_imputed[:, self.categorical_indices]
                 if self.categorical_indices
-                else torch.zeros((features.shape[0], 0))
+                else torch.zeros((features_imputed.shape[0], 0))
             )
             continuous = (
-                features[:, self.continuous_indices]
+                features_imputed[:, self.continuous_indices]
                 if self.continuous_indices
-                else torch.zeros((features.shape[0], 0))
+                else torch.zeros((features_imputed.shape[0], 0))
             )
 
             processed_data.append(
@@ -173,6 +188,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     "static": sample.get("st", None),
                     "group": sample.get("group", torch.tensor([0])),
                     "length": len(target),
+                    "time_mask": time_mask,
+                    "times": times,
+                    "cutoff_time": cutoff_time,
                 }
             )
 
@@ -208,17 +226,26 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         def __getitem__(self, idx):
             series_idx, start_idx, enc_length, pred_length = self.windows[idx]
             data = self.processed_data[series_idx]
-            # if start_idx + enc_length + pred_length > len(data['target']):
-            #       print(f"start_idx: {start_idx}, enc_length: {enc_length},
-            #       pred_length: {pred_length}, target length: {len(data['target'])}")
 
             end_idx = start_idx + enc_length + pred_length
             encoder_indices = slice(start_idx, start_idx + enc_length)
             decoder_indices = slice(start_idx + enc_length, end_idx)
 
-            target_scale = data["target"][encoder_indices].abs().mean()
-            if target_scale == 0:
+            target_scale = data["target"][encoder_indices]
+            target_scale = target_scale[~torch.isnan(target_scale)].abs().mean()
+            if torch.isnan(target_scale) or target_scale == 0:
                 target_scale = torch.tensor(1.0)
+
+            encoder_mask = (
+                data["time_mask"][encoder_indices]
+                if "time_mask" in data
+                else torch.ones(enc_length, dtype=torch.bool)
+            )
+            decoder_mask = (
+                data["time_mask"][decoder_indices]
+                if "time_mask" in data
+                else torch.zeros(pred_length, dtype=torch.bool)
+            )
 
             x = {
                 "encoder_cat": data["features"]["categorical"][encoder_indices],
@@ -232,6 +259,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "encoder_time_idx": torch.arange(enc_length),
                 "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
                 "target_scale": target_scale,
+                "encoder_mask": encoder_mask,
+                "decoder_mask": decoder_mask,
             }
 
             if data["static"] is not None:
@@ -377,6 +406,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "encoder_time_idx": torch.stack([x["encoder_time_idx"] for x, _ in batch]),
             "decoder_time_idx": torch.stack([x["decoder_time_idx"] for x, _ in batch]),
             "target_scale": torch.stack([x["target_scale"] for x, _ in batch]),
+            "encoder_mask": torch.stack([x["encoder_mask"] for x, _ in batch]),
+            "decoder_mask": torch.stack([x["decoder_mask"] for x, _ in batch]),
         }
 
         if "static_categorical_features" in batch[0][0]:

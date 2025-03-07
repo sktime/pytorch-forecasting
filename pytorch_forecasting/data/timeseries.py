@@ -2838,12 +2838,15 @@ class TimeSeries(Dataset):
         else:
             data = self.data
 
+        cutoff_time = data[self.time].max()
+
         result = {
             "t": data[self.time].values,
             "y": torch.tensor(data[self.target].values),
             "x": torch.tensor(data[self.feature_cols].values),
             "group": torch.tensor([hash(str(group_id))]),
             "st": torch.tensor(data[self.static].iloc[0].values if self.static else []),
+            "cutoff_time": cutoff_time,
         }
 
         if self.data_future is not None:
@@ -2853,18 +2856,58 @@ class TimeSeries(Dataset):
             else:
                 future_data = self.data_future
 
+            combined_times = np.concatenate(
+                [data[self.time].values, future_data[self.time].values]
+            )
+            combined_times = np.unique(combined_times)
+            combined_times.sort()
+
+            num_timepoints = len(combined_times)
+            x_merged = np.full((num_timepoints, len(self.feature_cols)), np.nan)
+            y_merged = np.full((num_timepoints, len(self.target)), np.nan)
+
+            # Fill in current data
+            current_time_indices = {t: i for i, t in enumerate(combined_times)}
+            for i, t in enumerate(data[self.time].values):
+                idx = current_time_indices[t]
+                x_merged[idx] = data[self.feature_cols].values[i]
+                y_merged[idx] = data[self.target].values[i]
+
+            # Fill in known future features
+            for i, t in enumerate(future_data[self.time].values):
+                if t in current_time_indices:
+                    idx = current_time_indices[t]
+                    # Only fill known features
+                    for j, col in enumerate(self.known):
+                        if col in self.feature_cols:
+                            feature_idx = self.feature_cols.index(col)
+                            x_merged[idx, feature_idx] = future_data[col].values[i]
+
             result.update(
                 {
-                    "t_f": torch.tensor(future_data[self.time].values),
-                    "x_f": torch.tensor(future_data[self.known].values),
+                    "t": combined_times,
+                    "x": torch.tensor(x_merged, dtype=torch.float32),
+                    "y": torch.tensor(y_merged, dtype=torch.float32),
                 }
             )
 
-            if self.weight:
-                result["weight_f"] = torch.tensor(future_data[self.weight].values)
-
         if self.weight:
-            result["weights"] = torch.tensor(data[self.weight].values)
+            if self.data_future is not None and self.weight in self.data_future.columns:
+                weights_merged = np.full(num_timepoints, np.nan)
+                for i, t in enumerate(data[self.time].values):
+                    idx = current_time_indices[t]
+                    weights_merged[idx] = data[self.weight].values[i]
+
+                for i, t in enumerate(future_data[self.time].values):
+                    if t in current_time_indices and self.weight in future_data.columns:
+                        idx = current_time_indices[t]
+                        weights_merged[idx] = future_data[self.weight].values[i]
+
+                result["weights"] = torch.tensor(weights_merged, dtype=torch.float32)
+            else:
+                result["weights"] = torch.tensor(
+                    data[self.weight].values, dtype=torch.float32
+                )
 
         return result
 
