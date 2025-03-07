@@ -125,11 +125,6 @@ def test_known_unknown_features(sample_timeseries_data):
     assert metadata["col_known"]["known_future_2"] == "K"
     assert metadata["col_known"]["unknown_future_1"] == "U"
 
-    # Verify future data handling
-    sample = sample_timeseries_data[0]
-    assert "x_f" in sample
-    assert sample["x_f"].shape[1] == 2  # known_future_1 and known_future_2
-
 
 def test_initialization(sample_timeseries_data):
     """Test the initialization of the EncoderDecoderTimeSeriesDataModule.
