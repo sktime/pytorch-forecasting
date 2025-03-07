@@ -18,7 +18,7 @@ from pytorch_forecasting.metrics import (
     MultiHorizonMetric,
     QuantileLoss,
 )
-from pytorch_forecasting.models.base_model import BaseModelWithCovariates
+from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.mlp.submodules import FullyConnectedModule
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 
