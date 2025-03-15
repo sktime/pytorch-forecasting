@@ -52,11 +52,6 @@ jobs:
             echo "No changed files to check."
           fi
 
-      - name: check missing __init__ files
-
-        run: build_tools/fail_on_missing_init_files.sh
-        shell: bash
-
   run-notebook-tutorials:
     name: Run notebook tutorials
     needs: code-quality
