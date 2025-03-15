@@ -3,8 +3,11 @@ Time Series Transformer with eXogenous variables (TimeXer)
 ---------------------------------------------------------
 """
 
+import copy
 from typing import Dict, List, Optional, Tuple
 
+import lightning.pytorch as pl
+from lightning.pytorch import LightningModule, Trainer
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,10 +23,15 @@ from pytorch_forecasting.metrics import (
     MultiHorizonMetric,
     QuantileLoss,
 )
+from pytorch_forecasting.metrics.base_metrics import MultiLoss
 from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.timexer.sub_modules import (
     AttentionLayer,
     DataEmbedding_inverted,
+    Encoder,
+    EncoderLayer,
+    EnEmbeddding,
+    FlattenHead,
     FullAttention,
     PositionalEmbedding,
 )
@@ -35,6 +43,8 @@ class TimeXer(BaseModelWithCovariates):
         context_length: int,
         prediction_length: int,
         task_name: str = "long_term_forecast",
+        features: str = "MS",
+        enc_in: int = None,
         d_model: int = 512,
         n_heads: int = 8,
         e_layers: int = 2,
@@ -84,6 +94,10 @@ class TimeXer(BaseModelWithCovariates):
             task_name (str, optional): Type of forecasting task, either
                 'long_term_forecast' or 'short_term_forecast', which corresponds to
                 forecasting scenarios implied by the task names.
+            features (str, optional): Type of features used in the model ('MS' for
+                multivariate forecating with single target, 'M' for multivariate
+                forecasting with multiple targets and 'S' for univariate forecasting).
+            enc_in (int, optional): Number of input variables for encoder.
             d_model (int, optional): Dimension of model embeddings and hidden
                 representations.
             n_heads (int, optional): Number of attention heads in multi-head attention
@@ -165,4 +179,109 @@ class TimeXer(BaseModelWithCovariates):
         # loss is a standalone module and is stored separately.
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
-        # todo: implement the model from https://github.com/thuml/TimeXer
+        # [x] todo: implement the from_dataset method
+        # [] todo: implement the forward and forecast methods into the class.
+        self.patch_num = max(1, int(context_length // patch_length))
+        self.n_target_vars = len(self.target_positions)
+
+        if enc_in is None:
+            if features == "MS":
+                self.enc_in = 1
+            else:
+                self.enc_in = self.n_target_vars
+        else:
+            self.enc_in = enc_in
+
+        self.n_vars = 1 if self.features == "MS" else self.enc_in
+
+        self.en_embedding = EnEmbeddding(
+            self.hparams.n_vars,
+            self.hparams.d_model,
+            self.hparams.patch_length,
+            self.hparams.dropout,
+        )
+
+        self.ex_embedding = DataEmbedding_inverted(
+            self.hparams.context_length,
+            self.hparams.d_model,
+            self.hparams.embed_type,
+            self.hparams.freq,
+            self.hparams.dropout,
+        )
+
+        self.encoder = Encoder(
+            [
+                EncoderLayer(
+                    AttentionLayer(
+                        FullAttention(
+                            False,
+                            self.hparams.factor,
+                            attention_dropout=self.hparams.dropout,
+                            output_attention=False,
+                        ),
+                        self.hparams.d_model,
+                        self.hparams.n_heads,
+                    ),
+                    AttentionLayer(
+                        FullAttention(
+                            True,
+                            self.hparams.factor,
+                            attention_dropout=self.hparams.dropout,
+                            output_attention=False,
+                        ),
+                        self.hparams.d_model,
+                        self.hparams.n_heads,
+                    ),
+                    self.hparams.d_model,
+                    self.hparams.d_ff,
+                    dropout=self.hparams.dropout,
+                    activation=self.hparams.activation,
+                )
+                for l in range(self.hparams.e_layers)
+            ],
+            norm_layer=torch.nn.LayerNorm(self.hparams.d_model),
+        )
+        self.head_nf = self.hparams.d_model * (
+            self.params.context_length // self.hparams.patch_length
+        )
+        self.head = FlattenHead(
+            self.enc_in, self.hparms.head_nf, self.hparams.prediction_length
+        )
+
+    @classmethod
+    def from_dataset(
+        cls,
+        dataset: TimeSeriesDataSet,
+        allowed_encoder_known_variable_names: List[str] = None,
+        **kwargs,
+    ) -> LightningModule:
+        """
+        Create model from dataset and set parameters related to covariates.
+
+        Args:
+            dataset: timeseries dataset
+            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all
+            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+
+        Returns:
+            TimeXer
+        """  # noqa: E501
+        new_kwargs = copy(kwargs)
+        new_kwargs.update(
+            {
+                "context_length": dataset.max_encoder_length,
+                "prediction_length": dataset.max_prediction_length,
+            }
+        )
+
+        new_kwargs.update(
+            cls.deduce_default_output_parameters(
+                dataset, kwargs, MultiLoss[SMAPE(), MAE()]
+            )
+        )  # noqa: E501
+
+        return super().from_dataset(
+            dataset,
+            allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,
+            **new_kwargs,
+        )
