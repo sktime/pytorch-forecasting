@@ -3,7 +3,7 @@ Time Series Transformer with eXogenous variables (TimeXer)
 ---------------------------------------------------------
 """
 
-import copy
+from copy import copy
 from typing import Dict, List, Optional, Tuple
 
 import lightning.pytorch as pl
@@ -30,7 +30,7 @@ from pytorch_forecasting.models.timexer.sub_modules import (
     DataEmbedding_inverted,
     Encoder,
     EncoderLayer,
-    EnEmbeddding,
+    EnEmbedding,
     FlattenHead,
     FullAttention,
     PositionalEmbedding,
@@ -194,7 +194,7 @@ class TimeXer(BaseModelWithCovariates):
 
         self.n_vars = 1 if self.features == "MS" else self.enc_in
 
-        self.en_embedding = EnEmbeddding(
+        self.en_embedding = EnEmbedding(
             self.hparams.n_vars,
             self.hparams.d_model,
             self.hparams.patch_length,
@@ -254,7 +254,7 @@ class TimeXer(BaseModelWithCovariates):
         dataset: TimeSeriesDataSet,
         allowed_encoder_known_variable_names: List[str] = None,
         **kwargs,
-    ) -> LightningModule:
+    ):
         """
         Create model from dataset and set parameters related to covariates.
 
@@ -276,7 +276,7 @@ class TimeXer(BaseModelWithCovariates):
 
         new_kwargs.update(
             cls.deduce_default_output_parameters(
-                dataset, kwargs, MultiLoss[SMAPE(), MAE()]
+                dataset, kwargs, MultiLoss([SMAPE(), MAE()])
             )
         )  # noqa: E501
 
@@ -285,3 +285,115 @@ class TimeXer(BaseModelWithCovariates):
             allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,
             **new_kwargs,
         )
+
+    def _forecast(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Forecast for univariate or multivariate with single target (MS) case.
+
+        Args:
+            x: Dictionary containing entries for encoder_cat, encoder_cont
+        """
+        encoder_cont = x["encoder_cont"]
+        encoder_time_idx = x.get("encoder_time_idx", None)
+
+        encoder_y = x["encoder_cont"][..., self.target_positions]
+        if self.hparams.use_norm:
+            means = encoder_cont.mean(1, keepdim=True).detach()
+            encoder_cont = encoder_cont - means
+            stdev = torch.sqrt(
+                torch.var(encoder_cont, dim=1, keepdim=True, unbiased=False) + 1e-5
+            )  # noqa: E501
+            encoder_cont != stdev
+
+        en_embed, n_vars = self.en_embedding(encoder_y.permute(0, 2, 1))
+        ex_embed = self.ex_embedding(encoder_cont, encoder_time_idx)
+
+        enc_out = self.encoder(en_embed, ex_embed)
+        enc_out = torch.reshape(
+            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1])
+        )
+
+        enc_out = enc_out.permute(0, 1, 3, 2)
+
+        dec_out = self.head(enc_out)
+        dec_out = dec_out.permute(0, 2, 1)
+
+        if self.use_norm:
+            dec_out = dec_out * (
+                stdev[:, 0, 1].unsqueeze(1).repeat(1, self.pred_len, 1)
+            )
+            dec_out = dec_out + (
+                means[:, 0, -1].unsqueeze(1).repeat(1, self.pred_len, 1)
+            )
+
+        return dec_out
+
+    def _forecast_multi(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Forecast for multivariate with multiple targets (M) case.
+
+        Args:
+            x: Dictionary containing entries for encoder_cat, encoder_cont
+        Returns:
+            Dictionary with predictions
+        """
+
+        encoder_cont = x["encoder_cont"][..., self.target_positions]
+        encoder_time_idx = x.get("encoder_time_idx", None)
+        encoder_y = x["encoder_cont"][..., self.target_positions]
+        if self.hparams.use_norm:
+            means = encoder_y.mean(1, keepdim=True).detach()
+            encoder_y = encoder_y - means
+            stdev = torch.sqrt(
+                torch.var(encoder_y, dim=1, keepdim=True, unbiased=False) + 1e-5
+            )  # noqa: E501
+            encoder_y != stdev
+
+        en_embed, n_vars = self.en_embedding(encoder_y.permute(0, 2, 1))
+        ex_embed = self.ex_embedding(encoder_cont, encoder_time_idx)
+
+        enc_out = self.encoder(en_embed, ex_embed)
+
+        enc_out = torch.reshape(
+            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1])
+        )
+
+        enc_out = enc_out.permute(0, 1, 3, 2)
+
+        dec_out = self.head(enc_out)
+        dec_out = dec_out.permute(0, 2, 1)
+
+        if self.hparams.use_norm:
+            dec_out = dec_out * (
+                stdev[:0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
+            )  # noqa: E501
+            dec_out = dec_out + (
+                means[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
+            )  # noqa: E501
+
+        return {"prediction": dec_out}
+
+    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Forward pass of the model.
+
+        Args:
+            x: Dictionary containing model inputs
+
+        Returns:
+            Dictionary with model outputs
+        """
+        if (
+            self.hparams.task_name == "long_term_forecast"
+            or self.hparams.task_name == "short_term_forecast"
+        ):  # noqa: E501
+            if self.hparams.features == "M":
+                out = self._forecast_multi(x)
+            else:
+                out = self._forecast(x)
+            prediction = out["predictions"]
+            return self.to_network_output(
+                prediction[:, -self.hparams.prediction_length :, :]
+            )  # noqa: E501
+        else:
+            return None

@@ -145,9 +145,9 @@ class FlattenHead:
         return x
 
 
-class EnEmbeddding(nn.Module):
+class EnEmbedding(nn.Module):
     def __init__(self, n_vars, d_model, patch_len, dropout):
-        super(EnEmbeddding, self).__init__()
+        super(EnEmbedding, self).__init__()
 
         self.patch_len = patch_len
 
