@@ -135,7 +135,7 @@ class FlattenHead(nn.Module):
         self.n_vars = n_vars
         self.flatten = nn.Flatten(start_dim=2)
         self.linear = nn.Linear(nf, target_window)
-        self.dropouit = nn.Dropout(head_dropout)
+        self.dropout = nn.Dropout(head_dropout)
 
     def forward(self, x):
         x = self.flatten(x)

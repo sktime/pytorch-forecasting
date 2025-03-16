@@ -24,5 +24,6 @@ __all__ = [
     "PositionalEmbedding",
     "FlattenHead",
     "EnEmbedding",
-    "Encoder" "EncoderLayer",
+    "Encoder",
+    "EncoderLayer",
 ]
