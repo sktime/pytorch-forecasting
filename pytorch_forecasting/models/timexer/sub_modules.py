@@ -49,8 +49,7 @@ class FullAttention(nn.Module):
         if self.mask_flag:
             if attn_mask is None:
                 attn_mask = TriangularCausalMask(B, L, device=queries.device)
-
-        scores.masked_fill_(attn_mask.mask, -np.abs)
+            scores.masked_fill_(attn_mask.mask, -np.abs)
         A = self.dropout(torch.softmax(scale * scores, dim=-1))
         V = torch.einsum("bhls,bshd->blhd", A, values)
 
@@ -126,11 +125,11 @@ class PositionalEmbedding(nn.Module):
         pe = pe.unsqueeze(0)
         self.register_buffer("pe", pe)
 
-        def forward(self, x):
-            return self.pe[:, : x.size(1)]
+    def forward(self, x):
+        return self.pe[:, : x.size(1)]
 
 
-class FlattenHead:
+class FlattenHead(nn.Module):
     def __init__(self, n_vars, nf, target_window, head_dropout=0):
         super().__init__()
         self.n_vars = n_vars
