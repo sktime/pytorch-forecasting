@@ -180,7 +180,8 @@ class TimeXer(BaseModelWithCovariates):
 
         # [x] todo: implement the from_dataset method
         # [x] todo: implement the forward and forecast methods into the class.
-        # [] todo: fix errors in the loss calculation for the trainer.
+        # [x] todo: fix errors in the loss calculation for the trainer,for single target
+        # [] todo: fix errors in the loss calculation for the trainer,for multi target
         self.patch_num = max(
             1, int(self.hparams.context_length // self.hparams.patch_length)
         )
@@ -295,6 +296,7 @@ class TimeXer(BaseModelWithCovariates):
         encoder_cont = x["encoder_cont"]
         encoder_time_idx = x.get("encoder_time_idx", None)
         target_pos = self.target_positions
+        # conditionally performs normalization
         if self.hparams.use_norm:
             means = encoder_cont.mean(1, keepdim=True).detach()
             encoder_cont = encoder_cont - means
@@ -342,8 +344,12 @@ class TimeXer(BaseModelWithCovariates):
             Dictionary with predictions
         """
 
-        encoder_cont = x["encoder_cont"][..., self.target_positions]
+        encoder_cont = x["encoder_cont"]
         encoder_time_idx = x.get("encoder_time_idx", None)
+        target_pos = self.target_positions
+        encoder_target = encoder_cont[..., target_pos]
+
+        # conditionally performs normalization
         if self.hparams.use_norm:
             means = encoder_cont.mean(1, keepdim=True).detach()
             encoder_cont = encoder_cont - means
@@ -351,8 +357,9 @@ class TimeXer(BaseModelWithCovariates):
                 torch.var(encoder_cont, dim=1, keepdim=True, unbiased=False) + 1e-5
             )  # noqa: E501
             encoder_cont /= stdev
+            encoder_target = encoder_cont[..., target_pos]
 
-        en_embed, n_vars = self.en_embedding(encoder_cont.permute(0, 2, 1))
+        en_embed, n_vars = self.en_embedding(encoder_target.permute(0, 2, 1))
         ex_embed = self.ex_embedding(encoder_cont, encoder_time_idx)
 
         enc_out = self.encoder(en_embed, ex_embed)
@@ -366,13 +373,10 @@ class TimeXer(BaseModelWithCovariates):
         dec_out = self.head(enc_out)
         dec_out = dec_out.permute(0, 2, 1)
 
+        # denormalizing the encoder output to target space.
         if self.hparams.use_norm:
-            dec_out = dec_out * (
-                stdev[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
-            )  # noqa: E501
-            dec_out = dec_out + (
-                means[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
-            )  # noqa: E501
+            dec_out = dec_out * (stdev[:, 0, target_pos].unsqueeze(1))  # noqa: E501
+            dec_out = dec_out + (means[:, 0, target_pos].unsqueeze(1))  # noqa: E501
 
         return dec_out
 
@@ -400,17 +404,7 @@ class TimeXer(BaseModelWithCovariates):
             if prediction.size(2) != len(target_positions):
                 if prediction.size(2) > len(target_positions):
                     prediction = prediction[:, :, : len(target_positions)]
-                else:
-                    # add zero padding in case the predictions are lesser
-                    # than the target positions, mostly unlikely
-                    padding = torch.zeros(
-                        prediction.size(0),
-                        prediction.size(1),
-                        len(target_positions) - prediction.size(2),
-                        device=prediction.device,
-                        dtype=prediction.dtype,
-                    )
-                    prediction = torch.cat([prediction, padding], dim=2)
+
             if isinstance(self.loss, QuantileLoss):
                 prediction = prediction.unsqueeze(-1)
                 num_quantiles = len(self.loss.quantiles)
