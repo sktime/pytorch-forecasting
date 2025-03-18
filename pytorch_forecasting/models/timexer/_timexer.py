@@ -173,8 +173,7 @@ class TimeXer(BaseModelWithCovariates):
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
         if loss is None:
-            loss = QuantileLoss()
-
+            loss = MAE()
         self.save_hyperparameters()
         # loss is a standalone module and is stored separately.
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
@@ -278,11 +277,7 @@ class TimeXer(BaseModelWithCovariates):
             }
         )
 
-        new_kwargs.update(
-            cls.deduce_default_output_parameters(
-                dataset, kwargs, MultiLoss([SMAPE(), MAE()])
-            )
-        )  # noqa: E501
+        new_kwargs.update(cls.deduce_default_output_parameters(dataset, kwargs, MAE()))
 
         return super().from_dataset(
             dataset,
@@ -399,13 +394,27 @@ class TimeXer(BaseModelWithCovariates):
                 out = self._forecast_multi(x)
             else:
                 out = self._forecast(x)
-            print(out)
-            prediction = out[:, -self.hparams.prediction_length :, :].unsqueeze(-1)
+            prediction = out[:, : self.hparams.prediction_length, :]
+
+            target_positions = self.target_positions
+            if prediction.size(2) != len(target_positions):
+                if prediction.size(2) > len(target_positions):
+                    prediction = prediction[:, :, : len(target_positions)]
+                else:
+                    # add zero padding in case the predictions are lesser
+                    # than the target positions, mostly unlikely
+                    padding = torch.zeros(
+                        prediction.size(0),
+                        prediction.size(1),
+                        len(target_positions) - prediction.size(2),
+                        device=prediction.device,
+                        dtype=prediction.dtype,
+                    )
+                    prediction = torch.cat([prediction, padding], dim=2)
             if isinstance(self.loss, QuantileLoss):
+                prediction = prediction.unsqueeze(-1)
                 num_quantiles = len(self.loss.quantiles)
-                # Expand the prediction to match the number of quantiles
                 prediction = prediction.repeat(1, 1, 1, num_quantiles)
-            output_dict = {"prediction": prediction}
-            return output_dict
+            return self.to_network_output(prediction=prediction)
         else:
             return None
