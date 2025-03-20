@@ -2,30 +2,30 @@
 Timeseries models share a number of common characteristics. This module implements these in a common base class.
 """  # noqa: E501
 
+from collections import namedtuple
+from copy import deepcopy
 import inspect
 import logging
 import os
-import warnings
-from collections import namedtuple
-from copy import deepcopy
 from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union
+import warnings
 
 import lightning.pytorch as pl
-import numpy as np
-import pandas as pd
-import scipy.stats
-import torch
-import torch.nn as nn
-import yaml
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import BasePredictionWriter, LearningRateFinder
 from lightning.pytorch.trainer.states import RunningStage
 from lightning.pytorch.utilities.parsing import get_init_args
+import numpy as np
 from numpy import iterable
+import pandas as pd
+import scipy.stats
+import torch
+import torch.nn as nn
 from torch.nn.utils import rnn
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm.autonotebook import tqdm
+import yaml
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import (
@@ -133,7 +133,7 @@ def _concatenate_output(
             str,
             List[Union[List[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]],
         ]
-    ],
+    ]
 ) -> Dict[
     str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]
 ]:
