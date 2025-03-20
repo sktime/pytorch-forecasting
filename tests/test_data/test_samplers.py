@@ -13,14 +13,22 @@ from pytorch_forecasting.data import TimeSynchronizedBatchSampler
         (True, False, False, 1000),
     ],
 )
-def test_TimeSynchronizedBatchSampler(test_dataset, shuffle, drop_last, as_string, batch_size):
+def test_TimeSynchronizedBatchSampler(
+    test_dataset, shuffle, drop_last, as_string, batch_size
+):
     if as_string:
         dataloader = test_dataset.to_dataloader(
-            batch_sampler="synchronized", shuffle=shuffle, drop_last=drop_last, batch_size=batch_size
+            batch_sampler="synchronized",
+            shuffle=shuffle,
+            drop_last=drop_last,
+            batch_size=batch_size,
         )
     else:
         sampler = TimeSynchronizedBatchSampler(
-            SequentialSampler(test_dataset), shuffle=shuffle, drop_last=drop_last, batch_size=batch_size
+            SequentialSampler(test_dataset),
+            shuffle=shuffle,
+            drop_last=drop_last,
+            batch_size=batch_size,
         )
         dataloader = test_dataset.to_dataloader(batch_sampler=sampler)
 
