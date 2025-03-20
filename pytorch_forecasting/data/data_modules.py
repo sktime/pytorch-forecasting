@@ -99,7 +99,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
     ):
         super().__init__()
         self.time_series_dataset = time_series_dataset
-        self.metadata = time_series_dataset.get_metadata()
+        self.time_series_metadata = time_series_dataset.get_metadata()
 
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length or max_encoder_length
@@ -127,9 +127,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         self.categorical_indices = []
         self.continuous_indices = []
+        self.metadata = {}
 
-        for idx, col in enumerate(self.metadata["cols"]["x"]):
-            if self.metadata["col_type"].get(col) == "C":
+        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
+            if self.time_series_metadata["col_type"].get(col) == "C":
                 self.categorical_indices.append(idx)
             else:
                 self.continuous_indices.append(idx)
@@ -201,6 +202,35 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self.processed_data = processed_data
             self.windows = windows
             self.add_relative_time_idx = add_relative_time_idx
+            self.metadata = {}
+            if len(windows) > 0:
+
+                sample_idx = 0
+                sample_x, sample_y = self.__getitem__(sample_idx)
+                self.metadata = {
+                    "encoder_cat": sample_x["encoder_cat"].shape,
+                    "encoder_cont": sample_x["encoder_cont"].shape,
+                    "decoder_cat": sample_x["decoder_cat"].shape,
+                    "decoder_cont": sample_x["decoder_cont"].shape,
+                    "encoder_lengths": sample_x["encoder_lengths"].shape,
+                    "decoder_lengths": sample_x["decoder_lengths"].shape,
+                    "decoder_target_lengths": sample_x["decoder_target_lengths"].shape,
+                    "groups": sample_x["groups"].shape,
+                    "encoder_time_idx": sample_x["encoder_time_idx"].shape,
+                    "decoder_time_idx": sample_x["decoder_time_idx"].shape,
+                    "target_scale": sample_x["target_scale"].shape,
+                    "target": sample_y.shape,
+                }
+                if "static_categorical_features" in sample_x:
+                    self.metadata["static_categorical_features"] = sample_x[
+                        "static_categorical_features"
+                    ].shape
+                    self.metadata["static_continuous_features"] = sample_x[
+                        "static_continuous_features"
+                    ].shape
+
+        def get_metadata(self):
+            return self.metadata
 
         def __len__(self):
             return len(self.windows)
@@ -311,6 +341,16 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.val_dataset = self._ProcessedEncoderDecoderDataset(
                     self.val_processed, self.val_windows, self.add_relative_time_idx
                 )
+                if hasattr(self.train_dataset, "get_metadata"):
+                    dataset_metadata = self.train_dataset.get_metadata()
+                    lengths = {
+                        "max_encoder_length": self.max_encoder_length,
+                        "max_prediction_length": self.max_prediction_length,
+                        "min_encoder_length": self.min_encoder_length,
+                        "min_prediction_length": self.min_prediction_length,
+                    }
+                    self.metadata.update(dataset_metadata)
+                    self.metadata.update(lengths)
 
         elif stage is None or stage == "test":
             if not hasattr(self, "test_dataset"):
@@ -320,6 +360,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
                     self.test_processed, self.test_windows, self.add_relative_time_idx
                 )
+                if hasattr(self.test_dataset, "get_metadata") and not self.metadata:
+                    dataset_metadata = self.test_dataset.get_metadata()
+                    self.metadata.update(dataset_metadata)
+
         elif stage == "predict":
             predict_indices = torch.arange(len(self.time_series_dataset))
             self.predict_processed = self._preprocess_data(predict_indices)
@@ -327,6 +371,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self.predict_dataset = self._ProcessedEncoderDecoderDataset(
                 self.predict_processed, self.predict_windows, self.add_relative_time_idx
             )
+            if hasattr(self.predict_dataset, "get_metadata") and not self.metadata:
+                dataset_metadata = self.predict_dataset.get_metadata()
+                self.metadata.update(dataset_metadata)
 
     def train_dataloader(self):
         return DataLoader(
