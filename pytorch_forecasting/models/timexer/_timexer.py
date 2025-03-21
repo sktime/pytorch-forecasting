@@ -173,7 +173,10 @@ class TimeXer(BaseModelWithCovariates):
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
         if loss is None:
-            loss = MAE()
+            if features == "M":
+                loss = MultiLoss([MAE()] * len(self.target_positions))
+            else:
+                loss = MAE()
         self.save_hyperparameters()
         # loss is a standalone module and is stored separately.
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
@@ -188,17 +191,10 @@ class TimeXer(BaseModelWithCovariates):
         self.n_target_vars = len(self.target_positions)
 
         if enc_in is None:
-            if features == "MS":
-                self.enc_in = 1
-            else:
-                self.enc_in = self.n_target_vars
-        else:
-            self.enc_in = enc_in
-
-        self.n_vars = 1 if self.hparams.features == "MS" else self.enc_in
+            self.enc_in = len(self.reals)
 
         self.en_embedding = EnEmbedding(
-            self.n_vars,
+            self.n_target_vars,
             self.hparams.d_model,
             self.hparams.patch_length,
             self.hparams.dropout,
@@ -375,9 +371,12 @@ class TimeXer(BaseModelWithCovariates):
 
         # denormalizing the encoder output to target space.
         if self.hparams.use_norm:
-            dec_out = dec_out * (stdev[:, 0, target_pos].unsqueeze(1))  # noqa: E501
-            dec_out = dec_out + (means[:, 0, target_pos].unsqueeze(1))  # noqa: E501
-
+            dec_out = dec_out * (
+                stdev[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
+            )
+            dec_out = dec_out + (
+                means[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
+            )
         return dec_out
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -402,13 +401,17 @@ class TimeXer(BaseModelWithCovariates):
 
             target_positions = self.target_positions
             if prediction.size(2) != len(target_positions):
-                if prediction.size(2) > len(target_positions):
-                    prediction = prediction[:, :, : len(target_positions)]
+                prediction = prediction[:, :, : len(target_positions)]
 
             if isinstance(self.loss, QuantileLoss):
                 prediction = prediction.unsqueeze(-1)
                 num_quantiles = len(self.loss.quantiles)
                 prediction = prediction.repeat(1, 1, 1, num_quantiles)
+
+            prediction = [prediction[..., i] for i in range(prediction.size(2))]
+            prediction = self.transform_output(
+                prediction=prediction, target_scale=x["target_scale"]
+            )
             return self.to_network_output(prediction=prediction)
         else:
             return None
