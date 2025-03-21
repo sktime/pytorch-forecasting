@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
@@ -52,11 +53,85 @@ class Informer(BaseModel):
         logging_metrics: Optional[nn.ModuleList] = None,
         **kwargs,
     ):
-        super().__init__()
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if loss is None:
             loss = MAE()
+        super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
+        self.enc_embedding = DataEmbedding(
+            self.encoder_input, self.d_model, self.embed, self.freq, self.dropout
+        )
+        self.dec_embedding = DataEmbedding(
+            self.decoder_input, self.d_model, self.embed, self.freq, self.dropout
+        )
+        self.encoder = Encoder(
+            [
+                EncoderLayer(
+                    AttentionLayer(
+                        ProbAttention(
+                            False,
+                            self.factor,
+                            attention_dropout=self.dropout,
+                            output_attention=False,
+                        ),
+                        self.d_model,
+                        self.n_heads,
+                    ),
+                    self.d_model,
+                    self.d_ff,
+                    dropout=self.dropout,
+                    activation=self.activation,
+                )
+                for l in range(self.encoder_layers)
+            ],
+            (
+                [ConvLayer(self.d_model) for l in range(self.encoder_layers - 1)]
+                if self.distil and ("forecast" in self.task_name)
+                else None
+            ),
+            norm_layer=torch.nn.LayerNorm(self.d_model),
+        )
+        self.decoder = Decoder(
+            [
+                DecoderLayer(
+                    AttentionLayer(
+                        ProbAttention(
+                            True,
+                            self.factor,
+                            attention_dropout=self.dropout,
+                            output_attention=False,
+                        ),
+                        self.d_model,
+                        self.n_heads,
+                    ),
+                    AttentionLayer(
+                        ProbAttention(
+                            False,
+                            self.factor,
+                            attention_dropout=self.dropout,
+                            output_attention=False,
+                        ),
+                        self.d_model,
+                        self.n_heads,
+                    ),
+                    self.d_model,
+                    self.d_ff,
+                    dropout=self.dropout,
+                    activation=self.activation,
+                )
+                for l in range(self.decoder_layers)
+            ],
+            norm_layer=torch.nn.LayerNorm(self.d_model),
+            projection=nn.Linear(self.d_model, self.out_channels, bias=True),
+        )
+        if self.task_name == "imputation":
+            self.projection = nn.Linear(self.d_model, self.out_channels, bias=True)
+        if self.task_name == "anomaly_detection":
+            self.projection = nn.Linear(self.d_model, self.out_channels, bias=True)
+        if self.task_name == "classification":
+            self.act = F.gelu
+            self.dropout = nn.Dropout(self.dropout)
+            self.projection = nn.Linear(self.d_model * self.seq_len, self.num_class)
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
@@ -81,3 +156,39 @@ class Informer(BaseModel):
             dataset,
             **new_kwargs,
         )
+
+    def long_forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
+        enc_out = self.enc_embedding(x_enc, x_mark_enc)
+        dec_out = self.dec_embedding(x_dec, x_mark_dec)
+        enc_out, attns = self.encoder(enc_out, attn_mask=None)
+
+        dec_out = self.decoder(dec_out, enc_out, x_mask=None, cross_mask=None)
+
+        return dec_out  # [B, L, D]
+
+    def short_forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
+        # Normalization
+        mean_enc = x_enc.mean(1, keepdim=True).detach()  # B x 1 x E
+        x_enc = x_enc - mean_enc
+        std_enc = torch.sqrt(
+            torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5
+        ).detach()  # B x 1 x E
+        x_enc = x_enc / std_enc
+
+        enc_out = self.enc_embedding(x_enc, x_mark_enc)
+        dec_out = self.dec_embedding(x_dec, x_mark_dec)
+        enc_out, attns = self.encoder(enc_out, attn_mask=None)
+
+        dec_out = self.decoder(dec_out, enc_out, x_mask=None, cross_mask=None)
+
+        dec_out = dec_out * std_enc + mean_enc
+        return dec_out  # [B, L, D]
+
+    def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
+        if self.task_name == "long_term_forecast":
+            dec_out = self.long_forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
+            return dec_out[:, -self.pred_len :, :]  # [B, L, D]
+        if self.task_name == "short_term_forecast":
+            dec_out = self.short_forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
+            return dec_out[:, -self.pred_len :, :]  # [B, L, D]
+        return None
