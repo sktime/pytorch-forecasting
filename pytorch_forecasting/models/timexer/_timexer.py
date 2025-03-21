@@ -370,7 +370,7 @@ class TimeXer(BaseModelWithCovariates):
         dec_out = self.head(enc_out)
         dec_out = dec_out.permute(0, 2, 1)
 
-        # denormalizing the encoder output to target space.
+        # denormalizing the encoder output to target space. not used unless forced
         if self.hparams.use_norm:
             dec_out = dec_out * (
                 stdev[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
@@ -379,6 +379,46 @@ class TimeXer(BaseModelWithCovariates):
                 means[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
             )
         return dec_out
+
+    @property
+    def decoder_covariate_size(self) -> int:
+        """Decoder covariates size.
+
+        Returns:
+            int: size of time-dependent covariates used by the decoder
+        """
+        return len(
+            set(self.hparams.time_varying_reals_decoder) - set(self.target_names)
+        ) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_decoder
+        )
+
+    @property
+    def encoder_covariate_size(self) -> int:
+        """Encoder covariate size.
+
+        Returns:
+            int: size of time-dependent covariates used by the encoder
+        """
+        return len(
+            set(self.hparams.time_varying_reals_encoder) - set(self.target_names)
+        ) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_encoder
+        )
+
+    @property
+    def static_size(self) -> int:
+        """Static covariate size.
+
+        Returns:
+            int: size of static covariates
+        """
+        return len(self.hparams.static_reals) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.static_categoricals
+        )
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
