@@ -12,6 +12,16 @@ from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.base import BaseModel
+from pytorch_forecasting.models.informer.sub_modules import (
+    AttentionLayer,
+    ConvLayer,
+    DataEmbedding,
+    Decoder,
+    DecoderLayer,
+    Encoder,
+    EncoderLayer,
+    ProbAttention,
+)
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
@@ -21,6 +31,7 @@ class Informer(BaseModel):
         encoder_input: int,
         decoder_input: int,
         out_channels: int,
+        task: str,
         seq_len: int,
         label_len: int,
         out_len: int,
