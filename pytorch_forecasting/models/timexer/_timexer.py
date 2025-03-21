@@ -51,7 +51,7 @@ class TimeXer(BaseModelWithCovariates):
         dropout: float = 0.1,
         activation: str = "relu",
         patch_length: int = 24,
-        use_norm: bool = True,
+        use_norm: bool = False,
         factor: int = 5,
         embed_type: str = "fixed",
         freq: str = "h",
@@ -112,6 +112,7 @@ class TimeXer(BaseModelWithCovariates):
             patch_length (int, optional): Length of each non-overlapping patch for
                 endogenous variable tokenization.
             use_norm (bool, optional): Whether to apply normalization to input data.
+                Do not change, as it a setting controlled by the pytorch-forecasting API
             factor: Scaling factor for attention scores.
             embed_type: Type of time feature embedding ('timeF' for time-based features)
             freq: Frequency of the time series data('h' for hourly,'d' for daily, etc.).
