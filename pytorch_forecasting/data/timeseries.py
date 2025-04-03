@@ -2513,7 +2513,7 @@ class TimeSeriesDataSet(Dataset):
 
         Parameters
         ----------
-        train : bool, optional, default=Trze
+        train : bool, optional, default=True
             whether dataloader is used for training (True) or prediction (False).
             Will shuffle and drop last batch if True. Defaults to True.
         batch_size : int, optional, default=64
