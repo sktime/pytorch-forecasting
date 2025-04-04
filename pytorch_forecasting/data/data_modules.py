@@ -135,7 +135,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.categorical_indices = []
         self.continuous_indices = []
         self._metadata = None
-        ##
 
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
             if self.time_series_metadata["col_type"].get(col) == "C":
@@ -143,32 +142,29 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             else:
                 self.continuous_indices.append(idx)
 
-    @property
-    def metadata(self):
-        """Compute metadata for model initialization.
+    def _prepare_metadata(self):
+        """Prepare metadata for model initialisation.
 
-        This property returns a dictionary containing the shapes and key information
-        related to the time series model. The metadata includes:
+        Returns
+        -------
+        dict
+            dictionary containing the following keys:
 
-        * ``encoder_cat``: Number of categorical variables in the encoder.
-        * ``encoder_cont``: Number of continuous variables in the encoder.
-        * ``decoder_cat``: Number of categorical variables in the decoder that are
-                            known in advance.
-        * ``decoder_cont``:  Number of continuous variables in the decoder that are
-                            known in advance.
-        * ``target``: Number of target variables.
+                * ``encoder_cat``: Number of categorical variables in the encoder.
+                * ``encoder_cont``: Number of continuous variables in the encoder.
+                * ``decoder_cat``: Number of categorical variables in the decoder that
+                                are known in advance.
+                * ``decoder_cont``:  Number of continuous variables in the decoder that
+                                    are known in advance.
+                * ``target``: Number of target variables.
+                * ``static_categorical_features``: Number of static categorical features
+                * ``static_continuous_features``: Number of static continuous features
+                * ``max_encoder_length``: maximum encoder length
+                * ``max_prediction_length``: maximum prediction length
+                * ``min_encoder_length``: minimum encoder length
+                * ``min_prediction_length``: minimum prediction length
 
-        If static features are present, the following keys are added:
 
-        * ``static_categorical_features``: Number of static categorical features
-        * ``static_continuous_features``: Number of static continuous features
-
-        It also contains the following information:
-
-        * ``max_encoder_length``: maximum encoder length
-        * ``max_prediction_length``: maximum prediction length
-        * ``min_encoder_length``: minimum encoder length
-        * ``min_prediction_length``: minimum prediction length
         """
         encoder_cat_count = len(self.categorical_indices)
         encoder_cont_count = len(self.continuous_indices)
@@ -229,6 +225,37 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         )
 
         return metadata
+
+    @property
+    def metadata(self):
+        """Compute metadata for model initialization.
+
+        This property returns a dictionary containing the shapes and key information
+        related to the time series model. The metadata includes:
+
+        * ``encoder_cat``: Number of categorical variables in the encoder.
+        * ``encoder_cont``: Number of continuous variables in the encoder.
+        * ``decoder_cat``: Number of categorical variables in the decoder that are
+                            known in advance.
+        * ``decoder_cont``:  Number of continuous variables in the decoder that are
+                            known in advance.
+        * ``target``: Number of target variables.
+
+        If static features are present, the following keys are added:
+
+        * ``static_categorical_features``: Number of static categorical features
+        * ``static_continuous_features``: Number of static continuous features
+
+        It also contains the following information:
+
+        * ``max_encoder_length``: maximum encoder length
+        * ``max_prediction_length``: maximum prediction length
+        * ``min_encoder_length``: minimum encoder length
+        * ``min_prediction_length``: minimum prediction length
+        """
+        if self._metadata is None:
+            self._metadata = self._prepare_metadata()
+        return self._metadata
 
     def _preprocess_data(self, indices: torch.Tensor) -> List[Dict[str, Any]]:
         """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
