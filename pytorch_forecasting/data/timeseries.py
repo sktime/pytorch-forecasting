@@ -2675,48 +2675,6 @@ def _coerce_to_dict(obj):
 class TimeSeries(Dataset):
     """PyTorch Dataset for time series data stored in pandas DataFrame.
 
-    ``__getitem__`` returns:
-
-    * ``t``: tensor of shape (n_timepoints)
-      Time index for each time point in the past or present. Aligned with ``y``,
-      and ``x`` not ending in ``f``.
-    * ``y``: tensor of shape (n_timepoints, n_targets)
-      Target values for each time point. Rows are time points, aligned with ``t``.
-    * ``x``: tensor of shape (n_timepoints, n_features)
-      Features for each time point. Rows are time points, aligned with ``t``.
-    * ``group``: tensor of shape (n_groups)
-      Group identifiers for time series instances.
-    * ``st``: tensor of shape (n_static_features)
-      Static features.
-
-    Optionally, the following str-keyed entries can be included:
-
-    * ``t_f``: tensor of shape (n_timepoints_future)
-        Time index for each time point in the future.
-        Aligned with ``x_f``.
-    * ``x_f``: tensor of shape (n_timepoints_future, n_features)
-        Known features for each time point in the future.
-        Rows are time points, aligned with ``t_f``.
-    * ``weights``: tensor of shape (n_timepoints), only if weight is not None
-    * ``weight_f``: tensor of shape (n_timepoints_future), only if weight is
-        not None.
-
-    -----------------------------------------------------------------------------------
-
-    ``get_metadata`` returns metadata:
-
-    * ``cols``: dict { 'y': list[str], 'x': list[str], 'st': list[str] }
-      Names of columns for y, x, and static features.
-      List elements are in same order as column dimensions.
-      Columns not appearing are assumed to be named (x0, x1, etc.),
-      (y0, y1, etc.), (st0, st1, etc.).
-    * ``col_type``: dict[str, str]
-      maps column names to data types "F" (numerical) and "C" (categorical).
-      Column names not occurring are assumed "F".
-    * ``col_known``: dict[str, str]
-      maps column names to "K" (future known) or "U" (future unknown).
-      Column names not occurring are assumed "K".
-
     Parameters
     ----------
     data : pd.DataFrame
@@ -2807,7 +2765,22 @@ class TimeSeries(Dataset):
         self._prepare_metadata()
 
     def _prepare_metadata(self):
-        """Prepare metadata for the dataset."""
+        """Prepare metadata for the dataset.
+
+        The funcion returns metadata that contains:
+
+        * ``cols``: dict { 'y': list[str], 'x': list[str], 'st': list[str] }
+          Names of columns for y, x, and static features.
+          List elements are in same order as column dimensions.
+          Columns not appearing are assumed to be named (x0, x1, etc.),
+          (y0, y1, etc.), (st0, st1, etc.).
+        * ``col_type``: dict[str, str]
+          maps column names to data types "F" (numerical) and "C" (categorical).
+          Column names not occurring are assumed "F".
+        * ``col_known``: dict[str, str]
+          maps column names to "K" (future known) or "U" (future unknown).
+          Column names not occurring are assumed "K".
+        """
         self.metadata = {
             "cols": {
                 "y": self.target,
@@ -2829,7 +2802,28 @@ class TimeSeries(Dataset):
         return len(self._group_ids)
 
     def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
-        """Get time series data for given index."""
+        """Get time series data for given index.
+
+        It returns:
+
+        * ``t``: ``numpy.ndarray`` of shape (n_timepoints,)
+          Time index for each time point in the past or present. Aligned with ``y``,
+          and ``x`` not ending in ``f``.
+        * ``y``: tensor of shape (n_timepoints, n_targets)
+          Target values for each time point. Rows are time points, aligned with ``t``.
+        * ``x``: tensor of shape (n_timepoints, n_features)
+          Features for each time point. Rows are time points, aligned with ``t``.
+        * ``group``: tensor of shape (n_groups)
+          Group identifiers for time series instances.
+        * ``st``: tensor of shape (n_static_features)
+          Static features.
+        * ``cutoff_time``: float or ``numpy.float64``
+          Cutoff time for the time series instance.
+
+        Optionally, the following str-keyed entry can be included:
+
+        * ``weights``: tensor of shape (n_timepoints), only if weight is not None
+        """
         group_id = self._group_ids[index]
 
         if self.group:
@@ -2866,18 +2860,15 @@ class TimeSeries(Dataset):
             x_merged = np.full((num_timepoints, len(self.feature_cols)), np.nan)
             y_merged = np.full((num_timepoints, len(self.target)), np.nan)
 
-            # Fill in current data
             current_time_indices = {t: i for i, t in enumerate(combined_times)}
             for i, t in enumerate(data[self.time].values):
                 idx = current_time_indices[t]
                 x_merged[idx] = data[self.feature_cols].values[i]
                 y_merged[idx] = data[self.target].values[i]
 
-            # Fill in known future features
             for i, t in enumerate(future_data[self.time].values):
                 if t in current_time_indices:
                     idx = current_time_indices[t]
-                    # Only fill known features
                     for j, col in enumerate(self.known):
                         if col in self.feature_cols:
                             feature_idx = self.feature_cols.index(col)

@@ -98,8 +98,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
         super().__init__()
+        # TODO: AG comment: probably lot of these variables are useless
+        # TODO: AG comment: train_val_test_split seems related to groups and it is ok
+        #  IN CASE of global forecasting but here
+        # TODO: AG comment: we need also the temporal split (ok by percentage)
+        # AS comment: These variables are copied from the original implementation of
+        # TimeSeriesDataset, some are here and others in OUR TimeSeries dataset class,
+        # we should discuss about what to do with these variables.
         self.time_series_dataset = time_series_dataset
-        self.metadata = time_series_dataset.get_metadata()
+        self.time_series_metadata = time_series_dataset.get_metadata()
 
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length or max_encoder_length
@@ -127,15 +134,127 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         self.categorical_indices = []
         self.continuous_indices = []
+        self._metadata = None
+        ##
 
-        for idx, col in enumerate(self.metadata["cols"]["x"]):
-            if self.metadata["col_type"].get(col) == "C":
+        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
+            if self.time_series_metadata["col_type"].get(col) == "C":
                 self.categorical_indices.append(idx)
             else:
                 self.continuous_indices.append(idx)
 
+    @property
+    def metadata(self):
+        """Compute metadata for model initialization.
+
+        This property returns a dictionary containing the shapes and key information
+        related to the time series model. The metadata includes:
+
+        * ``encoder_cat``: Number of categorical variables in the encoder.
+        * ``encoder_cont``: Number of continuous variables in the encoder.
+        * ``decoder_cat``: Number of categorical variables in the decoder that are
+                            known in advance.
+        * ``decoder_cont``:  Number of continuous variables in the decoder that are
+                            known in advance.
+        * ``target``: Number of target variables.
+
+        If static features are present, the following keys are added:
+
+        * ``static_categorical_features``: Number of static categorical features
+        * ``static_continuous_features``: Number of static continuous features
+
+        It also contains the following information:
+
+        * ``max_encoder_length``: maximum encoder length
+        * ``max_prediction_length``: maximum prediction length
+        * ``min_encoder_length``: minimum encoder length
+        * ``min_prediction_length``: minimum prediction length
+        """
+        encoder_cat_count = len(self.categorical_indices)
+        encoder_cont_count = len(self.continuous_indices)
+
+        decoder_cat_count = len(
+            [
+                col
+                for col in self.time_series_metadata["cols"]["x"]
+                if self.time_series_metadata["col_type"].get(col) == "C"
+                and self.time_series_metadata["col_known"].get(col) == "K"
+            ]
+        )
+        decoder_cont_count = len(
+            [
+                col
+                for col in self.time_series_metadata["cols"]["x"]
+                if self.time_series_metadata["col_type"].get(col) == "F"
+                and self.time_series_metadata["col_known"].get(col) == "K"
+            ]
+        )
+
+        target_count = len(self.time_series_metadata["cols"]["y"])
+        ## TODO: AG comment: if global forecast is FALSE we may want to add
+        # also the group as categorical variable
+
+        metadata = {
+            "encoder_cat": encoder_cat_count,
+            "encoder_cont": encoder_cont_count,
+            "decoder_cat": decoder_cat_count,
+            "decoder_cont": decoder_cont_count,
+            "target": target_count,
+        }
+        if self.time_series_metadata["cols"]["st"]:
+            static_cat_count = len(
+                [
+                    col
+                    for col in self.time_series_metadata["cols"]["st"]
+                    if self.time_series_metadata["col_type"].get(col) == "C"
+                ]
+            )
+            static_cont_count = (
+                len(self.time_series_metadata["cols"]["st"]) - static_cat_count
+            )
+
+            metadata["static_categorical_features"] = static_cat_count
+            metadata["static_continuous_features"] = static_cont_count
+        else:
+            metadata["static_categorical_features"] = 0
+            metadata["static_continuous_features"] = 0
+
+        metadata.update(
+            {
+                "max_encoder_length": self.max_encoder_length,
+                "max_prediction_length": self.max_prediction_length,
+                "min_encoder_length": self.min_encoder_length,
+                "min_prediction_length": self.min_prediction_length,
+            }
+        )
+
+        return metadata
+
     def _preprocess_data(self, indices: torch.Tensor) -> List[Dict[str, Any]]:
+        """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
+
+        Preprocessing steps
+        --------------------
+
+        * Converts target (`y`) and features (`x`) to `torch.float32`.
+        * Masks time points that are at or before the cutoff time.
+        * Handles missing values in features by imputing with the mean of valid
+            historical values.
+        * Splits features into categorical and continuous subsets based on
+            predefined indices.
+
+
+        TODO: add scalers, target normalizers etc.
+        """
         processed_data = []
+
+        ##TODO AG comment: for me this implementation hardly depend on d1 layer. You are
+        ## loading all the d1 layer in memory. This is for sure the most common use case
+        ## BUT this can be used only for small dataset. I suggest you to have a look to
+        ## the implementation made by Sandeep
+
+        # AS Comment: We can add chunking pnce the basic backbone is agreed upon by
+        # everyone.
 
         for idx in indices:
             sample = self.time_series_dataset[idx.item()]
@@ -168,7 +287,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                         mean_value = 0.0
                     features_imputed[:, i] = torch.where(
                         torch.isnan(features[:, i]), mean_value, features[:, i]
-                    )
+                    )  ##TODO AG comment: for me interpolating is something
+                    # to do before D1 layer
 
             categorical = (
                 features_imputed[:, self.categorical_indices]
@@ -180,7 +300,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 if self.continuous_indices
                 else torch.zeros((features_imputed.shape[0], 0))
             )
-
+            ##TODO AG COMMMENT: this can slow down all the process,
+            # dictionaries can be very resource consuming
             processed_data.append(
                 {
                     "features": {"categorical": categorical, "continuous": continuous},
@@ -224,6 +345,57 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             return len(self.windows)
 
         def __getitem__(self, idx):
+            """Retrieve a processed time series window for dataloader input.
+
+            x : dict
+                Dictionary containing model inputs:
+
+                * ``encoder_cat`` : tensor of shape (enc_length, n_cat_features)
+                  Categorical features for the encoder.
+                * ``encoder_cont`` : tensor of shape (enc_length, n_cont_features)
+                  Continuous features for the encoder.
+                * ``decoder_cat`` : tensor of shape (pred_length, n_cat_features)
+                  Categorical features for the decoder.
+                * ``decoder_cont`` : tensor of shape (pred_length, n_cont_features)
+                  Continuous features for the decoder.
+                * ``encoder_lengths`` : tensor of shape (1,)
+                  Length of the encoder sequence.
+                * ``decoder_lengths`` : tensor of shape (1,)
+                  Length of the decoder sequence.
+                * ``decoder_target_lengths`` : tensor of shape (1,)
+                  Length of the decoder target sequence.
+                * ``groups`` : tensor of shape (1,)
+                  Group identifier for the time series instance.
+                * ``encoder_time_idx`` : tensor of shape (enc_length,)
+                  Time indices for the encoder sequence.
+                * ``decoder_time_idx`` : tensor of shape (pred_length,)
+                  Time indices for the decoder sequence.
+                * ``target_scale`` : tensor of shape (1,)
+                  Scaling factor for the target values.
+                * ``encoder_mask`` : tensor of shape (enc_length,)
+                  Boolean mask indicating valid encoder time points.
+                * ``decoder_mask`` : tensor of shape (pred_length,)
+                  Boolean mask indicating valid decoder time points.
+
+                  If static features are present, the following keys are added:
+
+                * ``static_categorical_features`` : tensor of shape
+                                                    (1, n_static_cat_features), optional
+                  Static categorical features, if available.
+                * ``static_continuous_features`` : tensor of shape (1, 0), optional
+                  Placeholder for static continuous features (currently empty).
+
+            y : tensor of shape ``(pred_length, n_targets)``
+                Target values for the decoder sequence.
+            """
+
+            ## TODO AG commment: we need to be sure that the sample idx leads to
+            # something that is valid aka has no nan values
+            ## the check sould be done before and not during the getitem in my opinion
+            ## in my mind BEFORE calling the get_item you already know, given the
+            # index i, which
+            ## time series you need to retrieve from the d1 layer AND which slice of it
+            ## maybe it worth to precomputed as Sandeep is doing
             series_idx, start_idx, enc_length, pred_length = self.windows[idx]
             data = self.processed_data[series_idx]
 
@@ -253,16 +425,22 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "decoder_cat": data["features"]["categorical"][decoder_indices],
                 "decoder_cont": data["features"]["continuous"][decoder_indices],
                 "encoder_lengths": torch.tensor(enc_length),
+                ##TODO AG comment: not useful in the getitem
                 "decoder_lengths": torch.tensor(pred_length),
+                ##TODO AG comment: not useful in the getitem
                 "decoder_target_lengths": torch.tensor(pred_length),
+                ##TODO AG comment: not useful in the getitem
                 "groups": data["group"],
                 "encoder_time_idx": torch.arange(enc_length),
+                ##TODO AG comment: not useful in the getitem
                 "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
+                ##TODO AG comment: not useful in the getitem
                 "target_scale": target_scale,
                 "encoder_mask": encoder_mask,
                 "decoder_mask": decoder_mask,
             }
-
+            # AS comment: The getitem of original implementation also returns similar
+            # keys, should I remove these and directly add them to collate_fn?
             if data["static"] is not None:
                 x["static_categorical_features"] = data["static"].unsqueeze(0)
                 x["static_continuous_features"] = torch.zeros((1, 0))
@@ -276,6 +454,21 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
     def _create_windows(
         self, processed_data: List[Dict[str, Any]]
     ) -> List[Tuple[int, int, int, int]]:
+        """Generate sliding windows for training, validation, and testing.
+
+        Returns
+        -------
+        List[Tuple[int, int, int, int]]
+            A list of tuples, where each tuple consists of:
+            - ``series_idx`` : int
+              Index of the time series in `processed_data`.
+            - ``start_idx`` : int
+              Start index of the encoder window.
+            - ``enc_length`` : int
+              Length of the encoder input sequence.
+            - ``pred_length`` : int
+              Length of the decoder output sequence.
+        """
         windows = []
 
         for idx, data in enumerate(processed_data):
@@ -314,6 +507,17 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         return windows
 
     def setup(self, stage: Optional[str] = None):
+        """Prepare the datasets for training, validation, testing, or prediction.
+
+        Parameters
+        ----------
+        stage : Optional[str], default=None
+            Specifies the stage of setup. Can be one of:
+            - ``"fit"`` : Prepares training and validation datasets.
+            - ``"test"`` : Prepares the test dataset.
+            - ``"predict"`` : Prepares the dataset for inference.
+            - ``None`` : Prepares all datasets.
+        """
         total_series = len(self.time_series_dataset)
         self._split_indices = torch.randperm(total_series)
 
@@ -340,6 +544,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.val_dataset = self._ProcessedEncoderDecoderDataset(
                     self.val_processed, self.val_windows, self.add_relative_time_idx
                 )
+                # print(self.val_dataset[0])
 
         elif stage is None or stage == "test":
             if not hasattr(self, "test_dataset"):
