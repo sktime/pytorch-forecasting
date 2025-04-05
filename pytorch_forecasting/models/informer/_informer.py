@@ -57,6 +57,7 @@ class Informer(BaseModel):
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if loss is None:
             loss = MAE()
+        self.save_hyperparameters()
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
         self.enc_embedding = DataEmbedding(
             self.encoder_input, self.d_model, self.embed, self.freq, self.dropout
@@ -124,14 +125,6 @@ class Informer(BaseModel):
             norm_layer=torch.nn.LayerNorm(self.d_model),
             projection=nn.Linear(self.d_model, self.out_channels, bias=True),
         )
-        if self.task_name == "imputation":
-            self.projection = nn.Linear(self.d_model, self.out_channels, bias=True)
-        if self.task_name == "anomaly_detection":
-            self.projection = nn.Linear(self.d_model, self.out_channels, bias=True)
-        if self.task_name == "classification":
-            self.act = F.gelu
-            self.dropout = nn.Dropout(self.dropout)
-            self.projection = nn.Linear(self.d_model * self.seq_len, self.num_class)
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
