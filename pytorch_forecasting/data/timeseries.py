@@ -2815,25 +2815,31 @@ class TimeSeries(Dataset):
     def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
         """Get time series data for given index.
 
-        It returns:
+        Returns
+        -------
+        t : numpy.ndarray of shape (n_timepoints,)
+            Time index for each time point in the past or present. Aligned with `y`,
+            and `x` not ending in `f`.
 
-        * ``t``: ``numpy.ndarray`` of shape (n_timepoints,)
-          Time index for each time point in the past or present. Aligned with ``y``,
-          and ``x`` not ending in ``f``.
-        * ``y``: tensor of shape (n_timepoints, n_targets)
-          Target values for each time point. Rows are time points, aligned with ``t``.
-        * ``x``: tensor of shape (n_timepoints, n_features)
-          Features for each time point. Rows are time points, aligned with ``t``.
-        * ``group``: tensor of shape (n_groups)
-          Group identifiers for time series instances.
-        * ``st``: tensor of shape (n_static_features)
-          Static features.
-        * ``cutoff_time``: float or ``numpy.float64``
-          Cutoff time for the time series instance.
+        y : torch.Tensor of shape (n_timepoints, n_targets)
+            Target values for each time point. Rows are time points, aligned with `t`.
 
-        Optionally, the following str-keyed entry can be included:
+        x : torch.Tensor of shape (n_timepoints, n_features)
+            Features for each time point. Rows are time points, aligned with `t`.
 
-        * ``weights``: tensor of shape (n_timepoints), only if weight is not None
+        group : torch.Tensor of shape (n_groups,)
+            Group identifiers for time series instances.
+
+        st : torch.Tensor of shape (n_static_features,)
+            Static features.
+
+        cutoff_time : float or numpy.float64
+            Cutoff time for the time series instance.
+
+        Other Returns
+        -------------
+        weights : torch.Tensor of shape (n_timepoints,), optional
+            Only included if weights are not `None`.
         """
         group_id = self._group_ids[index]
 
