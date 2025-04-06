@@ -550,7 +550,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.val_dataset = self._ProcessedEncoderDecoderDataset(
                     self.val_processed, self.val_windows, self.add_relative_time_idx
                 )
-                # print(self.val_dataset[0])
 
         elif stage is None or stage == "test":
             if not hasattr(self, "test_dataset"):
