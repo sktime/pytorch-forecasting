@@ -51,7 +51,6 @@ class TimeXer(BaseModelWithCovariates):
         dropout: float = 0.1,
         activation: str = "relu",
         patch_length: int = 24,
-        use_norm: bool = False,
         factor: int = 5,
         embed_type: str = "fixed",
         freq: str = "h",
@@ -194,6 +193,9 @@ class TimeXer(BaseModelWithCovariates):
         if enc_in is None:
             self.enc_in = len(self.reals)
 
+        if isinstance(loss, QuantileLoss):
+            self.n_quantiles = len(loss.quantiles)
+
         self.en_embedding = EnEmbedding(
             self.n_target_vars,
             self.hparams.d_model,
@@ -247,6 +249,7 @@ class TimeXer(BaseModelWithCovariates):
             self.head_nf,
             self.hparams.prediction_length,
             head_dropout=self.hparams.dropout,
+            n_quantiles=self.n_quantiles,
         )
 
     @classmethod
@@ -293,14 +296,6 @@ class TimeXer(BaseModelWithCovariates):
         encoder_cont = x["encoder_cont"]
         encoder_time_idx = x.get("encoder_time_idx", None)
         target_pos = self.target_positions
-        # conditionally performs normalization
-        if self.hparams.use_norm:
-            means = encoder_cont.mean(1, keepdim=True).detach()
-            encoder_cont = encoder_cont - means
-            stdev = torch.sqrt(
-                torch.var(encoder_cont, dim=1, keepdim=True, unbiased=False) + 1e-5
-            )  # noqa: E501
-            encoder_cont /= stdev
 
         en_embed, n_vars = self.en_embedding(
             encoder_cont[:, :, target_pos[-1]].unsqueeze(-1).permute(0, 2, 1)
@@ -315,19 +310,10 @@ class TimeXer(BaseModelWithCovariates):
         enc_out = enc_out.permute(0, 1, 3, 2)
 
         dec_out = self.head(enc_out)
-        dec_out = dec_out.permute(0, 2, 1)
-
-        if self.hparams.use_norm:
-            dec_out = dec_out * (
-                stdev[:, 0, -1:]
-                .unsqueeze(1)
-                .repeat(1, self.hparams.prediction_length, 1)
-            )
-            dec_out = dec_out + (
-                means[:, 0, -1:]
-                .unsqueeze(1)
-                .repeat(1, self.hparams.prediction_length, 1)
-            )
+        if self.n_quantiles is not None:
+            dec_out = dec_out.permute(0, 2, 1, 3)
+        else:
+            dec_out = dec_out.permute(0, 2, 1)
 
         return dec_out
 
@@ -346,16 +332,6 @@ class TimeXer(BaseModelWithCovariates):
         target_pos = self.target_positions
         encoder_target = encoder_cont[..., target_pos]
 
-        # conditionally performs normalization
-        if self.hparams.use_norm:
-            means = encoder_cont.mean(1, keepdim=True).detach()
-            encoder_cont = encoder_cont - means
-            stdev = torch.sqrt(
-                torch.var(encoder_cont, dim=1, keepdim=True, unbiased=False) + 1e-5
-            )  # noqa: E501
-            encoder_cont /= stdev
-            encoder_target = encoder_cont[..., target_pos]
-
         en_embed, n_vars = self.en_embedding(encoder_target.permute(0, 2, 1))
         ex_embed = self.ex_embedding(encoder_cont, encoder_time_idx)
 
@@ -368,16 +344,11 @@ class TimeXer(BaseModelWithCovariates):
         enc_out = enc_out.permute(0, 1, 3, 2)
 
         dec_out = self.head(enc_out)
-        dec_out = dec_out.permute(0, 2, 1)
+        if self.n_quantiles is not None:
+            dec_out = dec_out.permute(0, 2, 1, 3)
+        else:
+            dec_out = dec_out.permute(0, 2, 1)
 
-        # denormalizing the encoder output to target space. not used unless forced
-        if self.hparams.use_norm:
-            dec_out = dec_out * (
-                stdev[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
-            )
-            dec_out = dec_out + (
-                means[:, 0, :].unsqueeze(1).repeat(1, self.hparams.prediction_length, 1)
-            )
         return dec_out
 
     @property
@@ -441,15 +412,15 @@ class TimeXer(BaseModelWithCovariates):
             prediction = out[:, : self.hparams.prediction_length, :]
 
             target_positions = self.target_positions
-            if prediction.size(2) != len(target_positions):
-                prediction = prediction[:, :, : len(target_positions)]
 
-            if isinstance(self.loss, QuantileLoss):
-                prediction = prediction.unsqueeze(-1)
-                num_quantiles = len(self.loss.quantiles)
-                prediction = prediction.repeat(1, 1, 1, num_quantiles)
-
-            prediction = [prediction[..., i] for i in range(prediction.size(2))]
+            if self.n_quantiles is not None:
+                if prediction.size(2) != len(target_positions):
+                    prediction = prediction[:, :, : len(target_positions)]
+                prediction = [prediction[..., i, :] for i in range(prediction.size(2))]
+            else:
+                if prediction.size(2) != len(target_positions):
+                    prediction = prediction[:, :, : len(target_positions)]
+                prediction = [prediction[..., i] for i in range(prediction.size(2))]
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )

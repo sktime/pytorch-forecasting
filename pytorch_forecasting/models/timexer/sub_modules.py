@@ -130,17 +130,27 @@ class PositionalEmbedding(nn.Module):
 
 
 class FlattenHead(nn.Module):
-    def __init__(self, n_vars, nf, target_window, head_dropout=0):
+    def __init__(self, n_vars, nf, target_window, head_dropout=0, n_quantiles=None):
         super().__init__()
         self.n_vars = n_vars
         self.flatten = nn.Flatten(start_dim=-2)
         self.linear = nn.Linear(nf, target_window)
+        self.n_quantiles = n_quantiles
+
+        if self.n_quantiles is not None:
+            self.linear = nn.Linear(nf, target_window * n_quantiles)
+        else:
+            self.linear = nn.Linear(nf, target_window)
         self.dropout = nn.Dropout(head_dropout)
 
     def forward(self, x):
         x = self.flatten(x)
         x = self.linear(x)
         x = self.dropout(x)
+
+        if self.n_quantiles is not None:
+            batch_size, n_vars = x.shape[0], x.shape[1]
+            x = x.reshape(batch_size, n_vars, -1, self.n_quantiles)
         return x
 
 
