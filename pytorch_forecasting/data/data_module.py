@@ -553,7 +553,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self.time_series_dataset,
                     self,
                     self.test_windows,
-                    self,
                     self.add_relative_time_idx,
                 )
         elif stage == "predict":
@@ -563,7 +562,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.time_series_dataset,
                 self,
                 self.predict_windows,
-                self,
                 self.add_relative_time_idx,
             )
 
