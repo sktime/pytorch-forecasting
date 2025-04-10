@@ -1,15 +1,6 @@
-#######################################################################################
-# Disclaimer: This data-module is still work in progress and experimental, please
-# use with care. This data-module is a basic skeleton of how the data-handling pipeline
-# may look like in the future.
-# This is D2 layer that will handle the preprocessing and data loaders.
-# For now, this pipeline handles the simplest situation: The whole data can be loaded
-# into the memory.
-#######################################################################################
-
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from lightning.pytorch import LightningDataModule
+from lightning.pytorch import LightningDataModule, LightningModule
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -19,7 +10,11 @@ from pytorch_forecasting.data.encoders import (
     NaNLabelEncoder,
     TorchNormalizer,
 )
-from pytorch_forecasting.data.timeseries import TimeSeries, _coerce_to_dict
+from pytorch_forecasting.data.timeseries import (
+    TimeSeries,
+    _coerce_to_dict,
+    _coerce_to_list,
+)
 
 NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
 
@@ -274,7 +269,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, indices: torch.Tensor) -> List[Dict[str, Any]]:
+    def _preprocess_data(self, series_idx: torch.Tensor) -> List[Dict[str, Any]]:
         """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
 
         Preprocessing steps
@@ -288,63 +283,58 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         TODO: add scalers, target normalizers etc.
         """
-        processed_data = []
+        sample = self.time_series_dataset[series_idx]
 
-        for idx in indices:
-            sample = self.time_series_dataset[idx.item()]
+        target = sample["y"]
+        features = sample["x"]
+        times = sample["t"]
+        cutoff_time = sample["cutoff_time"]
 
-            target = sample["y"]
-            features = sample["x"]
-            times = sample["t"]
-            cutoff_time = sample["cutoff_time"]
+        time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
 
-            time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
+        if isinstance(target, torch.Tensor):
+            target = target.float()
+        else:
+            target = torch.tensor(target, dtype=torch.float32)
 
-            if isinstance(target, torch.Tensor):
-                target = target.float()
-            else:
-                target = torch.tensor(target, dtype=torch.float32)
+        if isinstance(features, torch.Tensor):
+            features = features.float()
+        else:
+            features = torch.tensor(features, dtype=torch.float32)
 
-            if isinstance(features, torch.Tensor):
-                features = features.float()
-            else:
-                features = torch.tensor(features, dtype=torch.float32)
+        # TODO: add scalers, target normalizers etc.
 
-            # TODO: add scalers, target normalizers etc.
+        categorical = (
+            features[:, self.categorical_indices]
+            if self.categorical_indices
+            else torch.zeros((features.shape[0], 0))
+        )
+        continuous = (
+            features[:, self.continuous_indices]
+            if self.continuous_indices
+            else torch.zeros((features.shape[0], 0))
+        )
 
-            categorical = (
-                features[:, self.categorical_indices]
-                if self.categorical_indices
-                else torch.zeros((features.shape[0], 0))
-            )
-            continuous = (
-                features[:, self.continuous_indices]
-                if self.continuous_indices
-                else torch.zeros((features.shape[0], 0))
-            )
-
-            processed_data.append(
-                {
-                    "features": {"categorical": categorical, "continuous": continuous},
-                    "target": target,
-                    "static": sample.get("st", None),
-                    "group": sample.get("group", torch.tensor([0])),
-                    "length": len(target),
-                    "time_mask": time_mask,
-                    "times": times,
-                    "cutoff_time": cutoff_time,
-                }
-            )
-
-        return processed_data
+        return {
+            "features": {"categorical": categorical, "continuous": continuous},
+            "target": target,
+            "static": sample.get("st", None),
+            "group": sample.get("group", torch.tensor([0])),
+            "length": len(target),
+            "time_mask": time_mask,
+            "times": times,
+            "cutoff_time": cutoff_time,
+        }
 
     class _ProcessedEncoderDecoderDataset(Dataset):
         """PyTorch Dataset for processed encoder-decoder time series data.
 
         Parameters
         ----------
-        processed_data : List[Dict[str, Any]]
-            List of preprocessed time series samples.
+        dataset : TimeSeries
+            The base time series dataset that provides access to raw data and metadata.
+        data_module : EncoderDecoderTimeSeriesDataModule
+            The data module handling preprocessing and metadata configuration.
         windows : List[Tuple[int, int, int, int]]
             List of window tuples containing
             (series_idx, start_idx, enc_length, pred_length).
@@ -354,11 +344,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         def __init__(
             self,
-            processed_data: List[Dict[str, Any]],
+            dataset: TimeSeries,
+            data_module: "EncoderDecoderTimeSeriesDataModule",
             windows: List[Tuple[int, int, int, int]],
             add_relative_time_idx: bool = False,
         ):
-            self.processed_data = processed_data
+            self.dataset = dataset
+            self.data_module = data_module
             self.windows = windows
             self.add_relative_time_idx = add_relative_time_idx
 
@@ -410,7 +402,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 Target values for the decoder sequence.
             """
             series_idx, start_idx, enc_length, pred_length = self.windows[idx]
-            data = self.processed_data[series_idx]
+            data = self.data_module._preprocess_data(series_idx)
 
             end_idx = start_idx + enc_length + pred_length
             encoder_indices = slice(start_idx, start_idx + enc_length)
@@ -457,9 +449,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             return x, y
 
-    def _create_windows(
-        self, processed_data: List[Dict[str, Any]]
-    ) -> List[Tuple[int, int, int, int]]:
+    def _create_windows(self, indices: torch.Tensor) -> List[Tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
 
         Returns
@@ -477,8 +467,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         """
         windows = []
 
-        for idx, data in enumerate(processed_data):
-            sequence_length = data["length"]
+        for idx in indices:
+            series_idx = idx.item()
+            sample = self.time_series_dataset[series_idx]
+            sequence_length = len(sample["y"])
 
             if sequence_length < self.max_encoder_length + self.max_prediction_length:
                 continue
@@ -503,7 +495,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 ):
                     windows.append(
                         (
-                            idx,
+                            series_idx,
                             start_idx,
                             self.max_encoder_length,
                             self.max_prediction_length,
@@ -538,33 +530,41 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         if stage is None or stage == "fit":
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
-                self.train_processed = self._preprocess_data(self._train_indices)
-                self.val_processed = self._preprocess_data(self._val_indices)
-
-                self.train_windows = self._create_windows(self.train_processed)
-                self.val_windows = self._create_windows(self.val_processed)
+                self.train_windows = self._create_windows(self._train_indices)
+                self.val_windows = self._create_windows(self._val_indices)
 
                 self.train_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.train_processed, self.train_windows, self.add_relative_time_idx
+                    self.time_series_dataset,
+                    self,
+                    self.train_windows,
+                    self.add_relative_time_idx,
                 )
                 self.val_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.val_processed, self.val_windows, self.add_relative_time_idx
+                    self.time_series_dataset,
+                    self,
+                    self.val_windows,
+                    self.add_relative_time_idx,
                 )
 
-        elif stage is None or stage == "test":
+        elif stage == "test":
             if not hasattr(self, "test_dataset"):
-                self.test_processed = self._preprocess_data(self._test_indices)
-                self.test_windows = self._create_windows(self.test_processed)
-
+                self.test_windows = self._create_windows(self._test_indices)
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.test_processed, self.test_windows, self.add_relative_time_idx
+                    self.time_series_dataset,
+                    self,
+                    self.test_windows,
+                    self,
+                    self.add_relative_time_idx,
                 )
         elif stage == "predict":
             predict_indices = torch.arange(len(self.time_series_dataset))
-            self.predict_processed = self._preprocess_data(predict_indices)
-            self.predict_windows = self._create_windows(self.predict_processed)
+            self.predict_windows = self._create_windows(predict_indices)
             self.predict_dataset = self._ProcessedEncoderDecoderDataset(
-                self.predict_processed, self.predict_windows, self.add_relative_time_idx
+                self.time_series_dataset,
+                self,
+                self.predict_windows,
+                self,
+                self.add_relative_time_idx,
             )
 
     def train_dataloader(self):
