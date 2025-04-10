@@ -1,6 +1,15 @@
+#######################################################################################
+# Disclaimer: This data-module is still work in progress and experimental, please
+# use with care. This data-module is a basic skeleton of how the data-handling pipeline
+# may look like in the future.
+# This is D2 layer that will handle the preprocessing and data loaders.
+# For now, this pipeline handles the simplest situation: The whole data can be loaded
+# into the memory.
+#######################################################################################
+
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from lightning.pytorch import LightningDataModule, LightningModule
+from lightning.pytorch import LightningDataModule
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -13,7 +22,6 @@ from pytorch_forecasting.data.encoders import (
 from pytorch_forecasting.data.timeseries import (
     TimeSeries,
     _coerce_to_dict,
-    _coerce_to_list,
 )
 
 NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
