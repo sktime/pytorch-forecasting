@@ -465,7 +465,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         List[Tuple[int, int, int, int]]
             A list of tuples, where each tuple consists of:
             - ``series_idx`` : int
-              Index of the time series in `processed_data`.
+              Index of the time series in `time_series_dataset`.
             - ``start_idx`` : int
               Start index of the encoder window.
             - ``enc_length`` : int
@@ -522,7 +522,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             - ``"fit"`` : Prepares training and validation datasets.
             - ``"test"`` : Prepares the test dataset.
             - ``"predict"`` : Prepares the dataset for inference.
-            - ``None`` : Prepares all datasets.
+            - ``None`` : Prepares ``fit`` datasets.
         """
         total_series = len(self.time_series_dataset)
         self._split_indices = torch.randperm(total_series)
