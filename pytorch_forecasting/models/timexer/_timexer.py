@@ -181,10 +181,6 @@ class TimeXer(BaseModelWithCovariates):
         # loss is a standalone module and is stored separately.
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
-        # [x] todo: implement the from_dataset method
-        # [x] todo: implement the forward and forecast methods into the class.
-        # [x] todo: fix errors in the loss calculation for the trainer,for single target
-        # [] todo: fix errors in the loss calculation for the trainer,for multi target
         self.patch_num = max(
             1, int(self.hparams.context_length // self.hparams.patch_length)
         )
@@ -297,10 +293,14 @@ class TimeXer(BaseModelWithCovariates):
         encoder_time_idx = x.get("encoder_time_idx", None)
         target_pos = self.target_positions
 
+        exog_data = (
+            encoder_cont[:, :, :target_pos] + encoder_cont[:, :, target_pos + 1 :]
+        )
+
         en_embed, n_vars = self.en_embedding(
             encoder_cont[:, :, target_pos[-1]].unsqueeze(-1).permute(0, 2, 1)
         )
-        ex_embed = self.ex_embedding(encoder_cont[:, :, :-1], encoder_time_idx)
+        ex_embed = self.ex_embedding(exog_data, encoder_time_idx)
 
         enc_out = self.encoder(en_embed, ex_embed)
         enc_out = torch.reshape(
