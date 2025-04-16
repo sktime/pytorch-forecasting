@@ -99,7 +99,7 @@ def test_integration(dataloaders_with_covariates, tmp_path, kwargs):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {},  # Default settings for multi-target
+        {},
     ],
 )
 def test_multi_target_integration(dataloaders_multi_target, tmp_path, kwargs):
