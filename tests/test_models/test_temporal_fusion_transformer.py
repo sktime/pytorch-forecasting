@@ -203,10 +203,19 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                 return_index=True,
                 return_x=True,
                 return_y=True,
-                fast_dev_run=True,
+                fast_dev_run=2,
                 trainer_kwargs=trainer_kwargs,
             )
             pred_len = len(predictions.index)
+            if isinstance(predictions.output, torch.Tensor):
+                assert (
+                    predictions.output.shape == predictions.y[0].shape
+                ), "shape of predictions should match shape of targets"
+            else:
+                for i in range(len(predictions.output)):
+                    assert (
+                        predictions.output[i].shape == predictions.y[0][i].shape
+                    ), "shape of predictions should match shape of targets"
 
             # check that output is of correct shape
             def check(x):
