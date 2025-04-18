@@ -67,8 +67,8 @@ def _safe_import(import_path, pkg_name=None):
     >>> # Import with different package name
     >>> cv2 = safe_import("cv2", pkg_name="opencv-python")
     """
+    path_list = import_path.split(".")
     if pkg_name is None:
-        path_list = import_path.split(".")
         pkg_name = path_list[0]
 
     if pkg_name in _get_installed_packages():
@@ -80,9 +80,43 @@ def _safe_import(import_path, pkg_name=None):
             return getattr(module, attr_name)
         except (ImportError, AttributeError):
             return importlib.import_module(import_path)
-    else:
-        mock_obj = MagicMock()
-        mock_obj.__call__ = MagicMock(
-            return_value=f"Please install {pkg_name} to use this functionality."
-        )
-        return mock_obj
+    obj_name = path_list[-1]
+    mock_obj = _create_mock_class(obj_name)
+    return mock_obj
+
+
+class CommonMagicMeta(type):
+    def __getattr__(cls, name):
+        return MagicMock()
+
+    def __setattr__(cls, name, value):
+        pass  # Ignore attribute writes
+
+
+class MagicAttribute(metaclass=CommonMagicMeta):
+    def __getattr__(self, name):
+        return MagicMock()
+
+    def __setattr__(self, name, value):
+        pass  # Ignore attribute writes
+
+    def __call__(self, *args, **kwargs):
+        return self  # Ensures instantiation returns the same object
+
+
+def _create_mock_class(name: str, bases=()):
+    """Create new dynamic mock class similar to MagicMock.
+
+    Parameters
+    ----------
+    name : str
+        The name of the new class.
+    bases : tuple, default=()
+        The base classes of the new class.
+
+    Returns
+    -------
+    a new class that behaves like MagicMock, with name ``name``.
+        Forwards all attribute access to a MagicMock object stored in the instance.
+    """
+    return type(name, (MagicAttribute,), {"__metaclass__": CommonMagicMeta})
