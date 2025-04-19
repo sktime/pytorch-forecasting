@@ -9,7 +9,7 @@ a class that is able to handle a wide variety of timeseries data problems.
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
-from typing import Any, Callable, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
 import warnings
 
 import numpy as np
