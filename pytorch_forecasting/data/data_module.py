@@ -432,11 +432,59 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 else torch.zeros(pred_length, dtype=torch.bool)
             )
 
+            encoder_cat = data["features"]["categorical"][encoder_indices]
+            encoder_cont = data["features"]["continuous"][encoder_indices]
+
+            features = data["features"]
+            metadata = self.data_module.time_series_metadata
+
+            known_cat_indices = [
+                i
+                for i, col in enumerate(metadata["cols"]["x"])
+                if metadata["col_type"].get(col) == "C"
+                and metadata["col_known"].get(col) == "K"
+            ]
+
+            known_cont_indices = [
+                i
+                for i, col in enumerate(metadata["cols"]["x"])
+                if metadata["col_type"].get(col) == "F"
+                and metadata["col_known"].get(col) == "K"
+            ]
+
+            cat_map = {
+                orig_idx: i
+                for i, orig_idx in enumerate(self.data_module.categorical_indices)
+            }
+            cont_map = {
+                orig_idx: i
+                for i, orig_idx in enumerate(self.data_module.continuous_indices)
+            }
+
+            mapped_known_cat_indices = [
+                cat_map[idx] for idx in known_cat_indices if idx in cat_map
+            ]
+            mapped_known_cont_indices = [
+                cont_map[idx] for idx in known_cont_indices if idx in cont_map
+            ]
+
+            decoder_cat = (
+                features["categorical"][decoder_indices][:, mapped_known_cat_indices]
+                if mapped_known_cat_indices
+                else torch.zeros((pred_length, 0))
+            )
+
+            decoder_cont = (
+                features["continuous"][decoder_indices][:, mapped_known_cont_indices]
+                if mapped_known_cont_indices
+                else torch.zeros((pred_length, 0))
+            )
+
             x = {
-                "encoder_cat": data["features"]["categorical"][encoder_indices],
-                "encoder_cont": data["features"]["continuous"][encoder_indices],
-                "decoder_cat": data["features"]["categorical"][decoder_indices],
-                "decoder_cont": data["features"]["continuous"][decoder_indices],
+                "encoder_cat": encoder_cat,
+                "encoder_cont": encoder_cont,
+                "decoder_cat": decoder_cat,
+                "decoder_cont": decoder_cont,
                 "encoder_lengths": torch.tensor(enc_length),
                 "decoder_lengths": torch.tensor(pred_length),
                 "decoder_target_lengths": torch.tensor(pred_length),
