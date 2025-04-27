@@ -1,6 +1,8 @@
 """Import a module/class, return a Mock object if import fails.
 
 Copied from sktime/skbase.
+
+Should be refactored and moved to a common location in skbase.
 """
 
 import importlib
