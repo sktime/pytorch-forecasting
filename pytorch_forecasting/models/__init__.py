@@ -10,6 +10,7 @@ from pytorch_forecasting.models.base import (
 )
 from pytorch_forecasting.models.baseline import Baseline
 from pytorch_forecasting.models.deepar import DeepAR
+from pytorch_forecasting.models.informer import Informer
 from pytorch_forecasting.models.mlp import DecoderMLP
 from pytorch_forecasting.models.nbeats import NBeats
 from pytorch_forecasting.models.nhits import NHiTS
@@ -37,4 +38,5 @@ __all__ = [
     "MultiEmbedding",
     "DecoderMLP",
     "TiDEModel",
+    "Informer",
 ]
