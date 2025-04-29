@@ -35,10 +35,9 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
     net = Informer.from_dataset(
         train_dataloader.dataset,
         learning_rate=0.15,
-        log_gradient_flow=True,
-        widths=[4, 4, 4],
-        log_interval=1000,
-        backcast_loss_ratio=1.0,
+        seq_len=10,
+        factor=5,
+        n_heads=8,
     )
     net.size()
     try:
@@ -76,10 +75,9 @@ def model(dataloaders_fixed_window_without_covariates):
     net = Informer.from_dataset(
         dataset,
         learning_rate=0.15,
-        log_gradient_flow=True,
-        widths=[4, 4, 4],
-        log_interval=1000,
-        backcast_loss_ratio=1.0,
+        seq_len=10,
+        factor=5,
+        n_heads=8,
     )
     return net
 
