@@ -104,6 +104,18 @@ class TimeSeries(Dataset):
         self.unknown = _coerce_to_list(unknown)
         self.static = _coerce_to_list(static)
 
+        warnings.warn(
+            "TimeSeries is part of an experimental rework of the "
+            "pytorch-forecasting data layer, "
+            "scheduled for release with v2.0.0. "
+            "The API is not stable and may change without prior warning. "
+            "For beta testing, but not for stable production use. "
+            "Feedback and suggestions are very welcome in "
+            "pytorch-forecasting issue 1736, "
+            "https://github.com/sktime/pytorch-forecasting/issues/1736",
+            UserWarning,
+        )
+
         self.feature_cols = [
             col
             for col in data.columns
