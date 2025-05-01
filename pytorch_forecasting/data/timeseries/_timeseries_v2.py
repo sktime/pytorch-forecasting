@@ -14,7 +14,6 @@ from torch.utils.data import Dataset
 
 from pytorch_forecasting.data.timeseries._coerce import _coerce_to_list
 
-
 #######################################################################################
 # Disclaimer: This dataset class is still work in progress and experimental, please
 # use with care. This class is a basic skeleton of how the data-handling pipeline may
