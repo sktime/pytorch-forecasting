@@ -272,7 +272,33 @@ def concat_sequences(
     if isinstance(sequences[0], rnn.PackedSequence):
         return rnn.pack_sequence(sequences, enforce_sorted=False)
     elif isinstance(sequences[0], torch.Tensor):
-        return torch.cat(sequences, dim=1)
+        if sequences[0].ndim > 1:
+            first_lens = [xi.shape[1] for xi in sequences]
+            max_first_len = max(first_lens)
+            if max_first_len > min(first_lens):
+                sequences = [
+                    (
+                        xi
+                        if xi.shape[1] == max_first_len
+                        else torch.cat(
+                            [
+                                xi,
+                                torch.full(
+                                    (
+                                        xi.shape[0],
+                                        max_first_len - xi.shape[1],
+                                        *xi.shape[2:],
+                                    ),
+                                    float("nan"),
+                                    device=xi.device,
+                                ),
+                            ],
+                            dim=1,
+                        )
+                    )
+                    for xi in sequences
+                ]
+        return torch.cat(sequences, dim=0)
     elif isinstance(sequences[0], (tuple, list)):
         return tuple(
             concat_sequences([sequences[ii][i] for ii in range(len(sequences))])
