@@ -31,8 +31,8 @@ from pytorch_forecasting.data.encoders import (
     TorchNormalizer,
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
-from pytorch_forecasting.data.timeseries._coerce import _coerce_to_dict, _coerce_to_list
 from pytorch_forecasting.utils import repr_class
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
