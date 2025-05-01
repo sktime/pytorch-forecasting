@@ -12,7 +12,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from pytorch_forecasting.data.timeseries._coerce import _coerce_to_list
+from pytorch_forecasting.utils._coerce import _coerce_to_list
 
 #######################################################################################
 # Disclaimer: This dataset class is still work in progress and experimental, please
