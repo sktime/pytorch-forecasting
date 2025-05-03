@@ -34,10 +34,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
 
     net = Informer.from_dataset(
         train_dataloader.dataset,
-        encoder_input=15,
-        decoder_input=15,
         learning_rate=0.15,
-        seq_len=10,
         factor=5,
         n_heads=8,
     )
@@ -76,10 +73,7 @@ def model(dataloaders_fixed_window_without_covariates):
     dataset = dataloaders_fixed_window_without_covariates["train"].dataset
     net = Informer.from_dataset(
         dataset,
-        encoder_input=15,
-        decoder_input=15,
         learning_rate=0.15,
-        seq_len=10,
         factor=5,
         n_heads=8,
     )

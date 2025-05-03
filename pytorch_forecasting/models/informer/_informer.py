@@ -29,8 +29,8 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 class Informer(BaseModel):
     def __init__(
         self,
-        encoder_input: int,
-        decoder_input: int,
+        encoder_input: int = 5,
+        decoder_input: int = 10,
         out_channels: int = 3,
         seq_len: int = 20,
         label_len: int = 4,
@@ -139,8 +139,8 @@ class Informer(BaseModel):
             Informer
         """  # noqa: E501
         new_kwargs = {
-            "prediction_length": dataset.max_prediction_length,
-            "context_length": dataset.max_encoder_length,
+            "seq_len": dataset.max_prediction_length,
+            "encoder_input": dataset.max_encoder_length,
         }
         new_kwargs.update(kwargs)
 
