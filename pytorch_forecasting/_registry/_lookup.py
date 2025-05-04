@@ -40,44 +40,64 @@ def all_objects(
     ----------
     object_types: str, list of str, optional (default=None)
         Which kind of objects should be returned.
-        if None, no filter is applied and all objects are returned.
-        if str or list of str, strings define scitypes specified in search
-        only objects that are of (at least) one of the scitypes are returned
-        possible str values are entries of registry.BASE_CLASS_REGISTER (first col)
-        for instance 'regrssor_proba', 'distribution, 'metric'
+
+        * if None, no filter is applied and all objects are returned.
+        * if str or list of str, strings define scitypes specified in search
+          only objects that are of (at least) one of the scitypes are returned
 
     return_names: bool, optional (default=True)
 
-        if True, estimator class name is included in the ``all_objects``
-        return in the order: name, estimator class, optional tags, either as
-        a tuple or as pandas.DataFrame columns
+        * if True, estimator class name is included in the ``all_objects``
+          return in the order: name, estimator class, optional tags, either as
+          a tuple or as pandas.DataFrame columns
+        * if False, estimator class name is removed from the ``all_objects`` return.
 
-        if False, estimator class name is removed from the ``all_objects`` return.
-
-    filter_tags: dict of (str or list of str), optional (default=None)
+    filter_tags: dict of (str or list of str or re.Pattern), optional (default=None)
         For a list of valid tag strings, use the registry.all_tags utility.
 
-        ``filter_tags`` subsets the returned estimators as follows:
+        ``filter_tags`` subsets the returned objects as follows:
 
         * each key/value pair is statement in "and"/conjunction
         * key is tag name to sub-set on
         * value str or list of string are tag values
         * condition is "key must be equal to value, or in set(value)"
 
-    exclude_estimators: str, list of str, optional (default=None)
-        Names of estimators to exclude.
+        In detail, he return will be filtered to keep exactly the classes
+        where tags satisfy all the filter conditions specified by ``filter_tags``.
+        Filter conditions are as follows, for ``tag_name: search_value`` pairs in
+        the ``filter_tags`` dict, applied to a class ``klass``:
+
+        - If ``klass`` does not have a tag with name ``tag_name``, it is excluded.
+          Otherwise, let ``tag_value`` be the value of the tag with name ``tag_name``.
+        - If ``search_value`` is a string, and ``tag_value`` is a string,
+          the filter condition is that ``search_value`` must match the tag value.
+        - If ``search_value`` is a string, and ``tag_value`` is a list,
+          the filter condition is that ``search_value`` is contained in ``tag_value``.
+        - If ``search_value`` is a ``re.Pattern``, and ``tag_value`` is a string,
+          the filter condition is that ``search_value.fullmatch(tag_value)``
+          is true, i.e., the regex matches the tag value.
+        - If ``search_value`` is a ``re.Pattern``, and ``tag_value`` is a list,
+          the filter condition is that at least one element of ``tag_value``
+          matches the regex.
+        - If ``search_value`` is iterable, then the filter condition is that
+          at least one element of ``search_value`` satisfies the above conditions,
+          applied to ``tag_value``.
+
+        Note: ``re.Pattern`` is supported only from ``scikit-base`` version 0.8.0.
+
+    exclude_objects: str, list of str, optional (default=None)
+        Names of objects to exclude.
 
     as_dataframe: bool, optional (default=False)
 
-        True: ``all_objects`` will return a pandas.DataFrame with named
-        columns for all of the attributes being returned.
-
-        False: ``all_objects`` will return a list (either a list of
-        estimators or a list of tuples, see Returns)
+        * True: ``all_objects`` will return a ``pandas.DataFrame`` with named
+          columns for all of the attributes being returned.
+        * False: ``all_objects`` will return a list (either a list of
+          objects or a list of tuples, see Returns)
 
     return_tags: str or list of str, optional (default=None)
         Names of tags to fetch and return each estimator's value of.
-        For a list of valid tag strings, use the registry.all_tags utility.
+        For a list of valid tag strings, use the ``registry.all_tags`` utility.
         if str or list of str,
         the tag values named in return_tags will be fetched for each
         estimator and will be appended as either columns or tuple entries.
@@ -88,27 +108,32 @@ def all_objects(
     Returns
     -------
     all_objects will return one of the following:
-        1. list of objects, if return_names=False, and return_tags is None
-        2. list of tuples (optional object name, class, ~optional object
-          tags), if return_names=True or return_tags is not None.
-        3. pandas.DataFrame if as_dataframe = True
+
+        1. list of objects, if ``return_names=False``, and ``return_tags`` is None
+
+        2. list of tuples (optional estimator name, class, optional estimator
+        tags), if ``return_names=True`` or ``return_tags`` is not ``None``.
+
+        3. ``pandas.DataFrame`` if ``as_dataframe = True``
+
         if list of objects:
             entries are objects matching the query,
-            in alphabetical order of object name
+            in alphabetical order of estimator name
+
         if list of tuples:
-            list of (optional object name, object, optional object
-            tags) matching the query, in alphabetical order of object name,
+            list of (optional estimator name, estimator, optional estimator
+            tags) matching the query, in alphabetical order of estimator name,
             where
-            ``name`` is the object name as string, and is an
-                optional return
-            ``object`` is the actual object
-            ``tags`` are the object's values for each tag in return_tags
-                and is an optional return.
-        if dataframe:
-            all_objects will return a pandas.DataFrame.
+            ``name`` is the estimator name as string, and is an
+            optional return
+            ``estimator`` is the actual estimator
+            ``tags`` are the estimator's values for each tag in return_tags
+            and is an optional return.
+
+        if ``DataFrame``:
             column names represent the attributes contained in each column.
             "objects" will be the name of the column of objects, "names"
-            will be the name of the column of object class names and the string(s)
+            will be the name of the column of estimator class names and the string(s)
             passed in return_tags will serve as column names for all columns of
             tags that were optionally requested.
 
