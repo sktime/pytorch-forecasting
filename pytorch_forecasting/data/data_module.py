@@ -19,10 +19,8 @@ from pytorch_forecasting.data.encoders import (
     NaNLabelEncoder,
     TorchNormalizer,
 )
-from pytorch_forecasting.data.timeseries import (
-    TimeSeries,
-    _coerce_to_dict,
-)
+from pytorch_forecasting.data.timeseries import TimeSeries
+from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
 NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
 
