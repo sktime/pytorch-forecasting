@@ -36,6 +36,8 @@ class TFT(BaseModel):
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
         )
+        self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
+
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.attention_head_size = attention_head_size
@@ -47,42 +49,51 @@ class TFT(BaseModel):
         self.max_prediction_length = self.metadata["max_prediction_length"]
         self.encoder_cont = self.metadata["encoder_cont"]
         self.encoder_cat = self.metadata["encoder_cat"]
-        self.static_categorical_features = self.metadata["static_categorical_features"]
-        self.static_continuous_features = self.metadata["static_continuous_features"]
+        self.encoder_input_dim = self.encoder_cont + self.encoder_cat
+        self.decoder_cont = self.metadata["decoder_cont"]
+        self.decoder_cat = self.metadata["decoder_cat"]
+        self.decoder_input_dim = self.decoder_cont + self.decoder_cat
+        self.static_cat_dim = self.metadata.get("static_categorical_features", 0)
+        self.static_cont_dim = self.metadata.get("static_continuous_features", 0)
+        self.static_input_dim = self.static_cat_dim + self.static_cont_dim
 
-        total_feature_size = self.encoder_cont + self.encoder_cat
-        total_static_size = (
-            self.static_categorical_features + self.static_continuous_features
-        )
+        if self.encoder_input_dim > 0:
+            self.encoder_var_selection = nn.Sequential(
+                nn.Linear(self.encoder_input_dim, hidden_size),
+                nn.ReLU(),
+                nn.Linear(hidden_size, self.encoder_input_dim),
+                nn.Sigmoid(),
+            )
+        else:
+            self.encoder_var_selection = None
 
-        self.encoder_var_selection = nn.Sequential(
-            nn.Linear(total_feature_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, total_feature_size),
-            nn.Sigmoid(),
-        )
+        if self.decoder_input_dim > 0:
+            self.decoder_var_selection = nn.Sequential(
+                nn.Linear(self.decoder_input_dim, hidden_size),
+                nn.ReLU(),
+                nn.Linear(hidden_size, self.decoder_input_dim),
+                nn.Sigmoid(),
+            )
+        else:
+            self.decoder_var_selection = None
 
-        self.decoder_var_selection = nn.Sequential(
-            nn.Linear(total_feature_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, total_feature_size),
-            nn.Sigmoid(),
-        )
+        if self.static_input_dim > 0:
+            self.static_context_linear = nn.Linear(self.static_input_dim, hidden_size)
+        else:
+            self.static_context_linear = None
 
-        self.static_context_linear = (
-            nn.Linear(total_static_size, hidden_size) if total_static_size > 0 else None
-        )
-
+        _lstm_encoder_input_actual_dim = self.encoder_input_dim
         self.lstm_encoder = nn.LSTM(
-            input_size=total_feature_size,
+            input_size=max(1, _lstm_encoder_input_actual_dim),
             hidden_size=hidden_size,
             num_layers=num_layers,
             dropout=dropout,
             batch_first=True,
         )
 
+        _lstm_decoder_input_actual_dim = self.decoder_input_dim
         self.lstm_decoder = nn.LSTM(
-            input_size=total_feature_size,
+            input_size=max(1, _lstm_decoder_input_actual_dim),
             hidden_size=hidden_size,
             num_layers=num_layers,
             dropout=dropout,
@@ -97,7 +108,7 @@ class TFT(BaseModel):
         )
 
         self.pre_output = nn.Linear(hidden_size, hidden_size)
-        self.output_layer = nn.Linear(hidden_size, output_size)
+        self.output_layer = nn.Linear(hidden_size, self.output_size)
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
