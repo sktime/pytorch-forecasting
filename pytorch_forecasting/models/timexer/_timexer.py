@@ -189,6 +189,8 @@ class TimeXer(BaseModelWithCovariates):
         if enc_in is None:
             self.enc_in = len(self.reals)
 
+        self.n_quantiles = None
+
         if isinstance(loss, QuantileLoss):
             self.n_quantiles = len(loss.quantiles)
 
@@ -429,7 +431,11 @@ class TimeXer(BaseModelWithCovariates):
             if self.n_quantiles is not None:
                 prediction = [prediction[..., i, :] for i in target_indices]
             else:
-                prediction = [prediction[..., i] for i in target_indices]
+
+                if len(target_indices) == 1:
+                    prediction = prediction[..., 0]
+                else:
+                    prediction = [prediction[..., i] for i in target_indices]
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )
