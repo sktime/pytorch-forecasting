@@ -333,13 +333,21 @@ class TimeXer(BaseModelWithCovariates):
         encoder_target = encoder_cont[..., target_pos]
 
         en_embed, n_vars = self.en_embedding(encoder_target.permute(0, 2, 1))
-        ex_embed = self.ex_embedding(encoder_cont, encoder_time_idx)
 
+        # use masking to ignore the target variable in encoder_cont under ex_embed.
+        mask = torch.ones(
+            encoder_cont.shape[-1], dtype=torch.bool, device=encoder_cont.device
+        )
+        mask[target_pos] = False
+        exog_data = encoder_cont[..., mask]
+        ex_embed = self.ex_embedding(exog_data, encoder_time_idx)
+
+        # batch_size x sequence_length x d_model
         enc_out = self.encoder(en_embed, ex_embed)
 
         enc_out = torch.reshape(
             enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1])
-        )
+        )  # batch_size x n_vars x sequence_length x d_model
 
         enc_out = enc_out.permute(0, 1, 3, 2)
 
@@ -413,14 +421,15 @@ class TimeXer(BaseModelWithCovariates):
 
             target_positions = self.target_positions
 
+            # note: prediction.size(2) is the number of target variables i.e n_targets
+            target_indices = range(prediction.size(2))
+
+            if prediction.size(2) != len(target_positions):
+                prediction = prediction[:, :, : len(target_positions)]
             if self.n_quantiles is not None:
-                if prediction.size(2) != len(target_positions):
-                    prediction = prediction[:, :, : len(target_positions)]
-                prediction = [prediction[..., i, :] for i in range(prediction.size(2))]
+                prediction = [prediction[..., i, :] for i in target_indices]
             else:
-                if prediction.size(2) != len(target_positions):
-                    prediction = prediction[:, :, : len(target_positions)]
-                prediction = [prediction[..., i] for i in range(prediction.size(2))]
+                prediction = [prediction[..., i] for i in target_indices]
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )
