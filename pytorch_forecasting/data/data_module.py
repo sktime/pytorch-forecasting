@@ -165,11 +165,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         # overwrite __init__ params for upwards compatibility with AS PRs
         # todo: should we avoid this and ensure classes are dataclass-like?
-        self.min_prediction_length = self._min_prediction_length
-        self.min_encoder_length = self._min_encoder_length
-        self.categorical_encoders = self._categorical_encoders
-        self.scalers = self._scalers
-        self.target_normalizer = self._target_normalizer
+        # self.min_prediction_length = self._min_prediction_length
+        # self.min_encoder_length = self._min_encoder_length
+        # self.categorical_encoders = self._categorical_encoders
+        # self.scalers = self._scalers
+        # self.target_normalizer = self._target_normalizer
 
     def _prepare_metadata(self):
         """Prepare metadata for model initialisation.
