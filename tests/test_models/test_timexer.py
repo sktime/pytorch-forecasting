@@ -16,19 +16,30 @@ from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
 from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiLoss, QuantileLoss
 from pytorch_forecasting.models import TimeXer
 
-# def test_integration(multiple_dataloaders_with_covariates, tmp_path):
-#     """
-#     Test simple integration of the TimeXer model with a dataloader.
-#     Args:
-#         tmp_path: The temporary path to save the model.
-#         dataloaders: The dataloaders to use for training and validation.
-#     """
 
-#     _integration(
-#         multiple_dataloaders_with_covariates,
-#         tmp_path,
-#         trainer_kwargs={"accelerator": "cpu"},
-#     )
+def test_integration(data_with_covariates, tmp_path):
+    """
+    Test simple integration of the TimeXer model with a dataloader.
+    Args:
+        tmp_path: The temporary path to save the model.
+        dataloaders: The dataloaders to use for training and validation.
+    """
+
+    dataloaders_with_covariates = make_dataloaders(
+        data_with_covariates,
+        target="volume",
+        time_varying_known_reals=["price_actual"],
+        time_varying_unknown_reals=["volume"],
+        static_categoricals=["agency"],
+        add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+    )
+
+    _integration(
+        dataloaders_with_covariates,
+        tmp_path,
+        trainer_kwargs={"accelerator": "cpu"},
+    )
 
 
 def test_quantile_loss(data_with_covariates, tmp_path):
@@ -146,11 +157,11 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
 
     net = TimeXer.from_dataset(
         train_dataloader.dataset,
-        d_model=kwargs.get("d_model", 16),
+        d_model=16,
         n_heads=2,
         e_layers=1,
         d_ff=32,
-        patch_length=2,
+        patch_length=1,
         dropout=0.1,
         loss=loss,
         **kwargs,

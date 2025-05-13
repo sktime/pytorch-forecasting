@@ -186,6 +186,7 @@ class TimeXer(BaseModelWithCovariates):
         )
         self.n_target_vars = len(self.target_positions)
 
+        self.enc_in = enc_in
         if enc_in is None:
             self.enc_in = len(self.reals)
 
