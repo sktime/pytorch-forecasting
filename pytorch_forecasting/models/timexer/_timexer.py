@@ -177,7 +177,7 @@ class TimeXer(BaseModelWithCovariates):
                 loss = MultiLoss([MAE()] * len(self.target_positions))
             else:
                 loss = MAE()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["loss", "logging_metrics"])
         # loss is a standalone module and is stored separately.
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
@@ -295,9 +295,10 @@ class TimeXer(BaseModelWithCovariates):
         encoder_time_idx = x.get("encoder_time_idx", None)
         target_pos = self.target_positions
 
-        exog_data = (
-            encoder_cont[:, :, :target_pos] + encoder_cont[:, :, target_pos + 1 :]
-        )
+        # masking to ignore the target variable
+        mask = torch.ones(encoder_cont.shape[-1], dtype=torch.bool)
+        mask[target_pos] = False
+        exog_data = encoder_cont[..., mask]
 
         en_embed, n_vars = self.en_embedding(
             encoder_cont[:, :, target_pos[-1]].unsqueeze(-1).permute(0, 2, 1)
@@ -429,9 +430,11 @@ class TimeXer(BaseModelWithCovariates):
             if prediction.size(2) != len(target_positions):
                 prediction = prediction[:, :, : len(target_positions)]
             if self.n_quantiles is not None:
-                prediction = [prediction[..., i, :] for i in target_indices]
+                if len(target_indices) == 1:
+                    prediction = prediction[..., 0, :]
+                else:
+                    prediction = [prediction[..., i, :] for i in target_indices]
             else:
-
                 if len(target_indices) == 1:
                     prediction = prediction[..., 0]
                 else:
