@@ -9,7 +9,7 @@ from pytorch_forecasting.data.timeseries import TimeSeries
 @pytest.fixture
 def sample_timeseries_data():
     """Create a sample time series dataset with only numerical values."""
-    num_groups = 5
+    num_groups = 10
     seq_length = 100
 
     groups = []
@@ -128,22 +128,22 @@ def test_metadata_property(data_module):
     assert metadata["decoder_cont"] == 1  # Only known_future marked as known
 
 
-# def test_setup(data_module):
-#     """Test the setup method that prepares the datasets."""
-#     data_module.setup(stage="fit")
-#     print(data_module._val_indices)
-#     assert hasattr(data_module, "train_dataset")
-#     assert hasattr(data_module, "val_dataset")
-#     assert len(data_module.train_windows) > 0
-#     assert len(data_module.val_windows) > 0
-#
-#     data_module.setup(stage="test")
-#     assert hasattr(data_module, "test_dataset")
-#     assert len(data_module.test_windows) > 0
-#
-#     data_module.setup(stage="predict")
-#     assert hasattr(data_module, "predict_dataset")
-#     assert len(data_module.predict_windows) > 0
+def test_setup(data_module):
+    """Test the setup method that prepares the datasets."""
+    data_module.setup(stage="fit")
+    print(data_module._val_indices)
+    assert hasattr(data_module, "train_dataset")
+    assert hasattr(data_module, "val_dataset")
+    assert len(data_module.train_windows) > 0
+    assert len(data_module.val_windows) > 0
+
+    data_module.setup(stage="test")
+    assert hasattr(data_module, "test_dataset")
+    assert len(data_module.test_windows) > 0
+
+    data_module.setup(stage="predict")
+    assert hasattr(data_module, "predict_dataset")
+    assert len(data_module.predict_windows) > 0
 
 
 def test_create_windows(data_module):
@@ -407,25 +407,25 @@ def test_with_static_features():
     assert "static_continuous_features" in x
 
 
-# def test_different_train_val_test_split(sample_timeseries_data):
-#     """Test with different train/val/test split ratios."""
-#     dm = EncoderDecoderTimeSeriesDataModule(
-#         time_series_dataset=sample_timeseries_data,
-#         max_encoder_length=24,
-#         max_prediction_length=12,
-#         batch_size=4,
-#         train_val_test_split=(0.8, 0.1, 0.1),
-#     )
-#
-#     dm.setup()
-#
-#     total_series = len(sample_timeseries_data)
-#     expected_train = int(0.8 * total_series)
-#     expected_val = int(0.1 * total_series)
-#
-#     assert len(dm._train_indices) == expected_train
-#     assert len(dm._val_indices) == expected_val
-#     assert len(dm._test_indices) == total_series - expected_train - expected_val
+def test_different_train_val_test_split(sample_timeseries_data):
+    """Test with different train/val/test split ratios."""
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        train_val_test_split=(0.8, 0.1, 0.1),
+    )
+
+    dm.setup()
+
+    total_series = len(sample_timeseries_data)
+    expected_train = int(0.8 * total_series)
+    expected_val = int(0.1 * total_series)
+
+    assert len(dm._train_indices) == expected_train
+    assert len(dm._val_indices) == expected_val
+    assert len(dm._test_indices) == total_series - expected_train - expected_val
 
 
 def test_multivariate_target():
