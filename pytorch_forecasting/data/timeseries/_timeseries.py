@@ -9,7 +9,7 @@ a class that is able to handle a wide variety of timeseries data problems.
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Type, TypeVar, Union
 import warnings
 
 import numpy as np
@@ -32,12 +32,13 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
 from pytorch_forecasting.utils import repr_class
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 def _find_end_indices(
     diffs: np.ndarray, max_lengths: np.ndarray, min_length: int
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Identify end indices in series even if some values are missing.
 
@@ -52,7 +53,7 @@ def _find_end_indices(
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray]
+    tuple[np.ndarray, np.ndarray]
         tuple of arrays where first is end indices and second is list of start
         and end indices that are currently missing.
     """
@@ -92,7 +93,7 @@ except ImportError:
 
 
 def check_for_nonfinite(
-    tensor: torch.Tensor, names: Union[str, List[str]]
+    tensor: torch.Tensor, names: Union[str, list[str]]
 ) -> torch.Tensor:
     """Check if tensor contains NAs or infinite values and has correct dimension.
 
@@ -146,6 +147,14 @@ def check_for_nonfinite(
 
 
 NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
+
+Columns = list[str]
+TargetType = list[str, str]
+TargetPositive = list[str, bool]
+TargetSkew = list[str, float]
+
+DataProperties = dict[str, Union[Columns, TargetType, TargetPositive, TargetSkew]]
+TimeSeriesDataType = TypeVar("TimeSeriesType", bound="TimeSeriesDataSet")
 
 
 class TimeSeriesDataSet(Dataset):
@@ -207,11 +216,11 @@ class TimeSeriesDataSet(Dataset):
         The first time_idx for each series does not necessarily
         have to be ``0`` but any value is allowed.
 
-    target : Union[str, List[str]]
+    target : Union[str, list[str]]
         column(s) in ``data`` denoting the forecasting target.
         Can be categorical or continous dtype.
 
-    group_ids : List[str]
+    group_ids : list[str]
         list of column names identifying a time series instance within ``data``
         This means that the ``group_ids``
         identify a sample together with the ``time_idx``.
@@ -268,7 +277,7 @@ class TimeSeriesDataSet(Dataset):
         and change over time.
         Target variables should be included here, if real.
 
-    variable_groups : Dict[str, List[str]], optional, default=None
+    variable_groups : Dict[str, list[str]], optional, default=None
         dictionary mapping a name to a list of columns in the data.
         The name should be present
         in a categorical or real class argument, to be able to encode or scale the
@@ -293,7 +302,7 @@ class TimeSeriesDataSet(Dataset):
         Allow missings does not deal with ``NA`` values. You should fill NA values
         before passing the dataframe to the TimeSeriesDataSet.
 
-    lags : Dict[str, List[int]], optional, default=None
+    lags : dict[str, list[int]], optional, default=None
         dictionary of variable names mapped to list of time steps by which the
         variable should be lagged.
         Lags can be useful to indicate seasonality to the models.
@@ -432,40 +441,40 @@ class TimeSeriesDataSet(Dataset):
         self,
         data: pd.DataFrame,
         time_idx: str,
-        target: Union[str, List[str]],
-        group_ids: List[str],
+        target: Union[str, list[str]],
+        group_ids: list[str],
         weight: Union[str, None] = None,
         max_encoder_length: int = 30,
         min_encoder_length: int = None,
         min_prediction_idx: int = None,
         min_prediction_length: int = None,
         max_prediction_length: int = 1,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_known_categoricals: Optional[List[str]] = None,
-        time_varying_known_reals: Optional[List[str]] = None,
-        time_varying_unknown_categoricals: Optional[List[str]] = None,
-        time_varying_unknown_reals: Optional[List[str]] = None,
-        variable_groups: Optional[Dict[str, List[int]]] = None,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_known_categoricals: Optional[list[str]] = None,
+        time_varying_known_reals: Optional[list[str]] = None,
+        time_varying_unknown_categoricals: Optional[list[str]] = None,
+        time_varying_unknown_reals: Optional[list[str]] = None,
+        variable_groups: Optional[dict[str, list[int]]] = None,
         constant_fill_strategy: Optional[
-            Dict[str, Union[str, float, int, bool]]
+            dict[str, Union[str, float, int, bool]]
         ] = None,
         allow_missing_timesteps: bool = False,
-        lags: Optional[Dict[str, List[int]]] = None,
+        lags: Optional[dict[str, list[int]]] = None,
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[
-            NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None
+            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
         ] = "auto",
-        categorical_encoders: Optional[Dict[str, NaNLabelEncoder]] = None,
+        categorical_encoders: Optional[dict[str, NaNLabelEncoder]] = None,
         scalers: Optional[
-            Dict[
+            dict[
                 str,
                 Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
             ]
         ] = None,
-        randomize_length: Union[None, Tuple[float, float], bool] = False,
+        randomize_length: Union[None, tuple[float, float], bool] = False,
         predict_mode: bool = False,
     ):
         """Timeseries dataset holding data for models."""
@@ -681,7 +690,7 @@ class TimeSeriesDataSet(Dataset):
 
         assert self.min_lag > 0, "lags should be positive"
 
-    def _data_properties(self, data):
+    def _data_properties(self, data: pd.DataFrame) -> DataProperties:
         """Returns a dict with properties of the data used later.
 
         Parameters
@@ -728,7 +737,7 @@ class TimeSeriesDataSet(Dataset):
                         props["target_skew"][target] = data[target].skew()
         return props
 
-    def _set_lagged_variables(self):
+    def _set_lagged_variables(self) -> None:
         """Add lagged variables to lists of variables.
 
         * generates lagged variable names and adds them to the appropriate lists
@@ -776,7 +785,7 @@ class TimeSeriesDataSet(Dataset):
                             _append_if_new(_attr(realcat, "known"), lagged_name)
 
     @property
-    def dropout_categoricals(self) -> List[str]:
+    def dropout_categoricals(self) -> list[str]:
         """
         list of categorical variables that are unknown when making a
         forecast without observed history
@@ -787,7 +796,7 @@ class TimeSeriesDataSet(Dataset):
             if encoder.add_nan
         ]
 
-    def _get_lagged_names(self, name: str) -> Dict[str, int]:
+    def _get_lagged_names(self, name: str) -> dict[str, int]:
         """
         Generate names for lagged variables
 
@@ -798,19 +807,19 @@ class TimeSeriesDataSet(Dataset):
 
         Returns
         -------
-        Dict[str, int]
+        dict[str, int]
             dictionary mapping new variable names to lags
         """
         return {f"{name}_lagged_by_{lag}": lag for lag in self._lags.get(name, [])}
 
     @property
     @lru_cache(None)
-    def lagged_variables(self) -> Dict[str, str]:
+    def lagged_variables(self) -> dict[str, str]:
         """Lagged variables.
 
         Parameters
         ----------
-        Dict[str, str]
+        dict[str, str]
             dictionary of variable names corresponding to lagged variables,
             mapped to variable that is lagged
         """
@@ -821,12 +830,12 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     @lru_cache(None)
-    def lagged_targets(self) -> Dict[str, str]:
+    def lagged_targets(self) -> dict[str, str]:
         """Subset of lagged_variables to variables that are lagged targets.
 
         Parameters
         ----------
-        Dict[str, str]
+        dict[str, str]
             dictionary of variable names corresponding to lagged variables,
             mapped to variable that is lagged
         """
@@ -871,7 +880,11 @@ class TimeSeriesDataSet(Dataset):
         else:
             return max([max(lag) for lag in self._lags.values()])
 
-    def _set_target_normalizer(self, data_properties, target_normalizer):
+    def _set_target_normalizer(
+        self,
+        data_properties: DataProperties,
+        target_normalizer: Union[NORMALIZER, str, list, tuple],
+    ) -> TorchNormalizer:
         """Determine target normalizer.
 
         Determines normalizers for variables based on self.target_normalizer setting.
@@ -928,7 +941,7 @@ class TimeSeriesDataSet(Dataset):
         )
         return target_normalizer
 
-    def _get_auto_normalizer(self, data_properties):
+    def _get_auto_normalizer(self, data_properties: DataProperties) -> TorchNormalizer:
         """Get normalizer for auto setting, using data_properties.
 
         See docstring of _set_target_normalizer for details.
@@ -972,7 +985,7 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     @lru_cache(None)
-    def _group_ids_mapping(self) -> Dict[str, str]:
+    def _group_ids_mapping(self) -> dict[str, str]:
         """
         Mapping of group id names to group ids used to identify series in dataset -
         group ids can also be used for target normalizer.
@@ -984,7 +997,7 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     @lru_cache(None)
-    def _group_ids(self) -> List[str]:
+    def _group_ids(self) -> list[str]:
         """
         Group ids used to identify series in dataset.
 
@@ -992,7 +1005,7 @@ class TimeSeriesDataSet(Dataset):
         """
         return list(self._group_ids_mapping.values())
 
-    def _validate_data(self, data: pd.DataFrame):
+    def _validate_data(self, data: pd.DataFrame) -> None:
         """Validate assumptions on data.."""
         assert (
             data[self.time_idx].dtype.kind == "i"
@@ -1043,7 +1056,7 @@ class TimeSeriesDataSet(Dataset):
         torch.save(self, fname)
 
     @classmethod
-    def load(cls, fname: str):
+    def load(cls: Type[TimeSeriesDataType], fname: str) -> TimeSeriesDataType:
         """
         Load dataset from disk
 
@@ -1302,7 +1315,9 @@ class TimeSeriesDataSet(Dataset):
             data = g._selected_obj[g.cumcount() >= self.max_lag]
         return data
 
-    def get_transformer(self, name: str, group_id: bool = False):
+    def get_transformer(
+        self, name: str, group_id: bool = False
+    ) -> Union[NORMALIZER, Any, None]:
         """Get transformer for variable.
 
         Parameters
@@ -1315,7 +1330,8 @@ class TimeSeriesDataSet(Dataset):
 
         Returns
         -------
-        transformer
+        transformer: Union[NORMALIZER, Any, None]
+            transformer for variable, None if no transformer is available
         """
         if group_id:
             name = self._group_ids_mapping[name]
@@ -1405,7 +1421,7 @@ class TimeSeriesDataSet(Dataset):
         else:
             return values
 
-    def _data_to_tensors(self, data: pd.DataFrame) -> Dict[str, torch.Tensor]:
+    def _data_to_tensors(self, data: pd.DataFrame) -> dict[str, torch.Tensor]:
         """Convert data to tensors for faster access with :py:meth:`~__getitem__`.
 
         Parameters
@@ -1415,12 +1431,12 @@ class TimeSeriesDataSet(Dataset):
 
         Returns
         -------
-        Dict[str, torch.Tensor]
+        dict[str, torch.Tensor]
             dictionary of tensors for continous, categorical data, groups, target and
             time index
         """
 
-        def _to_tensor(cols, long=True):
+        def _to_tensor(cols, long=True) -> torch.Tensor:
             """Convert data[cols] to torch tensor.
 
             Converts sub-frames to numpy and then to torch tensor.
@@ -1494,12 +1510,12 @@ class TimeSeriesDataSet(Dataset):
                     check_for_nonfinite(tensor, var_names)
 
     @property
-    def categoricals(self) -> List[str]:
+    def categoricals(self) -> list[str]:
         """
         Categorical variables as used for modelling.
 
         Returns:
-            List[str]: list of variables
+            list[str]: list of variables
         """
         return (
             self._static_categoricals
@@ -1508,12 +1524,12 @@ class TimeSeriesDataSet(Dataset):
         )
 
     @property
-    def flat_categoricals(self) -> List[str]:
+    def flat_categoricals(self) -> list[str]:
         """
         Categorical variables as defined in input data.
 
         Returns:
-            List[str]: list of variables
+            list[str]: list of variables
         """
         categories = []
         for name in self.categoricals:
@@ -1524,13 +1540,13 @@ class TimeSeriesDataSet(Dataset):
         return categories
 
     @property
-    def variable_to_group_mapping(self) -> Dict[str, str]:
+    def variable_to_group_mapping(self) -> dict[str, str]:
         """
         Mapping from categorical variables to variables in input data.
 
         Returns
         -------
-        Dict[str, str]
+        dict[str, str]
             dictionary, maps :py:meth:`~categorical` to :py:meth:`~flat_categoricals`.
         """
         groups = {}
@@ -1539,12 +1555,12 @@ class TimeSeriesDataSet(Dataset):
         return groups
 
     @property
-    def reals(self) -> List[str]:
+    def reals(self) -> list[str]:
         """
         Continous variables as used for modelling.
 
         Returns:
-            List[str]: list of variables
+            list[str]: list of variables
         """
         return (
             self._static_reals
@@ -1554,12 +1570,12 @@ class TimeSeriesDataSet(Dataset):
 
     @property
     @lru_cache(None)
-    def target_names(self) -> List[str]:
+    def target_names(self) -> list[str]:
         """
         List of targets.
 
         Returns:
-            List[str]: list of targets
+            list[str]: list of targets
         """
         if self.multi_target:
             return self.target
@@ -1577,12 +1593,12 @@ class TimeSeriesDataSet(Dataset):
         return isinstance(self.target, (list, tuple))
 
     @property
-    def target_normalizers(self) -> List[TorchNormalizer]:
+    def target_normalizers(self) -> list[TorchNormalizer]:
         """
         List of target normalizers aligned with ``target_names``.
 
         Returns:
-            List[TorchNormalizer]: list of target normalizers
+            list[TorchNormalizer]: list of target normalizers
         """
         if isinstance(self.target_normalizer, MultiNormalizer):
             target_normalizers = self.target_normalizer.normalizers
@@ -1590,7 +1606,7 @@ class TimeSeriesDataSet(Dataset):
             target_normalizers = [self.target_normalizer]
         return target_normalizers
 
-    def get_parameters(self) -> Dict[str, Any]:
+    def get_parameters(self) -> dict[str, Any]:
         """Get parameters of self as dict.
 
         These can be used with :py:meth:`~from_parameters`
@@ -1598,7 +1614,7 @@ class TimeSeriesDataSet(Dataset):
 
         Returns
         -------
-        Dict[str, Any]: dictionary of parameters
+        dict[str, Any]: dictionary of parameters
         """
         kwargs = {
             name: getattr(self, name)
@@ -1611,13 +1627,13 @@ class TimeSeriesDataSet(Dataset):
 
     @classmethod
     def from_dataset(
-        cls,
-        dataset,
+        cls: Type[TimeSeriesDataType],
+        dataset: TimeSeriesDataType,
         data: pd.DataFrame,
         stop_randomization: bool = False,
         predict: bool = False,
         **update_kwargs,
-    ):
+    ) -> TimeSeriesDataType:
         """Construct dataset with different data, same variable encoders, scalers, etc.
 
         Calls :py:meth:`~from_parameters` under the hood.
@@ -1654,13 +1670,13 @@ class TimeSeriesDataSet(Dataset):
 
     @classmethod
     def from_parameters(
-        cls,
-        parameters: Dict[str, Any],
+        cls: Type[TimeSeriesDataType],
+        parameters: dict[str, Any],
         data: pd.DataFrame,
         stop_randomization: bool = None,
         predict: bool = False,
         **update_kwargs,
-    ):
+    ) -> TimeSeriesDataType:
         """Construct dataset with different data, same variable encoders, scalers, etc.
 
         Returns TimeSeriesDataSet with same parameters as self, but different data.
@@ -1668,7 +1684,7 @@ class TimeSeriesDataSet(Dataset):
 
         Parameters
         ----------
-        parameters : Dict[str, Any]
+        parameters : dict[str, Any]
             dataset parameters which to use for the new dataset
         data : pd.DataFrame
             data from which new dataset will be generated
@@ -1683,7 +1699,7 @@ class TimeSeriesDataSet(Dataset):
 
         Returns
         -------
-        TimeSeriesDataSet
+        TimeSeriesDataType
             new dataset
         """
         parameters = deepcopy(parameters)
@@ -1846,7 +1862,7 @@ class TimeSeriesDataSet(Dataset):
 
         return df_index
 
-    def filter(self, filter_func: Callable, copy: bool = True) -> "TimeSeriesDataSet":
+    def filter(self, filter_func: Callable, copy: bool = True) -> TimeSeriesDataType:
         """Filter subsequences in dataset.
 
         Uses interpretable version of index :py:meth:`~decoded_index`
@@ -1923,7 +1939,7 @@ class TimeSeriesDataSet(Dataset):
 
     def plot_randomization(
         self,
-        betas: Tuple[float, float] = None,
+        betas: tuple[float, float] = None,
         length: int = None,
         min_length: int = None,
     ):
@@ -1931,7 +1947,7 @@ class TimeSeriesDataSet(Dataset):
 
         Parameters
         ----------
-        betas : Tuple[float, float], optional, default=randomize_length of dataset
+        betas : tuple[float, float], optional, default=randomize_length of dataset
             Tuple of betas, e.g. ``(0.2, 0.05)`` to use for randomization.
         length : int, optional, default=max_encoder_length of dataset
             Length of sequence to plot.
@@ -1940,7 +1956,7 @@ class TimeSeriesDataSet(Dataset):
 
         Returns
         -------
-        Tuple[plt.Figure, torch.Tensor]
+        tuple[plt.Figure, torch.Tensor]
             tuple of figure and histogram based on 1000 samples
         """
         _check_matplotlib("plot_randomization")
@@ -2065,7 +2081,7 @@ class TimeSeriesDataSet(Dataset):
             ).clip(max=self.max_prediction_length)
         return decoder_length
 
-    def __getitem__(self, idx: int) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+    def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
         Get sample for model
 
@@ -2073,7 +2089,7 @@ class TimeSeriesDataSet(Dataset):
             idx (int): index of prediction (between ``0`` and ``len(dataset) - 1``)
 
         Returns:
-            Tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
+            tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
         index = self.index.iloc[idx]
 
@@ -2332,19 +2348,19 @@ class TimeSeriesDataSet(Dataset):
 
     @staticmethod
     def _collate_fn(
-        batches: List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]
-    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+        batches: list[tuple[dict[str, torch.Tensor], torch.Tensor]]
+    ) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
         Collate function to combine items into mini-batch for dataloader.
 
         Parameters
         ----------
-        batches (List[Tuple[Dict[str, torch.Tensor], torch.Tensor]]):
+        batches (list[tuple[dict[str, torch.Tensor], torch.Tensor]]):
             List of samples generated with :py:meth:`~__getitem__`.
 
         Returns
         -------
-        Dict[str, torch.Tensor]
+        dict[str, torch.Tensor]
             dictionary of minibatches with keys:
 
             * encoder_cat: (batch_size, encoder_length, num_categorical),
@@ -2367,7 +2383,7 @@ class TimeSeriesDataSet(Dataset):
             * target_scale: (batch_size, num_target),
                 scale of target variables
 
-        Tuple[torch.Tensor, torch.Tensor]
+        tuple[torch.Tensor, torch.Tensor]
             minibatch, 2-tuple with entries:
 
             * target: (batch_size, decoder_length, num_target),
@@ -2625,7 +2641,7 @@ class TimeSeriesDataSet(Dataset):
             **kwargs,
         )
 
-    def x_to_index(self, x: Dict[str, torch.Tensor]) -> pd.DataFrame:
+    def x_to_index(self, x: dict[str, torch.Tensor]) -> pd.DataFrame:
         """
         Decode dataframe index from x.
 
@@ -2648,23 +2664,3 @@ class TimeSeriesDataSet(Dataset):
             attributes=self.get_parameters(),
             extra_attributes=dict(length=len(self)),
         )
-
-
-def _coerce_to_list(obj):
-    """Coerce object to list.
-
-    None is coerced to empty list, otherwise list constructor is used.
-    """
-    if obj is None:
-        return []
-    return list(obj)
-
-
-def _coerce_to_dict(obj):
-    """Coerce object to dict.
-
-    None is coerce to empty dict, otherwise deepcopy is used.
-    """
-    if obj is None:
-        return {}
-    return deepcopy(obj)
