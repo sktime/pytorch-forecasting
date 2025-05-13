@@ -115,7 +115,7 @@ class TimeSeries(Dataset):
             UserWarning,
         )
 
-        super.__init__()
+        super().__init__()
 
         # handle defaults, coercion, and derived attributes
         self._target = _coerce_to_list(target)
