@@ -420,6 +420,10 @@ def test_with_exogenous_variables(tmp_path):
         batch = next(iter(val_dataloader))
         x, y = batch
 
+        # The purpose of the below code is to ensure that the model
+        # treats exogenous variables correctly. The approach here uses
+        # masking to nullify exogenous and to confirm that the output is
+        # different from the original output (with exogenous variables).
         with torch.no_grad():
             normal_output = model(x)
             x_no_exog = x.copy()
