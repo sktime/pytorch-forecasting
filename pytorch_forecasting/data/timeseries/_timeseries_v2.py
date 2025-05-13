@@ -206,54 +206,69 @@ class TimeSeries(Dataset):
         weights : torch.Tensor of shape (n_timepoints,), optional
             Only included if weights are not `None`.
         """
-        group_id = self._group_ids[index]
+        time = self.time
+        feature_cols = self.feature_cols
+        _target = self._target
+        _known = self._known
+        _static = self._static
+        _group = self._group
+        _groups = self._groups
+        _group_ids = self._group_ids
+        weight = self.weight
+        data_future = self.data_future
 
-        if self._group:
-            mask = self._groups[group_id]
+        group_id = _group_ids[index]
+
+        if _group:
+            mask = _groups[group_id]
             data = self.data.loc[mask]
         else:
             data = self.data
 
-        cutoff_time = data[self.time].max()
+        cutoff_time = data[time].max()
+
+        data_vals = data[time].values
+        data_tgt_vals = data[_target].values
+        data_feat_vals = data[feature_cols].values
 
         result = {
-            "t": data[self.time].values,
-            "y": torch.tensor(data[self._target].values),
-            "x": torch.tensor(data[self.feature_cols].values),
+            "t": data_vals,
+            "y": torch.tensor(data_tgt_vals),
+            "x": torch.tensor(data_feat_vals),
             "group": torch.tensor([hash(str(group_id))]),
-            "st": torch.tensor(data[self._static].iloc[0].values if self._static else []),
+            "st": torch.tensor(data[_static].iloc[0].values if _static else []),
             "cutoff_time": cutoff_time,
         }
 
-        if self.data_future is not None:
-            if self._group:
-                future_mask = self.data_future.groupby(self._group).groups[group_id]
+        if data_future is not None:
+            if _group:
+                future_mask = self.data_future.groupby(_group).groups[group_id]
                 future_data = self.data_future.loc[future_mask]
             else:
                 future_data = self.data_future
 
-            combined_times = np.concatenate(
-                [data[self.time].values, future_data[self.time].values]
-            )
+            data_fut_vals = future_data[time].values
+
+            combined_times = np.concatenate([data_vals, data_fut_vals])
             combined_times = np.unique(combined_times)
             combined_times.sort()
 
             num_timepoints = len(combined_times)
-            x_merged = np.full((num_timepoints, len(self.feature_cols)), np.nan)
-            y_merged = np.full((num_timepoints, len(self._target)), np.nan)
+            x_merged = np.full((num_timepoints, len(feature_cols)), np.nan)
+            y_merged = np.full((num_timepoints, len(_target)), np.nan)
 
             current_time_indices = {t: i for i, t in enumerate(combined_times)}
-            for i, t in enumerate(data[self.time].values):
+            for i, t in enumerate(data_vals):
                 idx = current_time_indices[t]
-                x_merged[idx] = data[self.feature_cols].values[i]
-                y_merged[idx] = data[self._target].values[i]
+                x_merged[idx] = data_feat_vals[i]
+                y_merged[idx] = data_tgt_vals[i]
 
-            for i, t in enumerate(future_data[self.time].values):
+            for i, t in enumerate(data_fut_vals):
                 if t in current_time_indices:
                     idx = current_time_indices[t]
-                    for j, col in enumerate(self._known):
-                        if col in self.feature_cols:
-                            feature_idx = self.feature_cols.index(col)
+                    for j, col in enumerate(_known):
+                        if col in feature_cols:
+                            feature_idx = feature_cols.index(col)
                             x_merged[idx, feature_idx] = future_data[col].values[i]
 
             result.update(
@@ -264,17 +279,17 @@ class TimeSeries(Dataset):
                 }
             )
 
-        if self.weight:
+        if weight:
             if self.data_future is not None and self.weight in self.data_future.columns:
                 weights_merged = np.full(num_timepoints, np.nan)
-                for i, t in enumerate(data[self.time].values):
+                for i, t in enumerate(data_vals):
                     idx = current_time_indices[t]
-                    weights_merged[idx] = data[self.weight].values[i]
+                    weights_merged[idx] = data[weight].values[i]
 
-                for i, t in enumerate(future_data[self.time].values):
+                for i, t in enumerate(data_fut_vals):
                     if t in current_time_indices and self.weight in future_data.columns:
                         idx = current_time_indices[t]
-                        weights_merged[idx] = future_data[self.weight].values[i]
+                        weights_merged[idx] = future_data[weight].values[i]
 
                 result["weights"] = torch.tensor(weights_merged, dtype=torch.float32)
             else:
