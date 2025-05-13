@@ -12,6 +12,10 @@ import torch.nn.functional as F
 
 
 class TriangularCausalMask:
+    """
+    Triangular causal mask for attention mechanism.
+    """
+
     def __init__(self, B, L, device="cpu"):
         mask_shape = [B, 1, L, L]
         with torch.no_grad():
@@ -25,6 +29,15 @@ class TriangularCausalMask:
 
 
 class FullAttention(nn.Module):
+    """
+    Full attention mechanism with optional masking and dropout.
+    Args:
+        mask_flag (bool): Whether to apply masking.
+        factor (int): Factor for scaling the attention scores.
+        scale (float): Scaling factor for attention scores.
+        attention_dropout (float): Dropout rate for attention scores.
+        output_attention (bool): Whether to output attention weights."""
+
     def __init__(
         self,
         mask_flag=True,
@@ -60,6 +73,18 @@ class FullAttention(nn.Module):
 
 
 class AttentionLayer(nn.Module):
+    """
+    Attention layer that combines query, key, and value projections with an attention
+    mechanism.
+    Args:
+        attention (nn.Module): Attention mechanism to use.
+        d_model (int): Dimension of the model.
+        n_heads (int): Number of attention heads.
+        d_keys (int, optional): Dimension of the keys. Defaults to d_model // n_heads.
+        d_values (int, optional):
+            Dimension of the values. Defaults to d_model // n_heads.
+    """
+
     def __init__(self, attention, d_model, n_heads, d_keys=None, d_values=None):
         super(AttentionLayer, self).__init__()
 
@@ -96,6 +121,16 @@ class AttentionLayer(nn.Module):
 
 
 class DataEmbedding_inverted(nn.Module):
+    """
+    Data embedding module for time series data.
+    Args:
+        c_in (int): Number of input features.
+        d_model (int): Dimension of the model.
+        embed_type (str): Type of embedding to use. Defaults to "fixed".
+        freq (str): Frequency of the time series data. Defaults to "h".
+        dropout (float): Dropout rate. Defaults to 0.1.
+    """
+
     def __init__(self, c_in, d_model, embed_type="fixed", freq="h", dropout=0.1):
         super(DataEmbedding_inverted, self).__init__()
         self.value_embedding = nn.Linear(c_in, d_model)
@@ -113,6 +148,12 @@ class DataEmbedding_inverted(nn.Module):
 
 
 class PositionalEmbedding(nn.Module):
+    """
+    Positional embedding module for time series data.
+    Args:
+        d_model (int): Dimension of the model.
+        max_len (int): Maximum length of the input sequence. Defaults to 5000."""
+
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
@@ -135,6 +176,15 @@ class PositionalEmbedding(nn.Module):
 
 
 class FlattenHead(nn.Module):
+    """
+    Flatten head for the output of the model.
+    Args:
+        n_vars (int): Number of input features.
+        nf (int): Number of features in the last layer.
+        target_window (int): Target window size.
+        head_dropout (float): Dropout rate for the head. Defaults to 0.
+        n_quantiles (int, optional): Number of quantiles. Defaults to None."""
+
     def __init__(self, n_vars, nf, target_window, head_dropout=0, n_quantiles=None):
         super().__init__()
         self.n_vars = n_vars
@@ -160,6 +210,15 @@ class FlattenHead(nn.Module):
 
 
 class EnEmbedding(nn.Module):
+    """
+    Encoder embedding module for time series data. Handles endogenous feature
+    embeddings in this case.
+    Args:
+        n_vars (int): Number of input features.
+        d_model (int): Dimension of the model.
+        patch_len (int): Length of the patches.
+        dropout (float): Dropout rate. Defaults to 0.1."""
+
     def __init__(self, n_vars, d_model, patch_len, dropout):
         super(EnEmbedding, self).__init__()
 
@@ -186,6 +245,14 @@ class EnEmbedding(nn.Module):
 
 
 class Encoder(nn.Module):
+    """
+    Encoder module for the TimeXer model.
+    Args:
+        layers (list): List of encoder layers.
+        norm_layer (nn.Module, optional): Normalization layer. Defaults to None.
+        projection (nn.Module, optional): Projection layer. Defaults to None.
+    """
+
     def __init__(self, layers, norm_layer=None, projection=None):
         super(Encoder, self).__init__()
         self.layers = nn.ModuleList(layers)
@@ -207,6 +274,18 @@ class Encoder(nn.Module):
 
 
 class EncoderLayer(nn.Module):
+    """
+    Encoder layer for the TimeXer model.
+    Args:
+        self_attention (nn.Module): Self-attention mechanism.
+        cross_attention (nn.Module): Cross-attention mechanism.
+        d_model (int): Dimension of the model.
+        d_ff (int, optional):
+            Dimension of the feedforward layer. Defaults to 4 * d_model.
+        dropout (float): Dropout rate. Defaults to 0.1.
+        activation (str): Activation function. Defaults to "relu".
+    """
+
     def __init__(
         self,
         self_attention,
