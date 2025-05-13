@@ -32,6 +32,7 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
 from pytorch_forecasting.utils import repr_class
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
@@ -2663,23 +2664,3 @@ class TimeSeriesDataSet(Dataset):
             attributes=self.get_parameters(),
             extra_attributes=dict(length=len(self)),
         )
-
-
-def _coerce_to_list(obj):
-    """Coerce object to list.
-
-    None is coerced to empty list, otherwise list constructor is used.
-    """
-    if obj is None:
-        return []
-    return list(obj)
-
-
-def _coerce_to_dict(obj):
-    """Coerce object to dict.
-
-    None is coerce to empty dict, otherwise deepcopy is used.
-    """
-    if obj is None:
-        return {}
-    return deepcopy(obj)
