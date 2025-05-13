@@ -78,6 +78,11 @@ class AttentionLayer(nn.Module):
         _, S, _ = keys.shape
         H = self.n_heads
 
+        if S == 0:
+            # skip the cross attention process since there is no exogenous variables
+            queries = self.query_projection(queries)
+            return self.out_projection(queries), None
+
         queries = self.query_projection(queries).view(B, L, H, -1)
         keys = self.key_projection(keys).view(B, S, H, -1)
         values = self.value_projection(values).view(B, S, H, -1)
