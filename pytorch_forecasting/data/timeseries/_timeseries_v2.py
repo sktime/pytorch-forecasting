@@ -140,6 +140,16 @@ class TimeSeries(Dataset):
 
         self._prepare_metadata()
 
+        # overwrite __init__ params for upwards compatibility with AS PRs
+        # todo: should we avoid this and ensure classes are dataclass-like?
+        self.group = self._group
+        self.target = self._target
+        self.num = self._num
+        self.cat = self._cat
+        self.known = self._known
+        self.unknown = self._unknown
+        self.static = self._static
+
     def _prepare_metadata(self):
         """Prepare metadata for the dataset.
 
