@@ -171,39 +171,38 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         dict
             dictionary containing the following keys:
 
-                * ``encoder_cat``: Number of categorical variables in the encoder.
-                    Computed as ``len(self.categorical_indices)``, which counts the
-                    categorical feature indices.
-                * ``encoder_cont``: Number of continuous variables in the encoder.
-                    Computed as ``len(self.continuous_indices)``, which counts the
-                    continuous feature indices.
-                * ``decoder_cat``: Number of categorical variables in the decoder that
-                    are known in advance.
-                    Computed by filtering ``self.time_series_metadata["cols"]["x"]``
-                    where col_type == "C"(categorical) and col_known == "K" (known)
-                * ``decoder_cont``:  Number of continuous variables in the decoder that
-                    are known in advance.
-                    Computed by filtering ``self.time_series_metadata["cols"]["x"]``
-                    where col_type == "F"(continuous) and col_known == "K"(known)
-                * ``target``: Number of target variables.
-                    Computed as ``len(self.time_series_metadata["cols"]["y"])``, which
-                    gives the number of output target columns..
-                * ``static_categorical_features``: Number of static categorical features
-                    Computed by filtering ``self.time_series_metadata["cols"]["st"]``
-                    (static features) where col_type == "C" (categorical).
-                * ``static_continuous_features``: Number of static continuous features
-                    Computed as difference of
-                    ``len(self.time_series_metadata["cols"]["st"])`` (static features)
-                    and static_categorical_features that gives static continuous feature
-                * ``max_encoder_length``: maximum encoder length
-                    Taken directly from `self.max_encoder_length`.
-                * ``max_prediction_length``: maximum prediction length
-                    Taken directly from `self.max_prediction_length`.
-                * ``min_encoder_length``: minimum encoder length
-                    Taken directly from `self.min_encoder_length`.
-                * ``min_prediction_length``: minimum prediction length
-                    Taken directly from `self.min_prediction_length`.
-
+            * ``encoder_cat``: Number of categorical variables in the encoder.
+                Computed as ``len(self.categorical_indices)``, which counts the
+                categorical feature indices.
+            * ``encoder_cont``: Number of continuous variables in the encoder.
+                Computed as ``len(self.continuous_indices)``, which counts the
+                continuous feature indices.
+            * ``decoder_cat``: Number of categorical variables in the decoder that
+                are known in advance.
+                Computed by filtering ``self.time_series_metadata["cols"]["x"]``
+                where col_type == "C"(categorical) and col_known == "K" (known)
+            * ``decoder_cont``:  Number of continuous variables in the decoder that
+                are known in advance.
+                Computed by filtering ``self.time_series_metadata["cols"]["x"]``
+                where col_type == "F"(continuous) and col_known == "K"(known)
+            * ``target``: Number of target variables.
+                Computed as ``len(self.time_series_metadata["cols"]["y"])``, which
+                gives the number of output target columns..
+            * ``static_categorical_features``: Number of static categorical features
+                Computed by filtering ``self.time_series_metadata["cols"]["st"]``
+                (static features) where col_type == "C" (categorical).
+            * ``static_continuous_features``: Number of static continuous features
+                Computed as difference of
+                ``len(self.time_series_metadata["cols"]["st"])`` (static features)
+                and static_categorical_features that gives static continuous feature
+            * ``max_encoder_length``: maximum encoder length
+                Taken directly from `self.max_encoder_length`.
+            * ``max_prediction_length``: maximum prediction length
+                Taken directly from `self.max_prediction_length`.
+            * ``min_encoder_length``: minimum encoder length
+                Taken directly from `self.min_encoder_length`.
+            * ``min_prediction_length``: minimum prediction length
+                Taken directly from `self.min_prediction_length`.
         """
         encoder_cat_count = len(self.categorical_indices)
         encoder_cont_count = len(self.continuous_indices)
