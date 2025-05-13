@@ -5,7 +5,7 @@ Beta version, experimental - use for testing but not in production.
 """
 
 from typing import Dict, List, Optional, Union
-import warnings
+from warnings import warn
 
 import numpy as np
 import pandas as pd
@@ -94,16 +94,16 @@ class TimeSeries(Dataset):
         self.data = data
         self.data_future = data_future
         self.time = time
-        self.target = _coerce_to_list(target)
-        self.group = _coerce_to_list(group)
+        self.target = target
+        self.group = group
         self.weight = weight
-        self.num = _coerce_to_list(num)
-        self.cat = _coerce_to_list(cat)
-        self.known = _coerce_to_list(known)
-        self.unknown = _coerce_to_list(unknown)
-        self.static = _coerce_to_list(static)
+        self.num = num
+        self.cat = cat
+        self.known = known
+        self.unknown = unknown
+        self.static = static
 
-        warnings.warn(
+        warn(
             "TimeSeries is part of an experimental rework of the "
             "pytorch-forecasting data layer, "
             "scheduled for release with v2.0.0. "
@@ -115,13 +115,24 @@ class TimeSeries(Dataset):
             UserWarning,
         )
 
+        super.__init__()
+
+        # handle defaults, coercion, and derived attributes
+        self._target = _coerce_to_list(target)
+        self._group = _coerce_to_list(group)
+        self._num = _coerce_to_list(num)
+        self._cat = _coerce_to_list(cat)
+        self._known = _coerce_to_list(known)
+        self._unknown = _coerce_to_list(unknown)
+        self._static = _coerce_to_list(static)
+
         self.feature_cols = [
             col
             for col in data.columns
-            if col not in [self.time] + self.group + [self.weight] + self.target
+            if col not in [self.time] + self._group + [self.weight] + self._target
         ]
-        if self.group:
-            self._groups = self.data.groupby(self.group).groups
+        if self._group:
+            self._groups = self.data.groupby(self._group).groups
             self._group_ids = list(self._groups.keys())
         else:
             self._groups = {"_single_group": self.data.index}
@@ -148,19 +159,19 @@ class TimeSeries(Dataset):
         """
         self.metadata = {
             "cols": {
-                "y": self.target,
+                "y": self._target,
                 "x": self.feature_cols,
-                "st": self.static,
+                "st": self._static,
             },
             "col_type": {},
             "col_known": {},
         }
 
-        all_cols = self.target + self.feature_cols + self.static
+        all_cols = self._target + self.feature_cols + self._static
         for col in all_cols:
-            self.metadata["col_type"][col] = "C" if col in self.cat else "F"
+            self.metadata["col_type"][col] = "C" if col in self._cat else "F"
 
-            self.metadata["col_known"][col] = "K" if col in self.known else "U"
+            self.metadata["col_known"][col] = "K" if col in self._known else "U"
 
     def __len__(self) -> int:
         """Return number of time series in the dataset."""
@@ -197,7 +208,7 @@ class TimeSeries(Dataset):
         """
         group_id = self._group_ids[index]
 
-        if self.group:
+        if self._group:
             mask = self._groups[group_id]
             data = self.data.loc[mask]
         else:
@@ -207,16 +218,16 @@ class TimeSeries(Dataset):
 
         result = {
             "t": data[self.time].values,
-            "y": torch.tensor(data[self.target].values),
+            "y": torch.tensor(data[self._target].values),
             "x": torch.tensor(data[self.feature_cols].values),
             "group": torch.tensor([hash(str(group_id))]),
-            "st": torch.tensor(data[self.static].iloc[0].values if self.static else []),
+            "st": torch.tensor(data[self._static].iloc[0].values if self._static else []),
             "cutoff_time": cutoff_time,
         }
 
         if self.data_future is not None:
-            if self.group:
-                future_mask = self.data_future.groupby(self.group).groups[group_id]
+            if self._group:
+                future_mask = self.data_future.groupby(self._group).groups[group_id]
                 future_data = self.data_future.loc[future_mask]
             else:
                 future_data = self.data_future
@@ -229,18 +240,18 @@ class TimeSeries(Dataset):
 
             num_timepoints = len(combined_times)
             x_merged = np.full((num_timepoints, len(self.feature_cols)), np.nan)
-            y_merged = np.full((num_timepoints, len(self.target)), np.nan)
+            y_merged = np.full((num_timepoints, len(self._target)), np.nan)
 
             current_time_indices = {t: i for i, t in enumerate(combined_times)}
             for i, t in enumerate(data[self.time].values):
                 idx = current_time_indices[t]
                 x_merged[idx] = data[self.feature_cols].values[i]
-                y_merged[idx] = data[self.target].values[i]
+                y_merged[idx] = data[self._target].values[i]
 
             for i, t in enumerate(future_data[self.time].values):
                 if t in current_time_indices:
                     idx = current_time_indices[t]
-                    for j, col in enumerate(self.known):
+                    for j, col in enumerate(self._known):
                         if col in self.feature_cols:
                             feature_idx = self.feature_cols.index(col)
                             x_merged[idx, feature_idx] = future_data[col].values[i]

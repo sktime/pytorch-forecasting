@@ -8,6 +8,7 @@
 #######################################################################################
 
 from typing import Any, Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 from lightning.pytorch import LightningDataModule
 from sklearn.preprocessing import RobustScaler, StandardScaler
@@ -107,33 +108,50 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
-        super().__init__()
+
         self.time_series_dataset = time_series_dataset
-        self.time_series_metadata = time_series_dataset.get_metadata()
-
         self.max_encoder_length = max_encoder_length
-        self.min_encoder_length = min_encoder_length or max_encoder_length
+        self.min_encoder_length = min_encoder_length
         self.max_prediction_length = max_prediction_length
-        self.min_prediction_length = min_prediction_length or max_prediction_length
+        self.min_prediction_length = min_prediction_length
         self.min_prediction_idx = min_prediction_idx
-
         self.allow_missing_timesteps = allow_missing_timesteps
         self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
-
+        self.target_normalizer = target_normalizer
+        self.categorical_encoders = categorical_encoders
+        self.scalers = scalers
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
 
-        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
-            self.target_normalizer = RobustScaler()
-        else:
-            self.target_normalizer = target_normalizer
+        warn(
+            "TimeSeries is part of an experimental rework of the "
+            "pytorch-forecasting data layer, "
+            "scheduled for release with v2.0.0. "
+            "The API is not stable and may change without prior warning. "
+            "For beta testing, but not for stable production use. "
+            "Feedback and suggestions are very welcome in "
+            "pytorch-forecasting issue 1736, "
+            "https://github.com/sktime/pytorch-forecasting/issues/1736",
+            UserWarning,
+        )
 
-        self.categorical_encoders = _coerce_to_dict(categorical_encoders)
-        self.scalers = _coerce_to_dict(scalers)
+        super().__init__()
+
+        # handle defaults and derived attributes
+        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
+            self._target_normalizer = RobustScaler()
+        else:
+            self._target_normalizer = target_normalizer
+
+        self.time_series_metadata = time_series_dataset.get_metadata()
+        self._min_prediction_length = min_prediction_length or max_prediction_length
+        self._min_encoder_length = min_encoder_length or max_encoder_length
+        self._categorical_encoders = _coerce_to_dict(categorical_encoders)
+        self._scalers = _coerce_to_dict(scalers)
 
         self.categorical_indices = []
         self.continuous_indices = []
@@ -237,8 +255,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             {
                 "max_encoder_length": self.max_encoder_length,
                 "max_prediction_length": self.max_prediction_length,
-                "min_encoder_length": self.min_encoder_length,
-                "min_prediction_length": self.min_prediction_length,
+                "min_encoder_length": self._min_encoder_length,
+                "min_prediction_length": self._min_prediction_length,
             }
         )
 
