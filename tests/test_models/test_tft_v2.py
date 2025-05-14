@@ -27,6 +27,7 @@ def get_default_test_metadata(
     static_cont=1,
     output_size=OUTPUT_SIZE_TEST,
 ):
+    """Return a dict representing default metadata for TFT model initialization."""
     return {
         "max_encoder_length": MAX_ENCODER_LENGTH_TEST,
         "max_prediction_length": MAX_PREDICTION_LENGTH_TEST,
@@ -41,6 +42,8 @@ def get_default_test_metadata(
 
 
 def create_tft_input_batch_for_test(metadata, batch_size=BATCH_SIZE_TEST, device="cpu"):
+    """Create a synthetic input batch dictionary for testing TFT forward passes."""
+
     def _get_dim_val(key):
         return metadata.get(key, 0)
 
@@ -111,6 +114,7 @@ dummy_loss_for_test = nn.MSELoss()
 
 @pytest.fixture(scope="module")
 def tft_model_params_fixture_func():
+    """Create a default set of model parameters for TFT."""
     return {
         "loss": dummy_loss_for_test,
         "hidden_size": HIDDEN_SIZE_TEST,
@@ -121,7 +125,6 @@ def tft_model_params_fixture_func():
     }
 
 
-# Converted from TestTFTInitialization class
 def test_basic_initialization(tft_model_params_fixture_func):
     """Test basic initialization of the TFT model with default metadata.
 
@@ -239,6 +242,7 @@ def test_forward_pass_configs(
 
 @pytest.fixture
 def sample_pandas_data_for_test():
+    """Create synthetic multivariate time series data as a pandas DataFrame."""
     series_len = MAX_ENCODER_LENGTH_TEST + MAX_PREDICTION_LENGTH_TEST + 5
     num_groups = 6
     data = []
@@ -282,6 +286,7 @@ def sample_pandas_data_for_test():
 
 @pytest.fixture
 def timeseries_obj_for_test(sample_pandas_data_for_test):
+    """Convert sample DataFrame into a TimeSeries object."""
     df = sample_pandas_data_for_test
 
     return TimeSeries(
@@ -305,6 +310,7 @@ def timeseries_obj_for_test(sample_pandas_data_for_test):
 
 @pytest.fixture
 def data_module_for_test(timeseries_obj_for_test):
+    """Initialize and sets up an EncoderDecoderTimeSeriesDataModule."""
     dm = EncoderDecoderTimeSeriesDataModule(
         time_series_dataset=timeseries_obj_for_test,
         batch_size=BATCH_SIZE_TEST,
@@ -318,7 +324,6 @@ def data_module_for_test(timeseries_obj_for_test):
     return dm
 
 
-# Converted from TestTFTWithDataModule class
 def test_model_with_datamodule_integration(
     tft_model_params_fixture_func, data_module_for_test
 ):
