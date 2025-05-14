@@ -121,95 +121,92 @@ def tft_model_params_fixture_func():
     }
 
 
-class TestTFTInitialization:
-    def test_basic_initialization(self, tft_model_params_fixture_func):
-        metadata = get_default_test_metadata(output_size=OUTPUT_SIZE_TEST)
-        model = TFT(**tft_model_params_fixture_func, metadata=metadata)
-        assert model.hidden_size == HIDDEN_SIZE_TEST
-        assert model.num_layers == NUM_LAYERS_TEST
-        assert hasattr(model, "metadata") and model.metadata == metadata
-        assert (
-            model.encoder_input_dim
-            == metadata["encoder_cont"] + metadata["encoder_cat"]
-        )
-        assert (
-            model.static_input_dim
-            == metadata["static_categorical_features"]
-            + metadata["static_continuous_features"]
-        )
-        assert isinstance(model.lstm_encoder, nn.LSTM)
-        assert model.lstm_encoder.input_size == max(1, model.encoder_input_dim)
-        assert isinstance(model.self_attention, nn.MultiheadAttention)
-        if hasattr(model, "hparams") and model.hparams:
-            assert model.hparams.get("hidden_size") == HIDDEN_SIZE_TEST
-        assert model.output_size == OUTPUT_SIZE_TEST
-
-    def test_initialization_no_time_varying_features(
-        self, tft_model_params_fixture_func
-    ):
-        metadata = get_default_test_metadata(
-            enc_cont=0, enc_cat=0, dec_cont=0, dec_cat=0, output_size=OUTPUT_SIZE_TEST
-        )
-        model = TFT(**tft_model_params_fixture_func, metadata=metadata)
-        assert model.encoder_input_dim == 0
-        assert model.encoder_var_selection is None
-        assert model.lstm_encoder.input_size == 1
-        assert model.decoder_input_dim == 0
-        assert model.decoder_var_selection is None
-        assert model.lstm_decoder.input_size == 1
-
-    def test_initialization_no_static_features(self, tft_model_params_fixture_func):
-        metadata = get_default_test_metadata(
-            static_cat=0, static_cont=0, output_size=OUTPUT_SIZE_TEST
-        )
-        model = TFT(**tft_model_params_fixture_func, metadata=metadata)
-        assert model.static_input_dim == 0
-        assert model.static_context_linear is None
-
-
-class TestTFTForwardPass:
-    @pytest.mark.parametrize(
-        "enc_c, enc_k, dec_c, dec_k, stat_c, stat_k",
-        [
-            (2, 1, 1, 1, 1, 1),
-            (2, 0, 1, 0, 0, 0),
-            (0, 0, 0, 0, 1, 1),
-            (0, 0, 0, 0, 0, 0),
-            (1, 0, 1, 0, 1, 0),
-            (1, 0, 1, 0, 0, 1),
-        ],
+# Converted from TestTFTInitialization class
+def test_basic_initialization(tft_model_params_fixture_func):
+    metadata = get_default_test_metadata(output_size=OUTPUT_SIZE_TEST)
+    model = TFT(**tft_model_params_fixture_func, metadata=metadata)
+    assert model.hidden_size == HIDDEN_SIZE_TEST
+    assert model.num_layers == NUM_LAYERS_TEST
+    assert hasattr(model, "metadata") and model.metadata == metadata
+    assert model.encoder_input_dim == metadata["encoder_cont"] + metadata["encoder_cat"]
+    assert (
+        model.static_input_dim
+        == metadata["static_categorical_features"]
+        + metadata["static_continuous_features"]
     )
-    def test_forward_pass_configs(
-        self, tft_model_params_fixture_func, enc_c, enc_k, dec_c, dec_k, stat_c, stat_k
-    ):
-        current_tft_actual_output_size = tft_model_params_fixture_func["output_size"]
-        metadata = get_default_test_metadata(
-            enc_cont=enc_c,
-            enc_cat=enc_k,
-            dec_cont=dec_c,
-            dec_cat=dec_k,
-            static_cat=stat_c,
-            static_cont=stat_k,
-            output_size=current_tft_actual_output_size,
-        )
-        model_params = tft_model_params_fixture_func.copy()
-        model_params["output_size"] = current_tft_actual_output_size
-        model = TFT(**model_params, metadata=metadata)
-        model.eval()
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
-        x = create_tft_input_batch_for_test(
-            metadata, batch_size=BATCH_SIZE_TEST, device=device
-        )
-        output_dict = model(x)
-        predictions = output_dict["prediction"]
-        assert predictions.shape == (
-            BATCH_SIZE_TEST,
-            MAX_PREDICTION_LENGTH_TEST,
-            current_tft_actual_output_size,
-        )
-        assert not torch.isnan(predictions).any(), "NaNs in prediction"
-        assert not torch.isinf(predictions).any(), "Infs in prediction"
+    assert isinstance(model.lstm_encoder, nn.LSTM)
+    assert model.lstm_encoder.input_size == max(1, model.encoder_input_dim)
+    assert isinstance(model.self_attention, nn.MultiheadAttention)
+    if hasattr(model, "hparams") and model.hparams:
+        assert model.hparams.get("hidden_size") == HIDDEN_SIZE_TEST
+    assert model.output_size == OUTPUT_SIZE_TEST
+
+
+def test_initialization_no_time_varying_features(tft_model_params_fixture_func):
+    metadata = get_default_test_metadata(
+        enc_cont=0, enc_cat=0, dec_cont=0, dec_cat=0, output_size=OUTPUT_SIZE_TEST
+    )
+    model = TFT(**tft_model_params_fixture_func, metadata=metadata)
+    assert model.encoder_input_dim == 0
+    assert model.encoder_var_selection is None
+    assert model.lstm_encoder.input_size == 1
+    assert model.decoder_input_dim == 0
+    assert model.decoder_var_selection is None
+    assert model.lstm_decoder.input_size == 1
+
+
+def test_initialization_no_static_features(tft_model_params_fixture_func):
+    metadata = get_default_test_metadata(
+        static_cat=0, static_cont=0, output_size=OUTPUT_SIZE_TEST
+    )
+    model = TFT(**tft_model_params_fixture_func, metadata=metadata)
+    assert model.static_input_dim == 0
+    assert model.static_context_linear is None
+
+
+# Converted from TestTFTForwardPass class
+@pytest.mark.parametrize(
+    "enc_c, enc_k, dec_c, dec_k, stat_c, stat_k",
+    [
+        (2, 1, 1, 1, 1, 1),
+        (2, 0, 1, 0, 0, 0),
+        (0, 0, 0, 0, 1, 1),
+        (0, 0, 0, 0, 0, 0),
+        (1, 0, 1, 0, 1, 0),
+        (1, 0, 1, 0, 0, 1),
+    ],
+)
+def test_forward_pass_configs(
+    tft_model_params_fixture_func, enc_c, enc_k, dec_c, dec_k, stat_c, stat_k
+):
+    current_tft_actual_output_size = tft_model_params_fixture_func["output_size"]
+    metadata = get_default_test_metadata(
+        enc_cont=enc_c,
+        enc_cat=enc_k,
+        dec_cont=dec_c,
+        dec_cat=dec_k,
+        static_cat=stat_c,
+        static_cont=stat_k,
+        output_size=current_tft_actual_output_size,
+    )
+    model_params = tft_model_params_fixture_func.copy()
+    model_params["output_size"] = current_tft_actual_output_size
+    model = TFT(**model_params, metadata=metadata)
+    model.eval()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    x = create_tft_input_batch_for_test(
+        metadata, batch_size=BATCH_SIZE_TEST, device=device
+    )
+    output_dict = model(x)
+    predictions = output_dict["prediction"]
+    assert predictions.shape == (
+        BATCH_SIZE_TEST,
+        MAX_PREDICTION_LENGTH_TEST,
+        current_tft_actual_output_size,
+    )
+    assert not torch.isnan(predictions).any(), "NaNs in prediction"
+    assert not torch.isinf(predictions).any(), "Infs in prediction"
 
 
 @pytest.fixture
@@ -294,74 +291,70 @@ def data_module_for_test(timeseries_obj_for_test):
     return dm
 
 
-class TestTFTWithDataModule:
-    def test_model_with_datamodule_integration(
-        self, tft_model_params_fixture_func, data_module_for_test
-    ):
-        dm = data_module_for_test
-        model_metadata_from_dm = dm.metadata
+# Converted from TestTFTWithDataModule class
+def test_model_with_datamodule_integration(
+    tft_model_params_fixture_func, data_module_for_test
+):
+    dm = data_module_for_test
+    model_metadata_from_dm = dm.metadata
 
-        assert (
-            model_metadata_from_dm["encoder_cont"] == 6
-        ), f"Actual encoder_cont: {model_metadata_from_dm['encoder_cont']}"
-        assert (
-            model_metadata_from_dm["encoder_cat"] == 0
-        ), f"Actual encoder_cat: {model_metadata_from_dm['encoder_cat']}"
-        assert (
-            model_metadata_from_dm["decoder_cont"] == 2
-        ), f"Actual decoder_cont: {model_metadata_from_dm['decoder_cont']}"
-        assert (
-            model_metadata_from_dm["decoder_cat"] == 0
-        ), f"Actual decoder_cat: {model_metadata_from_dm['decoder_cat']}"
-        assert (
-            model_metadata_from_dm["static_categorical_features"] == 0
-        ), f"Actual static_cat: {model_metadata_from_dm['static_categorical_features']}"
-        assert (
-            model_metadata_from_dm["static_continuous_features"] == 2
-        ), f"Actual static_cont: {model_metadata_from_dm['static_continuous_features']}"
-        assert model_metadata_from_dm["target"] == 1
+    assert (
+        model_metadata_from_dm["encoder_cont"] == 6
+    ), f"Actual encoder_cont: {model_metadata_from_dm['encoder_cont']}"
+    assert (
+        model_metadata_from_dm["encoder_cat"] == 0
+    ), f"Actual encoder_cat: {model_metadata_from_dm['encoder_cat']}"
+    assert (
+        model_metadata_from_dm["decoder_cont"] == 2
+    ), f"Actual decoder_cont: {model_metadata_from_dm['decoder_cont']}"
+    assert (
+        model_metadata_from_dm["decoder_cat"] == 0
+    ), f"Actual decoder_cat: {model_metadata_from_dm['decoder_cat']}"
+    assert (
+        model_metadata_from_dm["static_categorical_features"] == 0
+    ), f"Actual static_cat: {model_metadata_from_dm['static_categorical_features']}"
+    assert (
+        model_metadata_from_dm["static_continuous_features"] == 2
+    ), f"Actual static_cont: {model_metadata_from_dm['static_continuous_features']}"
+    assert model_metadata_from_dm["target"] == 1
 
-        tft_init_args = tft_model_params_fixture_func.copy()
-        tft_init_args["output_size"] = model_metadata_from_dm["target"]
-        model = TFT(**tft_init_args, metadata=model_metadata_from_dm)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
-        model.eval()
+    tft_init_args = tft_model_params_fixture_func.copy()
+    tft_init_args["output_size"] = model_metadata_from_dm["target"]
+    model = TFT(**tft_init_args, metadata=model_metadata_from_dm)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
 
-        train_loader = dm.train_dataloader()
-        batch_x, batch_y = next(iter(train_loader))
+    train_loader = dm.train_dataloader()
+    batch_x, batch_y = next(iter(train_loader))
 
-        actual_batch_size = batch_x["encoder_cont"].shape[0]
-        batch_x = {k: v.to(device) for k, v in batch_x.items()}
-        batch_y = batch_y.to(device)
+    actual_batch_size = batch_x["encoder_cont"].shape[0]
+    batch_x = {k: v.to(device) for k, v in batch_x.items()}
+    batch_y = batch_y.to(device)
 
-        assert (
-            batch_x["encoder_cont"].shape[2] == model_metadata_from_dm["encoder_cont"]
-        )
-        assert batch_x["encoder_cat"].shape[2] == model_metadata_from_dm["encoder_cat"]
-        assert (
-            batch_x["decoder_cont"].shape[2] == model_metadata_from_dm["decoder_cont"]
-        )
-        assert batch_x["decoder_cat"].shape[2] == model_metadata_from_dm["decoder_cat"]
-        # assert (
-        #     batch_x["static_categorical_features"].shape[2]
-        #     == model_metadata_from_dm["static_categorical_features"]
-        # )
-        # assert (
-        #     batch_x["static_continuous_features"].shape[2]
-        #     == model_metadata_from_dm["static_continuous_features"]
-        # )
+    assert batch_x["encoder_cont"].shape[2] == model_metadata_from_dm["encoder_cont"]
+    assert batch_x["encoder_cat"].shape[2] == model_metadata_from_dm["encoder_cat"]
+    assert batch_x["decoder_cont"].shape[2] == model_metadata_from_dm["decoder_cont"]
+    assert batch_x["decoder_cat"].shape[2] == model_metadata_from_dm["decoder_cat"]
+    # assert (
+    #     batch_x["static_categorical_features"].shape[2]
+    #     == model_metadata_from_dm["static_categorical_features"]
+    # )
+    # assert (
+    #     batch_x["static_continuous_features"].shape[2]
+    #     == model_metadata_from_dm["static_continuous_features"]
+    # )
 
-        output_dict = model(batch_x)
-        predictions = output_dict["prediction"]
-        assert predictions.shape == (
-            actual_batch_size,
-            MAX_PREDICTION_LENGTH_TEST,
-            model_metadata_from_dm["target"],
-        )
-        assert not torch.isnan(predictions).any()
-        assert batch_y.shape == (
-            actual_batch_size,
-            MAX_PREDICTION_LENGTH_TEST,
-            model_metadata_from_dm["target"],
-        )
+    output_dict = model(batch_x)
+    predictions = output_dict["prediction"]
+    assert predictions.shape == (
+        actual_batch_size,
+        MAX_PREDICTION_LENGTH_TEST,
+        model_metadata_from_dm["target"],
+    )
+    assert not torch.isnan(predictions).any()
+    assert batch_y.shape == (
+        actual_batch_size,
+        MAX_PREDICTION_LENGTH_TEST,
+        model_metadata_from_dm["target"],
+    )
