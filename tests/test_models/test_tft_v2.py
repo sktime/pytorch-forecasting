@@ -123,6 +123,14 @@ def tft_model_params_fixture_func():
 
 # Converted from TestTFTInitialization class
 def test_basic_initialization(tft_model_params_fixture_func):
+    """Test basic initialization of the TFT model with default metadata.
+
+    Verifies:
+    - Model attributes match the provided metadata (e.g., hidden_size, num_layers).
+    - Proper construction of key model components (LSTM, attention, etc.).
+    - Correct dimensionality of input layers based on metadata.
+    - Model retains metadata and hyperparameters as expected.
+    """
     metadata = get_default_test_metadata(output_size=OUTPUT_SIZE_TEST)
     model = TFT(**tft_model_params_fixture_func, metadata=metadata)
     assert model.hidden_size == HIDDEN_SIZE_TEST
@@ -143,6 +151,13 @@ def test_basic_initialization(tft_model_params_fixture_func):
 
 
 def test_initialization_no_time_varying_features(tft_model_params_fixture_func):
+    """Test TFT initialization with no time-varying (encoder/decoder) features.
+
+    Verifies:
+    - Model handles zero encoder/decoder input dimensions correctly.
+    - Skips creation of encoder/decoder variable selection networks.
+    - Defaults to input size 1 for LSTMs when no time-varying features exist.
+    """
     metadata = get_default_test_metadata(
         enc_cont=0, enc_cat=0, dec_cont=0, dec_cat=0, output_size=OUTPUT_SIZE_TEST
     )
@@ -156,6 +171,12 @@ def test_initialization_no_time_varying_features(tft_model_params_fixture_func):
 
 
 def test_initialization_no_static_features(tft_model_params_fixture_func):
+    """Test TFT initialization with no static features.
+
+    Verifies:
+    - Model static input dim is 0.
+    - Static context linear layer is not created.
+    """
     metadata = get_default_test_metadata(
         static_cat=0, static_cont=0, output_size=OUTPUT_SIZE_TEST
     )
@@ -179,6 +200,13 @@ def test_initialization_no_static_features(tft_model_params_fixture_func):
 def test_forward_pass_configs(
     tft_model_params_fixture_func, enc_c, enc_k, dec_c, dec_k, stat_c, stat_k
 ):
+    """Test TFT forward pass across multiple feature configurations.
+
+    Verifies:
+    - Model can forward pass without errors for varying combinations of input types.
+    - Output prediction tensor has expected shape.
+    - Output contains no NaNs or infinities.
+    """
     current_tft_actual_output_size = tft_model_params_fixture_func["output_size"]
     metadata = get_default_test_metadata(
         enc_cont=enc_c,
@@ -211,7 +239,6 @@ def test_forward_pass_configs(
 
 @pytest.fixture
 def sample_pandas_data_for_test():
-    """Create sample data ensuring all feature columns are numeric (float32)."""
     series_len = MAX_ENCODER_LENGTH_TEST + MAX_PREDICTION_LENGTH_TEST + 5
     num_groups = 6
     data = []
@@ -295,6 +322,14 @@ def data_module_for_test(timeseries_obj_for_test):
 def test_model_with_datamodule_integration(
     tft_model_params_fixture_func, data_module_for_test
 ):
+    """Integration test to ensure TFT works correctly with data module.
+
+    Verifies:
+    - Metadata inferred from data module matches expected input dimensions.
+    - Model processes real dataloader batches correctly.
+    - Output and target tensors from model and data module align in shape.
+    - No NaNs in predictions.
+    """
     dm = data_module_for_test
     model_metadata_from_dm = dm.metadata
 
