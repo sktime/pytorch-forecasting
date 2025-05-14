@@ -188,7 +188,6 @@ def test_initialization_no_static_features(tft_model_params_fixture_func):
     assert model.static_context_linear is None
 
 
-# Converted from TestTFTForwardPass class
 @pytest.mark.parametrize(
     "enc_c, enc_k, dec_c, dec_k, stat_c, stat_k",
     [
@@ -334,6 +333,8 @@ def test_model_with_datamodule_integration(
     - Model processes real dataloader batches correctly.
     - Output and target tensors from model and data module align in shape.
     - No NaNs in predictions.
+
+    Note: The commented out tests are to test a bug in data_module
     """
     dm = data_module_for_test
     model_metadata_from_dm = dm.metadata
