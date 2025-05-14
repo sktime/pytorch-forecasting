@@ -157,11 +157,11 @@ class TFT(BaseModel):
         if self.static_context_linear is not None:
             static_cat = x.get(
                 "static_categorical_features",
-                torch.zeros(batch_size, 0, device=self.device),
+                torch.zeros(batch_size, 1, 0, device=self.device),
             )
             static_cont = x.get(
                 "static_continuous_features",
-                torch.zeros(batch_size, 0, device=self.device),
+                torch.zeros(batch_size, 1, 0, device=self.device),
             )
 
             if static_cat.size(2) == 0 and static_cont.size(2) == 0:
@@ -180,17 +180,41 @@ class TFT(BaseModel):
                 static_context = static_context.view(batch_size, self.hidden_size)
             else:
 
-                static_input = torch.cat([static_cont, static_cat], dim=1).to(
+                static_input = torch.cat([static_cont, static_cat], dim=2).to(
                     dtype=self.static_context_linear.weight.dtype
                 )
                 static_context = self.static_context_linear(static_input)
                 static_context = static_context.view(batch_size, self.hidden_size)
 
-        encoder_weights = self.encoder_var_selection(encoder_input)
-        encoder_input = encoder_input * encoder_weights
+        if self.encoder_var_selection is not None:
+            encoder_weights = self.encoder_var_selection(encoder_input)
+            encoder_input = encoder_input * encoder_weights
+        else:
+            if self.encoder_input_dim == 0:
+                encoder_input = torch.zeros(
+                    batch_size,
+                    self.max_encoder_length,
+                    1,
+                    device=self.device,
+                    dtype=encoder_input.dtype,
+                )
+            else:
+                encoder_input = encoder_input
 
-        decoder_weights = self.decoder_var_selection(decoder_input)
-        decoder_input = decoder_input * decoder_weights
+        if self.decoder_var_selection is not None:
+            decoder_weights = self.decoder_var_selection(decoder_input)
+            decoder_input = decoder_input * decoder_weights
+        else:
+            if self.decoder_input_dim == 0:
+                decoder_input = torch.zeros(
+                    batch_size,
+                    self.max_prediction_length,
+                    1,
+                    device=self.device,
+                    dtype=decoder_input.dtype,
+                )
+            else:
+                decoder_input = decoder_input
 
         if static_context is not None:
             encoder_static_context = static_context.unsqueeze(1).expand(
