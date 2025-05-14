@@ -519,8 +519,38 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "decoder_mask": decoder_mask,
             }
             if data["static"] is not None:
-                x["static_categorical_features"] = data["static"].unsqueeze(0)
-                x["static_continuous_features"] = torch.zeros((1, 0))
+                st_cat_values_for_item = []
+                st_cont_values_for_item = []
+                raw_st_tensor = data.get("static")
+
+                static_col_names = self.data_module.time_series_metadata["cols"]["st"]
+                for i, col_name in enumerate(static_col_names):
+                    feature_value = raw_st_tensor[i]
+                    if (
+                        self.data_module.time_series_metadata["col_type"].get(col_name)
+                        == "C"
+                    ):
+                        st_cat_values_for_item.append(feature_value)
+                    else:
+                        st_cont_values_for_item.append(feature_value)
+
+                if st_cat_values_for_item:
+                    x["static_categorical_features"] = torch.stack(
+                        st_cat_values_for_item
+                    ).unsqueeze(0)
+                else:
+                    x["static_categorical_features"] = torch.zeros(
+                        (1, 0), dtype=torch.float32
+                    )
+
+                if st_cont_values_for_item:
+                    x["static_continuous_features"] = torch.stack(
+                        st_cont_values_for_item
+                    ).unsqueeze(0)
+                else:
+                    x["static_continuous_features"] = torch.zeros(
+                        (1, 0), dtype=torch.float32
+                    )
 
             y = data["target"][decoder_indices]
             if y.ndim == 1:
