@@ -10,12 +10,10 @@ import pandas as pd
 import pytest
 import torch
 
-from pytorch_forecasting import (
-    Baseline,
-    TimeSeriesDataSet
-)
+from pytorch_forecasting import Baseline, TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
+from pytorch_forecasting.data.examples import generate_ar_data
 from pytorch_forecasting.metrics import (
     CrossEntropy,
     MQF2DistributionLoss,
@@ -30,7 +28,6 @@ from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
     optimize_hyperparameters,
 )
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
-from pytorch_forecasting.data.examples import generate_ar_data
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -547,7 +544,8 @@ def test_correct_prediction_concatenation():
         target="value",
         categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
         group_ids=["series"],
-        # only unknown variable is "value" - and N-Beats can also not take any additional variables
+        # only unknown variable is "value"
+        # and N-Beats can also not take any additional variables
         time_varying_unknown_reals=["value"],
         max_encoder_length=context_length,
         max_prediction_length=prediction_length,
