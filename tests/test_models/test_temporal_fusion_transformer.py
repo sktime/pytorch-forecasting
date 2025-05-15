@@ -10,7 +10,10 @@ import pandas as pd
 import pytest
 import torch
 
-from pytorch_forecasting import TimeSeriesDataSet
+from pytorch_forecasting import (
+    Baseline,
+    TimeSeriesDataSet
+)
 from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
 from pytorch_forecasting.metrics import (
@@ -27,6 +30,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
     optimize_hyperparameters,
 )
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
+from pytorch_forecasting.data.examples import generate_ar_data
 
 if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
     from contextlib import contextmanager
@@ -521,3 +525,43 @@ def test_no_exogenous_variable():
         return_y=True,
         return_index=True,
     )
+
+def test_correct_prediction_concatenation():
+    data = generate_ar_data(seasonality=10.0, timesteps=100, n_series=2, seed=42)
+    data["static"] = 2
+    data["date"] = pd.Timestamp("2020-01-01") + pd.to_timedelta(data.time_idx, "D")
+    data.head()
+
+    # create dataset and dataloaders
+    max_encoder_length = 20
+    max_prediction_length = 5
+
+    training_cutoff = data["time_idx"].max() - max_prediction_length
+
+    context_length = max_encoder_length
+    prediction_length = max_prediction_length
+
+    training = TimeSeriesDataSet(
+        data[lambda x: x.time_idx <= training_cutoff],
+        time_idx="time_idx",
+        target="value",
+        categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
+        group_ids=["series"],
+        # only unknown variable is "value" - and N-Beats can also not take any additional variables
+        time_varying_unknown_reals=["value"],
+        max_encoder_length=context_length,
+        max_prediction_length=prediction_length,
+    )
+
+    batch_size = 71
+    train_dataloader = training.to_dataloader(
+        train=True, batch_size=batch_size, num_workers=0)
+
+    baseline_model = Baseline()
+    predictions = baseline_model.predict(
+        train_dataloader, return_x=True, return_y=True,
+        trainer_kwargs=dict(logger=None, accelerator="cpu")
+    )
+    
+    # The predicted output and the target should have the same size.
+    assert predictions.output.size() == predictions.y[0].size()
