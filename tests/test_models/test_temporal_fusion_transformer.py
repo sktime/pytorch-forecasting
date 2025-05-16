@@ -523,6 +523,7 @@ def test_no_exogenous_variable():
         return_index=True,
     )
 
+
 def test_correct_prediction_concatenation():
     data = generate_ar_data(seasonality=10.0, timesteps=100, n_series=2, seed=42)
     data["static"] = 2
@@ -553,13 +554,16 @@ def test_correct_prediction_concatenation():
 
     batch_size = 71
     train_dataloader = training.to_dataloader(
-        train=True, batch_size=batch_size, num_workers=0)
+        train=True, batch_size=batch_size, num_workers=0
+    )
 
     baseline_model = Baseline()
     predictions = baseline_model.predict(
-        train_dataloader, return_x=True, return_y=True,
-        trainer_kwargs=dict(logger=None, accelerator="cpu")
+        train_dataloader,
+        return_x=True,
+        return_y=True,
+        trainer_kwargs=dict(logger=None, accelerator="cpu"),
     )
-    
+
     # The predicted output and the target should have the same size.
     assert predictions.output.size() == predictions.y[0].size()
