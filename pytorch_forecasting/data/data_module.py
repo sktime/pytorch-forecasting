@@ -519,34 +519,36 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "decoder_mask": decoder_mask,
             }
             if data["static"] is not None:
-                st_cat_values_for_item = []
-                st_cont_values_for_item = []
                 raw_st_tensor = data.get("static")
-
                 static_col_names = self.data_module.time_series_metadata["cols"]["st"]
-                for i, col_name in enumerate(static_col_names):
-                    feature_value = raw_st_tensor[i]
-                    if (
+
+                is_categorical_mask = torch.tensor(
+                    [
                         self.data_module.time_series_metadata["col_type"].get(col_name)
                         == "C"
-                    ):
-                        st_cat_values_for_item.append(feature_value)
-                    else:
-                        st_cont_values_for_item.append(feature_value)
+                        for col_name in static_col_names
+                    ],
+                    dtype=torch.bool,
+                )
 
-                if st_cat_values_for_item:
-                    x["static_categorical_features"] = torch.stack(
-                        st_cat_values_for_item
-                    ).unsqueeze(0)
+                is_continuous_mask = ~is_categorical_mask
+
+                st_cat_values_for_item = raw_st_tensor[is_categorical_mask]
+                st_cont_values_for_item = raw_st_tensor[is_continuous_mask]
+
+                if st_cat_values_for_item.shape[0] > 0:
+                    x["static_categorical_features"] = st_cat_values_for_item.unsqueeze(
+                        0
+                    )
                 else:
                     x["static_categorical_features"] = torch.zeros(
                         (1, 0), dtype=torch.float32
                     )
 
-                if st_cont_values_for_item:
-                    x["static_continuous_features"] = torch.stack(
-                        st_cont_values_for_item
-                    ).unsqueeze(0)
+                if st_cont_values_for_item.shape[0] > 0:
+                    x["static_continuous_features"] = st_cont_values_for_item.unsqueeze(
+                        0
+                    )
                 else:
                     x["static_continuous_features"] = torch.zeros(
                         (1, 0), dtype=torch.float32
