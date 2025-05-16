@@ -405,6 +405,14 @@ def test_with_static_features():
     x, y = dm.train_dataset[0]
     assert "static_categorical_features" in x
     assert "static_continuous_features" in x
+    assert (
+        x["static_categorical_features"].shape[1]
+        == metadata["static_categorical_features"]
+    )
+    assert (
+        x["static_continuous_features"].shape[1]
+        == metadata["static_continuous_features"]
+    )
 
 
 def test_different_train_val_test_split(sample_timeseries_data):
