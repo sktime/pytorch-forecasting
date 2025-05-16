@@ -316,7 +316,6 @@ def data_module_for_test(timeseries_obj_for_test):
         max_encoder_length=MAX_ENCODER_LENGTH_TEST,
         max_prediction_length=MAX_PREDICTION_LENGTH_TEST,
         train_val_test_split=(0.5, 0.25, 0.25),
-        num_workers=0,  # Added for consistency
     )
     dm.setup("fit")
     dm.setup("test")
@@ -377,14 +376,14 @@ def test_model_with_datamodule_integration(
     assert batch_x["encoder_cat"].shape[2] == model_metadata_from_dm["encoder_cat"]
     assert batch_x["decoder_cont"].shape[2] == model_metadata_from_dm["decoder_cont"]
     assert batch_x["decoder_cat"].shape[2] == model_metadata_from_dm["decoder_cat"]
-    # assert (
-    #     batch_x["static_categorical_features"].shape[2]
-    #     == model_metadata_from_dm["static_categorical_features"]
-    # )
-    # assert (
-    #     batch_x["static_continuous_features"].shape[2]
-    #     == model_metadata_from_dm["static_continuous_features"]
-    # )
+    assert (
+        batch_x["static_categorical_features"].shape[2]
+        == model_metadata_from_dm["static_categorical_features"]
+    )
+    assert (
+        batch_x["static_continuous_features"].shape[2]
+        == model_metadata_from_dm["static_continuous_features"]
+    )
 
     output_dict = model(batch_x)
     predictions = output_dict["prediction"]
