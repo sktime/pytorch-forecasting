@@ -233,7 +233,7 @@ def autocorrelation(input, dim=0):
 
 
 def unpack_sequence(
-    sequence: Union[torch.Tensor, rnn.PackedSequence]
+    sequence: Union[torch.Tensor, rnn.PackedSequence],
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Unpack RNN sequence.
@@ -257,7 +257,7 @@ def unpack_sequence(
 
 
 def concat_sequences(
-    sequences: Union[List[torch.Tensor], List[rnn.PackedSequence]]
+    sequences: Union[List[torch.Tensor], List[rnn.PackedSequence]],
 ) -> Union[torch.Tensor, rnn.PackedSequence]:
     """
     Concatenate RNN sequences.
@@ -272,7 +272,7 @@ def concat_sequences(
     if isinstance(sequences[0], rnn.PackedSequence):
         return rnn.pack_sequence(sequences, enforce_sorted=False)
     elif isinstance(sequences[0], torch.Tensor):
-        return torch.cat(sequences, dim=1)
+        return torch.cat(sequences, dim=0)
     elif isinstance(sequences[0], (tuple, list)):
         return tuple(
             concat_sequences([sequences[ii][i] for ii in range(len(sequences))])

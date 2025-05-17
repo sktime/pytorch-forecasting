@@ -133,7 +133,7 @@ def _concatenate_output(
             str,
             List[Union[List[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]],
         ]
-    ]
+    ],
 ) -> Dict[
     str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]
 ]:
