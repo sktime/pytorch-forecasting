@@ -22,6 +22,8 @@ from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
 NORMALIZER = Union[TorchNormalizer, EncoderNormalizer, NaNLabelEncoder]
 
+# class _TsLibDataset(Dataset):
+
 
 class TslibDataModule(LightningDataModule):
     """
@@ -69,6 +71,8 @@ class TslibDataModule(LightningDataModule):
         Number of workers for dataloader.
     train_val_test_split : tuple, default=(0.7, 0.15, 0.15)
         Proportions for train, validation, and test dataset splits.
+    collate_fn : Optional[callable], default=None
+        Custom collate function for the dataloader.
     """  # noqa: E501
 
     def __init__(
@@ -118,6 +122,17 @@ class TslibDataModule(LightningDataModule):
             self._target_normalizer = RobustScaler()
         else:
             self._target_normalizer = target_normalizer
+
+        self._metadata = None
+
+        self.categorical_indices = []
+        self.continuous_indices = []
+
+        for idx, col in enumerate(self.time_series_dataset["cols"]["x"]):
+            if self.time_series_metadata["col_type"].get(col) == "C":
+                self.categorical_indices.append(idx)
+            else:
+                self.continuous_indices.append(idx)
 
         self.scalers = scalers or {}
         self.shuffle = shuffle
@@ -225,3 +240,102 @@ class TslibDataModule(LightningDataModule):
         )
 
         return metadata
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """
+        Compute the metadata via the `_prepare_metadata` method.
+        This method is called when the `metadata` property is accessed for the first.
+        Returns
+        -------
+        dict
+            Metadata for the data module. Refer to the `_prepare_metadata` method for
+            the keys and values in the metadata dictionary.
+        """
+        if not hasattr(self, "_metadata"):
+            self._metadata = self._prepare_metadata()
+        return self._metadata
+
+    def _process_data(self, idx: torch.Tensor) -> List[Dict[str, Any]]:
+        """
+        Process the the time series data at the given index, before feeding it
+        to the `_TsLibDataset` class.
+
+        Parameters
+        ----------
+        idx : torch.Tensor
+            The index of the time series data to be processed.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            A dictionary containing the processed data.
+
+        Notes
+        -----
+        - The target data `y` and features `x` are converted to torch.float32 tensors.
+        - The timepoints before the cutoff time are masked off.
+        - Splits data into categorical and continous features, which are grouped based on the indices.
+        """  # noqa: E501
+
+        series = self.time_series_dataset[idx]
+        if series is None:
+            raise ValueError(f"series at index {idx} is None. Check the dataset.")
+        target = series["y"]
+        features = series["x"]
+        timestep = series["t"]
+        cutoff_time = series["cutoff_time"]
+
+        mask_timestep = torch.Tensor(timestep <= cutoff_time, dtype=torch.bool)
+
+        if isinstance(torch, torch.Tensor):
+            target = target.float()
+        else:
+            target = torch.tensor(target, dtype=torch.float32)
+
+        if isinstance(features, torch.Tensor):
+            features = features.float()
+        else:
+            features = torch.tensor(features, dtype=torch.float32)
+
+        categorical_features = (
+            features[:, self.categorical_indices]
+            if self.categorical_indices
+            else torch.zeros((series.shape[0], 0))
+        )
+
+        continuous_features = (
+            features[:, self.continuous_indices]
+            if self.continuous_indices
+            else torch.zeros((series.shape[0], 0))
+        )
+
+        return {
+            "features": {
+                "categorical": categorical_features,
+                "continuous": continuous_features,
+            },
+            "target": target,
+            "static": series["st"],
+            "group": series.get("group", torch.tensor([0])),
+            "length": len(series),
+            "time_mask": mask_timestep,
+            "cutoff_time": cutoff_time,
+            "timestep": timestep,
+        }
+
+    def _create_windows(self, indices: torch.Tensor) -> List[Tuple[int, int, int, int]]:
+        """
+        Create windows for the data in the given indices, for training, testing
+        and validation.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            The indices of the time series data to be processed.
+
+        Returns
+        -------
+        List[Tuple[int, int, int, int]]
+            A list of tuples containing the start and end indices for the windows.
+        """
