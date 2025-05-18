@@ -65,6 +65,9 @@ class TslibDataModule(LightningDataModule):
         Dictionary of feature scalers.
     shuffle : bool, default=True
         Whether to shuffle the data at every epoch.
+    window_stride : int, default=1
+        The stride for the sliding window. This is used to create overlapping windows
+        for the data.
     batch_size : int, default=32
         Batch size for dataloader.
     num_workers : int, default=0
@@ -88,9 +91,13 @@ class TslibDataModule(LightningDataModule):
             NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None
         ] = "auto",  # noqa: E501
         scalers: Optional[
-            Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer]]
+            Dict[
+                str,
+                Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
+            ]
         ] = None,  # noqa: E501
         shuffle: bool = True,
+        window_stride: int = 1,
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: Tuple[float, float, float] = (0.7, 0.15, 0.15),
@@ -286,7 +293,7 @@ class TslibDataModule(LightningDataModule):
         timestep = series["t"]
         cutoff_time = series["cutoff_time"]
 
-        mask_timestep = torch.Tensor(timestep <= cutoff_time, dtype=torch.bool)
+        mask_timestep = torch.tensor(timestep <= cutoff_time, dtype=torch.bool)
 
         if isinstance(torch, torch.Tensor):
             target = target.float()
@@ -298,19 +305,59 @@ class TslibDataModule(LightningDataModule):
         else:
             features = torch.tensor(features, dtype=torch.float32)
 
+        # scaling and normlization
+        target_scale = {}
+
+        if self._target_normalizer is not None:
+            if self.add_target_scales:
+                if hasattr(self._target_normalizer, "scale_"):
+                    target_scale["scale"] = torch.tensor(self._target_normalizer.scale_)
+                if hasattr(self._target_normalizer, "center_"):
+                    target_scale["center"] = torch.tensor(
+                        self._target_normalizer.center_
+                    )  # noqa: E501
+
+            if isinstance(self._target_normalizer, TorchNormalizer):
+                target = self._target_normalizer.transform(target)
+            else:
+                # extra case for handling non-native normalizers
+                # apart from those in NORMALIZER.
+                target_np = target.reshape(-1, 1).numpy()
+                target = torch.tensor(
+                    self._target_normalizer.transform(target_np),
+                    dtype=torch.float32,
+                ).reshape(target.shape)
+
+        if self.scalers:
+            feature_indices = self.metadat["feature_indices"]
+            feature_names = self.metadata["feature_names"]
+
+            for i, idx in enumerate(feature_indices.get("continuous", [])):
+                feature_name = feature_names["continuous"][i]
+                if feature_name in self.scalers:
+                    scaler = self.scalers[feature_name]
+                    if isinstance(scaler, TorchNormalizer):
+                        features[..., idx] = scaler.transform(features[..., idx])
+                    else:
+                        feature_np = features[..., idx].reshape(-1, 1).numpy()
+                        features[..., idx] = torch.tensor(
+                            scaler.transform(feature_np),
+                            dtype=torch.float32,
+                        ).reshape(features[..., idx].shape)
+
         categorical_features = (
             features[:, self.categorical_indices]
             if self.categorical_indices
-            else torch.zeros((series.shape[0], 0))
+            else torch.zeros((features.shape[0], 0))
         )
 
         continuous_features = (
             features[:, self.continuous_indices]
             if self.continuous_indices
-            else torch.zeros((series.shape[0], 0))
+            else torch.zeros((features.shape[0], 0))
         )
 
-        return {
+        res = {
             "features": {
                 "categorical": categorical_features,
                 "continuous": continuous_features,
@@ -323,6 +370,11 @@ class TslibDataModule(LightningDataModule):
             "cutoff_time": cutoff_time,
             "timestep": timestep,
         }
+
+        if target_scale:
+            res["target_scale"] = target_scale
+
+        return res
 
     def _create_windows(self, indices: torch.Tensor) -> List[Tuple[int, int, int, int]]:
         """
@@ -337,5 +389,46 @@ class TslibDataModule(LightningDataModule):
         Returns
         -------
         List[Tuple[int, int, int, int]]
-            A list of tuples containing the start and end indices for the windows.
+            A list of tuples where each tuple contains:
+            - series_idx: Index of time series in the dataset
+            - start_idx: Start index of the window
+            - context_length: Length of the context/encoder window
+            - prediction_length: Length of the prediction/decoder window
         """
+
+        windows = []
+
+        min_seq_length = self.context_length + self.prediction_length
+
+        for idx in indices:
+            series_idx = idx.item() if isinstance(idx, torch.Tensor) else idx
+            sample = self.time_series_dataset[series_idx]
+            sequence_length = len(sample["t"])
+
+            if sequence_length < min_seq_length:
+                continue
+
+            cutoff_time = sample.get("cutoff_time", None)
+
+            max_start = sequence_length - min_seq_length + 1
+
+            stride = self.window_stride
+
+            for start_idx in range(0, max_start, stride):
+                window_end = start_idx + min_seq_length - 1  # 0-indexed
+
+                if cutoff_time is not None:  # skip window if exceed cutoff time.
+                    end_time = sample["t"][window_end].item()
+                    if end_time > cutoff_time:
+                        continue
+
+                windows.append(
+                    (
+                        series_idx,
+                        start_idx,
+                        self.context_length,
+                        self.prediction_length,
+                    )
+                )
+
+        return windows
