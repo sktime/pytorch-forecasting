@@ -86,8 +86,8 @@ def test_init(sample_timeseries_data):
 
     assert dm.max_encoder_length == 24
     assert dm.max_prediction_length == 12
-    assert dm.min_encoder_length == 24
-    assert dm.min_prediction_length == 12
+    assert dm._min_encoder_length == 24
+    assert dm._min_prediction_length == 12
     assert dm.batch_size == 8
     assert dm.train_val_test_split == (0.7, 0.15, 0.15)
 
@@ -405,6 +405,14 @@ def test_with_static_features():
     x, y = dm.train_dataset[0]
     assert "static_categorical_features" in x
     assert "static_continuous_features" in x
+    assert (
+        x["static_categorical_features"].shape[1]
+        == metadata["static_categorical_features"]
+    )
+    assert (
+        x["static_continuous_features"].shape[1]
+        == metadata["static_continuous_features"]
+    )
 
 
 def test_different_train_val_test_split(sample_timeseries_data):
