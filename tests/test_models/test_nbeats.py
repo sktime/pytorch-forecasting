@@ -19,24 +19,25 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
     )
 
-    logger = TensorBoardLogger(tmp_path)
-    trainer = pl.Trainer(
-        max_epochs=2,
-        gradient_clip_val=0.1,
-        callbacks=[early_stop_callback],
-        enable_checkpointing=True,
-        default_root_dir=tmp_path,
-        limit_train_batches=2,
-        limit_val_batches=2,
-        limit_test_batches=2,
-        logger=logger,
-    )
+    logger = TensorBoardLogger(tmp_path)        trainer = pl.Trainer(
+            max_epochs=2,
+            gradient_clip_val=0.1,
+            callbacks=[early_stop_callback],
+            enable_checkpointing=True,
+            default_root_dir=tmp_path,
+            limit_train_batches=2,
+            limit_val_batches=2,
+            limit_test_batches=2,
+            logger=logger,
+            accelerator="cpu",  # Force CPU usage
+            devices=1,
+        )
 
     net = NBeats.from_dataset(
         train_dataloader.dataset,
         learning_rate=0.15,
         log_gradient_flow=True,
-        widths=[4, 4, 4],
+        widths=[4, 4], 
         log_interval=1000,
         backcast_loss_ratio=1.0,
     )
@@ -77,7 +78,7 @@ def model(dataloaders_fixed_window_without_covariates):
         dataset,
         learning_rate=0.15,
         log_gradient_flow=True,
-        widths=[4, 4, 4],
+        widths=[4, 4],
         log_interval=1000,
         backcast_loss_ratio=1.0,
     )
