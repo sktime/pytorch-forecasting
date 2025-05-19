@@ -1,3 +1,7 @@
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Disable CUDA
+
 import pickle
 import shutil
 
@@ -22,6 +26,9 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
+        accelerator="cpu",
+        devices=1,
+        strategy="auto",
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -36,7 +43,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
         train_dataloader.dataset,
         learning_rate=0.15,
         log_gradient_flow=True,
-        widths=[4, 4, 4],
+        widths=[4, 4],
         log_interval=1000,
         backcast_loss_ratio=1.0,
     )
