@@ -94,10 +94,47 @@ def test_pickle(model):
     reason="skip test if required package matplotlib not installed",
 )
 def test_interpretation(model, dataloaders_fixed_window_without_covariates):
-    raw_predictions = model.predict(
+raw_/*************  ✨ Windsurf Command ⭐  *************/
+/*******  e5853593-ca41-40fa-87dc-751e7d7ba138  *******/predictions = model.predict(
         dataloaders_fixed_window_without_covariates["val"],
         mode="raw",
         return_x=True,
         fast_dev_run=True,
     )
     model.plot_interpretation(raw_predictions.x, raw_predictions.output, idx=0)
+
+
+def test_direct_initialization():
+    # Test that the model can be initialized directly without from_dataset
+    net = NBeats(
+        stack_types=["trend", "seasonality"],
+        num_blocks=[3, 3],
+        num_block_layers=[3, 3],
+        widths=[32, 512],
+        sharing=[True, True],
+        expansion_coefficient_lengths=[3, 7],
+        prediction_length=24,
+        context_length=72,
+    )
+    assert len(net.net_blocks) == 6  # 2 stacks * 3 blocks each
+    assert net.hparams.prediction_length == 24
+    assert net.hparams.context_length == 72
+
+    # Test validation of parameters
+    with pytest.raises(ValueError, match="stack_types must contain only"):
+        NBeats(stack_types=["invalid_type"])
+
+    with pytest.raises(ValueError, match="Length of num_blocks"):
+        NBeats(
+            stack_types=["trend", "seasonality"],
+            num_blocks=[3],  # Should be length 2
+            prediction_length=24,
+            context_length=72,
+        )
+
+    with pytest.raises(ValueError, match="prediction_length must be"):
+        NBeats(
+            stack_types=["trend", "seasonality"],
+            prediction_length=0,  # Invalid
+            context_length=72,
+        )

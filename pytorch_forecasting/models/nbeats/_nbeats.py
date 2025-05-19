@@ -43,54 +43,78 @@ class NBeats(BaseModel):
         **kwargs,
     ):
         """
-        Initialize NBeats Model - use its :py:meth:`~from_dataset` method if possible.
+        Initialize NBeats Model.
+
+        The model can be initialized in two ways:
+        1. Using the :py:meth:`~from_dataset` classmethod (recommended for standard time series forecasting)
+        2. Direct initialization with required parameters (for custom use cases)
 
         Based on the article
         `N-BEATS: Neural basis expansion analysis for interpretable time series
         forecasting <http://arxiv.org/abs/1905.10437>`_. The network has (if used as ensemble) outperformed all
-        other methods
-        including ensembles of traditional statical methods in the M4 competition. The M4 competition is arguably
-        the most
-        important benchmark for univariate time series forecasting.
+        other methods including ensembles of traditional statical methods in the M4 competition.
 
         The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently shown to consistently outperform
         N-BEATS.
 
         Args:
-            stack_types: One of the following values: “generic”, “seasonality" or “trend". A list of strings
-                of length 1 or ‘num_stacks’. Default and recommended value
-                for generic mode: [“generic”] Recommended value for interpretable mode: [“trend”,”seasonality”]
-            num_blocks: The number of blocks per stack. A list of ints of length 1 or ‘num_stacks’.
+            stack_types: One of the following values: "generic", "seasonality" or "trend". A list of strings
+                of length 1 or 'num_stacks'. Default and recommended value
+                for generic mode: ["generic"] Recommended value for interpretable mode: ["trend","seasonality"]
+            num_blocks: The number of blocks per stack. A list of ints of length 1 or 'num_stacks'.
                 Default and recommended value for generic mode: [1] Recommended value for interpretable mode: [3]
             num_block_layers: Number of fully connected layers with ReLu activation per block. A list of ints of length
-                1 or ‘num_stacks’.
+                1 or 'num_stacks'.
                 Default and recommended value for generic mode: [4] Recommended value for interpretable mode: [4]
             width: Widths of the fully connected layers with ReLu activation in the blocks.
-                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [512]
+                A list of ints of length 1 or 'num_stacks'. Default and recommended value for generic mode: [512]
                 Recommended value for interpretable mode: [256, 2048]
             sharing: Whether the weights are shared with the other blocks per stack.
-                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [False]
+                A list of ints of length 1 or 'num_stacks'. Default and recommended value for generic mode: [False]
                 Recommended value for interpretable mode: [True]
-            expansion_coefficient_length: If the type is “G” (generic), then the length of the expansion
-                coefficient.
-                If type is “T” (trend), then it corresponds to the degree of the polynomial. If the type is “S”
-                (seasonal) then this is the minimum period allowed, e.g. 2 for changes every timestep.
-                A list of ints of length 1 or ‘num_stacks’. Default value for generic mode: [32] Recommended value for
-                interpretable mode: [3]
-            prediction_length: Length of the prediction. Also known as 'horizon'.
-            context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
+            expansion_coefficient_lengths: If the type is "generic", then the length of the expansion
+                coefficient. If type is "trend", then it corresponds to the degree of the polynomial.
+                If type is "seasonal" then this is the minimum period allowed, e.g. 2 for changes every timestep.
+                A list of ints of length 1 or 'num_stacks'. Default value for generic mode: [32]
+                Recommended value for interpretable mode: [3]
+            prediction_length: Length of the prediction horizon
+            context_length: Number of time steps that condition the predictions (lookback period).
                 Should be between 1-10 times the prediction length.
-            backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.
-                A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
-                forecast lengths). Defaults to 0.0, i.e. no weight.
-            loss: loss to optimize. Defaults to MASE().
-            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
+            dropout: Dropout rate between 0.0 (no dropout) and 1.0.
+            learning_rate: Initial learning rate
+            log_interval: Log metrics every x batches, defaults to -1 (only at end of epoch)
+            log_gradient_flow: If to log gradient flow, this takes time and should be only done to diagnose training
                 failures
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+            log_val_interval: Log validation metrics every x batches.
+            weight_decay: L2 regularization factor
+            backcast_loss_ratio: Ratio of backcast loss vs forecast loss.
+            loss: PyTorch metric to optimize. Defaults to MASE()
+            reduce_on_plateau_patience: Patience after which learning rate is reduced
+            logging_metrics: List of metrics that are logged during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
-            **kwargs: additional arguments to :py:class:`~BaseModel`.
-        """  # noqa: E501
+            **kwargs: Additional arguments for BaseModel
+
+        Example:
+            Direct initialization:
+
+            >>> from pytorch_forecasting.models import NBeats
+            >>> model = NBeats(
+            ...     stack_types=["trend", "seasonality"],
+            ...     num_blocks=[3, 3],
+            ...     num_block_layers=[3, 3],
+            ...     widths=[32, 512],
+            ...     sharing=[True, True],
+            ...     expansion_coefficient_lengths=[3, 7],
+            ...     prediction_length=24,
+            ...     context_length=72,
+            ... )
+
+            Initialization from dataset (recommended):
+
+            >>> from pytorch_forecasting import TimeSeriesDataSet, NBeats
+            >>> dataset = TimeSeriesDataSet(...)
+            >>> model = NBeats.from_dataset(dataset)
+        """
         if expansion_coefficient_lengths is None:
             expansion_coefficient_lengths = [3, 7]
         if sharing is None:
@@ -107,6 +131,32 @@ class NBeats(BaseModel):
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if loss is None:
             loss = MASE()
+
+        # Validate parameters
+        if not isinstance(prediction_length, int) or prediction_length < 1:
+            raise ValueError("prediction_length must be a positive integer")
+        if not isinstance(context_length, int) or context_length < 1:
+            raise ValueError("context_length must be a positive integer")
+        if not all(s in ["generic", "seasonality", "trend"] for s in stack_types):
+            raise ValueError(
+                "stack_types must contain only 'generic', 'seasonality', or 'trend'"
+            )
+
+        # Validate list lengths
+        n_stacks = len(stack_types)
+        for param_name, param_value in [
+            ("num_blocks", num_blocks),
+            ("num_block_layers", num_block_layers),
+            ("widths", widths),
+            ("sharing", sharing),
+            ("expansion_coefficient_lengths", expansion_coefficient_lengths),
+        ]:
+            if len(param_value) != n_stacks:
+                raise ValueError(
+                    f"Length of {param_name} ({len(param_value)}) must match "
+                    f"length of stack_types ({n_stacks})"
+                )
+
         self.save_hyperparameters()
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
@@ -223,15 +273,22 @@ class NBeats(BaseModel):
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         """
-        Convenience function to create network from :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        Create an NBeats model from a :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+
+        This is the recommended way to create an NBeats model for standard time series forecasting.
+        For custom use cases where the dataset constraints don't fit your needs,
+        you can directly initialize the model using the constructor.
 
         Args:
             dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
             **kwargs: additional arguments to be passed to ``__init__`` method.
 
         Returns:
-            NBeats
-        """  # noqa: E501
+            NBeats: initialized model
+
+        Raises:
+            AssertionError: if dataset constraints are not met
+        """
         new_kwargs = {
             "prediction_length": dataset.max_prediction_length,
             "context_length": dataset.max_encoder_length,
