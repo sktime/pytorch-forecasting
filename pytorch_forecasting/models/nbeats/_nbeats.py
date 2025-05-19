@@ -500,4 +500,3 @@ class NBeats(BaseModel):
 
         fig.legend()
         return fig
-
