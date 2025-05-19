@@ -94,8 +94,7 @@ def test_pickle(model):
     reason="skip test if required package matplotlib not installed",
 )
 def test_interpretation(model, dataloaders_fixed_window_without_covariates):
-raw_/*************  ✨ Windsurf Command ⭐  *************/
-/*******  e5853593-ca41-40fa-87dc-751e7d7ba138  *******/predictions = model.predict(
+    raw_predictions = model.predict(
         dataloaders_fixed_window_without_covariates["val"],
         mode="raw",
         return_x=True,
