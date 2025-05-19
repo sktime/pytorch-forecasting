@@ -137,3 +137,4 @@ def test_direct_initialization():
             prediction_length=0,  # Invalid
             context_length=72,
         )
+        
