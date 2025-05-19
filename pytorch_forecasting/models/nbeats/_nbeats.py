@@ -46,52 +46,62 @@ class NBeats(BaseModel):
         Initialize NBeats Model.
 
         The model can be initialized in two ways:
-        1. Using the :py:meth:`~from_dataset` classmethod (recommended for standard time series forecasting)
+        1. Using the :py:meth:`~from_dataset` classmethod
+            (recommended for standard time series forecasting)
         2. Direct initialization with required parameters (for custom use cases)
 
-        Based on the article
-        `N-BEATS: Neural basis expansion analysis for interpretable time series
-        forecasting <http://arxiv.org/abs/1905.10437>`_. The network has (if used as ensemble) outperformed all
-        other methods including ensembles of traditional statical methods in the M4 competition.
+        Based on the article `N-BEATS: Neural basis expansion analysis for
+        interpretable time series forecasting <http://arxiv.org/abs/1905.10437>`_.
+        The network has (if used as ensemble) outperformed all other methods including
+        ensembles of traditional statical methods in the M4 competition.
 
-        The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently shown to consistently outperform
-        N-BEATS.
+        The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently
+        shown to consistently outperform N-BEATS.
 
         Args:
-            stack_types: One of the following values: "generic", "seasonality" or "trend". A list of strings
-                of length 1 or 'num_stacks'. Default and recommended value
-                for generic mode: ["generic"] Recommended value for interpretable mode: ["trend","seasonality"]
-            num_blocks: The number of blocks per stack. A list of ints of length 1 or 'num_stacks'.
-                Default and recommended value for generic mode: [1] Recommended value for interpretable mode: [3]
-            num_block_layers: Number of fully connected layers with ReLu activation per block. A list of ints of length
-                1 or 'num_stacks'.
-                Default and recommended value for generic mode: [4] Recommended value for interpretable mode: [4]
-            width: Widths of the fully connected layers with ReLu activation in the blocks.
-                A list of ints of length 1 or 'num_stacks'. Default and recommended value for generic mode: [512]
-                Recommended value for interpretable mode: [256, 2048]
-            sharing: Whether the weights are shared with the other blocks per stack.
-                A list of ints of length 1 or 'num_stacks'. Default and recommended value for generic mode: [False]
-                Recommended value for interpretable mode: [True]
-            expansion_coefficient_lengths: If the type is "generic", then the length of the expansion
-                coefficient. If type is "trend", then it corresponds to the degree of the polynomial.
-                If type is "seasonal" then this is the minimum period allowed, e.g. 2 for changes every timestep.
-                A list of ints of length 1 or 'num_stacks'. Default value for generic mode: [32]
+            stack_types: One of the following values: "generic", "seasonality" or
+                "trend".
+                A list of strings of length 1 or 'num_stacks'.
+                Default and recommended value for generic mode: ["generic"].
+                Recommended value for interpretable mode: ["trend","seasonality"]
+            num_blocks: The number of blocks per stack. A list of ints of length 1 or
+                'num_stacks'. Default and recommended value for generic mode: [1].
                 Recommended value for interpretable mode: [3]
+            num_block_layers: Number of fully connected layers with
+                ReLu activation per block.
+                A list of ints of length 1 or 'num_stacks'. Default and recommended
+                value for generic mode: [4].
+                Recommended value for interpretable mode: [4]
+            width: Width of fully connected layers with ReLu activation.
+                A list of ints (length = 'num_stacks').
+                Default generic mode: [512]
+                Default interpretable mode: [256, 2048]
+            sharing: Share weights between blocks per stack.
+                A list of bools (length = 'num_stacks').
+                Default generic mode: [False]
+                Default interpretable mode: [True]
+            expansion_coefficient_lengths: Configures each stack type:
+                - "generic": expansion coefficient length
+                - "trend": polynomial degree
+                - "seasonal": minimum period for changes
+                A list of ints (length = 'num_stacks').
+                Default generic mode: [32]
+                Default interpretable mode: [3]
             prediction_length: Length of the prediction horizon
-            context_length: Number of time steps that condition the predictions (lookback period).
-                Should be between 1-10 times the prediction length.
-            dropout: Dropout rate between 0.0 (no dropout) and 1.0.
+            context_length: Number of timesteps for predictions.
+                Should be 1-10x prediction_length.
+            dropout: Dropout rate (0.0 to 1.0)
             learning_rate: Initial learning rate
-            log_interval: Log metrics every x batches, defaults to -1 (only at end of epoch)
-            log_gradient_flow: If to log gradient flow, this takes time and should be only done to diagnose training
-                failures
+            log_interval: Logging frequency (-1 = end of epoch)
+            log_gradient_flow: If to log gradient flow, this takes time and should be
+                only done to diagnose training failures
             log_val_interval: Log validation metrics every x batches.
             weight_decay: L2 regularization factor
             backcast_loss_ratio: Ratio of backcast loss vs forecast loss.
             loss: PyTorch metric to optimize. Defaults to MASE()
             reduce_on_plateau_patience: Patience after which learning rate is reduced
-            logging_metrics: List of metrics that are logged during training.
-                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+            logging_metrics: List of metrics logged during training. Defaults to
+                nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
             **kwargs: Additional arguments for BaseModel
 
         Example:
@@ -273,11 +283,11 @@ class NBeats(BaseModel):
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
         """
-        Create an NBeats model from a :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        Create an NBeats model from a TimeSeriesDataSet.
 
-        This is the recommended way to create an NBeats model for standard time series forecasting.
-        For custom use cases where the dataset constraints don't fit your needs,
-        you can directly initialize the model using the constructor.
+        This is the recommended way to create an NBeats model for standard
+        time series forecasting. For custom uses where dataset constraints
+        don't fit, initialize the model directly using the constructor.
 
         Args:
             dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
@@ -409,17 +419,18 @@ class NBeats(BaseModel):
         """
         Plot interpretation.
 
-        Plot two pannels: prediction and backcast vs actuals and
-        decomposition of prediction into trend, seasonality and generic forecast.
+        Plot two pannels: prediction and backcast vs actuals and decomposition of prediction
+        into trend, seasonality and generic forecast.
 
         Args:
             x (Dict[str, torch.Tensor]): network input
             output (Dict[str, torch.Tensor]): network output
             idx (int): index of sample for which to plot the interpretation.
-            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which to plot the interpretation.
-                Defaults to None.
-            plot_seasonality_and_generic_on_secondary_axis (bool, optional): if to plot seasonality and
-                generic forecast on secondary axis in second panel. Defaults to False.
+            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which to
+                plot the interpretation. Defaults to None.
+            plot_seasonality_and_generic_on_secondary_axis (bool, optional): if to plot
+                seasonality and generic forecast on secondary axis in second panel. Defaults
+                to False.
 
         Returns:
             plt.Figure: matplotlib figure
