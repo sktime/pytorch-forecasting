@@ -6,6 +6,7 @@
 
 
 from typing import Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 from lightning.pytorch import LightningModule
 from lightning.pytorch.utilities.types import STEP_OUTPUT
@@ -52,6 +53,18 @@ class BaseModel(LightningModule):
         self.lr_scheduler = lr_scheduler
         self.lr_scheduler_params = (
             lr_scheduler_params if lr_scheduler_params is not None else {}
+        )
+        self.model_name = self.__class__.__name__
+        warn(
+            f"The Model '{self.model_name}' is part of an experimental rework"
+            "of the pytorch-forecasting model layer, scheduled for release with v2.0.0."
+            " The API is not stable and may change without prior warning. "
+            "This class is intended for beta testing and as a basic skeleton, "
+            "but not for stable production use. "
+            "Feedback and suggestions are very welcome in "
+            "pytorch-forecasting issue 1736, "
+            "https://github.com/sktime/pytorch-forecasting/issues/1736",
+            UserWarning,
         )
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:

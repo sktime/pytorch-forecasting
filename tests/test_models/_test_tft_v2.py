@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.timeseries import TimeSeries
-from pytorch_forecasting.models.temporal_fusion_transformer.tft_version_two import TFT
+from pytorch_forecasting.models.temporal_fusion_transformer._tft_v2 import TFT
 
 BATCH_SIZE_TEST = 2
 MAX_ENCODER_LENGTH_TEST = 10

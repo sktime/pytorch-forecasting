@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.models.base.base_model_refactor import BaseModel
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
 class TFT(BaseModel):
