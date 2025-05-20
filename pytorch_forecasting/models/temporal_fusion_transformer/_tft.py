@@ -68,7 +68,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
     Parameters
     ----------
     hidden_size : int, default=16
-        hidden size of network which is its main hyperparameter. 
+        hidden size of network which is its main hyperparameter.
         Can range from 8 to 512.
     lstm_layers : int, default=1
         number of LSTM layers (2 is mostly optimal)
