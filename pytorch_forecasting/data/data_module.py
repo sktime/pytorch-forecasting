@@ -163,14 +163,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             else:
                 self.continuous_indices.append(idx)
 
-        # overwrite __init__ params for upwards compatibility with AS PRs
-        # todo: should we avoid this and ensure classes are dataclass-like?
-        self.min_prediction_length = self._min_prediction_length
-        self.min_encoder_length = self._min_encoder_length
-        self.categorical_encoders = self._categorical_encoders
-        self.scalers = self._scalers
-        self.target_normalizer = self._target_normalizer
-
     def _prepare_metadata(self):
         """Prepare metadata for model initialisation.
 
@@ -519,8 +511,40 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "decoder_mask": decoder_mask,
             }
             if data["static"] is not None:
-                x["static_categorical_features"] = data["static"].unsqueeze(0)
-                x["static_continuous_features"] = torch.zeros((1, 0))
+                raw_st_tensor = data.get("static")
+                static_col_names = self.data_module.time_series_metadata["cols"]["st"]
+
+                is_categorical_mask = torch.tensor(
+                    [
+                        self.data_module.time_series_metadata["col_type"].get(col_name)
+                        == "C"
+                        for col_name in static_col_names
+                    ],
+                    dtype=torch.bool,
+                )
+
+                is_continuous_mask = ~is_categorical_mask
+
+                st_cat_values_for_item = raw_st_tensor[is_categorical_mask]
+                st_cont_values_for_item = raw_st_tensor[is_continuous_mask]
+
+                if st_cat_values_for_item.shape[0] > 0:
+                    x["static_categorical_features"] = st_cat_values_for_item.unsqueeze(
+                        0
+                    )
+                else:
+                    x["static_categorical_features"] = torch.zeros(
+                        (1, 0), dtype=torch.float32
+                    )
+
+                if st_cont_values_for_item.shape[0] > 0:
+                    x["static_continuous_features"] = st_cont_values_for_item.unsqueeze(
+                        0
+                    )
+                else:
+                    x["static_continuous_features"] = torch.zeros(
+                        (1, 0), dtype=torch.float32
+                    )
 
             y = data["target"][decoder_indices]
             if y.ndim == 1:
