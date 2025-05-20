@@ -430,12 +430,22 @@ class TimeXer(BaseModelWithCovariates):
 
             if prediction.size(2) != len(target_positions):
                 prediction = prediction[:, :, : len(target_positions)]
+
+            # In the case of a single target, the result will be a torch.Tensor
+            # with shape (batch_size, prediction_length)
+            # In the case of multiple targets, the result will be a list of "n_targets"
+            # tensors with shape (batch_size, prediction_length)
+            # If quantile predictions are used, the result will have an additional
+            # dimension for quantiles, resulting in a shape of
+            # (batch_size, prediction_length, n_quantiles)
             if self.n_quantiles is not None:
+                # quantile predictions.
                 if len(target_indices) == 1:
                     prediction = prediction[..., 0, :]
                 else:
                     prediction = [prediction[..., i, :] for i in target_indices]
             else:
+                # point predictions.
                 if len(target_indices) == 1:
                     prediction = prediction[..., 0]
                 else:
