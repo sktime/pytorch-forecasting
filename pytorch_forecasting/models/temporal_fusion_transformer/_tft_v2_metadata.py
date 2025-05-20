@@ -8,7 +8,6 @@ class TFTMetadata(_BasePtForecaster):
 
     _tags = {
         "info:name": "TFT",
-        "info:compute": 3,
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
