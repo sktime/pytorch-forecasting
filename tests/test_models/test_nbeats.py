@@ -1,7 +1,3 @@
-import os
-
-os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Disable CUDA
-
 import pickle
 import shutil
 
