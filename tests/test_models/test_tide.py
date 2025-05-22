@@ -27,7 +27,6 @@ def _tide_integration(dataloaders, tmp_path, trainer_kwargs=None, **kwargs):
     Returns:
         Predictions from the trained model.
     """
-
     from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
     df = data_with_covariates()
@@ -35,7 +34,7 @@ def _tide_integration(dataloaders, tmp_path, trainer_kwargs=None, **kwargs):
     tide_kwargs = {
         "temporal_decoder_hidden": 8,
         "temporal_width_future": 4,
-        "droupout": 0.1,
+        "dropout": 0.1,
     }
 
     tide_kwargs.update(kwargs)
@@ -50,7 +49,6 @@ def _tide_integration(dataloaders, tmp_path, trainer_kwargs=None, **kwargs):
         "static_reals": train_dataset.static_reals,
         "add_relative_time_idx": train_dataset.add_relative_time_idx,
     }
-
     return _integration(
         TiDEModel,
         df,
@@ -66,7 +64,7 @@ def _tide_integration(dataloaders, tmp_path, trainer_kwargs=None, **kwargs):
     [
         {},
         {"loss": SMAPE()},
-        {"hidden_size": 32, "temporal_decoder_hidden": 16},
+        {"temporal_decoder_hidden": 16},
         {"dropout": 0.2, "use_layer_norm": True},
     ],
 )
