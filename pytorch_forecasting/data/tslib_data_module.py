@@ -375,8 +375,12 @@ class TslibDataModule(LightningDataModule):
         feature_names["static_categorical"] = static_cat_names
         feature_names["static_continuous"] = static_cont_names
 
-        for idx, col in enumerate(target_features):
-            feature_indices["target"].append(idx)
+        for col in target_features:
+            if col in all_features:
+                actual_idx = all_features.index(col)
+                feature_indices["target"].append(actual_idx)
+            else:
+                warnings.warn(f"Target feature {col} not found!")
 
         n_features = {k: len(v) for k, v in feature_names.items()}
 
@@ -394,7 +398,7 @@ class TslibDataModule(LightningDataModule):
 
     @property
     def metadata(self) -> Dict[str, Any]:
-        """
+        """ "
         Compute the metadata via the `_prepare_metadata` method.
         This method is called when the `metadata` property is accessed for the first.
         Returns

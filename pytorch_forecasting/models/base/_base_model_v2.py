@@ -354,6 +354,7 @@ class TslibBaseModel(BaseModel):
         self.cat_indices = feature_indices.get("categorical", [])
         self.known_indices = feature_indices.get("known", [])
         self.unknown_indices = feature_indices.get("unknown", [])
+        self.target_indices = feature_indices.get("target", [])
 
         feature_dims = metadata.get("n_features", {})
         self.cont_dim = feature_dims.get("continuous", 0)
