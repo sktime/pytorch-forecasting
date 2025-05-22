@@ -172,7 +172,7 @@ class TimeXer(TslibBaseModel):
         history_target = x.get(
             "history_target",
             torch.zeros(batch_size, self.context_length, 0, device=self.device),
-        )
+        )  # noqa: E501
 
         en_embed, n_vars = self.en_embedding(history_target.permute(0, 2, 1))
         ex_embed = self.ex_embedding(history_cont, history_time_idx)
