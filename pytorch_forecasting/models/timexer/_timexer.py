@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from torch.optim import Optimizer
 
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.metrics import MAE, MAPE, MultiHorizonMetric, QuantileLoss
+from pytorch_forecasting.metrics import MAE, MAPE, Metric, QuantileLoss
 from pytorch_forecasting.metrics.base_metrics import MultiLoss
 from pytorch_forecasting.models.base._base_model_v2 import TslibBaseModel
 
@@ -29,7 +29,7 @@ from pytorch_forecasting.models.base._base_model_v2 import TslibBaseModel
 class TimeXer(TslibBaseModel):
     def __init__(
         self,
-        loss: nn.Module,
+        loss: Metric,
         context_length: int,
         prediction_length: int,
         features: str = "MS",
@@ -41,6 +41,8 @@ class TimeXer(TslibBaseModel):
         dropout: float = 0.1,
         patch_length: int = 24,
         factor: int = 5,
+        endogenous_vars: Optional[List[str]] = None,
+        exogenous_vars: Optional[List[str]] = None,
         logging_metrics: Optional[List[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[Dict] = None,
@@ -61,6 +63,8 @@ class TimeXer(TslibBaseModel):
 
         self.context_length = context_length
         self.prediction_length = prediction_length
+        self.endogenous_vars = endogenous_vars
+        self.exogenous_vars = exogenous_vars
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
     def _init_network(self):
@@ -173,9 +177,75 @@ class TimeXer(TslibBaseModel):
             "history_target",
             torch.zeros(batch_size, self.context_length, 0, device=self.device),
         )  # noqa: E501
+        if self.endogenous_vars:
+            endogenous_indices = [
+                self.cont_names.index(var) for var in self.endogenous_vars
+            ]
+            endogenous_cont = history_cont[..., endogenous_indices]
+        else:
+            endogenous_cont = history_target
 
-        en_embed, n_vars = self.en_embedding(history_target.permute(0, 2, 1))
-        ex_embed = self.ex_embedding(history_cont, history_time_idx)
+        if self.exogenous_vars:
+            exogenous_indices = [
+                self.cont_names.index(var) for var in self.exogenous_vars
+            ]
+            exogenous_cont = history_cont[..., exogenous_indices]
+        else:
+            exogenous_cont = history_cont
+
+        en_embed, n_vars = self.en_embedding(endogenous_cont)
+        ex_embed = self.ex_embedding(exogenous_cont, history_time_idx)
+
+        enc_out = self.encoder(en_embed, ex_embed)
+
+        enc_out = torch.reshape(
+            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1])
+        )
+
+        enc_out = enc_out.permute(0, 1, 3, 2)
+
+        dec_out = self.head(enc_out)
+
+        if self.n_quantiles is not None:
+            dec_out = dec_out.permute(0, 2, 1, 3)
+        else:
+            dec_out = dec_out.permute(0, 2, 1)
+
+        return dec_out
+
+    def _forecast_multi(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """
+        Forecast for multivariate with multiple time series.
+
+        Args:
+            x (Dict[str, torch.Tensor]): Input data.
+        Returns:
+            Dict[str, torch.Tensor]: Model predictions.
+        """
+
+        history_cont = x["history_cont"]
+        history_time_idx = x.get("history_time_idx", None)
+        history_target = x["history_target"]
+
+        if self.endogenous_vars:
+            endogenous_indices = [
+                self.cont_names.index(var) for var in self.endogenous_vars
+            ]
+            endogenous_cont = history_cont[..., endogenous_indices]
+        else:
+            endogenous_cont = history_target
+
+        if self.exogenous_vars:
+            exogenous_indices = [
+                self.cont_names.index(var) for var in self.exogenous_vars
+            ]
+            exogenous_cont = history_cont[..., exogenous_indices]
+        else:
+            exogenous_cont = history_cont
+
+        en_embed, n_vars = self.en_embedding(endogenous_cont)
+
+        ex_embed = self.ex_embedding(exogenous_cont, history_time_idx)
 
         enc_out = self.encoder(en_embed, ex_embed)
 
@@ -202,4 +272,30 @@ class TimeXer(TslibBaseModel):
         Returns:
             Dict[str, torch.Tensor]: Model predictions.
         """
-        pass
+        if self.features == "MS":
+            out = self._forecast(x)
+        else:
+            out = self._forecast_multi(x)
+
+        prediction = out[:, : self.prediction_length, :]
+
+        # check to see if the output shape is equal to number of targets
+        if prediction.size(2) != self.target_dim:
+            prediction = prediction[:, :, : self.target_dim]
+
+        target_indices = range(len(self.target_dim))
+        if self.n_quantiles is not None:
+            if self.target_dim > 1:
+                prediction = [prediction[..., i, :] for i in target_indices]
+            else:
+                prediction = prediction[..., 0]
+        else:
+            if len(target_indices) == 1:
+                prediction = prediction[..., 0]
+            else:
+                prediction = [prediction[..., i] for i in target_indices]
+
+        if "target_scale" in x:
+            prediction = self.transform_output(prediction, x["target_scale"])
+
+        return {"prediction": prediction}

@@ -89,6 +89,7 @@ class EnEmbedding(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
+        x = x.permute(0, 2, 1)
         n_vars = x.shape[1]
         glb = self.glb_token.repeat((x.shape[0], 1, 1, 1))
 

@@ -14,11 +14,13 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.metrics import Metric
+
 
 class BaseModel(LightningModule):
     def __init__(
         self,
-        loss: nn.Module,
+        loss: Metric,
         logging_metrics: Optional[List[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[Dict] = None,
@@ -308,7 +310,7 @@ class TslibBaseModel(BaseModel):
 
     Parameters
     ----------
-    loss : nn.Module
+    loss : Metric
         Loss function to use for training.
     logging_metrics : Optional[List[nn.Module]], optional
         List of metrics to log during training, validation, and testing.
@@ -326,7 +328,7 @@ class TslibBaseModel(BaseModel):
 
     def __init__(
         self,
-        loss: nn.Module,
+        loss: Metric,
         logging_metrics: Optional[List[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[Dict] = None,
