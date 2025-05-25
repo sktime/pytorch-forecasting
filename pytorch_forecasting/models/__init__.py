@@ -19,6 +19,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
 from pytorch_forecasting.models.tide import TiDEModel
+from pytorch_forecasting.models.timexer import TimeXer
 
 __all__ = [
     "NBeats",
@@ -37,4 +38,5 @@ __all__ = [
     "MultiEmbedding",
     "DecoderMLP",
     "TiDEModel",
+    "TimeXer",
 ]

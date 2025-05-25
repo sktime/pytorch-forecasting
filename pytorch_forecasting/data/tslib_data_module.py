@@ -163,7 +163,7 @@ class _TslibDataset(Dataset):
             x["target_scale"] = processed_data["target_scale"]
 
         y = processed_data["target"][future_indices]
-        if y.ndim() == 1:
+        if y.ndim == 1:
             y = y.unsqueeze(0)
 
         return x, y
@@ -276,25 +276,27 @@ class TslibDataModule(LightningDataModule):
 
         self._metadata = None
 
-        self.categorical_indices = []
-        self.continuous_indices = []
-
-        for idx, col in enumerate(self.time_series_dataset["cols"]["x"]):
-            if self.time_series_metadata["col_type"].get(col) == "C":
-                self.categorical_indices.append(idx)
-            else:
-                self.continuous_indices.append(idx)
-
         self.scalers = scalers or {}
         self.shuffle = shuffle
+
+        self.continuous_indices = []
+        self.categorical_indices = []
 
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
 
+        self.window_stride = window_stride
+
         self.time_series_metadata = time_series_dataset.get_metadata()
 
-    def _prepare_metadata(self) -> None:
+        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
+            if self.time_series_metadata["col_type"].get(col) == "C":
+                self.categorical_indices.append(idx)
+            else:
+                self.continuous_indices.append(idx)
+
+    def _prepare_metadata(self) -> Dict[str, Any]:
         """
         Prepare metadata for `tslib` time series data module.
 
@@ -317,7 +319,7 @@ class TslibDataModule(LightningDataModule):
                 Feature combination mode.
         """
         # TODO: include handling for datasets without get_metadata()
-        ds_metadata = self.time_series_metadata.get_metadata()
+        ds_metadata = self.time_series_metadata
 
         feature_names = {
             "categorical": [],
@@ -372,27 +374,22 @@ class TslibDataModule(LightningDataModule):
             else:
                 static_cont_names.append(col)
 
+        feature_indices["target"] = list(range(len(target_features)))
+
         feature_names["static_categorical"] = static_cat_names
         feature_names["static_continuous"] = static_cont_names
 
-        for col in target_features:
-            if col in all_features:
-                actual_idx = all_features.index(col)
-                feature_indices["target"].append(actual_idx)
-            else:
-                warnings.warn(f"Target feature {col} not found!")
-
         n_features = {k: len(v) for k, v in feature_names.items()}
 
-        metadata = dict(
-            feature_names=feature_names,
-            feature_indices=feature_indices,
-            n_features=n_features,
-            context_length=self.context_length,
-            prediction_length=self.prediction_length,
-            freq=self.freq,
-            features=self.features,
-        )
+        metadata = {
+            "feature_names": feature_names,
+            "feature_indices": feature_indices,
+            "n_features": n_features,
+            "context_length": self.context_length,
+            "prediction_length": self.prediction_length,
+            "freq": self.freq,
+            "features": self.features,
+        }
 
         return metadata
 
@@ -407,7 +404,7 @@ class TslibDataModule(LightningDataModule):
             Metadata for the data module. Refer to the `_prepare_metadata` method for
             the keys and values in the metadata dictionary.
         """
-        if not hasattr(self, "_metadata"):
+        if self._metadata is None:
             self._metadata = self._prepare_metadata()
         return self._metadata
 
@@ -455,43 +452,6 @@ class TslibDataModule(LightningDataModule):
 
         # scaling and normlization
         target_scale = {}
-
-        if self._target_normalizer is not None:
-            if self.add_target_scales:
-                if hasattr(self._target_normalizer, "scale_"):
-                    target_scale["scale"] = torch.tensor(self._target_normalizer.scale_)
-                if hasattr(self._target_normalizer, "center_"):
-                    target_scale["center"] = torch.tensor(
-                        self._target_normalizer.center_
-                    )  # noqa: E501
-
-            if isinstance(self._target_normalizer, TorchNormalizer):
-                target = self._target_normalizer.transform(target)
-            else:
-                # extra case for handling non-native normalizers
-                # apart from those in NORMALIZER.
-                target_np = target.reshape(-1, 1).numpy()
-                target = torch.tensor(
-                    self._target_normalizer.transform(target_np),
-                    dtype=torch.float32,
-                ).reshape(target.shape)
-
-        if self.scalers:
-            feature_indices = self.metadat["feature_indices"]
-            feature_names = self.metadata["feature_names"]
-
-            for i, idx in enumerate(feature_indices.get("continuous", [])):
-                feature_name = feature_names["continuous"][i]
-                if feature_name in self.scalers:
-                    scaler = self.scalers[feature_name]
-                    if isinstance(scaler, TorchNormalizer):
-                        features[..., idx] = scaler.transform(features[..., idx])
-                    else:
-                        feature_np = features[..., idx].reshape(-1, 1).numpy()
-                        features[..., idx] = torch.tensor(
-                            scaler.transform(feature_np),
-                            dtype=torch.float32,
-                        ).reshape(features[..., idx].shape)
 
         categorical_features = (
             features[:, self.categorical_indices]

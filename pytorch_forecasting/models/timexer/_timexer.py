@@ -6,6 +6,7 @@ Time Series Transformer with eXogenous variables (TimeXer)
 ################################################################
 # NOTE: This implementation of TimeXer derives from PR #1797.  #
 # It is experimental and seeks to clarify design decisions.    #
+# IT IS STRICTLY A PART OF THE v2 design of PTF.               #
 ################################################################
 
 
@@ -20,8 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Optimizer
 
-from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.metrics import MAE, MAPE, Metric, QuantileLoss
+from pytorch_forecasting.metrics import MAE, MAPE, MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.metrics.base_metrics import MultiLoss
 from pytorch_forecasting.models.base._base_model_v2 import TslibBaseModel
 
@@ -29,9 +29,7 @@ from pytorch_forecasting.models.base._base_model_v2 import TslibBaseModel
 class TimeXer(TslibBaseModel):
     def __init__(
         self,
-        loss: Metric,
-        context_length: int,
-        prediction_length: int,
+        loss: nn.Module,
         features: str = "MS",
         enc_in: int = None,
         d_model: int = 512,
@@ -41,6 +39,7 @@ class TimeXer(TslibBaseModel):
         dropout: float = 0.1,
         patch_length: int = 24,
         factor: int = 5,
+        activation: str = "relu",
         endogenous_vars: Optional[List[str]] = None,
         exogenous_vars: Optional[List[str]] = None,
         logging_metrics: Optional[List[nn.Module]] = None,
@@ -61,11 +60,21 @@ class TimeXer(TslibBaseModel):
             metadata=metadata,
         )
 
-        self.context_length = context_length
-        self.prediction_length = prediction_length
+        self.features = features
+        self.enc_in = enc_in
+        self.d_model = d_model
+        self.n_heads = n_heads
+        self.e_layers = e_layers
+        self.d_ff = d_ff
+        self.dropout = dropout
+        self.patch_length = patch_length
+        self.activation = activation
+        self.factor = factor
         self.endogenous_vars = endogenous_vars
         self.exogenous_vars = exogenous_vars
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
+
+        self._init_network()
 
     def _init_network(self):
         """
@@ -91,11 +100,15 @@ class TimeXer(TslibBaseModel):
         else:
             self.n_target_vars = 1
 
+        # currently enc_in is set only to cont_dim since
+        # the data module doesn't fully support categorical
+        # variables in the context length and modele expects
+        # float values.
         self.enc_in = self.enc_in or self.cont_dim
 
         self.n_quantiles = None
 
-        if hasattr(self, "quantiles"):
+        if hasattr(self.loss, "quantiles"):
             self.n_quantiles = len(self.loss.quantiles)
 
         self.en_embedding = EnEmbedding(
@@ -108,7 +121,6 @@ class TimeXer(TslibBaseModel):
 
         encoder_layers = []
 
-        encoder_layers = []
         for _ in range(self.e_layers):
             encoder_layers.append(
                 EncoderLayer(
@@ -177,21 +189,25 @@ class TimeXer(TslibBaseModel):
             "history_target",
             torch.zeros(batch_size, self.context_length, 0, device=self.device),
         )  # noqa: E501
+
+        if history_time_idx is not None and history_time_idx.dim() == 2:
+            # change [batch_size, time_steps] to [batch_size, time_steps, features]
+            history_time_idx = history_time_idx.unsqueeze(-1)
+
+        # explicitly set endogenous and exogenous variables
+        endogenous_cont = history_target
         if self.endogenous_vars:
             endogenous_indices = [
                 self.cont_names.index(var) for var in self.endogenous_vars
             ]
             endogenous_cont = history_cont[..., endogenous_indices]
-        else:
-            endogenous_cont = history_target
 
+        exogenous_cont = history_cont
         if self.exogenous_vars:
             exogenous_indices = [
                 self.cont_names.index(var) for var in self.exogenous_vars
             ]
             exogenous_cont = history_cont[..., exogenous_indices]
-        else:
-            exogenous_cont = history_cont
 
         en_embed, n_vars = self.en_embedding(endogenous_cont)
         ex_embed = self.ex_embedding(exogenous_cont, history_time_idx)
@@ -283,7 +299,7 @@ class TimeXer(TslibBaseModel):
         if prediction.size(2) != self.target_dim:
             prediction = prediction[:, :, : self.target_dim]
 
-        target_indices = range(len(self.target_dim))
+        target_indices = range(self.target_dim)
         if self.n_quantiles is not None:
             if self.target_dim > 1:
                 prediction = [prediction[..., i, :] for i in target_indices]

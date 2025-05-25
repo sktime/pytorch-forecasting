@@ -20,7 +20,7 @@ from pytorch_forecasting.metrics import Metric
 class BaseModel(LightningModule):
     def __init__(
         self,
-        loss: Metric,
+        loss: nn.Module,
         logging_metrics: Optional[List[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[Dict] = None,
@@ -310,7 +310,7 @@ class TslibBaseModel(BaseModel):
 
     Parameters
     ----------
-    loss : Metric
+    loss : nn.Module
         Loss function to use for training.
     logging_metrics : Optional[List[nn.Module]], optional
         List of metrics to log during training, validation, and testing.
@@ -328,7 +328,7 @@ class TslibBaseModel(BaseModel):
 
     def __init__(
         self,
-        loss: Metric,
+        loss: nn.Module,
         logging_metrics: Optional[List[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[Dict] = None,
@@ -366,8 +366,6 @@ class TslibBaseModel(BaseModel):
         self.target_dim = feature_dims.get("target", 1)
 
         self.feature_names = metadata.get("feature_names", {})
-
-        self._init_network()
 
     def _init_network(self):
         """
