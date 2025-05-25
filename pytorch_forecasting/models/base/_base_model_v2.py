@@ -14,11 +14,23 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.metrics import (
+    MAE,
+    MASE,
+    SMAPE,
+    DistributionLoss,
+    Metric,
+    MultiHorizonMetric,
+    MultiLoss,
+    QuantileLoss,
+    convert_torchmetric_to_pytorch_forecasting_metric,
+)
+
 
 class BaseModel(LightningModule):
     def __init__(
         self,
-        loss: nn.Module,
+        loss: Metric = SMAPE(),
         logging_metrics: Optional[List[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[Dict] = None,
@@ -104,6 +116,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
+        y_hat, y = self._align_prediction_target_shapes(y_hat, y)
         loss = self.loss(y_hat, y)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
@@ -132,6 +145,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
+        y_hat, y = self._align_prediction_target_shapes(y_hat, y)
         loss = self.loss(y_hat, y)
         self.log(
             "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
@@ -160,6 +174,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
+        y_hat, y = self._align_prediction_target_shapes(y_hat, y)
         loss = self.loss(y_hat, y)
         self.log(
             "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
@@ -294,3 +309,30 @@ class BaseModel(LightningModule):
                 prog_bar=True,
                 logger=True,
             )
+
+    def _align_prediction_target_shapes(
+        self, y_hat: torch.Tensor, y: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Align prediction and target tensor shapes for loss/metric calculation.
+
+        Returns
+        -------
+            Tuple of aligned prediction and target tensors
+        """
+        if y.dim() == 3 and y.shape[-1] == 1:
+            y = y.squeeze(-1)
+        if y_hat.dim() < y.dim():
+            y_hat = y_hat.unsqueeze(-1)
+        elif y_hat.dim() > y.dim():
+            if y_hat.shape[-1] == 1:
+                y_hat = y_hat.squeeze(-1)
+        if y_hat.shape != y.shape:
+            if y_hat.numel() == y.numel():
+                y_hat = y_hat.view(y.shape)
+            else:
+                raise ValueError(
+                    f"Cannot align shapes: y_hat {y_hat.shape} vs y {y.shape}"
+                )
+
+        return y_hat, y

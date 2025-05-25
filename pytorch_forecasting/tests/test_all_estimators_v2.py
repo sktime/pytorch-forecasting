@@ -7,7 +7,8 @@ import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 
-from pytorch_forecasting.tests._conftest import make_dataloaders
+from pytorch_forecasting.metrics import SMAPE
+from pytorch_forecasting.tests._conftest import make_dataloaders_v2 as make_dataloaders
 from pytorch_forecasting.tests.test_all_estimators import (
     BaseFixtureGenerator,
     PackageConfig,
@@ -22,17 +23,85 @@ def _integration(
     estimator_cls,
     data_with_covariates,
     tmp_path,
-    cell_type="LSTM",
     data_loader_kwargs={},
     clip_target: bool = False,
     trainer_kwargs=None,
     **kwargs,
 ):
-    pass
+    data_with_covariates = data_with_covariates.copy()
+    if clip_target:
+        data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
+    else:
+        data_with_covariates["target"] = data_with_covariates["volume"]
+
+    data_loader_default_kwargs = dict(
+        target="target",
+        group_ids=["agency_encoded", "sku_encoded"],
+        add_relative_time_idx=True,
+    )
+    data_loader_default_kwargs.update(data_loader_kwargs)
+
+    dataloaders_with_covariates = make_dataloaders(
+        data_with_covariates, **data_loader_default_kwargs
+    )
+
+    train_dataloader = dataloaders_with_covariates["train"]
+    val_dataloader = dataloaders_with_covariates["val"]
+    test_dataloader = dataloaders_with_covariates["test"]
+
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
+    )
+
+    logger = TensorBoardLogger(tmp_path)
+    if trainer_kwargs is None:
+        trainer_kwargs = {}
+    trainer = pl.Trainer(
+        max_epochs=3,
+        gradient_clip_val=0.1,
+        callbacks=[early_stop_callback],
+        enable_checkpointing=True,
+        default_root_dir=tmp_path,
+        limit_train_batches=2,
+        limit_val_batches=2,
+        limit_test_batches=2,
+        logger=logger,
+        **trainer_kwargs,
+    )
+    training_data_module = dataloaders_with_covariates["data_module"]
+    metadata = training_data_module.metadata
+
+    net = estimator_cls(
+        metadata=metadata,
+        loss=SMAPE(),
+        **kwargs,
+    )
+
+    try:
+        trainer.fit(
+            net,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader,
+        )
+        test_outputs = trainer.test(net, dataloaders=test_dataloader)
+        assert len(test_outputs) > 0
+
+        # check loading
+        # net = estimator_cls.load_from_checkpoint(
+        #     trainer.checkpoint_callback.best_model_path
+        # )
+        # net.predict(val_dataloader)
+
+    finally:
+        shutil.rmtree(tmp_path, ignore_errors=True)
+
+    # net.predict(val_dataloader)
 
 
 class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
     """Generic tests for all objects in the mini package."""
+
+    object_type_filter = "ptf-v2"
 
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""
@@ -46,4 +115,8 @@ class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
-        pass
+        from pytorch_forecasting.tests._data_scenarios import data_with_covariates_v2
+
+        data_with_covariates = data_with_covariates_v2()
+        object_class = object_metadata.get_model_cls()
+        _integration(object_class, data_with_covariates, tmp_path, **trainer_kwargs)
