@@ -163,8 +163,6 @@ class _TslibDataset(Dataset):
             x["target_scale"] = processed_data["target_scale"]
 
         y = processed_data["target"][future_indices]
-        if y.ndim == 1:
-            y = y.unsqueeze(0)
 
         return x, y
 
@@ -440,13 +438,13 @@ class TslibDataModule(LightningDataModule):
 
         mask_timestep = torch.tensor(timestep <= cutoff_time, dtype=torch.bool)
 
-        if isinstance(torch, torch.Tensor):
-            target = target.float()
+        if isinstance(target, torch.Tensor):
+            target = target.detach().clone().float()
         else:
             target = torch.tensor(target, dtype=torch.float32)
 
         if isinstance(features, torch.Tensor):
-            features = features.float()
+            features = features.detach().clone().float()
         else:
             features = torch.tensor(features, dtype=torch.float32)
 
