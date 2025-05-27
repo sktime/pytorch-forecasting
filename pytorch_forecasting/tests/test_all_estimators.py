@@ -171,7 +171,6 @@ def _integration(
     estimator_cls,
     data_with_covariates,
     tmp_path,
-    cell_type="LSTM",
     data_loader_kwargs={},
     clip_target: bool = False,
     trainer_kwargs=None,
@@ -221,11 +220,9 @@ def _integration(
     net = estimator_cls.from_dataset(
         train_dataloader.dataset,
         hidden_size=5,
-        cell_type=cell_type,
         learning_rate=0.01,
         log_gradient_flow=True,
         log_interval=1000,
-        n_plotting_samples=100,
         **kwargs,
     )
     net.size()
