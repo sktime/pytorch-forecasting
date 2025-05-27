@@ -7,7 +7,6 @@ import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
-from skbase.utils.doctest_run import run_doctest
 
 from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
@@ -265,6 +264,8 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
 
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""
+        from skbase.utils.doctest_run import run_doctest
+
         run_doctest(object_class, name=f"class {object_class.__name__}")
 
     def test_integration(
