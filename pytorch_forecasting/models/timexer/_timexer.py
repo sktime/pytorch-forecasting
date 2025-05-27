@@ -23,7 +23,7 @@ from torch.optim import Optimizer
 
 from pytorch_forecasting.metrics import MAE, MAPE, MultiHorizonMetric, QuantileLoss
 from pytorch_forecasting.metrics.base_metrics import MultiLoss
-from pytorch_forecasting.models.base._base_model_v2 import TslibBaseModel
+from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
 class TimeXer(TslibBaseModel):
