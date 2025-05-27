@@ -38,16 +38,26 @@ class TiDEModelMetadata(_BasePtForecaster):
         from pytorch_forecasting.metrics import SMAPE
 
         return [
-            {},
-            {"temporal_decoder_hidden": 16},
+            {
+                "data_loader_kwargs": dict(
+                    add_relative_time_idx=False,
+                    # must include this everytime since the data_loader_default_kwargs
+                    # include this to be True.
+                )
+            },
+            {
+                "temporal_decoder_hidden": 16,
+                "data_loader_kwargs": dict(add_relative_time_idx=False),
+            },
             {
                 "dropout": 0.2,
                 "use_layer_norm": True,
                 "loss": SMAPE(),
                 "data_loader_kwargs": dict(
                     target_normalizer=GroupNormalizer(
-                        groups=["group"], transformation="softplus"
-                    )
+                        groups=["agency", "sku"], transformation="softplus"
+                    ),
+                    add_relative_time_idx=False,
                 ),
             },
         ]
