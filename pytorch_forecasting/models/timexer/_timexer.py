@@ -81,17 +81,16 @@ class TimeXer(TslibBaseModel):
         Initialize the network for TimeXer's architecture.
         """
 
-        from pytorch_forecasting.layers.attention import (
+        from pytorch_forecasting.layers.attention.attention_layer import (
             AttentionLayer,
             FullAttention,
         )
         from pytorch_forecasting.layers.embeddings import (
             DataEmbedding_inverted,
             EnEmbedding,
-            PositionalEmbedding,
         )
         from pytorch_forecasting.layers.encoders import Encoder, EncoderLayer
-        from pytorch_forecasting.layers.output_layers import FlattenHead
+        from pytorch_forecasting.layers.output.flatten_head import FlattenHead
 
         self.patch_num = max(1, int(self.context_length // self.patch_length))
 

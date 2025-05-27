@@ -1,5 +1,5 @@
 """
-Implementation of output layers from `nn.Module`.
+Implementation of output layers from `nn.Module` for TimeXer model.
 """
 
 import math
