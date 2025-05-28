@@ -51,7 +51,7 @@ class GroupedSampler(Sampler):
             )
         if not isinstance(drop_last, bool):
             raise ValueError(
-                "drop_last should be a boolean value, but got " "drop_last={}".format(
+                "drop_last should be a boolean value, but got drop_last={}".format(
                     drop_last
                 )
             )
