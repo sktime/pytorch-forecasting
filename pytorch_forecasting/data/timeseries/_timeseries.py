@@ -482,6 +482,7 @@ class TimeSeriesDataSet(Dataset):
 
         self.precompute_cache = []
         self.precompute_idx = 0
+        self.precompute = False
         
         # write variables to self and handle defaults
         # -------------------------------------------
@@ -2084,290 +2085,7 @@ class TimeSeriesDataSet(Dataset):
             ).clip(max=self.max_prediction_length)
         return decoder_length
 
-
-    def __precompute__getitem__ (self, idx):
-
-        index = self.index.iloc[idx]
-
-        # slice data based on index
-        idx_slice = slice(index.index_start, index.index_end + 1)
-
-        data_cont = self.data["reals"][idx_slice].clone()
-        data_cat = self.data["categoricals"][idx_slice].clone()
-        time = self.data["time"][idx_slice].clone()
-        target = [d[idx_slice].clone() for d in self.data["target"]]
-        groups = self.data["groups"][index.index_start].clone()
-        if self.data["weight"] is None:
-            weight = None
-        else:
-            weight = self.data["weight"][idx_slice].clone()
-        # get target scale in the form of a list
-        target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
-        if not isinstance(self.target_normalizer, MultiNormalizer):
-            target_scale = [target_scale]
-
-        # fill in missing values (if not all time indices are specified)
-        sequence_length = len(time)
-        if sequence_length < index.sequence_length:
-            assert (
-                self.allow_missing_timesteps
-            ), "allow_missing_timesteps should be True if sequences have gaps"
-            repetitions = torch.cat(
-                [time[1:] - time[:-1], torch.ones(1, dtype=time.dtype)]
-            )
-            indices = torch.repeat_interleave(torch.arange(len(time)), repetitions)
-            repetition_indices = torch.cat(
-                [torch.tensor([False], dtype=torch.bool), indices[1:] == indices[:-1]]
-            )
-
-            # select data
-            data_cat = data_cat[indices]
-            data_cont = data_cont[indices]
-            target = [d[indices] for d in target]
-            if weight is not None:
-                weight = weight[indices]
-
-            # reset index
-            if self.time_idx in self.reals:
-                time_idx = self.reals.index(self.time_idx)
-                data_cont[:, time_idx] = torch.linspace(
-                    data_cont[0, time_idx],
-                    data_cont[-1, time_idx],
-                    len(target[0]),
-                    dtype=data_cont.dtype,
-                )
-
-            # make replacements to fill in categories
-            for name, value in self.encoded_constant_fill_strategy.items():
-                if name in self.reals:
-                    data_cont[repetition_indices, self.reals.index(name)] = value
-                elif name in [
-                    f"__target__{target_name}" for target_name in self.target_names
-                ]:
-                    target_pos = self.target_names.index(name[len("__target__") :])
-                    target[target_pos][repetition_indices] = value
-                elif name in self.flat_categoricals:
-                    data_cat[repetition_indices, self.flat_categoricals.index(name)] = (
-                        value
-                    )
-                elif name in self.target_names:  # target is just not an input value
-                    pass
-                else:
-                    raise KeyError(
-                        f"Variable {name} is not known and thus cannot be filled in"
-                    )
-
-            sequence_length = len(target[0])
-
-        # determine data window
-        assert (
-            sequence_length >= self.min_prediction_length
-        ), "Sequence length should be at least minimum prediction length"
-        # determine prediction/decode length and encode length
-        decoder_length = self.calculate_decoder_length(time[-1], sequence_length)
-        encoder_length = sequence_length - decoder_length
-        assert (
-            decoder_length >= self.min_prediction_length
-        ), "Decoder length should be at least minimum prediction length"
-        assert (
-            encoder_length >= self.min_encoder_length
-        ), "Encoder length should be at least minimum encoder length"
-
-        if self.randomize_length is not None:  # randomization improves generalization
-            # modify encode and decode lengths
-            modifiable_encoder_length = encoder_length - self.min_encoder_length
-            encoder_length_probability = Beta(
-                self.randomize_length[0], self.randomize_length[1]
-            ).sample()
-
-            # subsample a new/smaller encode length
-            new_encoder_length = self.min_encoder_length + int(
-                (modifiable_encoder_length * encoder_length_probability).round()
-            )
-
-            # extend decode length if possible
-            new_decoder_length = min(
-                decoder_length + (encoder_length - new_encoder_length),
-                self.max_prediction_length,
-            )
-
-            # select subset of sequence of new sequence
-            if new_encoder_length + new_decoder_length < len(target[0]):
-                data_cat = data_cat[
-                    encoder_length
-                    - new_encoder_length : encoder_length
-                    + new_decoder_length
-                ]
-                data_cont = data_cont[
-                    encoder_length
-                    - new_encoder_length : encoder_length
-                    + new_decoder_length
-                ]
-                target = [
-                    t[
-                        encoder_length
-                        - new_encoder_length : encoder_length
-                        + new_decoder_length
-                    ]
-                    for t in target
-                ]
-                if weight is not None:
-                    weight = weight[
-                        encoder_length
-                        - new_encoder_length : encoder_length
-                        + new_decoder_length
-                    ]
-                encoder_length = new_encoder_length
-                decoder_length = new_decoder_length
-
-            # switch some variables to nan if encode length is 0
-            if encoder_length == 0 and len(self.dropout_categoricals) > 0:
-                data_cat[
-                    :,
-                    [
-                        self.flat_categoricals.index(c)
-                        for c in self.dropout_categoricals
-                    ],
-                ] = 0  # zero is encoded nan
-
-        assert decoder_length > 0, "Decoder length should be greater than 0"
-        assert encoder_length >= 0, "Encoder length should be at least 0"
-
-        if self.add_relative_time_idx:
-            data_cont[:, self.reals.index("relative_time_idx")] = (
-                torch.arange(-encoder_length, decoder_length, dtype=data_cont.dtype)
-                / self.max_encoder_length
-            )
-
-        if self.add_encoder_length:
-            data_cont[:, self.reals.index("encoder_length")] = (
-                (encoder_length - 0.5 * self.max_encoder_length)
-                / self.max_encoder_length
-                * 2.0
-            )
-
-        # rescale target
-        for idx, target_normalizer in enumerate(self.target_normalizers):
-            if isinstance(target_normalizer, EncoderNormalizer):
-                target_name = self.target_names[idx]
-                # fit and transform
-                target_normalizer.fit(target[idx][:encoder_length])
-                # get new scale
-                single_target_scale = target_normalizer.get_parameters()
-                # modify input data
-                if target_name in self.reals:
-                    data_cont[:, self.reals.index(target_name)] = (
-                        target_normalizer.transform(target[idx])
-                    )
-                if self.add_target_scales:
-                    data_cont[:, self.reals.index(f"{target_name}_center")] = (
-                        self.transform_values(
-                            f"{target_name}_center", single_target_scale[0]
-                        )[0]
-                    )
-                    data_cont[:, self.reals.index(f"{target_name}_scale")] = (
-                        self.transform_values(
-                            f"{target_name}_scale", single_target_scale[1]
-                        )[0]
-                    )
-                # scale needs to be numpy to be consistent with GroupNormalizer
-                target_scale[idx] = single_target_scale.numpy()
-
-        # rescale covariates
-        for name in self.reals:
-            if name not in self.target_names and name not in self.lagged_variables:
-                normalizer = self.get_transformer(name)
-                if isinstance(normalizer, EncoderNormalizer):
-                    # fit and transform
-                    pos = self.reals.index(name)
-                    normalizer.fit(data_cont[:encoder_length, pos])
-                    # transform
-                    data_cont[:, pos] = normalizer.transform(data_cont[:, pos])
-
-        # also normalize lagged variables
-        for name in self.reals:
-            if name in self.lagged_variables:
-                normalizer = self.get_transformer(name)
-                if isinstance(normalizer, EncoderNormalizer):
-                    pos = self.reals.index(name)
-                    data_cont[:, pos] = normalizer.transform(data_cont[:, pos])
-
-        # overwrite values
-        if self._overwrite_values is not None:
-            if isinstance(self._overwrite_values["target"], slice):
-                positions = self._overwrite_values["target"]
-            elif self._overwrite_values["target"] == "all":
-                positions = slice(None)
-            elif self._overwrite_values["target"] == "encoder":
-                positions = slice(None, encoder_length)
-            else:  # decoder
-                positions = slice(encoder_length, None)
-
-            if self._overwrite_values["variable"] in self.reals:
-                idx = self.reals.index(self._overwrite_values["variable"])
-                data_cont[positions, idx] = self._overwrite_values["values"]
-            else:
-                msg = (
-                    "overwrite values variable has to be "
-                    "either in real or categorical variables"
-                )
-                assert self._overwrite_values["variable"] in self.flat_categoricals, msg
-                idx = self.flat_categoricals.index(self._overwrite_values["variable"])
-                data_cat[positions, idx] = self._overwrite_values["values"]
-
-        # weight is only required for decoder
-        if weight is not None:
-            weight = weight[encoder_length:]
-
-        # if user defined target as list, output should be list, otherwise tensor
-        if self.multi_target:
-            encoder_target = [t[:encoder_length] for t in target]
-            target = [t[encoder_length:] for t in target]
-        else:
-            encoder_target = target[0][:encoder_length]
-            target = target[0][encoder_length:]
-            target_scale = target_scale[0]
-
-        return (
-            dict(
-                x_cat=data_cat,
-                x_cont=data_cont,
-                encoder_length=encoder_length,
-                decoder_length=decoder_length,
-                encoder_target=encoder_target,
-                encoder_time_idx_start=time[0],
-                groups=groups,
-                target_scale=target_scale,
-            ),
-            (target, weight),
-        )
-
-    def precompute (self, batch_size, shuffle, drop_last):
-
-        sampler = TimeSynchronizedBatchSampler(
-            SequentialSampler(self),
-            batch_size=batch_size,
-            shuffle=shuffle,
-            drop_last=drop_last,
-        )
-
-        for batch in sampler:
-            for idx in batch:
-                batch_result = self.__precompute__getitem__ (idx)
-                self.precompute_cache.append(batch_result)
-
-    def __getitem__ (self, idx: int) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
-
-        if self.precompute_idx >= len(self.precompute_cache):
-            self.precompute_idx = 0  
-            
-        item = self.precompute_cache[self.precompute_idx]
-        self.precompute_idx += 1
-        
-        return item
-
-    
-    def __getitem__bak (self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+    def __item_tensor__ (self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
         Get sample for model
 
@@ -2632,6 +2350,43 @@ class TimeSeriesDataSet(Dataset):
             (target, weight),
         )
 
+    def __precompute__ (self, batch_size, shuffle, drop_last):
+
+        sampler = TimeSynchronizedBatchSampler (
+            SequentialSampler (self),
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=drop_last,
+        )
+
+        for batch in sampler:
+            for idx in batch:
+                batch_result = self.__item_tensor__ (idx)
+                self.precompute_cache.append (batch_result)
+
+    def __getitem__ (self, idx: int) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+
+        """
+        Get sample for model
+
+        Args:
+            idx (int): index of prediction (between ``0`` and ``len(dataset) - 1``)
+
+        Returns:
+            Tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
+        """
+
+        if self.precompute == True:
+            if self.precompute_idx >= len (self.precompute_cache):
+                self.precompute_idx = 0  
+                
+            item = self.precompute_cache[self.precompute_idx]
+            self.precompute_idx += 1
+            
+            return item
+
+        return self.__item_tensor__ (idx)
+
     @staticmethod
     def _collate_fn(
         batches: list[tuple[dict[str, torch.Tensor], torch.Tensor]],
@@ -2809,6 +2564,7 @@ class TimeSeriesDataSet(Dataset):
         train: bool = True,
         batch_size: int = 64,
         batch_sampler: Union[Sampler, str] = None,
+        precompute: bool = False,
         **kwargs,
     ) -> DataLoader:
         """Construct dataloader from dataset, for use in models.
@@ -2904,7 +2660,10 @@ class TimeSeriesDataSet(Dataset):
         default_kwargs.update(kwargs)
         kwargs = default_kwargs
 
-        self.precompute (batch_size=kwargs["batch_size"], shuffle=kwargs["shuffle"], drop_last=kwargs["drop_last"])
+        self.precompute = precompute
+
+        if precompute == True:
+            self.__precompute__ (batch_size=kwargs["batch_size"], shuffle=kwargs["shuffle"], drop_last=kwargs["drop_last"])
         
         if kwargs["batch_sampler"] is not None:
             sampler = kwargs["batch_sampler"]
