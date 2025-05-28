@@ -483,7 +483,7 @@ class TimeSeriesDataSet(Dataset):
         self.precompute_cache = []
         self.precompute_idx = 0
         self.precompute = False
-        
+
         # write variables to self and handle defaults
         # -------------------------------------------
         self.max_encoder_length = max_encoder_length
@@ -2351,7 +2351,17 @@ class TimeSeriesDataSet(Dataset):
         )
 
     def __precompute__(self, batch_size, shuffle, drop_last):
+        """
+        Precompute sample for model
 
+        Args:
+        batch_size : int, optional, default=64
+            batch size for training model. Defaults to 64.
+        shuffle : bool
+            indicate whether to shuffle the data
+        drop_last : bool
+            indicate whether to drop last        
+        """
         sampler = TimeSynchronizedBatchSampler(
             SequentialSampler(self),
             batch_size=batch_size,
@@ -2365,7 +2375,6 @@ class TimeSeriesDataSet(Dataset):
                 self.precompute_cache.append(batch_result)
 
     def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
-
         """
         Get sample for model
 
@@ -2375,7 +2384,6 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
-
         if self.precompute:
             if self.precompute_idx >= len(self.precompute_cache):
                 self.precompute_idx = 0
