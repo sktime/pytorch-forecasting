@@ -41,7 +41,7 @@ class TimeXerMetadata(_BasePtForecaster):
         return [
             {},
             {
-                "d_model": 32,
+                "hidden_size": 32,
                 "n_heads": 4,
                 "e_layers": 2,
                 "d_ff": 64,
@@ -50,7 +50,7 @@ class TimeXerMetadata(_BasePtForecaster):
                 "activation": "gelu",
             },
             {
-                "d_model": 16,
+                "hidden_size": 16,
                 "n_heads": 2,
                 "e_layers": 1,
                 "d_ff": 32,
@@ -59,7 +59,7 @@ class TimeXerMetadata(_BasePtForecaster):
                 "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
             },
             {
-                "d_model": 24,
+                "hidden_size": 24,
                 "n_heads": 3,
                 "e_layers": 1,
                 "d_ff": 48,
@@ -73,7 +73,7 @@ class TimeXerMetadata(_BasePtForecaster):
                 ),
             },
             {
-                "d_model": 16,
+                "hidden_size": 16,
                 "n_heads": 2,
                 "e_layers": 1,
                 "d_ff": 32,

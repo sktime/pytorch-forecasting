@@ -157,7 +157,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
 
     net = TimeXer.from_dataset(
         train_dataloader.dataset,
-        d_model=16,
+        hidden_size=16,
         n_heads=2,
         e_layers=1,
         d_ff=32,
@@ -226,7 +226,7 @@ def model(dataloaders_with_covariates):
     net = TimeXer.from_dataset(
         dataset,
         learning_rate=0.01,
-        d_model=16,
+        hidden_size=16,
         n_heads=2,
         e_layers=1,
         d_ff=32,
@@ -245,7 +245,7 @@ def test_model_init(dataloaders_with_covariates):
 
     model2 = TimeXer.from_dataset(
         dataset,
-        d_model=32,
+        hidden_size=32,
         n_heads=4,
         e_layers=2,
         d_ff=64,
@@ -254,7 +254,7 @@ def test_model_init(dataloaders_with_covariates):
     )
     # Testing correctness of core params
     assert isinstance(model2, TimeXer)
-    assert model2.hparams.d_model == 32
+    assert model2.hparams.hidden_size == 32
     assert model2.hparams.n_heads == 4
     assert model2.hparams.e_layers == 2
     assert model2.hparams.d_ff == 64
@@ -291,11 +291,11 @@ def check_embedding_shapes(model):
     """Test that embedding components are initialized correctly."""
     # Check en_embedding
     assert hasattr(model, "en_embedding")
-    assert model.en_embedding.d_model == model.hparams.d_model
+    assert model.en_embedding.hidden_size == model.hparams.hidden_size
     assert model.en_embedding.patch_len == model.hparams.patch_length
 
     assert hasattr(model, "ex_embedding")
-    assert model.ex_embedding.d_model == model.hparams.d_model
+    assert model.ex_embedding.hidden_size == model.hparams.hidden_size
     assert model.ex_embedding.embed_type == model.hparams.embed_type
 
     assert hasattr(model, "encoder")
@@ -337,7 +337,7 @@ def test_no_exogenous_variables():
 
     forecaster = TimeXer.from_dataset(
         training_dataset,
-        d_model=16,
+        hidden_size=16,
         n_heads=2,
         e_layers=1,
         patch_length=2,
@@ -408,7 +408,7 @@ def test_with_exogenous_variables(tmp_path):
 
     model = TimeXer.from_dataset(
         training,
-        d_model=16,
+        hidden_size=16,
         n_heads=2,
         e_layers=1,
         patch_length=5,

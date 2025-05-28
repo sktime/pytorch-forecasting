@@ -44,7 +44,7 @@ class TimeXer(BaseModelWithCovariates):
         task_name: str = "long_term_forecast",
         features: str = "MS",
         enc_in: int = None,
-        d_model: int = 512,
+        hidden_size: int = 512,
         n_heads: int = 8,
         e_layers: int = 2,
         d_ff: int = 2048,
@@ -97,7 +97,7 @@ class TimeXer(BaseModelWithCovariates):
                 multivariate forecating with single target, 'M' for multivariate
                 forecasting with multiple targets and 'S' for univariate forecasting).
             enc_in (int, optional): Number of input variables for encoder.
-            d_model (int, optional): Dimension of model embeddings and hidden
+            hidden_size (int, optional): Dimension of model embeddings and hidden
                 representations.
             n_heads (int, optional): Number of attention heads in multi-head attention
                 layers.
@@ -197,14 +197,14 @@ class TimeXer(BaseModelWithCovariates):
 
         self.en_embedding = EnEmbedding(
             self.n_target_vars,
-            self.hparams.d_model,
+            self.hparams.hidden_size,
             self.hparams.patch_length,
             self.hparams.dropout,
         )
 
         self.ex_embedding = DataEmbedding_inverted(
             self.hparams.context_length,
-            self.hparams.d_model,
+            self.hparams.hidden_size,
             self.hparams.embed_type,
             self.hparams.freq,
             self.hparams.dropout,
@@ -220,7 +220,7 @@ class TimeXer(BaseModelWithCovariates):
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
                         ),
-                        self.hparams.d_model,
+                        self.hparams.hidden_size,
                         self.hparams.n_heads,
                     ),
                     AttentionLayer(
@@ -230,19 +230,19 @@ class TimeXer(BaseModelWithCovariates):
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
                         ),
-                        self.hparams.d_model,
+                        self.hparams.hidden_size,
                         self.hparams.n_heads,
                     ),
-                    self.hparams.d_model,
+                    self.hparams.hidden_size,
                     self.hparams.d_ff,
                     dropout=self.hparams.dropout,
                     activation=self.hparams.activation,
                 )
                 for l in range(self.hparams.e_layers)
             ],
-            norm_layer=torch.nn.LayerNorm(self.hparams.d_model),
+            norm_layer=torch.nn.LayerNorm(self.hparams.hidden_size),
         )
-        self.head_nf = self.hparams.d_model * (self.patch_num + 1)
+        self.head_nf = self.hparams.hidden_size * (self.patch_num + 1)
         self.head = FlattenHead(
             self.enc_in,
             self.head_nf,
@@ -346,12 +346,12 @@ class TimeXer(BaseModelWithCovariates):
         exog_data = encoder_cont[..., mask]
         ex_embed = self.ex_embedding(exog_data, encoder_time_idx)
 
-        # batch_size x sequence_length x d_model
+        # batch_size x sequence_length x hidden_size
         enc_out = self.encoder(en_embed, ex_embed)
 
         enc_out = torch.reshape(
             enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1])
-        )  # batch_size x n_vars x sequence_length x d_model
+        )  # batch_size x n_vars x sequence_length x hidden_size
 
         enc_out = enc_out.permute(0, 1, 3, 2)
 
