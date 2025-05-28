@@ -10,7 +10,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pytorch_forecasting.layers.embeddings import PositionalEmbedding
+from pytorch_forecasting.layers.embeddings.positional_embedding import (
+    PositionalEmbedding,
+)
 
 
 class EnEmbedding(nn.Module):
