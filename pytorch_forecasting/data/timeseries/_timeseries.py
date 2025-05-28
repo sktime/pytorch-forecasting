@@ -2378,7 +2378,7 @@ class TimeSeriesDataSet(Dataset):
 
         if self.precompute:
             if self.precompute_idx >= len(self.precompute_cache):
-                self.precompute_idx = 0  
+                self.precompute_idx = 0
 
             item = self.precompute_cache[self.precompute_idx]
             self.precompute_idx += 1
@@ -2664,9 +2664,9 @@ class TimeSeriesDataSet(Dataset):
 
         if precompute:
             self.__precompute__(
-                batch_size=kwargs["batch_size"], 
-                shuffle=kwargs["shuffle"], 
-                drop_last=kwargs["drop_last"]
+                batch_size=kwargs["batch_size"],
+                shuffle=kwargs["shuffle"],
+                drop_last=kwargs["drop_last"],
             )
 
         if kwargs["batch_sampler"] is not None:
