@@ -171,7 +171,6 @@ def _integration(
     estimator_cls,
     data_with_covariates,
     tmp_path,
-    cell_type="LSTM",
     data_loader_kwargs={},
     clip_target: bool = False,
     trainer_kwargs=None,
@@ -221,11 +220,9 @@ def _integration(
     net = estimator_cls.from_dataset(
         train_dataloader.dataset,
         hidden_size=5,
-        cell_type=cell_type,
         learning_rate=0.01,
         log_gradient_flow=True,
         log_interval=1000,
-        n_plotting_samples=100,
         **kwargs,
     )
     net.size()
@@ -265,26 +262,11 @@ def _integration(
 class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
-    def _all_objects(self):
-        """Retrieve list of all object classes, excluding ptf-v2 objects."""
-        obj_list = super()._all_objects()
-
-        filtered_obj_list = []
-        for obj in obj_list:
-            if hasattr(obj, "get_class_tag"):
-                object_type = obj.get_class_tag("object_type", None)
-                if object_type != "ptf-v2":
-                    filtered_obj_list.append(obj)
-            else:
-                filtered_obj_list.append(obj)
-
-        return filtered_obj_list
-
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""
-        import doctest
+        from skbase.utils.doctest_run import run_doctest
 
-        doctest.run_docstring_examples(object_class, globals())
+        run_doctest(object_class, name=f"class {object_class.__name__}")
 
     def test_integration(
         self,

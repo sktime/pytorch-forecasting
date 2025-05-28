@@ -200,3 +200,13 @@ black = 1
 
 [tool.nbqa.exclude]
 ruff = "docs/source/tutorials/" # ToDo: Remove this when fixing notebooks
+
+[tool.coverage.report]
+ignore_errors = false
+show_missing = true
+
+[tool.mypy]
+ignore_missing_imports = true
+no_implicit_optional = true
+check_untyped_defs = true
+cache_dir = ".cache/mypy/"
