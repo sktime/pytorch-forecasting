@@ -219,7 +219,6 @@ def _integration(
 
     net = estimator_cls.from_dataset(
         train_dataloader.dataset,
-        hidden_size=5,
         learning_rate=0.01,
         log_gradient_flow=True,
         log_interval=1000,

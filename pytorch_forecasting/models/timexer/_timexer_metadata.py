@@ -39,7 +39,15 @@ class TimeXerMetadata(_BasePtForecaster):
         from pytorch_forecasting.metrics import SMAPE, QuantileLoss
 
         return [
-            {},
+            {
+                # Basic test params
+                "hidden_size": 16,
+                "patch_length": 1,
+                "n_heads": 2,
+                "e_layers": 1,
+                "d_ff": 32,
+                "dropout": 0.1,
+            },
             {
                 "hidden_size": 32,
                 "n_heads": 4,
@@ -81,17 +89,14 @@ class TimeXerMetadata(_BasePtForecaster):
                 "dropout": 0.1,
                 "features": "M",
                 "data_loader_kwargs": dict(
-                    target=["volume", "volume2"],
-                    time_varying_unknown_reals=["volume", "volume2"],
+                    target=["volume", "price_regular"],
+                    time_varying_unknown_reals=["volume", "price_regular"],
                     target_normalizer=MultiNormalizer(
                         [
                             GroupNormalizer(groups=["agency", "sku"]),
                             GroupNormalizer(groups=["agency", "sku"]),
                         ]
                     ),
-                    data_provider_transform=lambda df: df.assign(
-                        volume2=df.volume * 0.5
-                    ),  # noqa: E501
                 ),
             },
         ]

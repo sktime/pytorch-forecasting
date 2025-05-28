@@ -15,6 +15,54 @@ from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
 from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiLoss, QuantileLoss
 from pytorch_forecasting.models import TimeXer
+from pytorch_forecasting.tests.test_all_estimators import _integration
+
+
+def _timexer_integration(dataloaders, tmp_path, trainer_kwargs=None, **kwargs):
+    """TimeXer specific wrapper around the common integration test.
+
+    Args:
+        dataloaders: The dataloaders to use for training and validation.
+        tmp_path: The temporary path to save the model.
+        trainer_kwargs: Additional arguments for the trainer.
+        **kwargs: Additional arguments for the TimeXer model.
+    """
+
+    from pytorch_forecasting.tests._data_scenarios import data_with_covariates
+
+    df = data_with_covariates()
+
+    timexer_kwargs = {
+        "hidden_size": 16,
+        "patch_length": 1,
+        "n_heads": 2,
+        "e_layers": 1,
+        "d_ff": 32,
+        "dropout": 0.1,
+    }
+
+    timexer_kwargs.update(kwargs)
+
+    train_dataset = dataloaders["train"].dataset
+
+    data_loader_kwargs = {
+        "target": train_dataset.target,
+        "group_ids": train_dataset.group_ids,
+        "time_varying_known_reals": train_dataset.time_varying_known_reals,
+        "time_varying_unknown_reals": train_dataset.time_varying_unknown_reals,
+        "static_categoricals": train_dataset.static_categoricals,
+        "static_reals": train_dataset.static_reals,
+        "add_relative_time_idx": train_dataset.add_relative_time_idx,
+    }
+
+    return _integration(
+        TimeXer,
+        df,
+        tmp_path,
+        data_loader_kwargs,
+        trainer_kwargs=trainer_kwargs,
+        **timexer_kwargs,
+    )
 
 
 def test_integration(data_with_covariates, tmp_path):
@@ -35,7 +83,7 @@ def test_integration(data_with_covariates, tmp_path):
         target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
     )
 
-    _integration(
+    _timexer_integration(
         dataloaders_with_covariates,
         tmp_path,
         trainer_kwargs={"accelerator": "cpu"},
@@ -60,7 +108,7 @@ def test_quantile_loss(data_with_covariates, tmp_path):
         target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
     )
 
-    _integration(
+    _timexer_integration(
         dataloaders_with_covariates,
         tmp_path,
         loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
@@ -76,13 +124,12 @@ def test_multiple_targets(data_with_covariates, tmp_path):
         tmp_path: The temporary path to save the model.
     """
     data = data_with_covariates.copy()
-    data["volume2"] = data["volume"] * 0.5
 
     dataloaders = make_dataloaders(
         data,
-        target=["volume", "volume2"],
+        target=["volume", "industry_volume"],
         time_varying_known_reals=["price_actual"],
-        time_varying_unknown_reals=["volume", "volume2"],
+        time_varying_unknown_reals=["volume", "industry_volume"],
         static_categoricals=["agency"],
         add_relative_time_idx=True,
         target_normalizer=MultiNormalizer(
@@ -93,129 +140,12 @@ def test_multiple_targets(data_with_covariates, tmp_path):
         ),
     )
 
-    _integration(
+    _timexer_integration(
         dataloaders,
         tmp_path,
         features="M",
         trainer_kwargs=dict(accelerator="cpu"),
     )
-
-
-def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs):
-    """
-    Integration test for the TimeXer model.
-
-    Args:
-        dataloader: The dataloader to use for training and validation.
-        tmp_path: The temporary path to save the model.
-        loss: The loss function to use. If None, a default loss function is used.
-        trainer_kwargs: Additional arguments for the trainer.
-        **kwargs: Additional arguments for the TimeXer model.
-    """
-
-    train_dataloader = dataloader["train"]
-    val_dataloader = dataloader["val"]
-    test_dataloader = dataloader["test"]
-
-    early_stop_callback = EarlyStopping(
-        monitor="val_loss",
-        min_delta=1e-4,
-        patience=5,
-        verbose=False,
-        mode="min",
-    )
-
-    logger = TensorBoardLogger(tmp_path)
-
-    if trainer_kwargs is None:
-        trainer_kwargs = {}
-
-    trainer = pl.Trainer(
-        max_epochs=2,
-        gradient_clip_val=0.1,
-        callbacks=[early_stop_callback],
-        logger=logger,
-        enable_checkpointing=True,
-        limit_train_batches=2,
-        limit_val_batches=2,
-        limit_test_batches=2,
-        **trainer_kwargs,
-    )
-
-    kwargs.setdefault("learning_rate", 0.01)
-
-    # n_targets = len(train_dataloader.dataset.target_positions)
-
-    # resolve the loss function if the loss is not provided explicitly
-    if loss is not None:
-        pass  # do nothing'
-    elif isinstance(train_dataloader.dataset.target_normalizer, MultiNormalizer):
-        n_targets = len(train_dataloader.dataset.target_normalizer.normalizers)
-        loss = MultiLoss([MAE()] * n_targets)
-    else:
-        loss = MAE()
-
-    net = TimeXer.from_dataset(
-        train_dataloader.dataset,
-        hidden_size=16,
-        n_heads=2,
-        e_layers=1,
-        d_ff=32,
-        patch_length=1,
-        dropout=0.1,
-        loss=loss,
-        **kwargs,
-    )
-
-    try:
-        trainer.fit(
-            net,
-            train_dataloaders=train_dataloader,
-            val_dataloaders=val_dataloader,
-        )
-
-        test_outputs = trainer.test(net, dataloaders=test_dataloader)
-        assert len(test_outputs) > 0
-
-        # test the checkpointing feature
-        net = TimeXer.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path,
-        )
-
-        predictions = net.predict(
-            val_dataloader,
-            return_index=True,
-            return_x=True,
-            return_y=True,
-            fast_dev_run=True,
-            trainer_kwargs=trainer_kwargs,
-        )
-
-        if isinstance(predictions.output, torch.Tensor):
-            assert predictions.output.ndim == 2, (
-                f"shapes of the output should be [batch_size, n_targets], "
-                f"but got {predictions.output.shape}"
-            )
-        else:
-            assert all(p.ndim for p in predictions.output), (
-                f"shapes of the output should be [batch_size, n_targets], "
-                f"but got {predictions.output.shape}"
-            )
-
-        # raw prediction if debugging the model
-
-        net.predict(
-            val_dataloader,
-            return_index=True,
-            return_x=True,
-            fast_dev_run=True,
-            mode="raw",
-            trainer_kwargs=trainer_kwargs,
-        )
-
-    finally:
-        # remove the temporary directory created for the test
-        shutil.rmtree(tmp_path, ignore_errors=True)
 
 
 @pytest.fixture
