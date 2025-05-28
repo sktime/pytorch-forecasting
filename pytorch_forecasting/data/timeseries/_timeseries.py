@@ -2364,7 +2364,7 @@ class TimeSeriesDataSet(Dataset):
                 batch_result = self.__item_tensor__ (idx)
                 self.precompute_cache.append (batch_result)
 
-    def __getitem__ (self, idx: int) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+    def __getitem__ (self, idx: int) -> tuple[Dict[str, torch.Tensor], torch.Tensor]:
 
         """
         Get sample for model
@@ -2373,7 +2373,7 @@ class TimeSeriesDataSet(Dataset):
             idx (int): index of prediction (between ``0`` and ``len(dataset) - 1``)
 
         Returns:
-            Tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
+            tuple[Dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
 
         if self.precompute == True:
