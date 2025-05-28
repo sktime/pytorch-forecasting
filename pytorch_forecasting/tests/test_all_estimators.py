@@ -264,9 +264,9 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
 
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""
-        import doctest
+        from skbase.utils.doctest_run import run_doctest
 
-        doctest.run_docstring_examples(object_class, globals())
+        run_doctest(object_class, name=f"class {object_class.__name__}")
 
     def test_integration(
         self,

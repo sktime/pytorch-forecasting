@@ -47,7 +47,7 @@ class DeepARMetadata(_BasePtForecaster):
 
         return [
             {},
-            {"cell_type": "GRU"},
+            {"cell_type": "GRU", "n_plotting_samples": 100},
             dict(
                 loss=LogNormalDistributionLoss(),
                 clip_target=True,
@@ -56,6 +56,8 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], transformation="log"
                     )
                 ),
+                cell_type="LSTM",
+                n_plotting_samples=100,
             ),
             dict(
                 loss=NegativeBinomialDistributionLoss(),
@@ -65,6 +67,8 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], center=False
                     )
                 ),
+                cell_type="LSTM",
+                n_plotting_samples=100,
             ),
             dict(
                 loss=BetaDistributionLoss(),
@@ -74,6 +78,8 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], transformation="logit"
                     )
                 ),
+                cell_type="LSTM",
+                n_plotting_samples=100,
             ),
             dict(
                 data_loader_kwargs=dict(
@@ -81,20 +87,28 @@ class DeepARMetadata(_BasePtForecaster):
                     target="volume",
                     time_varying_unknown_reals=["volume"],
                     min_encoder_length=2,
-                )
+                ),
+                cell_type="LSTM",
+                n_plotting_samples=100,
             ),
             dict(
                 data_loader_kwargs=dict(
                     time_varying_unknown_reals=["volume", "discount"],
                     target=["volume", "discount"],
                     lags={"volume": [2], "discount": [2]},
-                )
+                ),
+                cell_type="LSTM",
+                n_plotting_samples=100,
             ),
             dict(
                 loss=ImplicitQuantileNetworkDistributionLoss(hidden_size=8),
+                cell_type="LSTM",
+                n_plotting_samples=100,
             ),
             dict(
                 loss=MultivariateNormalDistributionLoss(),
+                cell_type="LSTM",
+                n_plotting_samples=100,
                 trainer_kwargs=dict(accelerator="cpu"),
             ),
             dict(
@@ -104,6 +118,8 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], transformation="log1p"
                     )
                 ),
+                cell_type="LSTM",
+                n_plotting_samples=100,
                 trainer_kwargs=dict(accelerator="cpu"),
             ),
         ]
