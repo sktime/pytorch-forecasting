@@ -7,8 +7,14 @@ from pytorch_forecasting.models.base._base_model import (
     BaseModelWithCovariates,
     Prediction,
 )
+from pytorch_forecasting.models.base._base_object import (
+    _BaseObject,
+    _BasePtForecaster,
+)
 
 __all__ = [
+    "_BaseObject",
+    "_BasePtForecaster",
     "AutoRegressiveBaseModel",
     "AutoRegressiveBaseModelWithCovariates",
     "BaseModel",
