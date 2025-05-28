@@ -2085,10 +2085,7 @@ class TimeSeriesDataSet(Dataset):
             ).clip(max=self.max_prediction_length)
         return decoder_length
 
-    def __item_tensor__ (
-        self,
-        idx: int
-    ) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+    def __item_tensor__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
         Get sample for model
 
@@ -2353,10 +2350,10 @@ class TimeSeriesDataSet(Dataset):
             (target, weight),
         )
 
-    def __precompute__ (self, batch_size, shuffle, drop_last):
+    def __precompute__(self, batch_size, shuffle, drop_last):
 
-        sampler = TimeSynchronizedBatchSampler (
-            SequentialSampler (self),
+        sampler = TimeSynchronizedBatchSampler(
+            SequentialSampler(self),
             batch_size=batch_size,
             shuffle=shuffle,
             drop_last=drop_last,
@@ -2364,10 +2361,10 @@ class TimeSeriesDataSet(Dataset):
 
         for batch in sampler:
             for idx in batch:
-                batch_result = self.__item_tensor__ (idx)
-                self.precompute_cache.append (batch_result)
+                batch_result = self.__item_tensor__(idx)
+                self.precompute_cache.append(batch_result)
 
-    def __getitem__ (self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+    def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
 
         """
         Get sample for model
@@ -2380,7 +2377,7 @@ class TimeSeriesDataSet(Dataset):
         """
 
         if self.precompute:
-            if self.precompute_idx >= len (self.precompute_cache):
+            if self.precompute_idx >= len(self.precompute_cache):
                 self.precompute_idx = 0  
 
             item = self.precompute_cache[self.precompute_idx]
@@ -2388,7 +2385,7 @@ class TimeSeriesDataSet(Dataset):
 
             return item
 
-        return self.__item_tensor__ (idx)
+        return self.__item_tensor__(idx)
 
     @staticmethod
     def _collate_fn(
@@ -2666,7 +2663,7 @@ class TimeSeriesDataSet(Dataset):
         self.precompute = precompute
 
         if precompute:
-            self.__precompute__ (
+            self.__precompute__(
                 batch_size=kwargs["batch_size"], 
                 shuffle=kwargs["shuffle"], 
                 drop_last=kwargs["drop_last"]
