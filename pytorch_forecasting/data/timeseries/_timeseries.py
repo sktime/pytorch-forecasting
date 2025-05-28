@@ -2360,7 +2360,7 @@ class TimeSeriesDataSet(Dataset):
         shuffle : bool
             indicate whether to shuffle the data
         drop_last : bool
-            indicate whether to drop last        
+            indicate whether to drop last
         """
         sampler = TimeSynchronizedBatchSampler(
             SequentialSampler(self),
