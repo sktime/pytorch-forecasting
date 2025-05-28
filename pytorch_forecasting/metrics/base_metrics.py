@@ -1123,7 +1123,9 @@ class MultivariateDistributionLoss(DistributionLoss):
             torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
         """  # noqa: E501
         dist = self.map_x_to_distribution(y_pred)
-        samples = dist.sample((n_samples,)).permute(
+        samples = dist.sample(
+            (n_samples,)
+        ).permute(
             2, 1, 0
         )  # returned as (n_samples, n_timesteps, batch_size), so reshape to (batch_size, n_timesteps, n_samples) # noqa: E501
         return samples

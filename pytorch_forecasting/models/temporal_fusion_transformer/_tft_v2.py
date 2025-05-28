@@ -179,7 +179,6 @@ class TFT(BaseModel):
                 static_context = self.static_context_linear(static_input)
                 static_context = static_context.view(batch_size, self.hidden_size)
             else:
-
                 static_input = torch.cat([static_cont, static_cat], dim=2).to(
                     dtype=self.static_context_linear.weight.dtype
                 )

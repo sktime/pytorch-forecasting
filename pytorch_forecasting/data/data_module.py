@@ -108,7 +108,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
-
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
