@@ -712,13 +712,18 @@ class TorchNormalizer(
             center = center.view(*center.size(), *(1,) * (y.ndim - center.ndim))
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
+        if isinstance(y, torch.Tensor):
+            center = torch.from_numpy(center).to(dtype=y.dtype, device=y.device)
+            scale = torch.from_numpy(scale).to(dtype=y.dtype, device=y.device)
+            dtype_method = "type"
+        else:
+            dtype_method = "astype"
+
         # transform
-        dtype = y.dtype
         y = (y - center) / scale
-        try:
-            y = y.astype(dtype)
-        except AttributeError:  # torch.Tensor has `.type()` instead of `.astype()`
-            y = y.type(dtype)
+
+        # type coercion - pandas has "astype", torch has "type"
+        y = getattr(y, dtype_method)(y.dtype)
 
         # return with center and scale or without
         if return_norm:
