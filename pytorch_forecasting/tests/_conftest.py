@@ -93,73 +93,6 @@ def make_dataloaders(data_with_covariates, **kwargs):
     return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
 
 
-@pytest.fixture(
-    params=[
-        dict(),
-        dict(
-            static_categoricals=["agency", "sku"],
-            static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
-            time_varying_known_categoricals=["special_days", "month"],
-            variable_groups=dict(
-                special_days=[
-                    "easter_day",
-                    "good_friday",
-                    "new_year",
-                    "christmas",
-                    "labor_day",
-                    "independence_day",
-                    "revolution_day_memorial",
-                    "regional_games",
-                    "fifa_u_17_world_cup",
-                    "football_gold_cup",
-                    "beer_capital",
-                    "music_fest",
-                ]
-            ),
-            time_varying_known_reals=[
-                "time_idx",
-                "price_regular",
-                "price_actual",
-                "discount",
-                "discount_in_percent",
-            ],
-            time_varying_unknown_categoricals=[],
-            time_varying_unknown_reals=[
-                "volume",
-                "log_volume",
-                "industry_volume",
-                "soda_volume",
-                "avg_max_temp",
-            ],
-            constant_fill_strategy={"volume": 0},
-            categorical_encoders={"sku": NaNLabelEncoder(add_nan=True)},
-        ),
-        dict(static_categoricals=["agency", "sku"]),
-        dict(randomize_length=True, min_encoder_length=2),
-        dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
-        dict(target_normalizer=GroupNormalizer(transformation="log1p")),
-        dict(
-            target_normalizer=GroupNormalizer(
-                groups=["agency", "sku"], transformation="softplus", center=False
-            )
-        ),
-        dict(target="agency"),
-        # test multiple targets
-        dict(target=["industry_volume", "volume"]),
-        dict(target=["agency", "volume"]),
-        dict(
-            target=["agency", "volume"], min_encoder_length=1, min_prediction_length=1
-        ),
-        dict(target=["agency", "volume"], weight="volume"),
-        # test weights
-        dict(target="volume", weight="volume"),
-    ],
-    scope="session",
-)
-def multiple_dataloaders_with_covariates(data_with_covariates, request):
-    return make_dataloaders(data_with_covariates, **request.param)
-
-
 @pytest.fixture(scope="session")
 def data_with_covariates_v2():
     """Create synthetic time series data with all numerical features."""
@@ -385,6 +318,73 @@ def make_dataloaders_v2(data_with_covariates, **kwargs):
         "test": test_dataloader,
         "data_module": train_datamodule,
     }
+
+
+@pytest.fixture(
+    params=[
+        dict(),
+        dict(
+            static_categoricals=["agency", "sku"],
+            static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
+            time_varying_known_categoricals=["special_days", "month"],
+            variable_groups=dict(
+                special_days=[
+                    "easter_day",
+                    "good_friday",
+                    "new_year",
+                    "christmas",
+                    "labor_day",
+                    "independence_day",
+                    "revolution_day_memorial",
+                    "regional_games",
+                    "fifa_u_17_world_cup",
+                    "football_gold_cup",
+                    "beer_capital",
+                    "music_fest",
+                ]
+            ),
+            time_varying_known_reals=[
+                "time_idx",
+                "price_regular",
+                "price_actual",
+                "discount",
+                "discount_in_percent",
+            ],
+            time_varying_unknown_categoricals=[],
+            time_varying_unknown_reals=[
+                "volume",
+                "log_volume",
+                "industry_volume",
+                "soda_volume",
+                "avg_max_temp",
+            ],
+            constant_fill_strategy={"volume": 0},
+            categorical_encoders={"sku": NaNLabelEncoder(add_nan=True)},
+        ),
+        dict(static_categoricals=["agency", "sku"]),
+        dict(randomize_length=True, min_encoder_length=2),
+        dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
+        dict(target_normalizer=GroupNormalizer(transformation="log1p")),
+        dict(
+            target_normalizer=GroupNormalizer(
+                groups=["agency", "sku"], transformation="softplus", center=False
+            )
+        ),
+        dict(target="agency"),
+        # test multiple targets
+        dict(target=["industry_volume", "volume"]),
+        dict(target=["agency", "volume"]),
+        dict(
+            target=["agency", "volume"], min_encoder_length=1, min_prediction_length=1
+        ),
+        dict(target=["agency", "volume"], weight="volume"),
+        # test weights
+        dict(target="volume", weight="volume"),
+    ],
+    scope="session",
+)
+def multiple_dataloaders_with_covariates(data_with_covariates, request):
+    return make_dataloaders(data_with_covariates, **request.param)
 
 
 @pytest.fixture(scope="session")

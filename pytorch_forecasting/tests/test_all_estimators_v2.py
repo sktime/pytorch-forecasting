@@ -6,8 +6,8 @@ import shutil
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
+import torch.nn as nn
 
-from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.tests._conftest import make_dataloaders_v2 as make_dataloaders
 from pytorch_forecasting.tests.test_all_estimators import (
     BaseFixtureGenerator,
@@ -73,7 +73,7 @@ def _integration(
 
     net = estimator_cls(
         metadata=metadata,
-        loss=SMAPE(),
+        loss=nn.MSELoss(),
         **kwargs,
     )
 
