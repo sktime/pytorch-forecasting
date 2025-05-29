@@ -437,7 +437,20 @@ class PositionalEncoder(torch.nn.Module):
 
 
 class ScaledDotProductAttention(nn.Module):
-    def __init__(self, dropout: float = None, scale: bool = True):
+    """Scaled Dot-Product Attention.
+
+    Parameters
+    ----------
+    dropout : float, optional
+        Dropout rate, by default None
+    scale : bool, optional
+        Whether to scale the attention scores, by default True
+    mask_bias : float, optional
+        Bias for the mask in forward, by default -1e9.
+        Set to -float("inf") to allow mixed precision training.
+    """
+
+    def __init__(self, dropout: float = None, scale: bool = True, mask_bias=-1e9):
         super(ScaledDotProductAttention, self).__init__()
         if dropout is not None:
             self.dropout = nn.Dropout(p=dropout)
@@ -445,6 +458,7 @@ class ScaledDotProductAttention(nn.Module):
             self.dropout = dropout
         self.softmax = nn.Softmax(dim=2)
         self.scale = scale
+        self.mask_bias = mask_bias
 
     def forward(self, q, k, v, mask=None):
         attn = torch.bmm(q, k.permute(0, 2, 1))  # query-key overlap
@@ -456,7 +470,7 @@ class ScaledDotProductAttention(nn.Module):
             attn = attn / dimension
 
         if mask is not None:
-            attn = attn.masked_fill(mask, -1e9)
+            attn = attn.masked_fill(mask, self.mask_bias)
         attn = self.softmax(attn)
 
         if self.dropout is not None:
@@ -466,11 +480,27 @@ class ScaledDotProductAttention(nn.Module):
 
 
 class InterpretableMultiHeadAttention(nn.Module):
-    def __init__(self, n_head: int, d_model: int, dropout: float = 0.0):
+    """Interpretable Multi-Head Attention module.
+
+    Parameters
+    ----------
+    n_head : int
+        Number of attention heads.
+    d_model : int
+        Dimension of the model.
+    dropout : float, optional
+        Dropout rate, by default 0.0
+    mask_bias : float, optional
+        Bias for the mask in ScaledDotProductAttention.forward, by default -1e9.
+        Set to -float("inf") to allow mixed precision training.
+    """
+
+    def __init__(self, n_head: int, d_model: int, dropout: float = 0.0, mask_bias=-1e9):
         super(InterpretableMultiHeadAttention, self).__init__()
 
         self.n_head = n_head
         self.d_model = d_model
+        self.mask_bias = mask_bias
         self.d_k = self.d_q = self.d_v = d_model // n_head
         self.dropout = nn.Dropout(p=dropout)
 
@@ -481,7 +511,7 @@ class InterpretableMultiHeadAttention(nn.Module):
         self.k_layers = nn.ModuleList(
             [nn.Linear(self.d_model, self.d_k) for _ in range(self.n_head)]
         )
-        self.attention = ScaledDotProductAttention()
+        self.attention = ScaledDotProductAttention(mask_bias=mask_bias)
         self.w_h = nn.Linear(self.d_v, self.d_model, bias=False)
 
         self.init_weights()
