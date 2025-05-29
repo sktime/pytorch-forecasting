@@ -58,10 +58,8 @@ def _check_matplotlib(ref="This feature", raise_error=True):
 
     if raise_error and "matplotlib" not in pkgs:
         raise ImportError(
-            (
-                f"{ref} requires matplotlib."
-                " Please install matplotlib with `pip install matplotlib`."
-            )
+            f"{ref} requires matplotlib."
+            " Please install matplotlib with `pip install matplotlib`."
         )
 
     return "matplotlib" in pkgs

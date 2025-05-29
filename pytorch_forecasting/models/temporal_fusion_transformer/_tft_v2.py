@@ -3,7 +3,7 @@
 # experimental, please use with care.
 ########################################################################################
 
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -16,17 +16,17 @@ from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 class TFT(BaseModel):
     def __init__(
         self,
-        loss: Metric,
-        logging_metrics: Optional[List[nn.Module]] = None,
+        loss: nn.Module,
+        logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[Dict] = None,
+        optimizer_params: Optional[dict] = None,
         lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[Dict] = None,
+        lr_scheduler_params: Optional[dict] = None,
         hidden_size: int = 64,
         num_layers: int = 2,
         attention_head_size: int = 4,
         dropout: float = 0.1,
-        metadata: Optional[Dict] = None,
+        metadata: Optional[dict] = None,
         output_size: int = 1,
     ):
         super().__init__(
@@ -111,7 +111,7 @@ class TFT(BaseModel):
         self.pre_output = nn.Linear(hidden_size, hidden_size)
         self.output_layer = nn.Linear(hidden_size, self.output_size)
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TFT model.
 
