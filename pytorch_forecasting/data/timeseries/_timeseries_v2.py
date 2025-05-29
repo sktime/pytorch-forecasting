@@ -4,7 +4,7 @@ Timeseries dataset - v2 prototype.
 Beta version, experimental - use for testing but not in production.
 """
 
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 from warnings import warn
 
 import numpy as np
@@ -81,14 +81,14 @@ class TimeSeries(Dataset):
         data: pd.DataFrame,
         data_future: Optional[pd.DataFrame] = None,
         time: Optional[str] = None,
-        target: Optional[Union[str, List[str]]] = None,
-        group: Optional[List[str]] = None,
+        target: Optional[Union[str, list[str]]] = None,
+        group: Optional[list[str]] = None,
         weight: Optional[str] = None,
-        num: Optional[List[Union[str, List[str]]]] = None,
-        cat: Optional[List[Union[str, List[str]]]] = None,
-        known: Optional[List[Union[str, List[str]]]] = None,
-        unknown: Optional[List[Union[str, List[str]]]] = None,
-        static: Optional[List[Union[str, List[str]]]] = None,
+        num: Optional[list[Union[str, list[str]]]] = None,
+        cat: Optional[list[Union[str, list[str]]]] = None,
+        known: Optional[list[Union[str, list[str]]]] = None,
+        unknown: Optional[list[Union[str, list[str]]]] = None,
+        static: Optional[list[Union[str, list[str]]]] = None,
     ):
         self.data = data
         self.data_future = data_future
@@ -186,7 +186,7 @@ class TimeSeries(Dataset):
         """Return number of time series in the dataset."""
         return len(self._group_ids)
 
-    def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         """Get time series data for given index.
 
         Returns
@@ -308,7 +308,7 @@ class TimeSeries(Dataset):
 
         return result
 
-    def get_metadata(self) -> Dict:
+    def get_metadata(self) -> dict:
         """Return metadata about the dataset.
 
         Returns

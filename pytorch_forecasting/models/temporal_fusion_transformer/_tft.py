@@ -3,7 +3,7 @@ The temporal fusion transformer is a powerful predictive model for forecasting t
 """  # noqa: E501
 
 from copy import copy
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -132,30 +132,30 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         hidden_size: int = 16,
         lstm_layers: int = 1,
         dropout: float = 0.1,
-        output_size: Union[int, List[int]] = 7,
+        output_size: Union[int, list[int]] = 7,
         loss: MultiHorizonMetric = None,
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_categoricals_encoder: Optional[List[str]] = None,
-        time_varying_categoricals_decoder: Optional[List[str]] = None,
-        categorical_groups: Optional[Union[Dict, List[str]]] = None,
-        time_varying_reals_encoder: Optional[List[str]] = None,
-        time_varying_reals_decoder: Optional[List[str]] = None,
-        x_reals: Optional[List[str]] = None,
-        x_categoricals: Optional[List[str]] = None,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_categoricals_encoder: Optional[list[str]] = None,
+        time_varying_categoricals_decoder: Optional[list[str]] = None,
+        categorical_groups: Optional[Union[dict, list[str]]] = None,
+        time_varying_reals_encoder: Optional[list[str]] = None,
+        time_varying_reals_decoder: Optional[list[str]] = None,
+        x_reals: Optional[list[str]] = None,
+        x_categoricals: Optional[list[str]] = None,
         hidden_continuous_size: int = 8,
-        hidden_continuous_sizes: Optional[Dict[str, int]] = None,
-        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
-        embedding_paddings: Optional[List[str]] = None,
-        embedding_labels: Optional[Dict[str, np.ndarray]] = None,
+        hidden_continuous_sizes: Optional[dict[str, int]] = None,
+        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
+        embedding_paddings: Optional[list[str]] = None,
+        embedding_labels: Optional[dict[str, np.ndarray]] = None,
         learning_rate: float = 1e-3,
         log_interval: Union[int, float] = -1,
         log_val_interval: Union[int, float] = None,
         log_gradient_flow: bool = False,
         reduce_on_plateau_patience: int = 1000,
-        monotone_constaints: Optional[Dict[str, int]] = None,
+        monotone_constaints: Optional[dict[str, int]] = None,
         share_single_variable_networks: bool = False,
         causal_attention: bool = True,
         logging_metrics: nn.ModuleList = None,
@@ -437,7 +437,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
     def from_dataset(
         cls,
         dataset: TimeSeriesDataSet,
-        allowed_encoder_known_variable_names: List[str] = None,
+        allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ):
         """
@@ -520,7 +520,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
         return mask
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         input dimensions: n_samples x time x variables
         """
@@ -698,10 +698,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
     def interpret_output(
         self,
-        out: Dict[str, torch.Tensor],
+        out: dict[str, torch.Tensor],
         reduction: str = "none",
         attention_prediction_horizon: int = 0,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """
         interpret output of model
 
@@ -858,8 +858,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
     def plot_prediction(
         self,
-        x: Dict[str, torch.Tensor],
-        out: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        out: dict[str, torch.Tensor],
         idx: int,
         plot_attention: bool = True,
         add_loss_to_title: bool = False,
@@ -910,7 +910,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f.tight_layout()
         return fig
 
-    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]):
+    def plot_interpretation(self, interpretation: dict[str, torch.Tensor]):
         """
         Make figures that interpret model.
 

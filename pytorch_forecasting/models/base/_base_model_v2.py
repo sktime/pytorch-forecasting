@@ -5,7 +5,7 @@
 ########################################################################################
 
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 from warnings import warn
 
 from lightning.pytorch import LightningModule
@@ -19,11 +19,11 @@ class BaseModel(LightningModule):
     def __init__(
         self,
         loss: nn.Module,
-        logging_metrics: Optional[List[nn.Module]] = None,
+        logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[Dict] = None,
+        optimizer_params: Optional[dict] = None,
         lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[Dict] = None,
+        lr_scheduler_params: Optional[dict] = None,
     ):
         """
         Base model for time series forecasting.
@@ -67,7 +67,7 @@ class BaseModel(LightningModule):
             UserWarning,
         )
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the model.
 
@@ -84,7 +84,7 @@ class BaseModel(LightningModule):
         raise NotImplementedError("Forward method must be implemented by subclass.")
 
     def training_step(
-        self, batch: Tuple[Dict[str, torch.Tensor]], batch_idx: int
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
         """
         Training step for the model.
@@ -112,7 +112,7 @@ class BaseModel(LightningModule):
         return {"loss": loss}
 
     def validation_step(
-        self, batch: Tuple[Dict[str, torch.Tensor]], batch_idx: int
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
         """
         Validation step for the model.
@@ -140,7 +140,7 @@ class BaseModel(LightningModule):
         return {"val_loss": loss}
 
     def test_step(
-        self, batch: Tuple[Dict[str, torch.Tensor]], batch_idx: int
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
         """
         Test step for the model.
@@ -169,7 +169,7 @@ class BaseModel(LightningModule):
 
     def predict_step(
         self,
-        batch: Tuple[Dict[str, torch.Tensor]],
+        batch: tuple[dict[str, torch.Tensor]],
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> torch.Tensor:
@@ -194,7 +194,7 @@ class BaseModel(LightningModule):
         y_hat = self(x)
         return y_hat
 
-    def configure_optimizers(self) -> Dict:
+    def configure_optimizers(self) -> dict:
         """
         Configure the optimizer and learning rate scheduler.
 
