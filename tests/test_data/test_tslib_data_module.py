@@ -137,8 +137,6 @@ def test_prepare_metadata(tslib_data_module):
 
     assert metadata["context_length"] == tslib_data_module.context_length
     assert metadata["prediction_length"] == tslib_data_module.prediction_length
-    assert metadata["freq"] == tslib_data_module.time_series_dataset.freq
-    assert metadata["features"] == tslib_data_module.time_series_dataset.features
 
 
 def test_setup(tslib_data_module):
@@ -244,8 +242,26 @@ def test_tslib_dataset(tslib_data_module):
     assert sample_x["history_target"].shape[0] == context_length
     assert sample_x["future_target"].shape[0] == prediction_length
 
-    assert sample_x["future_cont"].shape[1] == len(metadata["feature_names"]["known"])
-    assert sample_x["future_cat"].shape[1] == len(metadata[""])
+    known_cat_count = len(
+        [
+            col
+            for col in metadata["cols"]["x"]
+            if metadata["col_type"].get(col) == "C"
+            and metadata["col_known"].get(col) == "K"
+        ]
+    )
+
+    known_cont_count = len(
+        [
+            col
+            for col in metadata["cols"]["x"]
+            if metadata["col_type"].get(col) == "F"
+            and metadata["col_known"].get(col) == "K"
+        ]
+    )
+
+    assert sample_x["future_cont"].shape[1] == known_cont_count
+    assert sample_x["future_cat"].shape[1] == known_cat_count
 
     assert sample_y.shape[0] == prediction_length
 
@@ -254,3 +270,41 @@ def test_tslib_dataset(tslib_data_module):
     assert sample_x["history_target"].dtype == torch.float32
 
     assert sample_y.dtype == torch.float32
+
+
+def test_collate_fn(tslib_data_module):
+    """Test the collate function in the TslibDataModule to ensure it correctly
+    collates the data into batches and properly handles stacking of batches."""
+
+    batch_size = 5
+
+    batches = [tslib_data_module.train_dataset[i] for i in range(batch_size)]
+
+    x_batch, y_batch = tslib_data_module.collate_fn(batches)
+
+    for key in x_batch:
+        assert x_batch[key].shape[0] == batch_size
+
+    metadata = tslib_data_module.time_series_metadata
+    known_cat_count = len(
+        [
+            col
+            for col in metadata["cols"]["x"]
+            if metadata["col_type"].get(col) == "C"
+            and metadata["col_known"].get(col) == "K"
+        ]
+    )
+
+    known_cont_count = len(
+        [
+            col
+            for col in metadata["cols"]["x"]
+            if metadata["col_type"].get(col) == "F"
+            and metadata["col_known"].get(col) == "K"
+        ]
+    )
+
+    assert x_batch["future_cat"].shape[1] == known_cat_count
+    assert x_batch["future_cont"].shape[1] == known_cont_count
+    assert y_batch.shape[0] == batch_size
+    assert y_batch.shape[1] == tslib_data_module.prediction_length
