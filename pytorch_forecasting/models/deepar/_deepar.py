@@ -222,13 +222,18 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 MultiLoss([NormalDistributionLoss()] * len(dataset.target_names)),
             )
         new_kwargs.update(kwargs)
-        assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
-            not isinstance(dataset.target_normalizer, MultiNormalizer)
-            or all(
-                not isinstance(normalizer, NaNLabelEncoder)
-                for normalizer in dataset.target_normalizer
+        assert (
+            not isinstance(dataset.target_normalizer, NaNLabelEncoder)
+            and (
+                not isinstance(dataset.target_normalizer, MultiNormalizer)
+                or all(
+                    not isinstance(normalizer, NaNLabelEncoder)
+                    for normalizer in dataset.target_normalizer
+                )
             )
-        ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction # noqa: E501
+        ), (
+            "target(s) should be continuous - categorical targets are not supported"
+        )  # todo: remove this restriction # noqa: E501
         if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
             assert (
                 dataset.min_prediction_length == dataset.max_prediction_length

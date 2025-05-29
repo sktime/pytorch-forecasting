@@ -8,7 +8,6 @@ _SkbaseBaseObject = _safe_import("skbase.base.BaseObject", pkg_name="scikit-base
 
 
 class _BaseObject(_SkbaseBaseObject):
-
     pass
 
 
