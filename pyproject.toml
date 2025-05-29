@@ -146,6 +146,7 @@ target-version = "py39"
 select = ["E", "F", "W", "C4", "S"]
 extend-select = [
   "I", # isort
+  "UP", # pyupgrade
   "C4", # https://pypi.org/project/flake8-comprehensions
 ]
 extend-ignore = [

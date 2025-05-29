@@ -4,7 +4,6 @@ Implementation of ``nn.Modules`` for temporal fusion transformer.
 
 from copy import deepcopy
 import math
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -282,13 +281,13 @@ class GatedResidualNetwork(nn.Module):
 class VariableSelectionNetwork(nn.Module):
     def __init__(
         self,
-        input_sizes: Dict[str, int],
+        input_sizes: dict[str, int],
         hidden_size: int,
-        input_embedding_flags: Dict[str, bool] = None,
+        input_embedding_flags: dict[str, bool] = None,
         dropout: float = 0.1,
         context_size: int = None,
-        single_variable_grns: Dict[str, GatedResidualNetwork] = None,
-        prescalers: Dict[str, nn.Linear] = None,
+        single_variable_grns: dict[str, GatedResidualNetwork] = None,
+        prescalers: dict[str, nn.Linear] = None,
     ):
         """
         Calculate weights for ``num_inputs`` variables  which are each of size
@@ -361,7 +360,7 @@ class VariableSelectionNetwork(nn.Module):
     def num_inputs(self):
         return len(self.input_sizes)
 
-    def forward(self, x: Dict[str, torch.Tensor], context: torch.Tensor = None):
+    def forward(self, x: dict[str, torch.Tensor], context: torch.Tensor = None):
         if self.num_inputs > 1:
             # transform single variables
             var_outputs = []
@@ -451,7 +450,7 @@ class ScaledDotProductAttention(nn.Module):
     """
 
     def __init__(self, dropout: float = None, scale: bool = True, mask_bias=-1e9):
-        super(ScaledDotProductAttention, self).__init__()
+        super().__init__()
         if dropout is not None:
             self.dropout = nn.Dropout(p=dropout)
         else:
@@ -496,7 +495,7 @@ class InterpretableMultiHeadAttention(nn.Module):
     """
 
     def __init__(self, n_head: int, d_model: int, dropout: float = 0.0, mask_bias=-1e9):
-        super(InterpretableMultiHeadAttention, self).__init__()
+        super().__init__()
 
         self.n_head = n_head
         self.d_model = d_model
@@ -523,7 +522,7 @@ class InterpretableMultiHeadAttention(nn.Module):
             else:
                 torch.nn.init.zeros_(p)
 
-    def forward(self, q, k, v, mask=None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, q, k, v, mask=None) -> tuple[torch.Tensor, torch.Tensor]:
         heads = []
         attns = []
         vs = self.v_layer(v)
