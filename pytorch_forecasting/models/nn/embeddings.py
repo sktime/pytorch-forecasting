@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn
@@ -38,11 +38,11 @@ class MultiEmbedding(nn.Module):
     def __init__(
         self,
         embedding_sizes: Union[
-            Dict[str, Tuple[int, int]], Dict[str, int], List[int], List[Tuple[int, int]]
+            dict[str, tuple[int, int]], dict[str, int], list[int], list[tuple[int, int]]
         ],
-        x_categoricals: List[str] = None,
-        categorical_groups: Optional[Dict[str, List[str]]] = None,
-        embedding_paddings: Optional[List[str]] = None,
+        x_categoricals: list[str] = None,
+        categorical_groups: Optional[dict[str, list[str]]] = None,
+        embedding_paddings: Optional[list[str]] = None,
         max_embedding_size: int = None,
     ):
         """Embedding layer for categorical variables including groups of categorical variables.
@@ -179,13 +179,13 @@ class MultiEmbedding(nn.Module):
         return len(self.x_categoricals)
 
     @property
-    def output_size(self) -> Union[Dict[str, int], int]:
+    def output_size(self) -> Union[dict[str, int], int]:
         if self.concat_output:
             return sum([s[1] for s in self.embedding_sizes.values()])
         else:
             return {name: s[1] for name, s in self.embedding_sizes.items()}
 
-    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
         """
         Args:
             x (torch.Tensor): input tensor of shape batch x (optional) time x categoricals in the order of
