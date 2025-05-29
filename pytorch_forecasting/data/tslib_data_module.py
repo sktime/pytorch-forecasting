@@ -336,7 +336,6 @@ class TslibDataModule(LightningDataModule):
             "known": [],
             "unknown": [],
             "target": [],
-            "all": [],
         }
 
         cols = ds_metadata.get("cols", {})
