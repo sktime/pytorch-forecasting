@@ -175,8 +175,8 @@ def make_dataloaders_v2(data_with_covariates, **kwargs):
     """Create dataloaders with consistent encoder/decoder features."""
 
     training_cutoff = "2016-09-01"
-    max_encoder_length = 4
-    max_prediction_length = 3
+    max_encoder_length = kwargs.get("max_encoder_length", 4)
+    max_prediction_length = kwargs.get("max_prediction_length", 3)
 
     target_col = kwargs.get("target", "target")
     group_cols = kwargs.get("group_ids", ["agency_encoded", "sku_encoded"])

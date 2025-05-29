@@ -41,4 +41,21 @@ class TFTMetadata(_BasePtForecaster):
                 hidden_size=25,
                 attention_head_size=5,
             ),
+            dict(
+                data_loader_kwargs=dict(max_encoder_length=5, max_prediction_length=3)
+            ),
+            dict(
+                hidden_size=24,
+                attention_head_size=8,
+                data_loader_kwargs=dict(
+                    max_encoder_length=5,
+                    max_prediction_length=3,
+                    add_relative_time_idx=False,
+                ),
+            ),
+            dict(
+                hidden_size=12,
+                data_loader_kwargs=dict(max_encoder_length=7, max_prediction_length=10),
+            ),
+            dict(attention_head_size=2),
         ]
