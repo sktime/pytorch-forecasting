@@ -36,11 +36,11 @@ class DecoderMLPMetadata(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from pytorch_forecasting.data.encoders import GroupNormalizer
+        from torchmetrics import MeanSquaredError
+
         from pytorch_forecasting.metrics import (
             MAE,
             CrossEntropy,
-            MeanSquaredError,
             MultiLoss,
             QuantileLoss,
         )
