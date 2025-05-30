@@ -80,29 +80,34 @@ class _TslibDataset(Dataset):
 
         processed_data = self.data_module._preprocess_data(series_idx)
 
+        continous_features = processed_data["features"]["continuous"]
+        categorical_features = processed_data["features"]["categorical"]
+
         end_idx = start_idx + context_length + prediction_length
         history_indices = slice(start_idx, start_idx + context_length)
         future_indices = slice(start_idx + context_length, end_idx)
 
-        feature_indices = self.data_module.metadata["feature_indices"]
+        metadata = self.data_module.metadata
 
-        history_cont = processed_data["features"]["continuous"][history_indices]
-        history_cat = processed_data["features"]["categorical"][history_indices]
+        history_cont = continous_features[history_indices]
+        history_cat = categorical_features[history_indices]
 
-        future_cont = processed_data["features"]["continuous"][future_indices]
-        future_cat = processed_data["features"]["categorical"][future_indices]
+        future_cont = continous_features[future_indices]
+        future_cat = categorical_features[future_indices]
 
-        known_indices = set(feature_indices["known"])
+        known_features = set(metadata["feature_names"]["known"])
+        continuous_feature_names = metadata["feature_names"]["continuous"]
+        categorical_feature_names = metadata["feature_names"]["categorical"]
 
         # use masking to filter out known and unknow features.
-        cont_indices = feature_indices["continuous"]
         cont_known_mask = torch.tensor(
-            [i in known_indices for i in cont_indices], dtype=torch.bool
+            [feat in known_features for feat in continuous_feature_names],
+            dtype=torch.bool,
         )
 
-        cat_indices = feature_indices["categorical"]
         cat_known_mask = torch.tensor(
-            [i in known_indices for i in cat_indices], dtype=torch.bool
+            [feat in known_features for feat in categorical_feature_names],
+            dtype=torch.bool,
         )
 
         future_cont = (
@@ -707,8 +712,10 @@ class TslibDataModule(LightningDataModule):
             "future_target_len": torch.stack(
                 [x["future_target_len"] for x, _ in batch]
             ),
-            "target_scale": torch.stack([x["target_scale"] for x, _ in batch]),
         }
+
+        if "target_scale" in batch[0][0]:
+            x_batch["target_scale"] = torch.stack([x["target_scale"] for x, _ in batch])
 
         if "history_relative_time_idx" in batch[0][0]:
             x_batch["history_relative_time_idx"] = torch.stack(

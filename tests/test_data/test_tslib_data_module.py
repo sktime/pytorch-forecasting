@@ -59,7 +59,7 @@ def sample_timeseries_data():
         group=["series_id"],
         num=["feature_1", "feature_2", "feature_3"],
         cat=["cat_a"],
-        unknown=["feature_2", "target"],
+        unknown=["feature_2", "target", "cat_a"],
         static=["static_feature"],
         known=["feature_1", "feature_3"],
     )
@@ -233,7 +233,7 @@ def test_tslib_dataset(tslib_data_module):
 
     context_length = tslib_data_module.context_length
     prediction_length = tslib_data_module.prediction_length
-    metadata = tslib_data_module.time_series_metadata
+    metadata = tslib_data_module.metadata
 
     assert sample_x["history_cont"].shape[0] == context_length
     assert sample_x["history_cat"].shape[0] == context_length
@@ -244,21 +244,20 @@ def test_tslib_dataset(tslib_data_module):
 
     known_cat_count = len(
         [
-            col
-            for col in metadata["cols"]["x"]
-            if metadata["col_type"].get(col) == "C"
-            and metadata["col_known"].get(col) == "K"
+            name
+            for name in metadata["feature_names"]["known"]
+            if name in metadata["feature_names"]["categorical"]
+        ]
+    )
+    known_cont_count = len(
+        [
+            name
+            for name in metadata["feature_names"]["known"]
+            if name in metadata["feature_names"]["continuous"]
         ]
     )
 
-    known_cont_count = len(
-        [
-            col
-            for col in metadata["cols"]["x"]
-            if metadata["col_type"].get(col) == "F"
-            and metadata["col_known"].get(col) == "K"
-        ]
-    )
+    print(sample_x["future_cont"].shape)
 
     assert sample_x["future_cont"].shape[1] == known_cont_count
     assert sample_x["future_cat"].shape[1] == known_cat_count
@@ -286,27 +285,26 @@ def test_collate_fn(tslib_data_module):
     for key in x_batch:
         assert x_batch[key].shape[0] == batch_size
 
-    metadata = tslib_data_module.time_series_metadata
+    metadata = tslib_data_module.metadata
+
     known_cat_count = len(
         [
-            col
-            for col in metadata["cols"]["x"]
-            if metadata["col_type"].get(col) == "C"
-            and metadata["col_known"].get(col) == "K"
+            name
+            for name in metadata["feature_names"]["known"]
+            if name in metadata["feature_names"]["categorical"]
         ]
     )
-
     known_cont_count = len(
         [
-            col
-            for col in metadata["cols"]["x"]
-            if metadata["col_type"].get(col) == "F"
-            and metadata["col_known"].get(col) == "K"
+            name
+            for name in metadata["feature_names"]["known"]
+            if name in metadata["feature_names"]["continuous"]
         ]
     )
 
-    assert x_batch["future_cat"].shape[1] == known_cat_count
-    assert x_batch["future_cont"].shape[1] == known_cont_count
+    assert x_batch["future_cont"].shape[2] == known_cont_count
+    assert x_batch["future_cat"].shape[2] == known_cat_count
+    # print(x_batch["future_cont"].shape)
     assert y_batch.shape[0] == batch_size
     assert y_batch.shape[1] == tslib_data_module.prediction_length
 
@@ -347,16 +345,23 @@ def test_create_windows(tslib_data_module):
         min_required_length = context_length + prediction_length
 
         time_series_dataset = tslib_data_module.time_series_dataset
-        series_length = len(time_series_dataset[series_idx])
+        # print(type(time_series_dataset[series_idx]))
+        sample = time_series_dataset[series_idx]
 
+        if "t" in sample:
+            series_length = len(sample["t"])
+        elif "y" in sample:
+            series_length = len(sample["y"])
+        else:
+            series_length = len(sample)
         assert (
             start_idx + min_required_length <= series_length
         ), "Window extended beyond series length."
 
     all_indices = torch.arange(len(tslib_data_module.time_series_dataset))
     all_windows = tslib_data_module._create_windows(all_indices)
-    assert (
-        len(all_windows) >= train_windows
+    assert len(all_windows) >= len(
+        train_windows
     ), "Should have more windows than all indices."
 
     empty_windows = tslib_data_module._create_windows(torch.tensor([]))
