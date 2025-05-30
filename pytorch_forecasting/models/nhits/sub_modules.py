@@ -91,6 +91,7 @@ def init_weights(module, initialization):
 
 ACTIVATIONS = ["ReLU", "Softplus", "Tanh", "SELU", "LeakyReLU", "PReLU", "Sigmoid"]
 
+
 class MLP(nn.Module):
     def __init__(
         self,
@@ -130,6 +131,7 @@ class MLP(nn.Module):
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         return self.layers(X)
+
 
 class NHiTSBlock(nn.Module):
     """
