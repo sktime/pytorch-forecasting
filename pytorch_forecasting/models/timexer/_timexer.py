@@ -11,7 +11,7 @@ Time Series Transformer with eXogenous variables (TimeXer)
 ######################################################
 
 from copy import copy
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
@@ -48,11 +48,11 @@ class TimeXer(BaseModel):
         context_length: int,
         prediction_length: int,
         loss: nn.Module,
-        logging_metrics: Optional[List[nn.Module]] = None,
+        logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[Dict] = None,
+        optimizer_params: Optional[dict] = None,
         lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[Dict] = None,
+        lr_scheduler_params: Optional[dict] = None,
         task_name: str = "long_term_forecast",
         features: str = "MS",
         enc_in: int = None,
@@ -67,7 +67,7 @@ class TimeXer(BaseModel):
         factor: int = 5,
         embed_type: str = "fixed",
         freq: str = "h",
-        metadata: Optional[Dict] = None,
+        metadata: Optional[dict] = None,
         target_positions: torch.LongTensor = None,
     ):
         """An implementation of the TimeXer model.
@@ -176,7 +176,7 @@ class TimeXer(BaseModel):
             n_quantiles=self.n_quantiles,
         )
 
-    def _forecast(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _forecast(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forecast for univariate or multivariate with single target (MS) case.
 
@@ -213,7 +213,7 @@ class TimeXer(BaseModel):
 
         return dec_out
 
-    def _forecast_multi(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _forecast_multi(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forecast for multivariate with multiple targets (M) case.
 
@@ -253,7 +253,7 @@ class TimeXer(BaseModel):
 
         return dec_out
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the model.
 

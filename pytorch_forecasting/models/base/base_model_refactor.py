@@ -5,7 +5,7 @@
 ########################################################################################
 
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 from lightning.pytorch import LightningModule
 from lightning.pytorch.utilities.types import STEP_OUTPUT
@@ -18,11 +18,11 @@ class BaseModel(LightningModule):
     def __init__(
         self,
         loss: nn.Module,
-        logging_metrics: Optional[List[nn.Module]] = None,
+        logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[Dict] = None,
+        optimizer_params: Optional[dict] = None,
         lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[Dict] = None,
+        lr_scheduler_params: Optional[dict] = None,
     ):
         """
         Base model for time series forecasting.
@@ -31,17 +31,17 @@ class BaseModel(LightningModule):
         ----------
         loss : nn.Module
             Loss function to use for training.
-        logging_metrics : Optional[List[nn.Module]], optional
-            List of metrics to log during training, validation, and testing.
+        logging_metrics : Optional[list[nn.Module]], optional
+            list of metrics to log during training, validation, and testing.
         optimizer : Optional[Union[Optimizer, str]], optional
             Optimizer to use for training.
             Can be a string ("adam", "sgd") or an instance of `torch.optim.Optimizer`.
-        optimizer_params : Optional[Dict], optional
+        optimizer_params : Optional[dict], optional
             Parameters for the optimizer.
         lr_scheduler : Optional[str], optional
             Learning rate scheduler to use.
             Supported values: "reduce_lr_on_plateau", "step_lr".
-        lr_scheduler_params : Optional[Dict], optional
+        lr_scheduler_params : Optional[dict], optional
             Parameters for the learning rate scheduler.
         """
         super().__init__()
@@ -54,31 +54,31 @@ class BaseModel(LightningModule):
             lr_scheduler_params if lr_scheduler_params is not None else {}
         )
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the model.
 
         Parameters
         ----------
-        x : Dict[str, torch.Tensor]
+        x : dict[str, torch.Tensor]
             Dictionary containing input tensors
 
         Returns
         -------
-        Dict[str, torch.Tensor]
+        dict[str, torch.Tensor]
             Dictionary containing output tensors
         """
         raise NotImplementedError("Forward method must be implemented by subclass.")
 
     def training_step(
-        self, batch: Tuple[Dict[str, torch.Tensor]], batch_idx: int
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
         """
         Training step for the model.
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
+        batch : tuple[dict[str, torch.Tensor]]
             Batch of data containing input and target tensors.
         batch_idx : int
             Index of the batch.
@@ -99,14 +99,14 @@ class BaseModel(LightningModule):
         return {"loss": loss}
 
     def validation_step(
-        self, batch: Tuple[Dict[str, torch.Tensor]], batch_idx: int
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
         """
         Validation step for the model.
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
+        batch : tuple[dict[str, torch.Tensor]]
             Batch of data containing input and target tensors.
         batch_idx : int
             Index of the batch.
@@ -127,14 +127,14 @@ class BaseModel(LightningModule):
         return {"val_loss": loss}
 
     def test_step(
-        self, batch: Tuple[Dict[str, torch.Tensor]], batch_idx: int
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
         """
         Test step for the model.
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
+        batch : tuple[dict[str, torch.Tensor]]
             Batch of data containing input and target tensors.
         batch_idx : int
             Index of the batch.
@@ -156,7 +156,7 @@ class BaseModel(LightningModule):
 
     def predict_step(
         self,
-        batch: Tuple[Dict[str, torch.Tensor]],
+        batch: tuple[dict[str, torch.Tensor]],
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> torch.Tensor:
@@ -165,7 +165,7 @@ class BaseModel(LightningModule):
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
+        batch : tuple[dict[str, torch.Tensor]]
             Batch of data containing input tensors.
         batch_idx : int
             Index of the batch.
@@ -181,13 +181,13 @@ class BaseModel(LightningModule):
         y_hat = self(x)
         return y_hat
 
-    def configure_optimizers(self) -> Dict:
+    def configure_optimizers(self) -> dict:
         """
         Configure the optimizer and learning rate scheduler.
 
         Returns
         -------
-        Dict
+        dict
             Dictionary containing the optimizer and scheduler configuration.
         """
         optimizer = self._get_optimizer()
