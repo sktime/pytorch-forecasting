@@ -21,7 +21,7 @@ class Encoder(nn.Module):
     """
 
     def __init__(self, layers, norm_layer=None, projection=None):
-        super(Encoder, self).__init__()
+        super().__init__()
         self.layers = nn.ModuleList(layers)
         self.norm = norm_layer
         self.projection = projection

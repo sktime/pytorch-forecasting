@@ -10,7 +10,7 @@ Time Series Transformer with eXogenous variables (TimeXer)
 ################################################################
 
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
@@ -40,14 +40,14 @@ class TimeXer(TslibBaseModel):
         patch_length: int = 24,
         factor: int = 5,
         activation: str = "relu",
-        endogenous_vars: Optional[List[str]] = None,
-        exogenous_vars: Optional[List[str]] = None,
-        logging_metrics: Optional[List[nn.Module]] = None,
+        endogenous_vars: Optional[list[str]] = None,
+        exogenous_vars: Optional[list[str]] = None,
+        logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[Dict] = None,
+        optimizer_params: Optional[dict] = None,
         lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[Dict] = None,
-        metadata: Optional[Dict] = None,
+        lr_scheduler_params: Optional[dict] = None,
+        metadata: Optional[dict] = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -172,13 +172,13 @@ class TimeXer(TslibBaseModel):
     #     """
     #     return torch.tensor(self.target_indices, device=self.device)
 
-    def _forecast(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _forecast(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TimeXer model.
         Args:
-            x (Dict[str, torch.Tensor]): Input data.
+            x (dict[str, torch.Tensor]): Input data.
         Returns:
-            Dict[str, torch.Tensor]: Model predictions.
+            dict[str, torch.Tensor]: Model predictions.
         """
         batch_size = x["history_cont"].shape[0]
         history_cont = x["history_cont"]
@@ -228,14 +228,14 @@ class TimeXer(TslibBaseModel):
 
         return dec_out
 
-    def _forecast_multi(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _forecast_multi(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forecast for multivariate with multiple time series.
 
         Args:
-            x (Dict[str, torch.Tensor]): Input data.
+            x (dict[str, torch.Tensor]): Input data.
         Returns:
-            Dict[str, torch.Tensor]: Model predictions.
+            dict[str, torch.Tensor]: Model predictions.
         """
 
         history_cont = x["history_cont"]
@@ -279,13 +279,13 @@ class TimeXer(TslibBaseModel):
 
         return dec_out
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TimeXer model.
         Args:
-            x (Dict[str, torch.Tensor]): Input data.
+            x (dict[str, torch.Tensor]): Input data.
         Returns:
-            Dict[str, torch.Tensor]: Model predictions.
+            dict[str, torch.Tensor]: Model predictions.
         """
         if self.features == "MS":
             out = self._forecast(x)

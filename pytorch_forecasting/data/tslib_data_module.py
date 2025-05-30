@@ -2,7 +2,7 @@
 Experimmental data module for integrating `tslib` time series deep learning library.
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 import warnings
 
 from lightning.pytorch import LightningDataModule
@@ -34,7 +34,7 @@ class _TslibDataset(Dataset):
     data_module : TslibDataModule
         The data module that contains the metadata and other configurations for the
         dataset.
-    windows: List[Tuple[int, int, int, int]]
+    windows: list[tuple[int, int, int, int]]
         A list of tuples where each tuple contains:
             - series_idx: Index of time series in the dataset
             - start_idx: Start index of the window
@@ -48,7 +48,7 @@ class _TslibDataset(Dataset):
         self,
         dataset: TimeSeries,
         data_module: "TslibDataModule",
-        windows: List[Tuple[int, int, int, int]],
+        windows: list[tuple[int, int, int, int]],
         add_relative_time_idx: bool = False,
     ):
         self.dataset = dataset
@@ -59,7 +59,7 @@ class _TslibDataset(Dataset):
     def __len__(self) -> int:
         return len(self.windows)
 
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
+    def __getitem__(self, idx: int) -> dict[str, Any]:
         """
         Get the processed dataset item at the given index.
 
@@ -70,7 +70,7 @@ class _TslibDataset(Dataset):
 
         Returns
         -------
-        x: Dict[str, torch.Tensor]
+        x: dict[str, torch.Tensor]
             A dictionary containing the processed data.
         y: torch.Tensor
             The target variable.
@@ -205,10 +205,10 @@ class TslibDataModule(LightningDataModule):
     add_target_scales: bool = False
         Whether to add target scaling info.
     target_normalizer :
-        Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None],
+        Union[NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None],
          default="auto"
         Normalizer for the target variable. If "auto", uses `RobustScaler`.
-    scalers : Optional[Dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer]]], default=None #noqa: E501
+    scalers : Optional[dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer]]], default=None #noqa: E501
         Dictionary of feature scalers.
     shuffle : bool, default=True
         Whether to shuffle the data at every epoch.
@@ -235,10 +235,10 @@ class TslibDataModule(LightningDataModule):
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         target_normalizer: Union[
-            NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None
+            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
         ] = "auto",  # noqa: E501
         scalers: Optional[
-            Dict[
+            dict[
                 str,
                 Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
             ]
@@ -247,7 +247,7 @@ class TslibDataModule(LightningDataModule):
         window_stride: int = 1,
         batch_size: int = 32,
         num_workers: int = 0,
-        train_val_test_split: Tuple[float, float, float] = (0.7, 0.15, 0.15),
+        train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
         collate_fn: Optional[callable] = None,
         **kwargs,
     ) -> None:
@@ -301,18 +301,18 @@ class TslibDataModule(LightningDataModule):
             else:
                 self.continuous_indices.append(idx)
 
-    def _prepare_metadata(self) -> Dict[str, Any]:
+    def _prepare_metadata(self) -> dict[str, Any]:
         """
         Prepare metadata for `tslib` time series data module.
 
         Returns
         -------
         dict containing the following as keys:
-            - feature_names: Dict[str, List[str]]
+            - feature_names: dict[str, list[str]]
                 Dictionary of feature names for each feature type.
-            - feature_indices: Dict[str, List[int]]
+            - feature_indices: dict[str, list[int]]
                 Dictionary of feature indices for each feature type.
-            - n_features: Dict[str, int]
+            - n_features: dict[str, int]
                 Dictionary of number of features for each feature type.
             - context_length: int
                 Length of the context window for the model, as set in the data module.
@@ -398,7 +398,7 @@ class TslibDataModule(LightningDataModule):
         return metadata
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         """ "
         Compute the metadata via the `_prepare_metadata` method.
         This method is called when the `metadata` property is accessed for the first.
@@ -412,7 +412,7 @@ class TslibDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, idx: torch.Tensor) -> List[Dict[str, Any]]:
+    def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
         """
         Process the the time series data at the given index, before feeding it
         to the `_TslibDataset` class.
@@ -424,7 +424,7 @@ class TslibDataModule(LightningDataModule):
 
         Returns
         -------
-        Dict[str, torch.Tensor]
+        dict[str, torch.Tensor]
             A dictionary containing the processed data.
 
         Notes
@@ -488,7 +488,7 @@ class TslibDataModule(LightningDataModule):
 
         return res
 
-    def _create_windows(self, indices: torch.Tensor) -> List[Tuple[int, int, int, int]]:
+    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """
         Create windows for the data in the given indices, for training, testing
         and validation.
@@ -500,7 +500,7 @@ class TslibDataModule(LightningDataModule):
 
         Returns
         -------
-        List[Tuple[int, int, int, int]]
+        list[tuple[int, int, int, int]]
             A list of tuples where each tuple contains:
             - series_idx: Index of time series in the dataset
             - start_idx: Start index of the window
@@ -686,12 +686,12 @@ class TslibDataModule(LightningDataModule):
 
         Parameters
         ----------
-        batch: List[TupleDict[str, Any]]
+        batch: list[tuple[dict[str, Any]]]
             The batch of data to be collated.
 
         Returns
         -------
-        Tuple[Dict[str, torch.Tensor], torch.Tensor]
+        tuple[dict[str, torch.Tensor], torch.Tensor]
             A tuple containing the collated data and the target variable.
         """
 

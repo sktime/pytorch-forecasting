@@ -3,7 +3,7 @@ Experimental implementation of a base class for `tslib` models.
 NOTE: This PR is stacked on the PR #1812(phoeenniixx).
 """
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 from warnings import warn
 
 import torch
@@ -21,29 +21,29 @@ class TslibBaseModel(BaseModel):
     ----------
     loss : nn.Module
         Loss function to use for training.
-    logging_metrics : Optional[List[nn.Module]], optional
-        List of metrics to log during training, validation, and testing.
+    logging_metrics : Optional[list[nn.Module]], optional
+        list of metrics to log during training, validation, and testing.
     optimizer : Optional[Union[Optimizer, str]], optional
         Optimizer to use for training.
-    optimizer_params : Optional[Dict], optional
+    optimizer_params : Optional[dict], optional
         Parameters for the optimizer.
     lr_scheduler : Optional[str], optional
         Learning rate scheduler to use.
-    lr_scheduler_params : Optional[Dict], optional
+    lr_scheduler_params : Optional[dict], optional
         Parameters for the learning rate scheduler.
-    metadata : Optional[Dict], default=None
+    metadata : Optional[dict], default=None
         Metadata for the model from TslibDataModule.
     """
 
     def __init__(
         self,
         loss: nn.Module,
-        logging_metrics: Optional[List[nn.Module]] = None,
+        logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[Dict] = None,
+        optimizer_params: Optional[dict] = None,
         lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[Dict] = None,
-        metadata: Optional[Dict] = None,
+        lr_scheduler_params: Optional[dict] = None,
+        metadata: Optional[dict] = None,
     ):
         super().__init__(
             loss=loss,
@@ -93,18 +93,18 @@ class TslibBaseModel(BaseModel):
         """
         raise NotImplementedError("Subclasses must implement _init_network method.")
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the model.
 
         Parameters
         ----------
-        x: Dict[str, torch.Tensor]
+        x: dict[str, torch.Tensor]
             Dictionary containing input tensors.
 
         Returns
         -------
-        Dict[str, torch.Tensor]
+        dict[str, torch.Tensor]
             Dictionary containing output tensors. These can include
             - predictions:
                 Prediction_output of shape (batch_size, prediction_length, target_dim)
@@ -115,7 +115,7 @@ class TslibBaseModel(BaseModel):
 
     def predict_step(
         self,
-        batch: Tuple[Dict[str, torch.Tensor]],
+        batch: tuple[dict[str, torch.Tensor]],
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> torch.Tensor:
@@ -124,7 +124,7 @@ class TslibBaseModel(BaseModel):
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
+        batch : tuple[dict[str, torch.Tensor]]
             Batch of data containing input tensors.
         batch_idx : int
             Index of the batch.
@@ -147,23 +147,23 @@ class TslibBaseModel(BaseModel):
     def transform_output(
         self,
         y_hat: Union[
-            torch.Tensor, List[torch.Tensor]
+            torch.Tensor, list[torch.Tensor]
         ],  # evidenced from TimeXer implementation - in PR #1797  # noqa: E501
-        target_scale: Optional[Dict[str, torch.Tensor]],
-    ) -> Union[torch.Tensor, List[torch.Tensor]]:
+        target_scale: Optional[dict[str, torch.Tensor]],
+    ) -> Union[torch.Tensor, list[torch.Tensor]]:
         """
         Transform the output of the model to the original scale.
 
         Parameters
         ----------
-        y_hat : Union[torch.Tensor, List[torch.Tensor]]
+        y_hat : Union[torch.Tensor, list[torch.Tensor]]
             Dictionary containing the model output.
-        target_scale : Optional[Dict[str, torch.Tensor]]
+        target_scale : Optional[dict[str, torch.Tensor]]
             Dictionary containing the target scale for inverse transformation.
 
         Returns
         -------
-        Union[torch.Tensor, List[torch.Tensor]]
+        Union[torch.Tensor, list[torch.Tensor]]
             Dictionary containing the transformed output.
 
         Notes

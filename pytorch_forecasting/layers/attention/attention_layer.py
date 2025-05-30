@@ -24,7 +24,7 @@ class AttentionLayer(nn.Module):
     """
 
     def __init__(self, attention, d_model, n_heads, d_keys=None, d_values=None):
-        super(AttentionLayer, self).__init__()
+        super().__init__()
 
         d_keys = d_keys or (d_model // n_heads)
         d_values = d_values or (d_model // n_heads)

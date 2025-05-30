@@ -33,7 +33,7 @@ class EncoderLayer(nn.Module):
         dropout=0.1,
         activation="relu",
     ):
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         d_ff = d_ff or 4 * d_model
         self.self_attention = self_attention
         self.cross_attention = cross_attention

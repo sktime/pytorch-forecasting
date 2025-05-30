@@ -45,7 +45,7 @@ class FullAttention(nn.Module):
         attention_dropout=0.1,
         output_attention=False,
     ):
-        super(FullAttention, self).__init__()
+        super().__init__()
         self.scale = scale
         self.mask_flag = mask_flag
         self.output_attention = output_attention
