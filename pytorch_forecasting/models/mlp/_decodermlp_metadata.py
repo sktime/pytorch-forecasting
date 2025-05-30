@@ -38,8 +38,8 @@ class DecoderMLPMetadata(_BasePtForecaster):
         """
         from pytorch_forecasting.data.encoders import GroupNormalizer
         from pytorch_forecasting.metrics import (
-            CrossEntropy,
             MAE,
+            CrossEntropy,
             MeanSquaredError,
             MultiLoss,
             QuantileLoss,
