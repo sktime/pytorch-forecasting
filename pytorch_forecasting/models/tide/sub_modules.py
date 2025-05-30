@@ -3,12 +3,12 @@ Time-series Dense Encoder (TiDE)
 --------------------------------
 """
 
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn
 
-MixedCovariatesTrainTensorType = Tuple[
+MixedCovariatesTrainTensorType = tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
 ]
 
@@ -223,7 +223,7 @@ class _TideModule(nn.Module):
         )
 
     def forward(
-        self, x_in: Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]
+        self, x_in: tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]
     ) -> torch.Tensor:
         """TiDE model forward pass.
 

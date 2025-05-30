@@ -2,7 +2,7 @@
 Baseline model.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import torch
 
@@ -31,7 +31,7 @@ class Baseline(BaseModel):
         metric.compute()
     """
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Network forward pass.
 
@@ -74,8 +74,8 @@ class Baseline(BaseModel):
         prediction = last_values[:, None].expand(-1, max_prediction_length)
         return prediction
 
-    def to_prediction(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+    def to_prediction(self, out: dict[str, Any], use_metric: bool = True, **kwargs):
         return out.prediction
 
-    def to_quantiles(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+    def to_quantiles(self, out: dict[str, Any], use_metric: bool = True, **kwargs):
         return out.prediction[..., None]

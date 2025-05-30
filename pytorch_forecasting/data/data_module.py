@@ -7,7 +7,8 @@
 # into the memory.
 #######################################################################################
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
+from warnings import warn
 
 from lightning.pytorch import LightningDataModule
 from sklearn.preprocessing import RobustScaler, StandardScaler
@@ -93,16 +94,16 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[
-            NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None
+            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
         ] = "auto",
-        categorical_encoders: Optional[Dict[str, NaNLabelEncoder]] = None,
+        categorical_encoders: Optional[dict[str, NaNLabelEncoder]] = None,
         scalers: Optional[
-            Dict[
+            dict[
                 str,
                 Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
             ]
         ] = None,
-        randomize_length: Union[None, Tuple[float, float], bool] = False,
+        randomize_length: Union[None, tuple[float, float], bool] = False,
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
@@ -275,7 +276,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, series_idx: torch.Tensor) -> List[Dict[str, Any]]:
+    def _preprocess_data(self, series_idx: torch.Tensor) -> list[dict[str, Any]]:
         """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
 
         Preprocessing steps
@@ -352,7 +353,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self,
             dataset: TimeSeries,
             data_module: "EncoderDecoderTimeSeriesDataModule",
-            windows: List[Tuple[int, int, int, int]],
+            windows: list[tuple[int, int, int, int]],
             add_relative_time_idx: bool = False,
         ):
             self.dataset = dataset
@@ -495,8 +496,40 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "decoder_mask": decoder_mask,
             }
             if data["static"] is not None:
-                x["static_categorical_features"] = data["static"].unsqueeze(0)
-                x["static_continuous_features"] = torch.zeros((1, 0))
+                raw_st_tensor = data.get("static")
+                static_col_names = self.data_module.time_series_metadata["cols"]["st"]
+
+                is_categorical_mask = torch.tensor(
+                    [
+                        self.data_module.time_series_metadata["col_type"].get(col_name)
+                        == "C"
+                        for col_name in static_col_names
+                    ],
+                    dtype=torch.bool,
+                )
+
+                is_continuous_mask = ~is_categorical_mask
+
+                st_cat_values_for_item = raw_st_tensor[is_categorical_mask]
+                st_cont_values_for_item = raw_st_tensor[is_continuous_mask]
+
+                if st_cat_values_for_item.shape[0] > 0:
+                    x["static_categorical_features"] = st_cat_values_for_item.unsqueeze(
+                        0
+                    )
+                else:
+                    x["static_categorical_features"] = torch.zeros(
+                        (1, 0), dtype=torch.float32
+                    )
+
+                if st_cont_values_for_item.shape[0] > 0:
+                    x["static_continuous_features"] = st_cont_values_for_item.unsqueeze(
+                        0
+                    )
+                else:
+                    x["static_continuous_features"] = torch.zeros(
+                        (1, 0), dtype=torch.float32
+                    )
 
             y = data["target"][decoder_indices]
             if y.ndim == 1:
@@ -504,7 +537,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             return x, y
 
-    def _create_windows(self, indices: torch.Tensor) -> List[Tuple[int, int, int, int]]:
+    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
 
         Returns
