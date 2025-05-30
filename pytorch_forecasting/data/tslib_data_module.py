@@ -258,7 +258,9 @@ class TslibDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
-        self.collate_fn = collate_fn
+        self.collate_fn = (
+            collate_fn if collate_fn is not None else self.__class__.collate_fn
+        )  # noqa: E501
         self.kwargs = kwargs
 
         warnings.warn(

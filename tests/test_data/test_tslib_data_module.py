@@ -13,7 +13,7 @@ def sample_timeseries_data():
     """Fixture to generate a sample TimeSeries."""
 
     np.random.seed(42)
-    n_series = 5
+    n_series = 20
     n_timesteps = 50
 
     data = []
@@ -233,7 +233,7 @@ def test_tslib_dataset(tslib_data_module):
 
     context_length = tslib_data_module.context_length
     prediction_length = tslib_data_module.prediction_length
-    metadata = tslib_data_module.metadata
+    metadata = tslib_data_module.time_series_metadata
 
     assert sample_x["history_cont"].shape[0] == context_length
     assert sample_x["history_cat"].shape[0] == context_length
@@ -276,7 +276,8 @@ def test_collate_fn(tslib_data_module):
     """Test the collate function in the TslibDataModule to ensure it correctly
     collates the data into batches and properly handles stacking of batches."""
 
-    batch_size = 5
+    tslib_data_module.setup(stage="fit")
+    batch_size = 2
 
     batches = [tslib_data_module.train_dataset[i] for i in range(batch_size)]
 
@@ -308,3 +309,56 @@ def test_collate_fn(tslib_data_module):
     assert x_batch["future_cont"].shape[1] == known_cont_count
     assert y_batch.shape[0] == batch_size
     assert y_batch.shape[1] == tslib_data_module.prediction_length
+
+
+def test_create_windows(tslib_data_module):
+    """Test the _create_windows method to ensures correct creation
+    of windows for training, validation and testing."""
+
+    tslib_data_module.setup(stage="fit")
+    train_indices = tslib_data_module._train_indices
+    train_windows = tslib_data_module._create_windows(train_indices)
+
+    assert len(train_windows) > 0, "No training windows created!"
+
+    for windows in train_windows:
+        assert isinstance(windows, tuple), "Windows should be a tuple."
+
+        assert len(windows) == 4, "Each window should have 4 elements."
+
+        series_idx, start_idx, context_length, prediction_length = windows
+
+        assert isinstance(series_idx, int), "series_idx should be an integer."
+
+        assert isinstance(start_idx, int), "start_idx should be an integer."
+
+        assert (
+            context_length == tslib_data_module.context_length
+        ), "context_length should match the datamodule's context_length."
+
+        assert (
+            prediction_length == tslib_data_module.prediction_length
+        ), "prediction_length should match the datamodule's prediction_length."
+
+        assert (
+            0 <= series_idx < len(tslib_data_module.time_series_dataset)
+        ), "series_idx should be within the range of the dataset length."
+
+        min_required_length = context_length + prediction_length
+
+        time_series_dataset = tslib_data_module.time_series_dataset
+        series_length = len(time_series_dataset[series_idx])
+
+        assert (
+            start_idx + min_required_length <= series_length
+        ), "Window extended beyond series length."
+
+    all_indices = torch.arange(len(tslib_data_module.time_series_dataset))
+    all_windows = tslib_data_module._create_windows(all_indices)
+    assert (
+        len(all_windows) >= train_windows
+    ), "Should have more windows than all indices."
+
+    empty_windows = tslib_data_module._create_windows(torch.tensor([]))
+
+    assert len(empty_windows) == 0, "Should return empty list for empty index."
