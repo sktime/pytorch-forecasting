@@ -91,6 +91,39 @@ def init_weights(module, initialization):
 
 ACTIVATIONS = ["ReLU", "Softplus", "Tanh", "SELU", "LeakyReLU", "PReLU", "Sigmoid"]
 
+class MLP(nn.Module):
+    def __init__(
+            self,
+            in_features: int,
+            out_features: int,
+            hidden_size: list[int],
+            activation: nn.Module,
+            dropout: float
+        ):
+        super().__init__()
+
+        self.layers: nn.Sequential  # Explicit type hint for layers
+
+        layers = [
+            nn.Linear(in_features, hidden_size[0]),
+        ]
+
+        if self.dropout > 0:
+            layers.append(nn.Dropout(p=dropout))
+
+        for i in range(len (hidden_size) - 1):
+            layers.append([
+                nn.Linear(hidden_size[i], hidden_size[i + 1]),
+            ])
+
+            if self.dropout > 0:
+                layers.append(nn.Dropout(p=dropout))
+
+        layers.append(nn.Linear(hidden_size[-1], out_features))
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        return self.layers(X)
 
 class NHiTSBlock(nn.Module):
     """
@@ -137,12 +170,13 @@ class NHiTSBlock(nn.Module):
         self.batch_normalization = batch_normalization
         self.dropout = dropout
 
-        self.hidden_size = [
-            self.context_length_pooled * len(self.output_size)
+        mlp_in_features = self.context_length_pooled * len(self.output_size)
             + self.context_length * self.encoder_covariate_size
             + self.prediction_length * self.decoder_covariate_size
             + self.static_hidden_size
-        ] + hidden_size
+        
+        mlp_out_features = context_length * len(output_size) 
+            + n_theta * sum(output_size)
 
         assert activation in ACTIVATIONS, f"{activation} is not in {ACTIVATIONS}"
         activ = getattr(nn, activation)()
@@ -160,40 +194,21 @@ class NHiTSBlock(nn.Module):
                 ceil_mode=True,
             )
 
-        hidden_layers = []
-        for i in range(n_layers):
-            hidden_layers.append(
-                nn.Linear(
-                    in_features=self.hidden_size[i],
-                    out_features=self.hidden_size[i + 1],
-                )
-            )
-            hidden_layers.append(activ)
-
-            if self.batch_normalization:
-                hidden_layers.append(
-                    nn.BatchNorm1d(num_features=self.hidden_size[i + 1])
-                )
-
-            if self.dropout > 0:
-                hidden_layers.append(nn.Dropout(p=self.dropout))
-
-        output_layer = [
-            nn.Linear(
-                in_features=self.hidden_size[-1],
-                out_features=context_length * len(output_size)
-                + n_theta * sum(output_size),
-            )
-        ]
-        layers = hidden_layers + output_layer
-
         # static_size is computed with data, static_hidden_size is provided by user,
         # if 0 no statics are used
         if (self.static_size > 0) and (self.static_hidden_size > 0):
             self.static_encoder = StaticFeaturesEncoder(
                 in_features=static_size, out_features=static_hidden_size
             )
-        self.layers = nn.Sequential(*layers)
+
+        self.layers = MLP(
+            in_features=mlp_in_features,
+            out_features=mlp_out_features,
+            hidden=hidden_size,
+            activation=activ,
+            dropout=self.dropout
+        )
+
         self.basis = basis
 
     def forward(
