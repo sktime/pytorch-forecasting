@@ -14,6 +14,8 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.metrics import Metric
+
 
 class BaseModel(LightningModule):
     def __init__(
