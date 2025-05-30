@@ -93,28 +93,34 @@ ACTIVATIONS = ["ReLU", "Softplus", "Tanh", "SELU", "LeakyReLU", "PReLU", "Sigmoi
 
 class MLP(nn.Module):
     def __init__(
-            self,
-            in_features: int,
-            out_features: int,
-            hidden_size: list[int],
-            activation: nn.Module,
-            dropout: float
-        ):
+        self,
+        in_features: int,
+        out_features: int,
+        hidden_size: list[int],
+        activation: str,
+        dropout: float,
+    ):
         super().__init__()
 
-        self.layers: nn.Sequential  # Explicit type hint for layers
+        activ = getattr(nn, activation)()
+        
+        self.layers: nn.Sequential
 
         layers = [
             nn.Linear(in_features, hidden_size[0]),
         ]
+        layers.append (activ)
 
         if self.dropout > 0:
             layers.append(nn.Dropout(p=dropout))
 
         for i in range(len (hidden_size) - 1):
-            layers.append([
-                nn.Linear(hidden_size[i], hidden_size[i + 1]),
-            ])
+            layers.append(
+                [
+                    nn.Linear(hidden_size[i], hidden_size[i + 1]),
+                ]
+            )
+            layers.append(activ)
 
             if self.dropout > 0:
                 layers.append(nn.Dropout(p=dropout))
@@ -170,12 +176,18 @@ class NHiTSBlock(nn.Module):
         self.batch_normalization = batch_normalization
         self.dropout = dropout
 
-        mlp_in_features = self.context_length_pooled * len(self.output_size) + self.context_length * self.encoder_covariate_size + self.prediction_length * self.decoder_covariate_size+ self.static_hidden_size
+        mlp_in_features = (
+            self.context_length_pooled * len(self.output_size)
+            + self.context_length * self.encoder_covariate_size
+            + self.prediction_length * self.decoder_covariate_size
+            + self.static_hidden_size
+        )
 
-        mlp_out_features = context_length * len(output_size) + n_theta * sum(output_size)
+        mlp_out_features = context_length * len(output_size) + n_theta * sum(
+            output_size
+        )
 
         assert activation in ACTIVATIONS, f"{activation} is not in {ACTIVATIONS}"
-        activ = getattr(nn, activation)()
 
         if pooling_mode == "max":
             self.pooling_layer = nn.MaxPool1d(
@@ -201,8 +213,8 @@ class NHiTSBlock(nn.Module):
             in_features=mlp_in_features,
             out_features=mlp_out_features,
             hidden=hidden_size,
-            activation=activ,
-            dropout=self.dropout
+            activation=activation,
+            dropout=self.dropout,
         )
 
         self.basis = basis
