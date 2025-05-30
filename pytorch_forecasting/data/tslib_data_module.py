@@ -136,8 +136,8 @@ class _TslibDataset(Dataset):
         history_target = processed_data["target"][history_indices]
         future_target = processed_data["target"][future_indices]
 
-        history_time_idx = processed_data["timestep"][history_indices]
-        future_time_idx = processed_data["timestep"][future_indices]
+        # history_time_idx = processed_data["timestep"][history_indices]
+        # future_time_idx = processed_data["timestep"][future_indices]
 
         x = {
             "history_cont": history_cont,
@@ -149,8 +149,10 @@ class _TslibDataset(Dataset):
             "history_mask": history_mask,
             "future_mask": future_mask,
             "groups": processed_data["group"],
-            "history_time_idx": torch.tensor(history_time_idx),
-            "future_time_idx": torch.tensor(future_time_idx),
+            "history_time_idx": torch.arange(context_length),
+            "future_time_idx": torch.arange(
+                context_length, context_length + prediction_length
+            ),
             "history_target": history_target,
             "future_target": future_target,
             "future_target_len": torch.tensor(prediction_length),
@@ -530,8 +532,25 @@ class TslibDataModule(LightningDataModule):
                 window_end = start_idx + min_seq_length - 1  # 0-indexed
 
                 if cutoff_time is not None:  # skip window if exceed cutoff time.
-                    end_time = sample["t"][window_end].item()
-                    if end_time > cutoff_time:
+                    end_time = sample["t"][window_end]
+
+                    if isinstance(end_time, torch.Tensor):
+                        end_time = end_time.item()
+
+                    # Convert both to pandas Timestamp for consistent comparison
+                    try:
+                        if not isinstance(end_time, pd.Timestamp):
+                            end_time = pd.Timestamp(end_time)
+                        if not isinstance(cutoff_time, pd.Timestamp):
+                            cutoff_time = pd.Timestamp(cutoff_time)
+
+                        if end_time > cutoff_time:
+                            continue
+                    except (ValueError, TypeError) as e:
+                        # If conversion fails, skip this window
+                        warnings.warn(
+                            f"Could not convert time values for comparison: {e}"
+                        )
                         continue
 
                 windows.append(

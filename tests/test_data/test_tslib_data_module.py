@@ -381,8 +381,8 @@ def test_dataloader_pipeline(tslib_data_module):
     assert isinstance(x_batch, dict), "x_batch should be a dictionary."
     assert isinstance(y_batch, torch.Tensor), "y_batch should be a PyTorch tensor."
 
-    assert x_batch["history_cont"].shape[0] == tslib_data_module.context_length
-    assert x_batch["history_cat"].shape[0] == tslib_data_module.context_length
+    assert x_batch["history_cont"].shape[1] == tslib_data_module.context_length
+    assert x_batch["history_cat"].shape[1] == tslib_data_module.context_length
 
     metadata = tslib_data_module.metadata
 
@@ -403,12 +403,12 @@ def test_dataloader_pipeline(tslib_data_module):
     )
 
     assert x_batch["future_cont"].shape[0] == tslib_data_module.batch_size
-    assert x_batch["future_cat"].shape[1] == known_cat_count
+    assert x_batch["future_cat"].shape[2] == known_cat_count
     assert x_batch["future_cont"].shape[2] == known_cont_count
     assert x_batch["future_cont"].shape[0] == tslib_data_module.batch_size
 
     assert y_batch.shape[0] == tslib_data_module.batch_size
-    assert y_batch.shape[1] == tslib_data_module.max_prediction_length
+    assert y_batch.shape[1] == tslib_data_module.prediction_length
 
 
 def test_different_split_ratios(sample_timeseries_data):
@@ -444,3 +444,91 @@ def test_different_split_ratios(sample_timeseries_data):
     assert (
         total_split == total_series
     ), "Total split indices should match the dataset length."
+
+
+def test_preprocess_data(tslib_data_module, sample_timeseries_data):
+    """Test the preprocess_data method.
+    Ensures alignment and presence of all required features."""
+
+    if not hasattr(tslib_data_module, "_indices"):
+        tslib_data_module.setup()
+
+    sample_series_idx = tslib_data_module._train_indices[0]
+    processed = tslib_data_module._preprocess_data(sample_series_idx)
+
+    assert "features" in processed
+    assert "target" in processed
+    assert "static" in processed
+    assert "group" in processed
+    assert "time_mask" in processed
+    assert "continuous" in processed["features"]
+    assert "categorical" in processed["features"]
+    assert "length" in processed
+    assert "timestep" in processed
+
+    original_sample = sample_timeseries_data[sample_series_idx]
+
+    expected_length = len(original_sample["t"])
+
+    assert processed["features"]["categorical"].shape[0] == expected_length
+    assert processed["features"]["continuous"].shape[0] == expected_length
+    assert processed["target"].shape[0] == expected_length
+
+
+def test_static_features(tslib_data_module):
+    """Test with static features included.
+
+    Validates the static feature support in the TslibDataModule."""
+
+    tslib_data_module.setup(stage="fit")
+
+    metadata = tslib_data_module.metadata
+
+    assert metadata["n_features"]["static_continuous"] == 1
+
+    x, y = tslib_data_module.train_dataset[0]
+
+    assert "static_continuous_features" in x
+    assert (
+        x["static_continuous_features"].shape[1]
+        == metadata["n_features"]["static_continuous"]
+    )
+
+
+def test_multivariate_target():
+    """Test with multivariate target (multiple target columns).
+
+    Verifies correct handling of multivariate targets in data pipeline."""
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], 50),
+            "time": np.tile(pd.date_range("2020-01-01", periods=50), 2),
+            "target1": np.random.normal(0, 1, 100),
+            "target2": np.random.normal(5, 2, 100),
+            "feature1": np.random.normal(0, 1, 100),
+            "feature2": np.random.normal(0, 1, 100),
+        }
+    )
+
+    ts = TimeSeries(
+        data=df,
+        time="time",
+        target=["target1", "target2"],
+        group=["group"],
+        num=["feature1", "feature2"],
+    )
+
+    dm = TslibDataModule(
+        time_series_dataset=ts,
+        context_length=8,
+        prediction_length=4,
+        batch_size=2,
+    )
+
+    dm.setup(stage="fit")
+
+    x, y = dm.train_dataset[0]
+
+    assert (
+        y.shape[-1] == 2
+    ), "Target should have two dimensions for n_features for multivariate target."
