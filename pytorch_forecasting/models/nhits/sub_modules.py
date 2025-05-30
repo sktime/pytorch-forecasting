@@ -170,13 +170,9 @@ class NHiTSBlock(nn.Module):
         self.batch_normalization = batch_normalization
         self.dropout = dropout
 
-        mlp_in_features = self.context_length_pooled * len(self.output_size)
-            + self.context_length * self.encoder_covariate_size
-            + self.prediction_length * self.decoder_covariate_size
-            + self.static_hidden_size
-        
-        mlp_out_features = context_length * len(output_size) 
-            + n_theta * sum(output_size)
+        mlp_in_features = self.context_length_pooled * len(self.output_size) + self.context_length * self.encoder_covariate_size + self.prediction_length * self.decoder_covariate_size+ self.static_hidden_size
+
+        mlp_out_features = context_length * len(output_size) + n_theta * sum(output_size)
 
         assert activation in ACTIVATIONS, f"{activation} is not in {ACTIVATIONS}"
         activ = getattr(nn, activation)()
