@@ -1,5 +1,4 @@
 from functools import partial
-from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -38,7 +37,7 @@ class IdentityBasis(nn.Module):
         forecast_theta: torch.Tensor,
         encoder_x_t: torch.Tensor,
         decoder_x_t: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         backcast = backcast_theta
         knots = forecast_theta
 
@@ -108,7 +107,7 @@ class NHiTSBlock(nn.Module):
         static_size: int,
         static_hidden_size: int,
         n_theta: int,
-        hidden_size: List[int],
+        hidden_size: list[int],
         pooling_sizes: int,
         pooling_mode: str,
         basis: nn.Module,
@@ -203,7 +202,7 @@ class NHiTSBlock(nn.Module):
         encoder_x_t: torch.Tensor,
         decoder_x_t: torch.Tensor,
         x_s: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size = len(encoder_y)
 
         encoder_y = encoder_y.transpose(1, 2)

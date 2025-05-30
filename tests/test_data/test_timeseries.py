@@ -1,6 +1,5 @@
 from copy import deepcopy
 import pickle
-from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -97,7 +96,7 @@ def test_pickle(test_dataset):
     pickle.dumps(test_dataset.to_dataloader())
 
 
-def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):
+def check_dataloader_output(dataset: TimeSeriesDataSet, out: dict[str, torch.Tensor]):
     x, y = out
 
     assert isinstance(y, tuple), "y output should be tuple of wegith and target"

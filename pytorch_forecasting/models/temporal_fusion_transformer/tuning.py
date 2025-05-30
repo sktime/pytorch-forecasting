@@ -5,7 +5,7 @@ Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedoc
 import copy
 import logging
 import os
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Union
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -29,14 +29,14 @@ def optimize_hyperparameters(
     max_epochs: int = 20,
     n_trials: int = 100,
     timeout: float = 3600 * 8.0,  # 8 hours
-    gradient_clip_val_range: Tuple[float, float] = (0.01, 100.0),
-    hidden_size_range: Tuple[int, int] = (16, 265),
-    hidden_continuous_size_range: Tuple[int, int] = (8, 64),
-    attention_head_size_range: Tuple[int, int] = (1, 4),
-    dropout_range: Tuple[float, float] = (0.1, 0.3),
-    learning_rate_range: Tuple[float, float] = (1e-5, 1.0),
+    gradient_clip_val_range: tuple[float, float] = (0.01, 100.0),
+    hidden_size_range: tuple[int, int] = (16, 265),
+    hidden_continuous_size_range: tuple[int, int] = (8, 64),
+    attention_head_size_range: tuple[int, int] = (1, 4),
+    dropout_range: tuple[float, float] = (0.1, 0.3),
+    learning_rate_range: tuple[float, float] = (1e-5, 1.0),
     use_learning_rate_finder: bool = True,
-    trainer_kwargs: Dict[str, Any] = {},
+    trainer_kwargs: dict[str, Any] = {},
     log_dir: str = "lightning_logs",
     study=None,
     verbose: Union[int, bool] = None,
@@ -132,7 +132,7 @@ def optimize_hyperparameters(
         # Filenames for each trial must be made unique
         # in order to access each checkpoint.
         checkpoint_callback = ModelCheckpoint(
-            dirpath=os.path.join(model_path, "trial_{}".format(trial.number)),
+            dirpath=os.path.join(model_path, f"trial_{trial.number}"),
             filename="{epoch}",
             monitor="val_loss",
         )

@@ -3,7 +3,7 @@ Simple recurrent model - either with LSTM or GRU cells.
 """
 
 from copy import copy
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -33,21 +33,21 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         hidden_size: int = 10,
         rnn_layers: int = 2,
         dropout: float = 0.1,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_categoricals_encoder: Optional[List[str]] = None,
-        time_varying_categoricals_decoder: Optional[List[str]] = None,
-        categorical_groups: Optional[Dict[str, List[str]]] = None,
-        time_varying_reals_encoder: Optional[List[str]] = None,
-        time_varying_reals_decoder: Optional[List[str]] = None,
-        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
-        embedding_paddings: Optional[List[str]] = None,
-        embedding_labels: Optional[Dict[str, np.ndarray]] = None,
-        x_reals: Optional[List[str]] = None,
-        x_categoricals: Optional[List[str]] = None,
-        output_size: Union[int, List[int]] = 1,
-        target: Union[str, List[str]] = None,
-        target_lags: Optional[Dict[str, List[int]]] = None,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_categoricals_encoder: Optional[list[str]] = None,
+        time_varying_categoricals_decoder: Optional[list[str]] = None,
+        categorical_groups: Optional[dict[str, list[str]]] = None,
+        time_varying_reals_encoder: Optional[list[str]] = None,
+        time_varying_reals_decoder: Optional[list[str]] = None,
+        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
+        embedding_paddings: Optional[list[str]] = None,
+        embedding_labels: Optional[dict[str, np.ndarray]] = None,
+        x_reals: Optional[list[str]] = None,
+        x_categoricals: Optional[list[str]] = None,
+        output_size: Union[int, list[int]] = 1,
+        target: Union[str, list[str]] = None,
+        target_lags: Optional[dict[str, list[int]]] = None,
         loss: MultiHorizonMetric = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -184,7 +184,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
     def from_dataset(
         cls,
         dataset: TimeSeriesDataSet,
-        allowed_encoder_known_variable_names: List[str] = None,
+        allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ):
         """
@@ -254,7 +254,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         # shift target
         return input_vector
 
-    def encode(self, x: Dict[str, torch.Tensor]) -> HiddenState:
+    def encode(self, x: dict[str, torch.Tensor]) -> HiddenState:
         """
         Encode sequence into hidden state
         """
@@ -289,7 +289,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         decoder_lengths: torch.Tensor,
         hidden_state: HiddenState,
         n_samples: int = None,
-    ) -> Tuple[torch.Tensor, bool]:
+    ) -> tuple[torch.Tensor, bool]:
         """
         Decode hidden state of RNN into prediction. If n_smaples is given,
         decode not by using actual values but rather by
@@ -333,8 +333,8 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         return output
 
     def forward(
-        self, x: Dict[str, torch.Tensor], n_samples: int = None
-    ) -> Dict[str, torch.Tensor]:
+        self, x: dict[str, torch.Tensor], n_samples: int = None
+    ) -> dict[str, torch.Tensor]:
         """
         Forward network
         """

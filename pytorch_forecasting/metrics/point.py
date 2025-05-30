@@ -1,7 +1,5 @@
 """Point metrics for forecasting a single point per time step."""
 
-from typing import Dict, List
-
 import scipy.stats
 import torch
 import torch.nn.functional as F
@@ -33,7 +31,7 @@ class PoissonLoss(MultiHorizonMetric):
     """  # noqa: E501
 
     def loss(
-        self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor
+        self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
     ) -> torch.Tensor:
         return F.poisson_nll_loss(
             super().to_prediction(y_pred),
@@ -44,11 +42,11 @@ class PoissonLoss(MultiHorizonMetric):
             reduction="none",
         )
 
-    def to_prediction(self, out: Dict[str, torch.Tensor]):
+    def to_prediction(self, out: dict[str, torch.Tensor]):
         rate = torch.exp(super().to_prediction(out))
         return rate
 
-    def to_quantiles(self, out: Dict[str, torch.Tensor], quantiles=None):
+    def to_quantiles(self, out: dict[str, torch.Tensor], quantiles=None):
         if quantiles is None:
             if self.quantiles is None:
                 quantiles = [0.5]
@@ -133,7 +131,7 @@ class CrossEntropy(MultiHorizonMetric):
         return y_pred.argmax(dim=-1)
 
     def to_quantiles(
-        self, y_pred: torch.Tensor, quantiles: List[float] = None
+        self, y_pred: torch.Tensor, quantiles: list[float] = None
     ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
@@ -159,7 +157,7 @@ class RMSE(MultiHorizonMetric):
     def __init__(self, reduction="sqrt-mean", **kwargs):
         super().__init__(reduction=reduction, **kwargs)
 
-    def loss(self, y_pred: Dict[str, torch.Tensor], target):
+    def loss(self, y_pred: dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
         return loss
 
@@ -321,7 +319,7 @@ class TweedieLoss(MultiHorizonMetric):
         assert 1 <= p < 2, "p must be in range [1, 2]"
         self.p = p
 
-    def to_prediction(self, out: Dict[str, torch.Tensor]):
+    def to_prediction(self, out: dict[str, torch.Tensor]):
         rate = torch.exp(super().to_prediction(out))
         return rate
 
