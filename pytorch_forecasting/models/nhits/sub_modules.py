@@ -103,7 +103,7 @@ class MLP(nn.Module):
         super().__init__()
 
         activ = getattr(nn, activation)()
-        
+
         self.layers: nn.Sequential
 
         layers = [
