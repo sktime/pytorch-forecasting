@@ -367,3 +367,80 @@ def test_create_windows(tslib_data_module):
     empty_windows = tslib_data_module._create_windows(torch.tensor([]))
 
     assert len(empty_windows) == 0, "Should return empty list for empty index."
+
+
+def test_dataloader_pipeline(tslib_data_module):
+    """Test for a single iteration of the dataloader pipeline to
+    perform batch retrival and ensure correct data shapes and types."""
+
+    tslib_data_module.setup(stage="fit")
+    train_dataloader = tslib_data_module.train_dataloader()
+
+    x_batch, y_batch = next(iter(train_dataloader))
+
+    assert isinstance(x_batch, dict), "x_batch should be a dictionary."
+    assert isinstance(y_batch, torch.Tensor), "y_batch should be a PyTorch tensor."
+
+    assert x_batch["history_cont"].shape[0] == tslib_data_module.context_length
+    assert x_batch["history_cat"].shape[0] == tslib_data_module.context_length
+
+    metadata = tslib_data_module.metadata
+
+    known_cat_count = len(
+        [
+            name
+            for name in metadata["feature_names"]["known"]
+            if name in metadata["feature_names"]["categorical"]
+        ]
+    )
+
+    known_cont_count = len(
+        [
+            name
+            for name in metadata["feature_names"]["known"]
+            if name in metadata["feature_names"]["continuous"]
+        ]
+    )
+
+    assert x_batch["future_cont"].shape[0] == tslib_data_module.batch_size
+    assert x_batch["future_cat"].shape[1] == known_cat_count
+    assert x_batch["future_cont"].shape[2] == known_cont_count
+    assert x_batch["future_cont"].shape[0] == tslib_data_module.batch_size
+
+    assert y_batch.shape[0] == tslib_data_module.batch_size
+    assert y_batch.shape[1] == tslib_data_module.max_prediction_length
+
+
+def test_different_split_ratios(sample_timeseries_data):
+    """Test the TslibDataModule with different train/val/test split ratios."""
+
+    custom_split = (0.6, 0.2, 0.2)
+    dm_custom = TslibDataModule(
+        time_series_dataset=sample_timeseries_data,
+        context_length=8,
+        prediction_length=4,
+        batch_size=2,
+        train_val_test_split=custom_split,
+    )
+
+    dm_custom.setup(stage="fit")
+
+    total_series = len(sample_timeseries_data)
+    expected_train = int(total_series * 0.6)
+    expected_val = int(total_series * 0.2)
+    expected_test = total_series - expected_train - expected_val
+
+    assert len(dm_custom._train_indices) == expected_train
+    assert len(dm_custom._val_indices) == expected_val
+    assert len(dm_custom._test_indices) == expected_test
+
+    assert dm_custom.train_val_test_split == custom_split
+
+    total_split = (
+        len(dm_custom._train_indices)
+        + len(dm_custom._val_indices)
+        + len(dm_custom._test_indices)
+    )
+    assert (
+        total_split == total_series
+    ), "Total split indices should match the dataset length."
