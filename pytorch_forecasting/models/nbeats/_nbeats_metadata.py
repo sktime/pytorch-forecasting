@@ -55,7 +55,7 @@ class NBeatsMetadata(_BasePtForecaster):
             Train, validation, and test dataloaders, in this order.
         """
         from pytorch_forecasting.tests._conftest import (
-            dataloaders_fixed_window_without_covariates,
+            _dataloaders_fixed_window_without_covariates,
         )
 
-        return dataloaders_fixed_window_without_covariates()
+        return _dataloaders_fixed_window_without_covariates()
