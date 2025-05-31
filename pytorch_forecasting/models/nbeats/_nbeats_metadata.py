@@ -36,4 +36,9 @@ class NBeatsMetadata(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        return [{"backcast_loss_ratio": 1.0}]
+        return [
+            {
+                "backcast_loss_ratio": 1.0,
+                "add_relative_time_idx" : True,
+            }
+        ]
