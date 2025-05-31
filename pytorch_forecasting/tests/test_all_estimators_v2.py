@@ -71,6 +71,38 @@ def _integration(
     training_data_module = dataloaders_with_covariates["data_module"]
     metadata = training_data_module.metadata
 
+    assert metadata["encoder_cont"] == 14  # 14 features (8 known + 6 unknown)
+    assert metadata["encoder_cat"] == 0
+    assert metadata["decoder_cont"] == 8  # 8 (only known features)
+    assert metadata["decoder_cat"] == 0
+    assert metadata["static_categorical_features"] == 0
+    assert (
+        metadata["static_continuous_features"] == 2
+    )  # 2 (agency_encoded, sku_encoded)
+    assert metadata["target"] == 1
+
+    batch_x, batch_y = next(iter(train_dataloader))
+
+    assert batch_x["encoder_cont"].shape[2] == metadata["encoder_cont"]
+    assert batch_x["encoder_cat"].shape[2] == metadata["encoder_cat"]
+
+    assert batch_x["decoder_cont"].shape[2] == metadata["decoder_cont"]
+    assert batch_x["decoder_cat"].shape[2] == metadata["decoder_cat"]
+
+    if "static_categorical_features" in batch_x:
+        assert (
+            batch_x["static_categorical_features"].shape[2]
+            == metadata["static_categorical_features"]
+        )
+
+    if "static_continuous_features" in batch_x:
+        assert (
+            batch_x["static_continuous_features"].shape[2]
+            == metadata["static_continuous_features"]
+        )
+
+    assert batch_y.shape[2] == metadata["target"]
+
     net = estimator_cls(
         metadata=metadata,
         loss=nn.MSELoss(),
@@ -85,17 +117,8 @@ def _integration(
         )
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
-
-        # check loading
-        # net = estimator_cls.load_from_checkpoint(
-        #     trainer.checkpoint_callback.best_model_path
-        # )
-        # net.predict(val_dataloader)
-
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
-
-    # net.predict(val_dataloader)
 
 
 class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
