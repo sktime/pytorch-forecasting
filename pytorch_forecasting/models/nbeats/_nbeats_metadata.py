@@ -50,8 +50,8 @@ class NBeatsMetadata(_BasePtForecaster):
 
         Returns
         -------
-        dataloaders : tuple of three torch.utils.data.DataLoader
-            List of dataloaders created from the parameters.
+        dataloaders : dict with keys "train", "val", "test", values torch DataLoader
+            Dict of dataloaders created from the parameters.
             Train, validation, and test dataloaders, in this order.
         """
         from pytorch_forecasting.tests._conftest import (

@@ -136,9 +136,9 @@ class DeepARMetadata(_BasePtForecaster):
 
         Returns
         -------
-        dataloaders : tuple of three torch.utils.data.DataLoader
-            List of dataloaders created from the parameters.
-            Train, validation, and test dataloaders, in this order.
+        dataloaders : dict with keys "train", "val", "test", values torch DataLoader
+            Dict of dataloaders created from the parameters.
+            Train, validation, and test dataloaders.
         """
         trainer_kwargs = params.get("trainer_kwargs", {})
         clip_target = params.get("clip_target", False)
