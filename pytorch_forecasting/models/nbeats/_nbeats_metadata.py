@@ -39,6 +39,6 @@ class NBeatsMetadata(_BasePtForecaster):
         return [
             {
                 "backcast_loss_ratio": 1.0,
-                "add_relative_time_idx": True,
+                "add_relative_time_idx": False,
             }
         ]
