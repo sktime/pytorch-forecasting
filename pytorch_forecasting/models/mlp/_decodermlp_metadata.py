@@ -47,7 +47,6 @@ class DecoderMLPMetadata(_BasePtForecaster):
 
         return [
             {},
-            dict(train_only=True),
             dict(
                 loss=MultiLoss([QuantileLoss(), MAE()]),
                 data_loader_kwargs=dict(
