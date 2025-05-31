@@ -36,9 +36,25 @@ class NBeatsMetadata(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        return [
-            {
-                "backcast_loss_ratio": 1.0,
-                "add_relative_time_idx": False,
-            }
-        ]
+        return [{"backcast_loss_ratio": 1.0}]
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params):
+        """Get dataloaders from parameters.
+
+        Parameters
+        ----------
+        params : dict
+            Parameters to create dataloaders.
+            One of the elements in the list returned by ``get_test_train_params``.
+
+        Returns
+        -------
+        dataloaders : tuple of three torch.utils.data.DataLoader
+            List of dataloaders created from the parameters.
+            Train, validation, and test dataloaders, in this order.
+        """
+        from pytorch_forecasting.tests._conftest import (
+            dataloaders_fixed_window_without_covariates
+        )
+        return dataloaders_fixed_window_without_covariates

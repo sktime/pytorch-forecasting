@@ -123,3 +123,53 @@ class DeepARMetadata(_BasePtForecaster):
                 trainer_kwargs=dict(accelerator="cpu"),
             ),
         ]
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params):
+        """Get dataloaders from parameters.
+
+        Parameters
+        ----------
+        params : dict
+            Parameters to create dataloaders.
+            One of the elements in the list returned by ``get_test_train_params``.
+
+        Returns
+        -------
+        dataloaders : tuple of three torch.utils.data.DataLoader
+            List of dataloaders created from the parameters.
+            Train, validation, and test dataloaders, in this order.
+        """
+        trainer_kwargs = params.get("trainer_kwargs", {})
+        clip_target = params.get("clip_target", False)
+        data_loader_kwargs = params.get("data_loader_kwargs", {})
+
+        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        from pytorch_forecasting.tests._conftest import make_dataloaders
+        from pytorch_forecasting.tests._data_scenarios import data_with_covariates
+
+        dwc = data_with_covariates()
+
+        if "loss" in trainer_kwargs and isinstance(
+            trainer_kwargs["loss"], NegativeBinomialDistributionLoss
+        ):
+            data_with_covariates = data_with_covariates.assign(
+                volume=lambda x: x.volume.round()
+            )
+
+
+        data_with_covariates = data_with_covariates.copy()
+        if clip_target:
+            dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
+        else:
+            dwc["target"] = dwc["volume"]
+        data_loader_default_kwargs = dict(
+            target="target",
+            time_varying_known_reals=["price_actual"],
+            time_varying_unknown_reals=["target"],
+            static_categoricals=["agency"],
+            add_relative_time_idx=True,
+        )
+        data_loader_default_kwargs.update(data_loader_kwargs)
+        dataloaders_w_covariates = make_dataloaders(dwc, **data_loader_default_kwargs)
+        return dataloaders_w_covariates
