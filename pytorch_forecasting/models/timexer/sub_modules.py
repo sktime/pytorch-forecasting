@@ -46,7 +46,7 @@ class FullAttention(nn.Module):
         attention_dropout=0.1,
         output_attention=False,
     ):
-        super(FullAttention, self).__init__()
+        super().__init__()
         self.scale = scale
         self.mask_flag = mask_flag
         self.output_attention = output_attention
@@ -86,7 +86,7 @@ class AttentionLayer(nn.Module):
     """
 
     def __init__(self, attention, d_model, n_heads, d_keys=None, d_values=None):
-        super(AttentionLayer, self).__init__()
+        super().__init__()
 
         d_keys = d_keys or (d_model // n_heads)
         d_values = d_values or (d_model // n_heads)
@@ -132,7 +132,7 @@ class DataEmbedding_inverted(nn.Module):
     """
 
     def __init__(self, c_in, d_model, embed_type="fixed", freq="h", dropout=0.1):
-        super(DataEmbedding_inverted, self).__init__()
+        super().__init__()
         self.value_embedding = nn.Linear(c_in, d_model)
         self.dropout = nn.Dropout(p=dropout)
 
@@ -155,7 +155,7 @@ class PositionalEmbedding(nn.Module):
         max_len (int): Maximum length of the input sequence. Defaults to 5000."""
 
     def __init__(self, d_model, max_len=5000):
-        super(PositionalEmbedding, self).__init__()
+        super().__init__()
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
         pe.require_grad = False
@@ -220,7 +220,7 @@ class EnEmbedding(nn.Module):
         dropout (float): Dropout rate. Defaults to 0.1."""
 
     def __init__(self, n_vars, d_model, patch_len, dropout):
-        super(EnEmbedding, self).__init__()
+        super().__init__()
 
         self.patch_len = patch_len
 
@@ -254,7 +254,7 @@ class Encoder(nn.Module):
     """
 
     def __init__(self, layers, norm_layer=None, projection=None):
-        super(Encoder, self).__init__()
+        super().__init__()
         self.layers = nn.ModuleList(layers)
         self.norm = norm_layer
         self.projection = projection
@@ -295,7 +295,7 @@ class EncoderLayer(nn.Module):
         dropout=0.1,
         activation="relu",
     ):
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         d_ff = d_ff or 4 * d_model
         self.self_attention = self_attention
         self.cross_attention = cross_attention

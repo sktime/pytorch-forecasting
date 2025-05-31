@@ -4,7 +4,7 @@ Time Series Transformer with eXogenous variables (TimeXer)
 """
 
 from copy import copy
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
@@ -54,21 +54,21 @@ class TimeXer(BaseModelWithCovariates):
         factor: int = 5,
         embed_type: str = "fixed",
         freq: str = "h",
-        output_size: Union[int, List[int]] = 1,
+        output_size: Union[int, list[int]] = 1,
         loss: MultiHorizonMetric = None,
         learning_rate: float = 1e-3,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_categoricals_encoder: Optional[List[str]] = None,
-        time_varying_categoricals_decoder: Optional[List[str]] = None,
-        time_varying_reals_encoder: Optional[List[str]] = None,
-        time_varying_reals_decoder: Optional[List[str]] = None,
-        x_reals: Optional[List[str]] = None,
-        x_categoricals: Optional[List[str]] = None,
-        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
-        embedding_labels: Optional[List[str]] = None,
-        embedding_paddings: Optional[List[str]] = None,
-        categorical_groups: Optional[Dict[str, List[str]]] = None,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_categoricals_encoder: Optional[list[str]] = None,
+        time_varying_categoricals_decoder: Optional[list[str]] = None,
+        time_varying_reals_encoder: Optional[list[str]] = None,
+        time_varying_reals_decoder: Optional[list[str]] = None,
+        x_reals: Optional[list[str]] = None,
+        x_categoricals: Optional[list[str]] = None,
+        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
+        embedding_labels: Optional[list[str]] = None,
+        embedding_paddings: Optional[list[str]] = None,
+        categorical_groups: Optional[dict[str, list[str]]] = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
@@ -115,28 +115,28 @@ class TimeXer(BaseModelWithCovariates):
             factor: Scaling factor for attention scores.
             embed_type: Type of time feature embedding ('timeF' for time-based features)
             freq: Frequency of the time series data('h' for hourly,'d' for daily, etc.).
-            static_categoricals (List[str]): names of static categorical variables
-            static_reals (List[str]): names of static continuous variables
-            time_varying_categoricals_encoder (List[str]): names of categorical
+            static_categoricals (list[str]): names of static categorical variables
+            static_reals (list[str]): names of static continuous variables
+            time_varying_categoricals_encoder (list[str]): names of categorical
                 variables for encoder
-            time_varying_categoricals_decoder (List[str]): names of categorical
+            time_varying_categoricals_decoder (list[str]): names of categorical
                 variables for decoder
-            time_varying_reals_encoder (List[str]): names of continuous variables for
+            time_varying_reals_encoder (list[str]): names of continuous variables for
                 encoder
-            time_varying_reals_decoder (List[str]): names of continuous variables for
+            time_varying_reals_decoder (list[str]): names of continuous variables for
                 decoder
-            x_reals (List[str]): order of continuous variables in tensor passed to
+            x_reals (list[str]): order of continuous variables in tensor passed to
                 forward function
-            x_categoricals (List[str]): order of categorical variables in tensor passed
+            x_categoricals (list[str]): order of categorical variables in tensor passed
                 to forward function
-            embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical
+            embedding_sizes (dict[str, tuple[int, int]]): dictionary mapping categorical
                 variables to tuple of integers where the first integer denotes the
                 number of categorical classes and the second the embedding size
-            embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices
+            embedding_labels (dict[str, list[str]]): dictionary mapping (string) indices
                 to list of categorical labels
-            embedding_paddings (List[str]): names of categorical variables for which
+            embedding_paddings (list[str]): names of categorical variables for which
                 label 0 is always mapped to an embedding vector filled with zeros
-            categorical_groups (Dict[str, List[str]]): dictionary of categorical
+            categorical_groups (dict[str, list[str]]): dictionary of categorical
                 variables that are grouped together and can also take multiple values
                 simultaneously (e.g. holiday during octoberfest). They should be
                 implemented as bag of embeddings.
@@ -255,7 +255,7 @@ class TimeXer(BaseModelWithCovariates):
     def from_dataset(
         cls,
         dataset: TimeSeriesDataSet,
-        allowed_encoder_known_variable_names: List[str] = None,
+        allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ):
         """
@@ -263,7 +263,7 @@ class TimeXer(BaseModelWithCovariates):
 
         Args:
             dataset: timeseries dataset
-            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all
+            allowed_encoder_known_variable_names: list of known variables that are allowed in encoder, defaults to all
             **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
 
         Returns:
@@ -285,7 +285,7 @@ class TimeXer(BaseModelWithCovariates):
             **new_kwargs,
         )
 
-    def _forecast(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _forecast(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forecast for univariate or multivariate with single target (MS) case.
 
@@ -321,7 +321,7 @@ class TimeXer(BaseModelWithCovariates):
 
         return dec_out
 
-    def _forecast_multi(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def _forecast_multi(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forecast for multivariate with multiple targets (M) case.
 
@@ -403,7 +403,7 @@ class TimeXer(BaseModelWithCovariates):
             for name in self.hparams.static_categoricals
         )
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the model.
 
