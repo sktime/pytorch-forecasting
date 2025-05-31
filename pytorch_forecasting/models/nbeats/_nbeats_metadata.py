@@ -58,4 +58,4 @@ class NBeatsMetadata(_BasePtForecaster):
             dataloaders_fixed_window_without_covariates,
         )
 
-        return dataloaders_fixed_window_without_covariates
+        return dataloaders_fixed_window_without_covariates()

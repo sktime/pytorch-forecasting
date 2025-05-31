@@ -153,11 +153,9 @@ class DeepARMetadata(_BasePtForecaster):
         if "loss" in trainer_kwargs and isinstance(
             trainer_kwargs["loss"], NegativeBinomialDistributionLoss
         ):
-            data_with_covariates = data_with_covariates.assign(
-                volume=lambda x: x.volume.round()
-            )
+            dwc = dwc.assign(volume=lambda x: x.volume.round())
 
-        data_with_covariates = data_with_covariates.copy()
+        dwc = dwc.copy()
         if clip_target:
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
         else:
