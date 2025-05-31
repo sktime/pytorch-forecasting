@@ -67,3 +67,39 @@ class DecoderMLPMetadata(_BasePtForecaster):
                 data_loader_kwargs=dict(min_prediction_length=1, min_encoder_length=1),
             ),
         ]
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params):
+        """Get dataloaders from parameters.
+
+        Parameters
+        ----------
+        params : dict
+            Parameters to create dataloaders.
+            One of the elements in the list returned by ``get_test_train_params``.
+
+        Returns
+        -------
+        dataloaders : dict with keys "train", "val", "test", values torch DataLoader
+            Dict of dataloaders created from the parameters.
+            Train, validation, and test dataloaders, in this order.
+        """
+        data_loader_kwargs = params.get("data_loader_kwargs", {})
+
+        from pytorch_forecasting.tests._conftest import (
+            _data_with_covariates,
+            make_dataloaders,
+        )
+
+        dwc = _data_with_covariates()
+        dwc.assign(target=lambda x: x.volume)
+        dl_default_kwargs = dict(
+            target="target",
+            time_varying_known_reals=["price_actual"],
+            time_varying_unknown_reals=["target"],
+            static_categoricals=["agency"],
+            add_relative_time_idx=True,
+        )
+        dl_default_kwargs.update(data_loader_kwargs)
+        dataloaders_with_covariates = make_dataloaders(dwc, **dl_default_kwargs)
+        return dataloaders_with_covariates
