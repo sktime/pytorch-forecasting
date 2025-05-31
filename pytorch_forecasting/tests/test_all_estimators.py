@@ -166,7 +166,16 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         return all_train_kwargs, train_kwargs_names
 
 
-def _integration(estimator_cls, dataloaders, tmp_path, trainer_kwargs=None, **kwargs):
+def _integration(
+    estimator_cls,
+    dataloaders,
+    tmp_path,
+    trainer_kwargs=None,
+    data_loader_kwargs={},  # only present to capture and pop these from kwargs
+    clip_target: bool = False,  # only present to capture and pop these from kwargs
+    # todo: refactor this more cleanly to metadata class
+    **kwargs,
+):
     """Unified integration test for all estimators."""
     train_dataloader = dataloaders["train"]
     val_dataloader = dataloaders["val"]
