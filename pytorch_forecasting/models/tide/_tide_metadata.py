@@ -37,7 +37,7 @@ class TiDEModelMetadata(_BasePtForecaster):
         from pytorch_forecasting.data.encoders import GroupNormalizer
         from pytorch_forecasting.metrics import SMAPE
 
-        return [
+        params = [
             {
                 "data_loader_kwargs": dict(
                     add_relative_time_idx=False,
@@ -61,6 +61,10 @@ class TiDEModelMetadata(_BasePtForecaster):
                 ),
             },
         ]
+        defaults = {"hidden_size": 5}
+        for param in params:
+            param.update(defaults)
+        return params
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
