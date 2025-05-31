@@ -157,7 +157,6 @@ class DeepARMetadata(_BasePtForecaster):
                 volume=lambda x: x.volume.round()
             )
 
-
         data_with_covariates = data_with_covariates.copy()
         if clip_target:
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
