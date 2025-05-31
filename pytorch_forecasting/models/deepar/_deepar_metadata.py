@@ -140,7 +140,7 @@ class DeepARMetadata(_BasePtForecaster):
             Dict of dataloaders created from the parameters.
             Train, validation, and test dataloaders.
         """
-        trainer_kwargs = params.get("trainer_kwargs", {})
+        loss = params.get("loss", None)
         clip_target = params.get("clip_target", False)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
@@ -150,9 +150,7 @@ class DeepARMetadata(_BasePtForecaster):
 
         dwc = data_with_covariates()
 
-        if "loss" in trainer_kwargs and isinstance(
-            trainer_kwargs["loss"], NegativeBinomialDistributionLoss
-        ):
+        if isinstance(loss, NegativeBinomialDistributionLoss):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
 
         dwc = dwc.copy()
