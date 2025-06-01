@@ -112,7 +112,7 @@ class MLP(nn.Module):
         ]
         layers.append(activ)
 
-        if self.dropout > 0:
+        if dropout > 0:
             layers.append(nn.Dropout(p=dropout))
 
         for i in range(len(hidden_size) - 1):
@@ -123,7 +123,7 @@ class MLP(nn.Module):
             )
             layers.append(activ)
 
-            if self.dropout > 0:
+            if dropout > 0:
                 layers.append(nn.Dropout(p=dropout))
 
         layers.append(nn.Linear(hidden_size[-1], out_features))
