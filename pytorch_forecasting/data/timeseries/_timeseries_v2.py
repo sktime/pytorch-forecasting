@@ -94,14 +94,14 @@ class TimeSeries(Dataset):
         self.data = data
         self.data_future = data_future
         self.time = time
-        self.target = target
-        self.group = group
+        self.target = _coerce_to_list(target)
+        self.group = _coerce_to_list(group)
         self.weight = weight
-        self.num = num
-        self.cat = cat
-        self.known = known
-        self.unknown = unknown
-        self.static = static
+        self.num = _coerce_to_list(num)
+        self.cat = _coerce_to_list(cat)
+        self.known = _coerce_to_list(known)
+        self.unknown = _coerce_to_list(unknown)
+        self.static = _coerce_to_list(static)
 
         warn(
             "TimeSeries is part of an experimental rework of the "
@@ -115,40 +115,19 @@ class TimeSeries(Dataset):
             UserWarning,
         )
 
-        super().__init__()
-
-        # handle defaults, coercion, and derived attributes
-        self._target = _coerce_to_list(target)
-        self._group = _coerce_to_list(group)
-        self._num = _coerce_to_list(num)
-        self._cat = _coerce_to_list(cat)
-        self._known = _coerce_to_list(known)
-        self._unknown = _coerce_to_list(unknown)
-        self._static = _coerce_to_list(static)
-
         self.feature_cols = [
             col
             for col in data.columns
-            if col not in [self.time] + self._group + [self.weight] + self._target
+            if col not in [self.time] + self.group + [self.weight] + self.target
         ]
-        if self._group:
-            self._groups = self.data.groupby(self._group).groups
+        if self.group:
+            self._groups = self.data.groupby(self.group).groups
             self._group_ids = list(self._groups.keys())
         else:
             self._groups = {"_single_group": self.data.index}
             self._group_ids = ["_single_group"]
 
         self._prepare_metadata()
-
-        # overwrite __init__ params for upwards compatibility with AS PRs
-        # todo: should we avoid this and ensure classes are dataclass-like?
-        self.group = self._group
-        self.target = self._target
-        self.num = self._num
-        self.cat = self._cat
-        self.known = self._known
-        self.unknown = self._unknown
-        self.static = self._static
 
     def _prepare_metadata(self):
         """Prepare metadata for the dataset.
@@ -169,19 +148,19 @@ class TimeSeries(Dataset):
         """
         self.metadata = {
             "cols": {
-                "y": self._target,
+                "y": self.target,
                 "x": self.feature_cols,
-                "st": self._static,
+                "st": self.static,
             },
             "col_type": {},
             "col_known": {},
         }
 
-        all_cols = self._target + self.feature_cols + self._static
+        all_cols = self.target + self.feature_cols + self.static
         for col in all_cols:
-            self.metadata["col_type"][col] = "C" if col in self._cat else "F"
+            self.metadata["col_type"][col] = "C" if col in self.cat else "F"
 
-            self.metadata["col_known"][col] = "K" if col in self._known else "U"
+            self.metadata["col_known"][col] = "K" if col in self.known else "U"
 
     def __len__(self) -> int:
         """Return number of time series in the dataset."""
@@ -216,69 +195,54 @@ class TimeSeries(Dataset):
         weights : torch.Tensor of shape (n_timepoints,), optional
             Only included if weights are not `None`.
         """
-        time = self.time
-        feature_cols = self.feature_cols
-        _target = self._target
-        _known = self._known
-        _static = self._static
-        _group = self._group
-        _groups = self._groups
-        _group_ids = self._group_ids
-        weight = self.weight
-        data_future = self.data_future
+        group_id = self._group_ids[index]
 
-        group_id = _group_ids[index]
-
-        if _group:
-            mask = _groups[group_id]
+        if self.group:
+            mask = self._groups[group_id]
             data = self.data.loc[mask]
         else:
             data = self.data
 
-        cutoff_time = data[time].max()
-
-        data_vals = data[time].values
-        data_tgt_vals = data[_target].values
-        data_feat_vals = data[feature_cols].values
+        cutoff_time = data[self.time].max()
 
         result = {
-            "t": data_vals,
-            "y": torch.tensor(data_tgt_vals),
-            "x": torch.tensor(data_feat_vals),
+            "t": data[self.time].values,
+            "y": torch.tensor(data[self.target].values),
+            "x": torch.tensor(data[self.feature_cols].values),
             "group": torch.tensor([hash(str(group_id))]),
-            "st": torch.tensor(data[_static].iloc[0].values if _static else []),
+            "st": torch.tensor(data[self.static].iloc[0].values if self.static else []),
             "cutoff_time": cutoff_time,
         }
 
-        if data_future is not None:
-            if _group:
-                future_mask = self.data_future.groupby(_group).groups[group_id]
+        if self.data_future is not None:
+            if self.group:
+                future_mask = self.data_future.groupby(self.group).groups[group_id]
                 future_data = self.data_future.loc[future_mask]
             else:
                 future_data = self.data_future
 
-            data_fut_vals = future_data[time].values
-
-            combined_times = np.concatenate([data_vals, data_fut_vals])
+            combined_times = np.concatenate(
+                [data[self.time].values, future_data[self.time].values]
+            )
             combined_times = np.unique(combined_times)
             combined_times.sort()
 
             num_timepoints = len(combined_times)
-            x_merged = np.full((num_timepoints, len(feature_cols)), np.nan)
-            y_merged = np.full((num_timepoints, len(_target)), np.nan)
+            x_merged = np.full((num_timepoints, len(self.feature_cols)), np.nan)
+            y_merged = np.full((num_timepoints, len(self.target)), np.nan)
 
             current_time_indices = {t: i for i, t in enumerate(combined_times)}
-            for i, t in enumerate(data_vals):
+            for i, t in enumerate(data[self.time].values):
                 idx = current_time_indices[t]
-                x_merged[idx] = data_feat_vals[i]
-                y_merged[idx] = data_tgt_vals[i]
+                x_merged[idx] = data[self.feature_cols].values[i]
+                y_merged[idx] = data[self.target].values[i]
 
-            for i, t in enumerate(data_fut_vals):
+            for i, t in enumerate(future_data[self.time].values):
                 if t in current_time_indices:
                     idx = current_time_indices[t]
-                    for j, col in enumerate(_known):
-                        if col in feature_cols:
-                            feature_idx = feature_cols.index(col)
+                    for j, col in enumerate(self.known):
+                        if col in self.feature_cols:
+                            feature_idx = self.feature_cols.index(col)
                             x_merged[idx, feature_idx] = future_data[col].values[i]
 
             result.update(
@@ -289,17 +253,17 @@ class TimeSeries(Dataset):
                 }
             )
 
-        if weight:
+        if self.weight:
             if self.data_future is not None and self.weight in self.data_future.columns:
                 weights_merged = np.full(num_timepoints, np.nan)
-                for i, t in enumerate(data_vals):
+                for i, t in enumerate(data[self.time].values):
                     idx = current_time_indices[t]
-                    weights_merged[idx] = data[weight].values[i]
+                    weights_merged[idx] = data[self.weight].values[i]
 
-                for i, t in enumerate(data_fut_vals):
+                for i, t in enumerate(future_data[self.time].values):
                     if t in current_time_indices and self.weight in future_data.columns:
                         idx = current_time_indices[t]
-                        weights_merged[idx] = future_data[weight].values[i]
+                        weights_merged[idx] = future_data[self.weight].values[i]
 
                 result["weights"] = torch.tensor(weights_merged, dtype=torch.float32)
             else:
