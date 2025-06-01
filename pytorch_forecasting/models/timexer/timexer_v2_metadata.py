@@ -35,7 +35,6 @@ class TimeXerMetadata(_BasePtForecaster):
 
         return [
             dict(
-                loss=nn.L1Loss(),
                 context_length=30,
                 prediction_length=1,
                 d_model=32,
