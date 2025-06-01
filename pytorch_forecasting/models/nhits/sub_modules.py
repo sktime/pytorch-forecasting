@@ -214,7 +214,7 @@ class NHiTSBlock(nn.Module):
         self.layers = MLP(
             in_features=mlp_in_features,
             out_features=mlp_out_features,
-            hidden=hidden_size,
+            hidden_size=hidden_size,
             activation=activation,
             dropout=self.dropout,
         )
