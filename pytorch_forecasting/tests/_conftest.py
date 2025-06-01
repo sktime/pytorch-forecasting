@@ -456,6 +456,10 @@ def dataloaders_multi_target(data_with_covariates):
 
 @pytest.fixture(scope="session")
 def dataloaders_fixed_window_without_covariates():
+    return _dataloaders_fixed_window_without_covariates()
+
+
+def _dataloaders_fixed_window_without_covariates():
     data = generate_ar_data(seasonality=10.0, timesteps=50, n_series=2)
     validation = data.series.iloc[:2]
 

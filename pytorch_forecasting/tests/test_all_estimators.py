@@ -10,7 +10,6 @@ from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
 
 from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
-from pytorch_forecasting.tests._conftest import make_dataloaders
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
@@ -169,33 +168,18 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
 
 def _integration(
     estimator_cls,
-    data_with_covariates,
+    dataloaders,
     tmp_path,
-    data_loader_kwargs={},
-    clip_target: bool = False,
     trainer_kwargs=None,
+    data_loader_kwargs={},  # only present to capture and pop these from kwargs
+    clip_target: bool = False,  # only present to capture and pop these from kwargs
+    # todo: refactor this more cleanly to metadata class
     **kwargs,
 ):
-    data_with_covariates = data_with_covariates.copy()
-    if clip_target:
-        data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
-    else:
-        data_with_covariates["target"] = data_with_covariates["volume"]
-    data_loader_default_kwargs = dict(
-        target="target",
-        time_varying_known_reals=["price_actual"],
-        time_varying_unknown_reals=["target"],
-        static_categoricals=["agency"],
-        add_relative_time_idx=True,
-    )
-    data_loader_default_kwargs.update(data_loader_kwargs)
-    dataloaders_with_covariates = make_dataloaders(
-        data_with_covariates, **data_loader_default_kwargs
-    )
-
-    train_dataloader = dataloaders_with_covariates["train"]
-    val_dataloader = dataloaders_with_covariates["val"]
-    test_dataloader = dataloaders_with_covariates["test"]
+    """Unified integration test for all estimators."""
+    train_dataloader = dataloaders["train"]
+    val_dataloader = dataloaders["val"]
+    test_dataloader = dataloaders["test"]
 
     early_stop_callback = EarlyStopping(
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
@@ -219,7 +203,6 @@ def _integration(
 
     net = estimator_cls.from_dataset(
         train_dataloader.dataset,
-        hidden_size=5,
         learning_rate=0.01,
         log_gradient_flow=True,
         log_interval=1000,
@@ -290,17 +273,8 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
         tmp_path,
     ):
         """Fails for certain, for testing."""
-        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates
-
-        data_with_covariates = data_with_covariates()
 
         object_class = object_metadata.get_model_cls()
+        dataloaders = object_metadata._get_test_dataloaders_from(trainer_kwargs)
 
-        if "loss" in trainer_kwargs and isinstance(
-            trainer_kwargs["loss"], NegativeBinomialDistributionLoss
-        ):
-            data_with_covariates = data_with_covariates.assign(
-                volume=lambda x: x.volume.round()
-            )
-        _integration(object_class, data_with_covariates, tmp_path, **trainer_kwargs)
+        _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
