@@ -476,13 +476,14 @@ class TimeSeriesDataSet(Dataset):
         ] = None,
         randomize_length: Union[None, tuple[float, float], bool] = False,
         predict_mode: bool = False,
+        precompute: bool = False,
     ):
         """Timeseries dataset holding data for models."""
         super().__init__()
 
         self.precompute_cache = []
         self.precompute_idx = 0
-        self.precompute = False
+        self.precompute = precompute
 
         # write variables to self and handle defaults
         # -------------------------------------------
@@ -2572,7 +2573,6 @@ class TimeSeriesDataSet(Dataset):
         train: bool = True,
         batch_size: int = 64,
         batch_sampler: Union[Sampler, str] = None,
-        precompute: bool = False,
         **kwargs,
     ) -> DataLoader:
         """Construct dataloader from dataset, for use in models.
@@ -2668,9 +2668,7 @@ class TimeSeriesDataSet(Dataset):
         default_kwargs.update(kwargs)
         kwargs = default_kwargs
 
-        self.precompute = precompute
-
-        if precompute:
+        if self.precompute:
             self.__precompute__(
                 batch_size=kwargs["batch_size"],
                 shuffle=kwargs["shuffle"],
