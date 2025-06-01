@@ -31,9 +31,19 @@ class TimeXerMetadata(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        import torch.nn as nn
+
         return [
             dict(
-                context_length=4,
-                prediction_length=3,
+                loss=nn.L1Loss(),
+                context_length=30,
+                prediction_length=1,
+                d_model=32,
+                n_heads=2,
+                e_layers=1,
+                d_ff=64,
+                patch_length=1,
+                task_name="long_term_forecast",
+                features="MS",
             ),
         ]
