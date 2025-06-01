@@ -9,6 +9,7 @@ class TiDEModelMetadata(_BasePtForecaster):
     _tags = {
         "info:name": "TiDEModel",
         "info:compute": 3,
+        "object_type": "ptf-v1",
         "authors": ["Sohaib-Ahmed21"],
         "capability:exogenous": True,
         "capability:multivariate": True,

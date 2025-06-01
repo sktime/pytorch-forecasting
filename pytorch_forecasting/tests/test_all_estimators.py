@@ -245,20 +245,7 @@ def _integration(
 class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
-    def _all_objects(self):
-        """Retrieve list of all object classes, excluding ptf-v2 objects."""
-        obj_list = super()._all_objects()
-
-        filtered_obj_list = []
-        for obj in obj_list:
-            if hasattr(obj, "get_class_tag"):
-                object_type = obj.get_class_tag("object_type", None)
-                if object_type != "ptf-v2":
-                    filtered_obj_list.append(obj)
-            else:
-                filtered_obj_list.append(obj)
-
-        return filtered_obj_list
+    object_type_filter = "ptf-v1"
 
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""
