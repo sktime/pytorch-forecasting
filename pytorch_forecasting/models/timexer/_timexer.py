@@ -258,7 +258,6 @@ class TimeXer(BaseModel):
             if self.n_quantiles is not None:
                 prediction = [prediction[..., i, :] for i in target_indices]
             else:
-
                 if len(target_indices) == 1:
                     prediction = prediction[..., 0]
                 else:
