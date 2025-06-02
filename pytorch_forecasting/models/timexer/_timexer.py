@@ -5,6 +5,7 @@ Time Series Transformer with eXogenous variables (TimeXer)
 
 from copy import copy
 from typing import Optional, Union
+import warnings as warn
 
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
@@ -181,6 +182,20 @@ class TimeXer(BaseModelWithCovariates):
         # loss is a standalone module and is stored separately.
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
+        if context_length < patch_length:
+            raise ValueError(
+                f"context_length ({context_length}) must be greater than or equal to"
+                " patch_length ({patch_length}). Model cannot create patches larger"
+                " than the sequence length."
+            )
+
+        if context_length % patch_length != 0:
+            warn.warn(
+                f"In the input sequence, the context_length ({context_length}) is not a"
+                f" multiple of the patch_length ({patch_length}). This may lead to some"
+                "patches being ignored during training."
+            )
+
         self.patch_num = max(
             1, int(self.hparams.context_length // self.hparams.patch_length)
         )
@@ -194,6 +209,12 @@ class TimeXer(BaseModelWithCovariates):
 
         if isinstance(loss, QuantileLoss):
             self.n_quantiles = len(loss.quantiles)
+
+        if hidden_size % n_heads != 0:
+            raise ValueError(
+                f"hidden_size ({hidden_size}) must be divisible by n_heads ({n_heads}) "
+                f"for the multi-head attention mechanism to work properly."
+            )
 
         self.en_embedding = EnEmbedding(
             self.n_target_vars,
@@ -209,6 +230,15 @@ class TimeXer(BaseModelWithCovariates):
             self.hparams.freq,
             self.hparams.dropout,
         )
+
+        if e_layers <= 0:
+            raise ValueError(f"e_layers ({e_layers}) must be positive.")
+        elif e_layers > 12:
+            warn.warn(
+                f"e_layers ({e_layers}) is quite high. This might lead to overfitting "
+                f"and high computational cost. Consider using 2-6 layers.",
+                UserWarning,
+            )
 
         self.encoder = Encoder(
             [
