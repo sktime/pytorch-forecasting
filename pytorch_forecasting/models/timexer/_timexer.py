@@ -9,7 +9,6 @@ Time Series Transformer with eXogenous variables (TimeXer)
 # IT IS STRICTLY A PART OF THE v2 design of PTF.               #
 ################################################################
 
-
 from typing import Any, Optional, Union
 import warnings as warn
 
@@ -128,7 +127,7 @@ class TimeXer(TslibBaseModel):
         if self.hidden_size % self.n_heads != 0:
             raise ValueError(
                 f"hidden_size ({self.hidden_size}) must be divisible by n_heads ({self.n_heads}) "  # noqa: E501
-                f"for the multi-head attention mechanism to work properly."
+                f"for multi-head attention mechanism to work properly."
             )
 
         self.en_embedding = EnEmbedding(

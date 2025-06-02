@@ -20,8 +20,7 @@ def sample_timeseries_data():
 
     for series_id in range(n_series):
         for time_idx in range(n_timesteps):
-
-            # create a realistic time series with trend, seasonality, and noise
+            # Generate a target variable with some noise
             target = (
                 10
                 + 0.1 * time_idx
