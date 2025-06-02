@@ -11,6 +11,7 @@ Time Series Transformer with eXogenous variables (TimeXer)
 
 
 from typing import Any, Optional, Union
+import warnings as warn
 
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
@@ -32,7 +33,7 @@ class TimeXer(TslibBaseModel):
         loss: nn.Module,
         features: str = "MS",
         enc_in: int = None,
-        d_model: int = 512,
+        hidden_size: int = 512,
         n_heads: int = 8,
         e_layers: int = 2,
         d_ff: int = 2048,
@@ -62,7 +63,7 @@ class TimeXer(TslibBaseModel):
 
         self.features = features
         self.enc_in = enc_in
-        self.d_model = d_model
+        self.hidden_size = hidden_size
         self.n_heads = n_heads
         self.e_layers = e_layers
         self.d_ff = d_ff
@@ -92,6 +93,20 @@ class TimeXer(TslibBaseModel):
         from pytorch_forecasting.layers.encoders import Encoder, EncoderLayer
         from pytorch_forecasting.layers.output.flatten_head import FlattenHead
 
+        if self.context_length <= self.patch_length:
+            raise ValueError(
+                f"Context length ({self.context_length}) must be greater than patch"
+                "length. Patches of ({self.patch_length}) will end up being longer than"
+                "the sequence length."
+            )
+
+        if self.context_length % self.patch_length != 0:
+            warn.warn(
+                f"Context length ({self.context_length}) is not divisible by"
+                " patch length. This may lead to unexpected behavior, as some"
+                "time steps will not be used in the model."
+            )
+
         self.patch_num = max(1, int(self.context_length // self.patch_length))
 
         if self.target_dim > 1 and self.features == "M":
@@ -110,12 +125,18 @@ class TimeXer(TslibBaseModel):
         if hasattr(self.loss, "quantiles"):
             self.n_quantiles = len(self.loss.quantiles)
 
+        if self.hidden_size % self.n_heads != 0:
+            raise ValueError(
+                f"hidden_size ({self.hidden_size}) must be divisible by n_heads ({self.n_heads}) "  # noqa: E501
+                f"for the multi-head attention mechanism to work properly."
+            )
+
         self.en_embedding = EnEmbedding(
-            self.n_target_vars, self.d_model, self.patch_length, self.dropout
+            self.n_target_vars, self.hidden_size, self.patch_length, self.dropout
         )
 
         self.ex_embedding = DataEmbedding_inverted(
-            self.context_length, self.d_model, self.dropout
+            self.context_length, self.hidden_size, self.dropout
         )
 
         encoder_layers = []
@@ -130,7 +151,7 @@ class TimeXer(TslibBaseModel):
                             attention_dropout=self.dropout,
                             output_attention=False,
                         ),
-                        self.d_model,
+                        self.hidden_size,
                         self.n_heads,
                     ),
                     AttentionLayer(
@@ -140,10 +161,10 @@ class TimeXer(TslibBaseModel):
                             attention_dropout=self.dropout,
                             output_attention=False,
                         ),
-                        self.d_model,
+                        self.hidden_size,
                         self.n_heads,
                     ),
-                    self.d_model,
+                    self.hidden_size,
                     self.d_ff,
                     dropout=self.dropout,
                     activation=self.activation,
@@ -151,11 +172,11 @@ class TimeXer(TslibBaseModel):
             )
 
         self.encoder = Encoder(
-            encoder_layers, norm_layer=torch.nn.LayerNorm(self.d_model)
+            encoder_layers, norm_layer=torch.nn.LayerNorm(self.hidden_size)
         )
 
         # Initialize output head
-        self.head_nf = self.d_model * (self.patch_num + 1)
+        self.head_nf = self.hidden_size * (self.patch_num + 1)
         self.head = FlattenHead(
             self.enc_in,
             self.head_nf,
