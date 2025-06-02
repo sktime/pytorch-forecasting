@@ -45,9 +45,9 @@ class DeepARMetadata(_BasePtForecaster):
             NegativeBinomialDistributionLoss,
         )
 
-        return [
+        params = [
             {},
-            {"cell_type": "GRU", "n_plotting_samples": 100},
+            {"cell_type": "GRU"},
             dict(
                 loss=LogNormalDistributionLoss(),
                 clip_target=True,
@@ -56,8 +56,6 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], transformation="log"
                     )
                 ),
-                cell_type="LSTM",
-                n_plotting_samples=100,
             ),
             dict(
                 loss=NegativeBinomialDistributionLoss(),
@@ -67,8 +65,6 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], center=False
                     )
                 ),
-                cell_type="LSTM",
-                n_plotting_samples=100,
             ),
             dict(
                 loss=BetaDistributionLoss(),
@@ -78,8 +74,6 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], transformation="logit"
                     )
                 ),
-                cell_type="LSTM",
-                n_plotting_samples=100,
             ),
             dict(
                 data_loader_kwargs=dict(
@@ -88,8 +82,6 @@ class DeepARMetadata(_BasePtForecaster):
                     time_varying_unknown_reals=["volume"],
                     min_encoder_length=2,
                 ),
-                cell_type="LSTM",
-                n_plotting_samples=100,
             ),
             dict(
                 data_loader_kwargs=dict(
@@ -97,18 +89,12 @@ class DeepARMetadata(_BasePtForecaster):
                     target=["volume", "discount"],
                     lags={"volume": [2], "discount": [2]},
                 ),
-                cell_type="LSTM",
-                n_plotting_samples=100,
             ),
             dict(
                 loss=ImplicitQuantileNetworkDistributionLoss(hidden_size=8),
-                cell_type="LSTM",
-                n_plotting_samples=100,
             ),
             dict(
                 loss=MultivariateNormalDistributionLoss(),
-                cell_type="LSTM",
-                n_plotting_samples=100,
                 trainer_kwargs=dict(accelerator="cpu"),
             ),
             dict(
@@ -118,8 +104,59 @@ class DeepARMetadata(_BasePtForecaster):
                         groups=["agency", "sku"], transformation="log1p"
                     )
                 ),
-                cell_type="LSTM",
-                n_plotting_samples=100,
                 trainer_kwargs=dict(accelerator="cpu"),
             ),
         ]
+        defaults = {
+            "hidden_size": 5,
+            "cell_type": "LSTM",
+            "n_plotting_samples": 100,
+        }
+        for param in params:
+            param.update(defaults)
+        return params
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params):
+        """Get dataloaders from parameters.
+
+        Parameters
+        ----------
+        params : dict
+            Parameters to create dataloaders.
+            One of the elements in the list returned by ``get_test_train_params``.
+
+        Returns
+        -------
+        dataloaders : dict with keys "train", "val", "test", values torch DataLoader
+            Dict of dataloaders created from the parameters.
+            Train, validation, and test dataloaders.
+        """
+        loss = params.get("loss", None)
+        clip_target = params.get("clip_target", False)
+        data_loader_kwargs = params.get("data_loader_kwargs", {})
+
+        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        from pytorch_forecasting.tests._conftest import make_dataloaders
+        from pytorch_forecasting.tests._data_scenarios import data_with_covariates
+
+        dwc = data_with_covariates()
+
+        if isinstance(loss, NegativeBinomialDistributionLoss):
+            dwc = dwc.assign(volume=lambda x: x.volume.round())
+
+        dwc = dwc.copy()
+        if clip_target:
+            dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
+        else:
+            dwc["target"] = dwc["volume"]
+        data_loader_default_kwargs = dict(
+            target="target",
+            time_varying_known_reals=["price_actual"],
+            time_varying_unknown_reals=["target"],
+            static_categoricals=["agency"],
+            add_relative_time_idx=True,
+        )
+        data_loader_default_kwargs.update(data_loader_kwargs)
+        dataloaders_w_covariates = make_dataloaders(dwc, **data_loader_default_kwargs)
+        return dataloaders_w_covariates
