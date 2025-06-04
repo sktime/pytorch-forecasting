@@ -81,7 +81,7 @@ class TimeXer(TslibBaseModel):
         Initialize the network for TimeXer's architecture.
         """
 
-        from pytorch_forecasting.layers.attention._attention_layer import (
+        from pytorch_forecasting.layers.attention import (
             AttentionLayer,
             FullAttention,
         )
