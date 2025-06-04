@@ -142,6 +142,13 @@ exclude = [
 ]
 target-version = "py39"
 
+[tool.ruff.format]
+# Enable formatting
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "C4", "S"]
 extend-select = [
@@ -170,30 +177,6 @@ force-sort-within-sections = true
 "pytorch_forecasting/data/timeseries.py" = [
   "E501", # Line too long being fixed in #1746 To be removed after merging
 ]
-
-[tool.black]
-line-length = 88
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | docs/build/
-  | node_modules/
-  | venve/
-  | .venv/
-)
-'''
 
 [tool.nbqa.mutate]
 ruff = 1
