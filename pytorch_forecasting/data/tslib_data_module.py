@@ -578,9 +578,7 @@ class TslibDataModule(LightningDataModule):
 
         total_series = len(self.time_series_dataset)
 
-        self._indices = (
-            torch.randperm(total_series) if self.shuffle else torch.arange(total_series)
-        )
+        self._indices = torch.randperm(total_series)
 
         self._train_size = int(self.train_val_test_split[0] * total_series)
         self._val_size = int(self.train_val_test_split[1] * total_series)
