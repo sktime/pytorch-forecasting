@@ -27,10 +27,79 @@ from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
 class TimeXer(TslibBaseModel):
+    """
+    An implementation of TimeXer model for v2 of pytorch-forecasting.
+
+    TimeXer empowers the canonical transformer with the ability to reconcile
+    endogenous and exogenous information without any architectural modifications
+    and achieves consistent state-of-the-art performance across twelve real-world
+    forecasting benchmarks.
+
+    TimeXer employs patch-level and variate-level representations respectively for
+    endogenous and exogenous variables, with an endogenous global token as a bridge
+    in-between. With this design, TimeXer can jointly capture intra-endogenous
+    temporal dependencies and exogenous-to-endogenous correlations.
+
+    Parameters
+    ----------
+    loss: nn.Module
+        Loss function to use for training.
+    enc_in: int, optional
+        Number of input features for the encoder. If not provided, it will be set to
+        the number of continuous features in the dataset.
+    hidden_size: int, default=512
+        Dimension of the model embeddings and hidden representations of features.
+    n_heads: int, default=8
+        Number of attention heads in the multi-head attention mechanism.\
+    e_layers: int, default=2
+        Number of encoder layers in the transformer architecture.
+    d_ff: int, default=2048
+        Dimension of the feed-forward network in the transformer architecture.
+    dropout: float, default=0.1
+        Dropout rate for regularization. This is used throughout the model to prevent overfitting.
+    patch_length: int, default=24
+        Length of each non-overlapping patch for endogenous variable tokenization.
+    factor: int, default=5
+        Factor for the attention mechanism, controlling the number of keys and values.
+    activation: str, default='relu'
+        Activation function to use in the feed-forward network. Common choices are 'relu', 'gelu', etc.
+    endogenous_vars: Optional[list[str]], default=None
+        List of endogenous variable names to be used in the model. If None, all historical values
+        for the target variable are used.
+    exogenous_vars: Optional[list[str]], default=None
+        List of exogenous variable names to be used in the model. If None, all historical values
+        for continous variables are used.
+    logging_metrics: Optional[list[nn.Module]], default=None
+        List of metrics to log during training, validation, and testing.
+    optimizer: Optional[Union[Optimizer, str]], default='adam'
+        Optimizer to use for training. Can be a string name or an instance of an optimizer.
+    optimizer_params: Optional[dict], default=None
+        Parameters for the optimizer. If None, default parameters for the optimizer will be used.
+    lr_scheduler: Optional[str], default=None
+        Learning rate scheduler to use. If None, no scheduler is used.
+    lr_scheduler_params: Optional[dict], default=None
+        Parameters for the learning rate scheduler. If None, default parameters for the scheduler will be used.
+    metadata: Optional[dict], default=None
+        Metadata for the model from TslibDataModule. This can include information about the dataset,
+        such as the number of time steps, number of features, etc. It is used to initialize the model
+        and ensure it is compatible with the data being used.
+
+    References
+    ----------
+    [1] https://arxiv.org/abs/2402.19072
+    [2] https://github.com/thuml/TimeXer
+
+    Notes
+    -----
+    [1] This implementation handles only continous variables in the context length. Categorical variables
+        support will be added in the future.
+    [2] The `TimeXer` model obtains many of its attributes from the `TslibBaseModel` class, which is a base class
+        where a lot of the boiler plate code for metadata handling and model initialization is implemented.
+    """  # noqa: E501
+
     def __init__(
         self,
         loss: nn.Module,
-        features: str = "MS",
         enc_in: int = None,
         hidden_size: int = 512,
         n_heads: int = 8,
@@ -60,7 +129,14 @@ class TimeXer(TslibBaseModel):
             metadata=metadata,
         )
 
-        self.features = features
+        warn.warn(
+            "TimeXer is an experimental model implemented on TslibBaseModelV2. "
+            "It is an unstable version and maybe subject to unannouced changes."
+            "Please use with caution. Feedback on the design and implementation is"
+            ""
+            "welcome. On the issue #1833 - https://github.com/sktime/pytorch-forecasting/issues/1833",
+        )
+
         self.enc_in = enc_in
         self.hidden_size = hidden_size
         self.n_heads = n_heads
@@ -307,6 +383,7 @@ class TimeXer(TslibBaseModel):
         Returns:
             dict[str, torch.Tensor]: Model predictions.
         """
+        # this is a feature mode, pre-computed using TslibBaseModel.
         if self.features == "MS":
             out = self._forecast(x)
         else:

@@ -233,7 +233,6 @@ class TslibDataModule(LightningDataModule):
         context_length: int,
         prediction_length: int,
         freq: str = "h",
-        features: str = "MS",
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
         target_normalizer: Union[
@@ -259,7 +258,6 @@ class TslibDataModule(LightningDataModule):
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.freq = freq
-        self.features = features
         self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
         self.batch_size = batch_size
@@ -354,6 +352,18 @@ class TslibDataModule(LightningDataModule):
         all_features = cols.get("x", [])
         static_features = cols.get("st", [])
         target_features = cols.get("y", [])
+
+        if len(target_features) == 0:
+            raise ValueError(
+                "The time series dataset must have at least one target variable. "
+                "Please provide a dataset with a target variable."
+            )
+        if len(all_features) == 0:
+            raise ValueError(
+                "The time series dataset must have at least one feature. "
+                "Please provide a dataset with features."
+            )
+
         feature_names["all"] = list(all_features)
         feature_names["static"] = list(static_features)
         feature_names["target"] = list(target_features)
@@ -386,6 +396,21 @@ class TslibDataModule(LightningDataModule):
         feature_names["static_continuous"] = static_cont_names
 
         n_features = {k: len(v) for k, v in feature_names.items()}
+
+        # detect the feature mode - S/MS/M
+
+        n_targets = n_features["target"]
+        n_cont = n_features["continuous"]
+        n_cat = n_features["categorical"]
+
+        if n_targets == 1 and (n_cont + n_cat) == 1:
+            self.features = "S"
+        elif n_targets == 1 and (n_cont + n_cat) > 1:
+            self.features = "MS"
+        elif n_targets > 1 and (n_cont + n_cat) > 0:
+            self.features = "M"
+        else:
+            self.features = "MS"
 
         metadata = {
             "feature_names": feature_names,

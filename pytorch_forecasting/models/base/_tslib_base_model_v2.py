@@ -85,6 +85,9 @@ class TslibBaseModel(BaseModel):
 
         self.feature_names = metadata.get("feature_names", {})
 
+        # feature-mode
+        self.features = metadata.get("features", "MS")
+
     def _init_network(self):
         """
         Initialize the network architecture.
