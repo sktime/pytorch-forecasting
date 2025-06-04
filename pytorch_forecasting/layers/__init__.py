@@ -12,7 +12,7 @@ from pytorch_forecasting.layers.encoders import (
     Encoder,
     EncoderLayer,
 )
-from pytorch_forecasting.layers.output.flatten_head import (
+from pytorch_forecasting.layers.output._flatten_head import (
     FlattenHead,
 )
 
