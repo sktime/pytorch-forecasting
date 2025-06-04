@@ -576,7 +576,17 @@ class TslibDataModule(LightningDataModule):
             If None, the data module will be setup for training.
         """
 
+        # TODO: Add support for temporal/random/group splits.
+        # Currently, it only supports random splits.
+        # Handle the case where the dataset is empty.
+
         total_series = len(self.time_series_dataset)
+
+        if total_series == 0:
+            raise ValueError(
+                "The time series dataset is empty. "
+                "Please provide a non-empty dataset."
+            )
 
         self._indices = torch.randperm(total_series)
 
@@ -591,6 +601,16 @@ class TslibDataModule(LightningDataModule):
         self._test_indices = self._indices[
             self._train_size + self._val_size : total_series
         ]
+
+        assert (
+            len(self._train_indices) > 0
+        ), "Training dataset must contain at least one time series"
+        assert (
+            len(self._val_indices) > 0
+        ), "Validation dataset must contain at least one time series"
+        assert (
+            len(self._test_indices) > 0
+        ), "Test dataset must contain at least one time series"
 
         if stage == "fit" or stage is None:
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
