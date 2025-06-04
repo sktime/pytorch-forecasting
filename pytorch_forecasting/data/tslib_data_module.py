@@ -588,19 +588,29 @@ class TslibDataModule(LightningDataModule):
                 "Please provide a non-empty dataset."
             )
 
+        # this is a very rudimentary way to handle the splits when
+        # the dataset is of size equal to 1 or 2.
         self._indices = torch.randperm(total_series)
+        if total_series == 1:
+            self._train_indices = self._indices
+            self._val_indices = self._indices
+            self._test_indices = self._indices
+        elif total_series == 2:
+            self._train_indices = self._indices[0:1]
+            self._val_indices = self._indices[1:2]
+            self._test_indices = self._indices[1:2]
+        else:
+            self._train_size = max(1, int(self.train_val_test_split[0] * total_series))
+            self._val_size = max(1, int(self.train_val_test_split[1] * total_series))
 
-        self._train_size = int(self.train_val_test_split[0] * total_series)
-        self._val_size = int(self.train_val_test_split[1] * total_series)
+            self._train_indices = self._indices[: self._train_size]
+            self._val_indices = self._indices[
+                self._train_size : self._train_size + self._val_size
+            ]
 
-        self._train_indices = self._indices[: self._train_size]
-        self._val_indices = self._indices[
-            self._train_size : self._train_size + self._val_size
-        ]
-
-        self._test_indices = self._indices[
-            self._train_size + self._val_size : total_series
-        ]
+            self._test_indices = self._indices[
+                self._train_size + self._val_size : total_series
+            ]
 
         assert (
             len(self._train_indices) > 0
