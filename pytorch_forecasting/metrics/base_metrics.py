@@ -817,16 +817,28 @@ class MultiHorizonMetric(Metric):
 
     def __init__(self, reduction: str = "mean", **kwargs) -> None:
         super().__init__(reduction=reduction, **kwargs)
-        self.add_state(
-            "losses",
-            default=torch.tensor(0.0),
-            dist_reduce_fx="sum" if reduction != "none" else "cat",
-        )
-        self.add_state(
-            "lengths",
-            default=torch.tensor(0),
-            dist_reduce_fx="sum" if reduction != "none" else "mean",
-        )
+        if reduction == "none":
+            self.add_state(
+                "losses",
+                default=torch.tensor([], dtype=torch.float),
+                dist_reduce_fx="cat",
+            )
+            self.add_state(
+                "lengths",
+                default=torch.tensor([], dtype=torch.long),
+                dist_reduce_fx="cat",
+            )
+        else:
+            self.add_state(
+                "losses",
+                default=torch.tensor(0.0, dtype=torch.float),
+                dist_reduce_fx="sum",
+            )
+            self.add_state(
+                "lengths",
+                default=torch.tensor(0, dtype=torch.long),
+                dist_reduce_fx="sum",
+            )
 
     def loss(
         self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
