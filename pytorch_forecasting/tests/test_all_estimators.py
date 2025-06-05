@@ -301,7 +301,7 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
 
         run_doctest(object_class, name=f"class {object_class.__name__}")
 
-    def test_timeseries_itengration(self, object_class):
+    def test_timeseries_integration(self, object_class):
         """Runs timeseries integration for estimator class."""
 
         _timeseries_integration(object_class, name=f"class {object_class.__name__}")
