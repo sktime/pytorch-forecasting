@@ -9,6 +9,7 @@ class NBeatsMetadata(_BasePtForecaster):
     _tags = {
         "info:name": "NBeats",
         "info:compute": 1,
+        "object_type": "ptf-v1",
         "authors": ["jdb78"],
         "capability:exogenous": False,
         "capability:multivariate": False,

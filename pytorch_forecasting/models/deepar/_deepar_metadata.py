@@ -9,6 +9,7 @@ class DeepARMetadata(_BasePtForecaster):
     _tags = {
         "info:name": "DeepAR",
         "info:compute": 3,
+        "object_type": "ptf-v1",
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
