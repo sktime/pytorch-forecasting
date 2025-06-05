@@ -47,12 +47,11 @@ class GroupedSampler(Sampler):
         ):
             raise ValueError(
                 "batch_size should be a positive integer value, "
-                "but got batch_size={}".format(batch_size)
+                f"but got batch_size={batch_size}"
             )
         if not isinstance(drop_last, bool):
             raise ValueError(
-                "drop_last should be a boolean value, but got "
-                "drop_last={}".format(drop_last)
+                f"drop_last should be a boolean value, but got drop_last={drop_last}"
             )
         self.sampler = sampler
         self.batch_size = batch_size

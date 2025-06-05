@@ -112,7 +112,7 @@ jobs:
 
       - name: Run pytest
         shell: bash
-        run: python -m pytest tests
+        run: python -m pytest
 
   pytest:
     name: Run pytest
@@ -152,7 +152,7 @@ jobs:
 
       - name: Run pytest
         shell: bash
-        run: python -m pytest tests
+        run: python -m pytest
 
       - name: Statistics
         run: |

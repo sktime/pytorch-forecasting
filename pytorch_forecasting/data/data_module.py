@@ -7,7 +7,7 @@
 # into the memory.
 #######################################################################################
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 from warnings import warn
 
 from lightning.pytorch import LightningDataModule
@@ -94,21 +94,20 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         add_target_scales: bool = False,
         add_encoder_length: Union[bool, str] = "auto",
         target_normalizer: Union[
-            NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None
+            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
         ] = "auto",
-        categorical_encoders: Optional[Dict[str, NaNLabelEncoder]] = None,
+        categorical_encoders: Optional[dict[str, NaNLabelEncoder]] = None,
         scalers: Optional[
-            Dict[
+            dict[
                 str,
                 Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
             ]
         ] = None,
-        randomize_length: Union[None, Tuple[float, float], bool] = False,
+        randomize_length: Union[None, tuple[float, float], bool] = False,
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
-
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
@@ -292,7 +291,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, series_idx: torch.Tensor) -> List[Dict[str, Any]]:
+    def _preprocess_data(self, series_idx: torch.Tensor) -> list[dict[str, Any]]:
         """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
 
         Preprocessing steps
@@ -369,7 +368,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self,
             dataset: TimeSeries,
             data_module: "EncoderDecoderTimeSeriesDataModule",
-            windows: List[Tuple[int, int, int, int]],
+            windows: list[tuple[int, int, int, int]],
             add_relative_time_idx: bool = False,
         ):
             self.dataset = dataset
@@ -552,7 +551,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             return x, y
 
-    def _create_windows(self, indices: torch.Tensor) -> List[Tuple[int, int, int, int]]:
+    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
 
         Returns
