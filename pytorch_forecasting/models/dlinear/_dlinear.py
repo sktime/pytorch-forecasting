@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Optimizer
 
+from pytorch_forecasting.layers.decomposition import SeriesDecomposition
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
@@ -99,7 +100,154 @@ class DLinearModel(TslibBaseModel):
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
-        def _init_network(self):
-            """
-            Initialise the DLinear model network layer components.
-            """
+        self._init_network()
+
+    def _init_network(self):
+        """
+        Initialise the DLinear model network layer components.
+        """
+
+        self.enc_in = self.enc_in or self.cont_dim
+
+        self.decomposition = SeriesDecomposition(self.moving_avg)
+
+        if self.individual:
+            self.linear_seasonal = nn.ModuleList()
+            self.linear_trend = nn.ModuleList()
+
+            for i in range(self.enc_in):
+                self.linear_seasonal.append(
+                    nn.Linear(self.context_length, self.prediction_length)
+                )
+                self.linear_trend.append(
+                    nn.Linear(self.context_length, self.prediction_length)
+                )
+
+                # initialise the weights for the linear layers
+                # begins with a uniform and linear distribution.
+                self.linear_seasonal[i].weight = nn.Parameter(
+                    (1 / self.context_length)
+                    * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+                )
+
+                self.linear_trend[i].weight = nn.Parameter(
+                    (1 / self.context_length)
+                    * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+                )
+
+        else:
+            self.linear_seasonal = nn.Linear(
+                self.context_length, self.prediction_length
+            )
+            self.linear_trend = nn.Linear(self.context_length, self.prediction_length)
+
+            self.linear_seasonal.weight = nn.Parameter(
+                (1 / self.context_length)
+                * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+            )
+
+            self.linear_trend.weight = nn.Parameter(
+                (1 / self.context_length)
+                * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+            )
+
+    def _encoder(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Encoder the input time series through decompoosition and linear layers.
+
+        Args:
+            x (dict[str, torch.Tensor]): Input data
+
+        Returns:
+            torch.Tensor: Encoded output tensor of shape (batch_size, prediction_length, n_features)
+        """  # noqa: E501
+
+        seasonal_init, trend_init = self.decomposition(x)
+        seasonal_init, trend_init = (
+            seasonal_init.permute(0, 2, 1),
+            trend_init.permute(0, 2, 1),
+        )  # noqa: E501
+
+        if self.individual:
+            seasonal_output = torch.zeros(
+                [seasonal_init.size(0), trend_init.size(1), self.prediction_length],
+                dtype=seasonal_init.dtype,
+                device=seasonal_init.device,
+            )
+            trend_output = torch.zeros(
+                [trend_init.size(0), trend_init.size(1), self.prediction_length],
+                dtype=trend_init.dtype,
+                device=trend_init.device,
+            )
+
+            for i in range(self.enc_in):
+                seasonal_output[:, i, :] = self.linear_seasonal[i](
+                    seasonal_init[:, i, :]
+                )
+
+                trend_output[:, i, :] = self.linear_trend[i](trend_init[:, i, :])
+        else:
+            seasonal_output = self.linear_seasonal(seasonal_init)
+            trend_output = self.linear_trend(trend_init)
+
+        output = seasonal_output + trend_output
+        output = output.permute(0, 2, 1)
+
+        return output
+
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """
+        Forward pass of the DLinear model.
+
+        Parameters
+        ----------
+        x: dict[str, torch.Tensor]
+            Dictionary containing input tensors.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary containing output tensors. These can include
+            - predictions: Prediction_output of shape (batch_size, prediction_length, target_dim)
+            - attention_weights: Optionally, output attention weights
+        """  # noqa: E501
+        feature_mode = self.features
+
+        if feature_mode == "S":
+            if "history_target" in x and x["history_target"].size(-1) > 0:
+                input_data = x["history_target"]
+            else:
+                raise ValueError(
+                    "For 'S' feature mode, 'history_target' must be provided in the input."  # noqa: E501
+                )
+        elif feature_mode == "M":
+            available_features = []
+            if "history_cont" in x and x["history_cont"].size(-1) > 0:
+                available_features.append(x["history_cont"])
+            if "history_target" in x and x["history_target"].size(-1) > 0:
+                available_features.append(x["history_target"])
+
+            if not available_features:
+                raise ValueError(
+                    "For 'M' feature mode, either 'history_cont' or 'history_target' must be provided in the input."  # noqa: E501
+                )
+            input_data = torch.cat(available_features, dim=-1)
+        else:
+            if "history_cont" in x and x["history_cont"].size(-1) > 0:
+                input_data = x["history_cont"]
+            elif "history_target" in x and x["history_target"].size(-1) > 0:
+                input_data = x["history_target"]
+            else:
+                raise ValueError(
+                    "For 'MS' feature mode, either 'history_cont' or 'history_target' must be provided in the input."  # noqa: E501
+                )
+
+        prediction = self._encoder(input_data)
+
+        if "target_scale" in x and hasattr(self, "transform_output"):
+            prediction = self.transform_output(prediction, x["target_scale"])
+
+        if hasattr(self, "target_indices") and len(self.target_indices) > 0:
+            prediction = prediction[..., self.target_indices]
+
+        return {"prediction": prediction}

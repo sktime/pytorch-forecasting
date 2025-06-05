@@ -2,6 +2,6 @@
 Decomposition-Linear model for time series forecasting.
 """
 
-from pytorch_forecasting.models.dlinear import DLinearModel
+from pytorch_forecasting.models.dlinear._dlinear import DLinearModel
 
 __all__ = ["DLinearModel"]
