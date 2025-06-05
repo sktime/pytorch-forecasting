@@ -45,13 +45,13 @@ class TimeXer(BaseModelWithCovariates):
         task_name: str = "long_term_forecast",
         features: str = "MS",
         enc_in: int = None,
-        hidden_size: int = 512,
-        n_heads: int = 8,
+        hidden_size: int = 256,
+        n_heads: int = 4,
         e_layers: int = 2,
-        d_ff: int = 2048,
-        dropout: float = 0.1,
+        d_ff: int = 1024,
+        dropout: float = 0.2,
         activation: str = "relu",
-        patch_length: int = 24,
+        patch_length: int = 16,
         factor: int = 5,
         embed_type: str = "fixed",
         freq: str = "h",
@@ -182,14 +182,14 @@ class TimeXer(BaseModelWithCovariates):
         # loss is a standalone module and is stored separately.
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
-        if context_length < patch_length:
+        if self.hparams.context_length < self.hparams.patch_length:
             raise ValueError(
                 f"context_length ({context_length}) must be greater than or equal to"
-                " patch_length ({patch_length}). Model cannot create patches larger"
+                f" patch_length ({patch_length}). Model cannot create patches larger"
                 " than the sequence length."
             )
 
-        if context_length % patch_length != 0:
+        if self.hparams.context_length % self.hparams.patch_length != 0:
             warn.warn(
                 f"In the input sequence, the context_length ({context_length}) is not a"
                 f" multiple of the patch_length ({patch_length}). This may lead to some"

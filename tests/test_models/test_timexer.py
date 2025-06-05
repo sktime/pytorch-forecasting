@@ -237,7 +237,13 @@ def model(dataloaders_with_covariates):
 def test_model_init(dataloaders_with_covariates):
     """Test model intialization from a dataset with different params."""
     dataset = dataloaders_with_covariates["train"].dataset
-    model1 = TimeXer.from_dataset(dataset)
+
+    context_length = dataset.max_encoder_length
+    # obtains the patch length from the context length, to ensure that the
+    # model can handle large patch lengths
+    patch_length_from_context = min(context_length, 2)
+
+    model1 = TimeXer.from_dataset(dataset, patch_length=patch_length_from_context)
     assert isinstance(model1, TimeXer)
 
     model2 = TimeXer.from_dataset(
@@ -246,7 +252,7 @@ def test_model_init(dataloaders_with_covariates):
         n_heads=4,
         e_layers=2,
         d_ff=64,
-        patch_length=10,
+        patch_length=2,
         dropout=0.2,
     )
     # Testing correctness of core params
@@ -255,7 +261,7 @@ def test_model_init(dataloaders_with_covariates):
     assert model2.hparams.n_heads == 4
     assert model2.hparams.e_layers == 2
     assert model2.hparams.d_ff == 64
-    assert model2.hparams.patch_length == 10
+    assert model2.hparams.patch_length == 2
 
 
 @pytest.mark.parametrize(
