@@ -24,6 +24,10 @@ def gpus():
 
 @pytest.fixture(scope="session")
 def data_with_covariates():
+    return _data_with_covariates()
+
+
+def _data_with_covariates():
     data = get_stallion_data()
     data["month"] = data.date.dt.month.astype(str)
     data["log_volume"] = np.log1p(data.volume)
