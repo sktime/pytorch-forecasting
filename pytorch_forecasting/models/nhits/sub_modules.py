@@ -117,9 +117,7 @@ class MLP(nn.Module):
 
         for i in range(len(hidden_size) - 1):
             layers.append(
-                [
-                    nn.Linear(hidden_size[i], hidden_size[i + 1]),
-                ]
+                nn.Linear(hidden_size[i], hidden_size[i + 1])
             )
             layers.append(activ)
 
