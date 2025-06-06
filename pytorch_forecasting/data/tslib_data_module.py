@@ -301,6 +301,40 @@ class TslibDataModule(LightningDataModule):
             else:
                 self.continuous_indices.append(idx)
 
+        self._validate_indices()
+
+    def _validate_indices(self):
+        """
+        Validate that we have meaningful features for training.
+        Raises warnings for missing features or indices.
+        """
+
+        has_continuous = self.continuous_indices and len(self.continuous_indices) > 0
+        has_categorical = self.categorical_indices and len(self.categorical_indices) > 0
+
+        if not has_continuous and not has_categorical:
+            raise ValueError(
+                "No categorical or continous features found in the dataset."
+                "Cannot proceed with model training. Please ensure that your"
+                "dataset has at least one column with continous or categorical data."
+            )
+
+        if not has_continuous:
+            warnings.warn(
+                "No continuous features found in the dataset. "
+                "Some models (TimeXer) requires continous features. "
+                "Consider adding continous featuresinto the dataset.",
+                UserWarning,
+            )
+
+        if not has_categorical:
+            warnings.warn(
+                "No categorical features found in the dataset. "
+                "This may limit the model capabilities and and restrict "
+                "the usage to continuous features only.",
+                UserWarning,
+            )
+
     def _prepare_metadata(self) -> dict[str, Any]:
         """
         Prepare metadata for `tslib` time series data module.
