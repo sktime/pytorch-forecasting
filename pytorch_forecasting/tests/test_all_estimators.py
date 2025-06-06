@@ -257,11 +257,7 @@ def _timeseries_integration(model, name):
     )
     training_dataset = TimeSeriesDataSet(
         data=data,
-        time_idx="time_idx",
         target="target",
-        group_ids=["group_id"],
-        time_varying_unknown_reals=["target"],
-        time_varying_known_reals=(["time_varying_known_real_1"]),
         max_prediction_length=max_prediction_length,
         max_encoder_length=3,
     )
