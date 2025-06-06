@@ -245,7 +245,7 @@ def _integration(
 class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
-    object_type_filter = "ptf-v1"
+    object_type_filter = "forecaster_pytorch_v1"
 
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""

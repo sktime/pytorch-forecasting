@@ -1,14 +1,13 @@
 """TFT metadata container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class TFTMetadata(_BasePtForecaster):
+class TFTMetadata(_BasePtForecasterV2):
     """TFT metadata container."""
 
     _tags = {
         "info:name": "TFT",
-        "object_type": "ptf-v2",
         "authors": ["phoeenniixx"],
         "capability:exogenous": True,
         "capability:multivariate": True,

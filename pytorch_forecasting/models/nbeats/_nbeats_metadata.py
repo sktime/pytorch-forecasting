@@ -1,15 +1,14 @@
 """NBeats metadata container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
 
 
-class NBeatsMetadata(_BasePtForecaster):
+class NBeatsMetadata(_BasePtForecasterV1):
     """NBeats metadata container."""
 
     _tags = {
         "info:name": "NBeats",
         "info:compute": 1,
-        "object_type": "ptf-v1",
         "authors": ["jdb78"],
         "capability:exogenous": False,
         "capability:multivariate": False,
