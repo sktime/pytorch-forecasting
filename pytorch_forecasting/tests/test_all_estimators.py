@@ -253,9 +253,6 @@ def _timeseries_integration(model, name):
     data = pd.DataFrame(
         data={
             "target": np.random.rand(time_points * n_timeseries),
-            "time_varying_known_real_1": np.random.rand(time_points * n_timeseries),
-            "time_idx": np.tile(np.arange(time_points), n_timeseries),
-            "group_id": np.repeat(np.arange(n_timeseries), time_points),
         }
     )
     training_dataset = TimeSeriesDataSet(
