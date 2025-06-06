@@ -1,6 +1,6 @@
 """Metrics that allow the parametric forecast of parameters of uni- and multivariate distributions."""  # noqa: E501
 
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 from sklearn.base import BaseEstimator
@@ -70,7 +70,7 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
     def __init__(
         self,
         name: str = None,
-        quantiles: Optional[List[float]] = None,
+        quantiles: Optional[list[float]] = None,
         reduction: str = "mean",
         rank: int = 10,
         sigma_init: float = 1.0,
@@ -351,7 +351,7 @@ class MQF2DistributionLoss(DistributionLoss):
     def __init__(
         self,
         prediction_length: int,
-        quantiles: Optional[List[float]] = None,
+        quantiles: Optional[list[float]] = None,
         hidden_size: Optional[int] = 4,
         es_num_samples: int = 50,
         beta: float = 1.0,
@@ -481,7 +481,7 @@ class MQF2DistributionLoss(DistributionLoss):
         )
 
     def to_quantiles(
-        self, y_pred: torch.Tensor, quantiles: List[float] = None
+        self, y_pred: torch.Tensor, quantiles: list[float] = None
     ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
@@ -557,7 +557,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
 
     def __init__(
         self,
-        quantiles: Optional[List[float]] = None,
+        quantiles: Optional[list[float]] = None,
         input_size: Optional[int] = 16,
         hidden_size: Optional[int] = 32,
         n_loss_samples: Optional[int] = 64,
@@ -638,7 +638,7 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
             return self.sample(y_pred, n_samples=n_samples).mean(-1)
 
     def to_quantiles(
-        self, y_pred: torch.Tensor, quantiles: List[float] = None
+        self, y_pred: torch.Tensor, quantiles: list[float] = None
     ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.

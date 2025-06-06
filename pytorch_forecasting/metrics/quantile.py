@@ -1,6 +1,6 @@
 """Quantile metrics for forecasting multiple quantiles per time step."""
 
-from typing import List, Optional
+from typing import Optional
 
 import torch
 
@@ -16,7 +16,7 @@ class QuantileLoss(MultiHorizonMetric):
 
     def __init__(
         self,
-        quantiles: Optional[List[float]] = None,
+        quantiles: Optional[list[float]] = None,
         **kwargs,
     ):
         """

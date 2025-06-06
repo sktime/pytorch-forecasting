@@ -6,7 +6,7 @@ from collections import namedtuple
 from contextlib import redirect_stdout
 import inspect
 import os
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Union
 
 import lightning.pytorch as pl
 import torch
@@ -47,7 +47,7 @@ def groupby_apply(
     bins: int = 95,
     reduction: str = "mean",
     return_histogram: bool = False,
-) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """
     Groupby apply for torch tensors
 
@@ -233,8 +233,8 @@ def autocorrelation(input, dim=0):
 
 
 def unpack_sequence(
-    sequence: Union[torch.Tensor, rnn.PackedSequence]
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    sequence: Union[torch.Tensor, rnn.PackedSequence],
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Unpack RNN sequence.
 
@@ -257,7 +257,7 @@ def unpack_sequence(
 
 
 def concat_sequences(
-    sequences: Union[List[torch.Tensor], List[rnn.PackedSequence]]
+    sequences: Union[list[torch.Tensor], list[rnn.PackedSequence]],
 ) -> Union[torch.Tensor, rnn.PackedSequence]:
     """
     Concatenate RNN sequences.
@@ -272,7 +272,7 @@ def concat_sequences(
     if isinstance(sequences[0], rnn.PackedSequence):
         return rnn.pack_sequence(sequences, enforce_sorted=False)
     elif isinstance(sequences[0], torch.Tensor):
-        return torch.cat(sequences, dim=1)
+        return torch.cat(sequences, dim=0)
     elif isinstance(sequences[0], (tuple, list)):
         return tuple(
             concat_sequences([sequences[ii][i] for ii in range(len(sequences))])
@@ -283,7 +283,7 @@ def concat_sequences(
 
 
 def padded_stack(
-    tensors: List[torch.Tensor],
+    tensors: list[torch.Tensor],
     side: str = "right",
     mode: str = "constant",
     value: Union[int, float] = 0,
@@ -324,7 +324,7 @@ def padded_stack(
     return out
 
 
-def to_list(value: Any) -> List[Any]:
+def to_list(value: Any) -> list[Any]:
     """
     Convert value or list to list of values.
     If already list, return object directly
@@ -358,7 +358,7 @@ def unsqueeze_like(tensor: torch.Tensor, like: torch.Tensor):
         return tensor[(...,) + (None,) * n_unsqueezes]
 
 
-def apply_to_list(obj: Union[List[Any], Any], func: Callable) -> Union[List[Any], Any]:
+def apply_to_list(obj: Union[list[Any], Any], func: Callable) -> Union[list[Any], Any]:
     """
     Apply function to a list of objects or directly if passed value is not a list.
 
@@ -439,17 +439,17 @@ class TupleOutputMixIn:
 
 def move_to_device(
     x: Union[
-        Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+        dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
         torch.Tensor,
-        List[torch.Tensor],
-        Tuple[torch.Tensor],
+        list[torch.Tensor],
+        tuple[torch.Tensor],
     ],
     device: Union[str, torch.DeviceObjType],
 ) -> Union[
-    Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+    dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
     torch.Tensor,
-    List[torch.Tensor],
-    Tuple[torch.Tensor],
+    list[torch.Tensor],
+    tuple[torch.Tensor],
 ]:
     """
     Move object to device.
@@ -486,16 +486,16 @@ def move_to_device(
 
 def detach(
     x: Union[
-        Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+        dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
         torch.Tensor,
-        List[torch.Tensor],
-        Tuple[torch.Tensor],
+        list[torch.Tensor],
+        tuple[torch.Tensor],
     ],
 ) -> Union[
-    Dict[str, Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]],
+    dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
     torch.Tensor,
-    List[torch.Tensor],
-    Tuple[torch.Tensor],
+    list[torch.Tensor],
+    tuple[torch.Tensor],
 ]:
     """
     Detach object
@@ -547,9 +547,9 @@ def masked_op(
 
 def repr_class(
     obj,
-    attributes: Union[List[str], Dict[str, Any]],
+    attributes: Union[list[str], dict[str, Any]],
     max_characters_before_break: int = 100,
-    extra_attributes: Dict[str, Any] = None,
+    extra_attributes: dict[str, Any] = None,
 ) -> str:
     """Print class name and parameters.
 
