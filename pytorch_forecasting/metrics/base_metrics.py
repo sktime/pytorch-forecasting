@@ -817,15 +817,23 @@ class MultiHorizonMetric(Metric):
 
     def __init__(self, reduction: str = "mean", **kwargs) -> None:
         super().__init__(reduction=reduction, **kwargs)
+        if reduction == "none":
+            default_losses = default_lengths = []
+            dist_reduce_fx = "cat"
+        else:
+            default_losses = 0.0
+            default_lengths = 0
+            dist_reduce_fx = "sum"
+
         self.add_state(
             "losses",
-            default=torch.tensor(0.0),
-            dist_reduce_fx="sum" if reduction != "none" else "cat",
+            default=torch.tensor(default_losses, dtype=torch.float),
+            dist_reduce_fx=dist_reduce_fx,
         )
         self.add_state(
             "lengths",
-            default=torch.tensor(0),
-            dist_reduce_fx="sum" if reduction != "none" else "mean",
+            default=torch.tensor(default_lengths, dtype=torch.long),
+            dist_reduce_fx=dist_reduce_fx,
         )
 
     def loss(
@@ -1123,7 +1131,9 @@ class MultivariateDistributionLoss(DistributionLoss):
             torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
         """  # noqa: E501
         dist = self.map_x_to_distribution(y_pred)
-        samples = dist.sample((n_samples,)).permute(
+        samples = dist.sample(
+            (n_samples,)
+        ).permute(
             2, 1, 0
         )  # returned as (n_samples, n_timesteps, batch_size), so reshape to (batch_size, n_timesteps, n_samples) # noqa: E501
         return samples

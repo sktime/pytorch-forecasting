@@ -19,6 +19,10 @@ def gpus():
 
 @pytest.fixture(scope="session")
 def data_with_covariates():
+    return _data_with_covariates()
+
+
+def _data_with_covariates():
     data = get_stallion_data()
     data["month"] = data.date.dt.month.astype(str)
     data["log_volume"] = np.log1p(data.volume)
@@ -224,6 +228,10 @@ def dataloaders_multi_target(data_with_covariates):
 
 @pytest.fixture(scope="session")
 def dataloaders_fixed_window_without_covariates():
+    return _dataloaders_fixed_window_without_covariates()
+
+
+def _dataloaders_fixed_window_without_covariates():
     data = generate_ar_data(seasonality=10.0, timesteps=50, n_series=2)
     validation = data.series.iloc[:2]
 

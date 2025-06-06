@@ -90,7 +90,6 @@ class TimeSeries(Dataset):
         unknown: Optional[list[Union[str, list[str]]]] = None,
         static: Optional[list[Union[str, list[str]]]] = None,
     ):
-
         self.data = data
         self.data_future = data_future
         self.time = time
