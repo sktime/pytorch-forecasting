@@ -476,9 +476,14 @@ class TimeSeriesDataSet(Dataset):
         ] = None,
         randomize_length: Union[None, tuple[float, float], bool] = False,
         predict_mode: bool = False,
+        precompute: bool = False,
     ):
         """Timeseries dataset holding data for models."""
         super().__init__()
+
+        self.precompute_cache = []
+        self.precompute_idx = 0
+        self.precompute = precompute
 
         # write variables to self and handle defaults
         # -------------------------------------------
@@ -2081,7 +2086,7 @@ class TimeSeriesDataSet(Dataset):
             ).clip(max=self.max_prediction_length)
         return decoder_length
 
-    def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+    def __item_tensor__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
         Get sample for model
 
@@ -2341,6 +2346,51 @@ class TimeSeriesDataSet(Dataset):
             ),
             (target, weight),
         )
+
+    def __precompute__(self, batch_size, shuffle, drop_last):
+        """
+        Precompute sample for model
+
+        Args:
+        batch_size : int, optional, default=64
+            batch size for training model. Defaults to 64.
+        shuffle : bool
+            indicate whether to shuffle the data
+        drop_last : bool
+            indicate whether to drop last
+        """
+        sampler = TimeSynchronizedBatchSampler(
+            SequentialSampler(self),
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=drop_last,
+        )
+
+        for batch in sampler:
+            for idx in batch:
+                batch_result = self.__item_tensor__(idx)
+                self.precompute_cache.append(batch_result)
+
+    def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+        """
+        Get sample for model
+
+        Args:
+            idx (int): index of prediction (between ``0`` and ``len(dataset) - 1``)
+
+        Returns:
+            tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
+        """
+        if self.precompute:
+            if self.precompute_idx >= len(self.precompute_cache):
+                self.precompute_idx = 0
+
+            item = self.precompute_cache[self.precompute_idx]
+            self.precompute_idx += 1
+
+            return item
+
+        return self.__item_tensor__(idx)
 
     @staticmethod
     def _collate_fn(
@@ -2613,6 +2663,14 @@ class TimeSeriesDataSet(Dataset):
         )
         default_kwargs.update(kwargs)
         kwargs = default_kwargs
+
+        if self.precompute:
+            self.__precompute__(
+                batch_size=kwargs["batch_size"],
+                shuffle=kwargs["shuffle"],
+                drop_last=kwargs["drop_last"],
+            )
+
         if kwargs["batch_sampler"] is not None:
             sampler = kwargs["batch_sampler"]
             if isinstance(sampler, str):
