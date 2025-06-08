@@ -1,9 +1,6 @@
 from copy import deepcopy
-import itertools
 import pickle
-from typing import Dict
 
-import networkx
 import numpy as np
 import pandas as pd
 import pytest
@@ -11,19 +8,50 @@ from sklearn.preprocessing import StandardScaler
 import torch
 from torch.utils.data.sampler import SequentialSampler
 
-from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder, TimeSeriesDataSet
+from pytorch_forecasting.data import (
+    EncoderNormalizer,
+    GroupNormalizer,
+    NaNLabelEncoder,
+    TimeSeriesDataSet,
+)
 from pytorch_forecasting.data.encoders import MultiNormalizer, TorchNormalizer
-from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data.timeseries import _find_end_indices
 from pytorch_forecasting.utils import to_list
 
 
 def test_find_end_indices():
     diffs = np.array([1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1])
-    max_lengths = np.array([4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1])
+    max_lengths = np.array(
+        [4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1]
+    )
 
     ends, missings = _find_end_indices(diffs, max_lengths, min_length=3)
-    ends_test = np.array([3, 4, 4, 5, 6, 8, 9, 10, 10, 10, 10, 14, 15, 15, 16, 17, 19, 20, 21, 21, 21, 21])
+    ends_test = np.array(
+        [
+            3,
+            4,
+            4,
+            5,
+            6,
+            8,
+            9,
+            10,
+            10,
+            10,
+            10,
+            14,
+            15,
+            15,
+            16,
+            17,
+            19,
+            20,
+            21,
+            21,
+            21,
+            21,
+        ]
+    )
     missings_test = np.array([[0, 2], [5, 7], [11, 13], [16, 18]])
     np.testing.assert_array_equal(ends, ends_test)
     np.testing.assert_array_equal(missings, missings_test)
@@ -31,7 +59,11 @@ def test_find_end_indices():
 
 def test_raise_short_encoder_length(test_data):
     with pytest.warns(UserWarning):
-        test_data = test_data[lambda x: ~((x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3))]
+        test_data = test_data[
+            lambda x: ~(
+                (x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3)
+            )
+        ]
         TimeSeriesDataSet(
             test_data,
             time_idx="time_idx",
@@ -64,7 +96,7 @@ def test_pickle(test_dataset):
     pickle.dumps(test_dataset.to_dataloader())
 
 
-def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Tensor]):
+def check_dataloader_output(dataset: TimeSeriesDataSet, out: dict[str, torch.Tensor]):
     x, y = out
 
     assert isinstance(y, tuple), "y output should be tuple of wegith and target"
@@ -76,7 +108,9 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
             assert not torch.isnan(vi).any(), f"Values for {k} should not be nan"
 
     # check weight
-    assert y[1] is None or isinstance(y[1], torch.Tensor), "weights should be none or tensor"
+    assert y[1] is None or isinstance(
+        y[1], torch.Tensor
+    ), "weights should be none or tensor"
     if isinstance(y[1], torch.Tensor):
         assert torch.isfinite(y[1]).all(), "Values for weight should be finite"
         assert not torch.isnan(y[1]).any(), "Values for weight should not be nan"
@@ -117,8 +151,22 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
                 ]
             ),
         ),
-        dict(time_varying_known_reals=["time_idx", "price_regular", "discount_in_percent"]),
-        dict(time_varying_unknown_reals=["volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"]),
+        dict(
+            time_varying_known_reals=[
+                "time_idx",
+                "price_regular",
+                "discount_in_percent",
+            ]
+        ),
+        dict(
+            time_varying_unknown_reals=[
+                "volume",
+                "log_volume",
+                "industry_volume",
+                "soda_volume",
+                "avg_max_temp",
+            ]
+        ),
         dict(
             target_normalizer=GroupNormalizer(
                 groups=["agency", "sku"],
@@ -140,7 +188,10 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: Dict[str, torch.Ten
             time_varying_known_categoricals=["month"],
             time_varying_known_reals=["time_idx", "price_regular"],
         ),
-        dict(categorical_encoders={"month": NaNLabelEncoder(add_nan=True)}, time_varying_known_categoricals=["month"]),
+        dict(
+            categorical_encoders={"month": NaNLabelEncoder(add_nan=True)},
+            time_varying_known_categoricals=["month"],
+        ),
         dict(constant_fill_strategy=dict(volume=0.0), allow_missing_timesteps=True),
         dict(target_normalizer=None),
     ],
@@ -196,8 +247,12 @@ def test_from_dataset_equivalence(test_data):
         test_data[lambda x: x.time_idx > x.time_idx.min() + 2],
         predict=True,
     )
-    # ensure validation1 and validation2 datasets are exactly the same despite different data inputs
-    for v1, v2 in zip(iter(validation1.to_dataloader(train=False)), iter(validation2.to_dataloader(train=False))):
+    # ensure validation1 and validation2 datasets are exactly
+    # the same despite different data inputs
+    for v1, v2 in zip(
+        iter(validation1.to_dataloader(train=False)),
+        iter(validation2.to_dataloader(train=False)),
+    ):
         for k in v1[0].keys():
             if isinstance(v1[0][k], (tuple, list)):
                 assert len(v1[0][k]) == len(v2[0][k])
@@ -219,7 +274,11 @@ def test_dataset_index(test_dataset):
 @pytest.mark.parametrize("min_prediction_idx", [0, 1, 3, 7])
 def test_min_prediction_idx(test_dataset, test_data, min_prediction_idx):
     dataset = TimeSeriesDataSet.from_dataset(
-        test_dataset, test_data, min_prediction_idx=min_prediction_idx, min_encoder_length=1, max_prediction_length=10
+        test_dataset,
+        test_data,
+        min_prediction_idx=min_prediction_idx,
+        min_encoder_length=1,
+        max_prediction_length=10,
     )
 
     for x, _ in iter(dataset.to_dataloader(num_workers=0, batch_size=1000)):
@@ -253,7 +312,10 @@ def test_overwrite_values(test_dataset, value, variable, target):
         output_name_suffix = "cat"
 
     if target == "all":
-        output_names = [f"encoder_{output_name_suffix}", f"decoder_{output_name_suffix}"]
+        output_names = [
+            f"encoder_{output_name_suffix}",
+            f"decoder_{output_name_suffix}",
+        ]
     else:
         output_names = [f"{target}_{output_name_suffix}"]
 
@@ -272,7 +334,9 @@ def test_overwrite_values(test_dataset, value, variable, target):
     for name in outputs[0].keys():
         changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
         assert changed, f"Output {name} should be reset"
-    assert torch.isclose(outputs[1][0], control_outputs[1][0]).all(), "Target should be reset"
+    assert torch.isclose(
+        outputs[1][0], control_outputs[1][0]
+    ).all(), "Target should be reset"
 
 
 @pytest.mark.parametrize(
@@ -280,7 +344,9 @@ def test_overwrite_values(test_dataset, value, variable, target):
     [
         {},
         dict(
-            target_normalizer=GroupNormalizer(groups=["agency", "sku"], transformation="log1p", scale_by_group=True),
+            target_normalizer=GroupNormalizer(
+                groups=["agency", "sku"], transformation="log1p", scale_by_group=True
+            ),
         ),
     ],
 )
@@ -296,7 +362,9 @@ def test_new_group_ids(test_data, kwargs):
         max_prediction_length=2,
         min_prediction_length=1,
         min_encoder_length=1,
-        categorical_encoders=dict(agency=NaNLabelEncoder(add_nan=True), sku=NaNLabelEncoder(add_nan=True)),
+        categorical_encoders=dict(
+            agency=NaNLabelEncoder(add_nan=True), sku=NaNLabelEncoder(add_nan=True)
+        ),
         **kwargs,
     )
 
@@ -346,7 +414,9 @@ def test_encoder_normalizer_for_covariates(test_data):
     [
         {},
         dict(
-            target_normalizer=MultiNormalizer(normalizers=[TorchNormalizer(), EncoderNormalizer()]),
+            target_normalizer=MultiNormalizer(
+                normalizers=[TorchNormalizer(), EncoderNormalizer()]
+            ),
         ),
         dict(add_target_scales=True),
         dict(weight="volume"),
@@ -424,15 +494,24 @@ def test_lagged_variables(test_data, kwargs):
             lag_idx = vars.index(f"{name}_lagged_by_{lag}")
             target = x[..., target_idx][:, 0]
             lagged_target = torch.roll(x[..., lag_idx], -lag, dims=1)[:, 0]
-            assert torch.isclose(target, lagged_target).all(), "lagged target must be the same as non-lagged target"
+            assert torch.isclose(
+                target, lagged_target
+            ).all(), "lagged target must be the same as non-lagged target"
 
 
 @pytest.mark.parametrize(
     "agency,first_prediction_idx,should_raise",
-    [("Agency_01", 0, False), ("xxxxx", 0, True), ("Agency_01", 100, True), ("Agency_01", 4, False)],
+    [
+        ("Agency_01", 0, False),
+        ("xxxxx", 0, True),
+        ("Agency_01", 100, True),
+        ("Agency_01", 4, False),
+    ],
 )
 def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
-    func = lambda x: (x.agency == agency) & (x.time_idx_first_prediction >= first_prediction_idx)
+    func = lambda x: (x.agency == agency) & (
+        x.time_idx_first_prediction >= first_prediction_idx
+    )
     if should_raise:
         with pytest.raises(ValueError):
             test_dataset.filter(func)
@@ -444,7 +523,9 @@ def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
         for x, _ in iter(filtered_dataset.to_dataloader()):
             index = test_dataset.x_to_index(x)
             assert (index["agency"] == agency).all(), "Agency filter has failed"
-            assert index["time_idx"].min() == first_prediction_idx, "First prediction filter has failed"
+            assert (
+                index["time_idx"].min() == first_prediction_idx
+            ), "First prediction filter has failed"
 
 
 def test_graph_sampler(test_dataset):
@@ -478,9 +559,12 @@ def test_graph_sampler(test_dataset):
                 indices = self.sampler.data_source.index.iloc[self._groups[name]]
                 selected_pos = indices["index_start"].iloc[sub_group_idx]
                 # remove selected sample
-                indices = indices[lambda x: x["sequence_id"] != indices["sequence_id"].iloc[sub_group_idx]]
+                indices = indices[
+                    lambda x: x["sequence_id"]
+                    != indices["sequence_id"].iloc[sub_group_idx]
+                ]
                 # filter duplicate timeseries
-                # indices = indices.sort_values("sequence_length").drop_duplicates("sequence_id", keep="last")
+                # indices = indices.sort_values("sequence_length").drop_duplicates("sequence_id", keep="last") # noqa : E501
 
                 # calculate distances for corresponding groups
                 group_distances = torch.cdist(
@@ -498,12 +582,17 @@ def test_graph_sampler(test_dataset):
                 # sample random subset of neighborhood
                 batch_size = min(len(relevant_indices), self.batch_size - 1)
                 batch_indices = [selected_index] + np.random.choice(
-                    relevant_indices, p=sample_weights / sample_weights.sum(), replace=False, size=batch_size
+                    relevant_indices,
+                    p=sample_weights / sample_weights.sum(),
+                    replace=False,
+                    size=batch_size,
                 ).tolist()
                 yield batch_indices
 
     dl = test_dataset.to_dataloader(
-        batch_sampler=NeighborhoodSampler(SequentialSampler(test_dataset), batch_size=200, shuffle=True)
+        batch_sampler=NeighborhoodSampler(
+            SequentialSampler(test_dataset), batch_size=200, shuffle=True
+        )
     )
     for idx, a in enumerate(dl):
         print(a[0]["groups"].shape)

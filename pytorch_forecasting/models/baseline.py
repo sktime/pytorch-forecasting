@@ -1,7 +1,8 @@
 """
 Baseline model.
 """
-from typing import Any, Dict
+
+from typing import Any
 
 import torch
 
@@ -30,7 +31,7 @@ class Baseline(BaseModel):
         metric.compute()
     """
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Network forward pass.
 
@@ -58,16 +59,23 @@ class Baseline(BaseModel):
         return self.to_network_output(prediction=prediction)
 
     def forward_one_target(
-        self, encoder_lengths: torch.Tensor, decoder_lengths: torch.Tensor, encoder_target: torch.Tensor
+        self,
+        encoder_lengths: torch.Tensor,
+        decoder_lengths: torch.Tensor,
+        encoder_target: torch.Tensor,
     ):
         max_prediction_length = decoder_lengths.max()
-        assert encoder_lengths.min() > 0, "Encoder lengths of at least 1 required to obtain last value"
-        last_values = encoder_target[torch.arange(encoder_target.size(0)), encoder_lengths - 1]
+        assert (
+            encoder_lengths.min() > 0
+        ), "Encoder lengths of at least 1 required to obtain last value"
+        last_values = encoder_target[
+            torch.arange(encoder_target.size(0)), encoder_lengths - 1
+        ]
         prediction = last_values[:, None].expand(-1, max_prediction_length)
         return prediction
 
-    def to_prediction(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+    def to_prediction(self, out: dict[str, Any], use_metric: bool = True, **kwargs):
         return out.prediction
 
-    def to_quantiles(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+    def to_quantiles(self, out: dict[str, Any], use_metric: bool = True, **kwargs):
         return out.prediction[..., None]

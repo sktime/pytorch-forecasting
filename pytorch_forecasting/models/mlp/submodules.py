@@ -1,6 +1,7 @@
 """
 MLP implementation
 """
+
 import torch
 from torch import nn
 
@@ -33,7 +34,9 @@ class FullyConnectedModule(nn.Module):
             module_list.append(nn.LayerNorm(hidden_size))
         # hidden layers
         for _ in range(n_hidden_layers):
-            module_list.extend([nn.Linear(hidden_size, hidden_size), activation_class()])
+            module_list.extend(
+                [nn.Linear(hidden_size, hidden_size), activation_class()]
+            )
             if dropout is not None:
                 module_list.append(nn.Dropout(dropout))
             if norm:
