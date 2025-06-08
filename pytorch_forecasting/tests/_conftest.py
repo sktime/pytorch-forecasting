@@ -123,48 +123,12 @@ def multiple_dataloaders_with_covariates(data_with_covariates, request):
     return make_dataloaders(data_with_covariates, **request.param)
 
 
-@pytest.fixture(scope="session")
 def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
-    return make_dataloaders(
-        data_with_covariates.copy(),
-        target="target",
-        time_varying_known_categoricals=["special_days", "month"],
-        variable_groups=dict(
-            special_days=[
-                "easter_day",
-                "good_friday",
-                "new_year",
-                "christmas",
-                "labor_day",
-                "independence_day",
-                "revolution_day_memorial",
-                "regional_games",
-                "fifa_u_17_world_cup",
-                "football_gold_cup",
-                "beer_capital",
-                "music_fest",
-            ]
-        ),
-        time_varying_known_reals=[
-            "time_idx",
-            "price_regular",
-            "price_actual",
-            "discount",
-            "discount_in_percent",
-        ],
-        time_varying_unknown_categoricals=[],
-        time_varying_unknown_reals=[
-            "target",
-            "volume",
-            "log_volume",
-            "industry_volume",
-            "soda_volume",
-            "avg_max_temp",
-        ],
-        static_categoricals=["agency"],
-        add_relative_time_idx=False,
-        target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
+    from pytorch_forecasting.tests._data_scenarios import (
+        dataloaders_with_different_encoder_decoder_length as _dataloader,
     )
+
+    return _dataloader()
 
 
 @pytest.fixture(scope="session")
@@ -193,7 +157,7 @@ def dataloaders_multi_target(data_with_covariates):
 @pytest.fixture(scope="session")
 def dataloaders_fixed_window_without_covariates():
     from pytorch_forecasting.tests._data_scenarios import (
-        dataloaders_fixed_window_without_covariates as _dfwwc,
+        dataloaders_fixed_window_without_covariates as _dataloader,
     )
 
-    return _dfwwc()
+    return _dataloader()
