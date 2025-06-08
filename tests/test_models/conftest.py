@@ -154,6 +154,7 @@ def make_dataloaders(data_with_covariates, **kwargs):
 def multiple_dataloaders_with_covariates(data_with_covariates, request):
     return make_dataloaders(data_with_covariates, **request.param)
 
+
 @pytest.fixture(scope="session")
 def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
     return make_dataloaders(
@@ -176,9 +177,22 @@ def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
                 "music_fest",
             ]
         ),
-        time_varying_known_reals=["time_idx", "price_regular", "price_actual", "discount", "discount_in_percent"],
+        time_varying_known_reals=[
+            "time_idx",
+            "price_regular",
+            "price_actual",
+            "discount",
+            "discount_in_percent",
+        ],
         time_varying_unknown_categoricals=[],
-        time_varying_unknown_reals=["target", "volume", "log_volume", "industry_volume", "soda_volume", "avg_max_temp"],
+        time_varying_unknown_reals=[
+            "target",
+            "volume",
+            "log_volume",
+            "industry_volume",
+            "soda_volume",
+            "avg_max_temp",
+        ],
         static_categoricals=["agency"],
         add_relative_time_idx=False,
         target_normalizer=GroupNormalizer(groups=["agency", "sku"], center=False),
