@@ -2373,7 +2373,7 @@ class TimeSeriesDataSet(Dataset):
 
     def __retrieve_precomputed_and_increment_idx__(self):
         """
-        Get precomputed sample for model from precompute_cache
+        Get precomputed sample from precompute_cache
 
         Returns:
             tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
@@ -2397,7 +2397,7 @@ class TimeSeriesDataSet(Dataset):
             tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
         if self.precompute:
-            return self.__retrieve_precomputed_and_increment_idx()
+            return self.__retrieve_precomputed_and_increment_idx__()
 
         return self.__item_tensor__(idx)
 
