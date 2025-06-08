@@ -2371,6 +2371,21 @@ class TimeSeriesDataSet(Dataset):
                 batch_result = self.__item_tensor__(idx)
                 self.precompute_cache.append(batch_result)
 
+    def __retrieve_precomputed_and_increment_idx__(self):
+        """
+        Get precomputed sample for model from precompute_cache
+
+        Returns:
+            tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
+        """
+        if self.precompute_idx >= len(self.precompute_cache):
+            self.precompute_idx = 0
+
+        item = self.precompute_cache[self.precompute_idx]
+        self.precompute_idx += 1
+
+        return item
+
     def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
         Get sample for model
@@ -2382,13 +2397,7 @@ class TimeSeriesDataSet(Dataset):
             tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
         if self.precompute:
-            if self.precompute_idx >= len(self.precompute_cache):
-                self.precompute_idx = 0
-
-            item = self.precompute_cache[self.precompute_idx]
-            self.precompute_idx += 1
-
-            return item
+            return self.__retrieve_precomputed_and_increment_idx()
 
         return self.__item_tensor__(idx)
 
