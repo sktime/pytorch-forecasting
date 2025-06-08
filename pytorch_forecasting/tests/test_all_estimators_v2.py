@@ -109,16 +109,15 @@ def _integration(
         **kwargs,
     )
 
-    try:
-        trainer.fit(
-            net,
-            train_dataloaders=train_dataloader,
-            val_dataloaders=val_dataloader,
-        )
-        test_outputs = trainer.test(net, dataloaders=test_dataloader)
-        assert len(test_outputs) > 0
-    finally:
-        shutil.rmtree(tmp_path, ignore_errors=True)
+    trainer.fit(
+        net,
+        train_dataloaders=train_dataloader,
+        val_dataloaders=val_dataloader,
+    )
+    test_outputs = trainer.test(net, dataloaders=test_dataloader)
+    assert len(test_outputs) > 0
+
+    shutil.rmtree(tmp_path, ignore_errors=True)
 
 
 class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
