@@ -123,6 +123,7 @@ def multiple_dataloaders_with_covariates(data_with_covariates, request):
     return make_dataloaders(data_with_covariates, **request.param)
 
 
+@pytest.fixture(scope="session")
 def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
     from pytorch_forecasting.tests._data_scenarios import (
         dataloaders_with_different_encoder_decoder_length as _dataloader,
