@@ -198,10 +198,9 @@ def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
     )
 
 
-@pytest.fixture(scope="session")
-def dataloaders_with_covariates(data_with_covariates):
+def dataloaders_with_covariates():
     return make_dataloaders(
-        data_with_covariates.copy(),
+        data_with_covariates(),
         target="target",
         time_varying_known_reals=["discount"],
         time_varying_unknown_reals=["target"],
@@ -211,17 +210,15 @@ def dataloaders_with_covariates(data_with_covariates):
     )
 
 
-@pytest.fixture(scope="session")
-def dataloaders_multi_target(data_with_covariates):
+def dataloaders_multi_target():
     return make_dataloaders(
-        data_with_covariates.copy(),
+        data_with_covariates(),
         time_varying_unknown_reals=["target", "discount"],
         target=["target", "discount"],
         add_relative_time_idx=False,
     )
 
 
-@pytest.fixture(scope="session")
 def dataloaders_fixed_window_without_covariates():
     data = generate_ar_data(seasonality=10.0, timesteps=50, n_series=2)
     validation = data.series.iloc[:2]
