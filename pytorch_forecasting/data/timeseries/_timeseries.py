@@ -2091,7 +2091,7 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
-        index = self.index.iloc[idx]
+        index = self.index[idx]
 
         # get index data
         index_start = index.index_start
