@@ -1,6 +1,9 @@
 """
 PyTorch Forecasting package for timeseries forecasting with PyTorch.
 """
+
+__version__ = "1.3.0"
+
 from pytorch_forecasting.data import (
     EncoderNormalizer,
     GroupNormalizer,
@@ -14,15 +17,15 @@ from pytorch_forecasting.metrics import (
     MASE,
     RMSE,
     SMAPE,
-    AggregationMetric,
     BetaDistributionLoss,
-    CompositeMetric,
     CrossEntropy,
     DistributionLoss,
+    ImplicitQuantileNetworkDistributionLoss,
     LogNormalDistributionLoss,
-    Metric,
+    MQF2DistributionLoss,
     MultiHorizonMetric,
     MultiLoss,
+    MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
     PoissonLoss,
@@ -40,8 +43,10 @@ from pytorch_forecasting.models import (
     DeepAR,
     MultiEmbedding,
     NBeats,
+    NHiTS,
     RecurrentNetwork,
     TemporalFusionTransformer,
+    TiDEModel,
     get_rnn,
 )
 from pytorch_forecasting.utils import (
@@ -57,6 +62,7 @@ from pytorch_forecasting.utils import (
     to_list,
     unpack_sequence,
 )
+from pytorch_forecasting.utils._maint._show_versions import show_versions
 
 __all__ = [
     "TimeSeriesDataSet",
@@ -65,7 +71,9 @@ __all__ = [
     "NaNLabelEncoder",
     "MultiNormalizer",
     "TemporalFusionTransformer",
+    "TiDEModel",
     "NBeats",
+    "NHiTS",
     "Baseline",
     "DeepAR",
     "BaseModel",
@@ -78,14 +86,14 @@ __all__ = [
     "MAPE",
     "MASE",
     "SMAPE",
-    "Metric",
-    "AggregationMetric",
-    "CompositeMetric",
     "DistributionLoss",
     "BetaDistributionLoss",
     "LogNormalDistributionLoss",
     "NegativeBinomialDistributionLoss",
     "NormalDistributionLoss",
+    "ImplicitQuantileNetworkDistributionLoss",
+    "MultivariateNormalDistributionLoss",
+    "MQF2DistributionLoss",
     "CrossEntropy",
     "PoissonLoss",
     "QuantileLoss",
@@ -106,7 +114,6 @@ __all__ = [
     "integer_histogram",
     "groupby_apply",
     "profile",
+    "show_versions",
     "unpack_sequence",
 ]
-
-__version__ = "0.0.0"

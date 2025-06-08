@@ -2,7 +2,7 @@
 #
 # This file only contains a selection of the most common options. For a full
 # list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+# https://www.sphinx-doc.org/en/main/usage/configuration.html
 
 # -- Path setup --------------------------------------------------------------
 
@@ -94,11 +94,14 @@ def get_by_name(string: str):
     """
     Import by name and return imported module/function/class
 
-    Args:
-        string (str): module/function/class to import, e.g. 'pandas.read_csv' will return read_csv function as
-        defined by pandas
+    Parameters
+    ----------
+    string (str):
+        module/function/class to import, e.g. 'pandas.read_csv'
+        will return read_csv function as defined by pandas
 
-    Returns:
+    Returns
+    -------
         imported object
     """
     class_name = string.split(".")[-1]
@@ -141,10 +144,14 @@ mathjax_path = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?
 
 # theme options
 html_theme_options = {
-    "github_url": "https://github.com/jdb78/pytorch-forecasting",
+    "github_url": "https://github.com/sktime/pytorch-forecasting",
+    "navbar_end": ["navbar-icon-links.html", "search-field.html"],
+    "show_nav_level": 2,
+    "header_links_before_dropdown": 10,
+    "external_links": [
+        {"name": "GitHub", "url": "https://github.com/sktime/pytorch-forecasting"}
+    ],
 }
-
-html_theme_options = {"navbar_end": ["navbar-icon-links.html", "search-field.html"]}
 
 html_sidebars = {
     "index": [],
@@ -170,3 +177,16 @@ shutil.copy(
     "../../CHANGELOG.md",
     "CHANGELOG.md",
 )
+
+intersphinx_mapping = {
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+}
+
+suppress_warnings = [
+    "autosummary.import_cycle",
+]
+
+# -----------nbsphinx extension ----------
+nbsphinx_execute = "never"  # always
+nbsphinx_allow_errors = False  # False
+nbsphinx_timeout = 600  # seconds

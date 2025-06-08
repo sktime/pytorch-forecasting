@@ -1,25 +1,27 @@
 import pickle
 import shutil
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
 
 from pytorch_forecasting.models import NBeats
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
-def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus):
+def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
     val_dataloader = dataloaders_fixed_window_without_covariates["val"]
     test_dataloader = dataloaders_fixed_window_without_covariates["test"]
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(
+        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
+    )
 
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=2,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -51,11 +53,21 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path, gpus
         net = NBeats.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         # check prediction
-        net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+        net.predict(
+            val_dataloader,
+            fast_dev_run=True,
+            return_index=True,
+            return_decoder_lengths=True,
+        )
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
-    net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+    net.predict(
+        val_dataloader,
+        fast_dev_run=True,
+        return_index=True,
+        return_decoder_lengths=True,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -74,4 +86,18 @@ def model(dataloaders_fixed_window_without_covariates):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301
+
+
+@pytest.mark.skipif(
+    "matplotlib" not in _get_installed_packages(),
+    reason="skip test if required package matplotlib not installed",
+)
+def test_interpretation(model, dataloaders_fixed_window_without_covariates):
+    raw_predictions = model.predict(
+        dataloaders_fixed_window_without_covariates["val"],
+        mode="raw",
+        return_x=True,
+        fast_dev_run=True,
+    )
+    model.plot_interpretation(raw_predictions.x, raw_predictions.output, idx=0)

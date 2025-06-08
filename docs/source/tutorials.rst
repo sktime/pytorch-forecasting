@@ -3,7 +3,7 @@ Tutorials
 
 .. _tutorials:
 
-The following tutorials can be also found as `notebooks on GitHub <https://github.com/jdb78/pytorch-forecasting/tree/master/docs/source/tutorials>`_.
+The following tutorials can be also found as `notebooks on GitHub <https://github.com/sktime/pytorch-forecasting/tree/main/docs/source/tutorials>`_.
 
 .. toctree::
    :titlesonly:
@@ -12,3 +12,5 @@ The following tutorials can be also found as `notebooks on GitHub <https://githu
    tutorials/stallion
    tutorials/ar
    tutorials/building
+   tutorials/deepar
+   tutorials/nhits

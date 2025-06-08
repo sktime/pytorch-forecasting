@@ -1,19 +1,20 @@
 import pickle
 import shutil
 
+import lightning.pytorch as pl
+from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger
 from test_models.conftest import make_dataloaders
-from torch.optim import SGD
 from torchmetrics import MeanSquaredError
 
 from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss
 from pytorch_forecasting.models import DecoderMLP
 
 
-def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, train_only=False, **kwargs):
+def _integration(
+    data_with_covariates, tmp_path, data_loader_kwargs={}, train_only=False, **kwargs
+):
     data_loader_default_kwargs = dict(
         target="target",
         time_varying_known_reals=["price_actual"],
@@ -22,18 +23,24 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         add_relative_time_idx=True,
     )
     data_loader_default_kwargs.update(data_loader_kwargs)
-    dataloaders_with_covariates = make_dataloaders(data_with_covariates, **data_loader_default_kwargs)
+    dataloaders_with_covariates = make_dataloaders(
+        data_with_covariates, **data_loader_default_kwargs
+    )
     train_dataloader = dataloaders_with_covariates["train"]
     val_dataloader = dataloaders_with_covariates["val"]
     test_dataloader = dataloaders_with_covariates["test"]
     early_stop_callback = EarlyStopping(
-        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min", strict=False
+        monitor="val_loss",
+        min_delta=1e-4,
+        patience=1,
+        verbose=False,
+        mode="min",
+        strict=False,
     )
 
     logger = TensorBoardLogger(tmp_path)
     trainer = pl.Trainer(
         max_epochs=3,
-        gpus=gpus,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
         enable_checkpointing=True,
@@ -50,7 +57,7 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         log_gradient_flow=True,
         log_interval=1000,
         hidden_size=10,
-        **kwargs
+        **kwargs,
     )
     net.size()
     try:
@@ -63,17 +70,29 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
                 val_dataloaders=val_dataloader,
             )
         # check loading
-        net = DecoderMLP.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        net = DecoderMLP.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path
+        )
 
         # check prediction
-        net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+        net.predict(
+            val_dataloader,
+            fast_dev_run=True,
+            return_index=True,
+            return_decoder_lengths=True,
+        )
         # check test dataloader
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
-    net.predict(val_dataloader, fast_dev_run=True, return_index=True, return_decoder_lengths=True)
+    net.predict(
+        val_dataloader,
+        fast_dev_run=True,
+        return_index=True,
+        return_decoder_lengths=True,
+    )
 
 
 @pytest.mark.parametrize(
@@ -101,8 +120,10 @@ def _integration(data_with_covariates, tmp_path, gpus, data_loader_kwargs={}, tr
         ),
     ],
 )
-def test_integration(data_with_covariates, tmp_path, gpus, kwargs):
-    _integration(data_with_covariates.assign(target=lambda x: x.volume), tmp_path, gpus, **kwargs)
+def test_integration(data_with_covariates, tmp_path, kwargs):
+    _integration(
+        data_with_covariates.assign(target=lambda x: x.volume), tmp_path, **kwargs
+    )
 
 
 @pytest.fixture
@@ -120,4 +141,4 @@ def model(dataloaders_with_covariates):
 
 def test_pickle(model):
     pkl = pickle.dumps(model)
-    pickle.loads(pkl)
+    pickle.loads(pkl)  # noqa: S301
