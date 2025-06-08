@@ -22,6 +22,7 @@ def data_with_covariates():
     from pytorch_forecasting.tests._data_scenarios import (
         data_with_covariates as _data_with_covariates,
     )
+
     return _data_with_covariates()
 
 
@@ -192,6 +193,7 @@ def dataloaders_multi_target(data_with_covariates):
 @pytest.fixture(scope="session")
 def dataloaders_fixed_window_without_covariates():
     from pytorch_forecasting.tests._data_scenarios import (
-        dataloaders_fixed_window_without_covariates as _dataloaders_fixed_window_without_covariates,
+        dataloaders_fixed_window_without_covariates as _dfwwc,
     )
-    return _dataloaders_fixed_window_without_covariates()
+
+    return _dfwwc()
