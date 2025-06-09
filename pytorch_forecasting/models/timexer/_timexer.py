@@ -396,19 +396,6 @@ class TimeXer(TslibBaseModel):
         if prediction.size(2) != self.target_dim:
             prediction = prediction[:, :, : self.target_dim]
 
-        target_indices = range(self.target_dim)
-        if self.n_quantiles is not None:
-            if self.target_dim > 1:
-                # for multiple targets, we return a list of tensors of shape
-                # [batch, timesteps, quantiles]
-                prediction = [prediction[..., i, :] for i in target_indices]
-        else:
-            # point prediction
-            if len(target_indices) == 1:
-                prediction = prediction[..., 0]
-            else:
-                prediction = [prediction[..., i] for i in target_indices]
-
         if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])
 
