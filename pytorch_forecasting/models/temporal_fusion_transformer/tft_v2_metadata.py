@@ -23,7 +23,7 @@ class TFTMetadata(_BasePtForecasterV2):
         return TFT
 
     @classmethod
-    def _get_test_dataloaders_from(cls, trainer_kwargs):
+    def _get_test_datamodule_from(cls, trainer_kwargs):
         """Create test dataloaders from trainer_kwargs - following v1 pattern."""
         from pytorch_forecasting.data.data_module import (
             EncoderDecoderTimeSeriesDataModule,

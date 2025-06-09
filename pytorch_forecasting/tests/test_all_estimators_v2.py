@@ -92,6 +92,6 @@ class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
         tmp_path,
     ):
         object_class = object_metadata.get_model_cls()
-        dataloaders = object_metadata._get_test_dataloaders_from(trainer_kwargs)
+        dataloaders = object_metadata._get_test_datamodule_from(trainer_kwargs)
 
         _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
