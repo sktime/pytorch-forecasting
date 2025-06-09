@@ -6,7 +6,8 @@ Time Series Transformer with eXogenous variables (TimeXer)
 ################################################################
 # NOTE: This implementation of TimeXer derives from PR #1797.  #
 # It is experimental and seeks to clarify design decisions.    #
-# IT IS STRICTLY A PART OF THE v2 design of PTF.               #
+# IT IS STRICTLY A PART OF THE v2 design of PTF. It overrides  #
+# the v1 version introduced in v1 by PR #1797                  #
 ################################################################
 
 from typing import Any, Optional, Union
@@ -398,10 +399,11 @@ class TimeXer(TslibBaseModel):
         target_indices = range(self.target_dim)
         if self.n_quantiles is not None:
             if self.target_dim > 1:
+                # for multiple targets, we return a list of tensors of shape
+                # [batch, timesteps, quantiles]
                 prediction = [prediction[..., i, :] for i in target_indices]
-            else:
-                prediction = prediction[..., 0]
         else:
+            # point prediction
             if len(target_indices) == 1:
                 prediction = prediction[..., 0]
             else:
