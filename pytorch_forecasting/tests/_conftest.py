@@ -7,7 +7,6 @@ import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
-from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
 from pytorch_forecasting.data.timeseries import TimeSeries
 
@@ -175,16 +174,12 @@ def data_with_covariates_v2():
     return data
 
 
-def make_dataloaders_v2(data_with_covariates, **kwargs):
-    """Create dataloaders with consistent encoder/decoder features."""
+def make_datasets_v2(data_with_covariates, **kwargs):
+    """Create datasets with consistent encoder/decoder features."""
 
     training_cutoff = "2016-09-01"
-    max_encoder_length = kwargs.get("max_encoder_length", 4)
-    max_prediction_length = kwargs.get("max_prediction_length", 3)
-
     target_col = kwargs.get("target", "target")
     group_cols = kwargs.get("group_ids", ["agency_encoded", "sku_encoded"])
-    add_relative_time_idx = kwargs.get("add_relative_time_idx", True)
 
     known_features = [
         "month",
@@ -276,51 +271,10 @@ def make_dataloaders_v2(data_with_covariates, **kwargs):
 
     training_max_time_idx = training_data["time_idx"].max() + 1
 
-    train_datamodule = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=training_dataset,
-        max_encoder_length=max_encoder_length,
-        max_prediction_length=max_prediction_length,
-        add_relative_time_idx=add_relative_time_idx,
-        batch_size=2,
-        num_workers=0,
-        train_val_test_split=(0.8, 0.2, 0.0),
-    )
-
-    val_datamodule = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=validation_dataset,
-        max_encoder_length=max_encoder_length,
-        max_prediction_length=max_prediction_length,
-        min_prediction_idx=training_max_time_idx,
-        add_relative_time_idx=add_relative_time_idx,
-        batch_size=2,
-        num_workers=0,
-        train_val_test_split=(0.0, 1.0, 0.0),
-    )
-
-    test_datamodule = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=validation_dataset,
-        max_encoder_length=max_encoder_length,
-        max_prediction_length=max_prediction_length,
-        min_prediction_idx=training_max_time_idx,
-        add_relative_time_idx=add_relative_time_idx,
-        batch_size=1,
-        num_workers=0,
-        train_val_test_split=(0.0, 0.0, 1.0),
-    )
-
-    train_datamodule.setup("fit")
-    val_datamodule.setup("fit")
-    test_datamodule.setup("test")
-
-    train_dataloader = train_datamodule.train_dataloader()
-    val_dataloader = val_datamodule.val_dataloader()
-    test_dataloader = test_datamodule.test_dataloader()
-
     return {
-        "train": train_dataloader,
-        "val": val_dataloader,
-        "test": test_dataloader,
-        "data_module": train_datamodule,
+        "training_dataset": training_dataset,
+        "validation_dataset": validation_dataset,
+        "training_max_time_idx": training_max_time_idx,
     }
 
 

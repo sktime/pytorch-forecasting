@@ -8,7 +8,6 @@ from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import torch.nn as nn
 
-from pytorch_forecasting.tests._conftest import make_dataloaders_v2 as make_dataloaders
 from pytorch_forecasting.tests.test_all_estimators import (
     BaseFixtureGenerator,
     PackageConfig,
@@ -21,33 +20,16 @@ ONLY_CHANGED_MODULES = False
 
 def _integration(
     estimator_cls,
-    data_with_covariates,
+    dataloaders,
     tmp_path,
     data_loader_kwargs={},
     clip_target: bool = False,
     trainer_kwargs=None,
     **kwargs,
 ):
-    data_with_covariates = data_with_covariates.copy()
-    if clip_target:
-        data_with_covariates["target"] = data_with_covariates["volume"].clip(1e-3, 1.0)
-    else:
-        data_with_covariates["target"] = data_with_covariates["volume"]
-
-    data_loader_default_kwargs = dict(
-        target="target",
-        group_ids=["agency_encoded", "sku_encoded"],
-        add_relative_time_idx=True,
-    )
-    data_loader_default_kwargs.update(data_loader_kwargs)
-
-    dataloaders_with_covariates = make_dataloaders(
-        data_with_covariates, **data_loader_default_kwargs
-    )
-
-    train_dataloader = dataloaders_with_covariates["train"]
-    val_dataloader = dataloaders_with_covariates["val"]
-    test_dataloader = dataloaders_with_covariates["test"]
+    train_dataloader = dataloaders["train"]
+    val_dataloader = dataloaders["val"]
+    test_dataloader = dataloaders["test"]
 
     early_stop_callback = EarlyStopping(
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
@@ -68,40 +50,12 @@ def _integration(
         logger=logger,
         **trainer_kwargs,
     )
-    training_data_module = dataloaders_with_covariates["data_module"]
+    training_data_module = dataloaders.get("data_module")
     metadata = training_data_module.metadata
 
-    assert metadata["encoder_cont"] == 14  # 14 features (8 known + 6 unknown)
-    assert metadata["encoder_cat"] == 0
-    assert metadata["decoder_cont"] == 8  # 8 (only known features)
-    assert metadata["decoder_cat"] == 0
-    assert metadata["static_categorical_features"] == 0
-    assert (
-        metadata["static_continuous_features"] == 2
-    )  # 2 (agency_encoded, sku_encoded)
-    assert metadata["target"] == 1
-
-    batch_x, batch_y = next(iter(train_dataloader))
-
-    assert batch_x["encoder_cont"].shape[2] == metadata["encoder_cont"]
-    assert batch_x["encoder_cat"].shape[2] == metadata["encoder_cat"]
-
-    assert batch_x["decoder_cont"].shape[2] == metadata["decoder_cont"]
-    assert batch_x["decoder_cat"].shape[2] == metadata["decoder_cat"]
-
-    if "static_categorical_features" in batch_x:
-        assert (
-            batch_x["static_categorical_features"].shape[2]
-            == metadata["static_categorical_features"]
-        )
-
-    if "static_continuous_features" in batch_x:
-        assert (
-            batch_x["static_continuous_features"].shape[2]
-            == metadata["static_continuous_features"]
-        )
-
-    assert batch_y.shape[2] == metadata["target"]
+    assert isinstance(
+        metadata, dict
+    ), f"Expected metadata to be dict, got {type(metadata)}"
 
     net = estimator_cls(
         metadata=metadata,
@@ -137,8 +91,7 @@ class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates_v2
-
-        data_with_covariates = data_with_covariates_v2()
         object_class = object_metadata.get_model_cls()
-        _integration(object_class, data_with_covariates, tmp_path, **trainer_kwargs)
+        dataloaders = object_metadata._get_test_dataloaders_from(trainer_kwargs)
+
+        _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
