@@ -17,6 +17,7 @@ import torch.nn.functional as F
 from torch.optim import Optimizer
 
 from pytorch_forecasting.layers.decomposition import SeriesDecomposition
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
@@ -111,44 +112,48 @@ class DLinearModel(TslibBaseModel):
 
         self.decomposition = SeriesDecomposition(self.moving_avg)
 
+        self.n_quantiles = None
+
+        if isinstance(self.loss, QuantileLoss):
+            self.n_quantiles = len(self.loss.quantiles)
+
+        output_dim = self.prediction_length
+
+        if self.n_quantiles is not None:
+            output_dim = self.prediction_length * self.n_quantiles
+
         if self.individual:
             self.linear_seasonal = nn.ModuleList()
             self.linear_trend = nn.ModuleList()
 
             for i in range(self.enc_in):
-                self.linear_seasonal.append(
-                    nn.Linear(self.context_length, self.prediction_length)
-                )
-                self.linear_trend.append(
-                    nn.Linear(self.context_length, self.prediction_length)
-                )
+                self.linear_seasonal.append(nn.Linear(self.context_length, output_dim))
+                self.linear_trend.append(nn.Linear(self.context_length, output_dim))
 
                 # initialise the weights for the linear layers
                 # begins with a uniform and linear distribution.
                 self.linear_seasonal[i].weight = nn.Parameter(
                     (1 / self.context_length)
-                    * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+                    * torch.ones([output_dim, self.context_length])  # noqa: E501
                 )
 
                 self.linear_trend[i].weight = nn.Parameter(
                     (1 / self.context_length)
-                    * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+                    * torch.ones([output_dim, self.context_length])  # noqa: E501
                 )
 
         else:
-            self.linear_seasonal = nn.Linear(
-                self.context_length, self.prediction_length
-            )
-            self.linear_trend = nn.Linear(self.context_length, self.prediction_length)
+            self.linear_seasonal = nn.Linear(self.context_length, output_dim)
+            self.linear_trend = nn.Linear(self.context_length, output_dim)
 
             self.linear_seasonal.weight = nn.Parameter(
                 (1 / self.context_length)
-                * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+                * torch.ones([output_dim, self.context_length])  # noqa: E501
             )
 
             self.linear_trend.weight = nn.Parameter(
                 (1 / self.context_length)
-                * torch.ones([self.prediction_length, self.context_length])  # noqa: E501
+                * torch.ones([output_dim, self.context_length])  # noqa: E501
             )
 
     def _encoder(self, x: torch.Tensor) -> torch.Tensor:
@@ -169,16 +174,40 @@ class DLinearModel(TslibBaseModel):
         )  # noqa: E501
 
         if self.individual:
-            seasonal_output = torch.zeros(
-                [seasonal_init.size(0), trend_init.size(1), self.prediction_length],
-                dtype=seasonal_init.dtype,
-                device=seasonal_init.device,
-            )
-            trend_output = torch.zeros(
-                [trend_init.size(0), trend_init.size(1), self.prediction_length],
-                dtype=trend_init.dtype,
-                device=trend_init.device,
-            )
+            if self.n_quantiles is not None:
+                seasonal_output = torch.zeros(
+                    [
+                        seasonal_init.size(0),
+                        seasonal_init.size(1),
+                        self.prediction_length * self.n_quantiles,
+                    ],  # noqa: E501
+                    dtype=seasonal_init.dtype,
+                    device=seasonal_init.device,
+                )
+                trend_output = torch.zeros(
+                    [
+                        trend_init.size(0),
+                        trend_init.size(1),
+                        self.prediction_length * self.n_quantiles,
+                    ],  # noqa: E501
+                    dtype=trend_init.dtype,
+                    device=trend_init.device,
+                )
+            else:
+                seasonal_output = torch.zeros(
+                    [
+                        seasonal_init.size(0),
+                        seasonal_init.size(1),
+                        self.prediction_length,
+                    ],  # noqa: E501
+                    dtype=seasonal_init.dtype,
+                    device=seasonal_init.device,
+                )
+                trend_output = torch.zeros(
+                    [trend_init.size(0), trend_init.size(1), self.prediction_length],  # noqa: E501
+                    dtype=trend_init.dtype,
+                    device=trend_init.device,
+                )
 
             for i in range(self.enc_in):
                 seasonal_output[:, i, :] = self.linear_seasonal[i](
@@ -191,7 +220,16 @@ class DLinearModel(TslibBaseModel):
             trend_output = self.linear_trend(trend_init)
 
         output = seasonal_output + trend_output
-        output = output.permute(0, 2, 1)
+
+        if self.n_quantiles is not None:
+            batch_size, n_features = output.shape[0], output.shape[1]
+
+            output = output.view(
+                batch_size, n_features, self.prediction_length, self.n_quantiles
+            )  # noqa: E501
+            output = output.permute(0, 2, 1, 3)
+        else:
+            output = output.permute(0, 2, 1)
 
         return output
 
@@ -247,7 +285,7 @@ class DLinearModel(TslibBaseModel):
         if "target_scale" in x and hasattr(self, "transform_output"):
             prediction = self.transform_output(prediction, x["target_scale"])
 
-        if hasattr(self, "target_indices") and len(self.target_indices) > 0:
-            prediction = prediction[..., self.target_indices]
+        # if hasattr(self, "target_indices") and len(self.target_indices) > 0:
+        #     prediction = prediction[..., self.target_indices]
 
         return {"prediction": prediction}
