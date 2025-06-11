@@ -387,8 +387,14 @@ class TimeXer(TslibBaseModel):
         # this is a feature mode, pre-computed using TslibBaseModel.
         if self.features == "MS":
             out = self._forecast(x)
-        else:
+        elif self.features == "M":
             out = self._forecast_multi(x)
+        else:
+            raise ValueError(
+                f"Unsupported features mode: {self.features}. "
+                "Supported modes are 'MS' for multivariate single series and 'M' for"
+                "multivariate multiple series."
+            )
 
         prediction = out[:, : self.prediction_length, :]
 
