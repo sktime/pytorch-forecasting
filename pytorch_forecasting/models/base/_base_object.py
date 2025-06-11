@@ -17,10 +17,6 @@ class _BasePtForecaster(_BaseObject):
     This class points to model objects and contains metadata as tags.
     """
 
-    _tags = {
-        "object_type": "forecaster_pytorch",
-    }
-
     @classmethod
     def get_model_cls(cls):
         """Get model class."""
@@ -112,3 +108,19 @@ class _BasePtForecaster(_BaseObject):
             names = [cls.__name__]
 
         return objs, names
+
+
+class _BasePtForecasterV1(_BasePtForecaster):
+    """Base class for PyTorch Forecasting v1 forecasters."""
+
+    _tags = {
+        "object_type": "forecaster_pytorch_v1",
+    }
+
+
+class _BasePtForecasterV2(_BasePtForecaster):
+    """Base class for PyTorch Forecasting v2 forecasters."""
+
+    _tags = {
+        "object_type": "forecaster_pytorch_v2",
+    }

@@ -107,7 +107,7 @@ class TimeXer(TslibBaseModel):
         e_layers: int = 2,
         d_ff: int = 2048,
         dropout: float = 0.1,
-        patch_length: int = 24,
+        patch_length: int = 4,
         factor: int = 5,
         activation: str = "relu",
         endogenous_vars: Optional[list[str]] = None,

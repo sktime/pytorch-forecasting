@@ -1,9 +1,9 @@
 """NBeats metadata container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
 
 
-class NBeatsMetadata(_BasePtForecaster):
+class NBeatsMetadata(_BasePtForecasterV1):
     """NBeats metadata container."""
 
     _tags = {
