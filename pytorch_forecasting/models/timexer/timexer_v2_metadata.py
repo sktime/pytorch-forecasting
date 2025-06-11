@@ -49,7 +49,7 @@ class TimeXerMetadata(_BasePtForecasterV2):
         training_dataset = datasets_info["training_dataset"]
         validation_dataset = datasets_info["validation_dataset"]
 
-        context_length = data_loader_kwargs.get("context_length", 24)
+        context_length = data_loader_kwargs.get("context_length", 12)
         prediction_length = data_loader_kwargs.get("prediction_length", 4)
         batch_size = data_loader_kwargs.get("batch_size", 2)
 
@@ -113,20 +113,20 @@ class TimeXerMetadata(_BasePtForecasterV2):
                 hidden_size=64,
                 n_heads=4,
             ),
-            dict(data_loader_kwargs=dict(context_length=48, prediction_length=12)),
+            dict(data_loader_kwargs=dict(context_length=12, prediction_length=3)),
             dict(
                 hidden_size=32,
                 n_heads=2,
                 data_loader_kwargs=dict(
-                    context_length=24,
-                    prediction_length=6,
+                    context_length=12,
+                    prediction_length=3,
                     add_relative_time_idx=False,
                 ),
             ),
             dict(
                 hidden_size=128,
                 patch_length=12,
-                data_loader_kwargs=dict(context_length=96, prediction_length=24),
+                data_loader_kwargs=dict(context_length=16, prediction_length=4),
             ),
             dict(
                 n_heads=2,
@@ -153,8 +153,8 @@ class TimeXerMetadata(_BasePtForecasterV2):
                 activation="relu",
                 dropout=0.05,
                 data_loader_kwargs=dict(
-                    context_length=32,
-                    prediction_length=8,
+                    context_length=16,
+                    prediction_length=4,
                 ),
             ),
         ]
