@@ -33,9 +33,6 @@ class DLinearModel(TslibBaseModel):
     ----------
     loss: nn.Module
         Loss function for training step.
-    enc_in: int, optional
-        Number of input features for the encoder. If not provided,
-        it is initialised to the number of continuous features in the dataset.
     moving_avg: int , default=25
         Kernel size for moving average decomposition.
     individual: bool, default=False
@@ -68,7 +65,6 @@ class DLinearModel(TslibBaseModel):
     def __init__(
         self,
         loss: nn.Module,
-        enc_in: Optional[int] = None,
         moving_avg: int = 25,
         individual: bool = False,
         logging_metrics: Optional[list[nn.Module]] = None,
@@ -94,8 +90,6 @@ class DLinearModel(TslibBaseModel):
             "It is an unstable version and may be subject to unannounced changes. "
             "Please use with caution."
         )
-
-        self.enc_in = enc_in
         self.moving_avg = moving_avg
         self.individual = individual
 
@@ -108,7 +102,7 @@ class DLinearModel(TslibBaseModel):
         Initialise the DLinear model network layer components.
         """
 
-        self.enc_in = self.enc_in or self.cont_dim
+        self.enc_in = self.cont_dim + self.target_dim
 
         self.decomposition = SeriesDecomposition(self.moving_avg)
 
@@ -127,109 +121,139 @@ class DLinearModel(TslibBaseModel):
             self.linear_trend = nn.ModuleList()
 
             for i in range(self.enc_in):
-                self.linear_seasonal.append(nn.Linear(self.context_length, output_dim))
-                self.linear_trend.append(nn.Linear(self.context_length, output_dim))
+                seasonal_layer = nn.Linear(self.context_length, output_dim)
+                trend_layer = nn.Linear(self.context_length, output_dim)
 
-                # initialise the weights for the linear layers
-                # begins with a uniform and linear distribution.
-                self.linear_seasonal[i].weight = nn.Parameter(
-                    (1 / self.context_length)
-                    * torch.ones([output_dim, self.context_length])  # noqa: E501
-                )
+                self._init_layer_weights(seasonal_layer)
+                self._init_layer_weights(trend_layer)
 
-                self.linear_trend[i].weight = nn.Parameter(
-                    (1 / self.context_length)
-                    * torch.ones([output_dim, self.context_length])  # noqa: E501
-                )
-
+                self.linear_seasonal.append(seasonal_layer)
+                self.linear_trend.append(trend_layer)
         else:
             self.linear_seasonal = nn.Linear(self.context_length, output_dim)
             self.linear_trend = nn.Linear(self.context_length, output_dim)
 
-            self.linear_seasonal.weight = nn.Parameter(
-                (1 / self.context_length)
-                * torch.ones([output_dim, self.context_length])  # noqa: E501
-            )
+            self._init_layer_weights(self.linear_seasonal)
+            self._init_layer_weights(self.linear_trend)
 
-            self.linear_trend.weight = nn.Parameter(
-                (1 / self.context_length)
-                * torch.ones([output_dim, self.context_length])  # noqa: E501
-            )
+    def _init_layer_weights(self, layer: nn.Linear):
+        """
+        Initialise layer weights with uniform distribution.
 
-    def _encoder(self, x: torch.Tensor) -> torch.Tensor:
+        Parameters
+        ----------
+        layer: Linear layer to be initialised.
+        """
+
+        weight_value = 1.0 / self.context_length
+        layer.weight = nn.Parameter(
+            weight_value * torch.ones([layer.out_features, layer.in_features])
+        )
+
+    def _encoder(self, x: torch.Tensor, target_indices: torch.Tensor) -> torch.Tensor:
         """
         Encoder the input time series through decompoosition and linear layers.
 
-        Args:
-            x (dict[str, torch.Tensor]): Input data
+        Parameters
+        ----------
+        x: torch.Tensor
+            Input data fed into the encoder.
+        target_indices: torch.Tensor
+            Indices of target features to be extracted from the output. If None, all features are returned.
 
-        Returns:
-            torch.Tensor: Encoded output tensor of shape (batch_size, prediction_length, n_features)
+        Returns
+        -------
+        output: torch.Tensor
+            Encoded output tensor of shape (batch_size, prediction_length, n_features)
         """  # noqa: E501
 
         seasonal_init, trend_init = self.decomposition(x)
-        seasonal_init, trend_init = (
-            seasonal_init.permute(0, 2, 1),
-            trend_init.permute(0, 2, 1),
-        )  # noqa: E501
+        seasonal_init = seasonal_init.permute(0, 2, 1)
+        trend_init = trend_init.permute(0, 2, 1)
 
         if self.individual:
-            if self.n_quantiles is not None:
-                seasonal_output = torch.zeros(
-                    [
-                        seasonal_init.size(0),
-                        seasonal_init.size(1),
-                        self.prediction_length * self.n_quantiles,
-                    ],  # noqa: E501
-                    dtype=seasonal_init.dtype,
-                    device=seasonal_init.device,
-                )
-                trend_output = torch.zeros(
-                    [
-                        trend_init.size(0),
-                        trend_init.size(1),
-                        self.prediction_length * self.n_quantiles,
-                    ],  # noqa: E501
-                    dtype=trend_init.dtype,
-                    device=trend_init.device,
-                )
-            else:
-                seasonal_output = torch.zeros(
-                    [
-                        seasonal_init.size(0),
-                        seasonal_init.size(1),
-                        self.prediction_length,
-                    ],  # noqa: E501
-                    dtype=seasonal_init.dtype,
-                    device=seasonal_init.device,
-                )
-                trend_output = torch.zeros(
-                    [trend_init.size(0), trend_init.size(1), self.prediction_length],  # noqa: E501
-                    dtype=trend_init.dtype,
-                    device=trend_init.device,
-                )
-
-            for i in range(self.enc_in):
-                seasonal_output[:, i, :] = self.linear_seasonal[i](
-                    seasonal_init[:, i, :]
-                )
-
-                trend_output[:, i, :] = self.linear_trend[i](trend_init[:, i, :])
+            seasonal_output, trend_output = self._process_individual_features(
+                seasonal_init, trend_init
+            )  # noqa: E501
         else:
             seasonal_output = self.linear_seasonal(seasonal_init)
             trend_output = self.linear_trend(trend_init)
 
         output = seasonal_output + trend_output
 
+        if target_indices is not None:
+            output = output[:, target_indices, :]
+
+        output = self._reshape_output(output)
+
+        return output
+
+    def _process_individual_features(
+        self, seasonal_init: torch.Tensor, trend_init: torch.Tensor
+    ):  # noqa: E501
+        """
+        Process features individually when self.individual=True.
+
+        Parameters
+        ----------
+        seasonal_init: Seasonal component tensor
+        trend_init: Trend component tensor
+
+        Returns
+        -------
+            tuple: (seasonal_output, trend_output)
+        """
+        # Determine output dimension
+        if self.n_quantiles is not None:
+            output_dim = self.prediction_length * self.n_quantiles
+        else:
+            output_dim = self.prediction_length
+
+        # Initialize output tensors
+        # same batch_size and n_features for both seasonal and trend
+        batch_size, n_features, _ = seasonal_init.shape
+        seasonal_output = torch.zeros(
+            (batch_size, n_features, output_dim),
+            dtype=seasonal_init.dtype,
+            device=seasonal_init.device,
+        )
+        trend_output = torch.zeros(
+            (batch_size, n_features, output_dim),
+            dtype=trend_init.dtype,
+            device=trend_init.device,
+        )
+
+        # Apply individual linear layers
+        for i in range(self.enc_in):
+            seasonal_output[:, i, :] = self.linear_seasonal[i](seasonal_init[:, i, :])
+            trend_output[:, i, :] = self.linear_trend[i](trend_init[:, i, :])
+
+        return seasonal_output, trend_output
+
+    def _reshape_output(self, output: torch.Tensor) -> torch.Tensor:
+        """
+        Reshape output tensor for quantile predictions.
+
+        Parameters
+        ----------
+        output: torch.Tensor
+            Output tensor from the encoder, expected to be of shape
+            (batch_size, n_features, prediction_length) or
+            (batch_size, n_features, prediction_length, n_quantiles).
+        Returns
+        -------
+        output: torch.Tensor
+            Reshaped tensor (batch_size, prediction_length, n_features, n_quantiles)
+            or (batch_size, prediction_length, n_features) if n_quantiles is None.
+        """
         if self.n_quantiles is not None:
             batch_size, n_features = output.shape[0], output.shape[1]
-
-            output = output.view(
+            output = output.reshape(
                 batch_size, n_features, self.prediction_length, self.n_quantiles
-            )  # noqa: E501
-            output = output.permute(0, 2, 1, 3)
+            )
+            output = output.permute(0, 2, 1, 3)  # (batch, time, features, quantiles)
         else:
-            output = output.permute(0, 2, 1)
+            output = output.permute(0, 2, 1)  # (batch, time, features)
 
         return output
 
@@ -249,43 +273,57 @@ class DLinearModel(TslibBaseModel):
             - predictions: Prediction_output of shape (batch_size, prediction_length, target_dim)
             - attention_weights: Optionally, output attention weights
         """  # noqa: E501
-        feature_mode = self.features
+        input_data, target_indices = self._prepare_input_data(x)
 
-        if feature_mode == "S":
-            if "history_target" in x and x["history_target"].size(-1) > 0:
-                input_data = x["history_target"]
-            else:
-                raise ValueError(
-                    "For 'S' feature mode, 'history_target' must be provided in the input."  # noqa: E501
-                )
-        elif feature_mode == "M":
-            available_features = []
-            if "history_cont" in x and x["history_cont"].size(-1) > 0:
-                available_features.append(x["history_cont"])
-            if "history_target" in x and x["history_target"].size(-1) > 0:
-                available_features.append(x["history_target"])
-
-            if not available_features:
-                raise ValueError(
-                    "For 'M' feature mode, either 'history_cont' or 'history_target' must be provided in the input."  # noqa: E501
-                )
-            input_data = torch.cat(available_features, dim=-1)
-        else:
-            if "history_cont" in x and x["history_cont"].size(-1) > 0:
-                input_data = x["history_cont"]
-            elif "history_target" in x and x["history_target"].size(-1) > 0:
-                input_data = x["history_target"]
-            else:
-                raise ValueError(
-                    "For 'MS' feature mode, either 'history_cont' or 'history_target' must be provided in the input."  # noqa: E501
-                )
-
-        prediction = self._encoder(input_data)
+        prediction = self._encoder(input_data, target_indices)
 
         if "target_scale" in x and hasattr(self, "transform_output"):
             prediction = self.transform_output(prediction, x["target_scale"])
 
-        # if hasattr(self, "target_indices") and len(self.target_indices) > 0:
-        #     prediction = prediction[..., self.target_indices]
-
         return {"prediction": prediction}
+
+    def _prepare_input_data(self, x: dict[str, torch.Tensor]):
+        """Prepare input data and target indices based on feature mode."""
+        feature_mode = self.features
+
+        if feature_mode == "S":
+            return self._prepare_single_mode(x)
+        elif feature_mode in ["M", "MS"]:
+            return self._prepare_multivariate_mode(x)
+        else:
+            raise ValueError(f"Unsupported feature mode: {feature_mode}")
+
+    def _prepare_single_mode(self, x: dict[str, torch.Tensor]):
+        """Prepare data for single feature mode."""
+        if "history_target" in x and x["history_target"].size(-1) > 0:
+            return x["history_target"], None
+        else:
+            raise ValueError(
+                "For 'S' feature mode, 'history_target' must be provided in the input."
+            )
+
+    def _prepare_multivariate_mode(self, x: dict[str, torch.Tensor]):
+        """Prepare data for multivariate feature mode."""
+        available_features = []
+        target_indices = []
+        current_idx = 0
+
+        if "history_cont" in x and x["history_cont"].size(-1) > 0:
+            available_features.append(x["history_cont"])
+            current_idx += self.cont_dim
+        if "history_target" in x and x["history_target"].size(-1) > 0:
+            n_targets = self.target_dim
+            target_indices = list(range(current_idx, current_idx + n_targets))
+            available_features.append(x["history_target"])
+        if not available_features:
+            raise ValueError(
+                "For multivariate feature mode, either 'history_cont' or"
+                "'history_target' must be provided."
+            )
+
+        input_data = torch.cat(available_features, dim=-1)
+        target_indices_tensor = (
+            torch.tensor(target_indices, dtype=torch.long) if target_indices else None
+        )
+
+        return input_data, target_indices_tensor
