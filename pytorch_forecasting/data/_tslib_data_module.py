@@ -584,45 +584,29 @@ class TslibDataModule(LightningDataModule):
             if sequence_length < min_seq_length:
                 continue
 
-            cutoff_time = sample.get("cutoff_time", None)
+            effective_min_prediction_idx = self.context_length
 
-            max_start = sequence_length - min_seq_length + 1
+            max_prediction_idx = sequence_length - self.prediction_length + 1
+
+            if max_prediction_idx <= effective_min_prediction_idx:
+                continue
 
             stride = self.window_stride
 
-            for start_idx in range(0, max_start, stride):
-                window_end = start_idx + min_seq_length - 1  # 0-indexed
-
-                if cutoff_time is not None:  # skip window if exceed cutoff time.
-                    end_time = sample["t"][window_end]
-
-                    if isinstance(end_time, torch.Tensor):
-                        end_time = end_time.item()
-
-                    # Convert both to pandas Timestamp for consistent comparison
-                    try:
-                        if not isinstance(end_time, pd.Timestamp):
-                            end_time = pd.Timestamp(end_time)
-                        if not isinstance(cutoff_time, pd.Timestamp):
-                            cutoff_time = pd.Timestamp(cutoff_time)
-
-                        if end_time > cutoff_time:
-                            continue
-                    except (ValueError, TypeError) as e:
-                        # If conversion fails, skip this window
-                        warnings.warn(
-                            f"Could not convert time values for comparison: {e}"
+            for start_idx in range(
+                0, max_prediction_idx - effective_min_prediction_idx, stride
+            ):  # noqa: E501
+                if start_idx + self.context_length + self.prediction_length <= (
+                    sequence_length
+                ):
+                    windows.append(
+                        (
+                            series_idx,
+                            start_idx,
+                            self.context_length,
+                            self.prediction_length,
                         )
-                        continue
-
-                windows.append(
-                    (
-                        series_idx,
-                        start_idx,
-                        self.context_length,
-                        self.prediction_length,
                     )
-                )
 
         return windows
 
@@ -662,8 +646,8 @@ class TslibDataModule(LightningDataModule):
             self._val_indices = self._indices[1:2]
             self._test_indices = self._indices[1:2]
         else:
-            self._train_size = max(1, int(self.train_val_test_split[0] * total_series))
-            self._val_size = max(1, int(self.train_val_test_split[1] * total_series))
+            self._train_size = int(self.train_val_test_split[0] * total_series)
+            self._val_size = int(self.train_val_test_split[1] * total_series)
 
             self._train_indices = self._indices[: self._train_size]
             self._val_indices = self._indices[
@@ -673,16 +657,6 @@ class TslibDataModule(LightningDataModule):
             self._test_indices = self._indices[
                 self._train_size + self._val_size : total_series
             ]
-
-        assert (
-            len(self._train_indices) > 0
-        ), "Training dataset must contain at least one time series"
-        assert (
-            len(self._val_indices) > 0
-        ), "Validation dataset must contain at least one time series"
-        assert (
-            len(self._test_indices) > 0
-        ), "Test dataset must contain at least one time series"
 
         if stage == "fit" or stage is None:
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
