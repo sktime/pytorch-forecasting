@@ -186,6 +186,9 @@ class DLinearModel(TslibBaseModel):
 
         output = self._reshape_output(output)
 
+        if self.features == "S" and output.shape[-1] == 1:
+            output = output.squeeze(-1)  # (batch, time)
+
         return output
 
     def _process_individual_features(
