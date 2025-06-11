@@ -437,14 +437,12 @@ class TslibDataModule(LightningDataModule):
         n_cont = n_features["continuous"]
         n_cat = n_features["categorical"]
 
-        if n_targets == 1 and (n_cont + n_cat) == 1:
+        if n_targets == 1 and (n_cont + n_cat) == 0:
             self.features = "S"
-        elif n_targets == 1 and (n_cont + n_cat) > 1:
+        elif n_targets == 1 and (n_cont + n_cat) >= 1:
             self.features = "MS"
         elif n_targets > 1 and (n_cont + n_cat) > 0:
             self.features = "M"
-        else:
-            self.features = "MS"
 
         metadata = {
             "feature_names": feature_names,
