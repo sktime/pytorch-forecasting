@@ -1,9 +1,9 @@
 """DeepAR metadata container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
 
 
-class DeepARMetadata(_BasePtForecaster):
+class DeepARMetadata(_BasePtForecasterV1):
     """DeepAR metadata container."""
 
     _tags = {
