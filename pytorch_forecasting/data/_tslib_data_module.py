@@ -311,13 +311,21 @@ class TslibDataModule(LightningDataModule):
 
         has_continuous = self.continuous_indices and len(self.continuous_indices) > 0
         has_categorical = self.categorical_indices and len(self.categorical_indices) > 0
-
-        if not has_continuous and not has_categorical:
+        has_targets = len(self.time_series_metadata.get("cols", {}).get("y", [])) > 0
+        if not has_targets:
             raise ValueError(
-                "No categorical or continous features found in the dataset."
-                "Cannot proceed with model training. Please ensure that your"
-                "dataset has at least one column with continous or categorical data."
+                "No target variables found in the dataset. "
+                "Cannot proceed with model training."
             )
+
+        if not has_continuous and not has_categorical and has_targets:
+            warnings.warn(
+                "No continuous or categorical features found. "
+                "Proceeding with pure univariate forecasting "
+                "using target history only.",
+                UserWarning,
+            )
+            return
 
         if not has_continuous:
             warnings.warn(
@@ -392,11 +400,6 @@ class TslibDataModule(LightningDataModule):
                 "The time series dataset must have at least one target variable. "
                 "Please provide a dataset with a target variable."
             )
-        if len(all_features) == 0:
-            raise ValueError(
-                "The time series dataset must have at least one feature. "
-                "Please provide a dataset with features."
-            )
 
         feature_names["all"] = list(all_features)
         feature_names["static"] = list(static_features)
@@ -442,6 +445,8 @@ class TslibDataModule(LightningDataModule):
         elif n_targets == 1 and (n_cont + n_cat) >= 1:
             self.features = "MS"
         elif n_targets > 1 and (n_cont + n_cat) > 0:
+            self.features = "M"
+        else:
             self.features = "M"
 
         metadata = {
