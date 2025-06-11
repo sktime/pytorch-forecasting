@@ -1,9 +1,9 @@
 """TimeXer metadata container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
 
 
-class TimeXerMetadata(_BasePtForecaster):
+class TimeXerMetadata(_BasePtForecasterV1):
     """TimeXer metdata container."""
 
     _tags = {
