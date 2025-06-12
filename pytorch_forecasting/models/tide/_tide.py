@@ -18,6 +18,7 @@ from pytorch_forecasting.models.tide.sub_modules import _TideModule
 
 
 class TiDEModel(BaseModelWithCovariates):
+    """TiDE model for long-term time-series forecasting."""
 
     @property
     def pkg(self):
