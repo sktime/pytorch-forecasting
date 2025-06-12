@@ -37,8 +37,8 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
     """DeepAR: Probabilistic forecasting with autoregressive recurrent networks."""
 
-    @property
-    def pkg(self):
+    @classmethod
+    def _pkg(cls):
         """Package containing the model."""
         from pytorch_forecasting.models.deepar._deepar_pkg import DeepAR_pkg
 

@@ -22,8 +22,8 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 class NBeats(BaseModel):
     """N-Beats model for timeseries forecasting without covariates."""
 
-    @property
-    def pkg(self):
+    @classmethod
+    def _pkg(cls):
         """Package for the model."""
         from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
 
