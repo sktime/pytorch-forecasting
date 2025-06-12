@@ -2368,11 +2368,11 @@ class TimeSeriesDataSet(Dataset):
 
         for batch in sampler:
             batch_samples = []
-            
+
             for idx in batch:
                 batch_result = self.__item_tensor__(idx)
                 batch_samples.append(batch_result)
-                
+
             batch = self._collate_fn(batch_samples)
             self.precollate_cache.append(batch)
 
