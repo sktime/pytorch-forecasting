@@ -266,9 +266,8 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
 
     def test_pkg_linkage(self, object_pkg, object_class):
         """Test that the package is linked correctly."""
-        assert hasattr(object_class, "pkg"), (
-            f"{object_class.__name__} does not have a pkg attribute."
-        )
+        msg = f"{object_class.__name__} does not have a pkg attribute."
+        assert hasattr(object_class, "pkg"), msg
         assert object_pkg is object_class.pkg
         # check naming convention
         msg = (
