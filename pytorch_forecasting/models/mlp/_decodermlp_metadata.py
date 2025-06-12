@@ -85,12 +85,12 @@ class DecoderMLPMetadata(_BasePtForecasterV1):
         """
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        from pytorch_forecasting.tests._conftest import (
-            _data_with_covariates,
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates,
             make_dataloaders,
         )
 
-        dwc = _data_with_covariates()
+        dwc = data_with_covariates()
         dwc.assign(target=lambda x: x.volume)
         dl_default_kwargs = dict(
             target="target",
