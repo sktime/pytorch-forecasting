@@ -2398,6 +2398,7 @@ class TimeSeriesDataSet(Dataset):
             batch = self.precollate_cache[self.precollate_idx]
             self.precollate_idx += 1
             return batch
+
         return _collate_fn_
 
     @staticmethod
