@@ -24,8 +24,7 @@ from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 
 
 class DecoderMLP(BaseModelWithCovariates):
-    """
-    MLP on the decoder.
+    """MLP on the decoder.
 
     MLP that predicts output only based on information available in the decoder.
     """

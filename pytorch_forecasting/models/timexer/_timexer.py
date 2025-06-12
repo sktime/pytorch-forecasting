@@ -38,6 +38,15 @@ from pytorch_forecasting.models.timexer.sub_modules import (
 
 
 class TimeXer(BaseModelWithCovariates):
+    """TimeXer model for time series forecasting with exogenous variables."""
+
+    @property
+    def pkg(self):
+        """Package for the model."""
+        from pytorch_forecasting.models.timexer._timexer_pkg import TimeXer_pkg
+
+        return TimeXer_pkg
+
     def __init__(
         self,
         context_length: int,
