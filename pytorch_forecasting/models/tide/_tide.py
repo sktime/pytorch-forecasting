@@ -18,6 +18,14 @@ from pytorch_forecasting.models.tide.sub_modules import _TideModule
 
 
 class TiDEModel(BaseModelWithCovariates):
+
+    @property
+    def pkg(self):
+        """Package for the model."""
+        from pytorch_forecasting.models.tide._tide_pkg import TiDEModel_pkg
+
+        return TiDEModel_pkg
+
     def __init__(
         self,
         output_chunk_length: int,

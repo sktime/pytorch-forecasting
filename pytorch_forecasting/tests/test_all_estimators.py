@@ -108,19 +108,19 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
 
     # which sequence the conditional fixtures are generated in
     fixture_sequence = [
-        "object_metadata",
+        "object_pkg",
         "object_class",
         "object_instance",
         "trainer_kwargs",
     ]
 
-    def _generate_object_metadata(self, test_name, **kwargs):
-        """Return object class fixtures.
+    def _generate_object_pkg(self, test_name, **kwargs):
+        """Return object package fixtures.
 
         Fixtures parametrized
         ---------------------
-        object_class: object inheriting from BaseObject
-            ranges over all object classes not excluded by self.excluded_tests
+        object_pkg: object package inheriting from BaseObject
+            ranges over all object packages not excluded by self.excluded_tests
         """
         object_classes_to_test = [
             est for est in self._all_objects() if not self.is_excluded(test_name, est)
@@ -137,8 +137,8 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         object_class: object inheriting from BaseObject
             ranges over all object classes not excluded by self.excluded_tests
         """
-        all_metadata = self._all_objects()
-        all_cls = [est.get_model_cls() for est in all_metadata]
+        all_model_pkgs = self._all_objects()
+        all_cls = [est.get_model_cls() for est in all_model_pkgs]
         object_classes_to_test = [
             est for est in all_cls if not self.is_excluded(test_name, est)
         ]
@@ -154,8 +154,8 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         trainer_kwargs: dict
             ranges over all kwargs for the trainer
         """
-        if "object_metadata" in kwargs.keys():
-            obj_meta = kwargs["object_metadata"]
+        if "object_pkg" in kwargs.keys():
+            obj_meta = kwargs["object_pkg"]
         else:
             return []
 
@@ -253,13 +253,17 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
 
     def test_integration(
         self,
-        object_metadata,
+        object_pkg,
         trainer_kwargs,
         tmp_path,
     ):
         """Fails for certain, for testing."""
 
-        object_class = object_metadata.get_model_cls()
-        dataloaders = object_metadata._get_test_dataloaders_from(trainer_kwargs)
+        object_class = object_pkg.get_model_cls()
+        dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
 
         _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
+
+    def test_pkg_linkage(self, object_pkg, object_class):
+        """Test that the package is linked correctly."""
+        assert object_pkg is object_class.pkg

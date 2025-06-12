@@ -20,6 +20,14 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NBeats(BaseModel):
+
+    @property
+    def pkg(self):
+        """Package for the model."""
+        from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
+
+        return NBeats_pkg
+
     def __init__(
         self,
         stack_types: Optional[list[str]] = None,

@@ -1,10 +1,10 @@
-"""TiDE metadata container."""
+"""TiDE package container."""
 
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class TiDEModelMetadata(_BasePtForecaster):
-    """Metadata container for TiDE Model."""
+    """Package container for TiDE Model."""
 
     _tags = {
         "info:name": "TiDEModel",
