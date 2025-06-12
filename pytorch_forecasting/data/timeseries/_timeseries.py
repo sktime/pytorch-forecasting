@@ -481,8 +481,8 @@ class TimeSeriesDataSet(Dataset):
         """Timeseries dataset holding data for models."""
         super().__init__()
 
-        self.precompute_cache = []
-        self.precompute_idx = 0
+        self.precollate_cache = []
+        self.precollate_idx = 0
         self.precompute = precompute
 
         # write variables to self and handle defaults
@@ -2367,24 +2367,14 @@ class TimeSeriesDataSet(Dataset):
         )
 
         for batch in sampler:
+            batch_samples = []
+            
             for idx in batch:
                 batch_result = self.__item_tensor__(idx)
-                self.precompute_cache.append(batch_result)
-
-    def __retrieve_precomputed_and_increment_idx__(self):
-        """
-        Get precomputed sample from precompute_cache
-
-        Returns:
-            tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
-        """
-        if self.precompute_idx >= len(self.precompute_cache):
-            self.precompute_idx = 0
-
-        item = self.precompute_cache[self.precompute_idx]
-        self.precompute_idx += 1
-
-        return item
+                batch_samples.append(batch_result)
+                
+            batch = self._collate_fn(batch_samples)
+            self.precollate_cache.append(batch)
 
     def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
@@ -2397,9 +2387,18 @@ class TimeSeriesDataSet(Dataset):
             tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
         """
         if self.precompute:
-            return self.__retrieve_precomputed_and_increment_idx__()
+            return None
 
         return self.__item_tensor__(idx)
+
+    def __fast_collate_fn__(self):
+        def _collate_fn_(batches):
+            if self.precollate_idx >= len(self.precollate_cache):
+                self.precollate_idx = 0
+            batch = self.precollate_cache[self.precollate_idx]
+            self.precollate_idx += 1
+            return batch
+        return _collate_fn_
 
     @staticmethod
     def _collate_fn(
@@ -2679,6 +2678,7 @@ class TimeSeriesDataSet(Dataset):
                 shuffle=kwargs["shuffle"],
                 drop_last=kwargs["drop_last"],
             )
+            default_kwargs["collate_fn"] = self.__fast_collate_fn__()
 
         if kwargs["batch_sampler"] is not None:
             sampler = kwargs["batch_sampler"]
