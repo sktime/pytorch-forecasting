@@ -5,6 +5,7 @@
 ########################################################################################
 
 
+import inspect
 from typing import Optional, Union
 from warnings import warn
 
@@ -48,7 +49,7 @@ class BaseModel(LightningModule):
         super().__init__()
 
         # simple check for MultiLoss usage.
-        if hasattr(loss, "__class__") and loss.__class__.__name__ == "MultiLoss":
+        if inspect.isclass(loss) and loss.__class__.__name__ == "MultiLoss":
             warn(
                 "\nIMPORTANT: Multi-target forecasting (MultiLoss) is NOT supported "
                 "in v2 base models. For multi-target forecasting, please use "
