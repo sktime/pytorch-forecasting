@@ -46,6 +46,17 @@ class BaseModel(LightningModule):
             Parameters for the learning rate scheduler.
         """
         super().__init__()
+
+        # simple check for MultiLoss usage.
+        if hasattr(loss, "__class__") and loss.__class__.__name__ == "MultiLoss":
+            warn(
+                "\nIMPORTANT: Multi-target forecasting (MultiLoss) is NOT supported "
+                "in v2 base models. For multi-target forecasting, please use "
+                "pytorch_forecasting.models.base.BaseModel (v1) instead. "
+                "Attempting to use MultiLoss with v2 models will result in runtime errors.",  # noqa: E501
+                UserWarning,
+                stacklevel=2,
+            )
         self.loss = loss
         self.logging_metrics = logging_metrics if logging_metrics is not None else []
         self.optimizer = optimizer
@@ -61,10 +72,6 @@ class BaseModel(LightningModule):
             " The API is not stable and may change without prior warning. "
             "This class is intended for beta testing and as a basic skeleton, "
             "but not for stable production use. "
-            "\n\nIMPORTANT: Multi-target forecasting (MultiLoss) is NOT supported "
-            "in v2 base models. For multi-target forecasting, please use "
-            "pytorch_forecasting.models.base.BaseModel (v1) instead. "
-            "Attempting to use MultiLoss with v2 models will result in runtime errors. "
             "Feedback and suggestions are very welcome in "
             "pytorch-forecasting issue 1736, "
             "https://github.com/sktime/pytorch-forecasting/issues/1736",
