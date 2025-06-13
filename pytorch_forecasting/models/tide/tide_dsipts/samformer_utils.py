@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.optim import Optimizer
 
 
 def scaled_dot_product_attention(

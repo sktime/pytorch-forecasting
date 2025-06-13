@@ -1,16 +1,13 @@
 from abc import abstractmethod
 
 import lightning as pl
-
-# from aim import Image
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch import optim
 from torch.optim.lr_scheduler import StepLR
 
 from .samformer_utils import SAM
-from .utils import SinkhornDistance, beauty_string, get_scope
+from .utils import beauty_string, get_scope
 
 
 def standardize_momentum(x, order):
@@ -190,6 +187,8 @@ class Base(pl.LightningModule):
 
         :meta private:
         """
+        import matplotlib.pyplot as plt
+
         x, y = batch
         y_hat = self(batch)
         if isinstance(y, (tuple, list)):
