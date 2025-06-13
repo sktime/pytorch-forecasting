@@ -1,10 +1,10 @@
-"""TFT metadata container."""
+"""TFT package container."""
 
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class TFTMetadata(_BasePtForecasterV2):
-    """TFT metadata container."""
+class TFT_pkg(_BasePtForecasterV2):
+    """TFT package container."""
 
     _tags = {
         "info:name": "TFT",
