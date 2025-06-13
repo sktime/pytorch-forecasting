@@ -1,5 +1,47 @@
 # Release Notes
 
+## v1.4.0
+* [DOC] fix `gradient_clip` value in tutorials to ensure reproducible outputs similar to the committed cell output by @gbilleyPeco in https://github.com/sktime/pytorch-forecasting/pull/1750
+* [MNT] move model base classes into `models.base` module - part 1 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1773
+* [MNT] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1774
+* [MNT] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1776
+* [MNT] Isolate `cpflow` package, towards fixing readthedocs build by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1775
+* [MNT] fix readthedocs build by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1777
+* [DOC] Fix typos in getting started section of the documentation by @pietsjoh in https://github.com/sktime/pytorch-forecasting/pull/1399
+* [MNT] move release to trusted publishers by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1800
+* [MNT] standardize `dependabot.yml` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1799
+* [MNT] remove `tj-actions` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1798
+* [MNT] [Dependabot](deps): bump codecov/codecov-action from 1 to 5 by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/1803
+* [MNT] disable automated merge and approve actions by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1804
+* [BUG] fix absolute errorbar by @MartinoMensio in https://github.com/sktime/pytorch-forecasting/pull/1579
+* build(deps): update sphinx requirement from <7.2.6,>3.2 to >3.2,<8.2.4 by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/1787
+* [ENH] Add Typehints to `TimeSeriesDataSet` to align with pep 585 by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1819
+* [ENH] Allow multiple instances from multiple mock classes in `_safe_import` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1818
+* [ENH] EXPERIMENTAL PR: D1 and D2 layer for v2 refactor by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1811
+* [BUG] EXPERIMENTAL PR: Solve the bug in `data_module` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1834
+* [BUG] fix incorrect concatenation dimension in `concat_sequences` by @cngmid in https://github.com/sktime/pytorch-forecasting/pull/1827
+* [ENH] EXPERIMENTAL PR: make the `data_module` dataclass-like by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1832
+* [ENH] EXPERIMENTAL: TFT model based on the new data pipeline by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1812
+* [ENH] test suite for `pytorch-forecasting` forecasters by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1780
+* [MNT] Move config from `setup.cfg` to `pyproject.toml` by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1852
+* [MNT] Move `pytest` configuration to `pyproject.toml` by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1851
+* [ENH] tests for `TiDE` Model by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1843
+* [ENH] `TemporalFusionTransformer` - allow mixed precision training by @Marcrb2 in https://github.com/sktime/pytorch-forecasting/pull/1518
+* [MNT] Add 'UP' to extend-select for pyupgrade python syntax by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1856
+* [ENH] refactor test metadata container to include data loader configs by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1861
+* [MNT] Replace Black with Ruff formatting and update configuration by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1853
+* [MNT] issue templates by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1867
+* [ENH] `DecoderMLP` metadata container for v1 tests by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1859
+* [BUG] Fix for the case when reduction is set to `none` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1872
+* [ENH] `TimeXer` model from `thuml` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1797
+* [DOC] improved pull request template by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1866
+* [ENH] EXPERIMENTAL: Example notebook based on the new data pipeline by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1813
+* [BUG] enable silenced TFT v2 tests by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1878
+* [ENH] refactor test data scenario generation to `tests._data_scenarios` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1877
+* [MNT] Clearly define the MLP as a class/nn.model by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1864
+* [DOC] add project badges to README: sponsoring and downloads by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1891
+
+
 ## v1.3.0
 
 Feature and maintenance update.
