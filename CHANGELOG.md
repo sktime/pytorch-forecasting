@@ -18,8 +18,11 @@ Feature and maintenance update.
 * [ENH] EXPERIMENTAL PR: make the `data_module` dataclass-like by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1832
 * [ENH] EXPERIMENTAL: TFT model based on the new data pipeline by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1812
 * [ENH] test suite for `pytorch-forecasting` forecasters by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1780
-* [ENH] tests for `TiDE` Model by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1843
 * [ENH] `TemporalFusionTransformer` - allow mixed precision training by @Marcrb2 in https://github.com/sktime/pytorch-forecasting/pull/1518
+* [ENH] move model base classes into `models.base` module - part 1 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1773
+* [ENH] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1774
+* [ENH] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1776
+* [ENH] tests for `TiDE` Model by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1843
 * [ENH] refactor test metadata container to include data loader configs by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1861
 * [ENH] `DecoderMLP` metadata container for v1 tests by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1859
 * [ENH] `TimeXer` model from `thuml` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1797
@@ -43,9 +46,6 @@ Feature and maintenance update.
 
 ### Maintenance
 
-* [MNT] move model base classes into `models.base` module - part 1 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1773
-* [MNT] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1774
-* [MNT] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1776
 * [MNT] Isolate `cpflow` package, towards fixing readthedocs build by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1775
 * [MNT] fix readthedocs build by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1777
 * [MNT] move release to trusted publishers by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1800
