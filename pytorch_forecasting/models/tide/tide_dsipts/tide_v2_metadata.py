@@ -128,7 +128,7 @@ class TIDEMetadata(_BasePtForecasterV2):
                 data_loader_kwargs=dict(max_encoder_length=5, max_prediction_length=3),
             ),
             dict(
-                embs=[],
+                embs=[3, 3],
                 hidden_size=64,
                 d_model=32,
                 n_add_enc=3,
