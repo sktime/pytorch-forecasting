@@ -351,14 +351,16 @@ class TimeXer(TslibBaseModel):
         endogenous_cont = history_target
         if self.endogenous_vars:
             endogenous_indices = [
-                self.cont_names.index(var) for var in self.endogenous_vars
+                self.feature_names["continuous"].index(var)
+                for var in self.endogenous_vars  # noqa: E501
             ]
             endogenous_cont = history_cont[..., endogenous_indices]
 
         exogenous_cont = history_cont
         if self.exogenous_vars:
             exogenous_indices = [
-                self.cont_names.index(var) for var in self.exogenous_vars
+                self.feature_names["continuous"].index(var)
+                for var in self.exogenous_vars  # noqa: E501
             ]
             exogenous_cont = history_cont[..., exogenous_indices]
 
