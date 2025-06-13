@@ -276,11 +276,20 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
         assert object_pkg is object_class.pkg
         # assert object_pkg is object_instance.pkg
 
-        # check naming convention
+        # check name method
         msg = (
-            f"Package {object_pkg.name()} does not match class "
+            f"Package {object_pkg}.name() does not match class "
             f"name {object_class.__name__}. "
             "The expected package name is "
             f"{object_class.__name__}_pkg."
         )
-        assert object_pkg.name() == object_class.__name__ + "_pkg", msg
+        assert object_pkg.name() == object_class.__name__, msg
+
+        # check naming convention
+        msg = (
+            f"Package {object_pkg.__name__} does not match class "
+            f"name {object_class.__name__}. "
+            "The expected package name is "
+            f"{object_class.__name__}_pkg."
+        )
+        assert object_pkg.__name__ == object_class.__name__ + "_pkg", msg
