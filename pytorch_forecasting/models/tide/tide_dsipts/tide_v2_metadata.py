@@ -109,32 +109,26 @@ class TIDEMetadata(_BasePtForecasterV2):
         """
         return [
             dict(
-                embs=[],
                 hidden_size=16,
                 d_model=8,
                 n_add_enc=1,
                 n_add_dec=1,
                 dropout_rate=0.1,
-                activation="",
             ),
             dict(
-                embs=[],
                 hidden_size=32,
                 d_model=16,
                 n_add_enc=2,
                 n_add_dec=2,
                 dropout_rate=0.2,
-                activation="",
                 data_loader_kwargs=dict(max_encoder_length=5, max_prediction_length=3),
             ),
             dict(
-                embs=[3, 3],
                 hidden_size=64,
                 d_model=32,
                 n_add_enc=3,
                 n_add_dec=2,
                 dropout_rate=0.1,
-                activation="",
                 data_loader_kwargs=dict(max_encoder_length=4, max_prediction_length=2),
             ),
         ]

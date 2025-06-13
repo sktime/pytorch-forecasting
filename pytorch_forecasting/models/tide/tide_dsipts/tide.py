@@ -29,7 +29,6 @@ class TIDE(Base):
         # future_steps: int,
         # past_channels: int,
         # future_channels: int,
-        embs: list[int],
         # specific params
         hidden_size: int,
         d_model: int,
@@ -37,6 +36,7 @@ class TIDE(Base):
         n_add_dec: int,
         dropout_rate: float,
         activation: str = "",
+        embs: list[int] = [],
         persistence_weight: float = 0.0,
         optim: Union[str, None] = None,
         optim_config: Union[dict, None] = None,
