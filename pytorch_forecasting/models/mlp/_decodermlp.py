@@ -29,13 +29,6 @@ class DecoderMLP(BaseModelWithCovariates):
     MLP that predicts output only based on information available in the decoder.
     """
 
-    @classmethod
-    def _pkg(cls):
-        """Package for the model."""
-        from pytorch_forecasting.models.mlp._decodermlp_pkg import DecoderMLP_pkg
-
-        return DecoderMLP_pkg
-
     def __init__(
         self,
         activation_class: str = "ReLU",
