@@ -20,6 +20,8 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NBeats(BaseModel):
+    """N-Beats model for timeseries forecasting without covariates."""
+
     def __init__(
         self,
         stack_types: Optional[list[str]] = None,

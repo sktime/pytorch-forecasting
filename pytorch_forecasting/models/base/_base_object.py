@@ -12,7 +12,7 @@ class _BaseObject(_SkbaseBaseObject):
 
 
 class _BasePtForecaster(_BaseObject):
-    """Base class for all PyTorch Forecasting forecaster metadata.
+    """Base class for all PyTorch Forecasting forecaster packages.
 
     This class points to model objects and contains metadata as tags.
     """

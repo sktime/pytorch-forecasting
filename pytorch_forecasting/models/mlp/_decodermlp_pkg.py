@@ -1,10 +1,10 @@
-"""DecoderMLP metadata container."""
+"""DecoderMLP package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
+from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class DecoderMLPMetadata(_BasePtForecasterV1):
-    """DecoderMLP metadata container."""
+class DecoderMLP_pkg(_BasePtForecaster):
+    """DecoderMLP package container."""
 
     _tags = {
         "info:name": "DecoderMLP",
