@@ -137,7 +137,9 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         object_class: object inheriting from BaseObject
             ranges over all object classes not excluded by self.excluded_tests
         """
-        all_model_pkgs = self._all_objects()
+        # call _generate_estimator_class to get all the classes
+        all_model_pkgs, _ = self._generate_object_pkg(test_name=test_name)
+
         all_cls = [est.get_model_cls() for est in all_model_pkgs]
         object_classes_to_test = [
             est for est in all_cls if not self.is_excluded(test_name, est)
