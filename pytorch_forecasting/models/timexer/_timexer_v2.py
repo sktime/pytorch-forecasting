@@ -198,7 +198,7 @@ class TimeXer(TslibBaseModel):
 
         self.n_quantiles = None
 
-        if hasattr(self.loss, "quantiles"):
+        if hasattr(self.loss, "quantiles") and self.loss.quantiles is not None:
             self.n_quantiles = len(self.loss.quantiles)
 
         if self.hidden_size % self.n_heads != 0:
@@ -283,7 +283,7 @@ class TimeXer(TslibBaseModel):
 
         history_target = x.get(
             "history_target",
-            torch.zeros(batch_size, self.context_length, 0, device=self.device),
+            torch.zeros(batch_size, self.context_length, 1, device=self.device),
         )  # noqa: E501
 
         if history_time_idx is not None and history_time_idx.dim() == 2:
@@ -294,14 +294,16 @@ class TimeXer(TslibBaseModel):
         endogenous_cont = history_target
         if self.endogenous_vars:
             endogenous_indices = [
-                self.cont_names.index(var) for var in self.endogenous_vars
+                self.feature_names["continuous"].index(var)
+                for var in self.endogenous_vars  # noqa: E501
             ]
             endogenous_cont = history_cont[..., endogenous_indices]
 
         exogenous_cont = history_cont
         if self.exogenous_vars:
             exogenous_indices = [
-                self.cont_names.index(var) for var in self.exogenous_vars
+                self.feature_names["continuous"].index(var)
+                for var in self.exogenous_vars  # noqa: E501
             ]
             exogenous_cont = history_cont[..., exogenous_indices]
 
@@ -334,26 +336,31 @@ class TimeXer(TslibBaseModel):
         Returns:
             dict[str, torch.Tensor]: Model predictions.
         """
-
+        batch_size = x["history_cont"].shape[0]
         history_cont = x["history_cont"]
         history_time_idx = x.get("history_time_idx", None)
-        history_target = x["history_target"]
+        history_target = x.get(
+            "history_target",
+            torch.zeros(batch_size, self.context_length, 1, device=self.device),
+        )  # noqa: E501
 
+        if history_time_idx is not None and history_time_idx.dim() == 2:
+            # change [batch_size, time_steps] to [batch_size, time_steps, features]
+            history_time_idx = history_time_idx.unsqueeze(-1)
+
+        endogenous_cont = history_target
         if self.endogenous_vars:
             endogenous_indices = [
                 self.cont_names.index(var) for var in self.endogenous_vars
             ]
             endogenous_cont = history_cont[..., endogenous_indices]
-        else:
-            endogenous_cont = history_target
 
+        exogenous_cont = history_cont
         if self.exogenous_vars:
             exogenous_indices = [
                 self.cont_names.index(var) for var in self.exogenous_vars
             ]
             exogenous_cont = history_cont[..., exogenous_indices]
-        else:
-            exogenous_cont = history_cont
 
         en_embed, n_vars = self.en_embedding(endogenous_cont)
 
