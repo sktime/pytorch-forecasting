@@ -1,10 +1,10 @@
-"""NBeats metadata container."""
+"""NBeats package container."""
 
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class NBeatsMetadata(_BasePtForecaster):
-    """NBeats metadata container."""
+class NBeats_pkg(_BasePtForecaster):
+    """NBeats package container."""
 
     _tags = {
         "info:name": "NBeats",
@@ -54,8 +54,8 @@ class NBeatsMetadata(_BasePtForecaster):
             Dict of dataloaders created from the parameters.
             Train, validation, and test dataloaders, in this order.
         """
-        from pytorch_forecasting.tests._conftest import (
-            _dataloaders_fixed_window_without_covariates,
+        from pytorch_forecasting.tests._data_scenarios import (
+            dataloaders_fixed_window_without_covariates,
         )
 
-        return _dataloaders_fixed_window_without_covariates()
+        return dataloaders_fixed_window_without_covariates()
