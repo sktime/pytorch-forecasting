@@ -1,3 +1,11 @@
+"""
+Basic test frameowrk for TimeXer v2 model.
+TODO:
+- Add tests for testing the scaling of features, once that is implemented in the D1/D2
+  level.
+- Add tests for the M mode (multiple series) once that is implemented.
+"""
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -143,6 +151,7 @@ def sample_multivariate_multi_series_data():
     return df
 
 
+@pytest.fixture
 def basic_timeseries_dataset(sample_multivariate_data):
     """Create a basic TimeSeries dataset for testing."""
     return TimeSeries(
@@ -169,10 +178,10 @@ def basic_tslib_data_module(basic_timeseries_dataset):
     """Create a basic TslibDataModule for testing."""
     return TslibDataModule(
         time_series_dataset=basic_timeseries_dataset,
-        batch_size=4,
+        batch_size=2,
         context_length=12,
         prediction_length=8,
-        train_val_test_split=(0.6, 0.2, 0.2),
+        train_val_test_split=(0.7, 0.15, 0.15),
     )
 
 
@@ -194,7 +203,7 @@ def model(basic_metadata):
         n_heads=8,
         e_layers=2,
         d_ff=256,
-        droupout=0.1,
+        dropout=0.1,
         patch_length=4,
         logging_metrics=[SMAPE()],
         optimizer="adam",
@@ -207,3 +216,185 @@ def model(basic_metadata):
         },
         metadata=basic_metadata,
     )
+
+
+def test_basic_model_initialization(model, basic_metadata):
+    """Test the basic model initialization."""
+
+    assert isinstance(model, TimeXer)
+
+    assert model.hidden_size == 64
+    assert model.n_heads == 8
+    assert model.e_layers == 2
+    assert model.d_ff == 256
+    assert model.patch_length == 4
+    assert model.dropout == 0.1
+
+    assert model.patch_num == 3
+    assert model.n_target_vars == 1
+    assert model.head_nf == 64 * (3 + 1)
+
+    assert model.context_length == basic_metadata["context_length"]
+    assert model.prediction_length == basic_metadata["prediction_length"]
+    assert model.cont_dim == basic_metadata["n_features"]["continuous"]
+    assert model.cat_dim == basic_metadata["n_features"]["categorical"]
+    assert model.target_dim == basic_metadata["n_features"]["target"]
+    assert model.features == basic_metadata["features"]
+
+
+def test_multivariate_single_series(model, basic_tslib_data_module):
+    basic_tslib_data_module.setup()
+    train_dataloader = basic_tslib_data_module.train_dataloader()
+    batch = next(iter(train_dataloader))[0]
+
+    model.eval()
+    with torch.no_grad():
+        output = model(batch)
+
+    assert "prediction" in output
+    predictions = output["prediction"]
+
+    batch_size = batch["history_cont"].shape[0]
+    assert predictions.shape == (batch_size, model.prediction_length, model.target_dim)
+
+    assert not torch.isnan(predictions).any()
+    assert not torch.isinf(predictions).any()
+
+
+def test_quantile_predictions(basic_metadata):
+    """Test quantile predictions with TimeXer model."""
+
+    quantiles = [0.1, 0.5, 0.9]
+
+    model = TimeXer(
+        loss=QuantileLoss(quantiles=quantiles),
+        hidden_size=64,
+        n_heads=8,
+        e_layers=2,
+        d_ff=256,
+        dropout=0.1,
+        patch_length=4,
+        metadata=basic_metadata,
+    )
+
+    assert model.n_quantiles == 3
+
+    batch_size = 4
+
+    # sample input data as a substitute for x
+    sample_input_data = {
+        "history_cont": torch.randn(
+            batch_size, 12, basic_metadata["n_features"]["continuous"]
+        ),
+        "history_target": torch.randn(
+            batch_size, 12, basic_metadata["n_features"]["target"]
+        ),
+        "history_time_idx": torch.arange(12).unsqueeze(0).repeat(batch_size, 1),
+    }
+
+    model.eval()
+    with torch.no_grad():
+        output = model(sample_input_data)
+
+    predictions = output["prediction"]
+    assert predictions.shape == (batch_size, 8, 1, 3)
+
+
+def test_missing_history_target_handling(basic_metadata):
+    """Test handling of missing history_target in TimeXer model."""
+
+    model = TimeXer(
+        loss=MAE(),
+        hidden_size=64,
+        n_heads=8,
+        e_layers=2,
+        d_ff=256,
+        dropout=0.1,
+        patch_length=4,
+        metadata=basic_metadata,
+    )
+
+    batch_size = 4
+    sample_input = {
+        "history_cont": torch.randn(
+            batch_size, 12, basic_metadata["n_features"]["continuous"]
+        ),  # noqa: E501
+        "history_time_idx": torch.arange(12).unsqueeze(0).repeat(batch_size, 1),
+    }
+
+    model.eval()
+    with torch.no_grad():
+        output = model(sample_input)
+
+    predictions = output["prediction"]
+    assert predictions.shape == (batch_size, 8, basic_metadata["n_features"]["target"])
+    assert not torch.isnan(predictions).any()
+
+
+def test_endogenous_exogenous_variable_selection(basic_metadata):
+    """Test explicit endogenous and exogenous variable selection in TimeXer model."""
+
+    endo_names = basic_metadata["feature_names"]["continuous"][0]
+    exog_names = basic_metadata["feature_names"]["continuous"][1]
+
+    model = TimeXer(
+        loss=MAE(),
+        hidden_size=64,
+        n_heads=8,
+        endogenous_vars=[endo_names],
+        exogenous_vars=[exog_names],
+        e_layers=2,
+        metadata=basic_metadata,
+    )
+
+    batch_size = 4
+    sample_input = {
+        "history_cont": torch.randn(
+            batch_size, 12, basic_metadata["n_features"]["continuous"]
+        ),
+        "history_target": torch.randn(
+            batch_size, 12, basic_metadata["n_features"]["target"]
+        ),
+        "history_time_idx": torch.arange(12).unsqueeze(0).repeat(batch_size, 1),
+    }
+
+    model.eval()
+    with torch.no_grad():
+        output = model(sample_input)
+
+    predictions = output["prediction"]
+    assert predictions.shape == (batch_size, 8, 1)
+    assert not torch.isnan(predictions).any()
+
+
+def test_integration_with_datamodule(model, basic_tslib_data_module):
+    """Test integration of TimeXer model with TslibDataModule."""
+
+    basic_tslib_data_module.setup(stage="fit")
+    basic_tslib_data_module.setup(stage="test")
+
+    train_loader = basic_tslib_data_module.train_dataloader()
+    test_loader = basic_tslib_data_module.test_dataloader()
+    val_loader = basic_tslib_data_module.val_dataloader()
+
+    model.eval()
+    with torch.no_grad():
+        train_batch = next(iter(train_loader))[0]
+        train_output = model(train_batch)
+        assert train_output["prediction"].shape[1] == model.prediction_length
+
+        # Check if validation and test sets are not empty
+        # If they are empty, skip the validation and test checks
+        try:
+            val_batch = next(iter(val_loader))[0]
+            val_output = model(val_batch)
+            assert val_output["prediction"].shape[1] == model.prediction_length
+        except StopIteration:
+            print("Validation set is empty, skipping validation testing")
+
+        try:
+            test_batch = next(iter(test_loader))[0]
+            test_output = model(test_batch)
+            assert test_output["prediction"].shape[1] == model.prediction_length
+        except StopIteration:
+            print("Test set is empty, skipping test testing")
