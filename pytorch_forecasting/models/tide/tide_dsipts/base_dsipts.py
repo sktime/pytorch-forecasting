@@ -187,34 +187,12 @@ class Base(pl.LightningModule):
 
         :meta private:
         """
-        import matplotlib.pyplot as plt
-
         x, y = batch
         y_hat = self(batch)
         if isinstance(y, (tuple, list)):
             y = y[0]
 
         loss = self.compute_loss(x, y, y_hat)
-        if batch_idx == 0:
-            if self.use_quantiles:
-                idx = 1
-            else:
-                idx = 0
-
-            if self.count_epoch % int(max(self.trainer.max_epochs / 100, 1)) == 1:
-                for i in range(batch["y"].shape[2]):
-                    real = batch["y"][0, :, i].cpu().detach().numpy()
-                    pred = y_hat[0, :, i, idx].cpu().detach().numpy()
-                    fig, ax = plt.subplots(figsize=(7, 5))
-                    ax.plot(real, "o-", label="real")
-                    ax.plot(pred, "o-", label="pred")
-                    ax.legend()
-                    ax.set_title(
-                        f"Channel {i} first element first batch validation"
-                        f" {int(100 * self.count_epoch / self.trainer.max_epochs)}%"
-                    )
-                    # self.logger.experiment.track(Image(fig), name='cm_training_end')
-                    self.log(f"example_{i}", np.stack([real, pred]).T, sync_dist=True)
         self.log(
             "val_loss",
             loss,
