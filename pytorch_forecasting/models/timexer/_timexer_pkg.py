@@ -1,9 +1,9 @@
 """TimeXer package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
 
 
-class TimeXer_pkg(_BasePtForecaster):
+class TimeXer_pkg(_BasePtForecasterV1):
     """TimeXer package container."""
 
     _tags = {
