@@ -2691,7 +2691,7 @@ class TimeSeriesDataSet(Dataset):
         if self.precompute:
             kwargs["collate_fn"] = self.__fast_collate_fn__()
             self.__precompute__(kwargs)
-        if kwargs["batch_sampler"] is not None:
+        elif kwargs["batch_sampler"] is not None:
             sampler = kwargs["batch_sampler"]
             if isinstance(sampler, str):
                 if sampler == "synchronized":
