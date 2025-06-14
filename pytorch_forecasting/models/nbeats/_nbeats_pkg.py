@@ -1,10 +1,10 @@
-"""NBeats metadata container."""
+"""NBeats package container."""
 
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class NBeatsMetadata(_BasePtForecaster):
-    """NBeats metadata container."""
+class NBeats_pkg(_BasePtForecaster):
+    """NBeats package container."""
 
     _tags = {
         "info:name": "NBeats",

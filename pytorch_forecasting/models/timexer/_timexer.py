@@ -38,6 +38,8 @@ from pytorch_forecasting.models.timexer.sub_modules import (
 
 
 class TimeXer(BaseModelWithCovariates):
+    """TimeXer model for time series forecasting with exogenous variables."""
+
     def __init__(
         self,
         context_length: int,
@@ -87,64 +89,64 @@ class TimeXer(BaseModelWithCovariates):
 
         TimeXer model for time series forecasting with exogenous variables.
 
-        Args:
-
-            context_length (int): Length of input sequence used for making predictions.
-            prediction_length (int): Number of future time steps to predict.
-            task_name (str, optional): Type of forecasting task, either
-                'long_term_forecast' or 'short_term_forecast', which corresponds to
-                forecasting scenarios implied by the task names.
-            features (str, optional): Type of features used in the model ('MS' for
-                multivariate forecating with single target, 'M' for multivariate
-                forecasting with multiple targets and 'S' for univariate forecasting).
-            enc_in (int, optional): Number of input variables for encoder.
-            hidden_size (int, optional): Dimension of model embeddings and hidden
-                representations.
-            n_heads (int, optional): Number of attention heads in multi-head attention
-                layers.
-            e_layers (int, optional): Number of encoder layers with dual attention
-                mechanism.
-            d_ff (int, optional): Dimension of feedforward network in transformer layers
-            dropout (float, optional): Dropout rate applied throughout the network for
-                regularization.
-            activation (str, optional): Activation function used in feedforward networks
-                ('relu' or 'gelu').
-            patch_length (int, optional): Length of each non-overlapping patch for
-                endogenous variable tokenization.
-            use_norm (bool, optional): Whether to apply normalization to input data.
-                Do not change, as it a setting controlled by the pytorch-forecasting API
-            factor: Scaling factor for attention scores.
-            embed_type: Type of time feature embedding ('timeF' for time-based features)
-            freq: Frequency of the time series data('h' for hourly,'d' for daily, etc.).
-            static_categoricals (list[str]): names of static categorical variables
-            static_reals (list[str]): names of static continuous variables
-            time_varying_categoricals_encoder (list[str]): names of categorical
-                variables for encoder
-            time_varying_categoricals_decoder (list[str]): names of categorical
-                variables for decoder
-            time_varying_reals_encoder (list[str]): names of continuous variables for
-                encoder
-            time_varying_reals_decoder (list[str]): names of continuous variables for
-                decoder
-            x_reals (list[str]): order of continuous variables in tensor passed to
-                forward function
-            x_categoricals (list[str]): order of categorical variables in tensor passed
-                to forward function
-            embedding_sizes (dict[str, tuple[int, int]]): dictionary mapping categorical
-                variables to tuple of integers where the first integer denotes the
-                number of categorical classes and the second the embedding size
-            embedding_labels (dict[str, list[str]]): dictionary mapping (string) indices
-                to list of categorical labels
-            embedding_paddings (list[str]): names of categorical variables for which
-                label 0 is always mapped to an embedding vector filled with zeros
-            categorical_groups (dict[str, list[str]]): dictionary of categorical
-                variables that are grouped together and can also take multiple values
-                simultaneously (e.g. holiday during octoberfest). They should be
-                implemented as bag of embeddings.
-            logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are
-                logged during training. Defaults to
-                nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
-            **kwargs: additional arguments to :py:class:`~BaseModel`.
+        Parameters
+        ----------
+        context_length (int): Length of input sequence used for making predictions.
+        prediction_length (int): Number of future time steps to predict.
+        task_name (str, optional): Type of forecasting task, either
+            'long_term_forecast' or 'short_term_forecast', which corresponds to
+            forecasting scenarios implied by the task names.
+        features (str, optional): Type of features used in the model ('MS' for
+            multivariate forecating with single target, 'M' for multivariate
+            forecasting with multiple targets and 'S' for univariate forecasting).
+        enc_in (int, optional): Number of input variables for encoder.
+        hidden_size (int, optional): Dimension of model embeddings and hidden
+            representations.
+        n_heads (int, optional): Number of attention heads in multi-head attention
+            layers.
+        e_layers (int, optional): Number of encoder layers with dual attention
+            mechanism.
+        d_ff (int, optional): Dimension of feedforward network in transformer layers
+        dropout (float, optional): Dropout rate applied throughout the network for
+            regularization.
+        activation (str, optional): Activation function used in feedforward networks
+            ('relu' or 'gelu').
+        patch_length (int, optional): Length of each non-overlapping patch for
+            endogenous variable tokenization.
+        use_norm (bool, optional): Whether to apply normalization to input data.
+            Do not change, as it a setting controlled by the pytorch-forecasting API
+        factor: Scaling factor for attention scores.
+        embed_type: Type of time feature embedding ('timeF' for time-based features)
+        freq: Frequency of the time series data('h' for hourly,'d' for daily, etc.).
+        static_categoricals (list[str]): names of static categorical variables
+        static_reals (list[str]): names of static continuous variables
+        time_varying_categoricals_encoder (list[str]): names of categorical
+            variables for encoder
+        time_varying_categoricals_decoder (list[str]): names of categorical
+            variables for decoder
+        time_varying_reals_encoder (list[str]): names of continuous variables for
+            encoder
+        time_varying_reals_decoder (list[str]): names of continuous variables for
+            decoder
+        x_reals (list[str]): order of continuous variables in tensor passed to
+            forward function
+        x_categoricals (list[str]): order of categorical variables in tensor passed
+            to forward function
+        embedding_sizes (dict[str, tuple[int, int]]): dictionary mapping categorical
+            variables to tuple of integers where the first integer denotes the
+            number of categorical classes and the second the embedding size
+        embedding_labels (dict[str, list[str]]): dictionary mapping (string) indices
+            to list of categorical labels
+        embedding_paddings (list[str]): names of categorical variables for which
+            label 0 is always mapped to an embedding vector filled with zeros
+        categorical_groups (dict[str, list[str]]): dictionary of categorical
+            variables that are grouped together and can also take multiple values
+            simultaneously (e.g. holiday during octoberfest). They should be
+            implemented as bag of embeddings.
+        logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are
+            logged during training. Defaults to
+            nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
+        **kwargs: additional arguments to :py:class:`~BaseModel`.
         """
 
         if static_categoricals is None:
