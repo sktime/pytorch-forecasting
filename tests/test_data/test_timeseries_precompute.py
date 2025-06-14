@@ -15,6 +15,7 @@ from pytorch_forecasting.data import (
     TimeSeriesDataSet,
 )
 from pytorch_forecasting.data.encoders import MultiNormalizer, TorchNormalizer
+from pytorch_forecasting.data.examples import generate_ar_data
 from pytorch_forecasting.data.timeseries import _find_end_indices
 from pytorch_forecasting.utils import to_list
 
@@ -610,3 +611,96 @@ def test_graph_sampler(test_dataset):
         if idx > 100:
             break
     print(a)
+
+
+def test_precompute_tensors():
+    data = generate_ar_data(seasonality=3, timesteps=20, n_series=20, seed=42)
+    data["date"] = pd.Timestamp("2020-01-01") + pd.to_timedelta(data.time_idx, "D")
+
+    def get_dl(data, precompute=False):
+        max_encoder_length = 3
+        max_prediction_length = 2
+
+        training_cutoff = data["time_idx"].max() - max_prediction_length
+
+        context_length = max_encoder_length
+        prediction_length = max_prediction_length
+
+        ts = TimeSeriesDataSet(
+            data[lambda x: x.time_idx <= training_cutoff],
+            time_idx="time_idx",
+            target="value",
+            categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
+            group_ids=["series"],
+            time_varying_unknown_reals=["value"],
+            max_encoder_length=context_length,
+            max_prediction_length=prediction_length,
+            precompute=precompute,
+        )
+        dl = ts.to_dataloader()
+
+        return dl
+
+    dl_precompute_true = get_dl(data, precompute=True)
+    dl_precompute_false = get_dl(data, precompute=False)
+
+    def extract_shapes(d):
+        if isinstance(d, dict):
+            return {k: extract_shapes(v) for k, v in d.items()}
+        elif isinstance(d, (list, tuple)):
+            return [extract_shapes(v) for v in d]
+        elif isinstance(d, torch.Tensor):
+            return tuple(d.shape)
+        else:
+            return f"(not a tensor) {type(d).__name__}"
+
+    def compare_shapes(a, b, path=""):
+        if type(a) is not type(b):
+            print(
+                f"{path}: mismatched types ({type(a).__name__} vs {type(b).__name__})"
+            )
+            return False
+
+        if isinstance(a, dict):
+            keys_a = set(a.keys())
+            keys_b = set(b.keys())
+            if keys_a != keys_b:
+                print(f"{path}: mismatched keys ({keys_a ^ keys_b})")
+                return False
+            return all(compare_shapes(a[k], b[k], path + f"{k}.") for k in a)
+
+        elif isinstance(a, list):
+            if len(a) != len(b):
+                print(f"{path}: mismatched list lengths ({len(a)} vs {len(b)})")
+                return False
+            return all(
+                compare_shapes(x, y, path + f"[{i}].")
+                for i, (x, y) in enumerate(zip(a, b))
+            )
+
+        elif isinstance(a, tuple):
+            if a != b:
+                print(f"{path}: shape mismatch {a} vs {b}")
+                return False
+            return True
+
+        else:
+            if a != b:
+                print(f"{path}: mismatch {a} vs {b}")
+                return False
+            return True
+
+    length = len(dl_precompute_true)
+
+    for i in range(length):
+        batch_precompute_true = next(iter(dl_precompute_true))
+        batch_precompute_false = next(iter(dl_precompute_false))
+
+        shape0 = extract_shapes(batch_precompute_true)
+        shape1 = extract_shapes(batch_precompute_false)
+
+        is_match = compare_shapes(shape0, shape1)
+
+        assert (
+            is_match
+        ), "shapes must match for both precompute=True and precompute=False"
