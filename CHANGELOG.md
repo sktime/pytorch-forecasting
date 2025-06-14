@@ -12,6 +12,7 @@ Feature and maintenance update.
 
 * [ENH] Precompute data to massively accelerate training by ~2000% in GPU by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 * [ENH] Added test for `TimeSeriesDataSet` when `precompute=True` by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
+* [ENH] Added test to check batch shape mismatch between precompute=True and False by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 * [ENH] Added benchmark test to compare with and without `precompute=True` in GPU and CPU by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 
 ### Documentation
