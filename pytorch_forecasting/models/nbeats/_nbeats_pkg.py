@@ -1,9 +1,9 @@
 """NBeats package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
 
 
-class NBeats_pkg(_BasePtForecaster):
+class NBeats_pkg(_BasePtForecasterV1):
     """NBeats package container."""
 
     _tags = {
