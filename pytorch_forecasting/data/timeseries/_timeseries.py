@@ -20,7 +20,7 @@ from sklearn.utils.validation import check_is_fitted
 import torch
 from torch.distributions import Beta
 from torch.nn.utils import rnn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import BatchSampler, DataLoader, Dataset, RandomSampler
 from torch.utils.data.sampler import Sampler, SequentialSampler
 
 from pytorch_forecasting.data.encoders import (
@@ -2347,26 +2347,41 @@ class TimeSeriesDataSet(Dataset):
             (target, weight),
         )
 
-    def __precompute__(self, batch_size, shuffle, drop_last):
+    def __precompute__(self, kwargs):
         """
         Precompute sample for model
 
         Args:
-        batch_size : int, optional, default=64
-            batch size for training model. Defaults to 64.
-        shuffle : bool
-            indicate whether to shuffle the data
-        drop_last : bool
-            indicate whether to drop last
+        **kwargs: additional arguments passed to ``DataLoader`` constructor
         """
-        sampler = TimeSynchronizedBatchSampler(
-            SequentialSampler(self),
-            batch_size=batch_size,
-            shuffle=shuffle,
-            drop_last=drop_last,
-        )
+        batch_sampler = kwargs["batch_sampler"]
+        if batch_sampler is None:
+            sampler = (
+                RandomSampler(self) if kwargs["shuffle"] else SequentialSampler(self)
+            )
+            batch_sampler = BatchSampler(
+                sampler=sampler,
+                batch_size=kwargs["batch_size"],
+                drop_last=kwargs["drop_last"],
+            )
+        else:
+            if isinstance(batch_sampler, str):
+                sampler = kwargs["batch_sampler"]
+                if sampler == "synchronized":
+                    batch_sampler = TimeSynchronizedBatchSampler(
+                        SequentialSampler(self),
+                        batch_size=kwargs["batch_size"],
+                        shuffle=kwargs["shuffle"],
+                        drop_last=kwargs["drop_last"],
+                    )
+                else:
+                    raise ValueError(
+                        f"batch_sampler '{batch_sampler}' is not recognized."
+                    )
+            else:
+                raise ValueError(f"batch_sampler '{batch_sampler}' is not recognized.")
 
-        for batch in sampler:
+        for batch in batch_sampler:
             batch_samples = []
 
             for idx in batch:
@@ -2674,13 +2689,8 @@ class TimeSeriesDataSet(Dataset):
         kwargs = default_kwargs
 
         if self.precompute:
-            self.__precompute__(
-                batch_size=kwargs["batch_size"],
-                shuffle=kwargs["shuffle"],
-                drop_last=kwargs["drop_last"],
-            )
-            default_kwargs["collate_fn"] = self.__fast_collate_fn__()
-
+            kwargs["collate_fn"] = self.__fast_collate_fn__()
+            self.__precompute__(kwargs)
         if kwargs["batch_sampler"] is not None:
             sampler = kwargs["batch_sampler"]
             if isinstance(sampler, str):
