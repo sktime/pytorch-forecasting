@@ -13,17 +13,10 @@ Time Series Transformer with eXogenous variables (TimeXer)
 from typing import Any, Optional, Union
 import warnings as warn
 
-import lightning.pytorch as pl
-from lightning.pytorch import LightningModule, Trainer
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import Optimizer
 
-from pytorch_forecasting.metrics import MAE, MAPE, MultiHorizonMetric, QuantileLoss
-from pytorch_forecasting.metrics.base_metrics import MultiLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
