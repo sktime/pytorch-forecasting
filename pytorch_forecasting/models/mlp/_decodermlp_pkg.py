@@ -1,9 +1,9 @@
 """DecoderMLP package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
+from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class DecoderMLP_pkg(_BasePtForecasterV1):
+class DecoderMLP_pkg(_BasePtForecaster):
     """DecoderMLP package container."""
 
     _tags = {
