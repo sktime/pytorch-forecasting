@@ -1,9 +1,9 @@
 """DeepAR package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV1
+from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class DeepAR_pkg(_BasePtForecasterV1):
+class DeepAR_pkg(_BasePtForecaster):
     """DeepAR package container."""
 
     _tags = {
