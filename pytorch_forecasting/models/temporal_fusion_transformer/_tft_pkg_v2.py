@@ -3,7 +3,7 @@
 from pytorch_forecasting.models.base import _BasePtForecasterV2
 
 
-class TFT_pkg(_BasePtForecasterV2):
+class TFT_pkg_v2(_BasePtForecasterV2):
     """TFT package container."""
 
     _tags = {

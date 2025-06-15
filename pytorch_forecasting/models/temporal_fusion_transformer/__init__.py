@@ -22,6 +22,6 @@ __all__ = [
     "GatedLinearUnit",
     "GatedResidualNetwork",
     "InterpretableMultiHeadAttention",
-    "TFT_pkg",
+    "TFT_pkg_v2",
     "VariableSelectionNetwork",
 ]
