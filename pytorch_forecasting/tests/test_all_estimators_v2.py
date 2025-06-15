@@ -114,4 +114,4 @@ class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
             "The expected package name is "
             f"{object_class.__name__}_pkg."
         )
-        assert object_pkg.__name__ == object_class.__name__ + "_pkg", msg
+        assert object_pkg.__name__ == object_class.__name__ + "_pkg_v2", msg
