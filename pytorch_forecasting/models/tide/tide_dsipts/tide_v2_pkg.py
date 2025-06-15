@@ -24,8 +24,10 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
         from pytorch_forecasting.data.data_module import (
             EncoderDecoderTimeSeriesDataModule,
         )
-        from pytorch_forecasting.tests._conftest import make_datasets_v2
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates_v2
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates_v2,
+            make_datasets_v2,
+        )
 
         data_with_covariates = data_with_covariates_v2()
 
