@@ -3,6 +3,9 @@
 from pytorch_forecasting.models.temporal_fusion_transformer._tft import (
     TemporalFusionTransformer,
 )
+from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
+    TFT_pkg_v2,
+)
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,
     GateAddNorm,
@@ -19,5 +22,6 @@ __all__ = [
     "GatedLinearUnit",
     "GatedResidualNetwork",
     "InterpretableMultiHeadAttention",
+    "TFT_pkg_v2",
     "VariableSelectionNetwork",
 ]

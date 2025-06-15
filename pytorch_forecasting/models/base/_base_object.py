@@ -11,15 +11,11 @@ class _BaseObject(_SkbaseBaseObject):
     pass
 
 
-class _BasePtForecaster(_BaseObject):
+class _BasePtForecaster_Common(_BaseObject):
     """Base class for all PyTorch Forecasting forecaster packages.
 
     This class points to model objects and contains metadata as tags.
     """
-
-    _tags = {
-        "object_type": "forecaster_pytorch",
-    }
 
     @classmethod
     def get_model_cls(cls):
@@ -112,3 +108,19 @@ class _BasePtForecaster(_BaseObject):
             names = [cls.__name__]
 
         return objs, names
+
+
+class _BasePtForecaster(_BasePtForecaster_Common):
+    """Base class for PyTorch Forecasting v1 forecasters."""
+
+    _tags = {
+        "object_type": ["forecaster_pytorch", "forecaster_pytorch_v1"],
+    }
+
+
+class _BasePtForecasterV2(_BasePtForecaster_Common):
+    """Base class for PyTorch Forecasting v2 forecasters."""
+
+    _tags = {
+        "object_type": "forecaster_pytorch_v2",
+    }
