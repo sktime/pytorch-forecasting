@@ -11,6 +11,9 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
 )
+from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
+    TFT_pkg,
+)
 
 __all__ = [
     "TemporalFusionTransformer",
@@ -19,5 +22,6 @@ __all__ = [
     "GatedLinearUnit",
     "GatedResidualNetwork",
     "InterpretableMultiHeadAttention",
+    "TFT_pkg",
     "VariableSelectionNetwork",
 ]

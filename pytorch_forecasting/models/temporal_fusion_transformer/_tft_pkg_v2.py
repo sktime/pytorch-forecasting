@@ -1,6 +1,6 @@
 """TFT package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.models.base import _BasePtForecasterV2
 
 
 class TFT_pkg(_BasePtForecasterV2):
