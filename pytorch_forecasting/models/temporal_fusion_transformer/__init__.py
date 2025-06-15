@@ -1,5 +1,8 @@
 """Temporal fusion transformer for forecasting timeseries."""
 
+from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
+    TFT_pkg_v2,
+)
 from pytorch_forecasting.models.temporal_fusion_transformer._tft import (
     TemporalFusionTransformer,
 )
@@ -10,9 +13,6 @@ from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     GatedResidualNetwork,
     InterpretableMultiHeadAttention,
     VariableSelectionNetwork,
-)
-from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
-    TFT_pkg,
 )
 
 __all__ = [
