@@ -4,7 +4,6 @@ import pytest
 import torch
 
 from pytorch_forecasting.data._tslib_data_module import TslibDataModule
-from pytorch_forecasting.data.examples import get_stallion_data
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
