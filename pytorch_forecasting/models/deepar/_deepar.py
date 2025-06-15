@@ -35,6 +35,8 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
+    """DeepAR: Probabilistic forecasting with autoregressive recurrent networks."""
+
     def __init__(
         self,
         cell_type: str = "LSTM",
