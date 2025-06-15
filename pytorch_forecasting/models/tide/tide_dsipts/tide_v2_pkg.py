@@ -3,7 +3,7 @@
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class TIDE_pkg(_BasePtForecasterV2):
+class TIDE_pkg_v2(_BasePtForecasterV2):
     """TIDE package container."""
 
     _tags = {
