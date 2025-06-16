@@ -10,11 +10,13 @@ from pytorch_forecasting.models.base._base_model import (
 from pytorch_forecasting.models.base._base_object import (
     _BaseObject,
     _BasePtForecaster,
+    _BasePtForecasterV2,
 )
 
 __all__ = [
     "_BaseObject",
     "_BasePtForecaster",
+    "_BasePtForecasterV2",
     "AutoRegressiveBaseModel",
     "AutoRegressiveBaseModelWithCovariates",
     "BaseModel",

@@ -87,11 +87,31 @@ class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
 
     def test_integration(
         self,
-        object_metadata,
+        object_pkg,
         trainer_kwargs,
         tmp_path,
     ):
-        object_class = object_metadata.get_model_cls()
-        dataloaders = object_metadata._get_test_datamodule_from(trainer_kwargs)
+        object_class = object_pkg.get_model_cls()
+        dataloaders = object_pkg._get_test_datamodule_from(trainer_kwargs)
 
         _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
+
+    def test_pkg_linkage(self, object_pkg, object_class):
+        """Test that the package is linked correctly."""
+        # check name method
+        msg = (
+            f"Package {object_pkg}.name() does not match class "
+            f"name {object_class.__name__}. "
+            "The expected package name is "
+            f"{object_class.__name__}_pkg."
+        )
+        assert object_pkg.name() == object_class.__name__, msg
+
+        # check naming convention
+        msg = (
+            f"Package {object_pkg.__name__} does not match class "
+            f"name {object_class.__name__}. "
+            "The expected package name is "
+            f"{object_class.__name__}_pkg."
+        )
+        assert object_pkg.__name__ == object_class.__name__ + "_pkg_v2", msg
