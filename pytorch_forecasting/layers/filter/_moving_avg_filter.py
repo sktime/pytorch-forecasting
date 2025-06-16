@@ -31,8 +31,15 @@ class MovingAvg(nn.Module):
         self.avg = nn.AvgPool1d(kernel_size, stride=stride, padding=0)
 
     def forward(self, x):
-        front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
-        end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
+        if self.kernel_size % 2 == 0:
+            self.padding_left = self.kernel_size // 2 - 1
+            self.padding_right = self.kernel_size // 2
+        else:
+            self.padding_left = self.kernel_size // 2
+            self.padding_right = self.kernel_size // 2
+
+        front = x[:, 0:1, :].repeat(1, self.padding_left, 1)
+        end = x[:, -1:, :].repeat(1, self.padding_right, 1)
 
         x_padded = torch.cat([front, x, end], dim=1)
         x_transposed = x_padded.permute(0, 2, 1)
