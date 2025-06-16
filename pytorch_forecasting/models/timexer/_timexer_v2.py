@@ -253,14 +253,6 @@ class TimeXer(TslibBaseModel):
             n_quantiles=self.n_quantiles,
         )
 
-    # def _get_target_positions(self) -> torch.Tensor:
-    #     """
-    #     Get the target positions from the dataset.
-    #     Returns:
-    #         torch.Tensor: Target positions.
-    #     """
-    #     return torch.tensor(self.target_indices, device=self.device)
-
     def _forecast(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TimeXer model.
@@ -319,64 +311,6 @@ class TimeXer(TslibBaseModel):
 
         return dec_out
 
-    def _forecast_multi(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """
-        Forecast for multivariate with multiple time series.
-
-        Args:
-            x (dict[str, torch.Tensor]): Input data.
-        Returns:
-            dict[str, torch.Tensor]: Model predictions.
-        """
-        batch_size = x["history_cont"].shape[0]
-        history_cont = x["history_cont"]
-        history_time_idx = x.get("history_time_idx", None)
-        history_target = x.get(
-            "history_target",
-            torch.zeros(batch_size, self.context_length, 1, device=self.device),
-        )  # noqa: E501
-
-        if history_time_idx is not None and history_time_idx.dim() == 2:
-            # change [batch_size, time_steps] to [batch_size, time_steps, features]
-            history_time_idx = history_time_idx.unsqueeze(-1)
-
-        endogenous_cont = history_target
-        if self.endogenous_vars:
-            endogenous_indices = [
-                self.feature_names["continuous"].index(var)
-                for var in self.endogenous_vars  # noqa: E501
-            ]
-            endogenous_cont = history_cont[..., endogenous_indices]
-
-        exogenous_cont = history_cont
-        if self.exogenous_vars:
-            exogenous_indices = [
-                self.feature_names["continuous"].index(var)
-                for var in self.exogenous_vars  # noqa: E501
-            ]
-            exogenous_cont = history_cont[..., exogenous_indices]
-
-        en_embed, n_vars = self.en_embedding(endogenous_cont)
-
-        ex_embed = self.ex_embedding(exogenous_cont, history_time_idx)
-
-        enc_out = self.encoder(en_embed, ex_embed)
-
-        enc_out = torch.reshape(
-            enc_out, (-1, n_vars, enc_out.shape[-2], enc_out.shape[-1])
-        )
-
-        enc_out = enc_out.permute(0, 1, 3, 2)
-
-        dec_out = self.head(enc_out)
-
-        if self.n_quantiles is not None:
-            dec_out = dec_out.permute(0, 2, 1, 3)
-        else:
-            dec_out = dec_out.permute(0, 2, 1)
-
-        return dec_out
-
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TimeXer model.
@@ -385,18 +319,8 @@ class TimeXer(TslibBaseModel):
         Returns:
             dict[str, torch.Tensor]: Model predictions.
         """
-        # this is a feature mode, pre-computed using TslibBaseModel.
-        if self.features == "MS":
-            out = self._forecast(x)
-        elif self.features == "M":
-            out = self._forecast_multi(x)
-        else:
-            raise ValueError(
-                f"Unsupported features mode: {self.features}. "
-                "Supported modes are 'MS' for multivariate single series and 'M' for"
-                "multivariate multiple series."
-            )
 
+        out = self._forecast(x)
         prediction = out[:, : self.prediction_length, :]
 
         # check to see if the output shape is equal to number of targets
