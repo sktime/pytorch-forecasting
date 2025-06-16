@@ -98,6 +98,14 @@ class DLinearModel(TslibBaseModel):
 
         self._init_network()
 
+        self.apply(self._weight_init)
+
+    def _weight_init(self, m: nn.Module):
+        if isinstance(m, nn.Linear):
+            nn.init.constant(m.weight.data, 1.0 / self.context_length)
+            if m.bias is not None:
+                nn.init.constant(m.bias.data, 0.0)
+
     def _init_network(self):
         """
         Initialise the DLinear model network layer components.
@@ -125,31 +133,11 @@ class DLinearModel(TslibBaseModel):
                 seasonal_layer = nn.Linear(self.context_length, output_dim)
                 trend_layer = nn.Linear(self.context_length, output_dim)
 
-                self._init_layer_weights(seasonal_layer)
-                self._init_layer_weights(trend_layer)
-
                 self.linear_seasonal.append(seasonal_layer)
                 self.linear_trend.append(trend_layer)
         else:
             self.linear_seasonal = nn.Linear(self.context_length, output_dim)
             self.linear_trend = nn.Linear(self.context_length, output_dim)
-
-            self._init_layer_weights(self.linear_seasonal)
-            self._init_layer_weights(self.linear_trend)
-
-    def _init_layer_weights(self, layer: nn.Linear):
-        """
-        Initialise layer weights with uniform distribution.
-
-        Parameters
-        ----------
-        layer: Linear layer to be initialised.
-        """
-
-        weight_value = 1.0 / self.context_length
-        layer.weight = nn.Parameter(
-            weight_value * torch.ones([layer.out_features, layer.in_features])
-        )
 
     def _encoder(self, x: torch.Tensor, target_indices: torch.Tensor) -> torch.Tensor:
         """
@@ -186,9 +174,6 @@ class DLinearModel(TslibBaseModel):
             output = output[:, target_indices, :]
 
         output = self._reshape_output(output)
-
-        if self.features == "S" and output.shape[-1] == 1:
-            output = output.squeeze(-1)  # (batch, time)
 
         return output
 
@@ -259,6 +244,10 @@ class DLinearModel(TslibBaseModel):
         else:
             output = output.permute(0, 2, 1)  # (batch, time, features)
 
+        # univariate forecasting
+        if self.target_dim == 1 and output.shape[-1] == 1:
+            output = output.squeeze(-1)
+
         return output
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -287,47 +276,30 @@ class DLinearModel(TslibBaseModel):
         return {"prediction": prediction}
 
     def _prepare_input_data(self, x: dict[str, torch.Tensor]):
-        """Prepare input data and target indices based on feature mode."""
-        feature_mode = self.features
+        """Prepare input data and target indices for model input."""
 
-        if feature_mode == "S":
-            return self._prepare_single_mode(x)
-        elif feature_mode in ["M", "MS"]:
-            return self._prepare_multivariate_mode(x)
-        else:
-            raise ValueError(f"Unsupported feature mode: {feature_mode}")
-
-    def _prepare_single_mode(self, x: dict[str, torch.Tensor]):
-        """Prepare data for single feature mode."""
-        if "history_target" in x and x["history_target"].size(-1) > 0:
-            return x["history_target"], None
-        else:
-            raise ValueError(
-                "For 'S' feature mode, 'history_target' must be provided in the input."
-            )
-
-    def _prepare_multivariate_mode(self, x: dict[str, torch.Tensor]):
-        """Prepare data for multivariate feature mode."""
         available_features = []
         target_indices = []
         current_idx = 0
 
         if "history_cont" in x and x["history_cont"].size(-1) > 0:
             available_features.append(x["history_cont"])
-            current_idx += self.cont_dim
+            current_idx += x["history_cont"].size(-1)
+
         if "history_target" in x and x["history_target"].size(-1) > 0:
-            n_targets = self.target_dim
+            n_targets = x["history_target"].size(-1)
             target_indices = list(range(current_idx, current_idx + n_targets))
             available_features.append(x["history_target"])
+
         if not available_features:
-            raise ValueError(
-                "For multivariate feature mode, either 'history_cont' or"
-                "'history_target' must be provided."
-            )
+            raise ValueError("No valid input features found in the input dictionary.")
 
         input_data = torch.cat(available_features, dim=-1)
-        target_indices_tensor = (
-            torch.tensor(target_indices, dtype=torch.long) if target_indices else None
+
+        target_indices = (
+            torch.tensor(target_indices, dtype=torch.long, device=input_data.device)
+            if target_indices
+            else None
         )
 
-        return input_data, target_indices_tensor
+        return input_data, target_indices
