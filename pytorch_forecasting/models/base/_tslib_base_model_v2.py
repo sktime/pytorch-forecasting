@@ -1,6 +1,5 @@
 """
 Experimental implementation of a base class for `tslib` models.
-NOTE: This PR is stacked on the PR #1812(phoeenniixx).
 """
 
 from typing import Optional, Union

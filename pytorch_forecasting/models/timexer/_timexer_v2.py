@@ -13,17 +13,10 @@ Time Series Transformer with eXogenous variables (TimeXer)
 from typing import Any, Optional, Union
 import warnings as warn
 
-import lightning.pytorch as pl
-from lightning.pytorch import LightningModule, Trainer
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import Optimizer
 
-from pytorch_forecasting.metrics import MAE, MAPE, MultiHorizonMetric, QuantileLoss
-from pytorch_forecasting.metrics.base_metrics import MultiLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
@@ -158,16 +151,15 @@ class TimeXer(TslibBaseModel):
         Initialize the network for TimeXer's architecture.
         """
 
-        from pytorch_forecasting.layers.attention import (
+        from pytorch_forecasting.layers import (
             AttentionLayer,
+            DataEmbedding_inverted,
+            Encoder,
+            EncoderLayer,
+            EnEmbedding,
+            FlattenHead,
             FullAttention,
         )
-        from pytorch_forecasting.layers.embeddings import (
-            DataEmbedding_inverted,
-            EnEmbedding,
-        )
-        from pytorch_forecasting.layers.encoders import Encoder, EncoderLayer
-        from pytorch_forecasting.layers.output._flatten_head import FlattenHead
 
         if self.context_length <= self.patch_length:
             raise ValueError(
@@ -351,14 +343,16 @@ class TimeXer(TslibBaseModel):
         endogenous_cont = history_target
         if self.endogenous_vars:
             endogenous_indices = [
-                self.cont_names.index(var) for var in self.endogenous_vars
+                self.feature_names["continuous"].index(var)
+                for var in self.endogenous_vars  # noqa: E501
             ]
             endogenous_cont = history_cont[..., endogenous_indices]
 
         exogenous_cont = history_cont
         if self.exogenous_vars:
             exogenous_indices = [
-                self.cont_names.index(var) for var in self.exogenous_vars
+                self.feature_names["continuous"].index(var)
+                for var in self.exogenous_vars  # noqa: E501
             ]
             exogenous_cont = history_cont[..., exogenous_indices]
 

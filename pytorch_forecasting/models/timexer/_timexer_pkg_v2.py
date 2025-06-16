@@ -5,7 +5,7 @@ Metadata container for TimeXer v2.
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class TimeXerMetadata(_BasePtForecasterV2):
+class TimeXer_pkg_v2(_BasePtForecasterV2):
     """TimeXer metadata container."""
 
     _tags = {
@@ -28,8 +28,10 @@ class TimeXerMetadata(_BasePtForecasterV2):
     def _get_test_datamodule_from(cls, trainer_kwargs):
         """Create test dataloaders from trainer_kwargs - following v1 pattern."""
         from pytorch_forecasting.data._tslib_data_module import TslibDataModule
-        from pytorch_forecasting.tests._conftest import make_datasets_v2
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates_v2
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates_v2,
+            make_datasets_v2,
+        )
 
         data_with_covariates = data_with_covariates_v2()
 
