@@ -3,23 +3,13 @@ from typing import Union
 import torch
 import torch.nn as nn
 
-from pytorch_forecasting.models.tide.tide_dsipts import sub_nn
-from pytorch_forecasting.models.tide.tide_dsipts.base_dsipts import Base
-from pytorch_forecasting.models.tide.tide_dsipts.utils import beauty_string, get_scope
+from pytorch_forecasting.layers._dsipts import _sub_nn as sub_nn
+from pytorch_forecasting.layers._dsipts._residual_block_dsipts import ResidualBlock
+from pytorch_forecasting.models.base._base_dsipts_v2 import Base
+from pytorch_forecasting.utils._utils import beauty_string
 
 
 class TIDE(Base):
-    handle_multivariate = True
-    handle_future_covariates = True
-    handle_categorical_variables = True
-    handle_quantile_loss = True
-    description = get_scope(
-        handle_multivariate,
-        handle_future_covariates,
-        handle_categorical_variables,
-        handle_quantile_loss,
-    )
-
     def __init__(
         self,
         metadata: dict,
@@ -328,47 +318,3 @@ class TIDE(Base):
         )
 
         return extracted_subtensors
-
-
-class ResidualBlock(nn.Module):
-    def __init__(
-        self, in_size: int, out_size: int, dropout_rate: float, activation_fun: str = ""
-    ):
-        """Residual Block as basic layer of the archetecture.
-
-        MLP with one hidden layer, activation and skip connection
-        Basically dimension d_model, but better if input_dim and output_dim are explicit
-
-        in_size and out_size to handle dimensions at different stages of the NN
-
-        Args:
-            in_size (int):
-            out_size (int):
-            dropout_rate (float):
-            activation_fun (str, optional): activation function to use in the Residual Block. Defaults to nn.ReLU.
-        """  # noqa: E501
-        import ast
-
-        super().__init__()
-
-        self.direct_linear = nn.Linear(in_size, out_size, bias=False)
-
-        if activation_fun == "":
-            self.act = nn.ReLU()
-        else:
-            activation = ast.literal_eval(activation_fun)
-            self.act = activation()
-        self.lin = nn.Linear(in_size, out_size)
-        self.dropout = nn.Dropout(dropout_rate)
-
-        self.final_norm = nn.LayerNorm(out_size)
-
-    def forward(self, x, apply_final_norm=True):
-        direct_x = self.direct_linear(x)
-
-        x = self.dropout(self.lin(self.act(x)))
-
-        out = x + direct_x
-        if apply_final_norm:
-            return self.final_norm(out)
-        return out

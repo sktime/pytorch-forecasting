@@ -1,13 +1,11 @@
 from abc import abstractmethod
 
 import lightning as pl
-import numpy as np
 import torch
 from torch import optim
 from torch.optim.lr_scheduler import StepLR
 
-from .samformer_utils import SAM
-from .utils import beauty_string, get_scope
+from pytorch_forecasting.utils._utils import beauty_string
 
 
 def standardize_momentum(x, order):
@@ -20,19 +18,6 @@ def standardize_momentum(x, order):
 
 
 class Base(pl.LightningModule):
-    ############### SET THE PROPERTIES OF THE ARCHITECTURE##############
-    handle_multivariate = False
-    handle_future_covariates = False
-    handle_categorical_variables = False
-    handle_quantile_loss = False
-    description = get_scope(
-        handle_multivariate,
-        handle_future_covariates,
-        handle_categorical_variables,
-        handle_quantile_loss,
-    )
-
-    #####################################################################
     @abstractmethod
     def __init__(self, verbose: bool = False):
         """
@@ -49,8 +34,6 @@ class Base(pl.LightningModule):
         self.train_loss_epoch = -100.0
         self.verbose = verbose
         self.name = self.__class__.__name__
-
-        beauty_string(self.description, "info", True)
 
     @abstractmethod
     def forward(self, batch: dict) -> torch.tensor:
@@ -111,14 +94,7 @@ class Base(pl.LightningModule):
                     self.automatic_optimization = True
 
             beauty_string(self.optim, "", self.verbose)
-            if self.has_sam_optim:
-                optimizer = SAM(
-                    self.parameters(),
-                    base_optimizer=torch.optim.Adam,
-                    **self.optim_config,
-                )
-            else:
-                optimizer = self.optim(self.parameters(), **self.optim_config)
+            optimizer = self.optim(self.parameters(), **self.optim_config)
             self.initialize = True
         self.lr = self.optim_config["lr"]
         if self.scheduler_config is not None:
