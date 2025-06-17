@@ -430,8 +430,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             encoder_indices = slice(start_idx, start_idx + enc_length)
             decoder_indices = slice(start_idx + enc_length, end_idx)
 
-            target_scale = data["target"][encoder_indices]
-            target_scale = target_scale[~torch.isnan(target_scale)].abs().mean()
+            target_past = data["target"][encoder_indices]
+            target_scale = target_past[~torch.isnan(target_past)].abs().mean()
             if torch.isnan(target_scale) or target_scale == 0:
                 target_scale = torch.tensor(1.0)
 
@@ -503,6 +503,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "decoder_lengths": torch.tensor(pred_length),
                 "decoder_target_lengths": torch.tensor(pred_length),
                 "groups": data["group"],
+                "target_past": target_past,
                 "encoder_time_idx": torch.arange(enc_length),
                 "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
                 "target_scale": target_scale,
@@ -713,6 +714,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 [x["decoder_target_lengths"] for x, _ in batch]
             ),
             "groups": torch.stack([x["groups"] for x, _ in batch]),
+            "target_past": torch.stack([x["target_past"] for x, _ in batch]),
             "encoder_time_idx": torch.stack([x["encoder_time_idx"] for x, _ in batch]),
             "decoder_time_idx": torch.stack([x["decoder_time_idx"] for x, _ in batch]),
             "target_scale": torch.stack([x["target_scale"] for x, _ in batch]),
