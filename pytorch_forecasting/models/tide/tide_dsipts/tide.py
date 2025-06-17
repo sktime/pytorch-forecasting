@@ -53,7 +53,7 @@ class TIDE(Base):
         super().__init__(**kwargs)
         self.save_hyperparameters(logger=False)
 
-        # self.dropout = dropout_rate
+        self.dropout = dropout_rate
         self.persistence_weight = persistence_weight
         self.optim = optim
         self.optim_config = optim_config
@@ -72,7 +72,7 @@ class TIDE(Base):
         self.outLinear = nn.Linear(d_model, self.output_channels)
 
         # for other numerical variables in the past
-        self.aux_past_channels = self.past_channels - self.output_channels
+        self.aux_past_channels = self.past_channels
         self.linear_aux_past = nn.ModuleList(
             [nn.Linear(1, self.hidden_size) for _ in range(self.aux_past_channels)]
         )
@@ -163,6 +163,8 @@ class TIDE(Base):
         if isinstance(X, tuple):
             x_batch, y_batch = X
             batch = x_batch
+        else:
+            batch = X
 
         if "x_num_past" not in batch:
             batch["x_num_past"] = batch["encoder_cont"]
@@ -172,14 +174,8 @@ class TIDE(Base):
             batch["x_cat_past"] = batch["encoder_cat"]
         if "x_cat_future" not in batch:
             batch["x_cat_future"] = batch["decoder_cat"]
-        if "idx_target" not in batch:
-            batch["idx_target"] = [list(range(self.output_channels))]
 
-        num_past = batch["x_num_past"].to(self.device)
-        # LOADING AUTOREGRESSIVE CONTEXT OF TARGET VARIABLES
-
-        idx_target = batch["idx_target"][0]
-        y_past = num_past[:, :, idx_target]
+        y_past = batch["target_past"]
         B = y_past.shape[0]
 
         # LOADING EMBEDDING CATEGORICAL VARIABLES
@@ -192,9 +188,7 @@ class TIDE(Base):
         # load in the model auxiliar numerical variables
 
         if self.aux_past_channels > 0:  # if we have more numerical variables about past
-            aux_num_past = self.remove_var(
-                num_past, idx_target, 2
-            )  # remove the autoregressive variable
+            aux_num_past = batch["encoder_cont"]
             assert self.aux_past_channels == aux_num_past.size(2), beauty_string(
                 f"{self.aux_past_channels} LAYERS FOR PAST VARS AND "
                 f"{aux_num_past.size(2)} VARS",
