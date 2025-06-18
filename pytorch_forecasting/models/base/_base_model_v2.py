@@ -294,3 +294,56 @@ class BaseModel(LightningModule):
                 prog_bar=True,
                 logger=True,
             )
+
+    def standardize_model_output(self, prediction: torch.Tensor) -> torch.Tensor:
+        """
+        Standardize model outputs to a 4-dimensional tensor,
+        with shape (batch_size, timesteps, num_features, quantiles).
+
+        Parameters
+        ----------
+        prediction : torch.Tensor
+            The raw prediction tensor from the model.
+
+        Returns
+        -------
+        torch.Tensor
+            The standardized prediction tensor with shape
+            (batch_size, timesteps, num_features, quantiles).
+        """
+
+        n_features = getattr(self, "target_dim", 1)
+        n_quantiles = 1
+
+        if prediction.ndim == 2:
+            # reshape to (batch_size, timsteps, 1, 1)
+            prediction = prediction.unsqueeze(-1).unsqueeze(-1)
+
+        elif prediction.ndim == 3:
+            if prediction.shape[2] == n_features:
+                # reshape to (batch_size, timesteps, num_features, 1)
+                prediction = prediction.unsqueeze(-1)
+            elif prediction.shape[2] == n_quantiles:
+                # reshape to (batch_size, timesteps, 1, n_quantiles)
+                prediction = prediction.unsqueeze(2)
+            elif prediction.shape[2] == n_features * n_quantiles:
+                # multivariate forecast with quantiles
+                # where features and quantiles are flattened in dim 2.
+                # reshape to (batch_size, timesteps, num_features, n_quantiles)
+                prediction = prediction.reshape(
+                    prediction.shape[0], prediction.shape[1], n_features, n_quantiles
+                )
+            else:
+                prediction.unsqueeze(-1)
+
+        elif prediction.ndim == 4:
+            if prediction.shape[2] != n_features and prediction.shape[3] != n_quantiles:
+                warn(
+                    "The prediction tensor has 4 dimensions, but the last two ",
+                    "dimensions do not match the expected number of features ",
+                    "and quantiles. The tensor will be reshaped to match the expected ",
+                    "shape (batch_size, timesteps, num_features, quantiles).",
+                )
+                prediction.permute(0, 1, 3, 2)  # forced permutation to expected format.
+
+        return prediction
