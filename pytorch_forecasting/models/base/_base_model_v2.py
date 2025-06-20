@@ -295,55 +295,122 @@ class BaseModel(LightningModule):
                 logger=True,
             )
 
-    def standardize_model_output(self, prediction: torch.Tensor) -> torch.Tensor:
+    def standardize_model_output(
+        self,
+        prediction: torch.Tensor,
+        n_targets: int,
+        batch_size: Optional[int] = None,
+        timesteps: Optional[int] = None,
+        n_quantiles: Optional[int] = None,
+    ) -> torch.Tensor:
         """
         Standardize model outputs to a 4-dimensional tensor,
         with shape (batch_size, timesteps, num_features, quantiles).
 
+        This method ensures that the prediction tensor is reshaped
+        to the expected format, which is required for further processing and evaluation
+        in the forecasting pipeline.
+
         Parameters
         ----------
+        n_targets : int
+            The number of target features in the prediction tensor.
         prediction : torch.Tensor
             The raw prediction tensor from the model.
+        batch_size : Optional[int], default=None
+            The batch size of the prediction tensor.
+            If None, it will be inferred from the prediction tensor.
+        timesteps : Optional[int], default=None
+            The number of prediction timesteps, returned by the model
+            in one forecasting step. If None, it will be inferred from
+            the prediction tensor.
+        n_quantiles : Optional[int], default=None
+            The number of quantiles in the prediction tensor. If None, it will be
+            inferred using the loss function's quantiles attribute (check ``Metric``).
 
         Returns
         -------
         torch.Tensor
             The standardized prediction tensor with shape
-            (batch_size, timesteps, num_features, quantiles).
+            (batch_size, timesteps, n_targets, n_quantiles).
+
+        Notes
+        -----
+        This can currently handle situation where a single target is used
+        either in a univariate or multivariate situation. In case of multi-target
+        forecasting, where each target has its own loss function, a list of tensors is
+        returned, where each tensor corresponds to a target. This requires some change
+        to the existing code.
         """
 
-        n_features = getattr(self, "target_dim", 1)
-        n_quantiles = 1
+        if not isinstance(prediction, torch.Tensor):
+            raise TypeError(
+                f"Expected prediction to be a torch.Tensor, but got {type(prediction)}"
+            )
+
+        if n_targets <= 0:
+            raise ValueError(
+                f"Expected n_targets to be a positive integer, but got {n_targets}."
+            )
+
+        if n_quantiles is not None:
+            if self.loss.quantiles is not None and n_quantiles != self.loss.quantiles:
+                raise ValueError(
+                    f"Expected n_quantiles to be {self.loss.quantiles}, "
+                    f"but got {n_quantiles}."
+                )
+        else:
+            n_quantiles = self.loss.quantiles if self.loss.quantiles is not None else 1
+
+        if batch_size is not None:
+            if prediction.shape[0] != batch_size:
+                raise ValueError(
+                    f"Expected batch size {batch_size}, but got {prediction.shape[0]}."
+                )
+
+        if timesteps is not None:
+            if prediction.shape[1] != timesteps:
+                raise ValueError(
+                    f"Expected timesteps {timesteps}, but got {prediction.shape[1]}."
+                )
 
         if prediction.ndim == 2:
             # reshape to (batch_size, timsteps, 1, 1)
             prediction = prediction.unsqueeze(-1).unsqueeze(-1)
 
         elif prediction.ndim == 3:
-            if prediction.shape[2] == n_features:
-                # reshape to (batch_size, timesteps, num_features, 1)
+            if prediction.shape[2] == n_targets:
+                # reshape to (batch_size, timesteps, n_targets, 1)
                 prediction = prediction.unsqueeze(-1)
             elif prediction.shape[2] == n_quantiles:
                 # reshape to (batch_size, timesteps, 1, n_quantiles)
                 prediction = prediction.unsqueeze(2)
-            elif prediction.shape[2] == n_features * n_quantiles:
+            elif prediction.shape[2] == n_targets * n_quantiles:
                 # multivariate forecast with quantiles
                 # where features and quantiles are flattened in dim 2.
-                # reshape to (batch_size, timesteps, num_features, n_quantiles)
+                # reshape to (batch_size, timesteps, n_targets, n_quantiles)
                 prediction = prediction.reshape(
-                    prediction.shape[0], prediction.shape[1], n_features, n_quantiles
+                    prediction.shape[0], prediction.shape[1], n_targets, n_quantiles
                 )
             else:
-                prediction.unsqueeze(-1)
+                prediction = prediction.unsqueeze(-1)
 
         elif prediction.ndim == 4:
-            if prediction.shape[2] != n_features and prediction.shape[3] != n_quantiles:
-                warn(
-                    "The prediction tensor has 4 dimensions, but the last two ",
-                    "dimensions do not match the expected number of features ",
-                    "and quantiles. The tensor will be reshaped to match the expected ",
-                    "shape (batch_size, timesteps, num_features, quantiles).",
-                )
-                prediction.permute(0, 1, 3, 2)  # forced permutation to expected format.
+            # assuming only a single case where n_targets and n_quantiles are swapped.
+            if prediction.shape[2] == n_quantiles and prediction.shape[3] == n_targets:
+                # reshape to (batch_size, timesteps, n_targets, n_quantiles)
+                prediction = prediction.permute(0, 1, 3, 2)
+
+        else:
+            raise ValueError(
+                f"Expected prediction tensor to have 2, 3, or 4 dimensions, "
+                f"but got {prediction.ndim} dimensions."
+            )
+
+        # final check to ensure the output is 4D
+        if prediction.ndim != 4:
+            raise ValueError(
+                f"Failed to standardize output to 4D tensor. Current shape: {prediction.shape}"  # noqa: E501
+            )
 
         return prediction
