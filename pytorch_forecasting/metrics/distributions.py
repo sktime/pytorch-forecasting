@@ -24,7 +24,7 @@ class NormalDistributionLoss(DistributionLoss):
     distribution_arguments = ["loc", "scale"]
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
-        distr = self.distribution_class(loc=x[..., 2], scale=x[..., 3])
+        distr = self.distribution_class(loc=x[..., 2], scale=F.softplus(x[..., 3]))
         scaler = distributions.AffineTransform(loc=x[..., 0], scale=x[..., 1])
         if self._transformation is None:
             return distributions.TransformedDistribution(distr, [scaler])
@@ -47,7 +47,7 @@ class NormalDistributionLoss(DistributionLoss):
     ) -> torch.Tensor:
         self._transformation = encoder.transformation
         loc = parameters[..., 0]
-        scale = F.softplus(parameters[..., 1])
+        scale = parameters[..., 1]
         return torch.concat(
             [
                 target_scale.unsqueeze(1).expand(-1, loc.size(1), -1),
@@ -629,7 +629,9 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
             dim=-1,
         )
 
-    def to_prediction(self, y_pred: torch.Tensor, n_samples: int = 100) -> torch.Tensor:
+    def _to_prediction_3d(
+        self, y_pred: torch.Tensor, n_samples: int = 100
+    ) -> torch.Tensor:
         if n_samples is None:
             return self.to_quantiles(y_pred, quantiles=[0.5]).squeeze(-1)
         else:
