@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pytorch_forecasting.layers.filter._moving_avg_filter import MovingAvg
+from pytorch_forecasting.layers._filter._moving_avg_filter import MovingAvg
 
 
 class SeriesDecomposition(nn.Module):

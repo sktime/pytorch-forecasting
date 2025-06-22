@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers.decomposition import SeriesDecomposition
+from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
