@@ -22,7 +22,7 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
-class DLinearModel(TslibBaseModel):
+class DLinear(TslibBaseModel):
     """
     DLinear: Decomposition Linear Model for Long-Term Time Series Forecasting.
 
@@ -87,7 +87,7 @@ class DLinearModel(TslibBaseModel):
         )
 
         warnings.warn(
-            "DLinearModel is an experimental model implemented on TslibBaseModelV2. "
+            "DLinear is an experimental model implemented on TslibBaseModelV2. "
             "It is an unstable version and may be subject to unannounced changes. "
             "Please use with caution."
         )

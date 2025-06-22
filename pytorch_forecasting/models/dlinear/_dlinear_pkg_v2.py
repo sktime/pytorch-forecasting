@@ -5,11 +5,11 @@ Packages container for DLinear model.
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class DLinearModel_pkg_v2(_BasePtForecasterV2):
+class DLinear_pkg_v2(_BasePtForecasterV2):
     """DLinear package container."""
 
     _tags = {
-        "info:name": "DLinearModel",
+        "info:name": "DLinear",
         "info:compute": 2,
         "authors": ["PranavBhatP"],
         "capability:exogenous": True,
@@ -22,9 +22,9 @@ class DLinearModel_pkg_v2(_BasePtForecasterV2):
     @classmethod
     def get_model_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.dlinear._dlinear_v2 import DLinearModel
+        from pytorch_forecasting.models.dlinear._dlinear_v2 import DLinear
 
-        return DLinearModel
+        return DLinear
 
     @classmethod
     def _get_test_datamodule_from(cls, trainer_kwargs):
