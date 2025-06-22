@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers.decomposition import SeriesDecomposition
+from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
@@ -87,7 +87,7 @@ class DLinear(TslibBaseModel):
         )
 
         warnings.warn(
-            "DLinearModel is an experimental model implemented on TslibBaseModelV2. "
+            "DLinear is an experimental model implemented on TslibBaseModelV2. "
             "It is an unstable version and may be subject to unannounced changes. "
             "Please use with caution."
         )
