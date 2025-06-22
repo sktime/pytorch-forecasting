@@ -298,12 +298,7 @@ class BaseModel(LightningModule):
     def standardize_model_output(
         self,
         prediction: torch.Tensor,
-        expected_dims: tuple[int, Optional[int], Optional[int], Optional[int]] = (
-            None,
-            None,
-            None,
-            None,
-        ),  # noqa: E501
+        expected_dims: tuple[int] = None,  # noqa: E501
     ) -> torch.Tensor:
         """
         Standardize model outputs to a 4-dimensional tensor, with shape
@@ -324,18 +319,14 @@ class BaseModel(LightningModule):
               forecasting with quantiles, where features and quantiles are flattened in dim 2.
             - if 4D: (batch_size, timesteps, n_targets, last_dim) - multivariate
               forecasting with quantiles or distribution parameters.
-            - In the future, once multi-target forecasting is supported, this
+            - In the future, once multi-target forecasting with ``MultiLoss`` is supported, this
               will also accept a list of tensors, where each tensor inside the list
-              is treated as above.
+              is treated as above. Note: In this case, each tensor in the list
+              will have n_targets = 1, as each tensor corresponds to a single target.
             - If anything apart from the above dimensions is provided, an error is raised.
 
-        expected_dims : tuple[int, Optional[int], Optional[int], Optional[int]], default=(None, None, None, None)
-        A tuple specifying the dimensions: (n_targets, batch_size, timesteps, last_dim)
-
-            n_targets : int
-                - Position 0: Number of target features
-                - Must be provided explicitly (cannot be None)
-                - Used for reshaping 2D and 3D tensors to 4D.
+        expected_dims : tuple[int], default= None
+        A tuple specifying the dimensions: (batch_size, timesteps, n_targets, last_dim).
 
             batch_size : Optional[int], default=None
                 - Position 1: Expected batch size
@@ -346,6 +337,11 @@ class BaseModel(LightningModule):
                 - Position 2: Expected number of timesteps
                 - When specified: Validates prediction.shape[1]
                 - When None: Uses actual tensor dimension
+
+            n_targets : int
+                - Position 0: Number of target features
+                - Must be provided explicitly (cannot be None)
+                - Used for reshaping 2D and 3D tensors to 4D.
 
             last_dim : Optional[int], default=None
                 - Position 3: Size of the last dimension.
@@ -382,10 +378,12 @@ class BaseModel(LightningModule):
             no information is available on ``last_dim``.
 
         [2] This can currently handle situations where a single target is used
-            either in a univariate or multivariate situation. In case of multi-target
-            forecasting, where each target has its own loss function, a list of tensors is
-            returned, where each tensor corresponds to a target. This requires some change
-            to the existing code.
+            either in a univariate or multivariate situation and multiple-targets using the
+            same loss function.
+
+            In case of multi-target forecasting with separate loss functions for each target,
+            the input tensor is expected to be a list of tensors. This is not yet supported
+            in this function, but it is planned for the future.
         """  # noqa: E501
 
         n_targets, batch_size, timesteps, last_dim = expected_dims
