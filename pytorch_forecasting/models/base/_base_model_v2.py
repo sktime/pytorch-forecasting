@@ -308,15 +308,18 @@ class BaseModel(LightningModule):
         ----------
         prediction : torch.Tensor
             The raw prediction tensor from the model.
+
             - Must be a torch.Tensor (in the future, also accept a list of tensors for
               multi-target forecasting).
             - Supported dims: 2D, 3D or 4D tensors.
             - if 2D: (batch_size, timesteps) - univariate forecasting
             - if 3D:
+
                 a) (batch_size, timesteps, n_targets) - multivariate forecasting
                 b) (batch_size, timesteps, last_dim) - univariate forecasting with quantiles or distribution.
                 c) (batch_size, timesteps, n_targets * last_dim) - multivariate
-              forecasting with quantiles, where features and quantiles are flattened in dim 2.
+                    forecasting with quantiles, where features and quantiles are flattened in dim 2.
+
             - if 4D: (batch_size, timesteps, n_targets, last_dim) - multivariate
               forecasting with quantiles or distribution parameters.
             - In the future, once multi-target forecasting with ``MultiLoss`` is supported, this
@@ -329,21 +332,25 @@ class BaseModel(LightningModule):
         A tuple specifying the dimensions: (batch_size, timesteps, n_targets, last_dim).
 
             batch_size : Optional[int], default=None
+
                 - Position 1: Expected batch size
                 - When specified: Validates prediction.shape[0]
                 - When None: Uses actual tensor dimension
 
             timesteps : Optional[int], default=None
+
                 - Position 2: Expected number of timesteps
                 - When specified: Validates prediction.shape[1]
                 - When None: Uses actual tensor dimension
 
             n_targets : int
+
                 - Position 0: Number of target features
                 - Must be provided explicitly (cannot be None)
                 - Used for reshaping 2D and 3D tensors to 4D.
 
             last_dim : Optional[int], default=None
+
                 - Position 3: Size of the last dimension.
                 - Common use case - quantile, sample, distribution params.
                 - When it is specified, it is used to directly reshape.
@@ -352,6 +359,7 @@ class BaseModel(LightningModule):
                 - If required, this can be extended to handle other cases where the last_dim is None
                 but its value can be inferred from the loss function or model configuration (apart from
                 the existing QuantileLoss case, of course).
+
         Returns
         -------
         torch.Tensor
@@ -359,11 +367,14 @@ class BaseModel(LightningModule):
             The prediction tensor is obtained by reshaping the input tensor. There are
             several cases to consider:
 
-            - If the input tensor is 2D, it is reshaped to (batch_size, timesteps, 1, 1).
-            - If the input tensor is 3D, it is reshaped to (batch_size, timesteps, 1, 1) for a
-            multivariate single-target forecast, or (batch_size, timesteps, 1, last_dim) for a univariate quantile forecast.
+            - If the input tensor is 2D, it is reshaped to (batch_size, timesteps, n_targets, 1).
+            - If the input tensor is 3D, it is reshaped to (batch_size, timesteps, n_targets, 1) for a
+            non-quantile forecast, or to (batch_size, timesteps, n_targets, last_dim) in case of quantile/distribution.
             - If the input tensor is 4D, it is assumed to be in the shape
             (batch_size, timesteps, n_targets, last_dim) or (batch_size, timesteps, last_dim, n_targets).
+            and is reshaped to (batch_size, timesteps, n_targets, last_dim) if needed
+            by permuting the last two dimensions.
+
         Notes
         -----
         [1] The fourth dimension (last_dim) commonly represents:
@@ -374,7 +385,7 @@ class BaseModel(LightningModule):
 
             The current implementation assumes the most common case of quantile forecasts
             when automatically inferring this dimension from the loss function,
-            but any value can be explicitly provided. A fallback of 1 is used in case where
+            but any value can be explicitly provided. A value of 1 is used in case where
             no information is available on ``last_dim``.
 
         [2] This can currently handle situations where a single target is used
