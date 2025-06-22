@@ -7,7 +7,7 @@ from torch import nn
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data._tslib_data_module import TslibDataModule
 from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
-from pytorch_forecasting.models.dlinear._dlinear_v2 import DLinearModel
+from pytorch_forecasting.models.dlinear._dlinear_v2 import DLinear
 
 
 @pytest.fixture
@@ -64,13 +64,13 @@ def sample_dataset():
     ],
 )
 def test_dlinear_init(moving_average, individual, sample_dataset):
-    """Test DLinearModel initialization."""
+    """Test DLinear initialization."""
 
     dm = sample_dataset["data_module"]
 
     metadata = dm.metadata
     loss = MAE()
-    model = DLinearModel(
+    model = DLinear(
         loss=loss, moving_avg=moving_average, individual=individual, metadata=metadata
     )
 
@@ -80,7 +80,7 @@ def test_dlinear_init(moving_average, individual, sample_dataset):
 
 
 def test_dlinear_forward(sample_dataset):
-    """Test forward pass of DLinearModel."""
+    """Test forward pass of DLinear."""
 
     dm = sample_dataset["data_module"]
 
@@ -89,7 +89,7 @@ def test_dlinear_forward(sample_dataset):
 
     metadata = dm.metadata
 
-    model = DLinearModel(loss=MAE(), moving_avg=5, individual=True, metadata=metadata)
+    model = DLinear(loss=MAE(), moving_avg=5, individual=True, metadata=metadata)
 
     with torch.no_grad():
         output = model(batch)
@@ -111,7 +111,7 @@ def test_quantile_loss_output(sample_dataset):
 
     quantiles = [0.1, 0.5, 0.9]
 
-    model = DLinearModel(
+    model = DLinear(
         loss=QuantileLoss(quantiles=quantiles),
         moving_avg=5,
         individual=True,
@@ -130,7 +130,7 @@ def test_quantile_loss_output(sample_dataset):
 
 
 def test_univariate_forecast():
-    """Test univariate forecasting with DLinearModel."""
+    """Test univariate forecasting with DLinear."""
 
     n_samples = 100
     time_idx = np.arange(n_samples)
@@ -155,7 +155,7 @@ def test_univariate_forecast():
 
     metadata = dm.metadata
 
-    model = DLinearModel(loss=MAE(), moving_avg=5, individual=False, metadata=metadata)
+    model = DLinear(loss=MAE(), moving_avg=5, individual=False, metadata=metadata)
 
     train_dataloader = dm.train_dataloader()
     batch = next(iter(train_dataloader))[0]

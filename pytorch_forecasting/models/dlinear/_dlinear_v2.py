@@ -22,7 +22,7 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
-class DLinearModel(TslibBaseModel):
+class DLinear(TslibBaseModel):
     """
     DLinear: Decomposition Linear Model for Long-Term Time Series Forecasting.
 
@@ -104,7 +104,7 @@ class DLinearModel(TslibBaseModel):
         if isinstance(m, nn.Linear):
             nn.init.constant(m.weight.data, 1.0 / self.context_length)
             if m.bias is not None:
-                nn.init.constant(m.bias.data, 0.0)
+                nn.init.constant_(m.bias.data, 0.0)
 
     def _init_network(self):
         """
