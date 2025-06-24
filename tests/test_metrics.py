@@ -59,7 +59,7 @@ def test_composite_metric():
     ],
 )
 def test_aggregation_metric(decoder_lengths, y):
-    y_pred = torch.tensor([[0.0, 2.0], [4.0, 3.0]])
+    y_pred = torch.tensor([[[0.0], [2.0]], [[4.0], [3.0]]])
     if (decoder_lengths != y_pred.size(-1)).any():
         y_packed = rnn.pack_padded_sequence(
             y, lengths=decoder_lengths, batch_first=True, enforce_sorted=False
