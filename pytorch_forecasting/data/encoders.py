@@ -727,13 +727,13 @@ class TorchNormalizer(
         else:
             return y
 
-    def inverse_transform(self, y: torch.Tensor) -> torch.Tensor:
+    def inverse_transform(self, y: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
         """
         Inverse scale.
 
         Parameters
         ----------
-        y: torch.Tensor
+        y: Union[torch.Tensor, np.ndarray]
             scaled data
 
         Returns
@@ -741,6 +741,8 @@ class TorchNormalizer(
         torch.Tensor
             de-scaled data
         """
+        if isinstance(y, np.ndarray):
+            y = torch.from_numpy(y)
         return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
 
     def __call__(self, data: dict[str, torch.Tensor]) -> torch.Tensor:
@@ -760,9 +762,6 @@ class TorchNormalizer(
         torch.Tensor
             de-scaled data
         """
-        # ensure prediction is a tensor
-        if isinstance(data["prediction"], np.ndarray):
-            data["prediction"] = torch.from_numpy(data["prediction"])
         # ensure output dtype matches input dtype
         dtype = data["prediction"].dtype
 
