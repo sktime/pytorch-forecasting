@@ -762,6 +762,10 @@ class TorchNormalizer(
         """
         # ensure output dtype matches input dtype
         dtype = data["prediction"].dtype
+        if isinstance(dtype, np.dtype):
+            # convert the array into tensor if it is a numpy array
+            data["prediction"] = torch.as_tensor(data["prediction"])
+            dtype = data["prediction"].dtype
 
         # inverse transformation with tensors
         norm = data["target_scale"]
