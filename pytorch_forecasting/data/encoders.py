@@ -664,7 +664,6 @@ class TorchNormalizer(
                 )
             self.scale_ = (q_75 - q_25) / 2.0 + eps
         if not self.center and self.method != "identity":
-            self.scale_ = self.center_
             if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros_like(self.center_)
             else:
