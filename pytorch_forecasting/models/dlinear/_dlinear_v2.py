@@ -104,7 +104,7 @@ class DLinear(TslibBaseModel):
         if isinstance(m, nn.Linear):
             nn.init.constant(m.weight.data, 1.0 / self.context_length)
             if m.bias is not None:
-                nn.init.constant_(m.bias.data, 0.0)
+                nn.init.constant(m.bias.data, 0.0)
 
     def _init_network(self):
         """
