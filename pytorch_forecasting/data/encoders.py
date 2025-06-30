@@ -880,8 +880,6 @@ class EncoderNormalizer(TorchNormalizer):
     def min_length(self):
         if self.method == "identity":
             return 0  # no timeseries properties used
-        elif self.center:
-            return 1  # only calculation of mean required
         else:
             return 2  # requires std, i.e. at least 2 entries
 
