@@ -30,10 +30,6 @@ class PoissonLoss(MultiHorizonMetric):
     The result is the model prediction.
     """  # noqa: E501
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     def loss(
         self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
     ) -> torch.Tensor:
@@ -79,10 +75,6 @@ class SMAPE(MultiHorizonMetric):
     Defined as ``2*(y - y_pred).abs() / (y.abs() + y_pred.abs())``
     """
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     def loss(self, y_pred, target):
         y_pred = self.to_prediction(y_pred)
         loss = 2 * (y_pred - target).abs() / (y_pred.abs() + target.abs() + 1e-8)
@@ -96,10 +88,6 @@ class MAPE(MultiHorizonMetric):
     Defined as ``(y - y_pred).abs() / y.abs()``
     """
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     def loss(self, y_pred, target):
         loss = (self.to_prediction(y_pred) - target).abs() / (target.abs() + 1e-8)
         return loss
@@ -112,10 +100,6 @@ class MAE(MultiHorizonMetric):
     Defined as ``(y_pred - target).abs()``
     """
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     def loss(self, y_pred, target):
         loss = (self.to_prediction(y_pred) - target).abs()
         return loss
@@ -125,10 +109,6 @@ class CrossEntropy(MultiHorizonMetric):
     """
     Cross entropy loss for classification.
     """
-
-    _tags = {
-        "object_type": "metric",
-    }
 
     def loss(self, y_pred, target):
         loss = F.cross_entropy(
@@ -174,10 +154,6 @@ class RMSE(MultiHorizonMetric):
     Defined as ``(y_pred - target)**2``
     """
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     def __init__(self, reduction="sqrt-mean", **kwargs):
         super().__init__(reduction=reduction, **kwargs)
 
@@ -193,10 +169,6 @@ class MASE(MultiHorizonMetric):
     Defined as ``(y_pred - target).abs() / all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
     ``all_targets`` are here the concatenated encoder and decoder targets
     """  # noqa: E501
-
-    _tags = {
-        "object_type": "metric",
-    }
 
     def update(
         self,
@@ -333,10 +305,6 @@ class TweedieLoss(MultiHorizonMetric):
     The TweedieLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
     The result is the model prediction.
     """  # noqa: E501
-
-    _tags = {
-        "object_type": "metric",
-    }
 
     def __init__(self, reduction="mean", p: float = 1.5, **kwargs):
         """

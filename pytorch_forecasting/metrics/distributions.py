@@ -20,10 +20,6 @@ class NormalDistributionLoss(DistributionLoss):
     Normal distribution loss.
     """
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     distribution_class = distributions.Normal
     distribution_arguments = ["loc", "scale"]
 
@@ -68,10 +64,6 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
 
     Use this loss to make out of a DeepAR model a DeepVAR network.
     """
-
-    _tags = {
-        "object_type": "metric",
-    }
 
     distribution_class = distributions.LowRankMultivariateNormal
 
@@ -175,10 +167,6 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
         * not centered normalization (only rescaled)
     """
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     distribution_class = distributions.NegativeBinomial
     distribution_arguments = ["mean", "shape"]
 
@@ -242,10 +230,6 @@ class LogNormalDistributionLoss(DistributionLoss):
         * normalized target in log space
     """
 
-    _tags = {
-        "object_type": "metric",
-    }
-
     distribution_class = distributions.LogNormal
     distribution_arguments = ["loc", "scale"]
 
@@ -285,10 +269,6 @@ class BetaDistributionLoss(DistributionLoss):
     Requirements for original target normalizer:
         * logit transformation
     """
-
-    _tags = {
-        "object_type": "metric",
-    }
 
     distribution_class = distributions.Beta
     distribution_arguments = ["mean", "shape"]
@@ -365,10 +345,6 @@ class MQF2DistributionLoss(DistributionLoss):
     Requires install of additional library:
     ``pip install pytorch-forecasting[mqf2]``
     """
-
-    _tags = {
-        "object_type": "metric",
-    }
 
     eps = 1e-4
 
@@ -578,10 +554,6 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
     <https://arxiv.org/pdf/2107.03743.pdf>`_.
     A network is used to directly map network outputs to a quantile.
     """
-
-    _tags = {
-        "object_type": "metric",
-    }
 
     def __init__(
         self,
