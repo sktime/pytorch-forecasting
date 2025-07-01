@@ -184,7 +184,48 @@ class TestAllPtMetrics:
     """Test all metrics in PyTorch Forecasting."""
 
     def test_metric_instantiation(self, metric_class):
-        """Test that metrics can be instantiated."""
+        """Test suite for all metrics in PyTorch Forecasting.
+
+        This test class implements a comprehensive testing strategy for metrics that:
+
+        1. Tests all metrics against diverse input formats (point forecasts, quantiles,
+        packed sequences, weighted inputs, distributions, classification)
+
+        2. Uses pytest.skip to gracefully handle inherent incompatibilities between
+        metrics and data formats, recognizing that not all metrics work with all data
+        types. This approach distinguishes between expected incompatibilities vs actual
+        bugs.
+
+        3. Validates both the functional interface (direct calls) and stateful interface
+        (update/compute pattern) of metrics.
+
+        4. Checks important metric properties including:
+
+        - Output tensor validity (finite values, correct shape)
+        - Reduction modes behavior (none, mean, sqrt-mean)
+        - Packed sequence handling for variable-length data
+        - Special methods like to_prediction and to_quantiles
+        - Metric composition behavior
+        - Example validation through doctests
+
+        The test design favors comprehensiveness over specificity, attempting all
+        combinations rather than hardcoding expected compatibilities. This makes the
+        tests more maintainable and future-proof, automatically handling new metrics
+        or data formats without requiring test updates.
+
+        When encountering incompatibilities, tests are skipped with descriptive messages
+        rather than marked as failures, since incompatibility is treated as
+        expected behavior and not a bug. This approach results in many skipped tests
+        but ensures genuine issues are visible and all metrics receive appropriate
+        validation against compatible formats.
+
+        Note
+        ----
+        There is a plan to implement a variable counter in each test to track if the
+        metric accepts atleast a single data format. This will help in
+        identifying metrics that are not tested at all, and thus not compatible with
+        any provided data format, and raise an error.
+        """
 
         try:
             if issubclass(metric_class, (MultiLoss, CompositeMetric)):
