@@ -1,5 +1,6 @@
 """Automated tests based on the skbase test suite template."""
 
+from copy import deepcopy
 from inspect import isclass
 import shutil
 
@@ -10,6 +11,10 @@ from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
 
 from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
+from pytorch_forecasting.tests._loss_mapping import (
+    ALL_LOSSES_BY_TYPE,
+    LOSS_SPECIFIC_PARAMS,
+)
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
@@ -164,9 +169,35 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         else:
             return []
 
-        all_train_kwargs = obj_meta.get_test_train_params()
-        rg = range(len(all_train_kwargs))
-        train_kwargs_names = [str(i) for i in rg]
+        all_train_kwargs = []
+        train_kwargs_names = []
+        compatible_loss_types = obj_meta.get_class_tag("info:compatible_loss", [])
+        if compatible_loss_types:
+            base_params_list = obj_meta.get_base_test_params()
+            for loss_type in compatible_loss_types:
+                for loss_instance in ALL_LOSSES_BY_TYPE.get(loss_type, []):
+                    loss_name = loss_instance.__class__.__name__
+                    loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
+                    loss_params["loss"] = loss_instance
+
+                    for i, base_params in enumerate(base_params_list):
+                        final_params = deepcopy(base_params)
+                        for key, value in loss_params.items():
+                            if (
+                                isinstance(value, dict)
+                                and key in final_params
+                                and isinstance(final_params[key], dict)
+                            ):
+                                final_params[key].update(value)
+                            else:
+                                final_params[key] = value
+
+                        all_train_kwargs.append(final_params)
+                        train_kwargs_names.append(f"base_params_{i}_{loss_name}")
+        else:
+            all_train_kwargs = obj_meta.get_test_train_params()
+            rg = range(len(all_train_kwargs))
+            train_kwargs_names = [str(i) for i in rg]
 
         return all_train_kwargs, train_kwargs_names
 
