@@ -12,6 +12,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 import numpy as np
+import scipy._lib._util
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
@@ -20,6 +21,26 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 optuna_logger = logging.getLogger("optuna")
+
+
+# ToDo: remove this once statsmodels release a version compatible with latest
+# scipy version
+def _lazywhere(cond, arrays, f, fillvalue=np.nan, f2=None):
+    """
+    Backported lazywhere implementation (basic version).
+    """
+    arrays = np.broadcast_arrays(*arrays)
+    cond = np.array(cond, dtype=bool, copy=False)
+    out = np.full(cond.shape, fillvalue)
+    if f2 is None:
+        out[cond] = f(*[a[cond] for a in arrays])
+    else:
+        out[cond] = f(*[a[cond] for a in arrays])
+        out[~cond] = f2(*[a[~cond] for a in arrays])
+    return out
+
+
+scipy._lib._util._lazywhere = _lazywhere
 
 
 def optimize_hyperparameters(
