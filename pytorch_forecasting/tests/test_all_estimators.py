@@ -21,6 +21,39 @@ from pytorch_forecasting.tests._loss_mapping import (
 ONLY_CHANGED_MODULES = False
 
 
+def _merge_dict(dict_1, dict_2):
+    """Merge two dictionaries.
+
+    Parameters
+    ----------
+    dict_1 : dict
+        Base dictionary that will be merged with dict_2.
+    dict_2 : dict
+        Dictionary to merge into dict_1.
+        If a key exists in both dictionaries
+        and both values are dictionaries, they will be merged using dict.update().
+        Otherwise, the dict_2 value will override the dict_1 value.
+
+    Returns
+    -------
+    dict
+        A new dictionary containing the merged contents. Values from `dict_1`
+        are preserved unless overridden by `dict_2`.
+    """
+    final_dict = deepcopy(dict_1)
+    for key, value in dict_2.items():
+        if (
+            isinstance(value, dict)
+            and key in final_dict
+            and isinstance(final_dict[key], dict)
+        ):
+            final_dict[key].update(value)
+        else:
+            final_dict[key] = value
+
+    return final_dict
+
+
 class PackageConfig:
     """Contains package config variables for test classes."""
 
@@ -156,6 +189,42 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
 
         return object_classes_to_test, object_names
 
+    def _generate_final_param_list(self, compatible_loss_types, base_params_list):
+        """Generate final parameter combinations for compatible loss types.
+
+        Parameters
+        ----------
+        compatible_loss_types : list of str
+            List of loss type strings that are compatible with the current model.
+        base_params_list : list of dict
+            List of base parameter dictionaries to be combined with each loss
+            function.
+
+        Returns
+        -------
+        tuple of (list, list)
+            all_train_kwargs : list of dict
+                List of merged parameter dictionaries, each containing base parameters
+                combined with loss-specific parameters and the loss instance.
+            train_kwargs_names : list of str
+                List of descriptive names for each parameter combination, formatted
+                as "base_params-{i}-{loss_name}" where i is the base parameter index
+                and loss_name is the class name of the loss function.
+        """
+        all_train_kwargs = []
+        train_kwargs_names = []
+        for loss_type in compatible_loss_types:
+            for loss_instance in ALL_LOSSES_BY_TYPE.get(loss_type, []):
+                loss_name = loss_instance.__class__.__name__
+                loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
+                loss_params["loss"] = loss_instance
+
+                for i, base_params in enumerate(base_params_list):
+                    final_params = _merge_dict(base_params, loss_params)
+                    all_train_kwargs.append(final_params)
+                    train_kwargs_names.append(f"base_params-{i}-{loss_name}")
+        return all_train_kwargs, train_kwargs_names
+
     def _generate_trainer_kwargs(self, test_name, **kwargs):
         """Return kwargs for the trainer.
 
@@ -169,31 +238,13 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         else:
             return []
 
-        all_train_kwargs = []
-        train_kwargs_names = []
         compatible_loss_types = obj_meta.get_class_tag("info:compatible_loss", [])
         if compatible_loss_types:
             base_params_list = obj_meta.get_base_test_params()
-            for loss_type in compatible_loss_types:
-                for loss_instance in ALL_LOSSES_BY_TYPE.get(loss_type, []):
-                    loss_name = loss_instance.__class__.__name__
-                    loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
-                    loss_params["loss"] = loss_instance
+            all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
+                compatible_loss_types, base_params_list
+            )
 
-                    for i, base_params in enumerate(base_params_list):
-                        final_params = deepcopy(base_params)
-                        for key, value in loss_params.items():
-                            if (
-                                isinstance(value, dict)
-                                and key in final_params
-                                and isinstance(final_params[key], dict)
-                            ):
-                                final_params[key].update(value)
-                            else:
-                                final_params[key] = value
-
-                        all_train_kwargs.append(final_params)
-                        train_kwargs_names.append(f"base_params_{i}_{loss_name}")
         else:
             all_train_kwargs = obj_meta.get_test_train_params()
             rg = range(len(all_train_kwargs))
