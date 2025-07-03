@@ -1,5 +1,6 @@
 """Automated tests based on the skbase test suite template."""
 
+from copy import deepcopy
 from inspect import isclass
 import shutil
 
@@ -10,10 +11,47 @@ from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
 
 from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
+from pytorch_forecasting.tests._loss_mapping import (
+    ALL_LOSSES_BY_TYPE,
+    LOSS_SPECIFIC_PARAMS,
+)
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
 ONLY_CHANGED_MODULES = False
+
+
+def _merge_dict(dict_1, dict_2):
+    """Merge two dictionaries.
+
+    Parameters
+    ----------
+    dict_1 : dict
+        Base dictionary that will be merged with dict_2.
+    dict_2 : dict
+        Dictionary to merge into dict_1.
+        If a key exists in both dictionaries
+        and both values are dictionaries, they will be merged using dict.update().
+        Otherwise, the dict_2 value will override the dict_1 value.
+
+    Returns
+    -------
+    dict
+        A new dictionary containing the merged contents. Values from `dict_1`
+        are preserved unless overridden by `dict_2`.
+    """
+    final_dict = deepcopy(dict_1)
+    for key, value in dict_2.items():
+        if (
+            isinstance(value, dict)
+            and key in final_dict
+            and isinstance(final_dict[key], dict)
+        ):
+            final_dict[key].update(value)
+        else:
+            final_dict[key] = value
+
+    return final_dict
 
 
 class PackageConfig:
@@ -151,6 +189,42 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
 
         return object_classes_to_test, object_names
 
+    def _generate_final_param_list(self, compatible_loss_types, base_params_list):
+        """Generate final parameter combinations for compatible loss types.
+
+        Parameters
+        ----------
+        compatible_loss_types : list of str
+            List of loss type strings that are compatible with the current model.
+        base_params_list : list of dict
+            List of base parameter dictionaries to be combined with each loss
+            function.
+
+        Returns
+        -------
+        tuple of (list, list)
+            all_train_kwargs : list of dict
+                List of merged parameter dictionaries, each containing base parameters
+                combined with loss-specific parameters and the loss instance.
+            train_kwargs_names : list of str
+                List of descriptive names for each parameter combination, formatted
+                as "base_params-{i}-{loss_name}" where i is the base parameter index
+                and loss_name is the class name of the loss function.
+        """
+        all_train_kwargs = []
+        train_kwargs_names = []
+        for loss_type in compatible_loss_types:
+            for loss_instance in ALL_LOSSES_BY_TYPE.get(loss_type, []):
+                loss_name = loss_instance.__class__.__name__
+                loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
+                loss_params["loss"] = loss_instance
+
+                for i, base_params in enumerate(base_params_list):
+                    final_params = _merge_dict(base_params, loss_params)
+                    all_train_kwargs.append(final_params)
+                    train_kwargs_names.append(f"base_params-{i}-{loss_name}")
+        return all_train_kwargs, train_kwargs_names
+
     def _generate_trainer_kwargs(self, test_name, **kwargs):
         """Return kwargs for the trainer.
 
@@ -164,9 +238,17 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         else:
             return []
 
-        all_train_kwargs = obj_meta.get_test_train_params()
-        rg = range(len(all_train_kwargs))
-        train_kwargs_names = [str(i) for i in rg]
+        compatible_loss_types = obj_meta.get_class_tag("info:compatible_loss", [])
+        if compatible_loss_types:
+            base_params_list = obj_meta.get_base_test_params()
+            all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
+                compatible_loss_types, base_params_list
+            )
+
+        else:
+            all_train_kwargs = obj_meta.get_test_train_params()
+            rg = range(len(all_train_kwargs))
+            train_kwargs_names = [str(i) for i in rg]
 
         return all_train_kwargs, train_kwargs_names
 
