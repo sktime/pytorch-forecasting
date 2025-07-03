@@ -65,8 +65,8 @@ class DecoderMLP_pkg(_BasePtForecaster):
         loss = params.get("loss", None)
         from pytorch_forecasting.metrics import (
             CrossEntropy,
+            LogNormalDistributionLoss,
             NegativeBinomialDistributionLoss,
-            LogNormalDistributionLoss
         )
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates,
