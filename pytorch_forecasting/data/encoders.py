@@ -708,16 +708,38 @@ class TorchNormalizer(
             target_scale = self.get_parameters().numpy()[None, :]
         center = target_scale[..., 0]
         scale = target_scale[..., 1]
+
+        if not isinstance(y, torch.Tensor):
+            if isinstance(y, (pd.Series)):
+                index = y.index
+                pandas_dtype = y.dtype
+                y = y.values
+                y_was = "pandas"
+                y = torch.as_tensor(y)
+            elif isinstance(y, np.ndarray):
+                y_was = "numpy"
+                np_dtype = y.dtype
+                y = torch.from_numpy(y.astype(np.float32))
+        else:
+            y_was = "torch"
+        if isinstance(center, np.ndarray):
+            center = torch.from_numpy(center)
+        if isinstance(scale, np.ndarray):
+            scale = torch.from_numpy(scale)
         if y.ndim > center.ndim:  # multiple batches -> expand size
             center = center.view(*center.size(), *(1,) * (y.ndim - center.ndim))
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
         # transform
         dtype = y.dtype
+
         y = (y - center) / scale
-        try:
-            y = y.astype(dtype)
-        except AttributeError:  # torch.Tensor has `.type()` instead of `.astype()`
+
+        if y_was == "numpy":
+            y = y.numpy().astype(np_dtype)
+        elif y_was == "pandas":
+            y = pd.Series(y.numpy(), index=index, dtype=pandas_dtype)
+        else:
             y = y.type(dtype)
 
         # return with center and scale or without
