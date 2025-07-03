@@ -65,7 +65,6 @@ class DecoderMLP_pkg(_BasePtForecaster):
         loss = params.get("loss", None)
         from pytorch_forecasting.metrics import (
             CrossEntropy,
-            LogNormalDistributionLoss,
             NegativeBinomialDistributionLoss,
         )
         from pytorch_forecasting.tests._data_scenarios import (
@@ -77,8 +76,6 @@ class DecoderMLP_pkg(_BasePtForecaster):
         dwc.assign(target=lambda x: x.volume)
         if isinstance(loss, NegativeBinomialDistributionLoss):
             dwc = dwc.assign(target=lambda x: x.volume.round())
-        if isinstance(loss, LogNormalDistributionLoss):
-            dwc["target"] = dwc["target"] + 1e-8
         if isinstance(loss, CrossEntropy):
             data_loader_kwargs["target"] = "agency"
         dl_default_kwargs = dict(
