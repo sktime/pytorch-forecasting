@@ -719,7 +719,10 @@ class TorchNormalizer(
             elif isinstance(y, np.ndarray):
                 y_was = "numpy"
                 np_dtype = y.dtype
-                y = torch.from_numpy(y.astype(np.float32))
+                try:
+                    y = torch.from_numpy(y)
+                except TypeError:
+                    y = torch.as_tensor(y.astype(np.float32))
         else:
             y_was = "torch"
         if isinstance(center, np.ndarray):
