@@ -726,13 +726,13 @@ class TorchNormalizer(
         else:
             return y
 
-    def inverse_transform(self, y: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
+    def inverse_transform(self, y: torch.Tensor) -> torch.Tensor:
         """
         Inverse scale.
 
         Parameters
         ----------
-        y: Union[torch.Tensor, np.ndarray]
+        y: Union[torch.Tensor]
             scaled data
 
         Returns
@@ -744,13 +744,15 @@ class TorchNormalizer(
             y = torch.from_numpy(y)
         return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
 
-    def __call__(self, data: dict[str, torch.Tensor]) -> torch.Tensor:
+    def __call__(
+        self, data: dict[str, Union[torch.Tensor, np.ndarray]]
+    ) -> torch.Tensor:
         """
         Inverse transformation but with network output as input.
 
         Parameters
         ----------
-        data: Dict[str, torch.Tensor]
+        data: dict[str, Union[torch.Tensor, np.ndarray]]
             Dictionary with entries
 
             * prediction: data to de-scale
@@ -762,24 +764,28 @@ class TorchNormalizer(
             de-scaled data
         """
         # ensure output dtype matches input dtype
-        dtype = data["prediction"].dtype
+        prediction = data["prediction"]
+
+        if isinstance(prediction, np.ndarray):
+            prediction = torch.from_numpy(prediction)
 
         # inverse transformation with tensors
         norm = data["target_scale"]
-
+        if isinstance(norm, np.ndarray):
+            norm = torch.from_numpy(norm)
         # use correct shape for norm
-        if data["prediction"].ndim > norm.ndim:
+        if prediction.ndim > norm.ndim:
             norm = norm.unsqueeze(-1)
 
         # transform
-        y = data["prediction"] * norm[:, 1, None] + norm[:, 0, None]
+        y = prediction * norm[:, 1, None] + norm[:, 0, None]
 
         y = self.inverse_preprocess(y)
 
         # return correct shape
-        if data["prediction"].ndim == 1 and y.ndim > 1:
+        if prediction.ndim == 1 and y.ndim > 1:
             y = y.squeeze(0)
-        return y.type(dtype)
+        return y.type(prediction.dtype)
 
 
 class EncoderNormalizer(TorchNormalizer):
