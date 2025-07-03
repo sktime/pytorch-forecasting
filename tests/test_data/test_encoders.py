@@ -62,41 +62,51 @@ def test_NaNLabelEncoder_add():
     [
         dict(method="robust"),
         dict(method="robust", method_kwargs=dict(upper=1.0, lower=0.0)),
-        dict(method="robust", data=np.random.randn(100)),
-        dict(data=np.random.randn(100)),
+        dict(method="robust"),
         dict(transformation="log"),
         dict(transformation="softplus"),
         dict(transformation="log1p"),
         dict(transformation="relu"),
         dict(method="identity"),
-        dict(method="identity", data=np.random.randn(100)),
+        dict(
+            method="identity",
+        ),
         dict(center=False),
         dict(max_length=5),
-        dict(data=pd.Series(np.random.randn(100))),
         dict(max_length=[1, 2]),
     ],
 )
-def test_EncoderNormalizer(kwargs):
+@pytest.mark.parametrize("data_type", ["torch", "numpy", "pandas"])
+def test_EncoderNormalizer(kwargs, data_type):
+    transformation = kwargs.get("transformation")
+
+    if transformation in ["log", "log1p", "softplus", "relu"]:
+        base_data = np.random.uniform(0.1, 10, size=100)  # strictly positive
+    else:
+        base_data = np.random.randn(100)
+
+    if data_type == "torch":
+        data = torch.tensor(base_data, dtype=torch.float32)
+    elif data_type == "numpy":
+        data = base_data.astype(np.float32)
+    elif data_type == "pandas":
+        data = pd.Series(base_data.astype(np.float32))
     kwargs.setdefault("method", "standard")
     kwargs.setdefault("center", True)
-    kwargs.setdefault("data", torch.rand(100))
-    data = kwargs.pop("data")
 
     normalizer = EncoderNormalizer(**kwargs)
+    transformed = normalizer.fit_transform(data)
+    inverse = normalizer.inverse_transform(torch.as_tensor(transformed))
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
         assert (
-            normalizer.inverse_transform(
-                torch.as_tensor(normalizer.fit_transform(data))
-            )
-            >= 0
+            inverse >= 0
         ).all(), "Inverse transform should yield only positive values"
     else:
+        expected = torch.as_tensor(data)
         assert torch.isclose(
-            normalizer.inverse_transform(
-                torch.as_tensor(normalizer.fit_transform(data))
-            ),
-            torch.as_tensor(data),
+            inverse,
+            expected,
             atol=1e-5,
         ).all(), "Inverse transform should reverse transform"
 
