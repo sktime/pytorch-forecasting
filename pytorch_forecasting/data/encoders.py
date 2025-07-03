@@ -739,9 +739,17 @@ class TorchNormalizer(
         y = (y - center) / scale
 
         if y_was == "numpy":
-            y = y.numpy().astype(np_dtype)
+            numpy_data = y.numpy()
+            if np_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                # Original was integer, but normalized data is float
+                y = numpy_data.astype(np.float64)
+            else:
+                y = numpy_data.astype(np_dtype)
         elif y_was == "pandas":
-            y = pd.Series(y.numpy(), index=index, dtype=pandas_dtype)
+            numpy_data = y.numpy()
+            if pandas_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                pandas_dtype = np.float64
+            y = pd.Series(numpy_data, index=index, dtype=pandas_dtype)
         else:
             y = y.type(dtype)
 
