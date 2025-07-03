@@ -725,6 +725,7 @@ class TorchNormalizer(
                     y = torch.as_tensor(y.astype(np.float32))
         else:
             y_was = "torch"
+            torch_dtype = y.dtype
         if isinstance(center, np.ndarray):
             center = torch.from_numpy(center)
         if isinstance(scale, np.ndarray):
@@ -732,9 +733,6 @@ class TorchNormalizer(
         if y.ndim > center.ndim:  # multiple batches -> expand size
             center = center.view(*center.size(), *(1,) * (y.ndim - center.ndim))
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
-
-        # transform
-        dtype = y.dtype
 
         y = (y - center) / scale
 
@@ -751,7 +749,7 @@ class TorchNormalizer(
                 pandas_dtype = np.float64
             y = pd.Series(numpy_data, index=index, dtype=pandas_dtype)
         else:
-            y = y.type(dtype)
+            y = y.type(torch_dtype)
 
         # return with center and scale or without
         if return_norm:
