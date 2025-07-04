@@ -220,5 +220,8 @@ filterwarnings = [
     "ignore:The number of training samples \\(\\d+\\) is smaller than the logging interval Trainer\\(:UserWarning",
     "ignore:The dataloader, [\\_\\s]+ \\d+, does not have many workers which may be a bottleneck.:UserWarning",
     "ignore:Consider increasing the value of the `num_workers` argument`:UserWarning",
+    "default::DeprecationWarning",
+    "default::PendingDeprecationWarning",
+    "default::FutureWarning",
     "ignore::UserWarning"
 ]
