@@ -4,539 +4,369 @@ from inspect import isclass
 import shutil
 
 import numpy as np
+import pandas as pd
 import pytest
 import torch
 from torch.nn.utils import rnn
 
-from pytorch_forecasting._registry import all_objects
+from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer, TorchNormalizer
-from pytorch_forecasting.metrics.base_metrics import (
-    CompositeMetric,
-    Metric,
-    MultiHorizonMetric,
-    MultiLoss,
-    TorchMetricWrapper,
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    RMSE,
+    SMAPE,
+    NormalDistributionLoss,
+    PoissonLoss,
+    QuantileLoss,
+    TweedieLoss,
 )
 
-ONLY_CHANGED_MODULES = False
 
+@pytest.fixture(scope="module")
+def prepare_point_forecast():
+    """Prepare a point forecast dataset, for testing point forecast metrics."""
 
-def get_all_metrics():
-    """
-    Manually collect all metric classes.
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
 
-    Current approach it to manually include classes one by one.
-    If breaking changes are detected by the introduction of a metric into the
-    test suite, it is decided to either change the test or include metric-specific
-    tests in the metric's own test suite.
-    """
-    metric_classes = []
-    try:
-        from pytorch_forecasting.metrics.point import (
-            MAE,
-            MAPE,
-            MASE,
-            RMSE,
-            SMAPE,
-            CrossEntropy,
-            PoissonLoss,
-            TweedieLoss,
-        )
-
-        metric_classes.extend(
-            [
-                MAE,
-                MAPE,
-                RMSE,
-                SMAPE,
-                PoissonLoss,
-                TweedieLoss,
-                # CrossEntropy,
-                # MASE
-            ]
-        )
-    except ImportError:
-        raise ImportError("Failed to import point metrics.")
-    try:
-        from pytorch_forecasting.metrics.quantile import QuantileLoss
-
-        metric_classes.append(QuantileLoss)
-    except ImportError:
-        raise ImportError("Failed to import quantile metrics.")
-
-    from pytorch_forecasting.metrics.distributions import (
-        NormalDistributionLoss,
+    df = pd.DataFrame(
+        {
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "target": np.random.rand(batch_size * timesteps),
+        }
     )
 
-    metric_classes.extend(
-        [
-            NormalDistributionLoss,
-        ]
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=timesteps // 2,
+        max_prediction_length=prediction_length,
+        target_normalizer=GroupNormalizer(groups=["group_id"]),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
     )
 
-    return metric_classes
-
-
-def get_test_data():
-    """Return test data fixtures for the metrics.
-
-    The general nomenclature for naming test cases is <target_type>_<prediction_type>,
-    where `target_type` is specified only if target is weighted or packed_sequence, and
-    `prediction_type` is broadly 4 types - point, quantile, distibution and
-    classification. Classficiation is a special case for class predictions used by Cross
-    Entropy metric.
-
-    * `point`: 2D tensor of point forecasts with 2D predictions and actuals.
-    * `quantile`: 3D tensor of quantile forecasts and 2D actuals.
-    * `packed_sequence_point`: 2D point predictions and 2D packed sequence actuals.
-    * `packed_sequence_quantile`: 3D tensor of quantile predictions with 2D packed sequence
-        actuals.
-    * `weighted_point`: 2D tensor of point forecasts and weighted 2D actuals.
-    * `weighted_quantile`: 3D tensor of quantile forecasts and weighted 2D actuals.
-    * `distribution`: 3D tensor of prediction with distribution parameters and 2D
-        actuals.
-    * `packed_sequence_distribution`: 3D predictions with distribution params
-        and 2D packed_sequence actuals.
-    * `weighted_distribution`: 3D tensor of prediction with distribution parameters
-        and 2D weighted actuals.
-    * `classification`: 3D class predictions and 2D actuals
-        containing integer values.
-    """  # noqa: E501
-
-    batch_size, timesteps = 4, 10
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+    y_pred = torch.randn(batch_size, prediction_length)
 
     test_cases = {}
 
-    y_pred_point = torch.randn(batch_size, timesteps)
-    y_actual_2d = torch.randn(batch_size, timesteps)
-    test_cases["point"] = {"y_pred": y_pred_point, "y_actual": y_actual_2d}
-
-    # 3d tensors for quantile forecast (default 7 quantiles)
-    y_pred_quantile = torch.randn(batch_size, timesteps, 7)
-    test_cases["quantile"] = {"y_pred": y_pred_quantile, "y_actual": y_actual_2d}
-
-    # data with weighted targets
-    y_actual_weighted = (y_actual_2d, torch.ones(batch_size, timesteps))
-    test_cases["weighted_point"] = {
-        "y_pred": y_pred_point,
-        "y_actual": y_actual_weighted,
+    test_cases["standard"] = {
+        "x": x,
+        "y": y,
+        "y_pred": y_pred,
     }
-
-    test_cases["weighted_quantile"] = {
-        "y_pred": y_pred_quantile,
-        "y_actual": (y_actual_2d, torch.ones(batch_size, timesteps)),
-    }
-
-    # PackedSequence data (simulates variable length sequences in each batch)
-    lengths = torch.tensor([10, 8, 6, 4])
-    padded_actual = torch.randn(batch_size, timesteps)
-
-    packed_actual = rnn.pack_padded_sequence(
-        padded_actual, lengths, batch_first=True, enforce_sorted=False
+    # each batch has a different prediction length
+    lengths = torch.tensor(
+        [
+            prediction_length,
+            prediction_length - 2,
+            prediction_length - 4,
+            prediction_length - 6,
+        ]
     )
 
-    test_cases["packed_sequence_point"] = {
-        "y_pred": y_pred_point,
-        "y_actual": packed_actual,
-    }  # noqa: E501
-    test_cases["packed_sequence_quantile"] = {
-        "y_pred": y_pred_quantile,
-        "y_actual": packed_actual,
-    }  # noqa: E501
-    # 3d tensors for distribution parameters
-    n_params = 10  # keeping 10 distribution parameters for coverage.
-    y_pred_dist = torch.randn(batch_size, timesteps, n_params)
-    y_pred_dist[..., 1] = torch.abs(y_pred_dist[..., 1]) + 0.1
-    y_pred_dist[..., 3] = torch.abs(y_pred_dist[..., 3]) + 0.1
-    test_cases["distribution"] = {"y_pred": y_pred_dist, "y_actual": y_actual_2d}
-    test_cases["packed_sequence_distribution"] = {
-        "y_pred": y_pred_dist,
-        "y_actual": packed_actual,
-    }  # noqa: E501
-    test_cases["weighted_distribution"] = {
-        "y_pred": y_pred_dist,
-        "y_actual": y_actual_weighted,
-    }  # noqa: E501
+    y_packed = rnn.pack_padded_sequence(
+        y[0], lengths, batch_first=True, enforce_sorted=False
+    )
 
-    n_class = 5
-    y_pred_class = torch.randn(batch_size, timesteps, n_class)
-    y_actual_class = torch.randint(0, 5, (batch_size, timesteps))
-    test_cases["classification"] = {"y_pred": y_pred_class, "y_actual": y_actual_class}
-
-    return test_cases
-
-
-DATA_FORMAT_NAMES = [
-    "point",
-    "quantile",
-    "packed_sequence_point",
-    "packed_sequence_quantile",
-    "weighted_point",
-    "weighted_quantile",
-    "distribution",
-    "packed_sequence_distribution",
-    "weighted_distribution",
-    "classification",
-]
-
-
-# TODO: Implement tag system to infer metric compatibility with data formats.
-def get_metric_compatibility():
-    """Return a dictonary mapping metric classes to their compatible data formats."""
-
-    metric_compatibility = {
-        "MAE": {"point", "packed_sequence_point", "weighted_point"},
-        "MAPE": {"point", "packed_sequence_point", "weighted_point"},
-        "RMSE": {"point", "packed_sequence_point", "weighted_point"},
-        "SMAPE": {"point", "packed_sequence_point", "weighted_point"},
-        "PoissonLoss": {"point", "packed_sequence_point", "weighted_point"},
-        "TweedieLoss": {"point", "packed_sequence_point", "weighted_point"},
-        "QuantileLoss": {"quantile", "packed_sequence_quantile", "weighted_quantile"},
-        "NormalDistributionLoss": {
-            "distribution",
-            "weighted_distribution",
-            "packed_sequence_distribution",
-        },
-        "NegativeBinomialDistributionLoss": {
-            "distribution",
-            "packed_sequence_distribution",
-            "weighted_distribution",
-        },
-        "LogNormalDistributionLoss": {
-            "distribution",
-            "packed_sequence_distribution",
-            "weighted_distribution",
-        },  # noqa: E501
-        "MultivariateNormalDistributionLoss": {
-            "distribution",
-            "packed_sequence_distribution",
-            "weighted_distribution",
-        },  # noqa: E501
-        "BetaDistributionLoss": {
-            "distribution",
-            "packed_sequence_distribution",
-            "weighted_distribution",
-        },
+    test_cases["packed"] = {
+        "x": x,
+        "y": y_packed,
+        "y_pred": y_pred,
     }
 
-    return metric_compatibility
+    weights = torch.ones_like(y_pred)
+    y_weighted = (y[0], weights)
+    test_cases["weighted"] = {
+        "x": x,
+        "y": y_weighted,
+        "y_pred": y_pred,
+    }
+
+    return {"dataset": dataset, "test_cases": test_cases}
 
 
-METRIC_COMPATIBILITY = get_metric_compatibility()
+@pytest.fixture(scope="module")
+def prepare_quantile_forecast():
+    """Prepare a quantile forecast dataset, for testing quantile metrics."""
+
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
+
+    df = pd.DataFrame(
+        {
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "target": np.random.rand(batch_size * timesteps),
+        }
+    )
+
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=timesteps // 2,
+        max_prediction_length=prediction_length,
+        target_normalizer=GroupNormalizer(groups=["group_id"]),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
+    )
+
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+
+    quantiles = [0.1, 0.5, 0.9]  # Example quantiles
+    y_pred = torch.randn(batch_size, prediction_length, len(quantiles))
+
+    y_pred, _ = torch.sort(
+        y_pred, dim=-1
+    )  # sort along quantile dimension, to simulate perfect quantile distribution.  # noqa: E501
+
+    test_cases = {}
+    test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred, "quantiles": quantiles}
+
+    lengths = torch.tensor(
+        [
+            prediction_length,
+            prediction_length - 2,
+            prediction_length - 4,
+            prediction_length - 6,
+        ]
+    )
+    packed_y = rnn.pack_padded_sequence(
+        y[0], lengths, batch_first=True, enforce_sorted=False
+    )
+    test_cases["packed"] = {
+        "x": x,
+        "y": packed_y,
+        "y_pred": y_pred,
+        "quantiles": quantiles,
+    }  # noqa: E501
+
+    weights = torch.ones_like(y[0])
+    weighted_y = (y[0], weights)
+    test_cases["weighted"] = {
+        "x": x,
+        "y": weighted_y,
+        "y_pred": y_pred,
+        "quantiles": quantiles,
+    }  # noqa: E501
+
+    return {"dataset": dataset, "test_cases": test_cases}
 
 
-@pytest.fixture(params=get_all_metrics())
-def metric_class(request):
-    """Fixture to provide metric classes."""
-    metric_class = request.param
-    return metric_class
+@pytest.fixture(scope="module")
+def prepare_normal_distribution_forecast():
+    """Prepare data for normal distribution loss metrics."""
+
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
+
+    mean = 1.0
+    std = 0.1
+    normal_dist = torch.distributions.Normal(loc=mean, scale=std)
+    normal_target = normal_dist.sample((batch_size, timesteps)).numpy()
+
+    df = pd.DataFrame(
+        {
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "target": normal_target.flatten(),
+        }
+    )
+
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=prediction_length,
+        max_prediction_length=prediction_length,
+        target_normalizer=TorchNormalizer(),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
+    )
+
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+
+    # create random prediction paired with a normal distribution.
+    y_pred = torch.stack(
+        [
+            torch.randn(batch_size, prediction_length),
+            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+        ],
+        dim=-1,
+    )
+
+    test_cases = {}
+    test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
+    lengths = torch.tensor(
+        [
+            prediction_length,
+            prediction_length - 2,
+            prediction_length - 4,
+            prediction_length - 6,
+        ]
+    )
+    y_packed = rnn.pack_padded_sequence(
+        y[0], lengths, batch_first=True, enforce_sorted=False
+    )
+
+    test_cases["packed"] = {"x": x, "y": y_packed, "y_pred": y_pred}
+
+    weights = torch.ones_like(y[0])
+    y_weighted = (y[0], weights)
+    test_cases["weighted"] = {"x": x, "y": y_weighted, "y_pred": y_pred}
+
+    return {"dataset": dataset, "test_cases": test_cases}
 
 
-@pytest.fixture
-def metric_instance(metric_class):
-    """Fixture to instantiate metric classes."""
-    if issubclass(metric_class, (MultiLoss, CompositeMetric, TorchMetricWrapper)):
-        pytest.skip(f"{metric_class.__name__} requires special instantiation.")
-
-    try:
-        return metric_class()
-    except Exception as e:
-        pytest.fail(f"Failed to instantiate {metric_class.__name__}: {e}")
+@pytest.fixture(params=["standard", "packed", "weighted"])
+def point_forecast_case(request, prepare_point_forecast):
+    """Parametrized fixture for point forecast test cases."""
+    return prepare_point_forecast["test_cases"][request.param]
 
 
-@pytest.fixture(
-    params=[
-        (cls, fmt)
-        for cls in get_all_metrics()
-        for fmt in (METRIC_COMPATIBILITY.get(cls.__name__, DATA_FORMAT_NAMES))
-    ]
-)
-def metric_class_with_format(request):
-    """Fixture to provide metric classes."""
-    return request.param
+@pytest.fixture(params=["standard", "packed", "weighted"])
+def quantile_forecast_case(request, prepare_quantile_forecast):
+    """Parametrized fixture for quantile forecast test cases."""
+    return prepare_quantile_forecast["test_cases"][request.param]
 
 
-@pytest.fixture
-def metric_instance_with_format(metric_class_with_format):
-    """Fixture to instantiate metric classes."""
-    metric_class, data_format = metric_class_with_format
-    if issubclass(metric_class, (MultiLoss, CompositeMetric, TorchMetricWrapper)):
-        pytest.skip(f"{metric_class.__name__} requires special instantiation.")
-
-    try:
-        return metric_class(), data_format
-    except Exception as e:
-        pytest.fail(f"Failed to instantiate {metric_class.__name__}: {e}")
-
-
-@pytest.fixture(scope="session")
-def test_data():
-    """Session-scoped fixture for test data."""
-    return get_test_data()
+@pytest.fixture(params=["standard", "packed", "weighted"])
+def normal_distribution_case(request, prepare_normal_distribution_forecast):
+    """Parametrized fixture for normal distribution test cases."""
+    return prepare_normal_distribution_forecast["test_cases"][request.param]
 
 
 class TestAllPtMetrics:
-    """Test suite for all metrics in PyTorch Forecasting.
+    """Test suite for all metrics in PyTorch Forecasting."""
 
-    This test class implements a comprehensive testing strategy for metrics that:
-
-    1. Tests all metrics against diverse input formats (point forecasts, quantiles,
-    packed sequences, weighted inputs, distributions, classification)
-
-    2. Uses pytest.skip to gracefully handle inherent incompatibilities between
-    metrics and data formats, recognizing that not all metrics work with all data
-    types. This approach distinguishes between expected incompatibilities vs actual
-    bugs.
-
-    3. Validates both the functional interface (direct calls) and stateful interface
-    (update/compute pattern) of metrics.
-
-    4. Checks important metric properties including:
-
-    - Output tensor validity (finite values, correct shape)
-    - Reduction modes behavior (none, mean, sqrt-mean)
-    - Packed sequence handling for variable-length data
-    - Special methods like to_prediction and to_quantiles
-    - Metric composition behavior
-    - Example validation through doctests
-
-    The test design favors comprehensiveness over specificity, attempting all
-    combinations rather than hardcoding expected compatibilities. This makes the
-    tests more maintainable and future-proof, automatically handling new metrics
-    or data formats without requiring test updates.
-
-    When encountering incompatibilities, tests are skipped with descriptive messages
-    rather than marked as failures, since incompatibility is treated as
-    expected behavior and not a bug. This approach results in many skipped tests
-    but ensures genuine issues are visible and all metrics receive appropriate
-    validation against compatible formats.
-
-    Note
-    ----
-    There is a plan to implement a variable counter in each test to track if the
-    metric accepts atleast a single data format. This will help in
-    identifying metrics that are not tested at all, and thus not compatible with
-    any provided data format, and raise an error.
-    """
-
-    def test_metric_instantiation(self, metric_class):
-        "Test instantiation of metric classes."
-        try:
-            if issubclass(metric_class, (MultiLoss, CompositeMetric)):
-                pytest.skip(
-                    f"{metric_class.__name__} is requiring special instantiation."
-                )
-            elif issubclass(metric_class, TorchMetricWrapper):
-                pytest.skip(
-                    f"{metric_class.__name__} is a wrapper and should not be instantiated directly."  # noqa: E501
-                )
-            else:
-                metric = metric_class()
-
-        except Exception as e:
-            pytest.fail(f"Failed to instantiate {metric_class.__name__}: {e}")
-
-        assert isinstance(metric, Metric)
-
-    def test_metric_forward_pass(self, metric_instance_with_format, test_data):
-        """Test forward pass of metric instance."""
-        metric_instance, test_case = metric_instance_with_format
-
-        if metric_instance is None:
-            pytest.skip("No valid metric instance and data format provided.")
-
-        test_case_data = test_data[test_case]
-
-        y_pred = test_case_data["y_pred"]
-        y_actual = test_case_data["y_actual"]
-        res = metric_instance(y_pred, y_actual)
-
-        assert isinstance(
-            res, torch.Tensor
-        ), f"Expected output to be a tensor, got {type(res)}"  # noqa: E501
-        # dependent on metric reduction type.
-        assert torch.numel(res) == 1 or res.ndim <= 2
-        assert torch.isfinite(res).all(), "Output contains non-finite values."
-
-    def test_metric_update_compute(self, metric_instance_with_format, test_data):
-        """Test update/compute methods pattern of metric."""
-
-        metric_instance, test_case = metric_instance_with_format
-
-        if metric_instance is None:
-            pytest.skip("No valid metric instance and data format provided.")
-
-        test_case_data = test_data[test_case]
-
-        y_pred = test_case_data["y_pred"]
-        y_actual = test_case_data["y_actual"]
-
-        metric_instance.reset()
-        metric_instance.update(y_pred, y_actual)
-        res = metric_instance.compute()
-
-        assert isinstance(
-            res, torch.Tensor
-        ), f"Expected output to be a tensor, got {type(res)}"  # noqa: E501
-        assert torch.isfinite(res).all(), "Output contains non-finite values."
-
-        metric_instance.update(y_pred, y_actual)
-        res2 = metric_instance.compute()
-
-        assert isinstance(
-            res2, torch.Tensor
-        ), f"Expected output to be a tensor, got {type(res2)}"  # noqa: E501
-
-    def test_metric_reduction(self, metric_class_with_format, test_data):
-        """Test metric reduction behavior."""
-
-        metric_class, test_case = metric_class_with_format
-
-        if not issubclass(metric_class, (Metric, MultiHorizonMetric)):
-            pytest.skip(f"{metric_class.__name__} does not support reduction testing.")
-
-        reduction_modes = ["none", "mean", "sqrt-mean"]
-
-        y_pred = test_data[test_case]["y_pred"]
-        y_actual = test_data[test_case]["y_actual"]
-
-        for reduction in reduction_modes:
-            metric = metric_class(reduction=reduction)
-            res = metric(y_pred, y_actual)
-
-            if reduction == "none":
-                assert res.numel() > 1, "Expected multiple outputs for `none` reduction"
-                assert res.shape[0] == y_pred.shape[0]
-                assert res.shape[1] == y_pred.shape[1]
-            elif reduction in ["mean", "sqrt-mean"]:
-                assert res.numel() <= y_pred.shape[0]
-                if reduction == "sqrt-mean":
-                    assert (
-                        res >= 0
-                    ), "Expected non-negative output for `sqrt-mean` reduction."  # noqa: E501
-
-    @pytest.mark.parametrize(
-        "test_case",
-        [
-            "packed_sequence_point",
-            "packed_sequence_quantile",
-            "packed_sequence_distribution",
-        ],
-    )
-    def test_packed_sequence_handling(self, metric_instance, test_data, test_case):
-        """Test that metrics properly handle PackedSequence inputs."""
-
-        if metric_instance is None:
-            pytest.skip("No valid metric instance provided.")
-
-        metric_name = metric_instance.__class__.__name__
-
-        if test_case not in METRIC_COMPATIBILITY.get(metric_name, set()):
-            pytest.skip(
-                f"{metric_name} is not compatible with {test_case} data format."
-            )
-
-        test_case_data = test_data[test_case]
-        y_pred = test_case_data["y_pred"]
-        y_actual = test_case_data["y_actual"]
-
-        res = metric_instance(y_pred, y_actual)
+    def _test_integration_metrics(self, metric, y_pred, y):
+        metric.reset()
+        metric.update(y_pred, y)
+        res = metric.compute()
 
         assert isinstance(res, torch.Tensor)
-        assert torch.isfinite(res).all(), "Output contains non-finite values."
+        assert torch.isfinite(res).all(), "Non-finite values in metric result."
 
-        metric_instance.reset()
-        metric_instance.update(y_pred, y_actual)
-        res2 = metric_instance.compute()
-        assert isinstance(res2, torch.Tensor)
-        assert torch.isfinite(res2).all(), "Output contains non-finite values."
+        point_pred = metric.to_prediction(y_pred)
+        assert isinstance(point_pred, torch.Tensor), "Prediction should be a tensor."
+        assert (
+            point_pred.shape[:2] == y_pred.shape[:2]
+        ), "Prediction shape mismatch with y_pred."  # noqa: E501
+        assert point_pred.ndim == 2
 
-    def test_to_prediction_method(self, metric_instance_with_format, test_data):
-        """Test the ``to_prediction`` method of metrics."""
-
-        metric_instance, test_case = metric_instance_with_format
-
-        if metric_instance is None:
-            pytest.skip("No valid metric instance provided.")
-
-        test_case_data = test_data[test_case]
-        y_pred = test_case_data["y_pred"]
-
-        if test_case in [
-            "distribution",
-            "packed_sequence_distribution",
-            "weighted_distribution",
-        ]:  # noqa: E501
-            pytest.skip(
-                f"Need to rescale parameters for {metric_instance.__class__.__name__}, cannot test to_prediction."  # noqa: E501
-            )
-
-        prediction = metric_instance.to_prediction(
-            y_pred,
-        )
-
-        assert isinstance(prediction, torch.Tensor)
-
-        if y_pred.ndim == 3:
-            assert prediction.ndim == 2
-            assert prediction.shape[:2] == y_pred.shape[:2]
-        # else:
-        #     assert prediction.shape == y_pred.shape
-
-    def test_to_quantiles_method(self, metric_instance_with_format, test_data):
-        """Test the ``to_quantiles`` method of metrics."""
-
-        metric_instance, test_case = metric_instance_with_format
-
-        if metric_instance is None:
-            pytest.skip("No valid metric instance provided.")
-
-        test_case_data = test_data[test_case]
-        y_pred = test_case_data["y_pred"]
         quantiles = [0.1, 0.5, 0.9]
-        if metric_instance.__class__.__name__ == "QuantileLoss":
-            quantile_pred = metric_instance.to_quantiles(y_pred)
-        else:
-            quantile_pred = metric_instance.to_quantiles(y_pred, quantiles=quantiles)  # noqa: E501
-        assert isinstance(quantile_pred, torch.Tensor)
-
-        if metric_instance.__class__.__name__ == "QuantileLoss":
+        if isinstance(metric, QuantileLoss):
+            quantile_pred = metric.to_quantiles(y_pred)
+            assert isinstance(
+                quantile_pred, torch.Tensor
+            ), "Quantile prediction should be a tensor."  # noqa: E501
             assert quantile_pred.shape == y_pred.shape
         else:
-            assert quantile_pred.ndim == 3
-            if y_pred.ndim == 2 and metric_instance.__class__.__name__ != "PoissonLoss":  # noqa: E501
-                assert quantile_pred.shape[2] == 1
+            quantile_pred = metric.to_quantiles(y_pred, quantiles=quantiles)
+            assert isinstance(
+                quantile_pred, torch.Tensor
+            ), "Quantile prediction should be a tensor."  # noqa: E501
+            if y_pred.ndim == 3 or isinstance(metric, PoissonLoss):
+                assert quantile_pred.shape == (
+                    y_pred.shape[0],
+                    y_pred.shape[1],
+                    len(quantiles),
+                ), f"`to_quantiles()`, fails for metric {metric}()."
+            elif y_pred.ndim == 2:
+                assert quantile_pred.shape == (
+                    y_pred.shape[0],
+                    y_pred.shape[1],
+                    1,
+                ), f"`to_quantiles()`, fails for metric {metric}()."
+
+            # testing composite metrics
+            composite = metric + metric
+            weighted = metric * 0.5
+
+            composite_result = composite(y_pred, y)
+            weighted_result = weighted(y_pred, y)
+
+            assert isinstance(composite_result, torch.Tensor)
+            assert isinstance(weighted_result, torch.Tensor)
+            assert torch.isfinite(composite_result).all()
+            assert torch.isfinite(weighted_result).all()
+
+    def _test_reduction_modes(self, metric_class, y_pred, y):
+        """Test that all metrics support different reduction modes."""
+
+        for reduction in ["mean", "sqrt-mean", "none"]:
+            metric = metric_class(reduction=reduction)
+            if isinstance(metric_class, NormalDistributionLoss):
+                metric._transformation = None
+            result = metric(y_pred, y)
+            assert isinstance(result, torch.Tensor)
+
+            if reduction == "none":
+                if isinstance(y, rnn.PackedSequence):
+                    assert (
+                        result.shape[0] == y_pred.shape[0]
+                    )  # only check across batch.
+                else:
+                    assert result.shape == y_pred.shape
             else:
-                assert quantile_pred.shape[2] == len(quantiles)
+                assert result.ndim == 0
+                if reduction == "sqrt-mean":
+                    assert (
+                        result >= 0
+                    ), "Result should be non-negative for sqrt-mean reduction."  # noqa: E501
 
-    def test_metric_compositions(self, metric_class):
-        """Test correct working of metric compositions via CompositeMetric"""
+    def test_point_forecast_metrics(self, point_forecast_case):
+        """Test point forecast metrics (MAE, MAPE, RMSE, SMAPE, PoissonLoss, TweedieLoss)."""  # noqa: E501
+        point_metrics = [MAE, MAPE, RMSE, SMAPE, PoissonLoss, TweedieLoss]
 
-        if not issubclass(metric_class, Metric):
-            pytest.skip(
-                f"{metric_class.__name__} is not a Metric subclass,",
-                " skipping test.",
-            )
+        for metric_class in point_metrics:
+            metric = metric_class()
+            self._test_integration_metrics(
+                metric, point_forecast_case["y_pred"], point_forecast_case["y"]
+            )  # noqa: E501
+            self._test_reduction_modes(
+                metric_class, point_forecast_case["y_pred"], point_forecast_case["y"]
+            )  # noqa: E501
 
-        metric_a = metric_class()
-        metric_b = metric_class()
+    def test_quantile_forecast_metrics(self, quantile_forecast_case):
+        """Test quantile forecast metrics (QuantileLoss)."""
+        metric = QuantileLoss(quantiles=quantile_forecast_case["quantiles"])
+        self._test_integration_metrics(
+            metric, quantile_forecast_case["y_pred"], quantile_forecast_case["y"]
+        )  # noqa: E501
 
-        composite = metric_a + metric_b
-        assert isinstance(composite, CompositeMetric)
-
-        weighted = metric_a * 0.5
-        assert isinstance(weighted, CompositeMetric)
-
-        composite_weighted = metric_a + metric_b * 0.5
-        assert isinstance(composite_weighted, CompositeMetric)
-
-    def test_doctest_examples(self, metric_class):
-        """Run doctests for metric class."""
-        try:
-            from skbase.utils.doctest_run import run_doctest
-
-            run_doctest(metric_class, name=f"class {metric_class.__name__}")
-        except ImportError:
-            pytest.skip("skbase doctest utilities not available")
-        except Exception as e:
-            pytest.skip(f"Doctest failed for {metric_class.__name__}: {e}")
+    def test_normal_distribution_metrics(self, normal_distribution_case):
+        """Test normal distribution metrics (NormalDistributionLoss)."""
+        metric = NormalDistributionLoss()
+        # necessary step to get the dimensions for map_x_to_distribution
+        normal_distribution_case["y_pred"] = metric.rescale_parameters(
+            normal_distribution_case["y_pred"],
+            target_scale=normal_distribution_case["x"]["target_scale"],
+            encoder=TorchNormalizer(),
+        )
+        self._test_integration_metrics(
+            metric, normal_distribution_case["y_pred"], normal_distribution_case["y"]
+        )  # noqa: E501
