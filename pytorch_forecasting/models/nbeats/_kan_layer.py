@@ -6,9 +6,9 @@ import torch
 import torch.nn as nn
 
 
-def B_batch(x, grid, k=0, extend=True):
+def b_batch(x, grid, k=0):
     """
-    evaludate x on B-spline bases
+    evaluate x on B-spline bases
 
     Args:
     -----
@@ -30,10 +30,16 @@ def B_batch(x, grid, k=0, extend=True):
 
     Example
     -------
+    Install the `pykan` package first:
+    >>> pip install pykan
+    Then use:
+
     >>> from kan.spline import B_batch
-    >>> x = torch.rand(100,2)
-    >>> grid = torch.linspace(-1,1,steps=11)[None, :].expand(2, 11)
+    >>> import torch
+    >>> x = torch.rand(100, 2)
+    >>> grid = torch.linspace(-1, 1, steps=11)[None, :].expand(2, 11)
     >>> B_batch(x, grid, k=3).shape
+
     """
 
     x = x.unsqueeze(dim=2)
@@ -42,7 +48,7 @@ def B_batch(x, grid, k=0, extend=True):
     if k == 0:
         value = (x >= grid[:, :, :-1]) * (x < grid[:, :, 1:])
     else:
-        B_km1 = B_batch(x[:, :, 0], grid=grid[0], k=k - 1)
+        B_km1 = b_batch(x[:, :, 0], grid=grid[0], k=k - 1)
 
         value = (x - grid[:, :, : -(k + 1)]) / (
             grid[:, :, k:-1] - grid[:, :, : -(k + 1)]
@@ -58,7 +64,7 @@ def B_batch(x, grid, k=0, extend=True):
 def coef2curve(x_eval, grid, coef, k):
     """
     converting B-spline coefficients to B-spline curves. Evaluate x on B-spline curves
-    (summing up B_batch results over B-spline basis).
+    (summing up b_batch results over B-spline basis).
 
     Args:
     -----
@@ -78,7 +84,7 @@ def coef2curve(x_eval, grid, coef, k):
 
     """
 
-    b_splines = B_batch(x_eval, grid, k=k)
+    b_splines = b_batch(x_eval, grid, k=k)
     y_eval = torch.einsum("ijk,jlk->ijl", b_splines, coef.to(b_splines))
 
     return y_eval
@@ -110,7 +116,7 @@ def curve2coef(x_eval, y_eval, grid, k):
     in_dim = x_eval.shape[1]
     out_dim = y_eval.shape[2]
     n_coef = grid.shape[1] - k - 1
-    mat = B_batch(x_eval, grid, k)
+    mat = b_batch(x_eval, grid, k)
     mat = mat.permute(1, 0, 2)[:, None, :, :].expand(in_dim, out_dim, batch, n_coef)
     y_eval = y_eval.permute(1, 2, 0).unsqueeze(dim=3)
     try:
@@ -123,7 +129,19 @@ def curve2coef(x_eval, y_eval, grid, k):
 
 def extend_grid(grid, k_extend=0):
     """
-    extend grid
+    Extend a grid tensor by padding both ends with equal spacing.
+
+    Args:
+    -----
+        grid : torch.Tensor
+            Grid of shape (in_dim, grid_points).
+        k_extend : int
+            Number of points to extend on both ends.
+
+    Returns:
+    --------
+        grid : torch.Tensor
+            Extended grid of shape (in_dim, grid_points + 2 * k_extend).
     """
     h = (grid[:, [-1]] - grid[:, [0]]) / (grid.shape[1] - 1)
 
@@ -136,7 +154,19 @@ def extend_grid(grid, k_extend=0):
 
 def sparse_mask(in_dim, out_dim):
     """
-    get sparse mask
+    Generate a sparse connection mask between input and output units.
+
+    Args:
+    -----
+        in_dim : int
+            Number of input units.
+        out_dim : int
+            Number of output units.
+
+    Returns:
+    --------
+        mask : torch.Tensor
+            Sparse binary mask of shape (in_dim, out_dim).
     """
     in_coord = torch.arange(in_dim) * 1 / in_dim + 1 / (2 * in_dim)
     out_coord = torch.arange(out_dim) * 1 / out_dim + 1 / (2 * out_dim)
@@ -168,15 +198,15 @@ class KANLayer(nn.Module):
         scale_base_mu=0.0,
         scale_base_sigma=1.0,
         scale_sp=1.0,
-        base_fun=torch.nn.SiLU(),
+        base_fun=None,
         grid_eps=0.02,
-        grid_range=[-1, 1],
+        grid_range=None,
         sp_trainable=True,
         sb_trainable=True,
         sparse_init=False,
     ):
         """'
-        initialize a KANLayer
+        Initialize a KANLayer
 
         Args:
         -----
@@ -199,13 +229,13 @@ class KANLayer(nn.Module):
             scale_sp : float
                 the scale of the base function spline(x).
             base_fun : function
-                residual function b(x). Default: torch.nn.SiLU()
+                residual function b(x). Default: None
             grid_eps : float
                 When grid_eps = 1, the grid is uniform; when grid_eps = 0, the grid is
                 partitioned using percentiles of samples. 0 < grid_eps < 1 interpolates
                 between the two extremes.
             grid_range : list/np.array of shape (2,)
-                setting the range of grids. Default: [-1,1].
+                setting the range of grids. Default: None.
             sp_trainable : bool
                 If true, scale_sp is trainable
             sb_trainable : bool
@@ -219,11 +249,21 @@ class KANLayer(nn.Module):
 
         Example
         -------
+        Install the `pykan` package first:
+        >>> pip install pykan
+        Then use:
+
         >>> from kan.KANLayer import *
         >>> model = KANLayer(in_dim=3, out_dim=5)
         >>> (model.in_dim, model.out_dim)
         """
         super().__init__()
+
+        # Handle mutable parameters
+        if grid_range is None:
+            grid_range = [-1, 1]
+        if base_fun is None:
+            base_fun = torch.nn.SiLU()
         # size
         self.out_dim = out_dim
         self.in_dim = in_dim
@@ -274,23 +314,23 @@ class KANLayer(nn.Module):
 
         Args:
         -----
-            x : 2D torch.float
-                inputs, shape (number of samples, input dimension)
+        x : torch.Tensor
+            Input tensor of shape (batch_size, in_dim), where:
+              - batch_size is the number of input samples.
+              - in_dim is the input feature dimension.
 
         Returns:
         --------
-            y : 2D torch.float
-                outputs, shape (number of samples, output dimension)
-            preacts : 3D torch.float
-                fan out x into activations, shape (number of sampels,
-                output dimension, input dimension)
-            postacts : 3D torch.float
-                the outputs of activation functions with preacts as inputs
-            postspline : 3D torch.float
-                the outputs of spline functions with preacts as inputs
+        y : torch.Tensor
+            Output tensor, the result of applying spline and residual
+            transformations followed by weighted summation.
 
         Example
         -------
+        Install the `pykan` package first:
+        >>> pip install pykan
+        Then use:
+
         >>> from kan.KANLayer import *
         >>> model = KANLayer(in_dim=3, out_dim=5)
         >>> x = torch.normal(0,1,size=(100,3))
@@ -308,7 +348,7 @@ class KANLayer(nn.Module):
         y = torch.sum(y, dim=1)
         return y
 
-    def update_grid_from_samples(self, x, mode="sample"):
+    def update_grid_from_samples(self, x):
         """
         update grid from samples
 
@@ -336,25 +376,29 @@ class KANLayer(nn.Module):
         num_interval = self.grid.shape[1] - 1 - 2 * self.k
 
         def get_grid(num_interval):
+            """
+            Generate adaptive or uniform grid points from sorted input samples.
+
+            Args:
+            -----
+                num_interval : int
+                    Number of intervals between grid points.
+
+            Returns:
+            --------
+                grid : torch.Tensor
+                    New grid of shape (in_dim, num_interval + 1).
+            """
             ids = [int(batch / num_interval * i) for i in range(num_interval)] + [-1]
             grid_adaptive = x_pos[ids, :].permute(1, 0)
-            margin = 0.00
-            h = (
-                grid_adaptive[:, [-1]] - grid_adaptive[:, [0]] + 2 * margin
-            ) / num_interval
+            h = (grid_adaptive[:, [-1]] - grid_adaptive[:, [0]]) / num_interval
             grid_uniform = (
                 grid_adaptive[:, [0]]
-                - margin
                 + h * torch.arange(num_interval + 1, device=h.device)[None, :]
             )
             grid = self.grid_eps * grid_uniform + (1 - self.grid_eps) * grid_adaptive
             return grid
 
         grid = get_grid(num_interval)
-        if mode == "grid":
-            sample_grid = get_grid(2 * num_interval)
-            x_pos = sample_grid.permute(1, 0)
-            y_eval = coef2curve(x_pos, self.grid, self.coef, self.k)
-
         self.grid.data = extend_grid(grid, k_extend=self.k)
         self.coef.data = curve2coef(x_pos, y_eval, self.grid, self.k)

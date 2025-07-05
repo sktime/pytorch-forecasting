@@ -5,14 +5,12 @@ N-Beats model adapter for timeseries forecasting without covariates.
 from typing import Optional
 
 import torch
-from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
-from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
+from pytorch_forecasting.metrics import MASE
 from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.models.nbeats.sub_modules import (
-    NBEATSGenericBlock,
     NBEATSSeasonalBlock,
     NBEATSTrendBlock,
 )
@@ -239,7 +237,7 @@ class NBeatsAdapter(BaseModel):
         """
         Plot interpretation.
 
-        Plot two pannels: prediction and backcast vs actuals and
+        Plot two panels: prediction and backcast vs actuals and
         decomposition of prediction into trend, seasonality and generic forecast.
 
         Args:

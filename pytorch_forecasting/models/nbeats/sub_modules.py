@@ -68,31 +68,48 @@ class NBEATSBlock(nn.Module):
                 ahead to predict. Default: 5.
             dropout: The dropout rate applied to the fully connected mlp layers to
                 prevent overfitting. Default: 0.1.
-            kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: None.
+            kan_params (dict): Configuration dictionary for the KAN layer. Only
+                required if `use_kan=True`. If `kan_params` is not provided and
+                `use_kan=True`, default values will be used. Default: None.
                 Contains:
-                    num_grids (int): The number of grid intervals for KAN.
-                    k (int): The order of the piecewise polynomial for KAN.
-                    noise_scale (float): The scale of noise injected at initialization.
-                    scale_base_mu (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_base_sigma (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_sp (float): The scale of the base function spline(x) in KAN.
-                    base_fun (function): The residual function used by
-                        KAN (e.g., torch.nn.SiLU()).
-                    grid_eps (float): Determines the partitioning of the grid. If 1,
-                        the grid is uniform; if 0, grid is partitioned by percentiles.
-                    grid_range (list or np.array): The range of the grid, given as
-                        a list of two values.
-                    sp_trainable (bool): If True, the scale_sp is trainable.
-                    sb_trainable (bool): If True, the scale_base is trainable.
-                    sparse_init (bool): If True, applies sparse initialization.
+                    - num (int): Number of grid intervals. Default: 5.
+                    - k (int): Order of the piecewise polynomial. Default: 3.
+                    - noise_scale (float): Initialization noise scale. Default: 0.5.
+                    - scale_base_mu (float): Mean for residual function init.
+                      Default: 0.0.
+                    - scale_base_sigma (float): Std for residual function init.
+                      Default: 1.0.
+                    - scale_sp (float): Scale for spline function. Default: 1.0.
+                    - base_fun (nn.Module): Base function. Default: torch.nn.SiLU().
+                    - grid_eps (float): 0 → quantile grid, 1 → uniform. Default: 0.02.
+                    - grid_range (list): Range of the spline grid. Default: [-1, 1].
+                    - sp_trainable (bool): Whether scale_sp is trainable. Default: True.
+                    - sb_trainable (bool): Whether scale_base is trainable.
+                      Default: True.
+                    - sparse_init (bool): Apply sparse init to KAN. Default: False.
             use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
                 kan layers are used in nbeats block else mlp layers are used. Default:
                 false.
         """
         super().__init__()
+
+        if use_kan and kan_params is None:
+            # Define default parameters for KAN if not provided
+            kan_params = dict(
+                num=5,
+                k=3,
+                noise_scale=0.5,
+                scale_base_mu=0.0,
+                scale_base_sigma=1.0,
+                scale_sp=1.0,
+                base_fun=torch.nn.SiLU(),
+                grid_eps=0.02,
+                grid_range=[-1, 1],
+                sp_trainable=True,
+                sb_trainable=True,
+                sparse_init=False,
+            )
+
         self.units = units
         self.thetas_dim = thetas_dim
         self.backcast_length = backcast_length
