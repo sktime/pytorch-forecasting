@@ -30,6 +30,9 @@ def b_batch(x, grid, k=0):
 
     Example
     -------
+    The following is an example from the original `pykan` library, adapted here
+    for illustration within the PyTorch Forecasting integration.
+
     Install the `pykan` package first:
     >>> pip install pykan
     Then use:
@@ -249,6 +252,9 @@ class KANLayer(nn.Module):
 
         Example
         -------
+        The following is an example from the original `pykan` library, adapted here
+        for illustration within the PyTorch Forecasting integration.
+
         Install the `pykan` package first:
         >>> pip install pykan
         Then use:
@@ -327,6 +333,9 @@ class KANLayer(nn.Module):
 
         Example
         -------
+        The following is an example from the original `pykan` library, adapted here
+        for illustration within the PyTorch Forecasting integration.
+
         Install the `pykan` package first:
         >>> pip install pykan
         Then use:
@@ -334,8 +343,8 @@ class KANLayer(nn.Module):
         >>> from kan.KANLayer import *
         >>> model = KANLayer(in_dim=3, out_dim=5)
         >>> x = torch.normal(0,1,size=(100,3))
-        >>> y, preacts, postacts, postspline = model(x)
-        >>> y.shape, preacts.shape, postacts.shape, postspline.shape
+        >>> y, _, _, _ = model(x)
+        >>> y.shape
         """
 
         base = self.base_fun(x)  # (batch, in_dim)
