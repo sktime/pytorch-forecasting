@@ -2,7 +2,7 @@
 N-Beats model with KAN blocks for timeseries forecasting without covariates.
 """
 
-from typing import List, Optional
+from typing import Optional
 
 import torch
 from torch import nn
@@ -19,12 +19,12 @@ from pytorch_forecasting.models.nbeats.sub_modules import (
 class NBeatsKAN(NBeatsAdapter):
     def __init__(
         self,
-        stack_types: Optional[List[str]] = None,
-        num_blocks: Optional[List[int]] = None,
-        num_block_layers: Optional[List[int]] = None,
-        widths: Optional[List[int]] = None,
-        sharing: Optional[List[bool]] = None,
-        expansion_coefficient_lengths: Optional[List[int]] = None,
+        stack_types: Optional[list[str]] = None,
+        num_blocks: Optional[list[int]] = None,
+        num_block_layers: Optional[list[int]] = None,
+        widths: Optional[list[int]] = None,
+        sharing: Optional[list[bool]] = None,
+        expansion_coefficient_lengths: Optional[list[int]] = None,
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,
@@ -45,7 +45,7 @@ class NBeatsKAN(NBeatsAdapter):
         scale_sp: float = 1.0,
         base_fun: callable = None,
         grid_eps: float = 0.02,
-        grid_range: List[int] = None,
+        grid_range: list[int] = None,
         sp_trainable: bool = True,
         sb_trainable: bool = True,
         sparse_init: bool = False,

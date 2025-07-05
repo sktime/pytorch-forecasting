@@ -48,9 +48,7 @@ def B_batch(x, grid, k=0, extend=True):
             grid[:, :, k:-1] - grid[:, :, : -(k + 1)]
         ) * B_km1[:, :, :-1] + (grid[:, :, k + 1 :] - x) / (
             grid[:, :, k + 1 :] - grid[:, :, 1:(-k)]
-        ) * B_km1[
-            :, :, 1:
-        ]
+        ) * B_km1[:, :, 1:]
 
     # in case grid is degenerate
     value = torch.nan_to_num(value)
@@ -225,7 +223,7 @@ class KANLayer(nn.Module):
         >>> model = KANLayer(in_dim=3, out_dim=5)
         >>> (model.in_dim, model.out_dim)
         """
-        super(KANLayer, self).__init__()
+        super().__init__()
         # size
         self.out_dim = out_dim
         self.in_dim = in_dim
@@ -265,9 +263,7 @@ class KANLayer(nn.Module):
         ).requires_grad_(sb_trainable)
         self.scale_sp = torch.nn.Parameter(
             torch.ones(in_dim, out_dim) * scale_sp * 1 / np.sqrt(in_dim) * self.mask
-        ).requires_grad_(
-            sp_trainable
-        )  # make scale trainable
+        ).requires_grad_(sp_trainable)  # make scale trainable
         self.base_fun = base_fun
 
         self.grid_eps = grid_eps

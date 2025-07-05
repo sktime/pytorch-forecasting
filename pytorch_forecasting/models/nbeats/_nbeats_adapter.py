@@ -2,7 +2,7 @@
 N-Beats model adapter for timeseries forecasting without covariates.
 """
 
-from typing import Dict, List, Optional
+from typing import Optional
 
 import torch
 from torch import nn
@@ -32,7 +32,7 @@ class NBeatsAdapter(BaseModel):
         """  # noqa: E501
         super().__init__(**kwargs)
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Pass forward of network.
 
@@ -162,7 +162,7 @@ class NBeatsAdapter(BaseModel):
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
 
-    def step(self, x, y, batch_idx) -> Dict[str, torch.Tensor]:
+    def step(self, x, y, batch_idx) -> dict[str, torch.Tensor]:
         """
         Take training / validation step.
         """
@@ -230,8 +230,8 @@ class NBeatsAdapter(BaseModel):
 
     def plot_interpretation(
         self,
-        x: Dict[str, torch.Tensor],
-        output: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        output: dict[str, torch.Tensor],
         idx: int,
         ax=None,
         plot_seasonality_and_generic_on_secondary_axis: bool = False,
