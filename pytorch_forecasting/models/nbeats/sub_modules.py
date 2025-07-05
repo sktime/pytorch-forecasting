@@ -7,8 +7,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from pytorch_forecasting.models.nbeats._kan_layer import KANLayer
+
 
 def linear(input_size, output_size, bias=True, dropout: int = None):
+    """
+    Initialize linear layers for MLP block layers.
+    """
     lin = nn.Linear(input_size, output_size, bias=bias)
     if dropout is not None:
         return nn.Sequential(nn.Dropout(dropout), lin)
@@ -19,6 +24,9 @@ def linear(input_size, output_size, bias=True, dropout: int = None):
 def linspace(
     backcast_length: int, forecast_length: int, centered: bool = False
 ) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Generate linear spaced values for backcast and forecast.
+    """
     if centered:
         norm = max(backcast_length, forecast_length)
         start = -backcast_length
@@ -43,31 +51,128 @@ class NBEATSBlock(nn.Module):
         num_block_layers=4,
         backcast_length=10,
         forecast_length=5,
-        share_thetas=False,
         dropout=0.1,
+        kan_params=None,
+        use_kan=False,
     ):
+        """
+        Initialize NBeatsSeasonalBlock
+
+        Args:
+            units: The number of units in the mlp/kan layers.
+            thetas_dim: The dimension of the parameterized output for the block.
+            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
+            backcast_length: The length of the backcast. Defines how many time units
+                from the past are used to predict the future. Default: 10.
+            forecast_length: The length of the forecast, i.e., the number of time steps
+                ahead to predict. Default: 5.
+            dropout: The dropout rate applied to the fully connected mlp layers to
+                prevent overfitting. Default: 0.1.
+            kan_params (dict): Configuration dictionary for the KAN layer. Only
+                required if `use_kan=True`. If `kan_params` is not provided and
+                `use_kan=True`, default values will be used. Default: None.
+                Contains:
+                    - num (int): Number of grid intervals. Default: 5.
+                    - k (int): Order of the piecewise polynomial. Default: 3.
+                    - noise_scale (float): Initialization noise scale. Default: 0.5.
+                    - scale_base_mu (float): Mean for residual function init.
+                      Default: 0.0.
+                    - scale_base_sigma (float): Std for residual function init.
+                      Default: 1.0.
+                    - scale_sp (float): Scale for spline function. Default: 1.0.
+                    - base_fun (nn.Module): Base function. Default: torch.nn.SiLU().
+                    - grid_eps (float): 0 → quantile grid, 1 → uniform. Default: 0.02.
+                    - grid_range (list): Range of the spline grid. Default: [-1, 1].
+                    - sp_trainable (bool): Whether scale_sp is trainable. Default: True.
+                    - sb_trainable (bool): Whether scale_base is trainable.
+                      Default: True.
+                    - sparse_init (bool): Apply sparse init to KAN. Default: False.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
+        """
         super().__init__()
+
+        if use_kan and kan_params is None:
+            # Define default parameters for KAN if not provided
+            kan_params = dict(
+                num=5,
+                k=3,
+                noise_scale=0.5,
+                scale_base_mu=0.0,
+                scale_base_sigma=1.0,
+                scale_sp=1.0,
+                base_fun=torch.nn.SiLU(),
+                grid_eps=0.02,
+                grid_range=[-1, 1],
+                sp_trainable=True,
+                sb_trainable=True,
+                sparse_init=False,
+            )
+
         self.units = units
         self.thetas_dim = thetas_dim
         self.backcast_length = backcast_length
         self.forecast_length = forecast_length
-        self.share_thetas = share_thetas
+        self.kan_params = kan_params
+        self.use_kan = use_kan
 
-        fc_stack = [
-            nn.Linear(backcast_length, units),
-            nn.ReLU(),
-        ]
-        for _ in range(num_block_layers - 1):
-            fc_stack.extend([linear(units, units, dropout=dropout), nn.ReLU()])
-        self.fc = nn.Sequential(*fc_stack)
+        if self.use_kan:
+            layers = [
+                KANLayer(
+                    in_dim=backcast_length,
+                    out_dim=units,
+                    **self.kan_params,
+                )
+            ]
 
-        if share_thetas:
-            self.theta_f_fc = self.theta_b_fc = nn.Linear(units, thetas_dim, bias=False)
+            # Add additional layers for deeper structure
+            for _ in range(num_block_layers - 1):
+                layers.append(
+                    KANLayer(
+                        in_dim=units,
+                        out_dim=units,
+                        **self.kan_params,
+                    )
+                )
+
+            # Define the fully connected layers
+            self.fc = nn.Sequential(*layers)
+
+            # Define the theta layers
+            self.theta_f_fc = self.theta_b_fc = KANLayer(
+                in_dim=units,
+                out_dim=thetas_dim,
+                **self.kan_params,
+            )
+
         else:
-            self.theta_b_fc = nn.Linear(units, thetas_dim, bias=False)
-            self.theta_f_fc = nn.Linear(units, thetas_dim, bias=False)
+            fc_stack = [
+                nn.Linear(backcast_length, units),
+                nn.ReLU(),
+            ]
+            for _ in range(num_block_layers - 1):
+                fc_stack.extend([linear(units, units, dropout=dropout), nn.ReLU()])
+            self.fc = nn.Sequential(*fc_stack)
+            self.theta_f_fc = self.theta_b_fc = nn.Linear(units, thetas_dim, bias=False)
 
     def forward(self, x):
+        """
+        Pass through the fully connected mlp/kan layers and returns the output.
+        """
+        if self.use_kan:
+            # save outputs to be used in updating grid in kan layers during training
+            # outputs logic taken from
+            # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
+            self.outputs = []
+            self.outputs.append(x.clone().detach())
+            for layer in self.fc:
+                x = layer(x)  # Pass data through the current layer
+                # storing outputs for updating grids of self.fc when using KAN
+                self.outputs.append(x.clone().detach())
+            # storing for updating grids of theta_b_fc and theta_f_fc when using KAN
+            self.outputs.append(x.clone().detach())
+            return x  # Return final output
         return self.fc(x)
 
 
@@ -82,7 +187,50 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         nb_harmonics=None,
         min_period=1,
         dropout=0.1,
+        kan_params=None,
+        use_kan=False,
     ):
+        """
+        Initialize NBeatsSeasonalBlock
+
+        Args:
+            units: The number of units in the mlp/kan layers.
+            thetas_dim: The dimension of the parameterized output for the block.
+                If None, it is inferred.
+            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
+            backcast_length: The length of the backcast. Defines how many time units
+                from the past are used to predict the future. Default: 10.
+            forecast_length: The length of the forecast, i.e., the number of time steps
+                ahead to predict. Default: 5.
+            nb_harmonics: The number of harmonics in the seasonal function (relevant for
+                seasonal models). Default: None (no seasonality).
+            min_period: The minimum period used for seasonal patterns. Default: 1.
+            dropout: The dropout rate applied to the fully connected mlp layers to
+                prevent overfitting. Default: 0.1.
+            kan_params (dict): Parameters specific to the KAN layer
+                (used for modeling using KAN). Default: None.
+                Contains:
+                    num_grids (int): The number of grid intervals for KAN.
+                    k (int): The order of the piecewise polynomial for KAN.
+                    noise_scale (float): The scale of noise injected at initialization.
+                    scale_base_mu (float): The scale of the residual function
+                        initialized to N(scale_base_mu, scale_base_sigma^2).
+                    scale_base_sigma (float): The scale of the residual function
+                        initialized to N(scale_base_mu, scale_base_sigma^2).
+                    scale_sp (float): The scale of the base function spline(x) in KAN.
+                    base_fun (function): The residual function used by
+                        KAN (e.g., torch.nn.SiLU()).
+                    grid_eps (float): Determines the partitioning of the grid. If 1,
+                        the grid is uniform; if 0, grid is partitioned by percentiles.
+                    grid_range (list or np.array): The range of the grid, given as
+                        a list of two values.
+                    sp_trainable (bool): If True, the scale_sp is trainable.
+                    sb_trainable (bool): If True, the scale_base is trainable.
+                    sparse_init (bool): If True, applies sparse initialization.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
+        """
         if nb_harmonics:
             thetas_dim = nb_harmonics
         else:
@@ -95,8 +243,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
             num_block_layers=num_block_layers,
             backcast_length=backcast_length,
             forecast_length=forecast_length,
-            share_thetas=True,
             dropout=dropout,
+            kan_params=kan_params,
+            use_kan=use_kan,
         )
 
         backcast_linspace, forecast_linspace = linspace(
@@ -129,6 +278,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
 
     def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Computes the backcast and forecast outputs for the given input tensor.
+        """
         x = super().forward(x)
         amplitudes_backward = self.theta_b_fc(x)
         backcast = amplitudes_backward.mm(self.S_backcast)
@@ -138,6 +290,9 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         return backcast, forecast
 
     def get_frequencies(self, n):
+        """
+        Generates frequency values based on the backcast and forecast lengths.
+        """
         return np.linspace(
             0, (self.backcast_length + self.forecast_length) / self.min_period, n
         )
@@ -152,15 +307,56 @@ class NBEATSTrendBlock(NBEATSBlock):
         backcast_length=10,
         forecast_length=5,
         dropout=0.1,
+        kan_params=None,
+        use_kan=False,
     ):
+        """
+        Initialize NBeatsSeasonalBlock
+
+        Args:
+            units: The number of units in the mlp/kan layers.
+            thetas_dim: The dimension of the parameterized output for the block.
+                If None, it is inferred.
+            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
+            backcast_length: The length of the backcast. Defines how many time units
+                from the past are used to predict the future. Default: 10.
+            forecast_length: The length of the forecast, i.e., the number of time steps
+                ahead to predict. Default: 5.
+            dropout: The dropout rate applied to the fully connected mlp layers to
+                prevent overfitting. Default: 0.1.
+            kan_params (dict): Parameters specific to the KAN layer
+                (used for modeling using KAN). Default: None.
+                Contains:
+                    num_grids (int): The number of grid intervals for KAN.
+                    k (int): The order of the piecewise polynomial for KAN.
+                    noise_scale (float): The scale of noise injected at initialization.
+                    scale_base_mu (float): The scale of the residual function
+                        initialized to N(scale_base_mu, scale_base_sigma^2).
+                    scale_base_sigma (float): The scale of the residual function
+                        initialized to N(scale_base_mu, scale_base_sigma^2).
+                    scale_sp (float): The scale of the base function spline(x) in KAN.
+                    base_fun (function): The residual function used by
+                        KAN (e.g., torch.nn.SiLU()).
+                    grid_eps (float): Determines the partitioning of the grid. If 1,
+                        the grid is uniform; if 0, grid is partitioned by percentiles.
+                    grid_range (list or np.array): The range of the grid, given as
+                        a list of two values.
+                    sp_trainable (bool): If True, the scale_sp is trainable.
+                    sb_trainable (bool): If True, the scale_base is trainable.
+                    sparse_init (bool): If True, applies sparse initialization.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
+        """
         super().__init__(
             units=units,
             thetas_dim=thetas_dim,
             num_block_layers=num_block_layers,
             backcast_length=backcast_length,
             forecast_length=forecast_length,
-            share_thetas=True,
             dropout=dropout,
+            kan_params=kan_params,
+            use_kan=use_kan,
         )
 
         backcast_linspace, forecast_linspace = linspace(
@@ -182,6 +378,9 @@ class NBEATSTrendBlock(NBEATSBlock):
         self.register_buffer("T_forecast", coefficients * norm)
 
     def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Computes the backcast and forecast outputs for the given input tensor.
+        """
         x = super().forward(x)
         backcast = self.theta_b_fc(x).mm(self.T_backcast)
         forecast = self.theta_f_fc(x).mm(self.T_forecast)
@@ -197,7 +396,47 @@ class NBEATSGenericBlock(NBEATSBlock):
         backcast_length=10,
         forecast_length=5,
         dropout=0.1,
+        kan_params=None,
+        use_kan=False,
     ):
+        """
+        Initialize NBeatsSeasonalBlock
+
+        Args:
+            units: The number of units in the mlp/kan layers.
+            thetas_dim: The dimension of the parameterized output for the block.
+                If None, it is inferred.
+            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
+            backcast_length: The length of the backcast. Defines how many time units
+                from the past are used to predict the future. Default: 10.
+            forecast_length: The length of the forecast, i.e., the number of time steps
+                ahead to predict. Default: 5.
+            dropout: The dropout rate applied to the fully connected mlp layers to
+                prevent overfitting. Default: 0.1.
+            kan_params (dict): Parameters specific to the KAN layer
+                (used for modeling using KAN). Default: None.
+                Contains:
+                    num_grids (int): The number of grid intervals for KAN.
+                    k (int): The order of the piecewise polynomial for KAN.
+                    noise_scale (float): The scale of noise injected at initialization.
+                    scale_base_mu (float): The scale of the residual function
+                        initialized to N(scale_base_mu, scale_base_sigma^2).
+                    scale_base_sigma (float): The scale of the residual function
+                        initialized to N(scale_base_mu, scale_base_sigma^2).
+                    scale_sp (float): The scale of the base function spline(x) in KAN.
+                    base_fun (function): The residual function used by
+                        KAN (e.g., torch.nn.SiLU()).
+                    grid_eps (float): Determines the partitioning of the grid. If 1,
+                        the grid is uniform; if 0, grid is partitioned by percentiles.
+                    grid_range (list or np.array): The range of the grid, given as
+                        a list of two values.
+                    sp_trainable (bool): If True, the scale_sp is trainable.
+                    sb_trainable (bool): If True, the scale_base is trainable.
+                    sparse_init (bool): If True, applies sparse initialization.
+            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
+                kan layers are used in nbeats block else mlp layers are used. Default:
+                false.
+        """
         super().__init__(
             units=units,
             thetas_dim=thetas_dim,
@@ -205,15 +444,18 @@ class NBEATSGenericBlock(NBEATSBlock):
             backcast_length=backcast_length,
             forecast_length=forecast_length,
             dropout=dropout,
+            kan_params=kan_params,
+            use_kan=use_kan,
         )
 
         self.backcast_fc = nn.Linear(thetas_dim, backcast_length)
         self.forecast_fc = nn.Linear(thetas_dim, forecast_length)
 
     def forward(self, x):
+        """
+        Computes the backcast and forecast outputs for the given input tensor.
+        """
         x = super().forward(x)
-
         theta_b = F.relu(self.theta_b_fc(x))
         theta_f = F.relu(self.theta_f_fc(x))
-
         return self.backcast_fc(theta_b), self.forecast_fc(theta_f)
