@@ -3,13 +3,13 @@ Implementations of flexible GRU and LSTM that can handle sequences of length 0.
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Type, Union
+from typing import Union
 
 import torch
 from torch import nn
 from torch.nn.utils import rnn
 
-HiddenState = Union[Tuple[torch.Tensor, torch.Tensor], torch.Tensor]
+HiddenState = Union[tuple[torch.Tensor, torch.Tensor], torch.Tensor]
 
 
 class RNN(ABC, nn.RNNBase):
@@ -74,7 +74,7 @@ class RNN(ABC, nn.RNNBase):
         hx: HiddenState = None,
         lengths: torch.LongTensor = None,
         enforce_sorted: bool = True,
-    ) -> Tuple[Union[rnn.PackedSequence, torch.Tensor], HiddenState]:
+    ) -> tuple[Union[rnn.PackedSequence, torch.Tensor], HiddenState]:
         """
         Forward function of rnn that allows zero-length sequences.
 
@@ -226,7 +226,7 @@ class GRU(RNN, nn.GRU):
         return hidden_state.repeat_interleave(n_samples, 1)
 
 
-def get_rnn(cell_type: Union[Type[RNN], str]) -> Type[RNN]:
+def get_rnn(cell_type: Union[type[RNN], str]) -> type[RNN]:
     """
     Get LSTM or GRU.
 

@@ -9,7 +9,7 @@ a class that is able to handle a wide variety of timeseries data problems.
 from copy import copy as _copy, deepcopy
 from functools import lru_cache
 import inspect
-from typing import Any, Callable, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar, Union
 import warnings
 
 import numpy as np
@@ -1056,7 +1056,7 @@ class TimeSeriesDataSet(Dataset):
         torch.save(self, fname)
 
     @classmethod
-    def load(cls: Type[TimeSeriesDataType], fname: str) -> TimeSeriesDataType:
+    def load(cls: type[TimeSeriesDataType], fname: str) -> TimeSeriesDataType:
         """
         Load dataset from disk
 
@@ -1627,7 +1627,7 @@ class TimeSeriesDataSet(Dataset):
 
     @classmethod
     def from_dataset(
-        cls: Type[TimeSeriesDataType],
+        cls: type[TimeSeriesDataType],
         dataset: TimeSeriesDataType,
         data: pd.DataFrame,
         stop_randomization: bool = False,
@@ -1670,7 +1670,7 @@ class TimeSeriesDataSet(Dataset):
 
     @classmethod
     def from_parameters(
-        cls: Type[TimeSeriesDataType],
+        cls: type[TimeSeriesDataType],
         parameters: dict[str, Any],
         data: pd.DataFrame,
         stop_randomization: bool = None,
@@ -2198,27 +2198,23 @@ class TimeSeriesDataSet(Dataset):
             # select subset of sequence of new sequence
             if new_encoder_length + new_decoder_length < len(target[0]):
                 data_cat = data_cat[
-                    encoder_length
-                    - new_encoder_length : encoder_length
+                    encoder_length - new_encoder_length : encoder_length
                     + new_decoder_length
                 ]
                 data_cont = data_cont[
-                    encoder_length
-                    - new_encoder_length : encoder_length
+                    encoder_length - new_encoder_length : encoder_length
                     + new_decoder_length
                 ]
                 target = [
                     t[
-                        encoder_length
-                        - new_encoder_length : encoder_length
+                        encoder_length - new_encoder_length : encoder_length
                         + new_decoder_length
                     ]
                     for t in target
                 ]
                 if weight is not None:
                     weight = weight[
-                        encoder_length
-                        - new_encoder_length : encoder_length
+                        encoder_length - new_encoder_length : encoder_length
                         + new_decoder_length
                     ]
                 encoder_length = new_encoder_length

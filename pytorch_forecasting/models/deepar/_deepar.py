@@ -5,7 +5,7 @@ which is the one of the most popular forecasting algorithms and is often used as
 """  # noqa: E501
 
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -35,28 +35,30 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
+    """DeepAR: Probabilistic forecasting with autoregressive recurrent networks."""
+
     def __init__(
         self,
         cell_type: str = "LSTM",
         hidden_size: int = 10,
         rnn_layers: int = 2,
         dropout: float = 0.1,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_categoricals_encoder: Optional[List[str]] = None,
-        time_varying_categoricals_decoder: Optional[List[str]] = None,
-        categorical_groups: Optional[Dict[str, List[str]]] = None,
-        time_varying_reals_encoder: Optional[List[str]] = None,
-        time_varying_reals_decoder: Optional[List[str]] = None,
-        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
-        embedding_paddings: Optional[List[str]] = None,
-        embedding_labels: Optional[Dict[str, np.ndarray]] = None,
-        x_reals: Optional[List[str]] = None,
-        x_categoricals: Optional[List[str]] = None,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_categoricals_encoder: Optional[list[str]] = None,
+        time_varying_categoricals_decoder: Optional[list[str]] = None,
+        categorical_groups: Optional[dict[str, list[str]]] = None,
+        time_varying_reals_encoder: Optional[list[str]] = None,
+        time_varying_reals_decoder: Optional[list[str]] = None,
+        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
+        embedding_paddings: Optional[list[str]] = None,
+        embedding_labels: Optional[dict[str, np.ndarray]] = None,
+        x_reals: Optional[list[str]] = None,
+        x_categoricals: Optional[list[str]] = None,
         n_validation_samples: int = None,
         n_plotting_samples: int = None,
-        target: Union[str, List[str]] = None,
-        target_lags: Optional[Dict[str, List[int]]] = None,
+        target: Union[str, list[str]] = None,
+        target_lags: Optional[dict[str, list[int]]] = None,
         loss: DistributionLoss = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -201,7 +203,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
     def from_dataset(
         cls,
         dataset: TimeSeriesDataSet,
-        allowed_encoder_known_variable_names: List[str] = None,
+        allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ):
         """
@@ -222,13 +224,18 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 MultiLoss([NormalDistributionLoss()] * len(dataset.target_names)),
             )
         new_kwargs.update(kwargs)
-        assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
-            not isinstance(dataset.target_normalizer, MultiNormalizer)
-            or all(
-                not isinstance(normalizer, NaNLabelEncoder)
-                for normalizer in dataset.target_normalizer
+        assert (
+            not isinstance(dataset.target_normalizer, NaNLabelEncoder)
+            and (
+                not isinstance(dataset.target_normalizer, MultiNormalizer)
+                or all(
+                    not isinstance(normalizer, NaNLabelEncoder)
+                    for normalizer in dataset.target_normalizer
+                )
             )
-        ), "target(s) should be continuous - categorical targets are not supported"  # todo: remove this restriction # noqa: E501
+        ), (
+            "target(s) should be continuous - categorical targets are not supported"
+        )  # todo: remove this restriction # noqa: E501
         if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
             assert (
                 dataset.min_prediction_length == dataset.max_prediction_length
@@ -277,7 +284,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         # shift target
         return input_vector
 
-    def encode(self, x: Dict[str, torch.Tensor]) -> HiddenState:
+    def encode(self, x: dict[str, torch.Tensor]) -> HiddenState:
         """
         Encode sequence into hidden state
         """
@@ -314,7 +321,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         decoder_lengths: torch.Tensor,
         hidden_state: HiddenState,
         n_samples: int = None,
-    ) -> Tuple[torch.Tensor, bool]:
+    ) -> tuple[torch.Tensor, bool]:
         """
         Decode hidden state of RNN into prediction. If n_smaples is given,
         decode not by using actual values but rather by
@@ -374,8 +381,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         return output
 
     def forward(
-        self, x: Dict[str, torch.Tensor], n_samples: int = None
-    ) -> Dict[str, torch.Tensor]:
+        self, x: dict[str, torch.Tensor], n_samples: int = None
+    ) -> dict[str, torch.Tensor]:
         """
         Forward network
         """
@@ -423,7 +430,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
     def predict(
         self,
         data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
-        mode: Union[str, Tuple[str, str]] = "prediction",
+        mode: Union[str, tuple[str, str]] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         batch_size: int = 64,
@@ -431,8 +438,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         fast_dev_run: bool = False,
         return_x: bool = False,
         return_y: bool = False,
-        mode_kwargs: Dict[str, Any] = None,
-        trainer_kwargs: Optional[Dict[str, Any]] = None,
+        mode_kwargs: dict[str, Any] = None,
+        trainer_kwargs: Optional[dict[str, Any]] = None,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         output_dir: Optional[str] = None,
         n_samples: int = 100,

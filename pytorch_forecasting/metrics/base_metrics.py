@@ -3,7 +3,7 @@ Base classes for metrics - only for inheritance.
 """
 
 import inspect
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 import warnings
 
 from sklearn.base import BaseEstimator
@@ -31,7 +31,7 @@ class Metric(LightningMetric):
     def __init__(
         self,
         name: str = None,
-        quantiles: List[float] = None,
+        quantiles: list[float] = None,
         reduction="mean",
         **kwargs,
     ):
@@ -108,7 +108,7 @@ class Metric(LightningMetric):
         return y_pred
 
     def to_quantiles(
-        self, y_pred: torch.Tensor, quantiles: List[float] = None
+        self, y_pred: torch.Tensor, quantiles: list[float] = None
     ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
@@ -194,7 +194,7 @@ class TorchMetricWrapper(Metric):
 
     def _convert(
         self, y_pred: torch.Tensor, target: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         # unpack target into target and weights
         if isinstance(target, (list, tuple)) and not isinstance(
             target, rnn.PackedSequence
@@ -272,7 +272,7 @@ class MultiLoss(LightningMetric):
     higher_is_better = False
     is_differentiable = True
 
-    def __init__(self, metrics: List[LightningMetric], weights: List[float] = None):
+    def __init__(self, metrics: list[LightningMetric], weights: list[float] = None):
         """
         Args:
             metrics (List[LightningMetric], optional): list of metrics to combine.
@@ -545,8 +545,8 @@ class CompositeMetric(LightningMetric):
 
     def __init__(
         self,
-        metrics: Optional[List[LightningMetric]] = None,
-        weights: Optional[List[float]] = None,
+        metrics: Optional[list[LightningMetric]] = None,
+        weights: Optional[list[float]] = None,
     ):
         """
         Args:
@@ -737,7 +737,7 @@ class AggregationMetric(Metric):
     @staticmethod
     def _calculate_mean(
         y_pred: torch.Tensor, y_actual: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         # extract target and weight
         if isinstance(y_actual, (tuple, list)) and not isinstance(
             y_actual, rnn.PackedSequence
@@ -817,19 +817,27 @@ class MultiHorizonMetric(Metric):
 
     def __init__(self, reduction: str = "mean", **kwargs) -> None:
         super().__init__(reduction=reduction, **kwargs)
+        if reduction == "none":
+            default_losses = default_lengths = []
+            dist_reduce_fx = "cat"
+        else:
+            default_losses = 0.0
+            default_lengths = 0
+            dist_reduce_fx = "sum"
+
         self.add_state(
             "losses",
-            default=torch.tensor(0.0),
-            dist_reduce_fx="sum" if reduction != "none" else "cat",
+            default=torch.tensor(default_losses, dtype=torch.float),
+            dist_reduce_fx=dist_reduce_fx,
         )
         self.add_state(
             "lengths",
-            default=torch.tensor(0),
-            dist_reduce_fx="sum" if reduction != "none" else "mean",
+            default=torch.tensor(default_lengths, dtype=torch.long),
+            dist_reduce_fx=dist_reduce_fx,
         )
 
     def loss(
-        self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor
+        self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
     ) -> torch.Tensor:
         """
         Calculate loss without reduction. Override in derived classes
@@ -989,12 +997,12 @@ class DistributionLoss(MultiHorizonMetric):
     """  # noqa: E501
 
     distribution_class: distributions.Distribution
-    distribution_arguments: List[str]
+    distribution_arguments: list[str]
 
     def __init__(
         self,
         name: str = None,
-        quantiles: Optional[List[float]] = None,
+        quantiles: Optional[list[float]] = None,
         reduction="mean",
     ):
         """
@@ -1074,7 +1082,7 @@ class DistributionLoss(MultiHorizonMetric):
         return samples
 
     def to_quantiles(
-        self, y_pred: torch.Tensor, quantiles: List[float] = None, n_samples: int = 100
+        self, y_pred: torch.Tensor, quantiles: list[float] = None, n_samples: int = 100
     ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
@@ -1123,7 +1131,9 @@ class MultivariateDistributionLoss(DistributionLoss):
             torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
         """  # noqa: E501
         dist = self.map_x_to_distribution(y_pred)
-        samples = dist.sample((n_samples,)).permute(
+        samples = dist.sample(
+            (n_samples,)
+        ).permute(
             2, 1, 0
         )  # returned as (n_samples, n_timesteps, batch_size), so reshape to (batch_size, n_timesteps, n_samples) # noqa: E501
         return samples

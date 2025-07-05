@@ -4,7 +4,6 @@ Implementation of ``nn.Modules`` for temporal fusion transformer.
 
 from copy import deepcopy
 import math
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -282,13 +281,13 @@ class GatedResidualNetwork(nn.Module):
 class VariableSelectionNetwork(nn.Module):
     def __init__(
         self,
-        input_sizes: Dict[str, int],
+        input_sizes: dict[str, int],
         hidden_size: int,
-        input_embedding_flags: Dict[str, bool] = None,
+        input_embedding_flags: dict[str, bool] = None,
         dropout: float = 0.1,
         context_size: int = None,
-        single_variable_grns: Dict[str, GatedResidualNetwork] = None,
-        prescalers: Dict[str, nn.Linear] = None,
+        single_variable_grns: dict[str, GatedResidualNetwork] = None,
+        prescalers: dict[str, nn.Linear] = None,
     ):
         """
         Calculate weights for ``num_inputs`` variables  which are each of size
@@ -361,7 +360,7 @@ class VariableSelectionNetwork(nn.Module):
     def num_inputs(self):
         return len(self.input_sizes)
 
-    def forward(self, x: Dict[str, torch.Tensor], context: torch.Tensor = None):
+    def forward(self, x: dict[str, torch.Tensor], context: torch.Tensor = None):
         if self.num_inputs > 1:
             # transform single variables
             var_outputs = []
@@ -437,14 +436,28 @@ class PositionalEncoder(torch.nn.Module):
 
 
 class ScaledDotProductAttention(nn.Module):
-    def __init__(self, dropout: float = None, scale: bool = True):
-        super(ScaledDotProductAttention, self).__init__()
+    """Scaled Dot-Product Attention.
+
+    Parameters
+    ----------
+    dropout : float, optional
+        Dropout rate, by default None
+    scale : bool, optional
+        Whether to scale the attention scores, by default True
+    mask_bias : float, optional
+        Bias for the mask in forward, by default -1e9.
+        Set to -float("inf") to allow mixed precision training.
+    """
+
+    def __init__(self, dropout: float = None, scale: bool = True, mask_bias=-1e9):
+        super().__init__()
         if dropout is not None:
             self.dropout = nn.Dropout(p=dropout)
         else:
             self.dropout = dropout
         self.softmax = nn.Softmax(dim=2)
         self.scale = scale
+        self.mask_bias = mask_bias
 
     def forward(self, q, k, v, mask=None):
         attn = torch.bmm(q, k.permute(0, 2, 1))  # query-key overlap
@@ -456,7 +469,7 @@ class ScaledDotProductAttention(nn.Module):
             attn = attn / dimension
 
         if mask is not None:
-            attn = attn.masked_fill(mask, -1e9)
+            attn = attn.masked_fill(mask, self.mask_bias)
         attn = self.softmax(attn)
 
         if self.dropout is not None:
@@ -466,11 +479,27 @@ class ScaledDotProductAttention(nn.Module):
 
 
 class InterpretableMultiHeadAttention(nn.Module):
-    def __init__(self, n_head: int, d_model: int, dropout: float = 0.0):
-        super(InterpretableMultiHeadAttention, self).__init__()
+    """Interpretable Multi-Head Attention module.
+
+    Parameters
+    ----------
+    n_head : int
+        Number of attention heads.
+    d_model : int
+        Dimension of the model.
+    dropout : float, optional
+        Dropout rate, by default 0.0
+    mask_bias : float, optional
+        Bias for the mask in ScaledDotProductAttention.forward, by default -1e9.
+        Set to -float("inf") to allow mixed precision training.
+    """
+
+    def __init__(self, n_head: int, d_model: int, dropout: float = 0.0, mask_bias=-1e9):
+        super().__init__()
 
         self.n_head = n_head
         self.d_model = d_model
+        self.mask_bias = mask_bias
         self.d_k = self.d_q = self.d_v = d_model // n_head
         self.dropout = nn.Dropout(p=dropout)
 
@@ -481,7 +510,7 @@ class InterpretableMultiHeadAttention(nn.Module):
         self.k_layers = nn.ModuleList(
             [nn.Linear(self.d_model, self.d_k) for _ in range(self.n_head)]
         )
-        self.attention = ScaledDotProductAttention()
+        self.attention = ScaledDotProductAttention(mask_bias=mask_bias)
         self.w_h = nn.Linear(self.d_v, self.d_model, bias=False)
 
         self.init_weights()
@@ -493,7 +522,7 @@ class InterpretableMultiHeadAttention(nn.Module):
             else:
                 torch.nn.init.zeros_(p)
 
-    def forward(self, q, k, v, mask=None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, q, k, v, mask=None) -> tuple[torch.Tensor, torch.Tensor]:
         heads = []
         attns = []
         vs = self.v_layer(v)

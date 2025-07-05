@@ -2,8 +2,6 @@
 Implementation of ``nn.Modules`` for N-Beats model.
 """
 
-from typing import Tuple
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -25,7 +23,7 @@ def linear(input_size, output_size, bias=True, dropout: int = None):
 
 def linspace(
     backcast_length: int, forecast_length: int, centered: bool = False
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Generate linear spaced values for backcast and forecast.
     """
@@ -262,7 +260,7 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         )
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
 
-    def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Computes the backcast and forecast outputs for the given input tensor.
         """
@@ -362,7 +360,7 @@ class NBEATSTrendBlock(NBEATSBlock):
         )
         self.register_buffer("T_forecast", coefficients * norm)
 
-    def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Computes the backcast and forecast outputs for the given input tensor.
         """
