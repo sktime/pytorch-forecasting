@@ -5,6 +5,7 @@ from pytorch_forecasting.models.nbeats._nbeats import NBeats
 from pytorch_forecasting.models.nbeats._nbeats_adapter import NBeatsAdapter
 from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
 from pytorch_forecasting.models.nbeats._nbeatskan import NBeatsKAN
+from pytorch_forecasting.models.nbeats._nbeatskan_pkg import NBeatsKAN_pkg
 from pytorch_forecasting.models.nbeats.sub_modules import (
     NBEATSGenericBlock,
     NBEATSSeasonalBlock,
@@ -16,6 +17,7 @@ __all__ = [
     "NBeatsKAN",
     "NBEATSGenericBlock",
     "NBeats_pkg",
+    "NBeatsKAN_pkg",
     "NBEATSSeasonalBlock",
     "NBEATSTrendBlock",
     "NBeatsAdapter",
