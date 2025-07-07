@@ -41,7 +41,7 @@ class DecoderMLP_pkg(_BasePtForecaster):
         return [
             {},
             dict(
-                data_loader_kwargs=dict(min_prediction_length=1, min_encoder_length=1),
+                data_loader_kwargs=dict(min_prediction_length=2, min_encoder_length=2),
             ),
         ]
 
