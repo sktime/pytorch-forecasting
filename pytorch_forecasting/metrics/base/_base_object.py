@@ -64,11 +64,6 @@ class _BasePtMetric(_BaseObject):
 
         return {}
 
-    def get_metric_type(cls):
-        """Get the metric type."""
-
-        return cls.get_tag("metric_type", "point")
-
     @classmethod
     def requires_data_type(cls):
         """Check if the metric requires a specific data type.
