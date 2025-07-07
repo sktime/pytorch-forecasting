@@ -202,7 +202,7 @@ def all_objects(
         return_tags=return_tags,
         suppress_import_stdout=suppress_import_stdout,
         package_name="pytorch_forecasting",
-        path=None,
+        path=ROOT,
         modules_to_ignore=MODULES_TO_IGNORE,
     )
 
