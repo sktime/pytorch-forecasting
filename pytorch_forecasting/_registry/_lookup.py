@@ -16,7 +16,7 @@ from pathlib import Path
 
 from skbase.lookup import all_objects as _all_objects
 
-from pytorch_forecasting.models.base import _BaseObject
+from pytorch_forecasting.base._base_object import _BaseObject
 
 
 def all_objects(
@@ -202,7 +202,7 @@ def all_objects(
         return_tags=return_tags,
         suppress_import_stdout=suppress_import_stdout,
         package_name="pytorch_forecasting",
-        path=ROOT,
+        path=None,
         modules_to_ignore=MODULES_TO_IGNORE,
     )
 

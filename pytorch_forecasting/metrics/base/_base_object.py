@@ -1,14 +1,6 @@
 """Base object class for pytorch-forecasting metrics."""
 
-import inspect
-
-from pytorch_forecasting.utils._dependencies import _safe_import
-
-_SkbaseBaseObject = _safe_import("skbase.base.BaseObject", pkg_name="scikit-base")
-
-
-class _BaseObject(_SkbaseBaseObject):
-    pass
+from pytorch_forecasting.base._base_object import _BaseObject
 
 
 class _BasePtMetric(_BaseObject):
