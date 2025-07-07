@@ -2,7 +2,7 @@
 Metrics for (mulit-horizon) timeseries forecasting.
 """
 
-from pytorch_forecasting.metrics.base_metrics import (
+from pytorch_forecasting.metrics.base import (
     DistributionLoss,
     Metric,
     MultiHorizonMetric,
@@ -29,6 +29,7 @@ from pytorch_forecasting.metrics.point import (
     PoissonLoss,
     TweedieLoss,
 )
+from pytorch_forecasting.metrics.point_metric_pkg import MAE_pkg
 from pytorch_forecasting.metrics.quantile import QuantileLoss
 
 __all__ = [
@@ -54,4 +55,5 @@ __all__ = [
     "ImplicitQuantileNetworkDistributionLoss",
     "QuantileLoss",
     "MQF2DistributionLoss",
+    "MAE_pkg",
 ]

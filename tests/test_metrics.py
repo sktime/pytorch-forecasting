@@ -15,7 +15,10 @@ from pytorch_forecasting.metrics import (
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
-from pytorch_forecasting.metrics.base_metrics import AggregationMetric, CompositeMetric
+from pytorch_forecasting.metrics.base.base_metrics import (
+    AggregationMetric,
+    CompositeMetric,
+)
 
 
 def test_composite_metric():
