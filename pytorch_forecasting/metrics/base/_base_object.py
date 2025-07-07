@@ -17,11 +17,11 @@ class _BasePtMetric(_BaseObject):
         str
             The name of the metric.
         """
-        metric_cls = cls.get_metric_cls()
+        metric_cls = cls.get_model_cls()
         return metric_cls.__name__
 
     @classmethod
-    def get_metric_cls(cls):
+    def get_model_cls(cls):
         """Get the metric class.
 
         Returns
@@ -50,7 +50,7 @@ class _BasePtMetric(_BaseObject):
             keyword arguments.
         """
 
-        return test_case["y_pred"], test_case["y"], {}
+        return test_case["y_pred"], test_case["y"]
 
     @classmethod
     def get_test_params(cls):
@@ -87,7 +87,7 @@ class _BasePtMetric(_BaseObject):
             )
 
         if metric_type == "distribution":
-            distribution_type = cls.get_tag("distribution_type", None)
+            distribution_type = cls._tags.get("distribution_type", None)
             if distribution_type is None:
                 raise ValueError(
                     "Metric requires a distribution type to be set. "

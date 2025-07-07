@@ -10,6 +10,7 @@ import torch
 from torch.nn.utils import rnn
 
 from pytorch_forecasting._registry import all_objects
+from pytorch_forecasting.data import TorchNormalizer
 from pytorch_forecasting.tests.test_all_estimators import (
     BaseFixtureGenerator,
     PackageConfig,
@@ -29,7 +30,6 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
         metric.reset()
         metric.update(y_pred, y)
         res = metric.compute()
-
         assert isinstance(res, torch.Tensor)
         assert torch.isfinite(res).all(), "Non-finite values in metric result."
 
@@ -77,23 +77,21 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
             assert torch.isfinite(composite_result).all()
             assert torch.isfinite(weighted_result).all()
 
-    def _test_reduction_modes(self, metric_class, y_pred, y):
+    def _test_reduction_modes(self, metric_class, y_pred, y, test_params):
         """Test that all metrics support different reduction modes."""
 
         for reduction in ["mean", "sqrt-mean", "none"]:
-            metric = metric_class(reduction=reduction)
+            metric = metric_class(**test_params)
             if metric_class.__name__ == "NormalDistributionLoss":
                 metric._transformation = None
-            result = metric(y_pred, y)
+            metric.update(y_pred, y)
+            result = metric.reduce_loss(
+                metric.losses, metric.lengths, reduction=reduction
+            )  # noqa: E501
             assert isinstance(result, torch.Tensor)
 
             if reduction == "none":
-                if isinstance(y, rnn.PackedSequence):
-                    assert (
-                        result.shape[0] == y_pred.shape[0]
-                    )  # only check across batch.
-                else:
-                    assert result.shape == y_pred.shape
+                result.shape == metric.losses
             else:
                 assert result.ndim == 0
                 if reduction == "sqrt-mean":
@@ -102,25 +100,36 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
                     ), "Result should be non-negative for sqrt-mean reduction."  # noqa: E501
 
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
-    def test_metric_functionality(self, object_class, request, target_type):
+    def test_metric_functionality(self, object_pkg, object_class, request, target_type):
         """Test metric functionality with appropriate test data."""
         # Skip abstract classes
-        if object_class.__name__ in [
+        if object_pkg.name in [
             "Metric",
             "MultiHorizonMetric",
             "DistributionLoss",
         ]:
-            pytest.skip(f"Skipping abstract class {object_class.__name__}")
+            pytest.skip(f"Skipping abstract class {object_pkg.name}")
 
-        prepare_data_fixture_name = object_class.requires_data_type()
-        test_case = request.getfixturevalue(prepare_data_fixture_name)["test_cases"][
-            target_type
-        ]  # noqa: E501
+        prepare_data_fixture_name = object_pkg.requires_data_type()
+        data = request.getfixturevalue(prepare_data_fixture_name)
 
-        y_pred, y, kwargs = object_class.prepare_test_inputs(test_case)
-        test_params = object_class.get_test_params()
+        test_case = data["test_cases"][target_type]  # noqa: E501
 
-        metric = object_class(**test_params, **kwargs)
+        y_pred, y = object_pkg.prepare_test_inputs(test_case)
+
+        test_params = object_pkg.get_test_params()
+
+        metric = object_class(**test_params)
+
+        if object_class.__name__ == "MASE":
+            metric.update(y_pred, y, test_case["x"]["encoder_target"])
+
+        if hasattr(metric, "rescale_parameters"):
+            y_pred = metric.rescale_parameters(
+                parameters=y_pred,
+                target_scale=test_case["x"]["target_scale"],
+                encoder=TorchNormalizer(),
+            )
 
         self._test_integration_metrics(metric, y_pred, y)
-        self._test_reduction_modes(object_class, y_pred, y)
+        self._test_reduction_modes(object_class, y_pred, y, test_params)

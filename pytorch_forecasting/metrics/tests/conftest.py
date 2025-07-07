@@ -15,6 +15,8 @@ from pytorch_forecasting.data.encoders import GroupNormalizer, TorchNormalizer
 def prepare_point_forecast():
     """Prepare a point forecast dataset, for testing point forecast metrics."""
 
+    torch.manual_seed(42)
+    np.random.seed(42)
     batch_size, timesteps = 4, 20
     prediction_length = timesteps // 2
 
@@ -87,6 +89,9 @@ def prepare_point_forecast():
 @pytest.fixture(scope="module")
 def prepare_quantile_forecast():
     """Prepare a quantile forecast dataset, for testing quantile metrics."""
+
+    torch.manual_seed(42)
+    np.random.seed(42)
 
     batch_size, timesteps = 4, 20
     prediction_length = timesteps // 2
@@ -161,6 +166,9 @@ def prepare_quantile_forecast():
 @pytest.fixture(scope="module")
 def prepare_normal_distribution_forecast():
     """Prepare data for normal distribution loss metrics."""
+
+    torch.manual_seed(42)
+    np.random.seed(42)
 
     batch_size, timesteps = 4, 20
     prediction_length = timesteps // 2

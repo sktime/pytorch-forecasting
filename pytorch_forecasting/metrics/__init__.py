@@ -29,7 +29,7 @@ from pytorch_forecasting.metrics.point import (
     PoissonLoss,
     TweedieLoss,
 )
-from pytorch_forecasting.metrics.point_metric_pkg import MAE_pkg
+from pytorch_forecasting.metrics.point_pkg import MAE_pkg
 from pytorch_forecasting.metrics.quantile import QuantileLoss
 
 __all__ = [
@@ -55,5 +55,4 @@ __all__ = [
     "ImplicitQuantileNetworkDistributionLoss",
     "QuantileLoss",
     "MQF2DistributionLoss",
-    "MAE_pkg",
 ]
