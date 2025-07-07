@@ -57,7 +57,7 @@ LOSS_SPECIFIC_PARAMS = {
         "clip_target": True,
         "data_loader_kwargs": {
             "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], transformation="log"
+                groups=["agency", "sku"], transformation="log1p"
             )
         },
     },
