@@ -18,28 +18,35 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NBeatsAdapter(BaseModel):
+    """
+    Initialize NBeats Adapter.
+
+    Parameters
+    ----------
+    **kwargs
+        additional arguments to :py:class:`~BaseModel`.
+    """  # noqa: E501
+
     def __init__(
         self,
         **kwargs,
     ):
-        """
-        Initialize NBeats Adapter.
-
-        Args:
-            **kwargs: additional arguments to :py:class:`~BaseModel`.
-        """  # noqa: E501
         super().__init__(**kwargs)
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Pass forward of network.
 
-        Args:
-            x (Dict[str, torch.Tensor]): input from dataloader generated from
-                :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        Parameters
+        ----------
+        x : dict of str to torch.Tensor
+            input from dataloader generated from
+            :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
-        Returns:
-            Dict[str, torch.Tensor]: output of model
+        Returns
+        -------
+        dict of str to torch.Tensor
+            output of model
         """
         target = x["encoder_cont"][..., 0]
 
@@ -110,12 +117,16 @@ class NBeatsAdapter(BaseModel):
         Convenience function to create network from :py:class
         `~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
-        Args:
-            dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
-            **kwargs: additional arguments to be passed to ``__init__`` method.
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            dataset where sole predictor is the target.
+        **kwargs
+            additional arguments to be passed to ``__init__`` method.
 
-        Returns:
-            NBeats
+        Returns
+        -------
+        NBeats
         """  # noqa: E501
         new_kwargs = {
             "prediction_length": dataset.max_prediction_length,
@@ -240,18 +251,24 @@ class NBeatsAdapter(BaseModel):
         Plot two panels: prediction and backcast vs actuals and
         decomposition of prediction into trend, seasonality and generic forecast.
 
-        Args:
-            x (Dict[str, torch.Tensor]): network input
-            output (Dict[str, torch.Tensor]): network output
-            idx (int): index of sample for which to plot the interpretation.
-            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which
-                to plot the interpretation. Defaults to None.
-            plot_seasonality_and_generic_on_secondary_axis (bool, optional): if to plot
-                seasonality and generic forecast on secondary axis in second panel.
-                Defaults to False.
+        Parameters
+        ----------
+        x : dict of str to torch.Tensor
+            network input
+        output : dict of str to torch.Tensor
+            network output
+        idx : int
+            index of sample for which to plot the interpretation.
+        ax : list of matplotlib.axes
+            list of two matplotlib axes onto which to plot the interpretation. Defaults to None.
+        plot_seasonality_and_generic_on_secondary_axis : bool
+            if to plot seasonality and generic forecast on secondary axis in second panel.
+            Defaults to False.
 
-        Returns:
-            plt.Figure: matplotlib figure
+        Returns
+        -------
+        matplotlib.figure.Figure
+            matplotlib figure
         """  # noqa: E501
         _check_matplotlib("plot_interpretation")
 

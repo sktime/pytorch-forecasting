@@ -8,33 +8,33 @@ import torch.nn as nn
 
 def b_batch(x, grid, k=0):
     """
-    evaluate x on B-spline bases
+    Evaluate x on B-spline bases
 
-    Args:
-    -----
-        x : 2D torch.tensor
-            inputs, shape (number of splines, number of samples)
-        grid : 2D torch.tensor
-            grids, shape (number of splines, number of grid points)
-        k : int
-            the piecewise polynomial order of splines.
-        extend : bool
-            If True, k points are extended on both ends. If False, no extension
-            (zero boundary condition). Default: True
+    Parameters
+    ----------
+    x : torch.Tensor
+        2D tensor of inputs, shape (number of splines, number of samples).
+    grid : torch.Tensor
+        2D tensor of grids, shape (number of splines, number of grid points).
+    k : int
+        The piecewise polynomial order of splines.
+    extend : bool
+        If True, k points are extended on both ends. If False, no extension
+        (zero boundary condition). Default: True.
 
-    Returns:
-    --------
-        spline values : 3D torch.tensor
-            shape (batch, in_dim, G+k). G: the number of grid intervals,
-            k: spline order.
-
-    Example
+    Returns
     -------
+    spline values : torch.Tensor
+        3D tensor of shape (batch, in_dim, G+k), where G is the number of
+        grid intervals and k is the spline order.
+
+    Examples
+    --------
     The following is an example from the original `pykan` library, adapted here
     for illustration within the PyTorch Forecasting integration.
 
     Install the `pykan` package first:
-    >>> pip install pykan
+    pip install pykan
     Then use:
 
     >>> from kan.spline import B_batch
@@ -42,7 +42,6 @@ def b_batch(x, grid, k=0):
     >>> x = torch.rand(100, 2)
     >>> grid = torch.linspace(-1, 1, steps=11)[None, :].expand(2, 11)
     >>> B_batch(x, grid, k=3).shape
-
     """
 
     x = x.unsqueeze(dim=2)
@@ -66,25 +65,25 @@ def b_batch(x, grid, k=0):
 
 def coef2curve(x_eval, grid, coef, k):
     """
-    converting B-spline coefficients to B-spline curves. Evaluate x on B-spline curves
+    Converting B-spline coefficients to B-spline curves. Evaluate x on B-spline curves
     (summing up b_batch results over B-spline basis).
 
-    Args:
-    -----
-        x_eval : 2D torch.tensor
-            shape (batch, in_dim)
-        grid : 2D torch.tensor
-            shape (in_dim, G+2k). G: the number of grid intervals; k: spline order.
-        coef : 3D torch.tensor
-            shape (in_dim, out_dim, G+k)
-        k : int
-            the piecewise polynomial order of splines.
+    Parameters
+    ----------
+    x_eval : torch.Tensor
+        2D tensor of shape (batch, in_dim).
+    grid : torch.Tensor
+        2D tensor of shape (in_dim, G+2k). G: the number of grid intervals;
+        k: spline order.
+    coef : torch.Tensor
+        3D tensor of shape (in_dim, out_dim, G+k).
+    k : int
+        The piecewise polynomial order of splines.
 
-    Returns:
-    --------
-        y_eval : 3D torch.tensor
-            shape (batch, in_dim, out_dim)
-
+    Returns
+    -------
+    y_eval : torch.Tensor
+        3D tensor of shape (batch, in_dim, out_dim).
     """
 
     b_splines = b_batch(x_eval, grid, k=k)
@@ -95,25 +94,25 @@ def coef2curve(x_eval, grid, coef, k):
 
 def curve2coef(x_eval, y_eval, grid, k):
     """
-    converting B-spline curves to B-spline coefficients using least squares.
+    Estimate spline coefficients via batched least squares.
 
-    Args:
-    -----
-        x_eval : 2D torch.tensor
-            shape (batch, in_dim)
-        y_eval : 3D torch.tensor
-            shape (batch, in_dim, out_dim)
-        grid : 2D torch.tensor
-            shape (in_dim, grid+2*k)
-        k : int
-            spline order
-        lamb : float
-            regularized least square lambda
+    Parameters
+    ----------
+    x_eval : torch.Tensor
+        2D tensor of shape (batch, in_dim).
+    y_eval : torch.Tensor
+        3D tensor of shape (batch, in_dim, out_dim).
+    grid : torch.Tensor
+        2D tensor of shape (in_dim, grid + 2 * k).
+    k : int
+        Spline order.
+    lamb : float
+        Regularized least square lambda.
 
-    Returns:
-    --------
-        coef : 3D torch.tensor
-            shape (in_dim, out_dim, G+k)
+    Returns
+    -------
+    coef : torch.Tensor
+        3D tensor of shape (in_dim, out_dim, G + k).
     """
     batch = x_eval.shape[0]
     in_dim = x_eval.shape[1]
@@ -134,17 +133,17 @@ def extend_grid(grid, k_extend=0):
     """
     Extend a grid tensor by padding both ends with equal spacing.
 
-    Args:
-    -----
-        grid : torch.Tensor
-            Grid of shape (in_dim, grid_points).
-        k_extend : int
-            Number of points to extend on both ends.
+    Parameters
+    ----------
+    grid : torch.Tensor
+        Grid of shape (in_dim, grid_points).
+    k_extend : int
+        Number of points to extend on both ends.
 
-    Returns:
-    --------
-        grid : torch.Tensor
-            Extended grid of shape (in_dim, grid_points + 2 * k_extend).
+    Returns
+    -------
+    grid : torch.Tensor
+        Extended grid of shape (in_dim, grid_points + 2 * k_extend).
     """
     h = (grid[:, [-1]] - grid[:, [0]]) / (grid.shape[1] - 1)
 
@@ -159,17 +158,17 @@ def sparse_mask(in_dim, out_dim):
     """
     Generate a sparse connection mask between input and output units.
 
-    Args:
-    -----
-        in_dim : int
-            Number of input units.
-        out_dim : int
-            Number of output units.
+    Parameters
+    ----------
+    in_dim : int
+        Number of input units.
+    out_dim : int
+        Number of output units.
 
-    Returns:
-    --------
-        mask : torch.Tensor
-            Sparse binary mask of shape (in_dim, out_dim).
+    Returns
+    -------
+    mask : torch.Tensor
+        Sparse binary mask of shape (in_dim, out_dim).
     """
     in_coord = torch.arange(in_dim) * 1 / in_dim + 1 / (2 * in_dim)
     out_coord = torch.arange(out_dim) * 1 / out_dim + 1 / (2 * out_dim)
@@ -188,7 +187,59 @@ def sparse_mask(in_dim, out_dim):
 
 class KANLayer(nn.Module):
     """
-    KANLayer class
+    Initialize a KANLayer
+
+    Parameters
+    ----------
+    in_dim : int
+        input dimension. Default: 2.
+    out_dim : int
+        output dimension. Default: 3.
+    num : int
+        the number of grid intervals = G. Default: 5.
+    k : int
+        the order of piecewise polynomial. Default: 3.
+    noise_scale : float
+        the scale of noise injected at initialization. Default: 0.1.
+    scale_base_mu : float
+        the scale of the residual function b(x) is intialized to be
+        N(scale_base_mu, scale_base_sigma^2).
+    scale_base_sigma : float
+        the scale of the residual function b(x) is intialized to be
+        N(scale_base_mu, scale_base_sigma^2).
+    scale_sp : float
+        the scale of the base function spline(x).
+    base_fun : function
+        residual function b(x). Default: None
+    grid_eps : float
+        When grid_eps = 1, the grid is uniform; when grid_eps = 0, the grid is
+        partitioned using percentiles of samples. 0 < grid_eps < 1 interpolates
+        between the two extremes.
+    grid_range : list or np.array of shape (2,)
+        setting the range of grids. Default: None.
+    sp_trainable : bool
+        If true, scale_sp is trainable.
+    sb_trainable : bool
+        If true, scale_base is trainable.
+    sparse_init : bool
+        if sparse_init = True, sparse initialization is applied.
+
+    Returns
+    -------
+    self : reference to self
+
+    Examples
+    --------
+    The following is an example from the original `pykan` library, adapted here
+    for illustration within the PyTorch Forecasting integration.
+
+    Install the `pykan` package first:
+    pip install pykan
+    Then use:
+
+    >>> from kan.KANLayer import *
+    >>> model = KANLayer(in_dim=3, out_dim=5)
+    >>> (model.in_dim, model.out_dim)
     """
 
     def __init__(
@@ -208,61 +259,6 @@ class KANLayer(nn.Module):
         sb_trainable=True,
         sparse_init=False,
     ):
-        """'
-        Initialize a KANLayer
-
-        Args:
-        -----
-            in_dim : int
-                input dimension. Default: 2.
-            out_dim : int
-                output dimension. Default: 3.
-            num : int
-                the number of grid intervals = G. Default: 5.
-            k : int
-                the order of piecewise polynomial. Default: 3.
-            noise_scale : float
-                the scale of noise injected at initialization. Default: 0.1.
-            scale_base_mu : float
-                the scale of the residual function b(x) is intialized to be
-                N(scale_base_mu, scale_base_sigma^2).
-            scale_base_sigma : float
-                the scale of the residual function b(x) is intialized to be
-                N(scale_base_mu, scale_base_sigma^2).
-            scale_sp : float
-                the scale of the base function spline(x).
-            base_fun : function
-                residual function b(x). Default: None
-            grid_eps : float
-                When grid_eps = 1, the grid is uniform; when grid_eps = 0, the grid is
-                partitioned using percentiles of samples. 0 < grid_eps < 1 interpolates
-                between the two extremes.
-            grid_range : list/np.array of shape (2,)
-                setting the range of grids. Default: None.
-            sp_trainable : bool
-                If true, scale_sp is trainable
-            sb_trainable : bool
-                If true, scale_base is trainable
-            sparse_init : bool
-                if sparse_init = True, sparse initialization is applied.
-
-        Returns:
-        --------
-            self
-
-        Example
-        -------
-        The following is an example from the original `pykan` library, adapted here
-        for illustration within the PyTorch Forecasting integration.
-
-        Install the `pykan` package first:
-        >>> pip install pykan
-        Then use:
-
-        >>> from kan.KANLayer import *
-        >>> model = KANLayer(in_dim=3, out_dim=5)
-        >>> (model.in_dim, model.out_dim)
-        """
         super().__init__()
 
         # Handle mutable parameters
@@ -318,26 +314,26 @@ class KANLayer(nn.Module):
         """
         KANLayer forward given input x
 
-        Args:
+        Parameters
         -----
         x : torch.Tensor
             Input tensor of shape (batch_size, in_dim), where:
               - batch_size is the number of input samples.
               - in_dim is the input feature dimension.
 
-        Returns:
+        Returns
         --------
         y : torch.Tensor
             Output tensor, the result of applying spline and residual
             transformations followed by weighted summation.
 
-        Example
-        -------
+        Examples
+        --------
         The following is an example from the original `pykan` library, adapted here
         for illustration within the PyTorch Forecasting integration.
 
         Install the `pykan` package first:
-        >>> pip install pykan
+        pip install pykan
         Then use:
 
         >>> from kan.KANLayer import *
@@ -359,18 +355,18 @@ class KANLayer(nn.Module):
 
     def update_grid_from_samples(self, x):
         """
-        update grid from samples
+        Update grid from samples
 
-        Args:
+        Parameters
         -----
-            x : 2D torch.float
-                inputs, shape (number of samples, input dimension)
+        x : 2D torch.float
+            inputs, shape (number of samples, input dimension)
 
         Returns:
         --------
-            None
+        None
 
-        Example
+        Examples
         -------
         >>> model = KANLayer(in_dim=1, out_dim=1, num=5, k=3)
         >>> print(model.grid.data)
@@ -388,15 +384,15 @@ class KANLayer(nn.Module):
             """
             Generate adaptive or uniform grid points from sorted input samples.
 
-            Args:
+            Parameters
             -----
-                num_interval : int
-                    Number of intervals between grid points.
+            num_interval : int
+                Number of intervals between grid points.
 
             Returns:
             --------
-                grid : torch.Tensor
-                    New grid of shape (in_dim, num_interval + 1).
+            grid : torch.Tensor
+                New grid of shape (in_dim, num_interval + 1).
             """
             ids = [int(batch / num_interval * i) for i in range(num_interval)] + [-1]
             grid_adaptive = x_pos[ids, :].permute(1, 0)

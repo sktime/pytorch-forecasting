@@ -27,7 +27,25 @@ class NBeatsKAN_pkg(_BasePtForecaster):
     @classmethod
     def get_test_train_params(cls):
         """Return testing parameter settings for the trainer."""
-        return [{"backcast_loss_ratio": 1.0}]
+        return [
+            {"backcast_loss_ratio": 0.0},  # pure forecast loss
+            {"backcast_loss_ratio": 1.0},  # equal forecast/backcast
+            {
+                "stack_types": ["generic"],
+                "expansion_coefficient_lengths": [16],
+            },
+            {
+                "num_blocks": [1, 2],
+                "num_block_layers": [2, 3],
+            },  # varying block structure
+            {
+                "num": 7,
+                "k": 4,
+                "sparse_init": True,
+                "grid_range": [-0.5, 0.5],
+                "sp_trainable": False,
+            },  # complex KAN config
+        ]
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):

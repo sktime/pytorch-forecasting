@@ -44,6 +44,54 @@ def linspace(
 
 
 class NBEATSBlock(nn.Module):
+    """
+    Initialize an N-BEATS block using either MLP or KAN layers.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each layer.
+    thetas_dim : int
+        Output dimension of the theta layers.
+    num_block_layers : int
+        Number of hidden layers in the block. Default is 4.
+    backcast_length : int
+        Length of the input (past) sequence. Default is 10.
+    forecast_length : int
+        Length of the output (future) sequence. Default is 5.
+    dropout : float
+        Dropout rate for regularization. Default is 0.1.
+    kan_params : dict
+        Dictionary of parameters for KAN layers. Only required if `use_kan=True`.
+        Default values will be used if not provided. Includes:
+            - num : int, default=5
+                Number of grid intervals.
+            - k : int, default=3
+                Order of piecewise polynomial.
+            - noise_scale : float, default=0.5
+                Initialization noise scale.
+            - scale_base_mu : float, default=0.0
+                Mean for residual function initialization.
+            - scale_base_sigma : float, default=1.0
+                Std deviation for residual function initialization.
+            - scale_sp : float, default=1.0
+                Scale for the spline function.
+            - base_fun : nn.Module, default=torch.nn.SiLU()
+                Base function module.
+            - grid_eps : float, default=0.02
+                Determines grid spacing (0 for quantile, 1 for uniform).
+            - grid_range : list of float, default=[-1, 1]
+                Range of the spline grid.
+            - sp_trainable : bool, default=True
+                Whether scale_sp is trainable.
+            - sb_trainable : bool, default=True
+                Whether scale_base is trainable.
+            - sparse_init : bool, default=False
+                Whether to apply sparse initialization.
+    use_kan : bool
+        If True, uses KAN layers instead of MLP. Default is False.
+    """
+
     def __init__(
         self,
         units,
@@ -55,42 +103,6 @@ class NBEATSBlock(nn.Module):
         kan_params=None,
         use_kan=False,
     ):
-        """
-        Initialize NBeatsSeasonalBlock
-
-        Args:
-            units: The number of units in the mlp/kan layers.
-            thetas_dim: The dimension of the parameterized output for the block.
-            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
-            backcast_length: The length of the backcast. Defines how many time units
-                from the past are used to predict the future. Default: 10.
-            forecast_length: The length of the forecast, i.e., the number of time steps
-                ahead to predict. Default: 5.
-            dropout: The dropout rate applied to the fully connected mlp layers to
-                prevent overfitting. Default: 0.1.
-            kan_params (dict): Configuration dictionary for the KAN layer. Only
-                required if `use_kan=True`. If `kan_params` is not provided and
-                `use_kan=True`, default values will be used. Default: None.
-                Contains:
-                    - num (int): Number of grid intervals. Default: 5.
-                    - k (int): Order of the piecewise polynomial. Default: 3.
-                    - noise_scale (float): Initialization noise scale. Default: 0.5.
-                    - scale_base_mu (float): Mean for residual function init.
-                      Default: 0.0.
-                    - scale_base_sigma (float): Std for residual function init.
-                      Default: 1.0.
-                    - scale_sp (float): Scale for spline function. Default: 1.0.
-                    - base_fun (nn.Module): Base function. Default: torch.nn.SiLU().
-                    - grid_eps (float): 0 → quantile grid, 1 → uniform. Default: 0.02.
-                    - grid_range (list): Range of the spline grid. Default: [-1, 1].
-                    - sp_trainable (bool): Whether scale_sp is trainable. Default: True.
-                    - sb_trainable (bool): Whether scale_base is trainable.
-                      Default: True.
-                    - sparse_init (bool): Apply sparse init to KAN. Default: False.
-            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
-                kan layers are used in nbeats block else mlp layers are used. Default:
-                false.
-        """
         super().__init__()
 
         if use_kan and kan_params is None:
@@ -158,7 +170,17 @@ class NBEATSBlock(nn.Module):
 
     def forward(self, x):
         """
-        Pass through the fully connected mlp/kan layers and returns the output.
+        Forward pass through the block using either MLP or KAN layers.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after processing through the block.
         """
         if self.use_kan:
             # save outputs to be used in updating grid in kan layers during training
@@ -177,6 +199,33 @@ class NBEATSBlock(nn.Module):
 
 
 class NBEATSSeasonalBlock(NBEATSBlock):
+    """
+    Initialize a Seasonal N-BEATS block with Fourier-based seasonality modeling.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Output dimension of theta layers. Inferred from harmonics if not provided.
+    num_block_layers : int
+        Number of layers in the block. Default is 4.
+    backcast_length : int
+        Length of the input (past) sequence. Default is 10.
+    forecast_length : int
+        Length of the output (future) sequence. Default is 5.
+    nb_harmonics : int
+        Number of harmonics for Fourier features. Default is None.
+    min_period : int
+        Minimum period for seasonality. Default is 1.
+    dropout : float
+        Dropout rate. Default is 0.1.
+    kan_params : dict
+        Dictionary of KAN layer parameters. See NBEATSBlock for details.
+    use_kan : bool
+        If True, uses KAN instead of MLP. Default is False.
+    """
+
     def __init__(
         self,
         units,
@@ -190,47 +239,6 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         kan_params=None,
         use_kan=False,
     ):
-        """
-        Initialize NBeatsSeasonalBlock
-
-        Args:
-            units: The number of units in the mlp/kan layers.
-            thetas_dim: The dimension of the parameterized output for the block.
-                If None, it is inferred.
-            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
-            backcast_length: The length of the backcast. Defines how many time units
-                from the past are used to predict the future. Default: 10.
-            forecast_length: The length of the forecast, i.e., the number of time steps
-                ahead to predict. Default: 5.
-            nb_harmonics: The number of harmonics in the seasonal function (relevant for
-                seasonal models). Default: None (no seasonality).
-            min_period: The minimum period used for seasonal patterns. Default: 1.
-            dropout: The dropout rate applied to the fully connected mlp layers to
-                prevent overfitting. Default: 0.1.
-            kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: None.
-                Contains:
-                    num_grids (int): The number of grid intervals for KAN.
-                    k (int): The order of the piecewise polynomial for KAN.
-                    noise_scale (float): The scale of noise injected at initialization.
-                    scale_base_mu (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_base_sigma (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_sp (float): The scale of the base function spline(x) in KAN.
-                    base_fun (function): The residual function used by
-                        KAN (e.g., torch.nn.SiLU()).
-                    grid_eps (float): Determines the partitioning of the grid. If 1,
-                        the grid is uniform; if 0, grid is partitioned by percentiles.
-                    grid_range (list or np.array): The range of the grid, given as
-                        a list of two values.
-                    sp_trainable (bool): If True, the scale_sp is trainable.
-                    sb_trainable (bool): If True, the scale_base is trainable.
-                    sparse_init (bool): If True, applies sparse initialization.
-            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
-                kan layers are used in nbeats block else mlp layers are used. Default:
-                false.
-        """
         if nb_harmonics:
             thetas_dim = nb_harmonics
         else:
@@ -279,7 +287,17 @@ class NBEATSSeasonalBlock(NBEATSBlock):
 
     def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Computes the backcast and forecast outputs for the given input tensor.
+        Compute seasonal backcast and forecast outputs using input tensor.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, backcast_length).
+
+        Returns
+        -------
+        tuple of torch.Tensor
+            Tuple (backcast, forecast), each of shape (batch_size, time_steps).
         """
         x = super().forward(x)
         amplitudes_backward = self.theta_b_fc(x)
@@ -299,6 +317,29 @@ class NBEATSSeasonalBlock(NBEATSBlock):
 
 
 class NBEATSTrendBlock(NBEATSBlock):
+    """
+    Initialize a Trend N-BEATS block using polynomial basis functions.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Output dimension of theta layers (number of polynomial terms).
+    num_block_layers : int
+        Number of hidden layers. Default is 4.
+    backcast_length : int
+        Length of input sequence. Default is 10.
+    forecast_length : int
+        Length of output sequence. Default is 5.
+    dropout : float
+        Dropout rate. Default is 0.1.
+    kan_params : dict
+        KAN layer parameters. See NBEATSBlock for details.
+    use_kan : bool
+        If True, uses KAN instead of MLP. Default is False.
+    """
+
     def __init__(
         self,
         units,
@@ -310,44 +351,6 @@ class NBEATSTrendBlock(NBEATSBlock):
         kan_params=None,
         use_kan=False,
     ):
-        """
-        Initialize NBeatsSeasonalBlock
-
-        Args:
-            units: The number of units in the mlp/kan layers.
-            thetas_dim: The dimension of the parameterized output for the block.
-                If None, it is inferred.
-            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
-            backcast_length: The length of the backcast. Defines how many time units
-                from the past are used to predict the future. Default: 10.
-            forecast_length: The length of the forecast, i.e., the number of time steps
-                ahead to predict. Default: 5.
-            dropout: The dropout rate applied to the fully connected mlp layers to
-                prevent overfitting. Default: 0.1.
-            kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: None.
-                Contains:
-                    num_grids (int): The number of grid intervals for KAN.
-                    k (int): The order of the piecewise polynomial for KAN.
-                    noise_scale (float): The scale of noise injected at initialization.
-                    scale_base_mu (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_base_sigma (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_sp (float): The scale of the base function spline(x) in KAN.
-                    base_fun (function): The residual function used by
-                        KAN (e.g., torch.nn.SiLU()).
-                    grid_eps (float): Determines the partitioning of the grid. If 1,
-                        the grid is uniform; if 0, grid is partitioned by percentiles.
-                    grid_range (list or np.array): The range of the grid, given as
-                        a list of two values.
-                    sp_trainable (bool): If True, the scale_sp is trainable.
-                    sb_trainable (bool): If True, the scale_base is trainable.
-                    sparse_init (bool): If True, applies sparse initialization.
-            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
-                kan layers are used in nbeats block else mlp layers are used. Default:
-                false.
-        """
         super().__init__(
             units=units,
             thetas_dim=thetas_dim,
@@ -379,8 +382,19 @@ class NBEATSTrendBlock(NBEATSBlock):
 
     def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Computes the backcast and forecast outputs for the given input tensor.
+        Compute backcast and forecast outputs using input tensor.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, backcast_length).
+
+        Returns
+        -------
+        tuple of torch.Tensor
+            Tuple (backcast, forecast).
         """
+
         x = super().forward(x)
         backcast = self.theta_b_fc(x).mm(self.T_backcast)
         forecast = self.theta_f_fc(x).mm(self.T_forecast)
@@ -388,6 +402,29 @@ class NBEATSTrendBlock(NBEATSBlock):
 
 
 class NBEATSGenericBlock(NBEATSBlock):
+    """
+    Initialize a Generic N-BEATS block using linear mapping of theta outputs.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Dimension of the theta parameter.
+    num_block_layers : int
+        Number of hidden layers. Default is 4.
+    backcast_length : int
+        Length of past input. Default is 10.
+    forecast_length : int
+        Length of future prediction. Default is 5.
+    dropout : float
+        Dropout rate. Default is 0.1.
+    kan_params : dict
+        KAN layer parameters. See NBEATSBlock for details.
+    use_kan : bool
+        If True, uses KAN instead of MLP. Default is False.
+    """
+
     def __init__(
         self,
         units,
@@ -399,44 +436,6 @@ class NBEATSGenericBlock(NBEATSBlock):
         kan_params=None,
         use_kan=False,
     ):
-        """
-        Initialize NBeatsSeasonalBlock
-
-        Args:
-            units: The number of units in the mlp/kan layers.
-            thetas_dim: The dimension of the parameterized output for the block.
-                If None, it is inferred.
-            num_block_layers: Number of fully connected mlp/kan layers. Default: 4.
-            backcast_length: The length of the backcast. Defines how many time units
-                from the past are used to predict the future. Default: 10.
-            forecast_length: The length of the forecast, i.e., the number of time steps
-                ahead to predict. Default: 5.
-            dropout: The dropout rate applied to the fully connected mlp layers to
-                prevent overfitting. Default: 0.1.
-            kan_params (dict): Parameters specific to the KAN layer
-                (used for modeling using KAN). Default: None.
-                Contains:
-                    num_grids (int): The number of grid intervals for KAN.
-                    k (int): The order of the piecewise polynomial for KAN.
-                    noise_scale (float): The scale of noise injected at initialization.
-                    scale_base_mu (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_base_sigma (float): The scale of the residual function
-                        initialized to N(scale_base_mu, scale_base_sigma^2).
-                    scale_sp (float): The scale of the base function spline(x) in KAN.
-                    base_fun (function): The residual function used by
-                        KAN (e.g., torch.nn.SiLU()).
-                    grid_eps (float): Determines the partitioning of the grid. If 1,
-                        the grid is uniform; if 0, grid is partitioned by percentiles.
-                    grid_range (list or np.array): The range of the grid, given as
-                        a list of two values.
-                    sp_trainable (bool): If True, the scale_sp is trainable.
-                    sb_trainable (bool): If True, the scale_base is trainable.
-                    sparse_init (bool): If True, applies sparse initialization.
-            use_kan: flag parameter to decide usage of KAN blocks in NBEATS. if true,
-                kan layers are used in nbeats block else mlp layers are used. Default:
-                false.
-        """
         super().__init__(
             units=units,
             thetas_dim=thetas_dim,
@@ -453,7 +452,17 @@ class NBEATSGenericBlock(NBEATSBlock):
 
     def forward(self, x):
         """
-        Computes the backcast and forecast outputs for the given input tensor.
+        Compute backcast and forecast using using input tensor.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, backcast_length).
+
+        Returns
+        -------
+        tuple of torch.Tensor
+            Tuple (backcast, forecast).
         """
         x = super().forward(x)
         theta_b = F.relu(self.theta_b_fc(x))
