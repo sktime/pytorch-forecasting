@@ -237,19 +237,293 @@ def prepare_normal_distribution_forecast():
     return {"dataset": dataset, "test_cases": test_cases}
 
 
-@pytest.fixture(params=["standard", "packed", "weighted"])
-def point_forecast_case(request, prepare_point_forecast):
-    """Parametrized fixture for point forecast test cases."""
-    return prepare_point_forecast["test_cases"][request.param]
+@pytest.fixture(scope="module")
+def prepare_multivariate_normal_distribution_forecast():
+    """Prepare data for multivariate normal distribution loss metrics."""
+
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
+
+    n_targets = 2
+
+    mean = torch.tensor([1.0, 1.0])
+    std = torch.tensor([0.2, 0.1])
+    cov_factor = torch.tensor([[0.0], [0.0]])
+
+    multivar_normal_dist = torch.distributions.LowRankMultivariateNormal(
+        loc=mean, cov_diag=std**2, cov_factor=cov_factor
+    )
+
+    multivar_normal_target = multivar_normal_dist.sample(
+        (batch_size, timesteps)
+    ).numpy()
+
+    multivar_normal_target = multivar_normal_target[:, :, 0]
+
+    df = pd.DataFrame(
+        {
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "target": multivar_normal_target.flatten(),
+        }
+    )
+
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=prediction_length,
+        max_prediction_length=prediction_length,
+        target_normalizer=TorchNormalizer(),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
+    )
+
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+
+    mean = torch.randn(batch_size, prediction_length, n_targets)
+    diag_vars = torch.abs(torch.randn(batch_size, prediction_length, n_targets)) + 0.1
+    cov_factors = torch.randn(batch_size, prediction_length, n_targets * 1)  # rank = 1
+
+    y_pred = torch.cat([mean, diag_vars, cov_factors], dim=-1)
+
+    test_cases = {}
+    test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
+    lengths = torch.tensor(
+        [
+            prediction_length,
+            prediction_length - 2,
+            prediction_length - 4,
+            prediction_length - 6,
+        ]
+    )
+    y_packed = rnn.pack_padded_sequence(
+        y[0], lengths, batch_first=True, enforce_sorted=False
+    )
+
+    test_cases["packed"] = {"x": x, "y": y_packed, "y_pred": y_pred}
+
+    return {"dataset": dataset, "test_cases": test_cases}
 
 
-@pytest.fixture(params=["standard", "packed", "weighted"])
-def quantile_forecast_case(request, prepare_quantile_forecast):
-    """Parametrized fixture for quantile forecast test cases."""
-    return prepare_quantile_forecast["test_cases"][request.param]
+@pytest.fixture(scope="module")
+def prepare_negative_binomial_distribution_forecast():
+    """Prepare data for negative binomial distribution loss metric."""
+
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
+
+    mean = 100.0
+    shape = 1.0
+
+    total_count = 1.0 / shape
+    probs = mean / (mean + total_count)
+
+    neg_bin_dist = torch.distributions.NegativeBinomial(
+        total_count=total_count, probs=probs
+    )
+
+    neg_bin_target = neg_bin_dist.sample((batch_size, timesteps)).numpy()
+
+    df = pd.DataFrame(
+        {
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "target": neg_bin_target.flatten(),
+        }
+    )
+
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=prediction_length,
+        max_prediction_length=prediction_length,
+        target_normalizer=TorchNormalizer(),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
+    )
+
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+
+    y_pred = torch.stack(
+        [
+            torch.randn(batch_size, prediction_length),
+            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+        ],
+        dim=-1,
+    )
+
+    test_cases = {}
+    test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
+    lengths = torch.tensor(
+        [
+            prediction_length,
+            prediction_length - 2,
+            prediction_length - 4,
+            prediction_length - 6,
+        ]
+    )
+    y_packed = rnn.pack_padded_sequence(
+        y[0], lengths, batch_first=True, enforce_sorted=False
+    )
+
+    test_cases["packed"] = {"x": x, "y": y_packed, "y_pred": y_pred}
+
+    weights = torch.ones_like(y[0])
+    y_weighted = (y[0], weights)
+    test_cases["weighted"] = {"x": x, "y": y_weighted, "y_pred": y_pred}
+
+    return {"dataset": dataset, "test_cases": test_cases}
 
 
-@pytest.fixture(params=["standard", "packed", "weighted"])
-def normal_distribution_case(request, prepare_normal_distribution_forecast):
-    """Parametrized fixture for normal distribution test cases."""
-    return prepare_normal_distribution_forecast["test_cases"][request.param]
+@pytest.fixture(scope="module")
+def prepare_log_normal_distribution_forecast():
+    """Prepare data for log normal distribution loss metrics"""
+
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
+
+    mean = 2.0
+    std = 0.2
+    log_normal_dist = torch.distributions.LogNormal(mean, std)
+    log_normal_target = log_normal_dist.sample((batch_size, timesteps)).numpy()
+
+    df = pd.DataFrame(
+        {
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "target": log_normal_target.flatten(),
+        }
+    )
+
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=prediction_length,
+        max_prediction_length=prediction_length,
+        target_normalizer=TorchNormalizer(),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
+    )
+
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+
+    # create random prediction paired with a log normal distribution.
+    y_pred = torch.stack(
+        [
+            torch.randn(batch_size, prediction_length),
+            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+        ],
+        dim=-1,
+    )
+
+    test_cases = {}
+    test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
+
+    weights = torch.ones_like(y[0])
+    y_weighted = (y[0], weights)
+    test_cases["weighted"] = {"x": x, "y": y_weighted, "y_pred": y_pred}
+
+    return {"dataset": dataset, "test_cases": test_cases}
+
+
+@pytest.fixture(scope="module")
+def prepare_beta_distribution_forecast():
+    """Prepare data for beta distribution loss metrics."""
+
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
+
+    initial_mean = torch.tensor([0.1])
+    initial_shape = torch.tensor([10])
+    beta_dist = torch.distributions.Beta(initial_mean, initial_shape)
+    beta_target = beta_dist.sample((batch_size, timesteps)).numpy()
+
+    df = pd.DataFrame(
+        {
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "target": beta_target.flatten(),
+        }
+    )
+
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=prediction_length,
+        max_prediction_length=prediction_length,
+        target_normalizer=TorchNormalizer(),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
+    )
+
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+
+    # create random prediction paired with a beta distribution.
+    y_pred = torch.stack(
+        [
+            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+        ],
+        dim=-1,
+    )
+
+    test_cases = {}
+    test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
+
+    lengths = torch.tensor(
+        [
+            prediction_length,
+            prediction_length - 2,
+            prediction_length - 4,
+            prediction_length - 6,
+        ]
+    )
+    y_packed = rnn.pack_padded_sequence(
+        y[0], lengths, batch_first=True, enforce_sorted=False
+    )
+    test_cases["packed"] = {"x": x, "y": y_packed, "y_pred": y_pred}
+    weights = torch.ones_like(y[0])
+    y_weighted = (y[0], weights)
+    test_cases["weighted"] = {"x": x, "y": y_weighted, "y_pred": y_pred}
+
+    return {"dataset": dataset, "test_cases": test_cases}

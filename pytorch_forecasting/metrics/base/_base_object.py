@@ -65,6 +65,21 @@ class _BasePtMetric(_BaseObject):
         return {}
 
     @classmethod
+    def get_encoder(cls):
+        """Get the encoder for the metric.
+
+        This can be overridden by subclasses to provide a specific encoder.
+
+        Returns
+        -------
+        TorchNormalizer
+            An instance of TorchNormalizer or similar encoder.
+        """
+        from pytorch_forecasting.data import TorchNormalizer
+
+        return TorchNormalizer()
+
+    @classmethod
     def requires_data_type(cls):
         """Check if the metric requires a specific data type.
 

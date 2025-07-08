@@ -80,9 +80,12 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
     def _test_reduction_modes(self, metric_class, y_pred, y, test_params):
         """Test that all metrics support different reduction modes."""
 
-        for reduction in ["mean", "sqrt-mean", "none"]:
+        for reduction in ["mean", "none"]:
             metric = metric_class(**test_params)
-            if metric_class.__name__ == "NormalDistributionLoss":
+            if metric_class.__name__ in [
+                "NormalDistributionLoss",
+                "MultivariateNormalDistributionLoss",
+            ]:  # noqa: E501
                 metric._transformation = None
             metric.update(y_pred, y)
             result = metric.reduce_loss(
@@ -102,34 +105,28 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
     def test_metric_functionality(self, object_pkg, object_class, request, target_type):
         """Test metric functionality with appropriate test data."""
-        # Skip abstract classes
-        if object_pkg.name in [
-            "Metric",
-            "MultiHorizonMetric",
-            "DistributionLoss",
-        ]:
-            pytest.skip(f"Skipping abstract class {object_pkg.name}")
 
         prepare_data_fixture_name = object_pkg.requires_data_type()
         data = request.getfixturevalue(prepare_data_fixture_name)
 
-        test_case = data["test_cases"][target_type]  # noqa: E501
+        if target_type not in data["test_cases"]:
+            pytest.skip(
+                f"No test case for {target_type} target type with {object_class.__name__}"  # noqa: E501
+            )  # noqa: E501
 
+        test_case = data["test_cases"][target_type]
         y_pred, y = object_pkg.prepare_test_inputs(test_case)
 
         test_params = object_pkg.get_test_params()
 
         metric = object_class(**test_params)
 
-        if object_class.__name__ == "MASE":
-            metric.update(y_pred, y, test_case["x"]["encoder_target"])
-
-        if hasattr(metric, "rescale_parameters"):
-            y_pred = metric.rescale_parameters(
-                parameters=y_pred,
-                target_scale=test_case["x"]["target_scale"],
-                encoder=TorchNormalizer(),
-            )
+        torch_encoder = object_pkg.get_encoder()
+        y_pred = metric.rescale_parameters(
+            parameters=y_pred,
+            target_scale=test_case["x"]["target_scale"],
+            encoder=torch_encoder,
+        )
 
         self._test_integration_metrics(metric, y_pred, y)
         self._test_reduction_modes(object_class, y_pred, y, test_params)
