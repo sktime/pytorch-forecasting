@@ -85,6 +85,7 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
             if metric_class.__name__ in [
                 "NormalDistributionLoss",
                 "MultivariateNormalDistributionLoss",
+                "ImplicitQuantileNetworkDistributionLoss",
             ]:  # noqa: E501
                 metric._transformation = None
             metric.update(y_pred, y)
