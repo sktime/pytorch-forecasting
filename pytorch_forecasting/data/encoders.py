@@ -757,13 +757,13 @@ class TorchNormalizer(
         else:
             return y
 
-    def inverse_transform(self, y: torch.Tensor) -> torch.Tensor:
+    def inverse_transform(self, y: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
         """
         Inverse scale.
 
         Parameters
         ----------
-        y: torch.Tensor
+        y: Union[torch.Tensor, np.ndarray])
             scaled data
 
         Returns
