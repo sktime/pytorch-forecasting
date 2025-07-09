@@ -304,3 +304,57 @@ def test_ImplicitQuantileNetworkDistributionLoss():
 
     point_prediction = loss.to_prediction(pred, n_samples=None)
     assert point_prediction.ndim == loss.to_prediction(pred, n_samples=100).ndim
+
+
+def test_CrossEntropyLoss():
+    batch_size = 3
+    n_timesteps = 5
+    n_classes = 3
+
+    target = torch.randint(0, n_classes, (batch_size, n_timesteps))
+
+    y_pred = torch.rand((batch_size, n_timesteps, n_classes))
+
+    from pytorch_forecasting.metrics import CrossEntropy
+
+    loss = CrossEntropy()
+    res = loss(y_pred, target)
+    assert isinstance(res, torch.Tensor)
+    assert res.ndim == 0
+
+    point_prediction = loss.to_prediction(y_pred)
+    assert point_prediction.shape == (batch_size, n_timesteps)
+    assert point_prediction.dtype == torch.int64
+
+
+def test_MASE():
+    batch_size = 4
+    encoder_length = 10
+    decoder_length = 5
+
+    encoder_target = torch.rand((batch_size, encoder_length))
+    decoder_target = torch.rand((batch_size, decoder_length))
+
+    y_pred = torch.rand((batch_size, decoder_length))
+
+    # create encoder_lengths tensor with value `encoder_length` for each batch.
+    encoder_lengths = torch.full((batch_size,), encoder_length, dtype=torch.long)
+
+    from pytorch_forecasting.metrics import MASE
+
+    metric = MASE()
+
+    metric.update(y_pred, decoder_target, encoder_target, encoder_lengths)
+    loss_val = metric.compute()
+    assert isinstance(loss_val, torch.Tensor)
+    assert loss_val.ndim == 0, "MASE should return a scalar value"
+
+    scaling = MASE.calculate_scaling(
+        decoder_target,
+        torch.full((batch_size,), decoder_length, dtype=torch.long),
+        encoder_target,
+        encoder_lengths,
+    )
+
+    assert scaling.shape == (batch_size,)
+    assert (scaling > 0).all(), "Scaling should be positive"
