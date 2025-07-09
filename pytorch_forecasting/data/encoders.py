@@ -763,7 +763,7 @@ class TorchNormalizer(
 
         Parameters
         ----------
-        y: Union[torch.Tensor]
+        y: torch.Tensor
             scaled data
 
         Returns
