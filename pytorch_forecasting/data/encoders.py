@@ -708,17 +708,48 @@ class TorchNormalizer(
             target_scale = self.get_parameters().numpy()[None, :]
         center = target_scale[..., 0]
         scale = target_scale[..., 1]
+
+        if not isinstance(y, torch.Tensor):
+            if isinstance(y, (pd.Series)):
+                index = y.index
+                pandas_dtype = y.dtype
+                y = y.values
+                y_was = "pandas"
+                y = torch.as_tensor(y)
+            elif isinstance(y, np.ndarray):
+                y_was = "numpy"
+                np_dtype = y.dtype
+                try:
+                    y = torch.from_numpy(y)
+                except TypeError:
+                    y = torch.as_tensor(y.astype(np.float32))
+        else:
+            y_was = "torch"
+            torch_dtype = y.dtype
+        if isinstance(center, np.ndarray):
+            center = torch.from_numpy(center)
+        if isinstance(scale, np.ndarray):
+            scale = torch.from_numpy(scale)
         if y.ndim > center.ndim:  # multiple batches -> expand size
             center = center.view(*center.size(), *(1,) * (y.ndim - center.ndim))
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
-        # transform
-        dtype = y.dtype
         y = (y - center) / scale
-        try:
-            y = y.astype(dtype)
-        except AttributeError:  # torch.Tensor has `.type()` instead of `.astype()`
-            y = y.type(dtype)
+
+        if y_was == "numpy":
+            numpy_data = y.numpy()
+            if np_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                # Original was integer, but normalized data is float
+                y = numpy_data.astype(np.float64)
+            else:
+                y = numpy_data.astype(np_dtype)
+        elif y_was == "pandas":
+            numpy_data = y.numpy()
+            if pandas_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                pandas_dtype = np.float64
+            y = pd.Series(numpy_data, index=index, dtype=pandas_dtype)
+        else:
+            y = y.type(torch_dtype)
 
         # return with center and scale or without
         if return_norm:
@@ -764,10 +795,12 @@ class TorchNormalizer(
             de-scaled data
         """
         # ensure output dtype matches input dtype
-        prediction = data["prediction"]
+        dtype = data["prediction"].dtype
+        if isinstance(dtype, np.dtype):
+            # convert the array into tensor if it is a numpy array
+            data["prediction"] = torch.as_tensor(data["prediction"])
 
-        if isinstance(prediction, np.ndarray):
-            prediction = torch.from_numpy(prediction)
+        prediction = data["prediction"]
 
         # inverse transformation with tensors
         norm = data["target_scale"]
