@@ -210,7 +210,7 @@ class MASE(MultiHorizonMetric):
 
         # determine lengths for encoder
         if encoder_lengths is None:
-            encoder_target, encoder_lengths = unpack_sequence(encoder_target)
+            encoder_target, encoder_lengths = unpack_sequence(target)
         else:
             assert isinstance(encoder_target, torch.Tensor)
         assert not target.requires_grad
