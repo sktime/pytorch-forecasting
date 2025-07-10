@@ -344,7 +344,7 @@ def sample_dataset():
 @pytest.fixture(params=["cuda", "cpu"])
 def mock_device(request):
     """Fixture to create a mock device for testing."""
-    # Create a real torch.device object
+    # Create a torch.device object
     device_str = f"{request.param}:0" if request.param == "cuda" else "cpu"
     mock_device = torch.device(device_str)
 
@@ -353,7 +353,7 @@ def mock_device(request):
 
     @wraps(orig_tensor)
     def mock_tensor(data, *args, **kwargs):
-        # Force device to CPU but assign mocked device
+        # Force device to CPU
         kwargs["device"] = "cpu"
         tensor = orig_tensor(data, *args, **kwargs)
         tensor.device = mock_device
