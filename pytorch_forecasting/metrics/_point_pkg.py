@@ -2,7 +2,7 @@
 Package containers for all point-forecast metrics.
 """
 
-from pytorch_forecasting.metrics.base._base_object import _BasePtMetric
+from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
 
 
 class MAE_pkg(_BasePtMetric):

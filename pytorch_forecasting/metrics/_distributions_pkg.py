@@ -5,7 +5,7 @@ Package containers for all distribution-forecast metrics.
 import torch
 
 from pytorch_forecasting.data import TorchNormalizer
-from pytorch_forecasting.metrics.base._base_object import _BasePtMetric
+from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
 
 
 class NormalDistributionLoss_pkg(_BasePtMetric):

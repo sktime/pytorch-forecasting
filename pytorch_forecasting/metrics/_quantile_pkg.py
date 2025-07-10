@@ -2,7 +2,7 @@
 Package containers for all quantile-forecast metrics.
 """
 
-from pytorch_forecasting.metrics.base._base_object import _BasePtMetric
+from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
 
 
 class QuantileLoss_pkg(_BasePtMetric):
