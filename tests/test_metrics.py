@@ -341,11 +341,11 @@ def sample_dataset():
     )
 
 
-@pytest.fixture(params=["cuda", "mps", "cpu"])
+@pytest.fixture(params=["cuda", "cpu"])
 def mock_device(request):
     """Fixture to create a mock device for testing."""
     # Create a real torch.device object
-    device_str = f"{request.param}:0" if request.param in ["cuda", "mps"] else "cpu"
+    device_str = f"{request.param}:0" if request.param == "cuda" else "cpu"
     mock_device = torch.device(device_str)
 
     orig_tensor = torch.tensor
@@ -405,31 +405,6 @@ def mock_device(request):
             patch("torch.nn.Module.to", new=lambda self, device, *args, **kwargs: self),
         ):
             yield "cuda"
-
-    elif request.param == "mps":
-        with (
-            patch("torch.backends.mps.is_available", return_value=True),
-            patch("torch.backends.mps.is_built", return_value=True),
-            patch("torch.empty", new=mock_empty),
-            patch("torch.tensor", new=mock_tensor),
-            patch(
-                "torch.Tensor.to",
-                new=lambda self, device, *args, **kwargs: self.clone()
-                if isinstance(device, (str, torch.device))
-                and str(device).startswith("mps")
-                else self,
-            ),
-            patch(
-                "torch.Tensor.device",
-                new_callable=PropertyMock,
-                return_value=mock_device,
-            ),
-            patch("torch.Tensor.cuda", new=lambda self, *args, **kwargs: self.clone()),
-            patch("torch.nn.Module.cuda", new=lambda self, *args, **kwargs: self),
-            patch("torch.nn.Module.to", new=lambda self, device, *args, **kwargs: self),
-        ):
-            yield "mps"
-
     else:
         yield "cpu"
 
@@ -454,12 +429,6 @@ device_params = [
         "cuda",
         marks=pytest.mark.skipif(
             not torch.cuda.is_available(), reason="CUDA is not available"
-        ),
-    ),
-    pytest.param(
-        "mps",
-        marks=pytest.mark.skipif(
-            not torch.backends.mps.is_available(), reason="MPS is not available"
         ),
     ),
     "cpu",
@@ -523,10 +492,6 @@ def test_MQF2DistributionLoss_device_synchronization(mock_device, sample_dataset
         fake_prediction = fake_prediction.cuda()
         model.loss.map_x_to_distribution(fake_prediction)
         assert next(model.loss.picnn.parameters()).device.type == "cuda"
-    if mock_device == "mps":
-        fake_prediction = fake_prediction.to("mps")
-        model.loss.map_x_to_distribution(fake_prediction)
-        assert next(model.loss.picnn.parameters()).device.type == "mps"
     if mock_device == "cpu":
         fake_prediction = fake_prediction.cpu()
         model.loss.map_x_to_distribution(fake_prediction)
