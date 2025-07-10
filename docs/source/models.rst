@@ -72,7 +72,7 @@ a model that can learn relations between the timeseries can improve accuracy.
 Not that only :ref:`models that can process covariates <model-covariates>` can
 learn relationships between different timeseries.
 If the timeseries denote different entities or exhibit very similar patterns accross the board,
-a model such as :py:class:`~pytorch_forecasting.models.nbeats.NBeats` will work as well.
+a model such as :py:class:`~pytorch_forecasting.models.nbeats.NBeats` will not work as well.
 
 If you have only one or very few timeseries,
 they should be very long in order for a deep learning approach to work well. Consider also
