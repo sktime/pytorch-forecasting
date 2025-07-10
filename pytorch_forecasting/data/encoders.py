@@ -708,17 +708,48 @@ class TorchNormalizer(
             target_scale = self.get_parameters().numpy()[None, :]
         center = target_scale[..., 0]
         scale = target_scale[..., 1]
+
+        if not isinstance(y, torch.Tensor):
+            if isinstance(y, (pd.Series)):
+                index = y.index
+                pandas_dtype = y.dtype
+                y = y.values
+                y_was = "pandas"
+                y = torch.as_tensor(y)
+            elif isinstance(y, np.ndarray):
+                y_was = "numpy"
+                np_dtype = y.dtype
+                try:
+                    y = torch.from_numpy(y)
+                except TypeError:
+                    y = torch.as_tensor(y.astype(np.float32))
+        else:
+            y_was = "torch"
+            torch_dtype = y.dtype
+        if isinstance(center, np.ndarray):
+            center = torch.from_numpy(center)
+        if isinstance(scale, np.ndarray):
+            scale = torch.from_numpy(scale)
         if y.ndim > center.ndim:  # multiple batches -> expand size
             center = center.view(*center.size(), *(1,) * (y.ndim - center.ndim))
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
-        # transform
-        dtype = y.dtype
         y = (y - center) / scale
-        try:
-            y = y.astype(dtype)
-        except AttributeError:  # torch.Tensor has `.type()` instead of `.astype()`
-            y = y.type(dtype)
+
+        if y_was == "numpy":
+            numpy_data = y.numpy()
+            if np_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                # Original was integer, but normalized data is float
+                y = numpy_data.astype(np.float64)
+            else:
+                y = numpy_data.astype(np_dtype)
+        elif y_was == "pandas":
+            numpy_data = y.numpy()
+            if pandas_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                pandas_dtype = np.float64
+            y = pd.Series(numpy_data, index=index, dtype=pandas_dtype)
+        else:
+            y = y.type(torch_dtype)
 
         # return with center and scale or without
         if return_norm:
@@ -726,13 +757,13 @@ class TorchNormalizer(
         else:
             return y
 
-    def inverse_transform(self, y: torch.Tensor) -> torch.Tensor:
+    def inverse_transform(self, y: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
         """
         Inverse scale.
 
         Parameters
         ----------
-        y: torch.Tensor
+        y: Union[torch.Tensor, np.ndarray])
             scaled data
 
         Returns
@@ -740,15 +771,19 @@ class TorchNormalizer(
         torch.Tensor
             de-scaled data
         """
+        if isinstance(y, np.ndarray):
+            y = torch.from_numpy(y)
         return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
 
-    def __call__(self, data: dict[str, torch.Tensor]) -> torch.Tensor:
+    def __call__(
+        self, data: dict[str, Union[torch.Tensor, np.ndarray]]
+    ) -> torch.Tensor:
         """
         Inverse transformation but with network output as input.
 
         Parameters
         ----------
-        data: Dict[str, torch.Tensor]
+        data: dict[str, Union[torch.Tensor, np.ndarray]]
             Dictionary with entries
 
             * prediction: data to de-scale
@@ -761,23 +796,29 @@ class TorchNormalizer(
         """
         # ensure output dtype matches input dtype
         dtype = data["prediction"].dtype
+        if isinstance(dtype, np.dtype):
+            # convert the array into tensor if it is a numpy array
+            data["prediction"] = torch.as_tensor(data["prediction"])
+
+        prediction = data["prediction"]
 
         # inverse transformation with tensors
         norm = data["target_scale"]
-
+        if isinstance(norm, np.ndarray):
+            norm = torch.from_numpy(norm)
         # use correct shape for norm
-        if data["prediction"].ndim > norm.ndim:
+        if prediction.ndim > norm.ndim:
             norm = norm.unsqueeze(-1)
 
         # transform
-        y = data["prediction"] * norm[:, 1, None] + norm[:, 0, None]
+        y = prediction * norm[:, 1, None] + norm[:, 0, None]
 
         y = self.inverse_preprocess(y)
 
         # return correct shape
-        if data["prediction"].ndim == 1 and y.ndim > 1:
+        if prediction.ndim == 1 and y.ndim > 1:
             y = y.squeeze(0)
-        return y.type(dtype)
+        return y.type(prediction.dtype)
 
 
 class EncoderNormalizer(TorchNormalizer):

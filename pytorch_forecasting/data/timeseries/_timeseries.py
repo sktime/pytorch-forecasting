@@ -779,10 +779,10 @@ class TimeSeriesDataSet(Dataset):
                 if name in var_names:
                     for lagged_name, lag in lagged_names.items():
                         # if lag is longer than horizon, lagged var becomes future-known
-                        if known or lag < self.max_prediction_length:
-                            _append_if_new(var_names, lagged_name)
-                        elif lag < self.max_prediction_length:
+                        if known == "known" or lag >= self.max_prediction_length:
                             _append_if_new(_attr(realcat, "known"), lagged_name)
+                        else:
+                            _append_if_new(_attr(realcat, "unknown"), lagged_name)
 
     @property
     def dropout_categoricals(self) -> list[str]:
