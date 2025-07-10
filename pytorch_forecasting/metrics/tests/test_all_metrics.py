@@ -103,9 +103,7 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
         data = request.getfixturevalue(prepare_data_fixture_name)
 
         if target_type not in data["test_cases"]:
-            pytest.skip(
-                f"No test case for {target_type} target type with {object_class.__name__}"  # noqa: E501
-            )  # noqa: E501
+            return None
 
         test_case = data["test_cases"][target_type]
         y_pred, y = object_pkg.prepare_test_inputs(test_case)
