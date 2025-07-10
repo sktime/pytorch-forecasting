@@ -1,33 +1,46 @@
 """
 Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedocs.io/>`_.
 """
+
 import copy
 import logging
 import os
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Union
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 import numpy as np
-import optuna
-from optuna.integration import PyTorchLightningPruningCallback
-import optuna.logging
-import statsmodels.api as sm
-import torch
+import scipy._lib._util
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import QuantileLoss
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 optuna_logger = logging.getLogger("optuna")
 
 
-# need to inherit from callback for this to work
-class PyTorchLightningPruningCallbackAdjusted(pl.Callback, PyTorchLightningPruningCallback):
-    pass
+# ToDo: remove this once statsmodels release a version compatible with latest
+# scipy version
+def _lazywhere(cond, arrays, f, fillvalue=np.nan, f2=None):
+    """
+    Backported lazywhere implementation (basic version).
+    """
+    arrays = np.broadcast_arrays(*arrays)
+    cond = np.array(cond, dtype=bool, copy=False)
+    out = np.full(cond.shape, fillvalue)
+    if f2 is None:
+        out[cond] = f(*[a[cond] for a in arrays])
+    else:
+        out[cond] = f(*[a[cond] for a in arrays])
+        out[~cond] = f2(*[a[~cond] for a in arrays])
+    return out
+
+
+scipy._lib._util._lazywhere = _lazywhere
 
 
 def optimize_hyperparameters(
@@ -37,20 +50,20 @@ def optimize_hyperparameters(
     max_epochs: int = 20,
     n_trials: int = 100,
     timeout: float = 3600 * 8.0,  # 8 hours
-    gradient_clip_val_range: Tuple[float, float] = (0.01, 100.0),
-    hidden_size_range: Tuple[int, int] = (16, 265),
-    hidden_continuous_size_range: Tuple[int, int] = (8, 64),
-    attention_head_size_range: Tuple[int, int] = (1, 4),
-    dropout_range: Tuple[float, float] = (0.1, 0.3),
-    learning_rate_range: Tuple[float, float] = (1e-5, 1.0),
+    gradient_clip_val_range: tuple[float, float] = (0.01, 100.0),
+    hidden_size_range: tuple[int, int] = (16, 265),
+    hidden_continuous_size_range: tuple[int, int] = (8, 64),
+    attention_head_size_range: tuple[int, int] = (1, 4),
+    dropout_range: tuple[float, float] = (0.1, 0.3),
+    learning_rate_range: tuple[float, float] = (1e-5, 1.0),
     use_learning_rate_finder: bool = True,
-    trainer_kwargs: Dict[str, Any] = {},
+    trainer_kwargs: dict[str, Any] = {},
     log_dir: str = "lightning_logs",
-    study: optuna.Study = None,
+    study=None,
     verbose: Union[int, bool] = None,
-    pruner: optuna.pruners.BasePruner = optuna.pruners.SuccessiveHalvingPruner(),
+    pruner=None,
     **kwargs,
-) -> optuna.Study:
+):
     """
     Optimize Temporal Fusion Transformer hyperparameters.
 
@@ -94,7 +107,30 @@ def optimize_hyperparameters(
 
     Returns:
         optuna.Study: optuna study results
-    """
+    """  # noqa : E501
+    pkgs = _get_installed_packages()
+
+    if "optuna" not in pkgs or "statsmodels" not in pkgs:
+        raise ImportError(
+            "optimize_hyperparameters requires optuna and statsmodels. "
+            "Please install these packages with `pip install optuna statsmodels`. "
+            "From optuna 3.3.0, optuna-integration is also required."
+        )
+
+    import optuna
+    from optuna.integration import PyTorchLightningPruningCallback
+    import optuna.logging
+    import statsmodels.api as sm
+
+    # need to inherit from callback for this to work
+    class PyTorchLightningPruningCallbackAdjusted(
+        PyTorchLightningPruningCallback, pl.Callback
+    ):  # noqa: E501
+        pass
+
+    if pruner is None:
+        pruner = optuna.pruners.SuccessiveHalvingPruner()
+
     assert isinstance(train_dataloaders.dataset, TimeSeriesDataSet) and isinstance(
         val_dataloaders.dataset, TimeSeriesDataSet
     ), "dataloaders must be built from timeseriesdataset"
@@ -110,18 +146,23 @@ def optimize_hyperparameters(
 
     loss = kwargs.get(
         "loss", QuantileLoss()
-    )  # need a deepcopy of loss as it will otherwise propagate from one trial to the next
+    )  # need a deepcopy of loss as it will otherwise propagate from one trial to the next # noqa : E501
 
     # create objective function
     def objective(trial: optuna.Trial) -> float:
-        # Filenames for each trial must be made unique in order to access each checkpoint.
+        # Filenames for each trial must be made unique
+        # in order to access each checkpoint.
         checkpoint_callback = ModelCheckpoint(
-            dirpath=os.path.join(model_path, "trial_{}".format(trial.number)), filename="{epoch}", monitor="val_loss"
+            dirpath=os.path.join(model_path, f"trial_{trial.number}"),
+            filename="{epoch}",
+            monitor="val_loss",
         )
 
         learning_rate_callback = LearningRateMonitor()
         logger = TensorBoardLogger(log_dir, name="optuna", version=trial.number)
-        gradient_clip_val = trial.suggest_loguniform("gradient_clip_val", *gradient_clip_val_range)
+        gradient_clip_val = trial.suggest_loguniform(
+            "gradient_clip_val", *gradient_clip_val_range
+        )
         default_trainer_kwargs = dict(
             accelerator="auto",
             max_epochs=max_epochs,
@@ -153,7 +194,9 @@ def optimize_hyperparameters(
                 min(hidden_continuous_size_range[1], hidden_size),
                 log=True,
             ),
-            attention_head_size=trial.suggest_int("attention_head_size", *attention_head_size_range),
+            attention_head_size=trial.suggest_int(
+                "attention_head_size", *attention_head_size_range
+            ),
             log_interval=-1,
             **kwargs,
         )
@@ -178,7 +221,9 @@ def optimize_hyperparameters(
             )
 
             loss_finite = np.isfinite(res.results["loss"])
-            if loss_finite.sum() > 3:  # at least 3 valid values required for learning rate finder
+            if (
+                loss_finite.sum() > 3
+            ):  # at least 3 valid values required for learning rate finder
                 lr_smoothed, loss_smoothed = sm.nonparametric.lowess(
                     np.asarray(res.results["loss"])[loss_finite],
                     np.asarray(res.results["lr"])[loss_finite],
@@ -191,12 +236,18 @@ def optimize_hyperparameters(
                 optimal_lr = res.results["lr"][optimal_idx]
             optuna_logger.info(f"Using learning rate of {optimal_lr:.3g}")
             # add learning rate artificially
-            model.hparams.learning_rate = trial.suggest_uniform("learning_rate", optimal_lr, optimal_lr)
+            model.hparams.learning_rate = trial.suggest_uniform(
+                "learning_rate", optimal_lr, optimal_lr
+            )
         else:
-            model.hparams.learning_rate = trial.suggest_loguniform("learning_rate", *learning_rate_range)
+            model.hparams.learning_rate = trial.suggest_loguniform(
+                "learning_rate", *learning_rate_range
+            )
 
         # fit
-        trainer.fit(model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders)
+        trainer.fit(
+            model, train_dataloaders=train_dataloaders, val_dataloaders=val_dataloaders
+        )
 
         # report result
         return trainer.callback_metrics["val_loss"].item()

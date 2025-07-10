@@ -37,9 +37,15 @@ def test_NaNLabelEncoder(data, allow_nan):
         with pytest.raises(KeyError):
             encoder.transform(transform_data)
     else:
-        assert encoder.transform(transform_data)[0] == 0, "First value should be translated to 0 if nan"
-        assert encoder.transform(transform_data)[-1] == 0, "Last value should be translated to 0 if nan"
-        assert encoder.transform(fit_data)[0] > 0, "First value should not be 0 if not nan"
+        assert (
+            encoder.transform(transform_data)[0] == 0
+        ), "First value should be translated to 0 if nan"
+        assert (
+            encoder.transform(transform_data)[-1] == 0
+        ), "Last value should be translated to 0 if nan"
+        assert (
+            encoder.transform(fit_data)[0] > 0
+        ), "First value should not be 0 if not nan"
 
 
 def test_NaNLabelEncoder_add():
@@ -56,36 +62,51 @@ def test_NaNLabelEncoder_add():
     [
         dict(method="robust"),
         dict(method="robust", method_kwargs=dict(upper=1.0, lower=0.0)),
-        dict(method="robust", data=np.random.randn(100)),
-        dict(data=np.random.randn(100)),
+        dict(method="robust"),
         dict(transformation="log"),
         dict(transformation="softplus"),
         dict(transformation="log1p"),
         dict(transformation="relu"),
         dict(method="identity"),
-        dict(method="identity", data=np.random.randn(100)),
+        dict(
+            method="identity",
+        ),
         dict(center=False),
         dict(max_length=5),
-        dict(data=pd.Series(np.random.randn(100))),
         dict(max_length=[1, 2]),
     ],
 )
-def test_EncoderNormalizer(kwargs):
+@pytest.mark.parametrize("data_type", ["torch", "numpy", "pandas"])
+def test_EncoderNormalizer(kwargs, data_type):
+    transformation = kwargs.get("transformation")
+
+    if transformation in ["log", "log1p", "softplus", "relu"]:
+        base_data = np.random.uniform(0.1, 10, size=100)  # strictly positive
+    else:
+        base_data = np.random.randn(100)
+
+    if data_type == "torch":
+        data = torch.tensor(base_data, dtype=torch.float32)
+    elif data_type == "numpy":
+        data = base_data.astype(np.float32)
+    elif data_type == "pandas":
+        data = pd.Series(base_data.astype(np.float32))
     kwargs.setdefault("method", "standard")
     kwargs.setdefault("center", True)
-    kwargs.setdefault("data", torch.rand(100))
-    data = kwargs.pop("data")
 
     normalizer = EncoderNormalizer(**kwargs)
+    transformed = normalizer.fit_transform(data)
+    inverse = normalizer.inverse_transform(torch.as_tensor(transformed))
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
         assert (
-            normalizer.inverse_transform(torch.as_tensor(normalizer.fit_transform(data))) >= 0
+            inverse >= 0
         ).all(), "Inverse transform should yield only positive values"
     else:
+        expected = torch.as_tensor(data)
         assert torch.isclose(
-            normalizer.inverse_transform(torch.as_tensor(normalizer.fit_transform(data))),
-            torch.as_tensor(data),
+            inverse,
+            expected,
             atol=1e-5,
         ).all(), "Inverse transform should reverse transform"
 
@@ -107,7 +128,9 @@ def test_EncoderNormalizer(kwargs):
 )
 def test_GroupNormalizer(kwargs, groups):
     data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 0.0, 1.1]))
-    defaults = dict(method="standard", transformation=None, center=True, scale_by_group=False)
+    defaults = dict(
+        method="standard", transformation=None, center=True, scale_by_group=False
+    )
     defaults.update(kwargs)
     kwargs = defaults
     kwargs["groups"] = groups
@@ -122,7 +145,9 @@ def test_GroupNormalizer(kwargs, groups):
     )
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p", "log"]:
-        assert (normalizer(test_data) >= 0).all(), "Inverse transform should yield only positive values"
+        assert (
+            normalizer(test_data) >= 0
+        ).all(), "Inverse transform should yield only positive values"
     else:
         assert torch.isclose(
             normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5
@@ -136,7 +161,11 @@ def test_EncoderNormalizer_with_limited_history():
 
 
 def test_MultiNormalizer_fitted():
-    data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1], c=[1.1, 1.1, 1.0, 5.0, 1.1]))
+    data = pd.DataFrame(
+        dict(
+            a=[1, 1, 2, 2, 3], b=[1.1, 1.1, 1.0, 5.0, 1.1], c=[1.1, 1.1, 1.0, 5.0, 1.1]
+        )
+    )
 
     normalizer = MultiNormalizer([GroupNormalizer(groups=["a"]), TorchNormalizer()])
 
@@ -157,11 +186,20 @@ def test_TorchNormalizer_dtype_consistency():
     """
     - Ensures that even for float64 `target_scale`, the transformation will not change the prediction dtype.
     - Ensure that target_scale will be of type float32 if method is 'identity'
-    """
+    """  # noqa: E501
     parameters = torch.tensor([[[366.4587]]])
     target_scale = torch.tensor([[427875.7500, 80367.4766]], dtype=torch.float64)
-    assert TorchNormalizer()(dict(prediction=parameters, target_scale=target_scale)).dtype == torch.float32
-    assert TorchNormalizer().transform(parameters, target_scale=target_scale).dtype == torch.float32
+    assert (
+        TorchNormalizer()(dict(prediction=parameters, target_scale=target_scale)).dtype
+        == torch.float32
+    )
+    assert (
+        TorchNormalizer().transform(parameters, target_scale=target_scale).dtype
+        == torch.float32
+    )
 
     y = np.array([1, 2, 3], dtype=np.float32)
-    assert TorchNormalizer(method="identity").fit(y).get_parameters().dtype == torch.float32
+    assert (
+        TorchNormalizer(method="identity").fit(y).get_parameters().dtype
+        == torch.float32
+    )
