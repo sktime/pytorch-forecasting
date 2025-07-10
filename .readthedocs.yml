@@ -9,7 +9,7 @@ version: 2
 # reference: https://docs.readthedocs.io/en/stable/config-file/v2.html#sphinx
 sphinx:
   configuration: docs/source/conf.py
-  fail_on_warning: true
+  # fail_on_warning: true
 
 # Build documentation with MkDocs
 #mkdocs:
@@ -19,8 +19,14 @@ sphinx:
 formats:
   - htmlzip
 
-# Optionally set the version of Python and requirements required to build your docs
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.12"
+
 python:
-  version: 3.8
   install:
-    - requirements: docs/requirements.txt
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs

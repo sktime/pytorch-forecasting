@@ -1,5 +1,4 @@
 from functools import partial
-from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -10,7 +9,11 @@ import torch.nn.functional as F
 class StaticFeaturesEncoder(nn.Module):
     def __init__(self, in_features, out_features):
         super().__init__()
-        layers = [nn.Dropout(p=0.5), nn.Linear(in_features=in_features, out_features=out_features), nn.ReLU()]
+        layers = [
+            nn.Dropout(p=0.5),
+            nn.Linear(in_features=in_features, out_features=out_features),
+            nn.ReLU(),
+        ]
         self.encoder = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -21,7 +24,9 @@ class StaticFeaturesEncoder(nn.Module):
 class IdentityBasis(nn.Module):
     def __init__(self, backcast_size: int, forecast_size: int, interpolation_mode: str):
         super().__init__()
-        assert (interpolation_mode in ["linear", "nearest"]) or ("cubic" in interpolation_mode)
+        assert (interpolation_mode in ["linear", "nearest"]) or (
+            "cubic" in interpolation_mode
+        )
         self.forecast_size = forecast_size
         self.backcast_size = backcast_size
         self.interpolation_mode = interpolation_mode
@@ -32,13 +37,15 @@ class IdentityBasis(nn.Module):
         forecast_theta: torch.Tensor,
         encoder_x_t: torch.Tensor,
         decoder_x_t: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         backcast = backcast_theta
         knots = forecast_theta
 
         if self.interpolation_mode == "nearest":
             knots = knots[:, None, :]
-            forecast = F.interpolate(knots, size=self.forecast_size, mode=self.interpolation_mode)
+            forecast = F.interpolate(
+                knots, size=self.forecast_size, mode=self.interpolation_mode
+            )
             forecast = forecast[:, 0, :]
         elif self.interpolation_mode == "linear":
             knots = knots[:, None, :]
@@ -53,9 +60,13 @@ class IdentityBasis(nn.Module):
             n_batches = int(np.ceil(len(knots) / batch_size))
             for i in range(n_batches):
                 forecast_i = F.interpolate(
-                    knots[i * batch_size : (i + 1) * batch_size], size=self.forecast_size, mode="bicubic"
+                    knots[i * batch_size : (i + 1) * batch_size],
+                    size=self.forecast_size,
+                    mode="bicubic",
                 )  # , align_corners=True)
-                forecast[i * batch_size : (i + 1) * batch_size] += forecast_i[:, 0, 0, :]
+                forecast[i * batch_size : (i + 1) * batch_size] += forecast_i[
+                    :, 0, 0, :
+                ]
 
         return backcast, forecast
 
@@ -73,12 +84,49 @@ def init_weights(module, initialization):
         elif initialization == "glorot_normal":
             torch.nn.init.xavier_normal_(module.weight)
         elif initialization == "lecun_normal":
-            pass  # torch.nn.init.normal_(module.weight, 0.0, std=1/np.sqrt(module.weight.numel()))
+            pass  # torch.nn.init.normal_(module.weight, 0.0, std=1/np.sqrt(module.weight.numel())) # noqa: E501
         else:
             assert 1 < 0, f"Initialization {initialization} not found"
 
 
 ACTIVATIONS = ["ReLU", "Softplus", "Tanh", "SELU", "LeakyReLU", "PReLU", "Sigmoid"]
+
+
+class MLP(nn.Module):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        hidden_size: list[int],
+        activation: str,
+        dropout: float,
+    ):
+        super().__init__()
+
+        activ = getattr(nn, activation)()
+
+        self.layers: nn.Sequential
+
+        layers = [
+            nn.Linear(in_features, hidden_size[0]),
+        ]
+        layers.append(activ)
+
+        if dropout > 0:
+            layers.append(nn.Dropout(p=dropout))
+
+        for i in range(len(hidden_size) - 1):
+            layers.append(nn.Linear(hidden_size[i], hidden_size[i + 1]))
+            layers.append(activ)
+
+            if dropout > 0:
+                layers.append(nn.Dropout(p=dropout))
+
+        layers.append(nn.Linear(hidden_size[-1], out_features))
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        return self.layers(X)
 
 
 class NHiTSBlock(nn.Module):
@@ -95,7 +143,7 @@ class NHiTSBlock(nn.Module):
         static_size: int,
         static_hidden_size: int,
         n_theta: int,
-        hidden_size: List[int],
+        hidden_size: list[int],
         pooling_sizes: int,
         pooling_mode: str,
         basis: nn.Module,
@@ -124,48 +172,55 @@ class NHiTSBlock(nn.Module):
         self.batch_normalization = batch_normalization
         self.dropout = dropout
 
-        self.hidden_size = [
+        mlp_in_features = (
             self.context_length_pooled * len(self.output_size)
             + (self.context_length + self.prediction_length) * self.covariate_size
             + self.static_hidden_size
-        ] + hidden_size
+        )
+
+        mlp_out_features = context_length * len(output_size) + n_theta * sum(
+            output_size
+        )
 
         assert activation in ACTIVATIONS, f"{activation} is not in {ACTIVATIONS}"
-        activ = getattr(nn, activation)()
 
         if pooling_mode == "max":
-            self.pooling_layer = nn.MaxPool1d(kernel_size=self.pooling_sizes, stride=self.pooling_sizes, ceil_mode=True)
-        elif pooling_mode == "average":
-            self.pooling_layer = nn.AvgPool1d(kernel_size=self.pooling_sizes, stride=self.pooling_sizes, ceil_mode=True)
-
-        hidden_layers = []
-        for i in range(n_layers):
-            hidden_layers.append(nn.Linear(in_features=self.hidden_size[i], out_features=self.hidden_size[i + 1]))
-            hidden_layers.append(activ)
-
-            if self.batch_normalization:
-                hidden_layers.append(nn.BatchNorm1d(num_features=self.hidden_size[i + 1]))
-
-            if self.dropout > 0:
-                hidden_layers.append(nn.Dropout(p=self.dropout))
-
-        output_layer = [
-            nn.Linear(
-                in_features=self.hidden_size[-1],
-                out_features=context_length * len(output_size) + n_theta * sum(output_size),
+            self.pooling_layer = nn.MaxPool1d(
+                kernel_size=self.pooling_sizes,
+                stride=self.pooling_sizes,
+                ceil_mode=True,
             )
-        ]
-        layers = hidden_layers + output_layer
+        elif pooling_mode == "average":
+            self.pooling_layer = nn.AvgPool1d(
+                kernel_size=self.pooling_sizes,
+                stride=self.pooling_sizes,
+                ceil_mode=True,
+            )
 
-        # static_size is computed with data, static_hidden_size is provided by user, if 0 no statics are used
+        # static_size is computed with data, static_hidden_size is provided by user,
+        # if 0 no statics are used
         if (self.static_size > 0) and (self.static_hidden_size > 0):
-            self.static_encoder = StaticFeaturesEncoder(in_features=static_size, out_features=static_hidden_size)
-        self.layers = nn.Sequential(*layers)
+            self.static_encoder = StaticFeaturesEncoder(
+                in_features=static_size, out_features=static_hidden_size
+            )
+
+        self.layers = MLP(
+            in_features=mlp_in_features,
+            out_features=mlp_out_features,
+            hidden_size=hidden_size,
+            activation=activation,
+            dropout=self.dropout,
+        )
+
         self.basis = basis
 
     def forward(
-        self, encoder_y: torch.Tensor, encoder_x_t: torch.Tensor, decoder_x_t: torch.Tensor, x_s: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self,
+        encoder_y: torch.Tensor,
+        encoder_x_t: torch.Tensor,
+        decoder_x_t: torch.Tensor,
+        x_s: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size = len(encoder_y)
 
         encoder_y = encoder_y.transpose(1, 2)
@@ -190,11 +245,21 @@ class NHiTSBlock(nn.Module):
 
         # Compute local projection weights and projection
         theta = self.layers(encoder_y)
-        backcast_theta = theta[:, : self.context_length * len(self.output_size)].reshape(-1, self.context_length)
-        forecast_theta = theta[:, self.context_length * len(self.output_size) :].reshape(-1, self.n_theta)
-        backcast, forecast = self.basis(backcast_theta, forecast_theta, encoder_x_t, decoder_x_t)
-        backcast = backcast.reshape(-1, len(self.output_size), self.context_length).transpose(1, 2)
-        forecast = forecast.reshape(-1, sum(self.output_size), self.prediction_length).transpose(1, 2)
+        backcast_theta = theta[
+            :, : self.context_length * len(self.output_size)
+        ].reshape(-1, self.context_length)
+        forecast_theta = theta[
+            :, self.context_length * len(self.output_size) :
+        ].reshape(-1, self.n_theta)
+        backcast, forecast = self.basis(
+            backcast_theta, forecast_theta, encoder_x_t, decoder_x_t
+        )
+        backcast = backcast.reshape(
+            -1, len(self.output_size), self.context_length
+        ).transpose(1, 2)
+        forecast = forecast.reshape(
+            -1, sum(self.output_size), self.prediction_length
+        ).transpose(1, 2)
 
         return backcast, forecast
 
@@ -328,15 +393,17 @@ class NHiTS(nn.Module):
         decoder_x_t,
         x_s,
     ):
-        residuals = (
-            encoder_y  # .flip(dims=(1,))  # todo: check if flip is required or should be rather replaced by scatter
-        )
+        residuals = encoder_y  # .flip(dims=(1,))  # todo: check if flip is required or should be rather replaced by scatter # noqa: E501
         # encoder_x_t = encoder_x_t.flip(dims=(-1,))
         # encoder_mask = encoder_mask.flip(dims=(-1,))
         encoder_mask = encoder_mask.unsqueeze(-1)
 
-        level = encoder_y[:, -1:].repeat(1, self.prediction_length, 1)  # Level with Naive1
-        forecast_level = level.repeat_interleave(torch.tensor(self.output_size, device=level.device), dim=2)
+        level = encoder_y[:, -1:].repeat(
+            1, self.prediction_length, 1
+        )  # Level with Naive1
+        forecast_level = level.repeat_interleave(
+            torch.tensor(self.output_size, device=level.device), dim=2
+        )
 
         # level with last available observation
         if self.naive_level:
@@ -352,7 +419,10 @@ class NHiTS(nn.Module):
         # forecast by block
         for block in self.blocks:
             block_backcast, block_forecast = block(
-                encoder_y=residuals, encoder_x_t=encoder_x_t, decoder_x_t=decoder_x_t, x_s=x_s
+                encoder_y=residuals,
+                encoder_x_t=encoder_x_t,
+                decoder_x_t=decoder_x_t,
+                x_s=x_s,
             )
             residuals = (residuals - block_backcast) * encoder_mask
 

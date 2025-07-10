@@ -1,6 +1,6 @@
 """Quantile metrics for forecasting multiple quantiles per time step."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Optional
 
 import torch
 
@@ -12,11 +12,11 @@ class QuantileLoss(MultiHorizonMetric):
     Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calculated as
 
     Defined as ``max(q * (y-y_pred), (1-q) * (y_pred-y))``
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
-        quantiles: List[float] = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98],
+        quantiles: Optional[list[float]] = None,
         **kwargs,
     ):
         """
@@ -25,6 +25,8 @@ class QuantileLoss(MultiHorizonMetric):
         Args:
             quantiles: quantiles for metric
         """
+        if quantiles is None:
+            quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
         super().__init__(quantiles=quantiles, **kwargs)
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:

@@ -45,7 +45,9 @@ def test_zero_length_sequence(klass, rnn_kwargs):
         init_hidden_state = [init_hidden_state]
 
     for idx in range(len(hidden_state)):
-        assert hidden_state[idx].size() == init_hidden_state[idx].size(), "Hidden state sizes should be equal"
+        assert (
+            hidden_state[idx].size() == init_hidden_state[idx].size()
+        ), "Hidden state sizes should be equal"
         assert (hidden_state[idx][:, lengths == 0] == 0).all() and (
             hidden_state[idx][:, lengths > 0] != 0
         ).all(), "Hidden state should be zero for zero-length sequences"

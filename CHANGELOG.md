@@ -1,16 +1,225 @@
 # Release Notes
 
-## v1.1.0 Adding TSMixer
+## v1.4.0
 
-### Added
+Feature and maintenance update.
 
-- New state-of-the-art model beating TFT called TSMixer based on [TSMixer: An All-MLP Architecture for Time Series Forecasting](https://arxiv.org/abs/2303.06053).
+### Highlights
+
+* beta: experimental unified API for `pytorch-forecasting 2.0` release: [https://github.com/sktime/pytorch-forecasting/blob/main/docs/source/tutorials/ptf_V2_example.ipynb](notebook). Feedback appreciated in [issue 1736](https://github.com/sktime/pytorch-forecasting/issues/1736).
+* `TimeXer` model from `thuml` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1797
+
+
+### Enhancements
+
+* [ENH] Add Type hints to `TimeSeriesDataSet` to align with pep 585 by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1819
+* [ENH] Allow multiple instances from multiple mock classes in `_safe_import` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1818
+* [ENH] EXPERIMENTAL PR: D1 and D2 layer for v2 refactor by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1811
+* [ENH] EXPERIMENTAL PR: make the `data_module` dataclass-like by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1832
+* [ENH] EXPERIMENTAL: TFT model based on the new data pipeline by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1812
+* [ENH] test suite for `pytorch-forecasting` forecasters by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1780
+* [ENH] `TemporalFusionTransformer` - allow mixed precision training by @Marcrb2 in https://github.com/sktime/pytorch-forecasting/pull/1518
+* [ENH] move model base classes into `models.base` module - part 1 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1773
+* [ENH] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1774
+* [ENH] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1776
+* [ENH] tests for `TiDE` Model by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1843
+* [ENH] refactor test metadata container to include data loader configs by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1861
+* [ENH] `DecoderMLP` metadata container for v1 tests by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1859
+* [ENH] `TimeXer` model from `thuml` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1797
+* [ENH] EXPERIMENTAL: Example notebook based on the new data pipeline by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1813
+* [ENH] refactor test data scenario generation to `tests._data_scenarios` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1877
 
 ### Fixes
 
-- Multiple small fixes
+* [BUG] fix absolute errorbar by @MartinoMensio in https://github.com/sktime/pytorch-forecasting/pull/1579
+* [BUG] EXPERIMENTAL PR: Solve the bug in `data_module` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1834
+* [BUG] fix incorrect concatenation dimension in `concat_sequences` by @cngmid in https://github.com/sktime/pytorch-forecasting/pull/1827
+* [BUG] Fix for the case when reduction is set to `none` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1872
+* [BUG] enable silenced TFT v2 tests by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1878
 
-### Contributors
+### Documentation
+
+* [DOC] fix `gradient_clip` value in tutorials to ensure reproducible outputs similar to the committed cell output by @gbilleyPeco in https://github.com/sktime/pytorch-forecasting/pull/1750
+* [DOC] Fix typos in getting started section of the documentation by @pietsjoh in https://github.com/sktime/pytorch-forecasting/pull/1399
+* [DOC] improved pull request template by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1866
+* [DOC] add project badges to README: sponsoring and downloads by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1891
+
+### Maintenance
+
+* [MNT] Isolate `cpflow` package, towards fixing readthedocs build by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1775
+* [MNT] fix readthedocs build by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1777
+* [MNT] move release to trusted publishers by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1800
+* [MNT] standardize `dependabot.yml` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1799
+* [MNT] remove `tj-actions` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1798
+* [MNT] [Dependabot](deps): bump codecov/codecov-action from 1 to 5 by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/1803
+* [MNT] disable automated merge and approve actions by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1804
+* build(deps): update sphinx requirement from `<7.2.6,>3.2` to `>3.2,<8.2.4` by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/1787
+* [MNT] Move config from `setup.cfg` to `pyproject.toml` by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1852
+* [MNT] Move `pytest` configuration to `pyproject.toml` by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1851
+* [MNT] Add 'UP' to extend-select for pyupgrade python syntax by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1856
+* [MNT] Replace Black with Ruff formatting and update configuration by @Borda in https://github.com/sktime/pytorch-forecasting/pull/1853
+* [MNT] issue templates by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1867
+* [MNT] Clearly define the MLP as a class/nn.model by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1864
+
+### All Contributors
+
+@agobbifbk,
+@Borda,
+@cngmid,
+@fkiraly,
+@fnhirwa,
+@gbilleyPeco,
+@jobs-git,
+@Marcrb2,
+@MartinoMensio,
+@phoeenniixx,
+@pietsjoh,
+@PranavBhatP
+
+
+## v1.3.0
+
+Feature and maintenance update.
+
+### Highlights
+
+* `python 3.13` support
+* `tide` model
+* bugfixes for TFT
+
+### Enhancements
+
+* [ENH] Tide model. by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1734
+* [ENH] refactor `__init__` modules to no longer contain classes - preparatory commit by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1739
+* [ENH] refactor `__init__` modules to no longer contain classes by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1738
+* [ENH] extend package author attribution requirement in license to present by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1737
+* [ENH] linting tide model by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1742
+* [ENH] move tide model - part 1 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1743
+* [ENH] move tide model - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1744
+* [ENH] clean-up refactor of `TimeSeriesDataSet` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1746
+
+### Fixes
+
+* [BUG] Bugfix when no exogenous variable is passed to TFT by @XinyuWuu in https://github.com/sktime/pytorch-forecasting/pull/1667
+* [BUG] Fix issue when training TFT model on mac M1 mps device. element 0 of tensors does not require grad and does not have a grad_fn by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1725
+
+### Documentation
+
+* [DOC] Fix the spelling error of holding by @xiaokongkong in https://github.com/sktime/pytorch-forecasting/pull/1719
+* [DOC] Updated documentation on `TimeSeriesDataSet.predict_mode` by @madprogramer in https://github.com/sktime/pytorch-forecasting/pull/1720
+* [DOC] General PR to improve docs by @julian-fong in https://github.com/sktime/pytorch-forecasting/pull/1705
+* [DOC] Correct argument for optimizer `ranger` in `Temporal Fusion Transformer` tutorial by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1724
+* [DOC] Fixed typo "monotone_constaints" by @Luke-Chesley in https://github.com/sktime/pytorch-forecasting/pull/1516
+* [DOC] minor fixes in documentation by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1763
+* [DOC] improve and add `tide` model to docs by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1762
+
+### Maintenance
+
+* [MNT] update linting: limit line length to 88, add `isort` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1740
+* [MNT] update nbeats/sub_modules.py to remove overhead in tensor creation by @d-schmitt in https://github.com/sktime/pytorch-forecasting/pull/1580
+* [MNT] Temporary fix for lint errors to conform to the recent changes in linting rules see #1749 by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1748
+* [MNT] python 3.13 support by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1691
+
+### All Contributors
+
+@d-schmitt,
+@fkiraly,
+@fnhirwa,
+@julian-fong,
+@Luke-Chesley,
+@madprogramer,
+@PranavBhatP,
+@Sohaib-Ahmed21,
+@xiaokongkong,
+@XinyuWuu
+
+
+## v1.2.0
+
+Maintenance update, minor feature additions and bugfixes.
+
+* support for `numpy 2.X`
+* end of life for `python 3.8`
+* fixed documentation build
+* bugfixes
+
+### Dependency changes
+
+* `pytorch-forecasting` is now compatible with `numpy 2.X` (core dependency)
+* `optuna` (tuning soft dependency) bounds have been update to `>=3.1.0,<5.0.0`
+
+### Fixes
+
+* [BUG] fix `AttributeError: 'ExperimentWriter' object has no attribute 'add_figure'` by @ewth in https://github.com/sktime/pytorch-forecasting/pull/1694
+
+### Documentation
+
+* [DOC] typo fixes in changelog by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1660
+* [DOC] update URLs to `sktime` org by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1674
+
+### Maintenance
+
+* [MNT] handle `mps backend` for lower versions of pytorch and fix `mps` failure on `macOS-latest` runner by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1648
+* [MNT] updates the actions in the doc build CI by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1673
+* [MNT] fixes to `readthedocs.yml` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1676
+* [MNT] updates references in CI and doc locations to `main` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1677
+* [MNT] `show_versions` utility by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1688
+* [MNT] Relax `numpy` bound to `numpy<3.0.0` by @XinyuWuu in https://github.com/sktime/pytorch-forecasting/pull/1624
+* [MNT] fix `pre-commit` failures on `main` by @ewth in https://github.com/sktime/pytorch-forecasting/pull/1696
+* [MNT] Move linting to ruff by @airookie17 in https://github.com/sktime/pytorch-forecasting/pull/1692
+1693
+* [MNT] `ruff` linting - allow use of assert (S101) by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1701
+* [MNT] `ruff` - fix list related linting failures C416 and C419 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1702
+* [MNT] Delete poetry.lock by @benHeid in https://github.com/sktime/pytorch-forecasting/pull/1704
+* [MNT] fix `black` doesn't have `extras` dependency by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1697
+* [MNT] Remove mutable objects from defaults by @eugenio-mercuriali in https://github.com/sktime/pytorch-forecasting/pull/1699
+* [MNT] remove docs build in ci for all pr by @yarnabrina in https://github.com/sktime/pytorch-forecasting/pull/1712
+* [MNT] EOL for python 3.8 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1661
+* [MNT] remove `poetry.lock` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1651
+* [MNT] update `pre-commit` requirement from `<4.0.0,>=3.2.0` to `>=3.2.0,<5.0.0` by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/
+* [MNT] update optuna requirement from `<4.0.0,>=3.1.0` to `>=3.1.0,<5.0.0` by @dependabot in https://github.com/sktime/pytorch-forecasting/pull/1715
+* [MNT] CODEOWNERS file by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1710
+
+### All Contributors
+
+@airookie17,
+@benHeid,
+@eugenio-mercuriali,
+@ewth,
+@fkiraly,
+@fnhirwa,
+@XinyuWuu,
+@yarnabrina
+
+## v1.1.1
+
+Hotfix for accidental package name change in `pyproject.toml`.
+
+The package name is now corrected to `pytorch-forecasting`.
+
+
+## v1.1.0
+
+Maintenance update widening compatibility ranges and consolidating dependencies:
+
+* `TSMixer` model, see [TSMixer: An All-MLP Architecture for Time Series Forecasting](https://arxiv.org/abs/2303.06053).
+* support for python 3.11 and 3.12, added CI testing
+* support for MacOS, added CI testing
+* core dependencies have been minimized to `numpy`, `torch`, `lightning`, `scipy`, `pandas`, and `scikit-learn`.
+* soft dependencies are available in soft dependency sets: `all_extras` for all soft dependencies, and `tuning` for `optuna` based optimization.
+
+### Dependency changes
+
+* the following are no longer core dependencies and have been changed to optional dependencies : `optuna`, `statsmodels`, `pytorch-optimize`, `matplotlib`. Environments relying on functionality requiring these dependencies need to be updated to install these explicitly.
+* `optuna` bounds have been updated to `optuna >=3.1.0,<4.0.0`
+* `optuna-integrate` is now an additional soft dependency, in case of `optuna >=3.3.0`
+
+### Deprecations and removals
+
+* from 1.2.0, the default optimizer will be changed from `"ranger"` to `"adam"` to avoid non-`torch` dependencies in defaults. `pytorch-optimize` optimizers can still be used. Users should set the optimizer explicitly to continue using `"ranger"`.
+*  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure that `matplotlib` is installed.
+
+### All Contributors
 
 - jdb78
 - jurgispods
@@ -21,6 +230,7 @@
 - maartensukel
 - CahidArda
 - MBelniak
+
 
 ## v1.0.0 Update to pytorch 2.0 (10/04/2023)
 

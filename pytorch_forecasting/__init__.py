@@ -2,6 +2,8 @@
 PyTorch Forecasting package for timeseries forecasting with PyTorch.
 """
 
+__version__ = "1.4.0"
+
 from pytorch_forecasting.data import (
     EncoderNormalizer,
     GroupNormalizer,
@@ -44,7 +46,7 @@ from pytorch_forecasting.models import (
     NHiTS,
     RecurrentNetwork,
     TemporalFusionTransformer,
-    TSMixer,
+    TiDEModel,
     get_rnn,
 )
 from pytorch_forecasting.utils import (
@@ -60,6 +62,7 @@ from pytorch_forecasting.utils import (
     to_list,
     unpack_sequence,
 )
+from pytorch_forecasting.utils._maint._show_versions import show_versions
 
 __all__ = [
     "TimeSeriesDataSet",
@@ -68,10 +71,10 @@ __all__ = [
     "NaNLabelEncoder",
     "MultiNormalizer",
     "TemporalFusionTransformer",
+    "TiDEModel",
     "NBeats",
     "NHiTS",
     "Baseline",
-    "TSMixer",
     "DeepAR",
     "BaseModel",
     "BaseModelWithCovariates",
@@ -111,7 +114,6 @@ __all__ = [
     "integer_histogram",
     "groupby_apply",
     "profile",
+    "show_versions",
     "unpack_sequence",
 ]
-
-__version__ = "0.0.0"

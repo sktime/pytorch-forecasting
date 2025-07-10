@@ -1,14 +1,12 @@
 """Point metrics for forecasting a single point per time step."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-
 import scipy.stats
 import torch
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
 from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
-from pytorch_forecasting.utils import create_mask, unpack_sequence, unsqueeze_like
+from pytorch_forecasting.utils import unpack_sequence
 
 
 class PoissonLoss(MultiHorizonMetric):
@@ -30,18 +28,25 @@ class PoissonLoss(MultiHorizonMetric):
     Note that in this example, the data is log1p-transformed before normalized but not re-transformed.
     The PoissonLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
     The result is the model prediction.
-    """
+    """  # noqa: E501
 
-    def loss(self, y_pred: Dict[str, torch.Tensor], target: torch.Tensor) -> torch.Tensor:
+    def loss(
+        self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
+    ) -> torch.Tensor:
         return F.poisson_nll_loss(
-            super().to_prediction(y_pred), target, log_input=True, full=False, eps=1e-6, reduction="none"
+            super().to_prediction(y_pred),
+            target,
+            log_input=True,
+            full=False,
+            eps=1e-6,
+            reduction="none",
         )
 
-    def to_prediction(self, out: Dict[str, torch.Tensor]):
+    def to_prediction(self, out: dict[str, torch.Tensor]):
         rate = torch.exp(super().to_prediction(out))
         return rate
 
-    def to_quantiles(self, out: Dict[str, torch.Tensor], quantiles=None):
+    def to_quantiles(self, out: dict[str, torch.Tensor], quantiles=None):
         if quantiles is None:
             if self.quantiles is None:
                 quantiles = [0.5]
@@ -50,7 +55,12 @@ class PoissonLoss(MultiHorizonMetric):
         predictions = self.to_prediction(out)
         return (
             torch.stack(
-                [torch.tensor(scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)) for q in quantiles],
+                [
+                    torch.tensor(
+                        scipy.stats.poisson(predictions.detach().cpu().numpy()).ppf(q)
+                    )
+                    for q in quantiles
+                ],
                 dim=-1,
             )
             .type(predictions.dtype)
@@ -101,9 +111,9 @@ class CrossEntropy(MultiHorizonMetric):
     """
 
     def loss(self, y_pred, target):
-        loss = F.cross_entropy(y_pred.view(-1, y_pred.size(-1)), target.view(-1), reduction="none").view(
-            -1, target.size(-1)
-        )
+        loss = F.cross_entropy(
+            y_pred.view(-1, y_pred.size(-1)), target.view(-1), reduction="none"
+        ).view(-1, target.size(-1))
         return loss
 
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
@@ -120,7 +130,9 @@ class CrossEntropy(MultiHorizonMetric):
         """
         return y_pred.argmax(dim=-1)
 
-    def to_quantiles(self, y_pred: torch.Tensor, quantiles: List[float] = None) -> torch.Tensor:
+    def to_quantiles(
+        self, y_pred: torch.Tensor, quantiles: list[float] = None
+    ) -> torch.Tensor:
         """
         Convert network prediction into a quantile prediction.
 
@@ -131,7 +143,7 @@ class CrossEntropy(MultiHorizonMetric):
 
         Returns:
             torch.Tensor: prediction quantiles
-        """
+        """  # noqa: E501
         return y_pred
 
 
@@ -145,7 +157,7 @@ class RMSE(MultiHorizonMetric):
     def __init__(self, reduction="sqrt-mean", **kwargs):
         super().__init__(reduction=reduction, **kwargs)
 
-    def loss(self, y_pred: Dict[str, torch.Tensor], target):
+    def loss(self, y_pred: dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
         return loss
 
@@ -156,7 +168,7 @@ class MASE(MultiHorizonMetric):
 
     Defined as ``(y_pred - target).abs() / all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
     ``all_targets`` are here the concatenated encoder and decoder targets
-    """
+    """  # noqa: E501
 
     def update(
         self,
@@ -177,7 +189,7 @@ class MASE(MultiHorizonMetric):
 
         Returns:
             torch.Tensor: loss as a single number for backpropagation
-        """
+        """  # noqa: E501
         # unpack weight
         if isinstance(target, (list, tuple)):
             weight = target[1]
@@ -189,7 +201,12 @@ class MASE(MultiHorizonMetric):
         if isinstance(target, rnn.PackedSequence):
             target, lengths = unpack_sequence(target)
         else:
-            lengths = torch.full((target.size(0),), fill_value=target.size(1), dtype=torch.long, device=target.device)
+            lengths = torch.full(
+                (target.size(0),),
+                fill_value=target.size(1),
+                dtype=torch.long,
+                device=target.device,
+            )
 
         # determine lengths for encoder
         if encoder_lengths is None:
@@ -199,7 +216,9 @@ class MASE(MultiHorizonMetric):
         assert not target.requires_grad
 
         # calculate loss with "none" reduction
-        scaling = self.calculate_scaling(target, lengths, encoder_target, encoder_lengths)
+        scaling = self.calculate_scaling(
+            target, lengths, encoder_target, encoder_lengths
+        )
         losses = self.loss(y_pred, target, scaling)
 
         # weight samples
@@ -211,24 +230,34 @@ class MASE(MultiHorizonMetric):
     def loss(self, y_pred, target, scaling):
         return (self.to_prediction(y_pred) - target).abs() / scaling.unsqueeze(-1)
 
-    def calculate_scaling(self, target, lengths, encoder_target, encoder_lengths):
+    @staticmethod
+    def calculate_scaling(target, lengths, encoder_target, encoder_lengths):
         # calcualte mean(abs(diff(targets)))
         eps = 1e-6
         batch_size = target.size(0)
         total_lengths = lengths + encoder_lengths
-        assert (total_lengths > 1).all(), "Need at least 2 target values to be able to calculate MASE"
+        assert (
+            total_lengths > 1
+        ).all(), "Need at least 2 target values to be able to calculate MASE"
         max_length = target.size(1) + encoder_target.size(1)
-        if (total_lengths != max_length).any():  # if decoder or encoder targets have sequences of different lengths
+        if (
+            total_lengths != max_length
+        ).any():  # if decoder or encoder targets have sequences of different lengths
             targets = torch.cat(
                 [
                     encoder_target,
-                    torch.zeros(batch_size, target.size(1), device=target.device, dtype=encoder_target.dtype),
+                    torch.zeros(
+                        batch_size,
+                        target.size(1),
+                        device=target.device,
+                        dtype=encoder_target.dtype,
+                    ),
                 ],
                 dim=1,
             )
-            target_index = torch.arange(target.size(1), device=target.device, dtype=torch.long).unsqueeze(0).expand(
-                batch_size, -1
-            ) + encoder_lengths.unsqueeze(-1)
+            target_index = torch.arange(
+                target.size(1), device=target.device, dtype=torch.long
+            ).unsqueeze(0).expand(batch_size, -1) + encoder_lengths.unsqueeze(-1)
             targets.scatter_(dim=1, src=target, index=target_index)
         else:
             targets = torch.cat([encoder_target, target], dim=1)
@@ -241,7 +270,9 @@ class MASE(MultiHorizonMetric):
         zero_correction_indices = total_lengths[not_maximum_length] - 1
         if len(zero_correction_indices) > 0:
             diffs[
-                torch.arange(batch_size, dtype=torch.long, device=diffs.device)[not_maximum_length],
+                torch.arange(batch_size, dtype=torch.long, device=diffs.device)[
+                    not_maximum_length
+                ],
                 zero_correction_indices,
             ] = 0.0
 
@@ -273,7 +304,7 @@ class TweedieLoss(MultiHorizonMetric):
     Note that in this example, the data is log1p-transformed before normalized but not re-transformed.
     The TweedieLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
     The result is the model prediction.
-    """
+    """  # noqa: E501
 
     def __init__(self, reduction="mean", p: float = 1.5, **kwargs):
         """
@@ -288,7 +319,7 @@ class TweedieLoss(MultiHorizonMetric):
         assert 1 <= p < 2, "p must be in range [1, 2]"
         self.p = p
 
-    def to_prediction(self, out: Dict[str, torch.Tensor]):
+    def to_prediction(self, out: dict[str, torch.Tensor]):
         rate = torch.exp(super().to_prediction(out))
         return rate
 
