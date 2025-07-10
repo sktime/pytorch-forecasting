@@ -15,12 +15,12 @@ from pytorch_forecasting.metrics import (
     BetaDistributionLoss,
     ImplicitQuantileNetworkDistributionLoss,
     LogNormalDistributionLoss,
-    MQF2DistributionLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
 from pytorch_forecasting.metrics.base_metrics import AggregationMetric, CompositeMetric
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def test_composite_metric():
@@ -409,7 +409,13 @@ def mock_device(request):
         yield "cpu"
 
 
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
+)
 def test_MQF2DistributionLoss_device_handling(mock_device):
+    from pytorch_forecasting.metrics import MQF2DistributionLoss
+
     loss = MQF2DistributionLoss(prediction_length=2)
 
     assert next(loss.picnn.parameters()).device.type == mock_device
@@ -435,12 +441,18 @@ device_params = [
 ]
 
 
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
+)
 @pytest.mark.parametrize("device", device_params)
 def test_MQF2DistributionLoss_full_workflow(sample_dataset, device):
     """
     Test the complete workflow from training to prediction with MQF2DistributionLoss.
     """
     import lightning.pytorch as pl
+
+    from pytorch_forecasting.metrics import MQF2DistributionLoss
 
     model = TemporalFusionTransformer.from_dataset(
         sample_dataset, loss=MQF2DistributionLoss(prediction_length=2)
@@ -481,8 +493,14 @@ def test_MQF2DistributionLoss_full_workflow(sample_dataset, device):
     assert plot_success, "Plotting failed due to device mismatch"
 
 
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
+)
 def test_MQF2DistributionLoss_device_synchronization(mock_device, sample_dataset):
     """Test that MQF2DistributionLoss components are synchronized with the device."""
+    from pytorch_forecasting.metrics import MQF2DistributionLoss
+
     model = TemporalFusionTransformer.from_dataset(
         sample_dataset, loss=MQF2DistributionLoss(prediction_length=2)
     )
