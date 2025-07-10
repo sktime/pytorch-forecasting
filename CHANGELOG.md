@@ -202,6 +202,7 @@ The package name is now corrected to `pytorch-forecasting`.
 
 Maintenance update widening compatibility ranges and consolidating dependencies:
 
+* `TSMixer` model, see [TSMixer: An All-MLP Architecture for Time Series Forecasting](https://arxiv.org/abs/2303.06053).
 * support for python 3.11 and 3.12, added CI testing
 * support for MacOS, added CI testing
 * core dependencies have been minimized to `numpy`, `torch`, `lightning`, `scipy`, `pandas`, and `scikit-learn`.
@@ -217,6 +218,31 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 * from 1.2.0, the default optimizer will be changed from `"ranger"` to `"adam"` to avoid non-`torch` dependencies in defaults. `pytorch-optimize` optimizers can still be used. Users should set the optimizer explicitly to continue using `"ranger"`.
 *  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure that `matplotlib` is installed.
+
+### All Contributors
+
+@andre-marcos-perez,
+@avirsaha,
+@bendavidsteel,
+@benHeid,
+@bohdan-safoniuk,
+@Borda,
+@CahidArda,
+@fkiraly,
+@fnhirwa,
+@germanKoch,
+@jacktang,
+@jdb78,
+@jurgispods,
+@maartensukel,
+@MBelniak,
+@orangehe,
+@pavelzw,
+@sfalkena,
+@tmct,
+@XinyuWuu,
+@yarnabrina
+
 
 ## v1.0.0 Update to pytorch 2.0 (10/04/2023)
 
