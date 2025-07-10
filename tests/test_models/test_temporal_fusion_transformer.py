@@ -136,7 +136,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         limit_val_batches=2,
         limit_test_batches=2,
         logger=logger,
-        **trainer_kwargs
+        **trainer_kwargs,
     )
     # test monotone constraints automatically
     if "discount_in_percent" in train_dataloader.dataset.reals:
