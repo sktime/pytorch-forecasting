@@ -9,7 +9,7 @@ from pytorch_forecasting.data.encoders import GroupNormalizer, TorchNormalizer
 
 
 @pytest.fixture(scope="module")
-def prepare_point_forecast():
+def point_forecast():
     """Prepare a point forecast dataset, for testing point forecast metrics."""
 
     torch.manual_seed(42)
@@ -84,7 +84,7 @@ def prepare_point_forecast():
 
 
 @pytest.fixture(scope="module")
-def prepare_quantile_forecast():
+def quantile_forecast():
     """Prepare a quantile forecast dataset, for testing quantile metrics."""
 
     torch.manual_seed(42)
@@ -161,7 +161,7 @@ def prepare_quantile_forecast():
 
 
 @pytest.fixture(scope="module")
-def prepare_normal_distribution_forecast():
+def normal_distribution_forecast():
     """Prepare data for normal distribution loss metrics."""
 
     torch.manual_seed(42)
@@ -235,7 +235,7 @@ def prepare_normal_distribution_forecast():
 
 
 @pytest.fixture(scope="module")
-def prepare_multivariate_normal_distribution_forecast():
+def multivariate_normal_distribution_forecast():
     """Prepare data for multivariate normal distribution loss metrics."""
 
     torch.manual_seed(42)
@@ -313,7 +313,7 @@ def prepare_multivariate_normal_distribution_forecast():
 
 
 @pytest.fixture(scope="module")
-def prepare_negative_binomial_distribution_forecast():
+def negative_binomial_distribution_forecast():
     """Prepare data for negative binomial distribution loss metric."""
 
     torch.manual_seed(42)
@@ -393,7 +393,7 @@ def prepare_negative_binomial_distribution_forecast():
 
 
 @pytest.fixture(scope="module")
-def prepare_log_normal_distribution_forecast():
+def log_normal_distribution_forecast():
     """Prepare data for log normal distribution loss metrics"""
 
     torch.manual_seed(42)
@@ -454,7 +454,7 @@ def prepare_log_normal_distribution_forecast():
 
 
 @pytest.fixture(scope="module")
-def prepare_beta_distribution_forecast():
+def beta_distribution_forecast():
     """Prepare data for beta distribution loss metrics."""
 
     torch.manual_seed(42)
@@ -527,7 +527,7 @@ def prepare_beta_distribution_forecast():
 
 
 @pytest.fixture(scope="module")
-def prepare_implicit_quantile_network_distribution_forecast():
+def implicit_quantile_network_distribution_forecast():
     """Prepare data for implicit quantile network distribution loss metrics."""
 
     torch.manual_seed(42)

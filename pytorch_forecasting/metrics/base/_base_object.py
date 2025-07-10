@@ -103,11 +103,11 @@ class _BasePtMetric(_BaseObject):
                     "Metric requires a distribution type to be set. "
                     "Please set the 'distribution_type' tag."
                 )
-            return f"prepare_{distribution_type}_distribution_forecast"
+            return f"{distribution_type}_distribution_forecast"
         elif metric_type == "point":
-            return "prepare_point_forecast"
+            return "point_forecast"
         elif metric_type == "quantile":
-            return "prepare_quantile_forecast"
+            return "quantile_forecast"
         else:
             raise ValueError(
                 f"Unknown metric type '{metric_type}'. "
