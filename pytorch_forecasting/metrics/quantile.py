@@ -4,7 +4,7 @@ from typing import Optional
 
 import torch
 
-from pytorch_forecasting.metrics.base.base_metrics import MultiHorizonMetric
+from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
 
 
 class QuantileLoss(MultiHorizonMetric):

@@ -9,7 +9,7 @@ from torch import distributions, nn
 import torch.nn.functional as F
 
 from pytorch_forecasting.data.encoders import TorchNormalizer, softplus_inv
-from pytorch_forecasting.metrics.base.base_metrics import (
+from pytorch_forecasting.metrics.base_metrics import (
     DistributionLoss,
     MultivariateDistributionLoss,
 )

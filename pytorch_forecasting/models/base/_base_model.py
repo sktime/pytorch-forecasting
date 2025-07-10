@@ -45,7 +45,7 @@ from pytorch_forecasting.metrics import (
     QuantileLoss,
     convert_torchmetric_to_pytorch_forecasting_metric,
 )
-from pytorch_forecasting.metrics.base.base_metrics import Metric
+from pytorch_forecasting.metrics.base_metrics import Metric
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 from pytorch_forecasting.utils import (
     InitialParameterRepresenterMixIn,

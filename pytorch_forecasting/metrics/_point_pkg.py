@@ -71,22 +71,6 @@ class RMSE_pkg(_BasePtMetric):
         return RMSE
 
 
-# class MASE_pkg(_BasePtMetric):
-#     """
-#     Mean absolute scaled error metric for point forecasts.
-
-#     Defined as ``(y_pred - target).abs() / seasonal_error``.
-#     """
-
-#     _tags = {"metric_type": "point", "info:metric_name": "MASE"}
-
-#     @classmethod
-#     def get_model_cls(cls):
-#         from pytorch_forecasting.metrics.point import MASE
-
-#         return MASE
-
-
 class PoissonLoss_pkg(_BasePtMetric):
     """
     Poisson loss for count data.

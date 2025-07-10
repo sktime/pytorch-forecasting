@@ -5,8 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.metrics.base._base_object import _BasePtMetric
-from pytorch_forecasting.metrics.base.base_metrics import MultiHorizonMetric
+from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
 from pytorch_forecasting.utils import unpack_sequence
 
 

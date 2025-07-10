@@ -2,7 +2,24 @@
 Metrics for (mulit-horizon) timeseries forecasting.
 """
 
-from pytorch_forecasting.metrics.base import (
+from pytorch_forecasting.metrics._distributions_pkg import (
+    BetaDistributionLoss_pkg,
+    ImplicitQuantileNetworkDistributionLoss_pkg,
+    LogNormalDistributionLoss_pkg,
+    MultivariateNormalDistributionLoss_pkg,
+    NegativeBinomialDistributionLoss_pkg,
+    NormalDistributionLoss_pkg,
+)
+from pytorch_forecasting.metrics._point_pkg import (
+    MAE_pkg,
+    MAPE_pkg,
+    PoissonLoss_pkg,
+    RMSE_pkg,
+    SMAPE_pkg,
+    TweedieLoss_pkg,
+)
+from pytorch_forecasting.metrics._quantile_pkg import QuantileLoss_pkg
+from pytorch_forecasting.metrics.base_metrics import (
     DistributionLoss,
     Metric,
     MultiHorizonMetric,
@@ -29,7 +46,6 @@ from pytorch_forecasting.metrics.point import (
     PoissonLoss,
     TweedieLoss,
 )
-from pytorch_forecasting.metrics.point_pkg import MAE_pkg
 from pytorch_forecasting.metrics.quantile import QuantileLoss
 
 __all__ = [
@@ -55,4 +71,17 @@ __all__ = [
     "ImplicitQuantileNetworkDistributionLoss",
     "QuantileLoss",
     "MQF2DistributionLoss",
+    "MAE_pkg",
+    "MAPE_pkg",
+    "SMAPE_pkg",
+    "RMSE_pkg",
+    "PoissonLoss_pkg",
+    "TweedieLoss_pkg",
+    "QuantileLoss_pkg",
+    "BetaDistributionLoss_pkg",
+    "ImplicitQuantileNetworkDistributionLoss_pkg",
+    "LogNormalDistributionLoss_pkg",
+    "MultivariateNormalDistributionLoss_pkg",
+    "NegativeBinomialDistributionLoss_pkg",
+    "NormalDistributionLoss_pkg",
 ]

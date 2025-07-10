@@ -1,16 +1,8 @@
 """Automated test for all metrics in PyTorch Forecasting."""
 
-from inspect import isclass
-import shutil
-
-import numpy as np
-import pandas as pd
 import pytest
 import torch
-from torch.nn.utils import rnn
 
-from pytorch_forecasting._registry import all_objects
-from pytorch_forecasting.data import TorchNormalizer
 from pytorch_forecasting.tests.test_all_estimators import (
     BaseFixtureGenerator,
     PackageConfig,
