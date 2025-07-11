@@ -16,6 +16,53 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
 
     fixture_sequence = ["object_pkg", "object_class"]
 
+    def _setup_metric_test_scenario(
+        self,
+        object_pkg,
+        object_class,
+        target_type,
+        request,
+    ):
+        """Prepare test inputs for the given metric.
+
+        Parameters
+        ----------
+        object_pkg: SkbaseBaseObject
+            The package object containing the metric.
+        object_class: class
+            The class of the metric to be tested.
+        target_type: str
+            The type of target data (e.g., "standard", "packed", "weighted").
+        request: pytest.FixtureRequest
+            The pytest request object to access fixtures.
+        Returns
+        -------
+        tuple or None
+            A tuple containing the prepared metric, y_pred and y, or None
+            if the target type is not supported.
+        """
+
+        prepare_data_fixture_name = object_pkg.requires_data_type()
+        data = request.getfixturevalue(prepare_data_fixture_name)
+
+        if target_type not in data["test_cases"]:
+            return None
+
+        test_case = data["test_cases"][target_type]
+        y_pred, y = object_pkg.prepare_test_inputs(test_case)
+
+        test_params = object_pkg.get_test_params()
+        metric = object_class(**test_params)
+
+        torch_encoder = object_pkg.get_encoder()
+        y_pred = metric.rescale_parameters(
+            parameters=y_pred,
+            target_scale=test_case["x"]["target_scale"],
+            encoder=torch_encoder,
+        )
+
+        return metric, y_pred, y
+
     def _test_integration_metrics(self, metric, y_pred, y):
         from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
 
@@ -69,55 +116,54 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
             assert torch.isfinite(composite_result).all()
             assert torch.isfinite(weighted_result).all()
 
-    def _test_reduction_modes(self, metric_class, y_pred, y, test_params):
+    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
+    @pytest.mark.parametrize("reduction", ["mean", "none", "sqrt-mean"])
+    def test_reduction_modes(
+        self, object_pkg, object_class, request, target_type, reduction
+    ):  # noqa: E501
         """Test that all metrics support different reduction modes."""
 
-        for reduction in ["mean", "none"]:
-            metric = metric_class(**test_params)
-            if metric_class.__name__ in [
-                "NormalDistributionLoss",
-                "MultivariateNormalDistributionLoss",
-                "ImplicitQuantileNetworkDistributionLoss",
-            ]:  # noqa: E501
-                metric._transformation = None
-            metric.update(y_pred, y)
-            result = metric.reduce_loss(
-                metric.losses, metric.lengths, reduction=reduction
-            )  # noqa: E501
-            assert isinstance(result, torch.Tensor)
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_class, target_type, request
+        )
 
-            if reduction == "none":
-                result.shape == metric.losses
-            else:
-                assert result.ndim == 0
-                if reduction == "sqrt-mean":
-                    assert (
-                        result >= 0
-                    ), "Result should be non-negative for sqrt-mean reduction."  # noqa: E501
+        if prepared_data is None:
+            return None
+
+        metric, y_pred, y = prepared_data
+
+        if (
+            reduction == "sqrt-mean"
+            and object_pkg.get_class_tag("distribution_type") == "normal"
+        ):  # noqa: E501
+            return None  # sqrt-mean is not applicable for normal distribution
+
+        metric.update(y_pred, y)
+        result = metric.reduce_loss(metric.losses, metric.lengths, reduction=reduction)  # noqa: E501
+        assert isinstance(result, torch.Tensor)
+
+        if reduction == "none":
+            result.shape == metric.losses
+        else:
+            assert result.ndim == 0
+            if reduction == "sqrt-mean":
+                assert (
+                    result >= 0
+                ), "Result should be non-negative for sqrt-mean reduction."  # noqa: E501
 
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
     def test_metric_functionality(self, object_pkg, object_class, request, target_type):
         """Test metric functionality with appropriate test data."""
 
-        prepare_data_fixture_name = object_pkg.requires_data_type()
-        data = request.getfixturevalue(prepare_data_fixture_name)
-
-        if target_type not in data["test_cases"]:
-            return None
-
-        test_case = data["test_cases"][target_type]
-        y_pred, y = object_pkg.prepare_test_inputs(test_case)
-
-        test_params = object_pkg.get_test_params()
-
-        metric = object_class(**test_params)
-
-        torch_encoder = object_pkg.get_encoder()
-        y_pred = metric.rescale_parameters(
-            parameters=y_pred,
-            target_scale=test_case["x"]["target_scale"],
-            encoder=torch_encoder,
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_class, target_type, request
         )
 
+        if prepared_data is None:
+            # meant for skipping tests for unsupported target types on certain metric
+            # types
+            return None
+
+        metric, y_pred, y = prepared_data
+
         self._test_integration_metrics(metric, y_pred, y)
-        self._test_reduction_modes(object_class, y_pred, y, test_params)
