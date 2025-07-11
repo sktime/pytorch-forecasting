@@ -63,7 +63,7 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
 
         return metric, y_pred, y
 
-    def _test_integration_metrics(self, metric, y_pred, y):
+    def _test_integration_metrics(self, metric, y_pred, y, object_pkg):
         from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
 
         metric.reset()
@@ -80,7 +80,7 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
         assert point_pred.ndim == 2
 
         quantiles = [0.1, 0.5, 0.9]
-        if isinstance(metric, QuantileLoss):
+        if object_pkg.get_class_tag("metric_type") == "quantile":
             quantile_pred = metric.to_quantiles(y_pred)
             assert isinstance(
                 quantile_pred, torch.Tensor
@@ -91,7 +91,12 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
             assert isinstance(
                 quantile_pred, torch.Tensor
             ), "Quantile prediction should be a tensor."  # noqa: E501
-            if y_pred.ndim == 3 or isinstance(metric, PoissonLoss):
+
+            # capability:quantile_generation is a tag for metrics
+            # that override the default `to_quantiles` method from `Metric` base class.
+            if y_pred.ndim == 3 or (
+                object_pkg.get_class_tag("shape:adds_quantile_dimension")
+            ):
                 assert quantile_pred.shape == (
                     y_pred.shape[0],
                     y_pred.shape[1],
@@ -166,4 +171,4 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
 
         metric, y_pred, y = prepared_data
 
-        self._test_integration_metrics(metric, y_pred, y)
+        self._test_integration_metrics(metric, y_pred, y, object_pkg)
