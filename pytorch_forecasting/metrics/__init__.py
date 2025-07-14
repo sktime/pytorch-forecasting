@@ -2,7 +2,7 @@
 Metrics for (mulit-horizon) timeseries forecasting.
 """
 
-from pytorch_forecasting.metrics._distributions_pkg import (
+from pytorch_forecasting.metrics._distributions import (
     BetaDistributionLoss_pkg,
     ImplicitQuantileNetworkDistributionLoss_pkg,
     LogNormalDistributionLoss_pkg,
@@ -10,7 +10,7 @@ from pytorch_forecasting.metrics._distributions_pkg import (
     NegativeBinomialDistributionLoss_pkg,
     NormalDistributionLoss_pkg,
 )
-from pytorch_forecasting.metrics._point_pkg import (
+from pytorch_forecasting.metrics._point import (
     MAE_pkg,
     MAPE_pkg,
     PoissonLoss_pkg,
@@ -18,7 +18,7 @@ from pytorch_forecasting.metrics._point_pkg import (
     SMAPE_pkg,
     TweedieLoss_pkg,
 )
-from pytorch_forecasting.metrics._quantile_pkg import QuantileLoss_pkg
+from pytorch_forecasting.metrics._quantile import QuantileLoss_pkg
 from pytorch_forecasting.metrics.base_metrics import (
     DistributionLoss,
     Metric,

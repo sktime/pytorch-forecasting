@@ -1,5 +1,5 @@
 """
-Package containers for all quantile-forecast metrics.
+Package containers for Quantile Loss metric for quantile forecasts.
 """
 
 from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
