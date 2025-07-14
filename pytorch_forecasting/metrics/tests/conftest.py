@@ -631,7 +631,7 @@ def classification_forecast():
 
     prediction_length = timesteps // 2
 
-    y_pred = torch.randn(batch_size, prediction_length, n_classes)
+    y_pred = torch.rand(batch_size, prediction_length, n_classes)  # noqa: E501
 
     test_cases = {}
 
