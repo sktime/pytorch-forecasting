@@ -2,6 +2,9 @@
 Package container for point metrics in PyTorch Forecasting.
 """
 
+from pytorch_forecasting.metrics._point._cross_entropy._cross_entropy_pkg import (
+    CrossEntropy_pkg,
+)
 from pytorch_forecasting.metrics._point._mae._mae_pkg import MAE_pkg
 from pytorch_forecasting.metrics._point._mape._mape_pkg import MAPE_pkg
 from pytorch_forecasting.metrics._point._poisson._poisson_loss_pkg import (
@@ -20,4 +23,5 @@ __all__ = [
     "RMSE_pkg",
     "SMAPE_pkg",
     "TweedieLoss_pkg",
+    "CrossEntropy_pkg",
 ]

@@ -11,6 +11,7 @@ from pytorch_forecasting.metrics._distributions import (
     NormalDistributionLoss_pkg,
 )
 from pytorch_forecasting.metrics._point import (
+    CrossEntropy_pkg,
     MAE_pkg,
     MAPE_pkg,
     PoissonLoss_pkg,
@@ -77,6 +78,7 @@ __all__ = [
     "RMSE_pkg",
     "PoissonLoss_pkg",
     "TweedieLoss_pkg",
+    "CrossEntropy_pkg",
     "QuantileLoss_pkg",
     "BetaDistributionLoss_pkg",
     "ImplicitQuantileNetworkDistributionLoss_pkg",

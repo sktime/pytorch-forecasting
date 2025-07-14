@@ -55,11 +55,12 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
         metric = object_class(**test_params)
 
         torch_encoder = object_pkg.get_encoder()
-        y_pred = metric.rescale_parameters(
-            parameters=y_pred,
-            target_scale=test_case["x"]["target_scale"],
-            encoder=torch_encoder,
-        )
+        if not object_pkg.get_class_tag("no_rescaling"):
+            y_pred = metric.rescale_parameters(
+                parameters=y_pred,
+                target_scale=test_case["x"]["target_scale"],
+                encoder=torch_encoder,
+            )
 
         return metric, y_pred, y
 
@@ -76,6 +77,10 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
             point_pred.shape[:2] == y_pred.shape[:2]
         ), "Prediction shape mismatch with y_pred."  # noqa: E501
         assert point_pred.ndim == 2
+        if object_pkg.get_class_tag("info:metric_name") == "CrossEntropy":
+            assert torch.all(
+                point_pred.ge(0)
+            ), "CrossEntropy loss predictions should be non-negative."  # noqa: E501
 
         quantiles = [0.1, 0.5, 0.9]
         if object_pkg.get_class_tag("metric_type") == "quantile":
@@ -167,7 +172,7 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
         assert isinstance(result, torch.Tensor)
 
         if reduction == "none":
-            result.shape == metric.losses
+            assert result.shape == metric.losses.shape
         else:
             assert result.ndim == 0
             if reduction == "sqrt-mean":
