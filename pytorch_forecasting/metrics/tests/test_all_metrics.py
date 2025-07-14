@@ -64,8 +64,6 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
         return metric, y_pred, y
 
     def _test_integration_metrics(self, metric, y_pred, y, object_pkg):
-        from pytorch_forecasting.metrics import PoissonLoss, QuantileLoss
-
         metric.reset()
         metric.update(y_pred, y)
         res = metric.compute()
@@ -126,7 +124,28 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
     def test_reduction_modes(
         self, object_pkg, object_class, request, target_type, reduction
     ):  # noqa: E501
-        """Test that all metrics support different reduction modes."""
+        """Test that all metrics support different reduction modes.
+
+        The various reduction modes are ``mean``, ``none``, and ``sqrt-mean``.
+
+        Parameters
+        ----------
+        object_pkg: SkbaseBaseObject
+            The package object containing the metric.
+        object_class: class
+            The class of the metric to be tested.
+        request: pytest.FixtureRequest
+            The pytest request object to access fixtures.
+        target_type: str
+            The type of target data (e.g., "standard", "packed", "weighted").
+        reduction: str
+            The reduction mode to be tested (e.g., "mean", "none", "sqrt-mean").
+
+        Notes
+        -----
+        Step-outs are used to skip tests for ``sqrt-mean`` reduction mode for metrics
+        that do not support it, such as those with a normal distribution type.
+        """
 
         prepared_data = self._setup_metric_test_scenario(
             object_pkg, object_class, target_type, request
@@ -158,7 +177,33 @@ class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
 
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
     def test_metric_functionality(self, object_pkg, object_class, request, target_type):
-        """Test metric functionality with appropriate test data."""
+        """Test metric functionality with appropriate test data.
+
+        This test performs an integration test on a metric object, with the following
+        steps:
+
+        * Check if the metric supports the prediction and target types.
+        * Update the metric state with predictions and targets.
+        * Compute the metric value.
+        * Validate usage of `to_prediction` and `to_quantiles` methods.
+        * Validate the metric's ability to handle composite and weighted metrics.
+
+        Parameters
+        ----------
+        object_pkg: SkbaseBaseObject
+            The package object containing the metric.
+        object_class: class
+            The class of the metric to be tested.
+        request: pytest.FixtureRequest
+            The pytest request object to access fixtures.
+        target_type: str
+            The type of target data (e.g., "standard", "packed", "weighted").
+
+        Notes
+        -----
+        If the specific target type does not exist in the data returned by the fixture,
+        the test will be skipped for that metric.
+        """
 
         prepared_data = self._setup_metric_test_scenario(
             object_pkg, object_class, target_type, request
