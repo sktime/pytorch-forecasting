@@ -8,7 +8,7 @@ from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 import torch.nn as nn
 
-from pytorch_forecasting.tests._base._fixture_generator import (
+from pytorch_forecasting.tests.test_all_estimators import (
     BaseFixtureGenerator,
     PackageConfig,
 )

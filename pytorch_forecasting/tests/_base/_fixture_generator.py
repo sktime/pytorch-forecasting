@@ -3,31 +3,10 @@ from inspect import isclass
 from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
 
 from pytorch_forecasting._registry import all_objects
-from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
 ONLY_CHANGED_MODULES = False
-
-
-class PackageConfig:
-    """Contains package config variables for test classes."""
-
-    # class variables which can be overridden by descendants
-    # ------------------------------------------------------
-
-    # package to search for objects
-    # expected type: str, package/module name, relative to python environment root
-    package_name = "pytorch_forecasting"
-
-    # list of object types (class names) to exclude
-    # expected type: list of str, str are class names
-    exclude_objects = EXCLUDE_ESTIMATORS
-
-    # list of tests to exclude
-    # expected type: dict of lists, key:str, value: List[str]
-    # keys are class names of estimators, values are lists of test names to exclude
-    excluded_tests = EXCLUDED_TESTS
 
 
 class BaseFixtureGenerator(_BaseFixtureGenerator):
@@ -105,7 +84,6 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         "object_pkg",
         "object_class",
         "object_instance",
-        "trainer_kwargs",
     ]
 
     def _generate_object_pkg(self, test_name, **kwargs):
@@ -117,9 +95,9 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
             ranges over all object packages not excluded by self.excluded_tests
         """
         object_classes_to_test = [
-            est for est in self._all_objects() if not self.is_excluded(test_name, est)
+            obj for obj in self._all_objects() if not self.is_excluded(test_name, obj)
         ]
-        object_names = [est.name() for est in object_classes_to_test]
+        object_names = [obj.name() for obj in object_classes_to_test]
 
         return object_classes_to_test, object_names
 
@@ -131,35 +109,7 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         object_class: object inheriting from BaseObject
             ranges over all object classes not excluded by self.excluded_tests
         """
-        if "object_pkg" in kwargs.keys():
-            all_model_pkgs = [kwargs["object_pkg"]]
-        else:
-            # call _generate_estimator_class to get all the classes
-            all_model_pkgs, _ = self._generate_object_pkg(test_name=test_name)
-
-        all_cls = [est.get_model_cls() for est in all_model_pkgs]
-        object_classes_to_test = [
-            est for est in all_cls if not self.is_excluded(test_name, est)
-        ]
-        object_names = [est.__name__ for est in object_classes_to_test]
-
-        return object_classes_to_test, object_names
-
-    def _generate_trainer_kwargs(self, test_name, **kwargs):
-        """Return kwargs for the trainer.
-
-        Fixtures parametrized
-        ---------------------
-        trainer_kwargs: dict
-            ranges over all kwargs for the trainer
-        """
-        if "object_pkg" in kwargs.keys():
-            obj_meta = kwargs["object_pkg"]
-        else:
-            return []
-
-        all_train_kwargs = obj_meta.get_test_train_params()
-        rg = range(len(all_train_kwargs))
-        train_kwargs_names = [str(i) for i in rg]
-
-        return all_train_kwargs, train_kwargs_names
+        raise NotImplementedError(
+            "This method should be overridden in the subclass to return "
+            "object classes for the test."
+        )
