@@ -58,6 +58,7 @@ from pytorch_forecasting.utils import (
     groupby_apply,
     to_list,
 )
+from pytorch_forecasting.utils._classproperty import classproperty
 from pytorch_forecasting.utils._dependencies import (
     _check_matplotlib,
     _get_installed_packages,
@@ -590,6 +591,11 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         # never log for prediction
         if not self.predicting:
             super().log(*args, **kwargs)
+
+    @classproperty
+    def pkg(cls):
+        """Package class for the model."""
+        return cls._pkg()
 
     @property
     def predicting(self) -> bool:
