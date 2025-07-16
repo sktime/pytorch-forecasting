@@ -17,11 +17,11 @@ class _BasePtMetric(_BaseObject):
         str
             The name of the metric.
         """
-        metric_cls = cls.get_model_cls()
+        metric_cls = cls.get_metric_cls()
         return metric_cls.__name__
 
     @classmethod
-    def get_model_cls(cls):
+    def get_metric_cls(cls):
         """Get the metric class.
 
         Returns

@@ -4,18 +4,70 @@ import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 
-from pytorch_forecasting.tests.test_all_estimators import (
+from pytorch_forecasting.metrics.tests._config import (
+    EXCLUDE_METRICS,
+    EXCLUDED_TESTS,
+)
+from pytorch_forecasting.tests._base._fixture_generator import (
     BaseFixtureGenerator,
-    PackageConfig,
 )
 
 
-class TestAllPtMetrics(PackageConfig, BaseFixtureGenerator):
+class MetricPackageConfig:
+    """Configuration for the metric package tests."""
+
+    # This class can be extended to include specific configurations for the metric
+    # package if needed in the future.
+
+    package_name = "pytorch_forecasting.metrics"
+
+    exclude_objects = EXCLUDE_METRICS
+    excluded_tests = EXCLUDED_TESTS
+
+
+class MetricFixtureGenerator(BaseFixtureGenerator):
+    """
+    Fixture generator for testing metrics in PyTorch Forecasting.
+
+    Inherits from BaseFixtureGenerator to provide a framework for
+    generating fixtures for metric classes and instances, to be tested under
+    metric-specific scenarios.
+
+    Fixtures parametrized
+    ---------------------
+    object_class: metric inheriting from BaseObject
+        ranges over metric classes not excluded by EXCLUDE_METRICS, EXCLUDED_TESTS
+    """
+
+    fixture_sequence = ["object_pkg", "object_class"]
+
+    def _generate_object_class(self, test_name, **kwargs):
+        """Return object class fixtures.
+
+        Fixtures parametrized
+        ---------------------
+        object_class: object inheriting from BaseObject
+            ranges over all object classes not excluded by self.excluded_tests
+        """
+        if "object_pkg" in kwargs.keys():
+            all_metric_pkgs = [kwargs["object_pkg"]]
+        else:
+            # call _generate_metrics_class to get all the classes
+            all_metric_pkgs, _ = self._generate_object_pkg(test_name=test_name)
+
+        all_cls = [metric.get_metric_cls() for metric in all_metric_pkgs]
+        object_classes_to_test = [
+            metric for metric in all_cls if not self.is_excluded(test_name, metric)
+        ]
+        object_names = [metric.__name__ for metric in object_classes_to_test]
+
+        return object_classes_to_test, object_names
+
+
+class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
     """Test suite for all metrics in PyTorch Forecasting."""
 
     object_type_filter = "metric"
-
-    fixture_sequence = ["object_pkg", "object_class"]
 
     def _setup_metric_test_scenario(
         self,

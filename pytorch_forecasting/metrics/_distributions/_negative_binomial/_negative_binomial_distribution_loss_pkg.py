@@ -18,7 +18,7 @@ class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_metric_cls(cls):
         from pytorch_forecasting.metrics.distributions import (
             NegativeBinomialDistributionLoss,
         )

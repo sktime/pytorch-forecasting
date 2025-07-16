@@ -15,7 +15,7 @@ class QuantileLoss_pkg(_BasePtMetric):
     _tags = {"metric_type": "quantile", "info:metric_name": "QuantileLoss"}
 
     @classmethod
-    def get_model_cls(cls):
+    def get_metric_cls(cls):
         from pytorch_forecasting.metrics import QuantileLoss
 
         return QuantileLoss

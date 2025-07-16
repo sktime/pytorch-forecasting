@@ -15,7 +15,7 @@ class MAE_pkg(_BasePtMetric):
     _tags = {"metric_type": "point", "info:metric_name": "MAE"}
 
     @classmethod
-    def get_model_cls(cls):
+    def get_metric_cls(cls):
         from pytorch_forecasting.metrics import MAE
 
         return MAE
