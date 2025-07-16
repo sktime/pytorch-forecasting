@@ -93,7 +93,7 @@ def get_compatible_losses(pred_types, y_types):
     Parameters
     ----------
     pred_types : list of str
-        Prediction types, e.g., ["point", "proba"]
+        Prediction types, e.g., ["point", "distr"]
     y_types : list of str
         Target types, e.g., ["numeric", "category"]
 
