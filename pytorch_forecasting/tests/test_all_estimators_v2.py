@@ -9,7 +9,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import torch.nn as nn
 
 from pytorch_forecasting.tests.test_all_estimators import (
-    BaseFixtureGenerator,
+    ModelBaseFixtureGenerator,
     PackageConfig,
 )
 
@@ -74,7 +74,7 @@ def _integration(
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
-class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
+class TestAllPtForecastersV2(PackageConfig, ModelBaseFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
     object_type_filter = "forecaster_pytorch_v2"

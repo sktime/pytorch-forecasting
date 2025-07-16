@@ -7,9 +7,9 @@ import shutil
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
-from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
 
 from pytorch_forecasting._registry import all_objects
+from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
 from pytorch_forecasting.tests._loss_mapping import (
     ALL_LOSSES_BY_TYPE,
@@ -74,7 +74,7 @@ class PackageConfig:
     excluded_tests = EXCLUDED_TESTS
 
 
-class BaseFixtureGenerator(_BaseFixtureGenerator):
+class ModelBaseFixtureGenerator(BaseFixtureGenerator):
     """Fixture generator for base testing functionality in sktime.
 
     Test classes inheriting from this and not overriding pytest_generate_tests
@@ -111,39 +111,6 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         ranges over dictionaries of kwargs for the trainer
     """
 
-    # overrides object retrieval in scikit-base
-    def _all_objects(self):
-        """Retrieve list of all object classes of type self.object_type_filter.
-
-        If self.object_type_filter is None, retrieve all objects.
-        If class, retrieve all classes inheriting from self.object_type_filter.
-        Otherwise (assumed str or list of str), retrieve all classes with tags
-        object_type in self.object_type_filter.
-        """
-        filter = getattr(self, "object_type_filter", None)
-
-        if isclass(filter):
-            object_types = filter.get_class_tag("object_type", None)
-        else:
-            object_types = filter
-
-        obj_list = all_objects(
-            object_types=object_types,
-            return_names=False,
-            exclude_objects=self.exclude_objects,
-        )
-
-        if isclass(filter):
-            obj_list = [obj for obj in obj_list if issubclass(obj, filter)]
-
-        # run_test_for_class selects the estimators to run
-        # based on whether they have changed, and whether they have all dependencies
-        # internally, uses the ONLY_CHANGED_MODULES flag,
-        # and checks the python env against python_dependencies tag
-        # obj_list = [obj for obj in obj_list if run_test_for_class(obj)]
-
-        return obj_list
-
     # which sequence the conditional fixtures are generated in
     fixture_sequence = [
         "object_pkg",
@@ -152,20 +119,22 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         "trainer_kwargs",
     ]
 
-    def _generate_object_pkg(self, test_name, **kwargs):
-        """Return object package fixtures.
+    @staticmethod
+    def is_excluded(test_name, est, param_name=None):
+        """Shorthand to check whether test test_name is excluded for estimator est."""
+        if est.__name__.endswith("_pkg") or est.__name__.endswith("_pkg_v2"):
+            excl_tag = est.get_class_tag("tests:skip_by_name", [])
+        else:
+            excl_tag = est.pkg.get_class_tag("tests:skip_by_name", [])
+        if excl_tag is None:
+            excl_tag = []
+        cond = test_name in excl_tag
 
-        Fixtures parametrized
-        ---------------------
-        object_pkg: object package inheriting from BaseObject
-            ranges over all object packages not excluded by self.excluded_tests
-        """
-        object_classes_to_test = [
-            est for est in self._all_objects() if not self.is_excluded(test_name, est)
-        ]
-        object_names = [est.name() for est in object_classes_to_test]
-
-        return object_classes_to_test, object_names
+        if param_name is not None:
+            full_test_name = f"{test_name}[{est.__name__}-{param_name}]"
+            if full_test_name in excl_tag:
+                return True
+        return cond
 
     def _generate_object_class(self, test_name, **kwargs):
         """Return object class fixtures.
@@ -250,7 +219,16 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
             rg = range(len(all_train_kwargs))
             train_kwargs_names = [str(i) for i in rg]
 
-        return all_train_kwargs, train_kwargs_names
+        model_cls = obj_meta.get_model_cls()
+        filtered_kwargs = []
+        filtered_names = []
+
+        for kwargs_dict, param_name in zip(all_train_kwargs, train_kwargs_names):
+            if not self.is_excluded(test_name, model_cls, param_name):
+                filtered_kwargs.append(kwargs_dict)
+                filtered_names.append(param_name)
+
+        return filtered_kwargs, filtered_names
 
 
 def _integration(
@@ -329,7 +307,7 @@ def _integration(
     )
 
 
-class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
+class TestAllPtForecasters(PackageConfig, ModelBaseFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
     object_type_filter = "forecaster_pytorch_v1"

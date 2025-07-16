@@ -91,6 +91,13 @@ class TimeXer(TslibBaseModel):
         where a lot of the boiler plate code for metadata handling and model initialization is implemented.
     """  # noqa: E501
 
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.timexer._timexer_pkg_v2 import TimeXer_pkg_v2
+
+        return TimeXer_pkg_v2
+
     def __init__(
         self,
         loss: nn.Module,
