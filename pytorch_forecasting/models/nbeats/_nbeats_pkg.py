@@ -9,17 +9,14 @@ class NBeats_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "NBeats",
         "info:compute": 1,
-        "info:compatible_loss": ["point"],
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": False,
         "capability:multivariate": False,
         "capability:pred_int": False,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
-        "tests:skip_by_name": [
-            "test_integration[NBeats-base_params-0-CrossEntropy]",
-            "test_integration[NBeats-base_params-1-CrossEntropy]",
-        ],
     }
 
     @classmethod
@@ -61,14 +58,14 @@ class NBeats_pkg(_BasePtForecaster):
         """
         loss = params.get("loss", None)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
-        from pytorch_forecasting.metrics import CrossEntropy, TweedieLoss
+        from pytorch_forecasting.metrics import TweedieLoss
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates,
             dataloaders_fixed_window_without_covariates,
             make_dataloaders,
         )
 
-        if isinstance(loss, (CrossEntropy, TweedieLoss)):
+        if isinstance(loss, TweedieLoss):
             dwc = data_with_covariates()
             dwc.assign(target=lambda x: x.volume)
             dl_default_kwargs = dict(

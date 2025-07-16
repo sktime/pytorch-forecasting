@@ -9,7 +9,8 @@ class DecoderMLP_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "DecoderMLP",
         "info:compute": 1,
-        "info:compatible_loss": ["distr", "point", "quantile"],
+        "info:pred_type": ["distr", "point", "quantile"],
+        "info:y_type": ["category", "numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,

@@ -10,8 +10,9 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
 from pytorch_forecasting.tests._loss_mapping import (
-    ALL_LOSSES_BY_TYPE,
     LOSS_SPECIFIC_PARAMS,
+    LOSSES_BY_PRED_AND_Y_TYPE,
+    get_compatible_losses,
 )
 
 # whether to test only estimators from modules that are changed w.r.t. main
@@ -156,13 +157,31 @@ class ModelBaseFixtureGenerator(BaseFixtureGenerator):
 
         return object_classes_to_test, object_names
 
-    def _generate_final_param_list(self, compatible_loss_types, base_params_list):
+    def _get_compatible_losses_for_model(self, obj_meta):
+        """Get compatible losses for a model using semantic tags.
+
+        Parameters
+        ----------
+        obj_meta : model package instance
+            Model package containing the semantic tags
+
+        Returns
+        -------
+        list
+            List of compatible loss instances
+        """
+        pred_types = obj_meta.get_class_tag("info:pred_type", [])
+        y_types = obj_meta.get_class_tag("info:y_type", [])
+
+        return get_compatible_losses(pred_types, y_types)
+
+    def _generate_final_param_list(self, compatible_losses, base_params_list):
         """Generate final parameter combinations for compatible loss types.
 
         Parameters
         ----------
-        compatible_loss_types : list of str
-            List of loss type strings that are compatible with the current model.
+        compatible_loss : list of str
+            List of losses that are compatible with the current model.
         base_params_list : list of dict
             List of base parameter dictionaries to be combined with each loss
             function.
@@ -180,16 +199,15 @@ class ModelBaseFixtureGenerator(BaseFixtureGenerator):
         """
         all_train_kwargs = []
         train_kwargs_names = []
-        for loss_type in compatible_loss_types:
-            for loss_instance in ALL_LOSSES_BY_TYPE.get(loss_type, []):
-                loss_name = loss_instance.__class__.__name__
-                loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
-                loss_params["loss"] = loss_instance
+        for loss_instance in compatible_losses:
+            loss_name = loss_instance.__class__.__name__
+            loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
+            loss_params["loss"] = loss_instance
 
-                for i, base_params in enumerate(base_params_list):
-                    final_params = _merge_dict(base_params, loss_params)
-                    all_train_kwargs.append(final_params)
-                    train_kwargs_names.append(f"base_params-{i}-{loss_name}")
+            for i, base_params in enumerate(base_params_list):
+                final_params = _merge_dict(base_params, loss_params)
+                all_train_kwargs.append(final_params)
+                train_kwargs_names.append(f"base_params-{i}-{loss_name}")
         return all_train_kwargs, train_kwargs_names
 
     def _generate_trainer_kwargs(self, test_name, **kwargs):
@@ -205,11 +223,11 @@ class ModelBaseFixtureGenerator(BaseFixtureGenerator):
         else:
             return []
 
-        compatible_loss_types = obj_meta.get_class_tag("info:compatible_loss", [])
-        if compatible_loss_types:
+        compatible_losses = self._get_compatible_losses_for_model(obj_meta)
+        if compatible_losses:
             base_params_list = obj_meta.get_base_test_params()
             all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
-                compatible_loss_types, base_params_list
+                compatible_losses, base_params_list
             )
 
         else:

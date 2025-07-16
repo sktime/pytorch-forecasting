@@ -9,7 +9,8 @@ class DeepAR_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "DeepAR",
         "info:compute": 3,
-        "info:compatible_loss": ["distr"],
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
