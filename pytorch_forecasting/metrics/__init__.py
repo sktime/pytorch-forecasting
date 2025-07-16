@@ -6,6 +6,7 @@ from pytorch_forecasting.metrics._distributions import (
     BetaDistributionLoss_pkg,
     ImplicitQuantileNetworkDistributionLoss_pkg,
     LogNormalDistributionLoss_pkg,
+    MQF2DistributionLoss_pkg,
     MultivariateNormalDistributionLoss_pkg,
     NegativeBinomialDistributionLoss_pkg,
     NormalDistributionLoss_pkg,
@@ -86,4 +87,5 @@ __all__ = [
     "MultivariateNormalDistributionLoss_pkg",
     "NegativeBinomialDistributionLoss_pkg",
     "NormalDistributionLoss_pkg",
+    "MQF2DistributionLoss_pkg",
 ]

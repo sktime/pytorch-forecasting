@@ -11,6 +11,9 @@ from pytorch_forecasting.metrics._distributions._implicit_quantile_network._impl
 from pytorch_forecasting.metrics._distributions._log_normal._log_normal_distribution_loss_pkg import (  # noqa: E501
     LogNormalDistributionLoss_pkg,
 )
+from pytorch_forecasting.metrics._distributions._mqf2._mqf2_distribution_loss_pkg import (  # noqa: E501
+    MQF2DistributionLoss_pkg,
+)
 from pytorch_forecasting.metrics._distributions._multivariate_normal._multivariate_normal_distribution_loss_pkg import (  # noqa: E501
     MultivariateNormalDistributionLoss_pkg,
 )
@@ -28,4 +31,5 @@ __all__ = [
     "MultivariateNormalDistributionLoss_pkg",
     "NegativeBinomialDistributionLoss_pkg",
     "NormalDistributionLoss_pkg",
+    "MQF2DistributionLoss_pkg",
 ]

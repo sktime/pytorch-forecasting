@@ -202,7 +202,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
     def _test_to_quantile_custom(self, metric, y_pred, quantile_pred, quantiles):
         """Test the usage of `to_quantiles` method for metrics that override
-        the default behavior.
+        the default behavior in `Metric` base class.
 
         The test does not attempt to replicate the internal implementation of
         quantile prediction generation inside the metric class and equate it with the
@@ -220,9 +220,46 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         quantiles: list
             A list of quantiles to be tested.
         """
+
+        # the reason we have a separate case of mqf2 is because
+        # it produces outputs from `to_quantiles` only on the
+        # input `prediction_length` and not on the entire sequence
+        # length of the `y_pred` tensor.
+
         assert quantile_pred.shape == (
             y_pred.shape[0],
             y_pred.shape[1],
+            len(quantiles),
+        ), f"`to_quantiles()`, fails for metric {metric}."
+
+    def _test_to_quantile_mqf2(self, metric, y_pred, quantile_pred, quantiles):
+        """Test the usage of `to_quantiles` method for MQF2 distribution loss metric.
+
+        The test does not attempt to replicate the internal implementation of
+        quantile prediction generation inside the metric class and equate it with the
+        provided `quantile_pred` since the generation of quantiles in case of
+        distribution losses is a stochastic process, and the quantile prediction
+        generated on the distribution data may never match with our `quantile_pred`
+        tensor.
+
+        Parameters
+        ----------
+        metric: Metric
+            The metric instance that overrides `to_quantiles`.
+        y_pred: torch.Tensor
+            The predicted values tensor.
+        quantiles: list
+            A list of quantiles to be tested.
+        """
+
+        # the reason we have a separate case of mqf2 is because
+        # it produces outputs from `to_quantiles` only on the
+        # input `prediction_length` and not on the entire sequence
+        # length of the `y_pred` tensor.
+
+        assert quantile_pred.shape == (
+            y_pred.shape[0],
+            metric.prediction_length,
             len(quantiles),
         ), f"`to_quantiles()`, fails for metric {metric}."
 
@@ -235,9 +272,21 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
         point_pred = metric.to_prediction(y_pred)
         assert isinstance(point_pred, torch.Tensor), "Prediction should be a tensor."
-        assert (
-            point_pred.shape[:2] == y_pred.shape[:2]
-        ), "Prediction shape mismatch with y_pred."  # noqa: E501
+        if object_pkg.get_class_tag("info:metric_name") == "MQF2DistributionLoss":
+            # MQF2 produces outputs from `to_prediction`
+            # only for the specified `prediction_length` (i.e., the forecast horizon),
+            # rather than for the entire input sequence length of y_pred.
+            # Hence, the separate case.
+            assert (
+                point_pred.shape[0] == y_pred.shape[0]
+            ), "Prediction batch size mismatch with y_pred."
+            assert (
+                point_pred.shape[1] == metric.prediction_length
+            ), "Prediction length mismatch with metric's expected prediction length."
+        else:
+            assert (
+                point_pred.shape[:2] == y_pred.shape[:2]
+            ), "Prediction shape mismatch with y_pred."  # noqa: E501
         assert point_pred.ndim == 2
         if object_pkg.get_class_tag("info:metric_name") == "CrossEntropy":
             assert torch.all(
@@ -269,7 +318,15 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             self._test_to_quantile_on_quantile_metrics(y_pred, quantile_pred)
         elif metric_type == "distribution" or has_custom_quantiles:
             # Distribution metrics and some point metrics have their own implementation.
-            self._test_to_quantile_custom(metric, y_pred, quantile_pred, quantiles)
+            if object_pkg.get_class_tag("distribution_type") == "mqf2":
+                # MQF2DistributionLoss has its own implementation of `to_quantiles`
+                # which is different from the base `Metric` class.
+                # It produces outputs only for the specified `prediction_length`
+                # (i.e., the forecast horizon), rather than for the entire input
+                # sequence length of the `y_pred` tensor. Hence, the separate case.
+                self._test_to_quantile_mqf2(metric, y_pred, quantile_pred, quantiles)
+            else:
+                self._test_to_quantile_custom(metric, y_pred, quantile_pred, quantiles)
         else:
             if object_pkg.get_class_tag("info:metric_name") == "CrossEntropy":
                 # CrossEntropyLoss does not support quantiles

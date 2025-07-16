@@ -592,6 +592,71 @@ def implicit_quantile_network_distribution_forecast():
 
 
 @pytest.fixture(scope="module")
+def mqf2_distribution_forecast():
+    """Prepare data for MQF2 distribution loss metrics."""
+
+    torch.manual_seed(42)
+    np.random.seed(42)
+
+    batch_size, timesteps = 4, 20
+    prediction_length = timesteps // 2
+
+    hidden_size = 4  # default hidden size for MQF2.
+
+    target = torch.randn(batch_size, timesteps)
+
+    df = pd.DataFrame(
+        {
+            "group_id": np.repeat(np.arange(batch_size), timesteps),
+            "time_idx": np.tile(np.arange(timesteps), batch_size),
+            "target": target.flatten(),
+        }
+    )
+
+    for i in range(3):
+        df[f"feature_{i}"] = np.random.randn(batch_size * timesteps)
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=prediction_length,
+        max_prediction_length=prediction_length,
+        target_normalizer=TorchNormalizer(),
+        add_relative_time_idx=True,
+        add_target_scales=True,
+        add_encoder_length=True,
+    )
+
+    dataloader = dataset.to_dataloader(batch_size=batch_size, shuffle=True)
+    x, y = next(iter(dataloader))
+
+    y_pred = torch.randn(batch_size, prediction_length, hidden_size)
+
+    test_cases = {}
+    test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
+    lengths = torch.tensor(
+        [
+            prediction_length,
+            prediction_length - 2,
+            prediction_length - 4,
+            prediction_length - 6,
+        ]
+    )
+    y_packed = rnn.pack_padded_sequence(
+        y[0], lengths, batch_first=True, enforce_sorted=False
+    )
+    test_cases["packed"] = {"x": x, "y": y_packed, "y_pred": y_pred}
+
+    weights = torch.ones_like(y[0])
+    y_weighted = (y[0], weights)
+    test_cases["weighted"] = {"x": x, "y": y_weighted, "y_pred": y_pred}
+
+    return {"dataset": dataset, "test_cases": test_cases}
+
+
+@pytest.fixture(scope="module")
 def classification_forecast():
     """Prepare data for classification forecast metrics."""
 
