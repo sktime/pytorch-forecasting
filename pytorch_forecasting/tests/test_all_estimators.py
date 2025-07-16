@@ -1,14 +1,12 @@
 """Automated tests based on the skbase test suite template."""
 
 from copy import deepcopy
-from inspect import isclass
 import shutil
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 
-from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
 from pytorch_forecasting.tests._loss_mapping import (
