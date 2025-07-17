@@ -53,7 +53,7 @@ def _merge_dict(dict_1, dict_2):
     return final_dict
 
 
-class PackageConfig:
+class EstimatorPackageConfig:
     """Contains package config variables for test classes."""
 
     # class variables which can be overridden by descendants
@@ -73,7 +73,7 @@ class PackageConfig:
     excluded_tests = EXCLUDED_TESTS
 
 
-class ModelBaseFixtureGenerator(BaseFixtureGenerator):
+class EstimatorFixtureGenerator(BaseFixtureGenerator):
     """Fixture generator for base testing functionality in sktime.
 
     Test classes inheriting from this and not overriding pytest_generate_tests
@@ -323,7 +323,7 @@ def _integration(
     )
 
 
-class TestAllPtForecasters(PackageConfig, ModelBaseFixtureGenerator):
+class TestAllPtForecasters(EstimatorPackageConfig, EstimatorFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
     object_type_filter = "forecaster_pytorch_v1"

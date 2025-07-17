@@ -17,14 +17,6 @@ class TiDEModel_pkg(_BasePtForecaster):
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
-        "tests:skip_by_name": [
-            "test_integration[TiDEModel-base_params-0-PoissonLoss]",
-            "test_integration[TiDEModel-base_params-1-PoissonLoss]",
-            "test_integration[TiDEModel-base_params-2-PoissonLoss]",
-            "test_integration[TiDEModel-base_params-0-TweedieLoss]",
-            "test_integration[TiDEModel-base_params-1-TweedieLoss]",
-            "test_integration[TiDEModel-base_params-2-TweedieLoss]",
-        ],
     }
 
     @classmethod
@@ -91,10 +83,14 @@ class TiDEModel_pkg(_BasePtForecaster):
             Train, validation, and test dataloaders.
         """
         trainer_kwargs = params.get("trainer_kwargs", {})
-        clip_target = params.get("clip_target", False)
+        loss = params.get("loss", None)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        from pytorch_forecasting.metrics import (
+            NegativeBinomialDistributionLoss,
+            PoissonLoss,
+            TweedieLoss,
+        )
         from pytorch_forecasting.tests._conftest import make_dataloaders
         from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
@@ -106,7 +102,7 @@ class TiDEModel_pkg(_BasePtForecaster):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
 
         dwc = dwc.copy()
-        if clip_target:
+        if isinstance(loss, (TweedieLoss, PoissonLoss)):
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
         else:
             dwc["target"] = dwc["volume"]
