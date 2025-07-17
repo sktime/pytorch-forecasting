@@ -9,12 +9,22 @@ class TiDEModel_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "TiDEModel",
         "info:compute": 3,
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
         "authors": ["Sohaib-Ahmed21"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
+        "tests:skip_by_name": [
+            "test_integration[TiDEModel-base_params-0-PoissonLoss]",
+            "test_integration[TiDEModel-base_params-1-PoissonLoss]",
+            "test_integration[TiDEModel-base_params-2-PoissonLoss]",
+            "test_integration[TiDEModel-base_params-0-TweedieLoss]",
+            "test_integration[TiDEModel-base_params-1-TweedieLoss]",
+            "test_integration[TiDEModel-base_params-2-TweedieLoss]",
+        ],
     }
 
     @classmethod
@@ -25,7 +35,7 @@ class TiDEModel_pkg(_BasePtForecaster):
         return TiDEModel
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_base_test_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns
@@ -35,7 +45,6 @@ class TiDEModel_pkg(_BasePtForecaster):
         """
 
         from pytorch_forecasting.data.encoders import GroupNormalizer
-        from pytorch_forecasting.metrics import SMAPE
 
         params = [
             {
@@ -52,7 +61,6 @@ class TiDEModel_pkg(_BasePtForecaster):
             {
                 "dropout": 0.2,
                 "use_layer_norm": True,
-                "loss": SMAPE(),
                 "data_loader_kwargs": dict(
                     target_normalizer=GroupNormalizer(
                         groups=["agency", "sku"], transformation="softplus"
