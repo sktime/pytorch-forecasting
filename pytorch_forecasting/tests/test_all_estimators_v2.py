@@ -9,8 +9,8 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import torch.nn as nn
 
 from pytorch_forecasting.tests.test_all_estimators import (
-    ModelBaseFixtureGenerator,
-    PackageConfig,
+    EstimatorFixtureGenerator,
+    EstimatorPackageConfig,
 )
 
 # whether to test only estimators from modules that are changed w.r.t. main
@@ -74,7 +74,7 @@ def _integration(
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
-class TestAllPtForecastersV2(PackageConfig, ModelBaseFixtureGenerator):
+class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
     object_type_filter = "forecaster_pytorch_v2"
