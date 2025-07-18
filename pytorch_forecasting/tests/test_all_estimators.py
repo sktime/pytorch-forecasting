@@ -20,7 +20,7 @@ from pytorch_forecasting.tests._loss_mapping import (
 ONLY_CHANGED_MODULES = False
 
 
-def _merge_dict(dict_1, dict_2):
+def _nested_update(dict_1, dict_2):
     """Merge two dictionaries.
 
     Parameters
@@ -205,7 +205,7 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
             loss_params["loss"] = loss_instance
 
             for i, base_params in enumerate(base_params_list):
-                final_params = _merge_dict(base_params, loss_params)
+                final_params = _nested_update(base_params, loss_params)
                 all_train_kwargs.append(final_params)
                 train_kwargs_names.append(f"base_params-{i}-{loss_name}")
         return all_train_kwargs, train_kwargs_names
