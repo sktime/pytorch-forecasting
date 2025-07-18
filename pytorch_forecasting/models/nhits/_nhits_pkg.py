@@ -17,7 +17,6 @@ class NHiTS_pkg(_BasePtForecaster):
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
-        # "tests:skip_by_name": ["test_integration"],  # still need to debug the tests
     }
 
     @classmethod
