@@ -95,7 +95,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             if the target type is not supported.
         """
 
-        required_deps = object_pkg.get_class_tag("requires_soft_dependency")
+        required_deps = object_pkg.get_class_tag("python_dependencies")
         if required_deps:
             try:
                 # Use the dependency checking utility
