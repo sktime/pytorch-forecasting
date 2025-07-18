@@ -28,6 +28,13 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NHiTS(BaseModelWithCovariates):
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.nhits._nhits_pkg import NHiTS_pkg
+
+        return NHiTS_pkg
+
     def __init__(
         self,
         output_size: Union[int, list[int]] = 1,

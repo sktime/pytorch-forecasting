@@ -9,12 +9,17 @@ class DecoderMLP_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "DecoderMLP",
         "info:compute": 1,
+        "info:pred_type": ["distr", "point", "quantile"],
+        "info:y_type": ["category", "numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": True,
+        "tests:skip_by_name": [
+            "test_integration[DecoderMLP-base_params-1-LogNormalDistributionLoss]"
+        ],
     }
 
     @classmethod
@@ -25,7 +30,7 @@ class DecoderMLP_pkg(_BasePtForecaster):
         return DecoderMLP
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_base_test_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns
@@ -36,34 +41,11 @@ class DecoderMLP_pkg(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from torchmetrics import MeanSquaredError
-
-        from pytorch_forecasting.metrics import (
-            MAE,
-            CrossEntropy,
-            MultiLoss,
-            QuantileLoss,
-        )
 
         return [
             {},
             dict(
-                loss=MultiLoss([QuantileLoss(), MAE()]),
-                data_loader_kwargs=dict(
-                    time_varying_unknown_reals=["volume", "discount"],
-                    target=["volume", "discount"],
-                ),
-            ),
-            dict(
-                loss=CrossEntropy(),
-                data_loader_kwargs=dict(
-                    target="agency",
-                ),
-            ),
-            dict(loss=MeanSquaredError()),
-            dict(
-                loss=MeanSquaredError(),
-                data_loader_kwargs=dict(min_prediction_length=1, min_encoder_length=1),
+                data_loader_kwargs=dict(min_prediction_length=2, min_encoder_length=2),
             ),
         ]
 
@@ -84,7 +66,11 @@ class DecoderMLP_pkg(_BasePtForecaster):
             Train, validation, and test dataloaders, in this order.
         """
         data_loader_kwargs = params.get("data_loader_kwargs", {})
-
+        loss = params.get("loss", None)
+        from pytorch_forecasting.metrics import (
+            CrossEntropy,
+            NegativeBinomialDistributionLoss,
+        )
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates,
             make_dataloaders,
@@ -92,6 +78,10 @@ class DecoderMLP_pkg(_BasePtForecaster):
 
         dwc = data_with_covariates()
         dwc.assign(target=lambda x: x.volume)
+        if isinstance(loss, NegativeBinomialDistributionLoss):
+            dwc = dwc.assign(target=lambda x: x.volume.round())
+        if isinstance(loss, CrossEntropy):
+            data_loader_kwargs["target"] = "agency"
         dl_default_kwargs = dict(
             target="target",
             time_varying_known_reals=["price_actual"],

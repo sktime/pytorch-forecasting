@@ -14,6 +14,8 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.utils._classproperty import classproperty
+
 
 class BaseModel(LightningModule):
     def __init__(
@@ -66,6 +68,11 @@ class BaseModel(LightningModule):
             "https://github.com/sktime/pytorch-forecasting/issues/1736",
             UserWarning,
         )
+
+    @classproperty
+    def pkg(cls):
+        """Package class for the model."""
+        return cls._pkg()
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """

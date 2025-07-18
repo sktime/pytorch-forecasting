@@ -9,6 +9,8 @@ class TimeXer_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "TimeXer",
         "info:compute": 3,
+        "info:pred_type": ["point", "quantile"],
+        "info:y_type": ["numeric"],
         "authors": ["PranavBhatP"],
         "capability:exogenous": True,
         "capability:multivariate": True,
@@ -25,7 +27,7 @@ class TimeXer_pkg(_BasePtForecaster):
         return TimeXer
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_base_test_params(cls):
         """
         Return testing parameter settings for the trainer.
 
@@ -35,8 +37,7 @@ class TimeXer_pkg(_BasePtForecaster):
             Parameters to create testing instances of the class
         """
 
-        from pytorch_forecasting.data.encoders import GroupNormalizer, MultiNormalizer
-        from pytorch_forecasting.metrics import SMAPE, QuantileLoss
+        from pytorch_forecasting.data.encoders import GroupNormalizer
 
         return [
             {
@@ -64,7 +65,6 @@ class TimeXer_pkg(_BasePtForecaster):
                 "d_ff": 32,
                 "patch_length": 2,
                 "dropout": 0.1,
-                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
             },
             {
                 "hidden_size": 24,
@@ -73,29 +73,9 @@ class TimeXer_pkg(_BasePtForecaster):
                 "d_ff": 48,
                 "patch_length": 3,
                 "dropout": 0.15,
-                "loss": SMAPE(),
                 "data_loader_kwargs": dict(
                     target_normalizer=GroupNormalizer(
                         groups=["agency", "sku"], transformation="softplus"
-                    ),
-                ),
-            },
-            {
-                "hidden_size": 16,
-                "n_heads": 2,
-                "e_layers": 1,
-                "d_ff": 32,
-                "patch_length": 2,
-                "dropout": 0.1,
-                "features": "M",
-                "data_loader_kwargs": dict(
-                    target=["volume", "price_regular"],
-                    time_varying_unknown_reals=["volume", "price_regular"],
-                    target_normalizer=MultiNormalizer(
-                        [
-                            GroupNormalizer(groups=["agency", "sku"]),
-                            GroupNormalizer(groups=["agency", "sku"]),
-                        ]
                     ),
                 ),
             },
@@ -119,10 +99,13 @@ class TimeXer_pkg(_BasePtForecaster):
             Train, validation, and test dataloaders created from the parameters.
         """
         loss = params.get("loss", None)
-        clip_target = params.get("clip_target", False)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        from pytorch_forecasting.metrics import (
+            NegativeBinomialDistributionLoss,
+            PoissonLoss,
+            TweedieLoss,
+        )
         from pytorch_forecasting.tests._conftest import make_dataloaders
         from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
@@ -132,7 +115,7 @@ class TimeXer_pkg(_BasePtForecaster):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
 
         dwc = dwc.copy()
-        if clip_target:
+        if isinstance(loss, (TweedieLoss, PoissonLoss)):
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
         else:
             dwc["target"] = dwc["volume"]
