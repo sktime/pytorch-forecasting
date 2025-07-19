@@ -21,7 +21,7 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
 
             - If None, retrieves all objects.
             - If class, retrieves all classes inheriting from this class.
-            - If str/list of str: retriev objects with matching object_type tag.
+            - If str/list of str: retrieve objects with matching object_type tag.
             (e.g., "forecaster_pytorch_v1", "forecaster_pytorch_v2, "metric")
         fixture_sequence: list of str
             sequence of fixture variable names in conditional fixture generation
@@ -31,13 +31,13 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
             can optionally use values for fixtures earlier in fixture_sequence,
                 these must be input as kwargs in a call
         is_excluded: static method (test_name: str, est: class) -> bool
-            whether test with name test_name should be excluded for estimator est
-                should be used only for encoding general rules, not individual skips
-                individual skips should go on the EXCLUDED_TESTS list in _config
+            whether test with name test_name should be excluded for object obj
+            should be used only for encoding general rules, not individual skips
+            individual skips should go on the EXCLUDED_TESTS list in _config
             requires _generate_object_class and _generate_object_instance as is
         _excluded_scenario: static method (test_name: str, scenario) -> bool
             whether scenario should be skipped in test with test_name test_name
-            requires _generate_estimator_scenario as is
+            requires _generate_object_scenario as is.
 
     Fixtures parametrized
     ---------------------
@@ -111,7 +111,17 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         object_class: object inheriting from BaseObject
             ranges over all object classes not excluded by self.excluded_tests
         """
-        raise NotImplementedError(
-            "This method should be overridden in the subclass to return "
-            "object classes for the test."
-        )
+
+        if "object_pkg" in kwargs.keys():
+            all_model_pkgs = [kwargs["object_pkg"]]
+        else:
+            # call _generate_estimator_class to get all the classes
+            all_model_pkgs, _ = self._generate_object_pkg(test_name=test_name)
+
+        all_cls = [obj.get_cls() for obj in all_model_pkgs]
+        object_classes_to_test = [
+            obj for obj in all_cls if not self.is_excluded(test_name, obj)
+        ]
+        object_names = [obj.__name__ for obj in object_classes_to_test]
+
+        return object_classes_to_test, object_names
