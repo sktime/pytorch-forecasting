@@ -17,11 +17,11 @@ class _BasePtMetric(_BaseObject):
         str
             The name of the metric.
         """
-        metric_cls = cls.get_metric_cls()
+        metric_cls = cls.get_cls()
         return metric_cls.__name__
 
     @classmethod
-    def get_metric_cls(cls):
+    def get_cls(cls):
         """Get the metric class.
 
         Returns
@@ -29,7 +29,7 @@ class _BasePtMetric(_BaseObject):
         type
             The metric class.
         """
-        raise NotImplementedError("get_metric_cls must be implemented in subclasses.")
+        raise NotImplementedError("get_cls must be implemented in subclasses.")
 
     @classmethod
     def prepare_test_inputs(cls, test_case):

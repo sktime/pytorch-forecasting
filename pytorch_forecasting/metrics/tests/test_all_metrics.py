@@ -41,27 +41,7 @@ class MetricFixtureGenerator(BaseFixtureGenerator):
 
     fixture_sequence = ["object_pkg", "object_class"]
 
-    def _generate_object_class(self, test_name, **kwargs):
-        """Return object class fixtures.
-
-        Fixtures parametrized
-        ---------------------
-        object_class: object inheriting from BaseObject
-            ranges over all object classes not excluded by self.excluded_tests
-        """
-        if "object_pkg" in kwargs.keys():
-            all_metric_pkgs = [kwargs["object_pkg"]]
-        else:
-            # call _generate_metrics_class to get all the classes
-            all_metric_pkgs, _ = self._generate_object_pkg(test_name=test_name)
-
-        all_cls = [metric.get_metric_cls() for metric in all_metric_pkgs]
-        object_classes_to_test = [
-            metric for metric in all_cls if not self.is_excluded(test_name, metric)
-        ]
-        object_names = [metric.__name__ for metric in object_classes_to_test]
-
-        return object_classes_to_test, object_names
+    pass
 
 
 class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):

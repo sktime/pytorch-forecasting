@@ -17,7 +17,7 @@ class MAPE_pkg(_BasePtMetric):
     _tags = {"metric_type": "point", "info:metric_name": "MAPE"}
 
     @classmethod
-    def get_metric_cls(cls):
+    def get_cls(cls):
         from pytorch_forecasting.metrics.point import MAPE
 
         return MAPE

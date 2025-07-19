@@ -20,7 +20,7 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
     }
 
     @classmethod
-    def get_metric_cls(cls):
+    def get_cls(cls):
         from pytorch_forecasting.metrics.distributions import (
             ImplicitQuantileNetworkDistributionLoss,
         )
