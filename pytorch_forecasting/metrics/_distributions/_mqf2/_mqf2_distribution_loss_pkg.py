@@ -40,11 +40,13 @@ class MQF2DistributionLoss_pkg(_BasePtMetric):
         return y_pred, y
 
     @classmethod
-    def get_test_params(cls):
+    def get_metric_test_params(cls):
         """
         Returns test parameters for the MQF2 distribution loss metric.
         """
 
-        return {
-            "prediction_length": 10,
-        }
+        return [
+            {
+                "prediction_length": 10,
+            },
+        ]

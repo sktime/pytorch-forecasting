@@ -35,11 +35,11 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
         return TorchNormalizer(transformation="softplus")
 
     @classmethod
-    def get_test_params(cls):
+    def get_metric_test_params(cls):
         """
         Returns test parameters for ImplicitQuantileNetworkDistributionLoss.
 
         This corresponds to the ``output_size`` parameter in the data preparation
         fixture for testing the ImplicitQuantileNetworkDistributionLoss metric.
         """
-        return {"input_size": 5}
+        return [{"input_size": 5}]

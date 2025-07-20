@@ -53,7 +53,7 @@ class _BasePtMetric(_BaseObject):
         return test_case["y_pred"], test_case["y"]
 
     @classmethod
-    def get_test_params(cls):
+    def get_metric_test_params(cls):
         """Returns parameters for initializing the metric for testing.
 
         Returns
@@ -62,7 +62,7 @@ class _BasePtMetric(_BaseObject):
             Dictionary containing parameters for initializing the metric.d
         """
 
-        return {}
+        return []
 
     @classmethod
     def get_encoder(cls):

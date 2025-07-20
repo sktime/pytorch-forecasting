@@ -39,9 +39,56 @@ class MetricFixtureGenerator(BaseFixtureGenerator):
         ranges over metric classes not excluded by EXCLUDE_METRICS, EXCLUDED_TESTS
     """
 
-    fixture_sequence = ["object_pkg", "object_class"]
+    fixture_sequence = ["object_pkg", "object_class", "object_instance"]
 
-    pass
+    def _check_required_dependencies(self, object_pkg):
+        """
+        Skip tests if the required dependencies for the metric are not installed
+        in your environment.
+        """
+
+        required_deps = object_pkg.get_class_tag("python_dependencies")
+        class_name = object_pkg.name()
+        if required_deps:
+            try:
+                # Use the dependency checking utility
+                if not _check_soft_dependencies(required_deps, severity="none"):
+                    pytest.skip(
+                        f"Skipping test for {class_name} - missing dependencies: {required_deps}"  # noqa: E501
+                    )
+                    return False
+            except Exception as e:
+                # Catch any unexpected errors in dependency checking
+                pytest.skip(f"Error checking dependencies for {class_name}: {str(e)}")
+                return False
+        return True
+
+    def _generate_object_instance(self, test_name, **kwargs):
+        """Generate instance of the metric class for testing parametrized
+        with scenarios in get_metric_test_params().
+        """
+
+        if "object_pkg" in kwargs:
+            obj_meta = kwargs["object_pkg"]
+        else:
+            return []
+
+        metric_instances = []
+        all_metric_test_params = obj_meta.get_metric_test_params()
+        metric_class = obj_meta.get_cls()
+
+        if not all_metric_test_params:
+            metric_instances = [metric_class()]
+            metric_instance_names = ["default"]
+        else:
+            rg = range(len(all_metric_test_params))
+            metric_instances = [
+                metric_class(**params) for params in all_metric_test_params
+            ]
+
+            metric_instance_names = [str(i) for i in rg]
+
+        return metric_instances, metric_instance_names
 
 
 class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
@@ -52,7 +99,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
     def _setup_metric_test_scenario(
         self,
         object_pkg,
-        object_class,
+        object_instance,
         target_type,
         request,
     ):
@@ -62,8 +109,8 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         ----------
         object_pkg: SkbaseBaseObject
             The package object containing the metric.
-        object_class: class
-            The class of the metric to be tested.
+        object_instance: Metric
+            An instance of the metric class to be tested.
         target_type: str
             The type of target data (e.g., "standard", "packed", "weighted").
         request: pytest.FixtureRequest
@@ -75,21 +122,8 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             if the target type is not supported.
         """
 
-        required_deps = object_pkg.get_class_tag("python_dependencies")
-        if required_deps:
-            try:
-                # Use the dependency checking utility
-                if not _check_soft_dependencies(required_deps, severity="none"):
-                    pytest.skip(
-                        f"Skipping test for {object_class.__name__} - missing dependencies: {required_deps}"  # noqa: E501
-                    )
-                    return None
-            except Exception as e:
-                # Catch any unexpected errors in dependency checking
-                pytest.skip(
-                    f"Error checking dependencies for {object_class.__name__}: {str(e)}"
-                )  # noqa: E501
-                return None
+        if not self._check_required_dependencies(object_pkg):
+            return None
 
         prepare_data_fixture_name = object_pkg.requires_data_type()
         data = request.getfixturevalue(prepare_data_fixture_name)
@@ -100,8 +134,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         test_case = data["test_cases"][target_type]
         y_pred, y = object_pkg.prepare_test_inputs(test_case)
 
-        test_params = object_pkg.get_test_params()
-        metric = object_class(**test_params)
+        metric = object_instance
 
         torch_encoder = object_pkg.get_encoder()
         if not object_pkg.get_class_tag("no_rescaling"):
@@ -332,7 +365,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
     @pytest.mark.parametrize("reduction", ["mean", "none", "sqrt-mean"])
     def test_reduction_modes(
-        self, object_pkg, object_class, request, target_type, reduction
+        self, object_pkg, object_instance, request, target_type, reduction
     ):  # noqa: E501
         """Test that all metrics support different reduction modes.
 
@@ -342,8 +375,8 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         ----------
         object_pkg: SkbaseBaseObject
             The package object containing the metric.
-        object_class: class
-            The class of the metric to be tested.
+        object_instance: Metric
+            An instance of the metric class to be tested.
         request: pytest.FixtureRequest
             The pytest request object to access fixtures.
         target_type: str
@@ -358,7 +391,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         """
 
         prepared_data = self._setup_metric_test_scenario(
-            object_pkg, object_class, target_type, request
+            object_pkg, object_instance, target_type, request
         )
 
         if prepared_data is None:
@@ -386,7 +419,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
                 ), "Result should be non-negative for sqrt-mean reduction."  # noqa: E501
 
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
-    def test_metric_functionality(self, object_pkg, object_class, request, target_type):
+    def test_metric_functionality(
+        self, object_pkg, object_class, object_instance, request, target_type
+    ):
         """Test metric functionality with appropriate test data.
 
         This test performs an integration test on a metric object, with the following
@@ -402,8 +437,8 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         ----------
         object_pkg: SkbaseBaseObject
             The package object containing the metric.
-        object_class: class
-            The class of the metric to be tested.
+        object_instance: Metric
+            An instance of the metric class to be tested.
         request: pytest.FixtureRequest
             The pytest request object to access fixtures.
         target_type: str
@@ -416,7 +451,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         """
 
         prepared_data = self._setup_metric_test_scenario(
-            object_pkg, object_class, target_type, request
+            object_pkg, object_instance, target_type, request
         )
 
         if prepared_data is None:

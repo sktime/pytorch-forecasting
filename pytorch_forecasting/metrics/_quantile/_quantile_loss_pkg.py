@@ -21,7 +21,12 @@ class QuantileLoss_pkg(_BasePtMetric):
         return QuantileLoss
 
     @classmethod
-    def get_test_params(cls):
-        return {
-            "quantiles": [0.1, 0.5, 0.9],
-        }
+    def get_metric_test_params(cls):
+        return [
+            {
+                "quantiles": [0.1, 0.5, 0.9],
+            },
+            {
+                "quantiles": [0.2, 0.5],
+            },
+        ]
