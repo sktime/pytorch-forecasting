@@ -67,7 +67,6 @@ class NBeats_pkg(_BasePtForecaster):
 
         if isinstance(loss, TweedieLoss):
             dwc = data_with_covariates()
-            dwc.assign(target=lambda x: x.volume)
             dl_default_kwargs = dict(
                 target="target",
                 time_varying_unknown_reals=["target"],
