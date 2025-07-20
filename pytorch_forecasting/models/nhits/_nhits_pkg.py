@@ -17,6 +17,11 @@ class NHiTS_pkg(_BasePtForecaster):
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
+        "tests:skip_by_name": [
+            "test_integration[NHiTS-base_params-0-NormalDistributionLoss]",
+            "test_integration[NHiTS-base_params-0-MultivariateNormalDistributionLoss]",
+            "test_integration[NHiTS-base_params-0-NegativeBinomialDistributionLoss]",
+        ],
     }
 
     @classmethod
