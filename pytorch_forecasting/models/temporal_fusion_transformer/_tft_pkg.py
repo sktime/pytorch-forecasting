@@ -1,10 +1,10 @@
-"""TFT package container."""
+"""TemporalFusionTransformer package container."""
 
 from pytorch_forecasting.models.base import _BasePtForecaster
 
 
-class TFT_pkg(_BasePtForecaster):
-    """TFT package container."""
+class TemporalFusionTransformer_pkg(_BasePtForecaster):
+    """TemporalFusionTransformer package container."""
 
     _tags = {
         "info:name": "TemporalFusionTransformer",

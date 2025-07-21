@@ -3,7 +3,7 @@
 from pytorch_forecasting.models.base import _BasePtForecaster
 
 
-class RNN_pkg(_BasePtForecaster):
+class RecurrentNetwork_pkg(_BasePtForecaster):
     """RecurrentNetwork package container."""
 
     _tags = {
