@@ -196,8 +196,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         y_pred: torch.Tensor
             The predicted values tensor.
         """
+        metric_type = object_pkg.get_class_tag("metric_type")
         quantiles = [0.05, 0.5, 0.95]
-        if object_pkg.get_class_tag("metric_type") == "quantile":
+        if metric_type == "quantile" or metric_type == "point_classification":
             quantile_pred = metric.to_quantiles(y_pred)
             # for quantile metrics, the original predictions should match the result of
             # `to_quantiles`, since it does not take in the `quantiles` argument.
@@ -218,19 +219,20 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             quantile_pred.shape[1] == y_pred.shape[1]
         ), "Sequence length mismatch between quantiles."  # noqa: E501
         if y_pred.ndim == 2:
-            assert quantile_pred.shape == (
-                y_pred.shape[0],
-                y_pred.shape[1],
-                1,
-            ), "Quantile prediction should have a single quantile dimension."  # noqa: E501
+            # 2D input: output should be (batch, time, 1)
+            quantile_dim = 1
         elif y_pred.ndim == 3:
-            assert quantile_pred.shape == (
-                y_pred.shape[0],
-                y_pred.shape[1],
-                # either the provided quantiles or the metric's quantiles
-                # in case of QuantileLoss
-                len(quantiles) or len(metric.quantiles),
-            ), "Quantile prediction shape mismatch with quantiles."  # noqa: E501
+            if object_pkg.get_class_tag("metric_type") == "quantile":
+                # Quantile metric: output should match input's quantile dim
+                quantile_dim = y_pred.shape[2]
+            else:
+                # All other metrics: output should match number of quantiles requested
+                quantile_dim = len(quantiles)
+        else:
+            raise AssertionError(f"Unhandled y_pred shape: {y_pred.shape}")
+        assert (
+            quantile_pred.shape[2] == quantile_dim
+        ), f"Quantile prediction shape mismatch: got {quantile_pred.shape}, expected last dim {quantile_dim}."  # noqa: E501
 
     def _test_integration_metrics(self, metric, y_pred, y, object_pkg):
         metric.reset()

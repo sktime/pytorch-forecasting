@@ -14,7 +14,7 @@ class CrossEntropy_pkg(_BasePtMetric):
     """
 
     _tags = {
-        "metric_type": "point",
+        "metric_type": "point_classification",
         "info:metric_name": "CrossEntropy",
         "no_rescaling": True,
     }
