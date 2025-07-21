@@ -3,7 +3,9 @@
 from pytorch_forecasting.models.temporal_fusion_transformer._tft import (
     TemporalFusionTransformer,
 )
-from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg import TFT_pkg
+from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg import (
+    TemporalFusionTransformer_pkg,
+)
 from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
     TFT_pkg_v2,
 )
@@ -24,6 +26,6 @@ __all__ = [
     "GatedResidualNetwork",
     "InterpretableMultiHeadAttention",
     "TFT_pkg_v2",
-    "TFT_pkg",
+    "TemporalFusionTransformer_pkg",
     "VariableSelectionNetwork",
 ]
