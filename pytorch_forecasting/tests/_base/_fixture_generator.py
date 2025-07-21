@@ -113,12 +113,12 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         """
 
         if "object_pkg" in kwargs.keys():
-            all_model_pkgs = [kwargs["object_pkg"]]
+            all_pkgs = [kwargs["object_pkg"]]
         else:
-            # call _generate_estimator_class to get all the classes
-            all_model_pkgs, _ = self._generate_object_pkg(test_name=test_name)
+            # call _generate_object_pkg to get all the packages
+            all_pkgs, _ = self._generate_object_pkg(test_name=test_name)
 
-        all_cls = [obj.get_cls() for obj in all_model_pkgs]
+        all_cls = [obj.get_cls() for obj in all_pkgs]
         object_classes_to_test = [
             obj for obj in all_cls if not self.is_excluded(test_name, obj)
         ]
