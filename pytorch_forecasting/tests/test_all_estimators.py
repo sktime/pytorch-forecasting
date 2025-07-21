@@ -135,28 +135,6 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
                 return True
         return cond
 
-    def _generate_object_class(self, test_name, **kwargs):
-        """Return object class fixtures.
-
-        Fixtures parametrized
-        ---------------------
-        object_class: object inheriting from BaseObject
-            ranges over all object classes not excluded by self.excluded_tests
-        """
-        if "object_pkg" in kwargs.keys():
-            all_model_pkgs = [kwargs["object_pkg"]]
-        else:
-            # call _generate_estimator_class to get all the classes
-            all_model_pkgs, _ = self._generate_object_pkg(test_name=test_name)
-
-        all_cls = [est.get_model_cls() for est in all_model_pkgs]
-        object_classes_to_test = [
-            est for est in all_cls if not self.is_excluded(test_name, est)
-        ]
-        object_names = [est.__name__ for est in object_classes_to_test]
-
-        return object_classes_to_test, object_names
-
     def _get_compatible_losses_for_model(self, obj_meta):
         """Get compatible losses for a model using semantic tags.
 
@@ -235,7 +213,7 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
             rg = range(len(all_train_kwargs))
             train_kwargs_names = [str(i) for i in rg]
 
-        model_cls = obj_meta.get_model_cls()
+        model_cls = obj_meta.get_cls()
         filtered_kwargs = []
         filtered_names = []
 
@@ -342,7 +320,7 @@ class TestAllPtForecasters(EstimatorPackageConfig, EstimatorFixtureGenerator):
     ):
         """Fails for certain, for testing."""
 
-        object_class = object_pkg.get_model_cls()
+        object_class = object_pkg.get_cls()
         dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
 
         _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)

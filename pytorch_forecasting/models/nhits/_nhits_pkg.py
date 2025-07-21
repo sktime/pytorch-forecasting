@@ -25,7 +25,7 @@ class NHiTS_pkg(_BasePtForecaster):
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models import NHiTS
 

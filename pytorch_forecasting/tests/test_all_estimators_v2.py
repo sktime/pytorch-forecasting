@@ -91,7 +91,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
-        object_class = object_pkg.get_model_cls()
+        object_class = object_pkg.get_cls()
         dataloaders = object_pkg._get_test_datamodule_from(trainer_kwargs)
 
         _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)

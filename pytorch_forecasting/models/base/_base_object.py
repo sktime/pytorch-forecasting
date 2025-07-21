@@ -18,7 +18,7 @@ class _BasePtForecaster_Common(_BaseObject):
     """
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
         raise NotImplementedError
 
