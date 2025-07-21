@@ -31,10 +31,10 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
     def _pkg(cls):
         """Package containing the model."""
         from pytorch_forecasting.models.rnn._rnn_pkg import (
-            RNN_pkg,
+            RecurrentNetwork_pkg,
         )
 
-        return RNN_pkg
+        return RecurrentNetwork_pkg
 
     def __init__(
         self,

@@ -131,10 +131,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
     def _pkg(cls):
         """Package containing the model."""
         from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg import (
-            TFT_pkg,
+            TemporalFusionTransformer_pkg,
         )
 
-        return TFT_pkg
+        return TemporalFusionTransformer_pkg
 
     def __init__(
         self,
