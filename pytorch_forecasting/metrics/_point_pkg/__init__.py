@@ -7,6 +7,7 @@ from pytorch_forecasting.metrics._point_pkg._cross_entropy._cross_entropy_pkg im
 )
 from pytorch_forecasting.metrics._point_pkg._mae._mae_pkg import MAE_pkg
 from pytorch_forecasting.metrics._point_pkg._mape._mape_pkg import MAPE_pkg
+from pytorch_forecasting.metrics._point_pkg._mase._mase_pkg import MASE_pkg
 from pytorch_forecasting.metrics._point_pkg._poisson._poisson_loss_pkg import (
     PoissonLoss_pkg,
 )
@@ -24,4 +25,5 @@ __all__ = [
     "SMAPE_pkg",
     "TweedieLoss_pkg",
     "CrossEntropy_pkg",
+    "MASE_pkg",
 ]
