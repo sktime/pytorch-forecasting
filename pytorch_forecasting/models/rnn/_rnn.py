@@ -27,6 +27,15 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.rnn._rnn_pkg import (
+            RNN_pkg,
+        )
+
+        return RNN_pkg
+
     def __init__(
         self,
         cell_type: str = "LSTM",

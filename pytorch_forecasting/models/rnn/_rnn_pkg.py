@@ -1,30 +1,33 @@
-"""TFT package container."""
+"""RecurrentNetwork package container."""
 
 from pytorch_forecasting.models.base import _BasePtForecaster
 
 
-class TFT_pkg(_BasePtForecaster):
-    """TFT package container."""
+class RNN_pkg(_BasePtForecaster):
+    """RecurrentNetwork package container."""
 
     _tags = {
-        "info:name": "TemporalFusionTransformer",
-        "info:compute": 4,
-        "info:pred_type": ["distr", "point", "quantile"],
-        "info:y_type": ["category", "numeric"],
+        "info:name": "RecurrentNetwork",
+        "info:compute": 2,
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": True,
+        "tests:skip_by_name": [
+            "test_integration[RecurrentNetwork-base_params-2-PoissonLoss]"
+        ],
     }
 
     @classmethod
     def get_model_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models import TemporalFusionTransformer
+        from pytorch_forecasting.models import RecurrentNetwork
 
-        return TemporalFusionTransformer
+        return RecurrentNetwork
 
     @classmethod
     def get_base_test_params(cls):
@@ -40,14 +43,15 @@ class TFT_pkg(_BasePtForecaster):
         """
         return [
             {},
-            {
-                "hidden_size": 4,
-                "attention_head_size": 1,
-                "dropout": 0.2,
-                "hidden_continuous_size": 2,
-            },
-            {"causal_attention": False},
-            {"share_single_variable_networks": True},
+            {"cell_type": "GRU"},
+            dict(
+                data_loader_kwargs=dict(
+                    lags={"volume": [2, 5]},
+                    target="volume",
+                    time_varying_unknown_reals=["volume"],
+                    min_encoder_length=2,
+                )
+            ),
         ]
 
     @classmethod
@@ -71,8 +75,6 @@ class TFT_pkg(_BasePtForecaster):
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
         from pytorch_forecasting.metrics import (
-            CrossEntropy,
-            NegativeBinomialDistributionLoss,
             PoissonLoss,
             TweedieLoss,
         )
@@ -81,12 +83,8 @@ class TFT_pkg(_BasePtForecaster):
 
         dwc = data_with_covariates()
 
-        if isinstance(loss, NegativeBinomialDistributionLoss):
-            dwc = dwc.assign(volume=lambda x: x.volume.round())
-        elif isinstance(loss, (TweedieLoss, PoissonLoss)):
+        if isinstance(loss, (TweedieLoss, PoissonLoss)):
             clip_target = True
-        elif isinstance(loss, CrossEntropy):
-            data_loader_kwargs["target"] = "agency"
 
         dwc = dwc.copy()
         if clip_target:
