@@ -226,10 +226,16 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
             return []
 
         compatible_losses = self._get_compatible_losses_for_model(obj_meta)
-        base_params_list = obj_meta.get_base_test_params()
-        all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
-            compatible_losses, base_params_list
-        )
+        if compatible_losses:
+            base_params_list = obj_meta.get_base_test_params()
+            all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
+                compatible_losses, base_params_list
+            )
+
+        else:
+            all_train_kwargs = obj_meta.get_test_train_params()
+            rg = range(len(all_train_kwargs))
+            train_kwargs_names = [str(i) for i in rg]
 
         model_cls = obj_meta.get_cls()
         filtered_kwargs = []
