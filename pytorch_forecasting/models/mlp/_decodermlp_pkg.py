@@ -17,6 +17,7 @@ class DecoderMLP_pkg(_BasePtForecaster):
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": True,
+        "python_dependencies": ["cpflows"],
         "tests:skip_by_name": [
             "test_integration[DecoderMLP-base_params-1-LogNormalDistributionLoss]"
         ],
@@ -67,8 +68,11 @@ class DecoderMLP_pkg(_BasePtForecaster):
         """
         data_loader_kwargs = params.get("data_loader_kwargs", {})
         loss = params.get("loss", None)
+        import inspect
+
         from pytorch_forecasting.metrics import (
             CrossEntropy,
+            MQF2DistributionLoss,
             NegativeBinomialDistributionLoss,
         )
         from pytorch_forecasting.tests._data_scenarios import (
@@ -80,7 +84,11 @@ class DecoderMLP_pkg(_BasePtForecaster):
         dwc.assign(target=lambda x: x.volume)
         if isinstance(loss, NegativeBinomialDistributionLoss):
             dwc = dwc.assign(target=lambda x: x.volume.round())
-        if isinstance(loss, CrossEntropy):
+        elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+            dwc = dwc.assign(volume=lambda x: x.volume.round())
+            data_loader_kwargs["target"] = "volume"
+            data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
+        elif isinstance(loss, CrossEntropy):
             data_loader_kwargs["target"] = "agency"
         dl_default_kwargs = dict(
             target="target",

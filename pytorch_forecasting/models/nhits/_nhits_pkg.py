@@ -17,6 +17,7 @@ class NHiTS_pkg(_BasePtForecaster):
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
+        "python_dependencies": ["cpflows"],
         "tests:skip_by_name": [
             "test_integration[NHiTS-base_params-0-NormalDistributionLoss]",
             "test_integration[NHiTS-base_params-0-MultivariateNormalDistributionLoss]",
@@ -69,8 +70,11 @@ class NHiTS_pkg(_BasePtForecaster):
         data_loader_kwargs = params.get("data_loader_kwargs", {})
         clip_target = params.get("clip_target", False)
 
+        import inspect
+
         from pytorch_forecasting.metrics import (
             LogNormalDistributionLoss,
+            MQF2DistributionLoss,
             MultivariateNormalDistributionLoss,
             NegativeBinomialDistributionLoss,
             TweedieLoss,
@@ -107,6 +111,10 @@ class NHiTS_pkg(_BasePtForecaster):
 
             if isinstance(loss, NegativeBinomialDistributionLoss):
                 dwc = dwc.assign(volume=lambda x: x.volume.round())
+            elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+                dwc = dwc.assign(volume=lambda x: x.volume.round())
+                data_loader_kwargs["target"] = "volume"
+                data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
             elif isinstance(loss, LogNormalDistributionLoss):
                 dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
             dataloaders_with_covariates = make_dataloaders(dwc, **dl_default_kwargs)

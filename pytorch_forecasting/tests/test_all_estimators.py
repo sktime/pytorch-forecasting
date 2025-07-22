@@ -1,11 +1,13 @@
 """Automated tests based on the skbase test suite template."""
 
 from copy import deepcopy
+import inspect
 import shutil
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
+from skbase.utils.dependencies import _check_soft_dependencies
 
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
@@ -119,6 +121,23 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
     ]
 
     @staticmethod
+    def _check_required_dependencies(object_pkg):
+        """
+        Skip tests if the required dependencies for the metric are not installed
+        in your environment.
+        """
+
+        required_deps = object_pkg.get_class_tag("python_dependencies")
+        if required_deps:
+            try:
+                # Use the dependency checking utility
+                if not _check_soft_dependencies(required_deps, severity="none"):
+                    return False
+            except Exception:
+                return False
+        return True
+
+    @staticmethod
     def is_excluded(test_name, est, param_name=None):
         """Shorthand to check whether test test_name is excluded for estimator est."""
         if est.__name__.endswith("_pkg") or est.__name__.endswith("_pkg_v2"):
@@ -177,10 +196,15 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
         """
         all_train_kwargs = []
         train_kwargs_names = []
-        for loss_instance in compatible_losses:
-            loss_name = loss_instance.__class__.__name__
+        for loss_item in compatible_losses:
+            if inspect.isclass(loss_item):
+                loss_name = loss_item.__name__
+                loss = loss_item
+            else:
+                loss_name = loss_item.__class__.__name__
+                loss = loss_item
             loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
-            loss_params["loss"] = loss_instance
+            loss_params["loss"] = loss
 
             for i, base_params in enumerate(base_params_list):
                 final_params = _nested_update(base_params, loss_params)
@@ -202,16 +226,10 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
             return []
 
         compatible_losses = self._get_compatible_losses_for_model(obj_meta)
-        if compatible_losses:
-            base_params_list = obj_meta.get_base_test_params()
-            all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
-                compatible_losses, base_params_list
-            )
-
-        else:
-            all_train_kwargs = obj_meta.get_test_train_params()
-            rg = range(len(all_train_kwargs))
-            train_kwargs_names = [str(i) for i in rg]
+        base_params_list = obj_meta.get_base_test_params()
+        all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
+            compatible_losses, base_params_list
+        )
 
         model_cls = obj_meta.get_cls()
         filtered_kwargs = []
@@ -219,8 +237,15 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
 
         for kwargs_dict, param_name in zip(all_train_kwargs, train_kwargs_names):
             if not self.is_excluded(test_name, model_cls, param_name):
-                filtered_kwargs.append(kwargs_dict)
-                filtered_names.append(param_name)
+                loss = param_name.split("-")[-1]
+                if (
+                    loss == "MQF2DistributionLoss"
+                    and not self._check_required_dependencies(obj_meta)
+                ):
+                    continue
+                else:
+                    filtered_kwargs.append(kwargs_dict)
+                    filtered_names.append(param_name)
 
         return filtered_kwargs, filtered_names
 
@@ -236,9 +261,19 @@ def _integration(
     **kwargs,
 ):
     """Unified integration test for all estimators."""
+    from pytorch_forecasting.metrics import MQF2DistributionLoss
+
     train_dataloader = dataloaders["train"]
     val_dataloader = dataloaders["val"]
     test_dataloader = dataloaders["test"]
+
+    learning_rate = 0.01
+    loss = kwargs.get("loss")
+    if inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+        learning_rate = 1e-9
+        kwargs["loss"] = MQF2DistributionLoss(
+            prediction_length=train_dataloader.dataset.min_prediction_length
+        )
 
     early_stop_callback = EarlyStopping(
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
@@ -262,7 +297,7 @@ def _integration(
 
     net = estimator_cls.from_dataset(
         train_dataloader.dataset,
-        learning_rate=0.01,
+        learning_rate=learning_rate,
         log_gradient_flow=True,
         log_interval=1000,
         **kwargs,

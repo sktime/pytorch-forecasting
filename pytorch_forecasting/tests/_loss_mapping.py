@@ -9,6 +9,7 @@ from pytorch_forecasting.metrics import (
     CrossEntropy,
     ImplicitQuantileNetworkDistributionLoss,
     LogNormalDistributionLoss,
+    MQF2DistributionLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
@@ -42,6 +43,9 @@ DISTR_LOSSES_NUMERIC = [
     LogNormalDistributionLoss(),
     BetaDistributionLoss(),
     ImplicitQuantileNetworkDistributionLoss(),
+    MQF2DistributionLoss,
+    # instance will be created in the _integration of test_all_estimators as its
+    # initialisation requires predicition_length which is obtained from the dataset
 ]
 
 LOSSES_BY_PRED_AND_Y_TYPE = {
@@ -83,6 +87,15 @@ LOSS_SPECIFIC_PARAMS = {
                 groups=["agency", "sku"], transformation="log1p"
             )
         },
+    },
+    "MQF2DistributionLoss": {
+        "clip_target": True,
+        "data_loader_kwargs": {
+            "target_normalizer": GroupNormalizer(
+                groups=["agency", "sku"], center=False, transformation="log1p"
+            )
+        },
+        "trainer_kwargs": dict(accelerator="cpu"),
     },
 }
 

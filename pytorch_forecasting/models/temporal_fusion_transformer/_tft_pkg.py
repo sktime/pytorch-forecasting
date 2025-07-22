@@ -17,6 +17,7 @@ class TemporalFusionTransformer_pkg(_BasePtForecaster):
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": True,
+        "python_dependencies": ["cpflows"],
     }
 
     @classmethod
@@ -70,8 +71,11 @@ class TemporalFusionTransformer_pkg(_BasePtForecaster):
         clip_target = params.get("clip_target", False)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
+        import inspect
+
         from pytorch_forecasting.metrics import (
             CrossEntropy,
+            MQF2DistributionLoss,
             NegativeBinomialDistributionLoss,
             PoissonLoss,
             TweedieLoss,
@@ -83,6 +87,10 @@ class TemporalFusionTransformer_pkg(_BasePtForecaster):
 
         if isinstance(loss, NegativeBinomialDistributionLoss):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
+        elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+            dwc = dwc.assign(volume=lambda x: x.volume.round())
+            data_loader_kwargs["target"] = "volume"
+            data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
         elif isinstance(loss, (TweedieLoss, PoissonLoss)):
             clip_target = True
         elif isinstance(loss, CrossEntropy):
