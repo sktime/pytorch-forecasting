@@ -33,13 +33,6 @@ class MQF2DistributionLoss_pkg(_BasePtMetric):
         return TorchNormalizer()
 
     @classmethod
-    def prepare_test_inputs(cls, test_case):
-        """Prepare inputs for MQF2 distribution tests."""
-        y_pred = test_case["y_pred"]
-        y = test_case["y"]
-        return y_pred, y
-
-    @classmethod
     def get_metric_test_params(cls):
         """
         Returns test parameters for the MQF2 distribution loss metric.
