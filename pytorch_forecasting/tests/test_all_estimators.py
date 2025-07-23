@@ -274,12 +274,13 @@ def _integration(
     test_dataloader = dataloaders["test"]
 
     learning_rate = 0.01
-    loss = kwargs.get("loss")
-    if inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
-        learning_rate = 1e-9
-        kwargs["loss"] = MQF2DistributionLoss(
-            prediction_length=train_dataloader.dataset.min_prediction_length
-        )
+    # todo: still need some debugging to add the MQF2DistributionLoss
+    # loss = kwargs.get("loss")
+    # if inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+    #     learning_rate = 1e-9
+    #     kwargs["loss"] = MQF2DistributionLoss(
+    #         prediction_length=train_dataloader.dataset.min_prediction_length
+    #     )
 
     early_stop_callback = EarlyStopping(
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"

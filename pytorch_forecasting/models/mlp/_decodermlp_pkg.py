@@ -84,10 +84,11 @@ class DecoderMLP_pkg(_BasePtForecaster):
         dwc.assign(target=lambda x: x.volume)
         if isinstance(loss, NegativeBinomialDistributionLoss):
             dwc = dwc.assign(target=lambda x: x.volume.round())
-        elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
-            dwc = dwc.assign(volume=lambda x: x.volume.round())
-            data_loader_kwargs["target"] = "volume"
-            data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
+        # todo: still need some debugging to add the MQF2DistributionLoss
+        # elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+        #     dwc = dwc.assign(volume=lambda x: x.volume.round())
+        #     data_loader_kwargs["target"] = "volume"
+        #     data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
         elif isinstance(loss, CrossEntropy):
             data_loader_kwargs["target"] = "agency"
         dl_default_kwargs = dict(

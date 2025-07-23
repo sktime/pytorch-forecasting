@@ -43,9 +43,7 @@ DISTR_LOSSES_NUMERIC = [
     LogNormalDistributionLoss(),
     BetaDistributionLoss(),
     ImplicitQuantileNetworkDistributionLoss(),
-    MQF2DistributionLoss,
-    # instance will be created in the _integration of test_all_estimators as its
-    # initialisation requires predicition_length which is obtained from the dataset
+    # todo: still need some debugging to add the MQF2DistributionLoss
 ]
 
 LOSSES_BY_PRED_AND_Y_TYPE = {
