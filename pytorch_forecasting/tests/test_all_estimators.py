@@ -267,7 +267,6 @@ def _integration(
     **kwargs,
 ):
     """Unified integration test for all estimators."""
-    from pytorch_forecasting.metrics import MQF2DistributionLoss
 
     train_dataloader = dataloaders["train"]
     val_dataloader = dataloaders["val"]
@@ -324,13 +323,37 @@ def _integration(
         )
 
         # check prediction
-        net.predict(
+        predictions = net.predict(
             val_dataloader,
             fast_dev_run=True,
             return_index=True,
             return_decoder_lengths=True,
             trainer_kwargs=trainer_kwargs,
         )
+        output = predictions.output
+        n_dims = len(output.shape)
+
+        assert n_dims in [2, 3], (
+            f"Prediction output must be 2D or 3D, but got {n_dims}D tensor "
+            f"with shape {output.shape}"
+        )
+
+        if n_dims == 2:
+            batch_size, prediction_length = output.shape
+            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
+            assert (
+                prediction_length > 0
+            ), f"Prediction length must be positive, got {prediction_length}"
+
+        elif n_dims == 3:
+            batch_size, prediction_length, n_features = output.shape
+            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
+            assert (
+                prediction_length > 0
+            ), f"Prediction length must be positive, got {prediction_length}"
+            assert (
+                n_features > 0
+            ), f"Number of features must be positive, got {n_features}"
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
