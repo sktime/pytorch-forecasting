@@ -323,14 +323,15 @@ def _integration(
         )
 
         # check prediction
-        predictions = net.predict(
+        raw_predictions = net.predict(
             val_dataloader,
             fast_dev_run=True,
             return_index=True,
             return_decoder_lengths=True,
+            mode="raw",
             trainer_kwargs=trainer_kwargs,
         )
-        output = predictions.output
+        output = raw_predictions.output.prediction
         n_dims = len(output.shape)
 
         assert n_dims in [2, 3], (
