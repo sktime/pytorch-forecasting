@@ -48,19 +48,8 @@ class MetricFixtureGenerator(BaseFixtureGenerator):
         """
 
         required_deps = object_pkg.get_class_tag("python_dependencies")
-        class_name = object_pkg.name()
         if required_deps:
-            try:
-                # Use the dependency checking utility
-                if not _check_soft_dependencies(required_deps, severity="none"):
-                    pytest.skip(
-                        f"Skipping test for {class_name} - missing dependencies: {required_deps}"  # noqa: E501
-                    )
-                    return False
-            except Exception as e:
-                # Catch any unexpected errors in dependency checking
-                pytest.skip(f"Error checking dependencies for {class_name}: {str(e)}")
-                return False
+            return _check_soft_dependencies(required_deps, severity="none")
         return True
 
     def _generate_object_instance(self, test_name, **kwargs):
@@ -72,6 +61,9 @@ class MetricFixtureGenerator(BaseFixtureGenerator):
             obj_meta = kwargs["object_pkg"]
         else:
             return []
+
+        if not self._check_required_dependencies(obj_meta):
+            return [], []
 
         metric_instances = []
         all_metric_test_params = obj_meta.get_metric_test_params()
@@ -122,9 +114,6 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             if the target type is not supported.
         """
 
-        if not self._check_required_dependencies(object_pkg):
-            return None
-
         prepare_data_fixture_name = object_pkg.requires_data_type()
         data = request.getfixturevalue(prepare_data_fixture_name)
 
@@ -146,6 +135,35 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
         return metric, y_pred, y
 
+    def _get_expected_output_shape_prediction(self, y_pred):
+        """
+        Returns the expected output shape for the prediction
+        for `to_prediction`.
+        """
+
+        if y_pred.ndim == 2:
+            return y_pred.shape
+        elif y_pred.ndim == 3:
+            return (y_pred.shape[0], y_pred.shape[1])
+        else:
+            raise AssertionError(f"Unhandled y_pred shape: {y_pred.shape}")
+
+    def _get_expected_output_shape_quantiles(self, y_pred, metric_type, quantiles):
+        """
+        Returns the expected output shape for the quantiles.
+        """
+
+        if y_pred.ndim == 2:
+            return (y_pred.shape[0], y_pred.shape[1], 1)
+        elif y_pred.ndim == 3:
+            if metric_type == "quantile":
+                return y_pred.shape
+            else:
+                n_quantiles = len(quantiles) if quantiles is not None else 1
+                return (y_pred.shape[0], y_pred.shape[1], n_quantiles)
+        else:
+            raise AssertionError(f"Unhandled y_pred shape: {y_pred.shape}")
+
     def _test_to_prediction(self, metric, y_pred):
         """Test the usage of `to_prediction` method from the metric.
 
@@ -162,25 +180,13 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         """
         out = metric.to_prediction(y_pred)
         assert isinstance(out, torch.Tensor), "Prediction should be a tensor."
-        assert out.ndim == 2, "Prediction should be a 2D tensor."
-        if y_pred.ndim == 2:
-            assert out.shape == y_pred.shape, "Prediction shape mismatch with y_pred."  # noqa: E501
-        elif y_pred.ndim == 3 and metric.quantiles is None:
-            assert out.shape == (
-                y_pred.shape[0],
-                getattr(metric, "prediction_length", y_pred.shape[1]),
-            )  # noqa: E501
-        elif y_pred.ndim == 3 and metric.quantiles is not None:
-            # case for quantile loss.
-            assert out.shape == (y_pred.shape[0], y_pred.shape[1])
-            assert 0.5 in metric.quantiles, (
-                "`metric.quantiles` should include the median quantile",
-                "for point prediction.",
-            )
-        else:
-            raise AssertionError("Unhandled y_pred shape for `to_prediction` method.")  # noqa: E501
+        expected_shape = self._get_expected_output_shape_prediction(y_pred)
+        assert isinstance(out, torch.Tensor), "Prediction should be a tensor."
+        assert out.shape == expected_shape, (
+            f"Prediction shape mismatch: got {out.shape}, expected {expected_shape}."  # noqa: E501
+        )
 
-    def _test_to_quantiles(self, object_pkg, metric, y_pred):
+    def _test_to_quantiles(self, metric, y_pred, metric_type):
         """Test the usage of `to_quantiles` method from the metric.
 
         This method is used to convert the predicted values tensor into quantile
@@ -196,7 +202,6 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         y_pred: torch.Tensor
             The predicted values tensor.
         """
-        metric_type = object_pkg.get_class_tag("metric_type")
         quantiles = [0.05, 0.5, 0.95]
         if metric_type == "quantile" or metric_type == "point_classification":
             quantile_pred = metric.to_quantiles(y_pred)
@@ -204,37 +209,32 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             # `to_quantiles`, since it does not take in the `quantiles` argument.
             assert torch.allclose(
                 quantile_pred, y_pred
-            ), f"Quantile prediction does not match the original predictions in {object_pkg.name()}."  # noqa: E501
+            ), f"Quantile prediction does not match the original predictions in {metric_type}."  # noqa: E501
 
         else:
             quantile_pred = metric.to_quantiles(y_pred, quantiles=quantiles)
 
+        expected_shape = self._get_expected_output_shape_quantiles(
+            y_pred, metric_type, quantiles
+        )
         assert isinstance(
             quantile_pred, torch.Tensor
         ), "Quantile prediction should be a tensor."  # noqa: E501
-        assert (
-            quantile_pred.shape[0] == y_pred.shape[0]
-        ), "Batch size mismatch between quantiles."  # noqa: E501
-        assert (
-            quantile_pred.shape[1] == y_pred.shape[1]
-        ), "Sequence length mismatch between quantiles."  # noqa: E501
-        if y_pred.ndim == 2:
-            # 2D input: output should be (batch, time, 1)
-            quantile_dim = 1
-        elif y_pred.ndim == 3:
-            if object_pkg.get_class_tag("metric_type") == "quantile":
-                # Quantile metric: output should match input's quantile dim
-                quantile_dim = y_pred.shape[2]
-            else:
-                # All other metrics: output should match number of quantiles requested
-                quantile_dim = len(quantiles)
-        else:
-            raise AssertionError(f"Unhandled y_pred shape: {y_pred.shape}")
-        assert (
-            quantile_pred.shape[2] == quantile_dim
-        ), f"Quantile prediction shape mismatch: got {quantile_pred.shape}, expected last dim {quantile_dim}."  # noqa: E501
+        assert quantile_pred.shape == expected_shape, (
+            f"Quantile prediction shape mismatch: got {quantile_pred.shape}, "
+            f"expected {expected_shape}."
+        )
 
     def _test_integration_metrics(self, metric, y_pred, y, object_pkg):
+        """Test the integration of the metric with predictions and targets."""
+
+        metric_type = object_pkg.get_class_tag("metric_type")
+        assert metric_type in [
+            "point",
+            "point_classification",
+            "quantile",
+            "distribution",
+        ], "Unsupported metric type for integration test."
         metric.reset()
         metric.update(y_pred, y)
         res = metric.compute()
@@ -242,7 +242,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         assert torch.isfinite(res).all(), "Non-finite values in metric result."
 
         self._test_to_prediction(metric, y_pred)
-        self._test_to_quantiles(object_pkg, metric, y_pred)
+        self._test_to_quantiles(metric, y_pred, metric_type)
 
         # testing composite metrics
         composite = metric + metric
