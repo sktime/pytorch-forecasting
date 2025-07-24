@@ -41,7 +41,8 @@ class MetricFixtureGenerator(BaseFixtureGenerator):
 
     fixture_sequence = ["object_pkg", "object_class", "object_instance"]
 
-    def _check_required_dependencies(self, object_pkg):
+    @staticmethod
+    def _check_required_dependencies(object_pkg):
         """
         Skip tests if the required dependencies for the metric are not installed
         in your environment.
