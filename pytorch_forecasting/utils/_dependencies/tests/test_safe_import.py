@@ -1,9 +1,8 @@
 __author__ = ["jgyasu", "fkiraly"]
 
-from pytorch_forecasting.utils._dependencies import (
-    _get_installed_packages,
-    _safe_import,
-)
+from skbase.utils.dependencies._dependencies import _get_installed_packages
+
+from pytorch_forecasting.utils._dependencies import _safe_import
 
 
 def test_import_present_module():
