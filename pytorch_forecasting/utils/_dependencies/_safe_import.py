@@ -8,7 +8,7 @@ Should be refactored and moved to a common location in skbase.
 import importlib
 from unittest.mock import MagicMock
 
-from pytorch_forecasting.utils._dependencies import _get_installed_packages
+from skbase.utils.dependencies._dependencies import _get_installed_packages
 
 
 def _safe_import(import_path, pkg_name=None):

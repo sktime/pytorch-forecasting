@@ -7,6 +7,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import pandas as pd
 import pytest
+from skbase.utils.dependencies import _check_soft_dependencies
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import MQF2DistributionLoss, QuantileLoss
@@ -14,7 +15,6 @@ from pytorch_forecasting.metrics.distributions import (
     ImplicitQuantileNetworkDistributionLoss,
 )
 from pytorch_forecasting.models import NHiTS
-from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
@@ -96,7 +96,7 @@ LOADERS = [
     "implicit-quantiles",
 ]
 
-if "cpflows" in _get_installed_packages():
+if _check_soft_dependencies("cpflows", severity="none"):
     LOADERS += ["multivariate-quantiles"]
 
 
@@ -158,7 +158,7 @@ def test_pickle(model):
 
 
 @pytest.mark.skipif(
-    "matplotlib" not in _get_installed_packages(),
+    not _check_soft_dependencies("matplotlib", severity="none"),
     reason="skip test if required package matplotlib not installed",
 )
 def test_interpretation(model, dataloaders_with_covariates):

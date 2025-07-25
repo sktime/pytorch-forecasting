@@ -13,12 +13,12 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 import numpy as np
 import scipy._lib._util
+from skbase.utils._dependencies import _check_soft_dependencies
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import QuantileLoss
-from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 optuna_logger = logging.getLogger("optuna")
 
@@ -108,9 +108,7 @@ def optimize_hyperparameters(
     Returns:
         optuna.Study: optuna study results
     """  # noqa : E501
-    pkgs = _get_installed_packages()
-
-    if "optuna" not in pkgs or "statsmodels" not in pkgs:
+    if not _check_soft_dependencies(["optuna", "statsmodels"], severity="none"):
         raise ImportError(
             "optimize_hyperparameters requires optuna and statsmodels. "
             "Please install these packages with `pip install optuna statsmodels`. "
