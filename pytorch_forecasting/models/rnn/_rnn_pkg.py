@@ -1,31 +1,33 @@
-"""DeepAR package container."""
+"""RecurrentNetwork package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.models.base import _BasePtForecaster
 
 
-class DeepAR_pkg(_BasePtForecaster):
-    """DeepAR package container."""
+class RecurrentNetwork_pkg(_BasePtForecaster):
+    """RecurrentNetwork package container."""
 
     _tags = {
-        "info:name": "DeepAR",
-        "info:compute": 3,
-        "info:pred_type": ["distr"],
+        "info:name": "RecurrentNetwork",
+        "info:compute": 2,
+        "info:pred_type": ["point"],
         "info:y_type": ["numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
-        "capability:cold_start": False,
-        "python_dependencies": ["cpflows"],
+        "capability:cold_start": True,
+        "tests:skip_by_name": [
+            "test_integration[RecurrentNetwork-base_params-2-PoissonLoss]"
+        ],
     }
 
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models import DeepAR
+        from pytorch_forecasting.models import RecurrentNetwork
 
-        return DeepAR
+        return RecurrentNetwork
 
     @classmethod
     def get_base_test_params(cls):
@@ -39,22 +41,18 @@ class DeepAR_pkg(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        params = [
+        return [
             {},
             {"cell_type": "GRU"},
-            {
-                "data_loader_kwargs": dict(
+            dict(
+                data_loader_kwargs=dict(
                     lags={"volume": [2, 5]},
                     target="volume",
                     time_varying_unknown_reals=["volume"],
                     min_encoder_length=2,
-                ),
-            },
+                )
+            ),
         ]
-        defaults = {"hidden_size": 5, "cell_type": "LSTM", "n_plotting_samples": 100}
-        for param in params:
-            param.update(defaults)
-        return params
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
@@ -76,27 +74,17 @@ class DeepAR_pkg(_BasePtForecaster):
         clip_target = params.get("clip_target", False)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        import inspect
-
         from pytorch_forecasting.metrics import (
-            LogNormalDistributionLoss,
-            MQF2DistributionLoss,
-            NegativeBinomialDistributionLoss,
+            PoissonLoss,
+            TweedieLoss,
         )
         from pytorch_forecasting.tests._conftest import make_dataloaders
         from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
         dwc = data_with_covariates()
 
-        if isinstance(loss, NegativeBinomialDistributionLoss):
-            dwc = dwc.assign(volume=lambda x: x.volume.round())
-        # todo: still need some debugging to add the MQF2DistributionLoss
-        # elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
-        #     dwc = dwc.assign(volume=lambda x: x.volume.round())
-        #     data_loader_kwargs["target"] = "volume"
-        #     data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
-        elif isinstance(loss, LogNormalDistributionLoss):
-            dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
+        if isinstance(loss, (TweedieLoss, PoissonLoss)):
+            clip_target = True
 
         dwc = dwc.copy()
         if clip_target:
