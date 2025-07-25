@@ -9,6 +9,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import pandas as pd
 import pytest
+from test_models.conftest import make_dataloaders
 import torch
 
 from pytorch_forecasting import Baseline, TimeSeriesDataSet
@@ -29,7 +30,6 @@ from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
     optimize_hyperparameters,
 )
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
-from test_models.conftest import make_dataloaders
 
 
 def test_integration(multiple_dataloaders_with_covariates, tmp_path):
