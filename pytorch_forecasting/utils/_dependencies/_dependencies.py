@@ -22,10 +22,11 @@ def _check_matplotlib(ref="This feature", raise_error=True):
     -------
     bool : whether matplotlib is installed
     """
-    if raise_error and not _check_soft_dependencies("matplotlib", severity="none"):
+    matplotlib_present = _check_soft_dependencies("matplotlib", severity="none")
+    if raise_error and not matplotlib_present:
         raise ImportError(
             f"{ref} requires matplotlib."
             " Please install matplotlib with `pip install matplotlib`."
         )
 
-    return "matplotlib" in pkgs
+    return matplotlib_present
