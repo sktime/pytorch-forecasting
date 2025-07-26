@@ -720,7 +720,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         x, y = batch
         log, out = self.step(x, y, batch_idx)
-        self.training_step_outputs.append(log)
+        detached_log = {
+            k: v.detach() if isinstance(v, torch.Tensor) else v for k, v in log.items()
+        }
+        self.training_step_outputs.append(detached_log)
         return log
 
     def on_train_epoch_end(self):
@@ -739,7 +742,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         x, y = batch
         log, out = self.step(x, y, batch_idx)
         log.update(self.create_log(x, y, out, batch_idx))
-        self.validation_step_outputs.append(log)
+        detached_log = {
+            k: v.detach() if isinstance(v, torch.Tensor) else v for k, v in log.items()
+        }
+        self.validation_step_outputs.append(detached_log)
         return log
 
     def on_validation_epoch_end(self):
@@ -750,7 +756,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         x, y = batch
         log, out = self.step(x, y, batch_idx)
         log.update(self.create_log(x, y, out, batch_idx))
-        self.testing_step_outputs.append(log)
+        detached_log = {
+            k: v.detach() if isinstance(v, torch.Tensor) else v for k, v in log.items()
+        }
+        self.testing_step_outputs.append(detached_log)
         return log
 
     def on_test_epoch_end(self):
@@ -934,7 +943,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             loss.requires_grad_(True)
         self.log(
             f"{self.current_stage}_loss",
-            loss,
+            loss.detach() if isinstance(loss, torch.Tensor) else loss,
             on_step=self.training,
             on_epoch=True,
             prog_bar=True,
