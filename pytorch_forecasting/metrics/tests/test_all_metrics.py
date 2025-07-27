@@ -136,34 +136,48 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
         return metric, y_pred, y
 
-    def _get_expected_output_shape_prediction(self, y_pred):
+    def _get_expected_output_shape_prediction(self, batch_size, prediction_length):
         """
         Returns the expected output shape for the prediction
         for `to_prediction`.
+
+        Parameters
+        ----------
+        batch_size: int
+            The size of the batch.
+        prediction_length: int
+            The length of the prediction.
+
+        Returns
+        -------
+        tuple
+            The expected output shape for the prediction.
         """
 
-        if y_pred.ndim == 2:
-            return y_pred.shape
-        elif y_pred.ndim == 3:
-            return (y_pred.shape[0], y_pred.shape[1])
-        else:
-            raise AssertionError(f"Unhandled y_pred shape: {y_pred.shape}")
+        return (batch_size, prediction_length)
 
-    def _get_expected_output_shape_quantiles(self, y_pred, metric_type, quantiles):
+    def _get_expected_output_shape_quantiles(
+        self, batch_size, prediction_length, output_dim, metric_type
+    ):
         """
         Returns the expected output shape for the quantiles.
+
+        Parameters
+        ----------
+        batch_size: int
+            The size of the batch.
+        prediction_length: int
+            The length of the prediction.
+        output_dim: int
+            The last dimension of the output tensor.
+        metric_type: str
+            The type of the metric (e.g., "quantile", "point_classification").
         """
 
-        if y_pred.ndim == 2:
-            return (y_pred.shape[0], y_pred.shape[1], 1)
-        elif y_pred.ndim == 3:
-            if metric_type == "quantile":
-                return y_pred.shape
-            else:
-                n_quantiles = len(quantiles) if quantiles is not None else 1
-                return (y_pred.shape[0], y_pred.shape[1], n_quantiles)
+        if metric_type == "point":
+            return (batch_size, prediction_length, 1)
         else:
-            raise AssertionError(f"Unhandled y_pred shape: {y_pred.shape}")
+            return (batch_size, prediction_length, output_dim)
 
     def _test_to_prediction(self, metric, y_pred):
         """Test the usage of `to_prediction` method from the metric.
@@ -179,9 +193,13 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         y_pred: torch.Tensor
             The predicted values tensor.
         """
+        batch_size = y_pred.shape[0]
+        prediction_length = y_pred.shape[1]
         out = metric.to_prediction(y_pred)
         assert isinstance(out, torch.Tensor), "Prediction should be a tensor."
-        expected_shape = self._get_expected_output_shape_prediction(y_pred)
+        expected_shape = self._get_expected_output_shape_prediction(
+            batch_size, prediction_length
+        )  # noqa: E501
         assert isinstance(out, torch.Tensor), "Prediction should be a tensor."
         assert out.shape == expected_shape, (
             f"Prediction shape mismatch: got {out.shape}, expected {expected_shape}."  # noqa: E501
@@ -204,6 +222,11 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             The predicted values tensor.
         """
         quantiles = [0.05, 0.5, 0.95]
+        batch_size = y_pred.shape[0]
+        prediction_length = y_pred.shape[1]
+        n_quantiles = len(quantiles)
+        output_dim = y_pred.shape[-1]
+
         if metric_type == "quantile" or metric_type == "point_classification":
             quantile_pred = metric.to_quantiles(y_pred)
             # for quantile metrics, the original predictions should match the result of
@@ -215,9 +238,17 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         else:
             quantile_pred = metric.to_quantiles(y_pred, quantiles=quantiles)
 
-        expected_shape = self._get_expected_output_shape_quantiles(
-            y_pred, metric_type, quantiles
-        )
+        if metric_type == "quantile" or metric_type == "point_classification":
+            # they do not take in the `quantiles` argument for `to_quantiles`,
+            # so we use the output_dim to determine the expected shape
+            expected_shape = self._get_expected_output_shape_quantiles(
+                batch_size, prediction_length, output_dim, metric_type
+            )
+        else:
+            expected_shape = self._get_expected_output_shape_quantiles(
+                batch_size, prediction_length, n_quantiles, metric_type
+            )
+
         assert isinstance(
             quantile_pred, torch.Tensor
         ), "Quantile prediction should be a tensor."  # noqa: E501
