@@ -13,7 +13,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 import numpy as np
 import scipy._lib._util
-from skbase.utils._dependencies import _check_soft_dependencies
+from skbase.utils.dependencies._dependencies import _check_soft_dependencies
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer

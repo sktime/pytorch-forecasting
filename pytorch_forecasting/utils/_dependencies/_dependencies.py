@@ -3,9 +3,7 @@
 Copied from sktime/skbase.
 """
 
-from functools import lru_cache
-
-from skbase.utils._dependencies import _check_soft_dependencies
+from skbase.utils.dependencies._dependencies import _check_soft_dependencies
 
 
 def _check_matplotlib(ref="This feature", raise_error=True):
