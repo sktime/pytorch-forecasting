@@ -716,7 +716,7 @@ def classification_forecast():
     )
     test_cases["packed"] = {
         "x": x,
-        "y": y_packed,
+        "y": (y_packed, y[1]),
         "y_pred": y_pred,
     }
 

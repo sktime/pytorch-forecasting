@@ -179,7 +179,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         else:
             return (batch_size, prediction_length, output_dim)
 
-    def _test_to_prediction(self, metric, y_pred):
+    def _test_to_prediction(self, metric, y_pred, batch_size, prediction_length):
         """Test the usage of `to_prediction` method from the metric.
 
         This method is used to convert the predicted values tensor into a point
@@ -192,9 +192,11 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             The metric instance.
         y_pred: torch.Tensor
             The predicted values tensor.
+        batch_size: int
+            The size of the batch. Used to determine the expected output shape.
+        prediction_length: int
+            The length of the prediction. Used to determine the expected output shape.
         """
-        batch_size = y_pred.shape[0]
-        prediction_length = y_pred.shape[1]
         out = metric.to_prediction(y_pred)
         assert isinstance(out, torch.Tensor), "Prediction should be a tensor."
         expected_shape = self._get_expected_output_shape_prediction(
@@ -205,7 +207,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             f"Prediction shape mismatch: got {out.shape}, expected {expected_shape}."  # noqa: E501
         )
 
-    def _test_to_quantiles(self, metric, y_pred, metric_type):
+    def _test_to_quantiles(
+        self, metric, y_pred, batch_size, prediction_length, metric_type
+    ):
         """Test the usage of `to_quantiles` method from the metric.
 
         This method is used to convert the predicted values tensor into quantile
@@ -222,9 +226,6 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             The predicted values tensor.
         """
         quantiles = [0.05, 0.5, 0.95]
-        batch_size = y_pred.shape[0]
-        prediction_length = y_pred.shape[1]
-        n_quantiles = len(quantiles)
         output_dim = y_pred.shape[-1]
 
         if metric_type == "quantile" or metric_type == "point_classification":
@@ -246,7 +247,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             )
         else:
             expected_shape = self._get_expected_output_shape_quantiles(
-                batch_size, prediction_length, n_quantiles, metric_type
+                batch_size, prediction_length, len(quantiles), metric_type
             )
 
         assert isinstance(
@@ -273,9 +274,14 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         assert isinstance(res, torch.Tensor)
         assert torch.isfinite(res).all(), "Non-finite values in metric result."
 
-        self._test_to_prediction(metric, y_pred)
-        self._test_to_quantiles(metric, y_pred, metric_type)
+        # these are pre-determined expected value for the shape.
+        batch_size = y_pred.shape[0]
+        prediction_length = y_pred.shape[1]
 
+        self._test_to_prediction(metric, y_pred, batch_size, prediction_length)
+        self._test_to_quantiles(
+            metric, y_pred, batch_size, prediction_length, metric_type
+        )
         # testing composite metrics
         composite = metric + metric
         weighted = metric * 0.5
