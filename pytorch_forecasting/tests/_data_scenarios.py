@@ -1,20 +1,15 @@
+from datetime import datetime
+
 import numpy as np
-import pytest
+import pandas as pd
 import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
 from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
+from pytorch_forecasting.data.timeseries import TimeSeries
 
 torch.manual_seed(23)
-
-
-@pytest.fixture(scope="session")
-def gpus():
-    if torch.cuda.is_available():
-        return [0]
-    else:
-        return 0
 
 
 def data_with_covariates():
@@ -87,77 +82,190 @@ def make_dataloaders(data_with_covariates, **kwargs):
     return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
 
 
-@pytest.fixture(
-    params=[
-        dict(),
-        dict(
-            static_categoricals=["agency", "sku"],
-            static_reals=["avg_population_2017", "avg_yearly_household_income_2017"],
-            time_varying_known_categoricals=["special_days", "month"],
-            variable_groups=dict(
-                special_days=[
-                    "easter_day",
-                    "good_friday",
-                    "new_year",
-                    "christmas",
-                    "labor_day",
-                    "independence_day",
-                    "revolution_day_memorial",
-                    "regional_games",
-                    "fifa_u_17_world_cup",
-                    "football_gold_cup",
-                    "beer_capital",
-                    "music_fest",
-                ]
-            ),
-            time_varying_known_reals=[
-                "time_idx",
-                "price_regular",
-                "price_actual",
-                "discount",
-                "discount_in_percent",
-            ],
-            time_varying_unknown_categoricals=[],
-            time_varying_unknown_reals=[
-                "volume",
-                "log_volume",
-                "industry_volume",
-                "soda_volume",
-                "avg_max_temp",
-            ],
-            constant_fill_strategy={"volume": 0},
-            categorical_encoders={"sku": NaNLabelEncoder(add_nan=True)},
-        ),
-        dict(static_categoricals=["agency", "sku"]),
-        dict(randomize_length=True, min_encoder_length=2),
-        dict(target_normalizer=EncoderNormalizer(), min_encoder_length=2),
-        dict(target_normalizer=GroupNormalizer(transformation="log1p")),
-        dict(
-            target_normalizer=GroupNormalizer(
-                groups=["agency", "sku"], transformation="softplus", center=False
-            )
-        ),
-        dict(target="agency"),
-        # test multiple targets
-        dict(target=["industry_volume", "volume"]),
-        dict(target=["agency", "volume"]),
-        dict(
-            target=["agency", "volume"], min_encoder_length=1, min_prediction_length=1
-        ),
-        dict(target=["agency", "volume"], weight="volume"),
-        # test weights
-        dict(target="volume", weight="volume"),
-    ],
-    scope="session",
-)
-def multiple_dataloaders_with_covariates(data_with_covariates, request):
-    return make_dataloaders(data_with_covariates, **request.param)
+def data_with_covariates_v2():
+    """Create synthetic time series data with all numerical features."""
+
+    start_date = datetime(2015, 1, 1)
+    end_date = datetime(2017, 12, 31)
+    dates = pd.date_range(start_date, end_date, freq="M")
+
+    agencies = [0, 1]
+    skus = [0, 1]
+    data_list = []
+
+    for agency in agencies:
+        for sku in skus:
+            for date in dates:
+                time_idx = (date.year - 2015) * 12 + date.month - 1
+
+                volume = (
+                    np.random.exponential(2)
+                    + 0.1 * time_idx
+                    + 0.5 * np.sin(date.month * np.pi / 6)
+                )
+                volume = max(0.001, volume)
+                month = date.month
+                year = date.year
+                quarter = (date.month - 1) // 3 + 1
+
+                seasonal_1 = np.sin(2 * np.pi * date.month / 12)
+                seasonal_2 = np.cos(2 * np.pi * date.month / 12)
+
+                agency_feature_1 = agency * 10 + np.random.normal(0, 0.1)
+                agency_feature_2 = agency * 5 + np.random.normal(0, 0.1)
+
+                sku_feature_1 = sku * 8 + np.random.normal(0, 0.1)
+                sku_feature_2 = sku * 3 + np.random.normal(0, 0.1)
+
+                trend = time_idx * 0.1
+                noise = np.random.normal(0, 0.1)
+
+                special_event_1 = 1 if date.month in [12, 1] else 0
+                special_event_2 = 1 if date.month in [6, 7, 8] else 0
+
+                data_list.append(
+                    {
+                        "date": date,
+                        "time_idx": time_idx,
+                        "agency_encoded": agency,
+                        "sku_encoded": sku,
+                        "volume": volume,
+                        "target": volume,
+                        "weight": 1.0 + np.sqrt(volume),
+                        "month": month,
+                        "year": year,
+                        "quarter": quarter,
+                        "seasonal_1": seasonal_1,
+                        "seasonal_2": seasonal_2,
+                        "agency_feature_1": agency_feature_1,
+                        "agency_feature_2": agency_feature_2,
+                        "sku_feature_1": sku_feature_1,
+                        "sku_feature_2": sku_feature_2,
+                        "trend": trend,
+                        "noise": noise,
+                        "special_event_1": special_event_1,
+                        "special_event_2": special_event_2,
+                        "log_volume": np.log1p(volume),
+                    }
+                )
+
+    data = pd.DataFrame(data_list)
+
+    numeric_cols = [col for col in data.columns if col != "date"]
+    for col in numeric_cols:
+        data[col] = pd.to_numeric(data[col], errors="coerce")
+    data[numeric_cols] = data[numeric_cols].fillna(0)
+
+    return data
 
 
-@pytest.fixture(scope="session")
-def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
+def make_datasets_v2(data_with_covariates, **kwargs):
+    """Create datasets with consistent encoder/decoder features."""
+
+    training_cutoff = "2016-09-01"
+    target_col = kwargs.get("target", "target")
+    group_cols = kwargs.get("group_ids", ["agency_encoded", "sku_encoded"])
+
+    known_features = [
+        "month",
+        "year",
+        "quarter",
+        "seasonal_1",
+        "seasonal_2",
+        "special_event_1",
+        "special_event_2",
+        "trend",
+    ]
+    unknown_features = [
+        "agency_feature_1",
+        "agency_feature_2",
+        "sku_feature_1",
+        "sku_feature_2",
+        "noise",
+        "log_volume",
+    ]
+
+    numerical_features = known_features + unknown_features
+    categorical_features = []
+    static_features = group_cols
+
+    for col in numerical_features + categorical_features + group_cols + [target_col]:
+        if col in data_with_covariates.columns:
+            data_with_covariates[col] = pd.to_numeric(
+                data_with_covariates[col], errors="coerce"
+            ).fillna(0)
+
+    for col in categorical_features + group_cols:
+        if col in data_with_covariates.columns:
+            data_with_covariates[col] = data_with_covariates[col].astype("int64")
+
+    if "weight" in data_with_covariates.columns:
+        data_with_covariates["weight"] = pd.to_numeric(
+            data_with_covariates["weight"], errors="coerce"
+        ).fillna(1.0)
+
+    training_data = data_with_covariates[
+        data_with_covariates.date < training_cutoff
+    ].copy()
+    validation_data = data_with_covariates.copy()
+
+    required_columns = (
+        ["time_idx", target_col, "weight", "date"]
+        + group_cols
+        + numerical_features
+        + categorical_features
+    )
+
+    available_columns = [
+        col for col in required_columns if col in data_with_covariates.columns
+    ]
+
+    training_data_clean = training_data[available_columns].copy()
+    validation_data_clean = validation_data[available_columns].copy()
+
+    if "date" in training_data_clean.columns:
+        training_data_clean = training_data_clean.drop("date", axis=1)
+    if "date" in validation_data_clean.columns:
+        validation_data_clean = validation_data_clean.drop("date", axis=1)
+
+    training_dataset = TimeSeries(
+        data=training_data_clean,
+        time="time_idx",
+        target=[target_col],
+        group=group_cols,
+        weight="weight",
+        num=numerical_features,
+        cat=categorical_features if categorical_features else None,
+        known=known_features,
+        unknown=unknown_features,
+        static=static_features,
+    )
+
+    validation_dataset = TimeSeries(
+        data=validation_data_clean,
+        time="time_idx",
+        target=[target_col],
+        group=group_cols,
+        weight="weight",
+        num=numerical_features,
+        cat=categorical_features if categorical_features else None,
+        known=known_features,
+        unknown=unknown_features,
+        static=static_features,
+    )
+
+    training_max_time_idx = training_data["time_idx"].max() + 1
+
+    return {
+        "training_dataset": training_dataset,
+        "validation_dataset": validation_dataset,
+        "training_max_time_idx": training_max_time_idx,
+    }
+
+
+def dataloaders_with_different_encoder_decoder_length():
     return make_dataloaders(
-        data_with_covariates.copy(),
+        data_with_covariates(),
         target="target",
         time_varying_known_categoricals=["special_days", "month"],
         variable_groups=dict(
@@ -198,10 +306,9 @@ def dataloaders_with_different_encoder_decoder_length(data_with_covariates):
     )
 
 
-@pytest.fixture(scope="session")
-def dataloaders_with_covariates(data_with_covariates):
+def dataloaders_with_covariates():
     return make_dataloaders(
-        data_with_covariates.copy(),
+        data_with_covariates(),
         target="target",
         time_varying_known_reals=["discount"],
         time_varying_unknown_reals=["target"],
@@ -211,17 +318,15 @@ def dataloaders_with_covariates(data_with_covariates):
     )
 
 
-@pytest.fixture(scope="session")
-def dataloaders_multi_target(data_with_covariates):
+def dataloaders_multi_target():
     return make_dataloaders(
-        data_with_covariates.copy(),
+        data_with_covariates(),
         time_varying_unknown_reals=["target", "discount"],
         target=["target", "discount"],
         add_relative_time_idx=False,
     )
 
 
-@pytest.fixture(scope="session")
 def dataloaders_fixed_window_without_covariates():
     data = generate_ar_data(seasonality=10.0, timesteps=50, n_series=2)
     validation = data.series.iloc[:2]

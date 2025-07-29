@@ -1,22 +1,61 @@
 """Automated tests based on the skbase test suite template."""
 
-from inspect import isclass
+from copy import deepcopy
+import inspect
 import shutil
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
-from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
+from skbase.utils.dependencies import _check_soft_dependencies
 
-from pytorch_forecasting._registry import all_objects
+from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
+from pytorch_forecasting.tests._loss_mapping import (
+    LOSS_SPECIFIC_PARAMS,
+    LOSSES_BY_PRED_AND_Y_TYPE,
+    get_compatible_losses,
+)
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
 ONLY_CHANGED_MODULES = False
 
 
-class PackageConfig:
+def _nested_update(dict_1, dict_2):
+    """Merge two dictionaries.
+
+    Parameters
+    ----------
+    dict_1 : dict
+        Base dictionary that will be merged with dict_2.
+    dict_2 : dict
+        Dictionary to merge into dict_1.
+        If a key exists in both dictionaries
+        and both values are dictionaries, they will be merged using dict.update().
+        Otherwise, the dict_2 value will override the dict_1 value.
+
+    Returns
+    -------
+    dict
+        A new dictionary containing the merged contents. Values from `dict_1`
+        are preserved unless overridden by `dict_2`.
+    """
+    final_dict = deepcopy(dict_1)
+    for key, value in dict_2.items():
+        if (
+            isinstance(value, dict)
+            and key in final_dict
+            and isinstance(final_dict[key], dict)
+        ):
+            final_dict[key].update(value)
+        else:
+            final_dict[key] = value
+
+    return final_dict
+
+
+class EstimatorPackageConfig:
     """Contains package config variables for test classes."""
 
     # class variables which can be overridden by descendants
@@ -36,7 +75,7 @@ class PackageConfig:
     excluded_tests = EXCLUDED_TESTS
 
 
-class BaseFixtureGenerator(_BaseFixtureGenerator):
+class EstimatorFixtureGenerator(BaseFixtureGenerator):
     """Fixture generator for base testing functionality in sktime.
 
     Test classes inheriting from this and not overriding pytest_generate_tests
@@ -73,78 +112,105 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         ranges over dictionaries of kwargs for the trainer
     """
 
-    # overrides object retrieval in scikit-base
-    def _all_objects(self):
-        """Retrieve list of all object classes of type self.object_type_filter.
-
-        If self.object_type_filter is None, retrieve all objects.
-        If class, retrieve all classes inheriting from self.object_type_filter.
-        Otherwise (assumed str or list of str), retrieve all classes with tags
-        object_type in self.object_type_filter.
-        """
-        filter = getattr(self, "object_type_filter", None)
-
-        if isclass(filter):
-            object_types = filter.get_class_tag("object_type", None)
-        else:
-            object_types = filter
-
-        obj_list = all_objects(
-            object_types=object_types,
-            return_names=False,
-            exclude_objects=self.exclude_objects,
-        )
-
-        if isclass(filter):
-            obj_list = [obj for obj in obj_list if issubclass(obj, filter)]
-
-        # run_test_for_class selects the estimators to run
-        # based on whether they have changed, and whether they have all dependencies
-        # internally, uses the ONLY_CHANGED_MODULES flag,
-        # and checks the python env against python_dependencies tag
-        # obj_list = [obj for obj in obj_list if run_test_for_class(obj)]
-
-        return obj_list
-
     # which sequence the conditional fixtures are generated in
     fixture_sequence = [
-        "object_metadata",
+        "object_pkg",
         "object_class",
         "object_instance",
         "trainer_kwargs",
     ]
 
-    def _generate_object_metadata(self, test_name, **kwargs):
-        """Return object class fixtures.
-
-        Fixtures parametrized
-        ---------------------
-        object_class: object inheriting from BaseObject
-            ranges over all object classes not excluded by self.excluded_tests
+    @staticmethod
+    def _check_required_dependencies(object_pkg):
         """
-        object_classes_to_test = [
-            est for est in self._all_objects() if not self.is_excluded(test_name, est)
-        ]
-        object_names = [est.name() for est in object_classes_to_test]
-
-        return object_classes_to_test, object_names
-
-    def _generate_object_class(self, test_name, **kwargs):
-        """Return object class fixtures.
-
-        Fixtures parametrized
-        ---------------------
-        object_class: object inheriting from BaseObject
-            ranges over all object classes not excluded by self.excluded_tests
+        Skip tests if the required dependencies for the metric are not installed
+        in your environment.
         """
-        all_metadata = self._all_objects()
-        all_cls = [est.get_model_cls() for est in all_metadata]
-        object_classes_to_test = [
-            est for est in all_cls if not self.is_excluded(test_name, est)
-        ]
-        object_names = [est.__name__ for est in object_classes_to_test]
 
-        return object_classes_to_test, object_names
+        required_deps = object_pkg.get_class_tag("python_dependencies")
+        if required_deps:
+            try:
+                # Use the dependency checking utility
+                if not _check_soft_dependencies(required_deps, severity="none"):
+                    return False
+            except Exception:
+                return False
+        return True
+
+    @staticmethod
+    def is_excluded(test_name, est, param_name=None):
+        """Shorthand to check whether test test_name is excluded for estimator est."""
+        if est.__name__.endswith("_pkg") or est.__name__.endswith("_pkg_v2"):
+            excl_tag = est.get_class_tag("tests:skip_by_name", [])
+        else:
+            excl_tag = est.pkg.get_class_tag("tests:skip_by_name", [])
+        if excl_tag is None:
+            excl_tag = []
+        cond = test_name in excl_tag
+
+        if param_name is not None:
+            full_test_name = f"{test_name}[{est.__name__}-{param_name}]"
+            if full_test_name in excl_tag:
+                return True
+        return cond
+
+    def _get_compatible_losses_for_model(self, obj_meta):
+        """Get compatible losses for a model using semantic tags.
+
+        Parameters
+        ----------
+        obj_meta : model package instance
+            Model package containing the semantic tags
+
+        Returns
+        -------
+        list
+            List of compatible loss instances
+        """
+        pred_types = obj_meta.get_class_tag("info:pred_type", [])
+        y_types = obj_meta.get_class_tag("info:y_type", [])
+
+        return get_compatible_losses(pred_types, y_types)
+
+    def _generate_final_param_list(self, compatible_losses, base_params_list):
+        """Generate final parameter combinations for compatible loss types.
+
+        Parameters
+        ----------
+        compatible_loss : list of str
+            List of losses that are compatible with the current model.
+        base_params_list : list of dict
+            List of base parameter dictionaries to be combined with each loss
+            function.
+
+        Returns
+        -------
+        tuple of (list, list)
+            all_train_kwargs : list of dict
+                List of merged parameter dictionaries, each containing base parameters
+                combined with loss-specific parameters and the loss instance.
+            train_kwargs_names : list of str
+                List of descriptive names for each parameter combination, formatted
+                as "base_params-{i}-{loss_name}" where i is the base parameter index
+                and loss_name is the class name of the loss function.
+        """
+        all_train_kwargs = []
+        train_kwargs_names = []
+        for loss_item in compatible_losses:
+            if inspect.isclass(loss_item):
+                loss_name = loss_item.__name__
+                loss = loss_item
+            else:
+                loss_name = loss_item.__class__.__name__
+                loss = loss_item
+            loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
+            loss_params["loss"] = loss
+
+            for i, base_params in enumerate(base_params_list):
+                final_params = _nested_update(base_params, loss_params)
+                all_train_kwargs.append(final_params)
+                train_kwargs_names.append(f"base_params-{i}-{loss_name}")
+        return all_train_kwargs, train_kwargs_names
 
     def _generate_trainer_kwargs(self, test_name, **kwargs):
         """Return kwargs for the trainer.
@@ -154,16 +220,40 @@ class BaseFixtureGenerator(_BaseFixtureGenerator):
         trainer_kwargs: dict
             ranges over all kwargs for the trainer
         """
-        if "object_metadata" in kwargs.keys():
-            obj_meta = kwargs["object_metadata"]
+        if "object_pkg" in kwargs.keys():
+            obj_meta = kwargs["object_pkg"]
         else:
             return []
 
-        all_train_kwargs = obj_meta.get_test_train_params()
-        rg = range(len(all_train_kwargs))
-        train_kwargs_names = [str(i) for i in rg]
+        compatible_losses = self._get_compatible_losses_for_model(obj_meta)
+        if compatible_losses:
+            base_params_list = obj_meta.get_base_test_params()
+            all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
+                compatible_losses, base_params_list
+            )
 
-        return all_train_kwargs, train_kwargs_names
+        else:
+            all_train_kwargs = obj_meta.get_test_train_params()
+            rg = range(len(all_train_kwargs))
+            train_kwargs_names = [str(i) for i in rg]
+
+        model_cls = obj_meta.get_cls()
+        filtered_kwargs = []
+        filtered_names = []
+
+        for kwargs_dict, param_name in zip(all_train_kwargs, train_kwargs_names):
+            if not self.is_excluded(test_name, model_cls, param_name):
+                loss = param_name.split("-")[-1]
+                if (
+                    loss == "MQF2DistributionLoss"
+                    and not self._check_required_dependencies(obj_meta)
+                ):
+                    continue
+                else:
+                    filtered_kwargs.append(kwargs_dict)
+                    filtered_names.append(param_name)
+
+        return filtered_kwargs, filtered_names
 
 
 def _integration(
@@ -177,9 +267,19 @@ def _integration(
     **kwargs,
 ):
     """Unified integration test for all estimators."""
+
     train_dataloader = dataloaders["train"]
     val_dataloader = dataloaders["val"]
     test_dataloader = dataloaders["test"]
+
+    learning_rate = 0.01
+    # todo: still need some debugging to add the MQF2DistributionLoss
+    # loss = kwargs.get("loss")
+    # if inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+    #     learning_rate = 1e-9
+    #     kwargs["loss"] = MQF2DistributionLoss(
+    #         prediction_length=train_dataloader.dataset.min_prediction_length
+    #     )
 
     early_stop_callback = EarlyStopping(
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
@@ -203,7 +303,7 @@ def _integration(
 
     net = estimator_cls.from_dataset(
         train_dataloader.dataset,
-        learning_rate=0.01,
+        learning_rate=learning_rate,
         log_gradient_flow=True,
         log_interval=1000,
         **kwargs,
@@ -223,13 +323,38 @@ def _integration(
         )
 
         # check prediction
-        net.predict(
+        raw_predictions = net.predict(
             val_dataloader,
             fast_dev_run=True,
             return_index=True,
             return_decoder_lengths=True,
+            mode="raw",
             trainer_kwargs=trainer_kwargs,
         )
+        output = raw_predictions.output.prediction
+        n_dims = len(output.shape)
+
+        assert n_dims in [2, 3], (
+            f"Prediction output must be 2D or 3D, but got {n_dims}D tensor "
+            f"with shape {output.shape}"
+        )
+
+        if n_dims == 2:
+            batch_size, prediction_length = output.shape
+            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
+            assert (
+                prediction_length > 0
+            ), f"Prediction length must be positive, got {prediction_length}"
+
+        elif n_dims == 3:
+            batch_size, prediction_length, n_features = output.shape
+            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
+            assert (
+                prediction_length > 0
+            ), f"Prediction length must be positive, got {prediction_length}"
+            assert (
+                n_features > 0
+            ), f"Number of features must be positive, got {n_features}"
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
@@ -242,8 +367,10 @@ def _integration(
     )
 
 
-class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
+class TestAllPtForecasters(EstimatorPackageConfig, EstimatorFixtureGenerator):
     """Generic tests for all objects in the mini package."""
+
+    object_type_filter = "forecaster_pytorch_v1"
 
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""
@@ -253,13 +380,38 @@ class TestAllPtForecasters(PackageConfig, BaseFixtureGenerator):
 
     def test_integration(
         self,
-        object_metadata,
+        object_pkg,
         trainer_kwargs,
         tmp_path,
     ):
         """Fails for certain, for testing."""
 
-        object_class = object_metadata.get_model_cls()
-        dataloaders = object_metadata._get_test_dataloaders_from(trainer_kwargs)
+        object_class = object_pkg.get_cls()
+        dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
 
         _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
+
+    def test_pkg_linkage(self, object_pkg, object_class):
+        """Test that the package is linked correctly."""
+        msg = f"{object_class.__name__} does not have a pkg attribute."
+        assert hasattr(object_class, "pkg"), msg
+        assert object_pkg is object_class.pkg
+        # assert object_pkg is object_instance.pkg
+
+        # check name method
+        msg = (
+            f"Package {object_pkg}.name() does not match class "
+            f"name {object_class.__name__}. "
+            "The expected package name is "
+            f"{object_class.__name__}_pkg."
+        )
+        assert object_pkg.name() == object_class.__name__, msg
+
+        # check naming convention
+        msg = (
+            f"Package {object_pkg.__name__} does not match class "
+            f"name {object_class.__name__}. "
+            "The expected package name is "
+            f"{object_class.__name__}_pkg."
+        )
+        assert object_pkg.__name__ == object_class.__name__ + "_pkg", msg

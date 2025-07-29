@@ -1,67 +1,57 @@
-"""TiDE metadata container."""
+"""DeepAR package container."""
 
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class TiDEModelMetadata(_BasePtForecaster):
-    """Metadata container for TiDE Model."""
+class DeepAR_pkg(_BasePtForecaster):
+    """DeepAR package container."""
 
     _tags = {
-        "info:name": "TiDEModel",
+        "info:name": "DeepAR",
         "info:compute": 3,
-        "authors": ["Sohaib-Ahmed21"],
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
+        "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
+        "python_dependencies": ["cpflows"],
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.tide import TiDEModel
+        from pytorch_forecasting.models import DeepAR
 
-        return TiDEModel
+        return DeepAR
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_base_test_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns
         -------
         params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class.
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
         """
-
-        from pytorch_forecasting.data.encoders import GroupNormalizer
-        from pytorch_forecasting.metrics import SMAPE
-
         params = [
+            {},
+            {"cell_type": "GRU"},
             {
                 "data_loader_kwargs": dict(
-                    add_relative_time_idx=False,
-                    # must include this everytime since the data_loader_default_kwargs
-                    # include this to be True.
-                )
-            },
-            {
-                "temporal_decoder_hidden": 16,
-                "data_loader_kwargs": dict(add_relative_time_idx=False),
-            },
-            {
-                "dropout": 0.2,
-                "use_layer_norm": True,
-                "loss": SMAPE(),
-                "data_loader_kwargs": dict(
-                    target_normalizer=GroupNormalizer(
-                        groups=["agency", "sku"], transformation="softplus"
-                    ),
-                    add_relative_time_idx=False,
+                    lags={"volume": [2, 5]},
+                    target="volume",
+                    time_varying_unknown_reals=["volume"],
+                    min_encoder_length=2,
                 ),
             },
         ]
-        defaults = {"hidden_size": 5}
+        defaults = {"hidden_size": 5, "cell_type": "LSTM", "n_plotting_samples": 100}
         for param in params:
             param.update(defaults)
         return params
@@ -82,20 +72,31 @@ class TiDEModelMetadata(_BasePtForecaster):
             Dict of dataloaders created from the parameters.
             Train, validation, and test dataloaders.
         """
-        trainer_kwargs = params.get("trainer_kwargs", {})
+        loss = params.get("loss", None)
         clip_target = params.get("clip_target", False)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        import inspect
+
+        from pytorch_forecasting.metrics import (
+            LogNormalDistributionLoss,
+            MQF2DistributionLoss,
+            NegativeBinomialDistributionLoss,
+        )
         from pytorch_forecasting.tests._conftest import make_dataloaders
         from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
         dwc = data_with_covariates()
 
-        if "loss" in trainer_kwargs and isinstance(
-            trainer_kwargs["loss"], NegativeBinomialDistributionLoss
-        ):
+        if isinstance(loss, NegativeBinomialDistributionLoss):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
+        # todo: still need some debugging to add the MQF2DistributionLoss
+        # elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+        #     dwc = dwc.assign(volume=lambda x: x.volume.round())
+        #     data_loader_kwargs["target"] = "volume"
+        #     data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
+        elif isinstance(loss, LogNormalDistributionLoss):
+            dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
 
         dwc = dwc.copy()
         if clip_target:

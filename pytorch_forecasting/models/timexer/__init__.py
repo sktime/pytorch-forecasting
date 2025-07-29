@@ -3,7 +3,8 @@ TimeXer model for forecasting time series.
 """
 
 from pytorch_forecasting.models.timexer._timexer import TimeXer
-from pytorch_forecasting.models.timexer._timexer_metadata import TimeXerMetadata
+from pytorch_forecasting.models.timexer._timexer_pkg import TimeXer_pkg
+from pytorch_forecasting.models.timexer._timexer_pkg_v2 import TimeXer_pkg_v2
 from pytorch_forecasting.models.timexer.sub_modules import (
     AttentionLayer,
     DataEmbedding_inverted,
@@ -27,5 +28,6 @@ __all__ = [
     "EnEmbedding",
     "Encoder",
     "EncoderLayer",
-    "TimeXerMetadata",
+    "TimeXer_pkg",
+    "TimeXer_pkg_v2",
 ]
