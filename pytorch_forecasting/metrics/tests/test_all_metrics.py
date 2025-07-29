@@ -218,12 +218,16 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
         Parameters
         ----------
-        object_pkg: SkbaseBaseObject
-            The package object containing the metric.
         metric: Metric
             The metric instance.
         y_pred: torch.Tensor
             The predicted values tensor.
+        batch_size: int
+            The size of the batch. Used to determine the expected output shape.
+        prediction_length: int
+            The length of the prediction. Used to determine the expected output shape.
+        metric_type: str
+            The type of the metric (e.g., "quantile", "point_classification").
         """
         quantiles = [0.05, 0.5, 0.95]
         output_dim = y_pred.shape[-1]
