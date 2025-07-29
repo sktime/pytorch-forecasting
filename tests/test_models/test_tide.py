@@ -192,7 +192,7 @@ def test_pickle(model):
 
 
 @pytest.mark.skipif(
-    _check_soft_dependencies("matplotlib", severity="none"),
+    not _check_soft_dependencies("matplotlib", severity="none"),
     reason="skip test if required package matplotlib not installed",
 )
 def test_prediction_visualization(model, dataloaders_with_covariates):
