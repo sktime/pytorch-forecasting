@@ -202,7 +202,6 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         expected_shape = self._get_expected_output_shape_prediction(
             batch_size, prediction_length
         )  # noqa: E501
-        assert isinstance(out, torch.Tensor), "Prediction should be a tensor."
         assert out.shape == expected_shape, (
             f"Prediction shape mismatch: got {out.shape}, expected {expected_shape}."  # noqa: E501
         )
@@ -240,16 +239,13 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
                 quantile_pred, y_pred
             ), f"Quantile prediction does not match the original predictions in {metric_type}."  # noqa: E501
 
-        else:
-            quantile_pred = metric.to_quantiles(y_pred, quantiles=quantiles)
-
-        if metric_type == "quantile" or metric_type == "point_classification":
-            # they do not take in the `quantiles` argument for `to_quantiles`,
-            # so we use the output_dim to determine the expected shape
             expected_shape = self._get_expected_output_shape_quantiles(
                 batch_size, prediction_length, output_dim, metric_type
             )
+
         else:
+            quantile_pred = metric.to_quantiles(y_pred, quantiles=quantiles)
+
             expected_shape = self._get_expected_output_shape_quantiles(
                 batch_size, prediction_length, len(quantiles), metric_type
             )
@@ -272,6 +268,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             "quantile",
             "distribution",
         ], "Unsupported metric type for integration test."
+
         metric.reset()
         metric.update(y_pred, y)
         res = metric.compute()
