@@ -1,47 +1,15 @@
 from copy import copy
-from typing import Dict, Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Union
 
 import torch
 from torch import nn
 
+from pytorch_forecasting.layers import SeriesDecomposition, mLSTMNetwork, sLSTMNetwork
 from pytorch_forecasting.metrics import SMAPE, Metric
 from pytorch_forecasting.models.base_model import AutoRegressiveBaseModel
-from pytorch_forecasting.models.x_lstm_time.m_lstm.network import mLSTMNetwork
-from pytorch_forecasting.models.x_lstm_time.s_lstm.network import sLSTMNetwork
-
-
-class SeriesDecomposition(nn.Module):
-    """Implements series decomposition using learnable moving averages."""
-
-    def __init__(self, kernel_size: int):
-        super(SeriesDecomposition, self).__init__()
-        self.kernel_size = kernel_size
-        self.padding = kernel_size // 2
-        self.avg_pool = nn.AvgPool1d(
-            kernel_size=kernel_size, stride=1, padding=self.padding
-        )
-
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Decomposes input series into trend and seasonal components.
-
-        Args:
-            x: Input tensor of shape (batch_size, seq_len, n_features)
-
-        Returns:
-            Tuple of (trend_component, seasonal_component)
-        """
-        batch_size, seq_len, n_features = x.shape
-        x_reshaped = x.reshape(batch_size * n_features, 1, seq_len)
-        trend = self.avg_pool(x_reshaped)
-        trend = trend.reshape(batch_size, seq_len, n_features)
-        seasonal = x - trend
-
-        return trend, seasonal
 
 
 class xLSTMTime(AutoRegressiveBaseModel):
-
     def __init__(
         self,
         input_size: int,
@@ -56,7 +24,6 @@ class xLSTMTime(AutoRegressiveBaseModel):
         device: Optional[torch.device] = None,
         **kwargs,
     ):
-
         if "target" in kwargs:
             del kwargs["target"]
         if "target_lags" in kwargs:
@@ -106,18 +73,18 @@ class xLSTMTime(AutoRegressiveBaseModel):
 
     def forward(
         self,
-        x: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
         hidden_states: Optional[
             Union[
-                Tuple[torch.Tensor, torch.Tensor],
-                Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+                tuple[torch.Tensor, torch.Tensor],
+                tuple[torch.Tensor, torch.Tensor, torch.Tensor],
             ]
         ] = None,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         encoder_cont = x["encoder_cont"]
         batch_size, seq_len, n_features = encoder_cont.shape
 
-        trend, seasonal = self.decomposition(encoder_cont)
+        seasonal, trend = self.decomposition(encoder_cont)
 
         x = torch.cat([trend, seasonal], dim=-1)
 

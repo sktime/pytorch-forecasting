@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from pytorch_forecasting.models.x_lstm_time.s_lstm.layer import sLSTMLayer
+from pytorch_forecasting.layers._s_lstm.layer import sLSTMLayer
 
 
 class sLSTMNetwork(nn.Module):
@@ -45,7 +45,7 @@ class sLSTMNetwork(nn.Module):
         use_layer_norm=True,
         device=None,
     ):
-        super(sLSTMNetwork, self).__init__()
+        super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers

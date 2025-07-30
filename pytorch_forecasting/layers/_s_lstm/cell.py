@@ -54,7 +54,7 @@ class sLSTMCell(nn.Module):
     def __init__(
         self, input_size, hidden_size, dropout=0.0, use_layer_norm=True, device=None
     ):
-        super(sLSTMCell, self).__init__()
+        super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.dropout = dropout

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from pytorch_forecasting.models.x_lstm_time.m_lstm.cell import mLSTMCell
+from pytorch_forecasting.layers._m_lstm.cell import mLSTMCell
 
 
 class mLSTMLayer(nn.Module):
@@ -47,7 +47,7 @@ class mLSTMLayer(nn.Module):
         residual_conn=True,
         device=None,
     ):
-        super(mLSTMLayer, self).__init__()
+        super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -130,7 +130,6 @@ class mLSTMLayer(nn.Module):
             next_norm_states = []
 
             for i, cell in enumerate(self.cells):
-
                 h_i, c_i, n_i = cell(layer_input, h[i], c[i], n[i])
 
                 if self.residual_conn and i > 0:

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from pytorch_forecasting.models.x_lstm_time.m_lstm.layer import mLSTMLayer
+from pytorch_forecasting.layers._m_lstm.layer import mLSTMLayer
 
 
 class mLSTMNetwork(nn.Module):
@@ -49,7 +49,7 @@ class mLSTMNetwork(nn.Module):
         use_residual=True,
         device=None,
     ):
-        super(mLSTMNetwork, self).__init__()
+        super().__init__()
         self.device = device or torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
         )
