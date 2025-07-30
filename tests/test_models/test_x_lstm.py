@@ -12,7 +12,6 @@ from pytorch_forecasting.models.x_lstm_time.x_lstm import xLSTMTime
 def _integration(
     dataloaders_fixed_window_without_covariates, tmp_path, xlstm_type="slstm", **kwargs
 ):
-
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
     val_dataloader = dataloaders_fixed_window_without_covariates["val"]
     test_dataloader = dataloaders_fixed_window_without_covariates["test"]
@@ -48,7 +47,6 @@ def _integration(
     net = xLSTMTime.from_dataset(train_dataloader.dataset, **model_kwargs)
 
     try:
-
         trainer.fit(
             net,
             train_dataloaders=train_dataloader,
