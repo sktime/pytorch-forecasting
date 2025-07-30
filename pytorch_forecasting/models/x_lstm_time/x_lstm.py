@@ -10,6 +10,13 @@ from pytorch_forecasting.models.base_model import AutoRegressiveBaseModel
 
 
 class xLSTMTime(AutoRegressiveBaseModel):
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.x_lstm_time._xlstm_pkg import xLSTMTime_pkg
+
+        return xLSTMTime_pkg
+
     def __init__(
         self,
         input_size: int,
