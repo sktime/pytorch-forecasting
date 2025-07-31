@@ -38,7 +38,8 @@ class xLSTMTime(AutoRegressiveBaseModel):
         dynamics, and combines series decomposition and normalization layers to
         produce robust forecasts over extended horizons.
 
-        It is based on this paper: https://arxiv.org/pdf/2407.10240
+        It is based on this paper: https://arxiv.org/pdf/2407.10240 and
+        https://github.com/muslehal/xLSTMTime
 
         Parameters
         ----------

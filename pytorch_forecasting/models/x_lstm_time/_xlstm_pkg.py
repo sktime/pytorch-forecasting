@@ -11,7 +11,7 @@ class xLSTMTime_pkg(_BasePtForecaster):
         "info:compute": 3,
         "info:pred_type": ["point"],
         "info:y_type": ["numeric"],
-        "authors": ["phoeenniixx"],
+        "authors": ["muslehal", "phoeenniixx"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": False,
