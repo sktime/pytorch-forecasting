@@ -25,8 +25,6 @@ class mLSTMNetwork(nn.Module):
         Whether to use layer normalization in the mLSTM layers, by default True.
     use_residual : bool, optional
         Whether to use residual connections in the mLSTM layers, by default True.
-    device : torch.device, optional
-        Device to run the computations on
 
     Attributes
     ----------
@@ -47,12 +45,8 @@ class mLSTMNetwork(nn.Module):
         dropout=0.0,
         use_layer_norm=True,
         use_residual=True,
-        device=None,
     ):
         super().__init__()
-        self.device = device or torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
 
         self.mlstm_layer = mLSTMLayer(
             input_size,
@@ -61,7 +55,6 @@ class mLSTMNetwork(nn.Module):
             dropout,
             use_layer_norm,
             use_residual,
-            self.device,
         )
         self.fc = nn.Linear(hidden_size, output_size)
 
@@ -99,6 +92,8 @@ class mLSTMNetwork(nn.Module):
 
         return output, (h, c, n)
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, device=None):
         """Initialize hidden, cell, and normalization states."""
-        return self.mlstm_layer.init_hidden(batch_size)
+        if device is None:
+            device = next(self.parameters()).device
+        return self.mlstm_layer.init_hidden(batch_size, device=device)

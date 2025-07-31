@@ -28,9 +28,42 @@ class xLSTMTime(AutoRegressiveBaseModel):
         input_projection_size: Optional[int] = None,
         dropout: float = 0.1,
         loss: Metric = SMAPE(),
-        device: Optional[torch.device] = None,
         **kwargs,
     ):
+        """
+        xLSTMTime is a long‑term time series forecasting architecture built on the
+        extended LSTM (xLSTM) design, incorporating either the scalar-memory
+        stabilized LSTM (sLSTM) or the matrix-memory mLSTM variant. This model
+        enhances classical LSTM by adding exponential gating and richer memory
+        dynamics, and combines series decomposition and normalization layers to
+        produce robust forecasts over extended horizons.
+
+        It is based on this paper: https://arxiv.org/pdf/2407.10240
+
+        Parameters
+        ----------
+        input_size : int
+            Number of input continuous features per time step.
+        hidden_size : int
+            Hidden size of the xLSTM network; also used by batch norm / LSTM internals.
+        output_size : int
+            Number of output features per time step (forecast horizon).
+        xlstm_type : {"slstm", "mlstm"}, default "slstm"
+            Specifies which xLSTM variant to use:
+            - "slstm": stabilized LSTM with scalar memory,
+            - "mlstm": matrix-memory variant for higher capacity and scalability.
+        num_layers : int, default 1
+            Number of recurrent layers in the sLSTM or mLSTM network.
+        decomposition_kernel : int, default 25
+            Kernel size for series decomposition into trend and seasonal components.
+        input_projection_size : int, optional
+            If specified, the encoded input (trend + seasonal) is projected to this size
+            before being fed to the xLSTM; otherwise equals hidden_size.
+        dropout : float, default 0.1
+            Dropout rate applied within the recurrent layers.
+        loss : pytorch_forecasting.metrics.Metric, default SMAPE()
+            Loss (and evaluation metric) used during training.
+        """
         if "target" in kwargs:
             del kwargs["target"]
         if "target_lags" in kwargs:
@@ -42,19 +75,13 @@ class xLSTMTime(AutoRegressiveBaseModel):
             raise ValueError("xlstm_type must be either 'slstm' or 'mlstm'")
 
         self.xlstm_type = xlstm_type
-        self._device = device or torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
-        self.to(self._device)
 
         self.decomposition = SeriesDecomposition(decomposition_kernel)
         self.batch_norm = nn.BatchNorm1d(hidden_size)
 
         self.input_projection_size = input_projection_size or hidden_size
 
-        self.input_linear = nn.Linear(input_size * 2, self.input_projection_size).to(
-            self.device
-        )
+        self.input_linear = nn.Linear(input_size * 2, self.input_projection_size)
 
         if xlstm_type == "mlstm":
             self.lstm = mLSTMNetwork(
@@ -63,7 +90,6 @@ class xLSTMTime(AutoRegressiveBaseModel):
                 num_layers=num_layers,
                 output_size=hidden_size,
                 dropout=dropout,
-                device=self.device,
             )
         else:  # slstm
             self.lstm = sLSTMNetwork(
@@ -72,7 +98,6 @@ class xLSTMTime(AutoRegressiveBaseModel):
                 num_layers=num_layers,
                 output_size=hidden_size,
                 dropout=dropout,
-                device=self.device,
             )
 
         self.output_linear = nn.Linear(hidden_size, output_size)
@@ -88,6 +113,7 @@ class xLSTMTime(AutoRegressiveBaseModel):
             ]
         ] = None,
     ) -> dict[str, torch.Tensor]:
+        """Forward Pass for the model"""
         encoder_cont = x["encoder_cont"]
         batch_size, seq_len, n_features = encoder_cont.shape
 
@@ -102,7 +128,7 @@ class xLSTMTime(AutoRegressiveBaseModel):
         x = x.transpose(1, 2)
 
         if hidden_states is None:
-            hidden_states = self.lstm.init_hidden(batch_size)
+            hidden_states = self.lstm.init_hidden(batch_size, device=x.device)
 
         x = x.transpose(0, 1)
         output, hidden_states = self.lstm(x, *hidden_states)
@@ -124,6 +150,24 @@ class xLSTMTime(AutoRegressiveBaseModel):
 
     @classmethod
     def from_dataset(cls, dataset, **kwargs):
+        """
+        Create model from dataset and set parameters related to covariates.
+
+        Parameters
+        ----------
+        dataset: timeseries dataset
+        **kwargs: additional arguments such as hyperparameters for model
+
+        Returns
+        -------
+            xLSTMTime
+        """
+        from pytorch_forecasting.data.encoders import NaNLabelEncoder
+
+        assert not isinstance(
+            dataset.target_normalizer, NaNLabelEncoder
+        ), "only regression tasks are supported - target must not be categorical"
+
         new_kwargs = copy(kwargs)
         new_kwargs.update(
             cls.deduce_default_output_parameters(dataset, kwargs, SMAPE())

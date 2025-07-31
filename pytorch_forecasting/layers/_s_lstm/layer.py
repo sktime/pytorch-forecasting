@@ -24,8 +24,6 @@ class sLSTMLayer(nn.Module):
         Whether to use layer normalization for each sLSTM cell, by default True.
     use_residual : bool, optional
         Whether to use residual connections in each sLSTM layer, by default True.
-    device : torch.device, optional
-        The device to run the computations on
 
     Attributes
     ----------
@@ -46,7 +44,6 @@ class sLSTMLayer(nn.Module):
         dropout=0.0,
         use_layer_norm=True,
         use_residual=True,
-        device=None,
     ):
         super().__init__()
         self.input_size = input_size
@@ -55,17 +52,10 @@ class sLSTMLayer(nn.Module):
         self.dropout = dropout
         self.use_layer_norm = use_layer_norm
         self.use_residual = use_residual
-        self.device = (
-            device
-            if device
-            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        )
 
         self.input_projection = None
         if self.use_residual and input_size != hidden_size:
-            self.input_projection = nn.Linear(input_size, hidden_size, bias=False).to(
-                self.device
-            )
+            self.input_projection = nn.Linear(input_size, hidden_size, bias=False)
 
         self.cells = nn.ModuleList(
             [
@@ -74,7 +64,6 @@ class sLSTMLayer(nn.Module):
                     hidden_size,
                     dropout=dropout,
                     use_layer_norm=use_layer_norm,
-                    device=self.device,
                 )
                 for layer in range(num_layers)
             ]
@@ -82,7 +71,7 @@ class sLSTMLayer(nn.Module):
 
         if self.use_layer_norm:
             self.layer_norm_layers = nn.ModuleList(
-                [nn.LayerNorm(hidden_size).to(self.device) for _ in range(num_layers)]
+                [nn.LayerNorm(hidden_size) for _ in range(num_layers)]
             )
 
     def forward(self, x, h=None, c=None):
@@ -109,11 +98,7 @@ class sLSTMLayer(nn.Module):
         seq_len, batch_size, _ = x.size()
 
         if h is None or c is None:
-            h, c = self.init_hidden(batch_size)
-
-        x = x.to(self.device)
-        h = [hi.to(self.device) for hi in h]
-        c = [ci.to(self.device) for ci in c]
+            h, c = self.init_hidden(batch_size, device=x.device)
 
         outputs = []
 
@@ -149,15 +134,17 @@ class sLSTMLayer(nn.Module):
 
         return output, (h, c)
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, device=None):
         """Initialize hidden and cell states for each layer."""
+        if device is None:
+            device = next(self.parameters()).device
         return (
             [
-                torch.zeros(batch_size, self.hidden_size, device=self.device)
+                torch.zeros(batch_size, self.hidden_size, device=device)
                 for _ in range(self.num_layers)
             ],
             [
-                torch.zeros(batch_size, self.hidden_size, device=self.device)
+                torch.zeros(batch_size, self.hidden_size, device=device)
                 for _ in range(self.num_layers)
             ],
         )

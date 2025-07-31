@@ -24,8 +24,6 @@ class sLSTMNetwork(nn.Module):
         Dropout probability for the input of each sLSTM layer, by default 0.0.
     use_layer_norm : bool, optional
         Whether to use layer normalization in each sLSTM layer, by default True.
-    device : torch.device, optional
-        Device to run the computations on
 
     Attributes
     ----------
@@ -43,7 +41,6 @@ class sLSTMNetwork(nn.Module):
         output_size,
         dropout=0.0,
         use_layer_norm=True,
-        device=None,
     ):
         super().__init__()
         self.input_size = input_size
@@ -51,11 +48,6 @@ class sLSTMNetwork(nn.Module):
         self.num_layers = num_layers
         self.output_size = output_size
         self.dropout = dropout
-        self.device = (
-            device
-            if device
-            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        )
 
         self.slstm_layer = sLSTMLayer(
             input_size,
@@ -63,9 +55,8 @@ class sLSTMNetwork(nn.Module):
             num_layers,
             dropout,
             use_layer_norm,
-            device=self.device,
         )
-        self.fc = nn.Linear(hidden_size, output_size).to(self.device)
+        self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x, h=None, c=None):
         """
@@ -93,6 +84,8 @@ class sLSTMNetwork(nn.Module):
         output = self.fc(output[-1])
         return output, (h, c)
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, device=None):
         """Initialize hidden and cell states for the entire network."""
-        return self.slstm_layer.init_hidden(batch_size)
+        if device is None:
+            device = next(self.parameters()).device
+        return self.slstm_layer.init_hidden(batch_size, device=device)

@@ -21,8 +21,6 @@ class sLSTMCell(nn.Module):
     use_layer_norm : bool, optional
         Whether to use layer normalization for the cell's internal computations,
         by default True.
-    device : torch.device, optional
-        The device to run the computations on
 
     Attributes
     ----------
@@ -51,9 +49,7 @@ class sLSTMCell(nn.Module):
         Sigmoid activation function.
     """
 
-    def __init__(
-        self, input_size, hidden_size, dropout=0.0, use_layer_norm=True, device=None
-    ):
+    def __init__(self, input_size, hidden_size, dropout=0.0, use_layer_norm=True):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -61,22 +57,16 @@ class sLSTMCell(nn.Module):
         self.use_layer_norm = use_layer_norm
         self.eps = 1e-6
 
-        self.device = (
-            device
-            if device is not None
-            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        )
-
-        self.input_weights = nn.Linear(input_size, 4 * hidden_size).to(self.device)
-        self.hidden_weights = nn.Linear(hidden_size, 4 * hidden_size).to(self.device)
+        self.input_weights = nn.Linear(input_size, 4 * hidden_size)
+        self.hidden_weights = nn.Linear(hidden_size, 4 * hidden_size)
 
         if use_layer_norm:
-            self.ln_cell = nn.LayerNorm(hidden_size).to(self.device)
-            self.ln_hidden = nn.LayerNorm(hidden_size).to(self.device)
-            self.ln_input = nn.LayerNorm(4 * hidden_size).to(self.device)
-            self.ln_hidden_update = nn.LayerNorm(4 * hidden_size).to(self.device)
+            self.ln_cell = nn.LayerNorm(hidden_size)
+            self.ln_hidden = nn.LayerNorm(hidden_size)
+            self.ln_input = nn.LayerNorm(4 * hidden_size)
+            self.ln_hidden_update = nn.LayerNorm(4 * hidden_size)
 
-        self.dropout_layer = nn.Dropout(dropout).to(self.device)
+        self.dropout_layer = nn.Dropout(dropout)
 
         self.reset_parameters()
 
@@ -84,8 +74,6 @@ class sLSTMCell(nn.Module):
 
         self.tanh = nn.Tanh()
         self.sigmoid = nn.Sigmoid()
-
-        self.to(self.device)
 
     def reset_parameters(self):
         """Initialize parameters using Xavier/Glorot initialization"""
@@ -119,9 +107,6 @@ class sLSTMCell(nn.Module):
         c : torch.Tensor
             Updated cell state tensor.
         """
-        x = x.to(self.device)
-        h_prev = h_prev.to(self.device)
-        c_prev = c_prev.to(self.device)
 
         x = self.dropout_layer(x)
         h_prev = self.dropout_layer(h_prev)
@@ -155,8 +140,10 @@ class sLSTMCell(nn.Module):
 
         return h, c
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, device=None):
+        if device is None:
+            device = next(self.parameters()).device
         return (
-            torch.zeros(batch_size, self.hidden_size, device=self.device),
-            torch.zeros(batch_size, self.hidden_size, device=self.device),
+            torch.zeros(batch_size, self.hidden_size, device=device),
+            torch.zeros(batch_size, self.hidden_size, device=device),
         )

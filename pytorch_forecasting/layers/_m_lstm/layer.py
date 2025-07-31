@@ -25,8 +25,6 @@ class mLSTMLayer(nn.Module):
         Whether to use layer normalization in each mLSTM cell, by default True.
     residual_conn : bool, optional
         Whether to enable residual connections between layers, by default True.
-    device : torch.device, optional
-        The device to run the computations on
 
     Attributes
     ----------
@@ -45,7 +43,6 @@ class mLSTMLayer(nn.Module):
         dropout=0.2,
         layer_norm=True,
         residual_conn=True,
-        device=None,
     ):
         super().__init__()
         self.input_size = input_size
@@ -53,11 +50,7 @@ class mLSTMLayer(nn.Module):
         self.num_layers = num_layers
         self.layer_norm = layer_norm
         self.residual_conn = residual_conn
-        self.device = device or torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
-
-        self.dropout = nn.Dropout(dropout).to(self.device)
+        self.dropout = nn.Dropout(dropout)
 
         self.cells = nn.ModuleList(
             [
@@ -66,24 +59,9 @@ class mLSTMLayer(nn.Module):
                     hidden_size,
                     dropout,
                     layer_norm,
-                    self.device,
                 )
                 for i in range(num_layers)
             ]
-        )
-
-    def init_hidden(self, batch_size):
-        """
-        Initialize hidden, cell, and normalization states for all layers.
-        """
-        hidden_states, cell_states, norm_states = zip(
-            *[self.cells[i].init_hidden(batch_size) for i in range(self.num_layers)]
-        )
-
-        return (
-            torch.stack(hidden_states).to(self.device),
-            torch.stack(cell_states).to(self.device),
-            torch.stack(norm_states).to(self.device),
         )
 
     def forward(self, x, h=None, c=None, n=None):
@@ -115,7 +93,7 @@ class mLSTMLayer(nn.Module):
                 - n : torch.Tensor
         """
 
-        x = x.to(self.device).transpose(0, 1)
+        x = x.transpose(0, 1)
         batch_size, seq_len, _ = x.size()
 
         if h is None or c is None or n is None:
@@ -141,9 +119,9 @@ class mLSTMLayer(nn.Module):
                 next_cell_states.append(c_i)
                 next_norm_states.append(n_i)
 
-            h = torch.stack(next_hidden_states).to(self.device)
-            c = torch.stack(next_cell_states).to(self.device)
-            n = torch.stack(next_norm_states).to(self.device)
+            h = torch.stack(next_hidden_states)
+            c = torch.stack(next_cell_states)
+            n = torch.stack(next_norm_states)
 
             outputs.append(h[-1])
 
@@ -152,3 +130,22 @@ class mLSTMLayer(nn.Module):
         output = output.transpose(0, 1)
 
         return output, (h, c, n)
+
+    def init_hidden(self, batch_size, device=None):
+        """
+        Initialize hidden, cell, and normalization states for all layers.
+        """
+        if device is None:
+            device = next(self.parameters()).device
+        hidden_states, cell_states, norm_states = zip(
+            *[
+                self.cells[i].init_hidden(batch_size, device=device)
+                for i in range(self.num_layers)
+            ]
+        )
+
+        return (
+            torch.stack(hidden_states),
+            torch.stack(cell_states),
+            torch.stack(norm_states),
+        )

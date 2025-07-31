@@ -20,9 +20,6 @@ class mLSTMCell(nn.Module):
         Dropout rate applied to inputs and hidden states, by default 0.2.
     layer_norm : bool, optional
         If True, apply Layer Normalization to gates and interactions, by default True.
-    device : torch.device, optional
-        Device for computation (CPU or CUDA), by default uses GPU if available.
-
 
     Attributes
     ----------
@@ -42,23 +39,13 @@ class mLSTMCell(nn.Module):
         Dropout regularization layer.
     ln_q, ln_k, ln_v, ln_i, ln_f, ln_o : nn.LayerNorm
         Optional layer normalization layers for respective computations.
-    device : torch.device
-        Device used for computation.
     """
 
-    def __init__(
-        self, input_size, hidden_size, dropout=0.2, layer_norm=True, device=None
-    ):
+    def __init__(self, input_size, hidden_size, dropout=0.2, layer_norm=True):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.layer_norm = layer_norm
-
-        self.device = (
-            device
-            if device is not None
-            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        )
 
         self.Wq = nn.Linear(input_size, hidden_size)
         self.Wk = nn.Linear(input_size, hidden_size)
@@ -68,15 +55,7 @@ class mLSTMCell(nn.Module):
         self.Wf = nn.Linear(input_size, hidden_size)
         self.Wo = nn.Linear(input_size, hidden_size)
 
-        self.Wq.to(self.device)
-        self.Wk.to(self.device)
-        self.Wv.to(self.device)
-        self.Wi.to(self.device)
-        self.Wf.to(self.device)
-        self.Wo.to(self.device)
-
         self.dropout = nn.Dropout(dropout)
-        self.dropout.to(self.device)
 
         if layer_norm:
             self.ln_q = nn.LayerNorm(hidden_size)
@@ -85,13 +64,6 @@ class mLSTMCell(nn.Module):
             self.ln_i = nn.LayerNorm(hidden_size)
             self.ln_f = nn.LayerNorm(hidden_size)
             self.ln_o = nn.LayerNorm(hidden_size)
-
-            self.ln_q.to(self.device)
-            self.ln_k.to(self.device)
-            self.ln_v.to(self.device)
-            self.ln_i.to(self.device)
-            self.ln_f.to(self.device)
-            self.ln_o.to(self.device)
 
         self.sigmoid = nn.Sigmoid()
         self.tanh = nn.Tanh()
@@ -120,11 +92,6 @@ class mLSTMCell(nn.Module):
         n : torch.Tensor
             Current normalized state
         """
-
-        x = x.to(self.device)
-        h_prev = h_prev.to(self.device)
-        c_prev = c_prev.to(self.device)
-        n_prev = n_prev.to(self.device)
 
         batch_size = x.size(0)
         assert (
@@ -175,13 +142,15 @@ class mLSTMCell(nn.Module):
 
         return h, c, n
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, device=None):
         """
         Initialize hidden, cell, and normalization states.
         """
+        if device is None:
+            device = next(self.parameters()).device
         shape = (batch_size, self.hidden_size)
         return (
-            torch.zeros(shape, device=self.device),
-            torch.zeros(shape, device=self.device),
-            torch.zeros(shape, device=self.device),
+            torch.zeros(shape, device=device),
+            torch.zeros(shape, device=device),
+            torch.zeros(shape, device=device),
         )
