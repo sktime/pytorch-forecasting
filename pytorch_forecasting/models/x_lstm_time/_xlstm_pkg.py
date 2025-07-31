@@ -15,7 +15,7 @@ class xLSTMTime_pkg(_BasePtForecaster):
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": False,
-        "capability:flexible_history_length": False,
+        "capability:flexible_history_length": True,
         "capability:cold_start": False,
     }
 

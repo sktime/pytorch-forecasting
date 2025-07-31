@@ -10,6 +10,18 @@ from pytorch_forecasting.models.base_model import AutoRegressiveBaseModel
 
 
 class xLSTMTime(AutoRegressiveBaseModel):
+    """
+    xLSTMTime is a long‑term time series forecasting architecture built on the
+    extended LSTM (xLSTM) design, incorporating either the scalar-memory
+    stabilized LSTM (sLSTM) or the matrix-memory mLSTM variant. This model
+    enhances classical LSTM by adding exponential gating and richer memory
+    dynamics, and combines series decomposition and normalization layers to
+    produce robust forecasts over extended horizons.
+
+    It is based on this paper: https://arxiv.org/pdf/2407.10240 and
+    https://github.com/muslehal/xLSTMTime
+    """
+
     @classmethod
     def _pkg(cls):
         """Package for the model."""
@@ -31,15 +43,7 @@ class xLSTMTime(AutoRegressiveBaseModel):
         **kwargs,
     ):
         """
-        xLSTMTime is a long‑term time series forecasting architecture built on the
-        extended LSTM (xLSTM) design, incorporating either the scalar-memory
-        stabilized LSTM (sLSTM) or the matrix-memory mLSTM variant. This model
-        enhances classical LSTM by adding exponential gating and richer memory
-        dynamics, and combines series decomposition and normalization layers to
-        produce robust forecasts over extended horizons.
-
-        It is based on this paper: https://arxiv.org/pdf/2407.10240 and
-        https://github.com/muslehal/xLSTMTime
+        Initialise the model.
 
         Parameters
         ----------
@@ -114,7 +118,7 @@ class xLSTMTime(AutoRegressiveBaseModel):
             ]
         ] = None,
     ) -> dict[str, torch.Tensor]:
-        """Forward Pass for the model"""
+        """Forward Pass for the model."""
         encoder_cont = x["encoder_cont"]
         batch_size, seq_len, n_features = encoder_cont.shape
 
