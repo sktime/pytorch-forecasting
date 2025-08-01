@@ -136,6 +136,26 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
         return metric, y_pred, y
 
+    def _test_metric_update_and_compute(self, metric, y_pred, y):
+        """Test the update and compute methods of the metric.
+
+        This method checks if the metric can be updated with predictions and targets,
+        and if it computes a valid result.
+
+        Parameters
+        ----------
+        metric: Metric
+            The metric instance to be tested.
+        y_pred: torch.Tensor
+            The predicted values tensor.
+        y: torch.Tensor
+            The target values tensor.
+        """
+        metric.update(y_pred, y)
+        res = metric.compute()
+        assert isinstance(res, torch.Tensor), "Result should be a tensor."
+        assert torch.isfinite(res).all(), "Result should not contain non-finite values."
+
     def _get_expected_output_shape_prediction(self, batch_size, prediction_length):
         """
         Returns the expected output shape for the prediction
@@ -258,42 +278,44 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             f"expected {expected_shape}."
         )
 
-    def _test_integration_metrics(self, metric, y_pred, y, object_pkg):
-        """Test the integration of the metric with predictions and targets."""
+    def _test_composite_and_weighted_metrics(self, metric, y_pred, y):
+        """
+        Test the functionality of composite and weighted metrics.
 
-        metric_type = object_pkg.get_class_tag("metric_type")
-        assert metric_type in [
-            "point",
-            "point_classification",
-            "quantile",
-            "distribution",
-        ], "Unsupported metric type for integration test."
+        This method checks if the metric can be combined into a composite metric
+        and if weighted metrics are computed correctly.
 
-        metric.reset()
-        metric.update(y_pred, y)
-        res = metric.compute()
-        assert isinstance(res, torch.Tensor)
-        assert torch.isfinite(res).all(), "Non-finite values in metric result."
+        Parameters
+        ----------
+        metric: Metric
+            The metric instance to be tested.
+        y_pred: torch.Tensor
+            The predicted values tensor.
+        y: torch.Tensor
+            The target values tensor.
+        """
 
-        # these are pre-determined expected value for the shape.
-        batch_size = y_pred.shape[0]
-        prediction_length = y_pred.shape[1]
-
-        self._test_to_prediction(metric, y_pred, batch_size, prediction_length)
-        self._test_to_quantiles(
-            metric, y_pred, batch_size, prediction_length, metric_type
-        )
-        # testing composite metrics
         composite = metric + metric
         weighted = metric * 0.5
 
+        normal_result = metric(y_pred, y)
         composite_result = composite(y_pred, y)
         weighted_result = weighted(y_pred, y)
 
+        assert isinstance(normal_result, torch.Tensor)
         assert isinstance(composite_result, torch.Tensor)
         assert isinstance(weighted_result, torch.Tensor)
         assert torch.isfinite(composite_result).all()
         assert torch.isfinite(weighted_result).all()
+
+        assert composite_result.shape == normal_result.shape, (
+            f"Composite metric result shape {composite_result.shape} does not match",
+            "normal metric result shape {normal_result.shape}",
+        )
+        assert weighted_result.shape == normal_result.shape, (
+            f"Weighted metric result shape {weighted_result.shape} does not match",
+            "normal metric result shape {normal_result.shape}",
+        )
 
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
     @pytest.mark.parametrize("reduction", ["mean", "none", "sqrt-mean"])
@@ -393,5 +415,23 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             return None
 
         metric, y_pred, y = prepared_data
+        metric_type = object_pkg.get_class_tag("metric_type")
 
-        self._test_integration_metrics(metric, y_pred, y, object_pkg)
+        assert metric_type in [
+            "point",
+            "point_classification",
+            "quantile",
+            "distribution",
+        ], "Unsupported metric type for integration test."
+
+        self._test_metric_update_and_compute(metric, y_pred, y)
+
+        batch_size = y_pred.shape[0]
+        prediction_length = y_pred.shape[1]
+
+        self._test_to_prediction(metric, y_pred, batch_size, prediction_length)
+        self._test_to_quantiles(
+            metric, y_pred, batch_size, prediction_length, metric_type
+        )
+
+        self._test_composite_and_weighted_metrics(metric, y_pred, y)
