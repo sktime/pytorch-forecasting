@@ -366,6 +366,7 @@ def test_no_exogenous_variables():
     )
 
     assert isinstance(predictions.output, torch.Tensor)
+    assert predictions.output.ndim == 2
 
 
 def test_with_exogenous_variables(tmp_path):
