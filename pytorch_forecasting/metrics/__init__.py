@@ -1,6 +1,4 @@
-"""
-Metrics for (mulit-horizon) timeseries forecasting.
-"""
+"""Metrics for (multi-horizon) timeseries forecasting."""
 
 from pytorch_forecasting.metrics._distributions_pkg import (
     BetaDistributionLoss_pkg,
