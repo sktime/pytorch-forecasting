@@ -486,9 +486,11 @@ class TimeXer(BaseModelWithCovariates):
             else:
                 # point predictions.
                 if len(target_indices) == 1:
-                    prediction = prediction[..., 0]
+                    prediction = prediction[..., 0].unsqueeze(-1)
                 else:
-                    prediction = [prediction[..., i] for i in target_indices]
+                    prediction = [
+                        prediction[..., i].unsqueeze(-1) for i in target_indices
+                    ]  # noqa: E501
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )
