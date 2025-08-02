@@ -3,6 +3,7 @@
 import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
 import torch
+from torch.nn.utils import rnn
 
 from pytorch_forecasting.metrics.tests._config import (
     EXCLUDE_METRICS,
@@ -11,6 +12,7 @@ from pytorch_forecasting.metrics.tests._config import (
 from pytorch_forecasting.tests._base._fixture_generator import (
     BaseFixtureGenerator,
 )
+from pytorch_forecasting.utils import unpack_sequence
 
 
 class MetricPackageConfig:
@@ -125,6 +127,14 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         y_pred, y = object_pkg.prepare_test_inputs(test_case)
 
         metric = object_instance
+
+        if object_pkg.get_class_tag("metric_type") == "quantile" and y_pred.shape[
+            2
+        ] != len(metric.quantiles):  # noqa: E501
+            y_pred = torch.randn(
+                y_pred.shape[0], y_pred.shape[1], len(metric.quantiles)
+            )
+            y_pred, _ = torch.sort(y_pred, dim=2)
 
         torch_encoder = object_pkg.get_encoder()
         if not object_pkg.get_class_tag("no_rescaling"):
@@ -372,6 +382,66 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
                 assert (
                     result >= 0
                 ), "Result should be non-negative for sqrt-mean reduction."  # noqa: E501
+
+    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
+    def test_loss_method(
+        self, object_pkg, object_class, object_instance, request, target_type
+    ):
+        """Test whether the individual metric loss can be computed.
+
+        This test checks if the metric can compute its loss correctly for the given
+        y_pred and y tensors, which are prepared based on the target type.
+
+        Parameters
+        ----------
+        object_pkg: SkbaseBaseObject
+            The package object containing the metric.
+        object_instance: Metric
+            An instance of the metric class to be tested.
+        request: pytest.FixtureRequest
+            The pytest request object to access fixtures.
+        target_type: str
+            The type of target data (e.g., "standard", "packed", "weighted").
+        """
+
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_instance, target_type, request
+        )
+
+        if prepared_data is None:
+            return None
+
+        metric, y_pred, y = prepared_data
+
+        if isinstance(y, (list, tuple)) and not isinstance(y, rnn.PackedSequence):
+            y, _ = y
+
+        # unpack target
+        if isinstance(y, rnn.PackedSequence):
+            y, _ = unpack_sequence(y)
+
+        res = metric.loss(y_pred, y)  # batch-wise loss
+
+        assert isinstance(res, torch.Tensor), "Loss should be a tensor."
+
+        if object_pkg.get_class_tag("metric_type") in [
+            "distribution",
+            "point_classification",
+        ]:
+            # for distribution and point classification metrics, the loss is computed
+            # per sample and per time step, so the shape should be (batch_size, prediction_length) # noqa: E501
+            assert (res.shape[0], res.shape[1]) == (
+                y_pred.shape[0],
+                y_pred.shape[1],
+            ), "Distribution Loss should match for the first two dimensions."  # noqa: E501
+            assert res.ndim == 2, "Distribution loss return should be a 2D tensor."  # noqa: E501
+        else:
+            assert (
+                res.ndim == y_pred.ndim
+            ), "Loss should have the same number of dimensions as predictions."  # noqa: E501
+            assert (
+                res.shape == y_pred.shape
+            ), f"Loss should be a tensor with shape {y_pred.shape}, got {res.shape}."  # noqa: E501
 
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
     def test_metric_functionality(

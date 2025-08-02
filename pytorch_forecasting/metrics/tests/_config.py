@@ -21,4 +21,10 @@ EXCLUDED_TESTS = {
     "PoissonLoss": [
         "test_metric_functionality",
     ],
+    # MultivariateNormalDistributionLoss: Skipped because its loss method is not
+    # compatible with the standard metric API contract, as it uses a distributional
+    # output that does not conform to the expected tensor shape. It returns a scalar
+    # tensor with no dimensions, i.e this tensor is computed across all batches for each
+    # timestep and then summed across all timesteps, to get a scalar value.
+    "MultivariateNormalDistributionLoss": ["test_loss_method"],
 }
