@@ -2,7 +2,7 @@
 Simple models based on fully connected networks
 """
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -24,11 +24,17 @@ from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 
 
 class DecoderMLP(BaseModelWithCovariates):
-    """
-    MLP on the decoder.
+    """MLP on the decoder.
 
     MLP that predicts output only based on information available in the decoder.
     """
+
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.mlp._decodermlp_pkg import DecoderMLP_pkg
+
+        return DecoderMLP_pkg
 
     def __init__(
         self,
@@ -37,20 +43,20 @@ class DecoderMLP(BaseModelWithCovariates):
         n_hidden_layers: int = 3,
         dropout: float = 0.1,
         norm: bool = True,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_categoricals_encoder: Optional[List[str]] = None,
-        time_varying_categoricals_decoder: Optional[List[str]] = None,
-        categorical_groups: Optional[Dict[str, List[str]]] = None,
-        time_varying_reals_encoder: Optional[List[str]] = None,
-        time_varying_reals_decoder: Optional[List[str]] = None,
-        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
-        embedding_paddings: Optional[List[str]] = None,
-        embedding_labels: Optional[Dict[str, np.ndarray]] = None,
-        x_reals: Optional[List[str]] = None,
-        x_categoricals: Optional[List[str]] = None,
-        output_size: Union[int, List[int]] = 1,
-        target: Union[str, List[str]] = None,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_categoricals_encoder: Optional[list[str]] = None,
+        time_varying_categoricals_decoder: Optional[list[str]] = None,
+        categorical_groups: Optional[dict[str, list[str]]] = None,
+        time_varying_reals_encoder: Optional[list[str]] = None,
+        time_varying_reals_decoder: Optional[list[str]] = None,
+        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
+        embedding_paddings: Optional[list[str]] = None,
+        embedding_labels: Optional[dict[str, np.ndarray]] = None,
+        x_reals: Optional[list[str]] = None,
+        x_categoricals: Optional[list[str]] = None,
+        output_size: Union[int, list[int]] = 1,
+        target: Union[str, list[str]] = None,
         loss: MultiHorizonMetric = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -149,7 +155,7 @@ class DecoderMLP(BaseModelWithCovariates):
         )
 
     @property
-    def decoder_reals_positions(self) -> List[int]:
+    def decoder_reals_positions(self) -> list[int]:
         return [
             self.hparams.x_reals.index(name)
             for name in self.reals
@@ -157,8 +163,8 @@ class DecoderMLP(BaseModelWithCovariates):
         ]
 
     def forward(
-        self, x: Dict[str, torch.Tensor], n_samples: int = None
-    ) -> Dict[str, torch.Tensor]:
+        self, x: dict[str, torch.Tensor], n_samples: int = None
+    ) -> dict[str, torch.Tensor]:
         """
         Forward network
         """

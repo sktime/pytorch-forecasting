@@ -7,9 +7,9 @@ a class that is able to handle a wide variety of timeseries data problems.
 """
 
 from copy import copy as _copy, deepcopy
-from functools import lru_cache
+from functools import cached_property
 import inspect
-from typing import Any, Callable, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar, Union
 import warnings
 
 import numpy as np
@@ -779,10 +779,10 @@ class TimeSeriesDataSet(Dataset):
                 if name in var_names:
                     for lagged_name, lag in lagged_names.items():
                         # if lag is longer than horizon, lagged var becomes future-known
-                        if known or lag < self.max_prediction_length:
-                            _append_if_new(var_names, lagged_name)
-                        elif lag < self.max_prediction_length:
+                        if known == "known" or lag >= self.max_prediction_length:
                             _append_if_new(_attr(realcat, "known"), lagged_name)
+                        else:
+                            _append_if_new(_attr(realcat, "unknown"), lagged_name)
 
     @property
     def dropout_categoricals(self) -> list[str]:
@@ -812,8 +812,7 @@ class TimeSeriesDataSet(Dataset):
         """
         return {f"{name}_lagged_by_{lag}": lag for lag in self._lags.get(name, [])}
 
-    @property
-    @lru_cache(None)
+    @cached_property
     def lagged_variables(self) -> dict[str, str]:
         """Lagged variables.
 
@@ -828,8 +827,7 @@ class TimeSeriesDataSet(Dataset):
             vars.update({lag_name: name for lag_name in self._get_lagged_names(name)})
         return vars
 
-    @property
-    @lru_cache(None)
+    @cached_property
     def lagged_targets(self) -> dict[str, str]:
         """Subset of lagged_variables to variables that are lagged targets.
 
@@ -850,8 +848,7 @@ class TimeSeriesDataSet(Dataset):
             )
         return vars
 
-    @property
-    @lru_cache(None)
+    @cached_property
     def min_lag(self) -> int:
         """
         Minimum number of time steps variables are lagged.
@@ -865,8 +862,7 @@ class TimeSeriesDataSet(Dataset):
         else:
             return min([min(lag) for lag in self._lags.values()])
 
-    @property
-    @lru_cache(None)
+    @cached_property
     def max_lag(self) -> int:
         """
         Maximum number of time steps variables are lagged.
@@ -983,8 +979,7 @@ class TimeSeriesDataSet(Dataset):
             target_normalizer = normalizers[0]
         return target_normalizer
 
-    @property
-    @lru_cache(None)
+    @cached_property
     def _group_ids_mapping(self) -> dict[str, str]:
         """
         Mapping of group id names to group ids used to identify series in dataset -
@@ -995,8 +990,7 @@ class TimeSeriesDataSet(Dataset):
         """
         return {name: f"__group_id__{name}" for name in self.group_ids}
 
-    @property
-    @lru_cache(None)
+    @cached_property
     def _group_ids(self) -> list[str]:
         """
         Group ids used to identify series in dataset.
@@ -1056,7 +1050,7 @@ class TimeSeriesDataSet(Dataset):
         torch.save(self, fname)
 
     @classmethod
-    def load(cls: Type[TimeSeriesDataType], fname: str) -> TimeSeriesDataType:
+    def load(cls: type[TimeSeriesDataType], fname: str) -> TimeSeriesDataType:
         """
         Load dataset from disk
 
@@ -1487,6 +1481,7 @@ class TimeSeriesDataSet(Dataset):
             weight=weight,
             time=time,
         )
+
         return tensors
 
     def _check_tensors(self, tensors):
@@ -1568,8 +1563,7 @@ class TimeSeriesDataSet(Dataset):
             + self._time_varying_unknown_reals
         )
 
-    @property
-    @lru_cache(None)
+    @cached_property
     def target_names(self) -> list[str]:
         """
         List of targets.
@@ -1627,7 +1621,7 @@ class TimeSeriesDataSet(Dataset):
 
     @classmethod
     def from_dataset(
-        cls: Type[TimeSeriesDataType],
+        cls: type[TimeSeriesDataType],
         dataset: TimeSeriesDataType,
         data: pd.DataFrame,
         stop_randomization: bool = False,
@@ -1670,7 +1664,7 @@ class TimeSeriesDataSet(Dataset):
 
     @classmethod
     def from_parameters(
-        cls: Type[TimeSeriesDataType],
+        cls: type[TimeSeriesDataType],
         parameters: dict[str, Any],
         data: pd.DataFrame,
         stop_randomization: bool = None,
@@ -1860,7 +1854,18 @@ class TimeSeriesDataSet(Dataset):
         )
         assert len(df_index) > 0, msg
 
-        return df_index
+        minimal_columns = [
+            "index_start",
+            "index_end",
+            "sequence_length",
+            "time",
+            "sequence_id",
+        ]
+        if predict_mode and "sequence_id" in df_index.columns:
+            minimal_columns.append("sequence_id")
+
+        df_index = df_index[minimal_columns].astype("int32", copy=False)
+        return df_index.reset_index(drop=True)
 
     def filter(self, filter_func: Callable, copy: bool = True) -> TimeSeriesDataType:
         """Filter subsequences in dataset.
@@ -2198,27 +2203,23 @@ class TimeSeriesDataSet(Dataset):
             # select subset of sequence of new sequence
             if new_encoder_length + new_decoder_length < len(target[0]):
                 data_cat = data_cat[
-                    encoder_length
-                    - new_encoder_length : encoder_length
+                    encoder_length - new_encoder_length : encoder_length
                     + new_decoder_length
                 ]
                 data_cont = data_cont[
-                    encoder_length
-                    - new_encoder_length : encoder_length
+                    encoder_length - new_encoder_length : encoder_length
                     + new_decoder_length
                 ]
                 target = [
                     t[
-                        encoder_length
-                        - new_encoder_length : encoder_length
+                        encoder_length - new_encoder_length : encoder_length
                         + new_decoder_length
                     ]
                     for t in target
                 ]
                 if weight is not None:
                     weight = weight[
-                        encoder_length
-                        - new_encoder_length : encoder_length
+                        encoder_length - new_encoder_length : encoder_length
                         + new_decoder_length
                     ]
                 encoder_length = new_encoder_length

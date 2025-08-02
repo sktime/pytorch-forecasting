@@ -3,11 +3,12 @@ Timeseries models share a number of common characteristics. This module implemen
 """  # noqa: E501
 
 from collections import namedtuple
+from collections.abc import Iterable
 from copy import deepcopy
 import inspect
 import logging
 import os
-from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Literal, Optional, Union
 import warnings
 
 import lightning.pytorch as pl
@@ -57,6 +58,7 @@ from pytorch_forecasting.utils import (
     groupby_apply,
     to_list,
 )
+from pytorch_forecasting.utils._classproperty import classproperty
 from pytorch_forecasting.utils._dependencies import (
     _check_matplotlib,
     _get_installed_packages,
@@ -65,7 +67,7 @@ from pytorch_forecasting.utils._dependencies import (
 # todo: compile models
 
 
-def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
+def _torch_cat_na(x: list[torch.Tensor]) -> torch.Tensor:
     """
     Concatenate tensor along ``dim=0`` and add nans along ``dim=1`` if necessary.
 
@@ -128,14 +130,14 @@ def _torch_cat_na(x: List[torch.Tensor]) -> torch.Tensor:
 
 
 def _concatenate_output(
-    output: List[
-        Dict[
+    output: list[
+        dict[
             str,
-            List[Union[List[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]],
+            list[Union[list[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]],
         ]
     ],
-) -> Dict[
-    str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]
+) -> dict[
+    str, Union[torch.Tensor, np.ndarray, list[Union[torch.Tensor, int, bool, str]]]
 ]:
     """
     Concatenate multiple batches of output dictionary.
@@ -214,15 +216,15 @@ class PredictCallback(BasePredictionWriter):
     # see base class predict function for documentation of parameters
     def __init__(
         self,
-        mode: Union[str, Tuple[str, str]] = "prediction",
+        mode: Union[str, tuple[str, str]] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         return_y: bool = False,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         return_x: bool = False,
-        mode_kwargs: Dict[str, Any] = None,
+        mode_kwargs: dict[str, Any] = None,
         output_dir: Optional[str] = None,
-        predict_kwargs: Dict[str, Any] = None,
+        predict_kwargs: dict[str, Any] = None,
     ) -> None:
         super().__init__(write_interval=write_interval)
         self.mode = mode
@@ -266,10 +268,8 @@ class PredictCallback(BasePredictionWriter):
                 out = out[self.mode[1]]
             else:
                 raise ValueError(
-                    (
-                        "If a tuple is specified, the first element must be 'raw' - got"
-                        f" {self.mode[0]} instead"
-                    )
+                    "If a tuple is specified, the first element must be 'raw' - got"
+                    f" {self.mode[0]} instead"
                 )
         elif self.mode == "prediction":
             out = pl_module.to_prediction(out, **self.mode_kwargs)
@@ -471,10 +471,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def __init__(
         self,
-        dataset_parameters: Dict[str, Any] = None,
+        dataset_parameters: dict[str, Any] = None,
         log_interval: Union[int, float] = -1,
         log_val_interval: Union[int, float] = None,
-        learning_rate: Union[float, List[float]] = 1e-3,
+        learning_rate: Union[float, list[float]] = 1e-3,
         log_gradient_flow: bool = False,
         loss: Metric = SMAPE(),
         logging_metrics: nn.ModuleList = nn.ModuleList([]),
@@ -482,8 +482,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         reduce_on_plateau_reduction: float = 2.0,
         reduce_on_plateau_min_lr: float = 1e-5,
         weight_decay: float = 0.0,
-        optimizer_params: Dict[str, Any] = None,
-        monotone_constraints: Dict[str, int] = {},
+        optimizer_params: dict[str, Any] = None,
+        monotone_constraints: dict[str, int] = {},
         output_transformer: Callable = None,
         optimizer="adam",
     ):
@@ -592,6 +592,11 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if not self.predicting:
             super().log(*args, **kwargs)
 
+    @classproperty
+    def pkg(cls):
+        """Package class for the model."""
+        return cls._pkg()
+
     @property
     def predicting(self) -> bool:
         return self.current_stage is None or self.current_stage == "predict"
@@ -621,8 +626,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def transform_output(
         self,
-        prediction: Union[torch.Tensor, List[torch.Tensor]],
-        target_scale: Union[torch.Tensor, List[torch.Tensor]],
+        prediction: Union[torch.Tensor, list[torch.Tensor]],
+        target_scale: Union[torch.Tensor, list[torch.Tensor]],
         loss: Optional[Metric] = None,
     ) -> torch.Tensor:
         """
@@ -653,9 +658,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
     @staticmethod
     def deduce_default_output_parameters(
         dataset: TimeSeriesDataSet,
-        kwargs: Dict[str, Any],
+        kwargs: dict[str, Any],
         default_loss: MultiHorizonMetric = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Deduce default parameters for output for `from_dataset()` method.
 
@@ -754,13 +759,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def create_log(
         self,
-        x: Dict[str, torch.Tensor],
-        y: Tuple[torch.Tensor, torch.Tensor],
-        out: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        y: tuple[torch.Tensor, torch.Tensor],
+        out: dict[str, torch.Tensor],
         batch_idx: int,
-        prediction_kwargs: Optional[Dict[str, Any]] = None,
-        quantiles_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        prediction_kwargs: Optional[dict[str, Any]] = None,
+        quantiles_kwargs: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Create the log used in the training and validation step.
 
@@ -804,11 +809,11 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def step(
         self,
-        x: Dict[str, torch.Tensor],
-        y: Tuple[torch.Tensor, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        y: tuple[torch.Tensor, torch.Tensor],
         batch_idx: int,
         **kwargs,
-    ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
+    ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         """
         Run for each train/val step.
 
@@ -940,10 +945,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def log_metrics(
         self,
-        x: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
         y: torch.Tensor,
-        out: Dict[str, torch.Tensor],
-        prediction_kwargs: Dict[str, Any] = None,
+        out: dict[str, torch.Tensor],
+        prediction_kwargs: dict[str, Any] = None,
     ) -> None:
         """
         Log metrics every training/validation step.
@@ -993,8 +998,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
 
     def forward(
-        self, x: Dict[str, Union[torch.Tensor, List[torch.Tensor]]]
-    ) -> Dict[str, Union[torch.Tensor, List[torch.Tensor]]]:
+        self, x: dict[str, Union[torch.Tensor, list[torch.Tensor]]]
+    ) -> dict[str, Union[torch.Tensor, list[torch.Tensor]]]:
         """
         Network forward pass.
 
@@ -1071,8 +1076,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def log_prediction(
         self,
-        x: Dict[str, torch.Tensor],
-        out: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        out: dict[str, torch.Tensor],
         batch_idx: int,
         **kwargs,
     ) -> None:
@@ -1132,14 +1137,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def plot_prediction(
         self,
-        x: Dict[str, torch.Tensor],
-        out: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        out: dict[str, torch.Tensor],
         idx: int = 0,
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Optional[Dict[str, Any]] = None,
-        prediction_kwargs: Optional[Dict[str, Any]] = None,
+        quantiles_kwargs: Optional[dict[str, Any]] = None,
+        prediction_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -1293,7 +1298,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         else:
             return fig
 
-    def log_gradient_flow(self, named_parameters: Dict[str, torch.Tensor]) -> None:
+    def log_gradient_flow(self, named_parameters: dict[str, torch.Tensor]) -> None:
         """
         log distribution of gradients to identify exploding / vanishing gradients
         """
@@ -1454,10 +1459,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     )
             else:
                 raise ValueError(
-                    (
-                        f"Optimizer of self.hparams.optimizer={self.hparams.optimizer}"
-                        " unknown"
-                    )
+                    f"Optimizer of self.hparams.optimizer={self.hparams.optimizer}"
+                    " unknown"
                 )
         else:
             raise ValueError(
@@ -1525,7 +1528,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         return net
 
-    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         checkpoint["dataset_parameters"] = getattr(
             self, "dataset_parameters", None
         )  # add dataset parameters for making fast predictions
@@ -1541,7 +1544,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         )
 
     @property
-    def target_names(self) -> List[str]:
+    def target_names(self) -> list[str]:
         """
         List of targets that are predicted.
 
@@ -1553,13 +1556,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         else:
             return [f"Target {idx + 1}" for idx in range(self.n_targets)]
 
-    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
         # load specials
         for k, v in checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY].items():
             setattr(self, k, v)
 
-    def to_prediction(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+    def to_prediction(self, out: dict[str, Any], use_metric: bool = True, **kwargs):
         """
         Convert output to prediction using the loss metric.
 
@@ -1590,7 +1593,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 out = self.loss.to_prediction(out["prediction"])
         return out
 
-    def to_quantiles(self, out: Dict[str, Any], use_metric: bool = True, **kwargs):
+    def to_quantiles(self, out: dict[str, Any], use_metric: bool = True, **kwargs):
         """
         Convert output to quantiles using the loss metric.
 
@@ -1632,7 +1635,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
     def predict(
         self,
         data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
-        mode: Union[str, Tuple[str, str]] = "prediction",
+        mode: Union[str, tuple[str, str]] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         batch_size: int = 64,
@@ -1640,8 +1643,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         fast_dev_run: bool = False,
         return_x: bool = False,
         return_y: bool = False,
-        mode_kwargs: Dict[str, Any] = None,
-        trainer_kwargs: Optional[Dict[str, Any]] = None,
+        mode_kwargs: dict[str, Any] = None,
+        trainer_kwargs: Optional[dict[str, Any]] = None,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         output_dir: Optional[str] = None,
         **kwargs,
@@ -1888,7 +1891,7 @@ class BaseModelWithCovariates(BaseModel):
         )
 
     @property
-    def reals(self) -> List[str]:
+    def reals(self) -> list[str]:
         """List of all continuous variables in model"""
         return list(
             dict.fromkeys(
@@ -1899,7 +1902,7 @@ class BaseModelWithCovariates(BaseModel):
         )
 
     @property
-    def categoricals(self) -> List[str]:
+    def categoricals(self) -> list[str]:
         """List of all categorical variables in model"""
         return list(
             dict.fromkeys(
@@ -1910,12 +1913,12 @@ class BaseModelWithCovariates(BaseModel):
         )
 
     @property
-    def static_variables(self) -> List[str]:
+    def static_variables(self) -> list[str]:
         """List of all static variables in model"""
         return self.hparams.static_categoricals + self.hparams.static_reals
 
     @property
-    def encoder_variables(self) -> List[str]:
+    def encoder_variables(self) -> list[str]:
         """List of all encoder variables in model (excluding static variables)"""
         return (
             self.hparams.time_varying_categoricals_encoder
@@ -1923,7 +1926,7 @@ class BaseModelWithCovariates(BaseModel):
         )
 
     @property
-    def decoder_variables(self) -> List[str]:
+    def decoder_variables(self) -> list[str]:
         """List of all decoder variables in model (excluding static variables)"""
         return (
             self.hparams.time_varying_categoricals_decoder
@@ -1931,7 +1934,7 @@ class BaseModelWithCovariates(BaseModel):
         )
 
     @property
-    def categorical_groups_mapping(self) -> Dict[str, str]:
+    def categorical_groups_mapping(self) -> dict[str, str]:
         """Mapping of categorical variables to categorical groups"""
         groups = {}
         for group_name, sublist in self.hparams.categorical_groups.items():
@@ -1942,7 +1945,7 @@ class BaseModelWithCovariates(BaseModel):
     def from_dataset(
         cls,
         dataset: TimeSeriesDataSet,
-        allowed_encoder_known_variable_names: List[str] = None,
+        allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ) -> LightningModule:
         """
@@ -2052,13 +2055,13 @@ class BaseModelWithCovariates(BaseModel):
 
     def calculate_prediction_actual_by_variable(
         self,
-        x: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
         y_pred: torch.Tensor,
         normalize: bool = True,
         bins: int = 95,
         std: float = 2.0,
         log_scale: bool = None,
-    ) -> Dict[str, Dict[str, torch.Tensor]]:
+    ) -> dict[str, dict[str, torch.Tensor]]:
         """
         Calculate predictions and actuals by variable averaged by ``bins`` bins spanning from ``-std`` to ``+std``
 
@@ -2179,7 +2182,7 @@ class BaseModelWithCovariates(BaseModel):
 
     def plot_prediction_actual_by_variable(
         self,
-        data: Dict[str, Dict[str, torch.Tensor]],
+        data: dict[str, dict[str, torch.Tensor]],
         name: str = None,
         ax=None,
         log_scale: bool = None,
@@ -2376,10 +2379,10 @@ class AutoRegressiveBaseModel(BaseModel):
     def output_to_prediction(
         self,
         normalized_prediction_parameters: torch.Tensor,
-        target_scale: Union[List[torch.Tensor], torch.Tensor],
+        target_scale: Union[list[torch.Tensor], torch.Tensor],
         n_samples: int = 1,
         **kwargs,
-    ) -> Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]:
+    ) -> tuple[Union[list[torch.Tensor], torch.Tensor], torch.Tensor]:
         """
         Convert network output to rescaled and normalized prediction.
 
@@ -2447,13 +2450,13 @@ class AutoRegressiveBaseModel(BaseModel):
     def decode_autoregressive(
         self,
         decode_one: Callable,
-        first_target: Union[List[torch.Tensor], torch.Tensor],
+        first_target: Union[list[torch.Tensor], torch.Tensor],
         first_hidden_state: Any,
-        target_scale: Union[List[torch.Tensor], torch.Tensor],
+        target_scale: Union[list[torch.Tensor], torch.Tensor],
         n_decoder_steps: int,
         n_samples: int = 1,
         **kwargs,
-    ) -> Union[List[torch.Tensor], torch.Tensor]:
+    ) -> Union[list[torch.Tensor], torch.Tensor]:
         """
         Make predictions in auto-regressive manner.
 
@@ -2611,14 +2614,14 @@ class AutoRegressiveBaseModel(BaseModel):
 
     def plot_prediction(
         self,
-        x: Dict[str, torch.Tensor],
-        out: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        out: dict[str, torch.Tensor],
         idx: int = 0,
         add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Optional[Dict[str, Any]] = None,
-        prediction_kwargs: Optional[Dict[str, Any]] = None,
+        quantiles_kwargs: Optional[dict[str, Any]] = None,
+        prediction_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -2663,7 +2666,7 @@ class AutoRegressiveBaseModel(BaseModel):
         )
 
     @property
-    def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:
+    def lagged_target_positions(self) -> dict[int, torch.LongTensor]:
         """
         Positions of lagged target variable(s) in covariates.
 
@@ -2711,7 +2714,7 @@ class AutoRegressiveBaseModelWithCovariates(
     """  # noqa: E501
 
     @property
-    def lagged_target_positions(self) -> Dict[int, torch.LongTensor]:
+    def lagged_target_positions(self) -> dict[int, torch.LongTensor]:
         """
         Positions of lagged target variable(s) in covariates.
 

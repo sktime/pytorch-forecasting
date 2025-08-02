@@ -3,7 +3,7 @@ The temporal fusion transformer is a powerful predictive model for forecasting t
 """  # noqa: E501
 
 from copy import copy
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -41,112 +41,136 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class TemporalFusionTransformer(BaseModelWithCovariates):
+    """Temporal Fusion Transformer for forecasting timeseries.
+
+    Initialize via :py:meth:`~from_dataset` method if possible.
+
+    Implementation of
+    `Temporal Fusion Transformers for Interpretable Multi-horizon Time Series
+    Forecasting <https://arxiv.org/pdf/1912.09363.pdf>`_.
+
+    Enhancements compared to the original implementation:
+
+    * static variables can be continuous
+    * multiple categorical variables can be summarized with an EmbeddingBag
+    * variable encoder and decoder length by sample
+    * categorical embeddings are not transformed by variable selection network
+      (because it is a redundant operation)
+    * variable dimension in variable selection network are scaled up via linear interpolation to reduce
+      number of parameters
+    * non-linear variable processing in variable selection network can be
+      shared among decoder and encoder (not shared by default)
+    * capabilities added through base model such as monotone constraints
+
+    Tune its hyperparameters with
+    :py:func:`~pytorch_forecasting.models.temporal_fusion_transformer.tuning.optimize_hyperparameters`.
+
+    Parameters
+    ----------
+    hidden_size : int, default=16
+        hidden size of network which is its main hyperparameter.
+        Can range from 8 to 512.
+    lstm_layers : int, default=1
+        number of LSTM layers (2 is mostly optimal)
+    dropout : float, default=0.1
+        dropout rate
+    output_size : int or list of int, default=7
+        number of outputs
+        (e.g. number of quantiles for QuantileLoss and one target or list of output sizes).
+    loss : MultiHorizonMetric, default=QuantileLoss()
+        loss function taking prediction and targets
+    attention_head_size : int, default=4
+        number of attention heads (4 is a good default)
+    max_encoder_length : int, default=10
+        length to encode,
+        can be far longer than the decoder length but does not have to be
+    static_categoricals: names of static categorical variables
+    static_reals: names of static continuous variables
+    time_varying_categoricals_encoder: names of categorical variables for encoder
+    time_varying_categoricals_decoder: names of categorical variables for decoder
+    time_varying_reals_encoder: names of continuous variables for encoder
+    time_varying_reals_decoder: names of continuous variables for decoder
+    categorical_groups: dictionary where values
+        are list of categorical variables that are forming together a new categorical
+        variable which is the key in the dictionary
+    x_reals: order of continuous variables in tensor passed to forward function
+    x_categoricals: order of categorical variables in tensor passed to forward function
+    hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical
+        embedding size)
+    hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
+        (fallback to hidden_continuous_size if index is not in dictionary)
+    embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
+        embedding size
+    embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
+    embedding_labels: dictionary mapping (string) indices to list of categorical labels
+    learning_rate: learning rate
+    log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0. If < 1.0
+        , will log multiple entries per batch. Defaults to -1.
+    log_val_interval: frequency with which to log validation set metrics, defaults to log_interval
+    log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
+        failures
+    reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
+    monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
+        variables mapping
+        position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
+        larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
+        This constraint significantly slows down training. Defaults to {}.
+    share_single_variable_networks (bool): if to share the single variable networks between the encoder and
+        decoder. Defaults to False.
+    causal_attention (bool): If to attend only at previous timesteps in the decoder or also include future
+        predictions. Defaults to True.
+    logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are logged during training.
+        Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
+    mask_bias : float, optional
+        Bias for the mask in ScaledDotProductAttention.forward, by default -1e9.
+        Set to -float("inf") to allow mixed precision training.
+    **kwargs: additional arguments to :py:class:`~BaseModel`.
+    """  # noqa: E501
+
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg import (
+            TemporalFusionTransformer_pkg,
+        )
+
+        return TemporalFusionTransformer_pkg
+
     def __init__(
         self,
         hidden_size: int = 16,
         lstm_layers: int = 1,
         dropout: float = 0.1,
-        output_size: Union[int, List[int]] = 7,
+        output_size: Union[int, list[int]] = 7,
         loss: MultiHorizonMetric = None,
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_categoricals_encoder: Optional[List[str]] = None,
-        time_varying_categoricals_decoder: Optional[List[str]] = None,
-        categorical_groups: Optional[Union[Dict, List[str]]] = None,
-        time_varying_reals_encoder: Optional[List[str]] = None,
-        time_varying_reals_decoder: Optional[List[str]] = None,
-        x_reals: Optional[List[str]] = None,
-        x_categoricals: Optional[List[str]] = None,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_categoricals_encoder: Optional[list[str]] = None,
+        time_varying_categoricals_decoder: Optional[list[str]] = None,
+        categorical_groups: Optional[Union[dict, list[str]]] = None,
+        time_varying_reals_encoder: Optional[list[str]] = None,
+        time_varying_reals_decoder: Optional[list[str]] = None,
+        x_reals: Optional[list[str]] = None,
+        x_categoricals: Optional[list[str]] = None,
         hidden_continuous_size: int = 8,
-        hidden_continuous_sizes: Optional[Dict[str, int]] = None,
-        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
-        embedding_paddings: Optional[List[str]] = None,
-        embedding_labels: Optional[Dict[str, np.ndarray]] = None,
+        hidden_continuous_sizes: Optional[dict[str, int]] = None,
+        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
+        embedding_paddings: Optional[list[str]] = None,
+        embedding_labels: Optional[dict[str, np.ndarray]] = None,
         learning_rate: float = 1e-3,
         log_interval: Union[int, float] = -1,
         log_val_interval: Union[int, float] = None,
         log_gradient_flow: bool = False,
         reduce_on_plateau_patience: int = 1000,
-        monotone_constaints: Optional[Dict[str, int]] = None,
+        monotone_constaints: Optional[dict[str, int]] = None,
         share_single_variable_networks: bool = False,
         causal_attention: bool = True,
         logging_metrics: nn.ModuleList = None,
+        mask_bias: float = -1e9,
         **kwargs,
     ):
-        """
-        Temporal Fusion Transformer for forecasting timeseries - use its :py:meth:`~from_dataset` method if possible.
-
-        Implementation of the article
-        `Temporal Fusion Transformers for Interpretable Multi-horizon Time Series
-        Forecasting <https://arxiv.org/pdf/1912.09363.pdf>`_. The network outperforms DeepAR by Amazon by 36-69%
-        in benchmarks.
-
-        Enhancements compared to the original implementation (apart from capabilities added through base model
-        such as monotone constraints):
-
-        * static variables can be continuous
-        * multiple categorical variables can be summarized with an EmbeddingBag
-        * variable encoder and decoder length by sample
-        * categorical embeddings are not transformed by variable selection network (because it is a redundant operation)
-        * variable dimension in variable selection network are scaled up via linear interpolation to reduce
-          number of parameters
-        * non-linear variable processing in variable selection network can be shared among decoder and encoder
-          (not shared by default)
-
-        Tune its hyperparameters with
-        :py:func:`~pytorch_forecasting.models.temporal_fusion_transformer.tuning.optimize_hyperparameters`.
-
-        Args:
-
-            hidden_size: hidden size of network which is its main hyperparameter and can range from 8 to 512
-            lstm_layers: number of LSTM layers (2 is mostly optimal)
-            dropout: dropout rate
-            output_size: number of outputs (e.g. number of quantiles for QuantileLoss and one target or list
-                of output sizes).
-            loss: loss function taking prediction and targets
-            attention_head_size: number of attention heads (4 is a good default)
-            max_encoder_length: length to encode (can be far longer than the decoder length but does not have to be)
-            static_categoricals: names of static categorical variables
-            static_reals: names of static continuous variables
-            time_varying_categoricals_encoder: names of categorical variables for encoder
-            time_varying_categoricals_decoder: names of categorical variables for decoder
-            time_varying_reals_encoder: names of continuous variables for encoder
-            time_varying_reals_decoder: names of continuous variables for decoder
-            categorical_groups: dictionary where values
-                are list of categorical variables that are forming together a new categorical
-                variable which is the key in the dictionary
-            x_reals: order of continuous variables in tensor passed to forward function
-            x_categoricals: order of categorical variables in tensor passed to forward function
-            hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical
-                embedding size)
-            hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
-                (fallback to hidden_continuous_size if index is not in dictionary)
-            embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
-                embedding size
-            embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
-            embedding_labels: dictionary mapping (string) indices to list of categorical labels
-            learning_rate: learning rate
-            log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0. If < 1.0
-                , will log multiple entries per batch. Defaults to -1.
-            log_val_interval: frequency with which to log validation set metrics, defaults to log_interval
-            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
-                failures
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-            monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
-                variables mapping
-                position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
-                larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
-                This constraint significantly slows down training. Defaults to {}.
-            share_single_variable_networks (bool): if to share the single variable networks between the encoder and
-                decoder. Defaults to False.
-            causal_attention (bool): If to attend only at previous timesteps in the decoder or also include future
-                predictions. Defaults to True.
-            logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are logged during training.
-                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).
-            **kwargs: additional arguments to :py:class:`~BaseModel`.
-        """  # noqa: E501
         if monotone_constaints is None:
             monotone_constaints = {}
         if embedding_labels is None:
@@ -389,6 +413,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             d_model=self.hparams.hidden_size,
             n_head=self.hparams.attention_head_size,
             dropout=self.hparams.dropout,
+            mask_bias=self.hparams.mask_bias,
         )
         self.post_attn_gate_norm = GateAddNorm(
             self.hparams.hidden_size, dropout=self.hparams.dropout, trainable_add=False
@@ -421,7 +446,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
     def from_dataset(
         cls,
         dataset: TimeSeriesDataSet,
-        allowed_encoder_known_variable_names: List[str] = None,
+        allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ):
         """
@@ -504,7 +529,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         )
         return mask
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         input dimensions: n_samples x time x variables
         """
@@ -682,10 +707,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
     def interpret_output(
         self,
-        out: Dict[str, torch.Tensor],
+        out: dict[str, torch.Tensor],
         reduction: str = "none",
         attention_prediction_horizon: int = 0,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """
         interpret output of model
 
@@ -842,8 +867,8 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
     def plot_prediction(
         self,
-        x: Dict[str, torch.Tensor],
-        out: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        out: dict[str, torch.Tensor],
         idx: int,
         plot_attention: bool = True,
         add_loss_to_title: bool = False,
@@ -894,7 +919,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 f.tight_layout()
         return fig
 
-    def plot_interpretation(self, interpretation: Dict[str, torch.Tensor]):
+    def plot_interpretation(self, interpretation: dict[str, torch.Tensor]):
         """
         Make figures that interpret model.
 

@@ -2,7 +2,7 @@
 N-Beats model for timeseries forecasting without covariates.
 """
 
-from typing import Dict, List, Optional
+from typing import Optional
 
 import torch
 from torch import nn
@@ -20,14 +20,23 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NBeats(BaseModel):
+    """N-Beats model for timeseries forecasting without covariates."""
+
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
+
+        return NBeats_pkg
+
     def __init__(
         self,
-        stack_types: Optional[List[str]] = None,
-        num_blocks: Optional[List[int]] = None,
-        num_block_layers: Optional[List[int]] = None,
-        widths: Optional[List[int]] = None,
-        sharing: Optional[List[bool]] = None,
-        expansion_coefficient_lengths: Optional[List[int]] = None,
+        stack_types: Optional[list[str]] = None,
+        num_blocks: Optional[list[int]] = None,
+        num_block_layers: Optional[list[int]] = None,
+        widths: Optional[list[int]] = None,
+        sharing: Optional[list[bool]] = None,
+        expansion_coefficient_lengths: Optional[list[int]] = None,
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,
@@ -206,7 +215,7 @@ class NBeats(BaseModel):
 
                 self.net_blocks.append(net_block)
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Pass forward of network.
 
@@ -342,7 +351,7 @@ class NBeats(BaseModel):
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
 
-    def step(self, x, y, batch_idx) -> Dict[str, torch.Tensor]:
+    def step(self, x, y, batch_idx) -> dict[str, torch.Tensor]:
         """
         Take training / validation step.
         """
@@ -410,8 +419,8 @@ class NBeats(BaseModel):
 
     def plot_interpretation(
         self,
-        x: Dict[str, torch.Tensor],
-        output: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        output: dict[str, torch.Tensor],
         idx: int,
         ax=None,
         plot_seasonality_and_generic_on_secondary_axis: bool = False,

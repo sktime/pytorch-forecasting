@@ -3,7 +3,7 @@ N-HiTS model for timeseries forecasting with covariates.
 """
 
 from copy import copy
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -28,21 +28,28 @@ from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
 class NHiTS(BaseModelWithCovariates):
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.nhits._nhits_pkg import NHiTS_pkg
+
+        return NHiTS_pkg
+
     def __init__(
         self,
-        output_size: Union[int, List[int]] = 1,
-        static_categoricals: Optional[List[str]] = None,
-        static_reals: Optional[List[str]] = None,
-        time_varying_categoricals_encoder: Optional[List[str]] = None,
-        time_varying_categoricals_decoder: Optional[List[str]] = None,
-        categorical_groups: Optional[Dict[str, List[str]]] = None,
-        time_varying_reals_encoder: Optional[List[str]] = None,
-        time_varying_reals_decoder: Optional[List[str]] = None,
-        embedding_sizes: Optional[Dict[str, Tuple[int, int]]] = None,
-        embedding_paddings: Optional[List[str]] = None,
-        embedding_labels: Optional[List[str]] = None,
-        x_reals: Optional[List[str]] = None,
-        x_categoricals: Optional[List[str]] = None,
+        output_size: Union[int, list[int]] = 1,
+        static_categoricals: Optional[list[str]] = None,
+        static_reals: Optional[list[str]] = None,
+        time_varying_categoricals_encoder: Optional[list[str]] = None,
+        time_varying_categoricals_decoder: Optional[list[str]] = None,
+        categorical_groups: Optional[dict[str, list[str]]] = None,
+        time_varying_reals_encoder: Optional[list[str]] = None,
+        time_varying_reals_decoder: Optional[list[str]] = None,
+        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
+        embedding_paddings: Optional[list[str]] = None,
+        embedding_labels: Optional[list[str]] = None,
+        x_reals: Optional[list[str]] = None,
+        x_categoricals: Optional[list[str]] = None,
         context_length: int = 1,
         prediction_length: int = 1,
         static_hidden_size: Optional[int] = None,
@@ -50,11 +57,11 @@ class NHiTS(BaseModelWithCovariates):
         shared_weights: bool = True,
         activation: str = "ReLU",
         initialization: str = "lecun_normal",
-        n_blocks: Optional[List[str]] = None,
-        n_layers: Union[int, List[int]] = 2,
+        n_blocks: Optional[list[str]] = None,
+        n_layers: Union[int, list[int]] = 2,
         hidden_size: int = 512,
-        pooling_sizes: Optional[List[int]] = None,
-        downsample_frequencies: Optional[List[int]] = None,
+        pooling_sizes: Optional[list[int]] = None,
+        downsample_frequencies: Optional[list[int]] = None,
         pooling_mode: str = "max",
         interpolation_mode: str = "linear",
         batch_normalization: bool = False,
@@ -291,7 +298,7 @@ class NHiTS(BaseModelWithCovariates):
         """
         return len(self.hparams.n_blocks)
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Pass forward of network.
 
@@ -446,7 +453,7 @@ class NHiTS(BaseModelWithCovariates):
         # initialize class
         return super().from_dataset(dataset, **new_kwargs)
 
-    def step(self, x, y, batch_idx) -> Dict[str, torch.Tensor]:
+    def step(self, x, y, batch_idx) -> dict[str, torch.Tensor]:
         """
         Take training / validation step.
         """
@@ -500,8 +507,8 @@ class NHiTS(BaseModelWithCovariates):
 
     def plot_interpretation(
         self,
-        x: Dict[str, torch.Tensor],
-        output: Dict[str, torch.Tensor],
+        x: dict[str, torch.Tensor],
+        output: dict[str, torch.Tensor],
         idx: int,
         ax=None,
     ):

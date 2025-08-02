@@ -2,8 +2,9 @@
 Encoders for encoding categorical variables and scaling continuous data.
 """
 
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 import warnings
 
 import numpy as np
@@ -177,8 +178,8 @@ class TransformMixIn:
 
     @classmethod
     def get_transform(
-        cls, transformation: Union[str, Dict[str, Callable]]
-    ) -> Dict[str, Callable]:
+        cls, transformation: Union[str, dict[str, Callable]]
+    ) -> dict[str, Callable]:
         """Return transformation functions.
 
         Parameters
@@ -501,8 +502,8 @@ class TorchNormalizer(
         self,
         method: str = "standard",
         center: bool = True,
-        transformation: Union[str, Tuple[Callable, Callable]] = None,
-        method_kwargs: Optional[Dict[str, Any]] = None,
+        transformation: Union[str, tuple[Callable, Callable]] = None,
+        method_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Parameters
@@ -663,7 +664,6 @@ class TorchNormalizer(
                 )
             self.scale_ = (q_75 - q_25) / 2.0 + eps
         if not self.center and self.method != "identity":
-            self.scale_ = self.center_
             if isinstance(y_center, torch.Tensor):
                 self.center_ = torch.zeros_like(self.center_)
             else:
@@ -682,7 +682,7 @@ class TorchNormalizer(
         return_norm: bool = False,
         target_scale: torch.Tensor = None,
     ) -> Union[
-        Tuple[Union[np.ndarray, torch.Tensor], np.ndarray],
+        tuple[Union[np.ndarray, torch.Tensor], np.ndarray],
         Union[np.ndarray, torch.Tensor],
     ]:
         """
@@ -708,17 +708,48 @@ class TorchNormalizer(
             target_scale = self.get_parameters().numpy()[None, :]
         center = target_scale[..., 0]
         scale = target_scale[..., 1]
+
+        if not isinstance(y, torch.Tensor):
+            if isinstance(y, (pd.Series)):
+                index = y.index
+                pandas_dtype = y.dtype
+                y = y.values
+                y_was = "pandas"
+                y = torch.as_tensor(y)
+            elif isinstance(y, np.ndarray):
+                y_was = "numpy"
+                np_dtype = y.dtype
+                try:
+                    y = torch.from_numpy(y)
+                except TypeError:
+                    y = torch.as_tensor(y.astype(np.float32))
+        else:
+            y_was = "torch"
+            torch_dtype = y.dtype
+        if isinstance(center, np.ndarray):
+            center = torch.from_numpy(center)
+        if isinstance(scale, np.ndarray):
+            scale = torch.from_numpy(scale)
         if y.ndim > center.ndim:  # multiple batches -> expand size
             center = center.view(*center.size(), *(1,) * (y.ndim - center.ndim))
             scale = scale.view(*scale.size(), *(1,) * (y.ndim - scale.ndim))
 
-        # transform
-        dtype = y.dtype
         y = (y - center) / scale
-        try:
-            y = y.astype(dtype)
-        except AttributeError:  # torch.Tensor has `.type()` instead of `.astype()`
-            y = y.type(dtype)
+
+        if y_was == "numpy":
+            numpy_data = y.numpy()
+            if np_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                # Original was integer, but normalized data is float
+                y = numpy_data.astype(np.float64)
+            else:
+                y = numpy_data.astype(np_dtype)
+        elif y_was == "pandas":
+            numpy_data = y.numpy()
+            if pandas_dtype.kind in "iu" and numpy_data.dtype.kind == "f":
+                pandas_dtype = np.float64
+            y = pd.Series(numpy_data, index=index, dtype=pandas_dtype)
+        else:
+            y = y.type(torch_dtype)
 
         # return with center and scale or without
         if return_norm:
@@ -726,13 +757,13 @@ class TorchNormalizer(
         else:
             return y
 
-    def inverse_transform(self, y: torch.Tensor) -> torch.Tensor:
+    def inverse_transform(self, y: Union[torch.Tensor, np.ndarray]) -> torch.Tensor:
         """
         Inverse scale.
 
         Parameters
         ----------
-        y: torch.Tensor
+        y: Union[torch.Tensor, np.ndarray])
             scaled data
 
         Returns
@@ -740,15 +771,19 @@ class TorchNormalizer(
         torch.Tensor
             de-scaled data
         """
+        if isinstance(y, np.ndarray):
+            y = torch.from_numpy(y)
         return self(dict(prediction=y, target_scale=self.get_parameters().unsqueeze(0)))
 
-    def __call__(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def __call__(
+        self, data: dict[str, Union[torch.Tensor, np.ndarray]]
+    ) -> torch.Tensor:
         """
         Inverse transformation but with network output as input.
 
         Parameters
         ----------
-        data: Dict[str, torch.Tensor]
+        data: dict[str, Union[torch.Tensor, np.ndarray]]
             Dictionary with entries
 
             * prediction: data to de-scale
@@ -761,23 +796,29 @@ class TorchNormalizer(
         """
         # ensure output dtype matches input dtype
         dtype = data["prediction"].dtype
+        if isinstance(dtype, np.dtype):
+            # convert the array into tensor if it is a numpy array
+            data["prediction"] = torch.as_tensor(data["prediction"])
+
+        prediction = data["prediction"]
 
         # inverse transformation with tensors
         norm = data["target_scale"]
-
+        if isinstance(norm, np.ndarray):
+            norm = torch.from_numpy(norm)
         # use correct shape for norm
-        if data["prediction"].ndim > norm.ndim:
+        if prediction.ndim > norm.ndim:
             norm = norm.unsqueeze(-1)
 
         # transform
-        y = data["prediction"] * norm[:, 1, None] + norm[:, 0, None]
+        y = prediction * norm[:, 1, None] + norm[:, 0, None]
 
         y = self.inverse_preprocess(y)
 
         # return correct shape
-        if data["prediction"].ndim == 1 and y.ndim > 1:
+        if prediction.ndim == 1 and y.ndim > 1:
             y = y.squeeze(0)
-        return y.type(dtype)
+        return y.type(prediction.dtype)
 
 
 class EncoderNormalizer(TorchNormalizer):
@@ -792,9 +833,9 @@ class EncoderNormalizer(TorchNormalizer):
         self,
         method: str = "standard",
         center: bool = True,
-        max_length: Union[int, List[int]] = None,
-        transformation: Union[str, Tuple[Callable, Callable]] = None,
-        method_kwargs: Dict[str, Any] = None,
+        max_length: Union[int, list[int]] = None,
+        transformation: Union[str, tuple[Callable, Callable]] = None,
+        method_kwargs: dict[str, Any] = None,
     ):
         """
         Initialize
@@ -880,8 +921,6 @@ class EncoderNormalizer(TorchNormalizer):
     def min_length(self):
         if self.method == "identity":
             return 0  # no timeseries properties used
-        elif self.center:
-            return 1  # only calculation of mean required
         else:
             return 2  # requires std, i.e. at least 2 entries
 
@@ -922,11 +961,11 @@ class GroupNormalizer(TorchNormalizer):
     def __init__(
         self,
         method: str = "standard",
-        groups: Optional[List[str]] = None,
+        groups: Optional[list[str]] = None,
         center: bool = True,
         scale_by_group: bool = False,
-        transformation: Optional[Union[str, Tuple[Callable, Callable]]] = None,
-        method_kwargs: Optional[Dict[str, Any]] = None,
+        transformation: Optional[Union[str, tuple[Callable, Callable]]] = None,
+        method_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Group normalizer to normalize a given entry by groups. Can be used as target normalizer.
@@ -1137,7 +1176,7 @@ class GroupNormalizer(TorchNormalizer):
         return self
 
     @property
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """
         Names of determined scales.
 
@@ -1150,7 +1189,7 @@ class GroupNormalizer(TorchNormalizer):
 
     def fit_transform(
         self, y: pd.Series, X: pd.DataFrame, return_norm: bool = False
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
         """
         Fit normalizer and scale input data.
 
@@ -1182,7 +1221,7 @@ class GroupNormalizer(TorchNormalizer):
         X: pd.DataFrame = None,
         return_norm: bool = False,
         target_scale: torch.Tensor = None,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    ) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
         """
         Scale input data.
 
@@ -1211,7 +1250,7 @@ class GroupNormalizer(TorchNormalizer):
         return super().transform(y, return_norm=return_norm, target_scale=target_scale)
 
     def get_parameters(
-        self, groups: Union[torch.Tensor, list, tuple], group_names: List[str] = None
+        self, groups: Union[torch.Tensor, list, tuple], group_names: list[str] = None
     ) -> np.ndarray:
         """
         Get fitted scaling parameters for a given group.
@@ -1314,7 +1353,7 @@ class MultiNormalizer(TorchNormalizer):
     This normalizers wraps multiple other normalizers.
     """
 
-    def __init__(self, normalizers: List[TorchNormalizer]):
+    def __init__(self, normalizers: list[TorchNormalizer]):
         """
         Parameters
         ----------
@@ -1378,10 +1417,10 @@ class MultiNormalizer(TorchNormalizer):
         y: Union[pd.DataFrame, np.ndarray, torch.Tensor],
         X: pd.DataFrame = None,
         return_norm: bool = False,
-        target_scale: List[torch.Tensor] = None,
+        target_scale: list[torch.Tensor] = None,
     ) -> Union[
-        List[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray]],
-        List[Union[np.ndarray, torch.Tensor]],
+        list[tuple[Union[np.ndarray, torch.Tensor], np.ndarray]],
+        list[Union[np.ndarray, torch.Tensor]],
     ]:
         """
         Scale input data.
@@ -1428,8 +1467,8 @@ class MultiNormalizer(TorchNormalizer):
             return res
 
     def __call__(
-        self, data: Dict[str, Union[List[torch.Tensor], torch.Tensor]]
-    ) -> List[torch.Tensor]:
+        self, data: dict[str, Union[list[torch.Tensor], torch.Tensor]]
+    ) -> list[torch.Tensor]:
         """
         Inverse transformation but with network output as input.
 
@@ -1457,7 +1496,7 @@ class MultiNormalizer(TorchNormalizer):
         ]
         return denormalized
 
-    def get_parameters(self, *args, **kwargs) -> List[torch.Tensor]:
+    def get_parameters(self, *args, **kwargs) -> list[torch.Tensor]:
         """
         Returns parameters that were used for encoding.
 

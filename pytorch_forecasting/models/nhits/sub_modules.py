@@ -1,5 +1,4 @@
 from functools import partial
-from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -38,7 +37,7 @@ class IdentityBasis(nn.Module):
         forecast_theta: torch.Tensor,
         encoder_x_t: torch.Tensor,
         decoder_x_t: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         backcast = backcast_theta
         knots = forecast_theta
 
@@ -93,6 +92,43 @@ def init_weights(module, initialization):
 ACTIVATIONS = ["ReLU", "Softplus", "Tanh", "SELU", "LeakyReLU", "PReLU", "Sigmoid"]
 
 
+class MLP(nn.Module):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        hidden_size: list[int],
+        activation: str,
+        dropout: float,
+    ):
+        super().__init__()
+
+        activ = getattr(nn, activation)()
+
+        self.layers: nn.Sequential
+
+        layers = [
+            nn.Linear(in_features, hidden_size[0]),
+        ]
+        layers.append(activ)
+
+        if dropout > 0:
+            layers.append(nn.Dropout(p=dropout))
+
+        for i in range(len(hidden_size) - 1):
+            layers.append(nn.Linear(hidden_size[i], hidden_size[i + 1]))
+            layers.append(activ)
+
+            if dropout > 0:
+                layers.append(nn.Dropout(p=dropout))
+
+        layers.append(nn.Linear(hidden_size[-1], out_features))
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        return self.layers(X)
+
+
 class NHiTSBlock(nn.Module):
     """
     N-HiTS block which takes a basis function as an argument.
@@ -108,7 +144,7 @@ class NHiTSBlock(nn.Module):
         static_size: int,
         static_hidden_size: int,
         n_theta: int,
-        hidden_size: List[int],
+        hidden_size: list[int],
         pooling_sizes: int,
         pooling_mode: str,
         basis: nn.Module,
@@ -138,15 +174,18 @@ class NHiTSBlock(nn.Module):
         self.batch_normalization = batch_normalization
         self.dropout = dropout
 
-        self.hidden_size = [
+        mlp_in_features = (
             self.context_length_pooled * len(self.output_size)
             + self.context_length * self.encoder_covariate_size
             + self.prediction_length * self.decoder_covariate_size
             + self.static_hidden_size
-        ] + hidden_size
+        )
+
+        mlp_out_features = context_length * len(output_size) + n_theta * sum(
+            output_size
+        )
 
         assert activation in ACTIVATIONS, f"{activation} is not in {ACTIVATIONS}"
-        activ = getattr(nn, activation)()
 
         if pooling_mode == "max":
             self.pooling_layer = nn.MaxPool1d(
@@ -161,40 +200,21 @@ class NHiTSBlock(nn.Module):
                 ceil_mode=True,
             )
 
-        hidden_layers = []
-        for i in range(n_layers):
-            hidden_layers.append(
-                nn.Linear(
-                    in_features=self.hidden_size[i],
-                    out_features=self.hidden_size[i + 1],
-                )
-            )
-            hidden_layers.append(activ)
-
-            if self.batch_normalization:
-                hidden_layers.append(
-                    nn.BatchNorm1d(num_features=self.hidden_size[i + 1])
-                )
-
-            if self.dropout > 0:
-                hidden_layers.append(nn.Dropout(p=self.dropout))
-
-        output_layer = [
-            nn.Linear(
-                in_features=self.hidden_size[-1],
-                out_features=context_length * len(output_size)
-                + n_theta * sum(output_size),
-            )
-        ]
-        layers = hidden_layers + output_layer
-
         # static_size is computed with data, static_hidden_size is provided by user,
         # if 0 no statics are used
         if (self.static_size > 0) and (self.static_hidden_size > 0):
             self.static_encoder = StaticFeaturesEncoder(
                 in_features=static_size, out_features=static_hidden_size
             )
-        self.layers = nn.Sequential(*layers)
+
+        self.layers = MLP(
+            in_features=mlp_in_features,
+            out_features=mlp_out_features,
+            hidden_size=hidden_size,
+            activation=activation,
+            dropout=self.dropout,
+        )
+
         self.basis = basis
 
     def forward(
@@ -203,7 +223,7 @@ class NHiTSBlock(nn.Module):
         encoder_x_t: torch.Tensor,
         decoder_x_t: torch.Tensor,
         x_s: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size = len(encoder_y)
 
         encoder_y = encoder_y.transpose(1, 2)
