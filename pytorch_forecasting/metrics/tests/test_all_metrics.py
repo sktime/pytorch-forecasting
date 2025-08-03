@@ -87,7 +87,34 @@ class MetricFixtureGenerator(BaseFixtureGenerator):
 
 
 class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
-    """Test suite for all metrics in PyTorch Forecasting."""
+    """
+    Test suite for all metrics in PyTorch Forecasting.
+
+    This test performs an integration test on a metric object, with the following
+    steps:
+
+    * Check if the metric supports the prediction and target types.
+    * Update the metric state with predictions and targets.
+    * Compute the metric value.
+    * Validate usage of `to_prediction` and `to_quantiles` methods.
+    * Validate the metric's ability to handle composite and weighted metrics.
+
+    Parameters
+    ----------
+    object_pkg: SkbaseBaseObject
+        The package object containing the metric.
+    object_instance: Metric
+        An instance of the metric class to be tested.
+    request: pytest.FixtureRequest
+        The pytest request object to access fixtures.
+    target_type: str
+        The type of target data (e.g., "standard", "packed", "weighted").
+
+    Notes
+    -----
+    If the specific target type does not exist in the data returned by the fixture,
+    the test will be skipped for that metric.
+    """
 
     object_type_filter = "metric"
 
@@ -146,21 +173,54 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
         return metric, y_pred, y
 
-    def _test_metric_update_and_compute(self, metric, y_pred, y):
+    def test_metric_type(self, object_pkg):
+        """
+        Test if the metric is of the right type i.e
+        point, point_classification, quantile, or distribution.
+
+        Parameters
+        ----------
+        object_pkg: SkbaseBaseObject
+            The package object containing the metric.
+        """
+
+        metric_type = object_pkg.get_class_tag("metric_type")
+        assert metric_type in [
+            "point",
+            "point_classification",
+            "quantile",
+            "distribution",
+        ], "Unsupported metric type for integration test."
+
+    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
+    def test_metric_update_and_compute(
+        self, object_pkg, object_instance, request, target_type
+    ):
         """Test the update and compute methods of the metric.
 
-        This method checks if the metric can be updated with predictions and targets,
+        This test checks if the metric can be updated with predictions and targets,
         and if it computes a valid result.
 
         Parameters
         ----------
-        metric: Metric
-            The metric instance to be tested.
-        y_pred: torch.Tensor
-            The predicted values tensor.
-        y: torch.Tensor
-            The target values tensor.
+        object_pkg: SkbaseBaseObject
+            The package object containing the metric.
+        object_instance: Metric
+            An instance of the metric class to be tested.
+        request: pytest.FixtureRequest
+            The pytest request object to access fixtures.
+        target_type: str
+            The type of target data (e.g., "standard", "packed", "weighted").
         """
+
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_instance, target_type, request
+        )
+
+        if prepared_data is None:
+            return None
+
+        metric, y_pred, y = prepared_data
         metric.update(y_pred, y)
         res = metric.compute()
         assert isinstance(res, torch.Tensor), "Result should be a tensor."
@@ -209,7 +269,10 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         else:
             return (batch_size, prediction_length, output_dim)
 
-    def _test_to_prediction(self, metric, y_pred, batch_size, prediction_length):
+    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
+    def test_to_prediction(
+        self, object_pkg, object_class, object_instance, request, target_type
+    ):
         """Test the usage of `to_prediction` method from the metric.
 
         This method is used to convert the predicted values tensor into a point
@@ -227,6 +290,21 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         prediction_length: int
             The length of the prediction. Used to determine the expected output shape.
         """
+
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_instance, target_type, request
+        )
+
+        if prepared_data is None:
+            # meant for skipping tests for unsupported target types on certain metric
+            # types
+            return None
+
+        metric, y_pred, _ = prepared_data
+
+        batch_size = y_pred.shape[0]
+        prediction_length = y_pred.shape[1]
+
         out = metric.to_prediction(y_pred)
         assert isinstance(out, torch.Tensor), "Prediction should be a tensor."
         expected_shape = self._get_expected_output_shape_prediction(
@@ -236,8 +314,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             f"Prediction shape mismatch: got {out.shape}, expected {expected_shape}."  # noqa: E501
         )
 
-    def _test_to_quantiles(
-        self, metric, y_pred, batch_size, prediction_length, metric_type
+    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
+    def test_to_quantiles(
+        self, object_pkg, object_class, object_instance, request, target_type
     ):
         """Test the usage of `to_quantiles` method from the metric.
 
@@ -258,7 +337,22 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         metric_type: str
             The type of the metric (e.g., "quantile", "point_classification").
         """
+
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_instance, target_type, request
+        )
+
+        if prepared_data is None:
+            # meant for skipping tests for unsupported target types on certain metric
+            # types
+            return None
+
+        metric, y_pred, _ = prepared_data
+        metric_type = object_pkg.get_class_tag("metric_type")
         quantiles = [0.05, 0.5, 0.95]
+
+        batch_size = y_pred.shape[0]
+        prediction_length = y_pred.shape[1]
         output_dim = y_pred.shape[-1]
 
         if metric_type == "quantile" or metric_type == "point_classification":
@@ -288,7 +382,10 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             f"expected {expected_shape}."
         )
 
-    def _test_composite_and_weighted_metrics(self, metric, y_pred, y):
+    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
+    def test_composite_and_weighted_metrics(
+        self, object_pkg, object_instance, request, target_type
+    ):
         """
         Test the functionality of composite and weighted metrics.
 
@@ -304,6 +401,17 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         y: torch.Tensor
             The target values tensor.
         """
+
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_instance, target_type, request
+        )
+
+        if prepared_data is None:
+            # meant for skipping tests for unsupported target types on certain metric
+            # types
+            return None
+
+        metric, y_pred, y = prepared_data
 
         composite = metric + metric
         weighted = metric * 0.5
@@ -442,66 +550,3 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             assert (
                 res.shape == y_pred.shape
             ), f"Loss should be a tensor with shape {y_pred.shape}, got {res.shape}."  # noqa: E501
-
-    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
-    def test_metric_functionality(
-        self, object_pkg, object_class, object_instance, request, target_type
-    ):
-        """Test metric functionality with appropriate test data.
-
-        This test performs an integration test on a metric object, with the following
-        steps:
-
-        * Check if the metric supports the prediction and target types.
-        * Update the metric state with predictions and targets.
-        * Compute the metric value.
-        * Validate usage of `to_prediction` and `to_quantiles` methods.
-        * Validate the metric's ability to handle composite and weighted metrics.
-
-        Parameters
-        ----------
-        object_pkg: SkbaseBaseObject
-            The package object containing the metric.
-        object_instance: Metric
-            An instance of the metric class to be tested.
-        request: pytest.FixtureRequest
-            The pytest request object to access fixtures.
-        target_type: str
-            The type of target data (e.g., "standard", "packed", "weighted").
-
-        Notes
-        -----
-        If the specific target type does not exist in the data returned by the fixture,
-        the test will be skipped for that metric.
-        """
-
-        prepared_data = self._setup_metric_test_scenario(
-            object_pkg, object_instance, target_type, request
-        )
-
-        if prepared_data is None:
-            # meant for skipping tests for unsupported target types on certain metric
-            # types
-            return None
-
-        metric, y_pred, y = prepared_data
-        metric_type = object_pkg.get_class_tag("metric_type")
-
-        assert metric_type in [
-            "point",
-            "point_classification",
-            "quantile",
-            "distribution",
-        ], "Unsupported metric type for integration test."
-
-        self._test_metric_update_and_compute(metric, y_pred, y)
-
-        batch_size = y_pred.shape[0]
-        prediction_length = y_pred.shape[1]
-
-        self._test_to_prediction(metric, y_pred, batch_size, prediction_length)
-        self._test_to_quantiles(
-            metric, y_pred, batch_size, prediction_length, metric_type
-        )
-
-        self._test_composite_and_weighted_metrics(metric, y_pred, y)

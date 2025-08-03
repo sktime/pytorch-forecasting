@@ -15,11 +15,15 @@ EXCLUDED_TESTS = {
     # MQF2DistributionLoss: Skipped because its to_quantiles and to_prediction
     # implementations do not conform to the base contract and are central to its
     # probabilistic forecasting design (uses distributional outputs).
-    "MQF2DistributionLoss": ["test_metric_functionality"],
+    "MQF2DistributionLoss": [
+        "test_to_prediction",
+        "test_to_quantiles",
+        "test_loss_method",
+    ],
     # PoissonLoss: Skipped because its output and quantile logic are not compatible
     # with the standard metric API contract, due to its discrete distribution nature.
     "PoissonLoss": [
-        "test_metric_functionality",
+        "test_to_quantiles",
     ],
     # MultivariateNormalDistributionLoss: Skipped because its loss method is not
     # compatible with the standard metric API contract, as it uses a distributional
