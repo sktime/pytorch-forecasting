@@ -17,11 +17,11 @@ from pytorch_forecasting.layers._encoders import (
     Encoder,
     EncoderLayer,
 )
-from pytorch_forecasting.layers._m_lstm import mLSTMCell, mLSTMLayer, mLSTMNetwork
+from pytorch_forecasting.layers._mlstm import mLSTMCell, mLSTMLayer, mLSTMNetwork
 from pytorch_forecasting.layers._output._flatten_head import (
     FlattenHead,
 )
-from pytorch_forecasting.layers._s_lstm import sLSTMCell, sLSTMLayer, sLSTMNetwork
+from pytorch_forecasting.layers._slstm import sLSTMCell, sLSTMLayer, sLSTMNetwork
 
 __all__ = [
     "FullAttention",

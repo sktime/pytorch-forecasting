@@ -25,7 +25,7 @@ class xLSTMTime(AutoRegressiveBaseModel):
     @classmethod
     def _pkg(cls):
         """Package for the model."""
-        from pytorch_forecasting.models.x_lstm_time._xlstm_pkg import xLSTMTime_pkg
+        from pytorch_forecasting.models.xlstm._xlstm_pkg import xLSTMTime_pkg
 
         return xLSTMTime_pkg
 

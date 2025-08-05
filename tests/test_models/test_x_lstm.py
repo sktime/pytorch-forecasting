@@ -6,7 +6,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import pytest
 
 from pytorch_forecasting.metrics import SMAPE
-from pytorch_forecasting.models.x_lstm_time.x_lstm import xLSTMTime
+from pytorch_forecasting.models.xlstm._xlstm import xLSTMTime
 
 
 def _integration(
