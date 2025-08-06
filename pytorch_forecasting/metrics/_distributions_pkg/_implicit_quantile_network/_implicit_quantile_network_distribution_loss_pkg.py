@@ -15,6 +15,7 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
         "metric_type": "distribution",
         "distribution_type": "implicit_quantile_network",
         "info:metric_name": "ImplicitQuantileNetworkDistributionLoss",
+        "requires:data_type": "implicit_quantile_network_distribution_forecast",
         "capability:quantile_generation": True,
         "shape:adds_quantile_dimension": True,
     }

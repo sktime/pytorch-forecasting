@@ -12,7 +12,11 @@ class QuantileLoss_pkg(_BasePtMetric):
     Defined as ``(y_pred - target).abs()``.
     """
 
-    _tags = {"metric_type": "quantile", "info:metric_name": "QuantileLoss"}
+    _tags = {
+        "metric_type": "quantile",
+        "info:metric_name": "QuantileLoss",
+        "requires:data_type": "quantile_forecast",
+    }  # noqa: E501
 
     @classmethod
     def get_cls(cls):

@@ -15,6 +15,7 @@ class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
         "metric_type": "distribution",
         "distribution_type": "negative_binomial",
         "info:metric_name": "NegativeBinomialDistributionLoss",
+        "requires:data_type": "negative_binomial_distribution_forecast",
     }
 
     @classmethod

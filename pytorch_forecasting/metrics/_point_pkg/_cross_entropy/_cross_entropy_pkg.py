@@ -15,6 +15,7 @@ class CrossEntropy_pkg(_BasePtMetric):
 
     _tags = {
         "metric_type": "point_classification",
+        "requires:data_type": "classification_forecast",
         "info:metric_name": "CrossEntropy",
         "no_rescaling": True,
     }
@@ -24,9 +25,3 @@ class CrossEntropy_pkg(_BasePtMetric):
         from pytorch_forecasting.metrics import CrossEntropy
 
         return CrossEntropy
-
-    @classmethod
-    def requires_data_type(cls):
-        """Returns the data type required by this metric."""
-
-        return "classification_forecast"

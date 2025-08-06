@@ -144,7 +144,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             if the target type is not supported.
         """
 
-        prepare_data_fixture_name = object_pkg.requires_data_type()
+        prepare_data_fixture_name = object_pkg.get_class_tag("requires:data_type")
         test_cases = request.getfixturevalue(prepare_data_fixture_name)
 
         if target_type not in test_cases:

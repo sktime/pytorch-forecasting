@@ -16,6 +16,7 @@ class MultivariateNormalDistributionLoss_pkg(_BasePtMetric):
         "metric_type": "distribution",
         "distribution_type": "multivariate_normal",
         "info:metric_name": "MultivariateNormalDistributionLoss",
+        "requires:data_type": "multivariate_normal_distribution_forecast",
     }
 
     @classmethod

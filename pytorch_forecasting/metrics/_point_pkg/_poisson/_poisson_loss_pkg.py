@@ -15,6 +15,7 @@ class PoissonLoss_pkg(_BasePtMetric):
     _tags = {
         "metric_type": "point",
         "info:metric_name": "PoissonLoss",
+        "requires:data_type": "point_forecast",
         "capability:quantile_generation": True,
         "shape:adds_quantile_dimension": True,
     }

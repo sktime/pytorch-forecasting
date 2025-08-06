@@ -15,6 +15,7 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         "metric_type": "distribution",
         "distribution_type": "beta",
         "info:metric_name": "BetaDistributionLoss",
+        "requires:data_type": "beta_distribution_forecast",
     }
 
     @classmethod

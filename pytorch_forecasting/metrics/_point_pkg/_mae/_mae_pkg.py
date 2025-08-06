@@ -12,7 +12,11 @@ class MAE_pkg(_BasePtMetric):
     Defined as ``(y_pred - target).abs()``.
     """
 
-    _tags = {"metric_type": "point", "info:metric_name": "MAE"}
+    _tags = {
+        "metric_type": "point",
+        "requires:data_type": "point_forecast",
+        "info:metric_name": "MAE",
+    }
 
     @classmethod
     def get_cls(cls):

@@ -12,7 +12,11 @@ class TweedieLoss_pkg(_BasePtMetric):
     Tweedie regression with log-link. Useful for modeling targets that might be tweedie-distributed.
     """  # noqa: E501
 
-    _tags = {"metric_type": "point", "info:metric_name": "TweedieLoss"}
+    _tags = {
+        "metric_type": "point",
+        "info:metric_name": "TweedieLoss",
+        "requires:data_type": "point_forecast",
+    }  # noqa: E501
 
     @classmethod
     def get_cls(cls):
