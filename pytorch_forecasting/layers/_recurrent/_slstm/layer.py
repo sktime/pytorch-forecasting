@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from pytorch_forecasting.layers._slstm.cell import sLSTMCell
+from pytorch_forecasting.layers._recurrent._slstm.cell import sLSTMCell
 
 
 class sLSTMLayer(nn.Module):

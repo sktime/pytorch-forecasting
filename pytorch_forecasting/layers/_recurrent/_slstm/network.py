@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from pytorch_forecasting.layers._slstm.layer import sLSTMLayer
+from pytorch_forecasting.layers._recurrent._slstm.layer import sLSTMLayer
 
 
 class sLSTMNetwork(nn.Module):
