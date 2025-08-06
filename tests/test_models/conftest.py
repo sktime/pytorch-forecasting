@@ -1,10 +1,20 @@
-import numpy as np
+import os
+
 import pytest
 import torch
+from skbase.utils.dependencies import _check_soft_dependencies
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
-from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
+
+
+# used to prevent tkinter related errors in CI, see #1937
+if _check_soft_dependencies("matplotlib", severity="none"):
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        import matplotlib
+
+        matplotlib.use("Agg")
+
 
 torch.manual_seed(23)
 
