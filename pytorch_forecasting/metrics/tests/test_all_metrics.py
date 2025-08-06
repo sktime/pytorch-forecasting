@@ -145,12 +145,12 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         """
 
         prepare_data_fixture_name = object_pkg.requires_data_type()
-        data = request.getfixturevalue(prepare_data_fixture_name)
+        test_cases = request.getfixturevalue(prepare_data_fixture_name)
 
-        if target_type not in data["test_cases"]:
+        if target_type not in test_cases:
             return None
 
-        test_case = data["test_cases"][target_type]
+        test_case = test_cases[target_type]
         y_pred, y = object_pkg.prepare_test_inputs(test_case)
 
         metric = object_instance
