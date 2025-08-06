@@ -14,7 +14,11 @@ class SMAPE_pkg(_BasePtMetric):
     Assumes ``y >= 0``.
     """
 
-    _tags = {"metric_type": "point", "info:metric_name": "SMAPE"}
+    _tags = {
+        "metric_type": "point",
+        "info:metric_name": "SMAPE",
+        "requires:data_type": "point_forecast",
+    }  # noqa: E501
 
     @classmethod
     def get_cls(cls):

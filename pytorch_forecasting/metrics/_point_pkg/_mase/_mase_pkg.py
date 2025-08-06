@@ -10,7 +10,11 @@ class MASE_pkg(_BasePtMetric):
     Mean Average scaled Error (MASE) metric for point forecasts.
     """
 
-    _tags = {"metric_type": "point", "info:metric_name": "MASE"}
+    _tags = {
+        "metric_type": "point",
+        "info:metric_name": "MASE",
+        "requires:data_type": "point_forecast",
+    }
 
     @classmethod
     def get_cls(cls):

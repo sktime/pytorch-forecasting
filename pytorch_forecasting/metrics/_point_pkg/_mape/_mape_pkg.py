@@ -14,7 +14,11 @@ class MAPE_pkg(_BasePtMetric):
     Assumes ``y >= 0``.
     """
 
-    _tags = {"metric_type": "point", "info:metric_name": "MAPE"}
+    _tags = {
+        "metric_type": "point",
+        "info:metric_name": "MAPE",
+        "requires:data_type": "point_forecast",
+    }
 
     @classmethod
     def get_cls(cls):

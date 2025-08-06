@@ -17,6 +17,7 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
         "metric_type": "distribution",
         "distribution_type": "log_normal",
         "info:metric_name": "LogNormalDistributionLoss",
+        "requires:data_type": "log_normal_distribution_forecast",
     }
 
     @classmethod

@@ -17,6 +17,7 @@ class MQF2DistributionLoss_pkg(_BasePtMetric):
         "info:metric_name": "MQF2DistributionLoss",
         "python_dependencies": ["cpflows"],
         "capability:quantile_generation": True,
+        "requires:data_type": "mqf2_distribution_forecast",
     }
 
     @classmethod

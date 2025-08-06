@@ -78,38 +78,3 @@ class _BasePtMetric(_BaseObject):
         from pytorch_forecasting.data import TorchNormalizer
 
         return TorchNormalizer()
-
-    @classmethod
-    def requires_data_type(cls):
-        """Check if the metric requires a specific data type.
-
-        Returns
-        -------
-        str
-            The required data type.
-        """
-        if "metric_type" in cls._tags:
-            metric_type = cls._tags["metric_type"]
-        else:
-            raise ValueError(
-                "Metric class does not have 'metric_type' tag set. "
-                "Please set the 'metric_type' tag to 'point', 'distribution', or 'quantile'."  # noqa: E501
-            )
-
-        if metric_type == "distribution":
-            distribution_type = cls._tags.get("distribution_type", None)
-            if distribution_type is None:
-                raise ValueError(
-                    "Metric requires a distribution type to be set. "
-                    "Please set the 'distribution_type' tag."
-                )
-            return f"{distribution_type}_distribution_forecast"
-        elif metric_type == "point":
-            return "point_forecast"
-        elif metric_type == "quantile":
-            return "quantile_forecast"
-        else:
-            raise ValueError(
-                f"Unknown metric type '{metric_type}'. "
-                "Please set the 'metric_type' tag to 'point', 'distribution', or 'quantile'."  # noqa: E501
-            )

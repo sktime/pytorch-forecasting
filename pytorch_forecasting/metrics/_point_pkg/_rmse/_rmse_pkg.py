@@ -12,7 +12,11 @@ class RMSE_pkg(_BasePtMetric):
     Defined as ``(y_pred - target)**2``.
     """
 
-    _tags = {"metric_type": "point", "info:metric_name": "RMSE"}
+    _tags = {
+        "metric_type": "point",
+        "info:metric_name": "RMSE",
+        "requires:data_type": "point_forecast",
+    }  # noqa: E501
 
     @classmethod
     def get_cls(cls):
