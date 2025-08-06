@@ -150,8 +150,8 @@ jobs:
       - name: Show dependencies
         run: python -m pip list
 
-      - name: Force matplotlib to use Agg backend in CI
-        run: echo "MPLBACKEND=Agg" >> $GITHUB_ENV
+      - name: Force matplotlib Agg backend in CI
+        run: python -c "import matplotlib; matplotlib.use('Agg')"
 
       - name: Run pytest
         shell: bash
