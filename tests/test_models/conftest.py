@@ -1,12 +1,11 @@
 import os
 
 import pytest
-import torch
 from skbase.utils.dependencies import _check_soft_dependencies
+import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
-
 
 # used to prevent tkinter related errors in CI, see #1937
 if _check_soft_dependencies("matplotlib", severity="none"):
