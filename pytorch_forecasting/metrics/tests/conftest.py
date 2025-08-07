@@ -7,6 +7,9 @@ from torch.nn.utils import rnn
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer, TorchNormalizer
 
+BATCH_SIZE = 4
+PREDICTION_LENGTH = 10
+
 
 @pytest.fixture(scope="module")
 def point_forecast():
@@ -14,14 +17,12 @@ def point_forecast():
 
     torch.manual_seed(42)
     np.random.seed(42)
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
 
     x = {
-        "target_scale": torch.randn(batch_size, 2),
+        "target_scale": torch.randn(BATCH_SIZE, 2),
     }
-    y = (torch.randn(batch_size, prediction_length), None)
-    y_pred = torch.randn(batch_size, prediction_length)
+    y = (torch.randn(BATCH_SIZE, PREDICTION_LENGTH), None)
+    y_pred = torch.randn(BATCH_SIZE, PREDICTION_LENGTH)
 
     test_cases = {}
 
@@ -33,10 +34,10 @@ def point_forecast():
     # each batch has a different prediction length
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
 
@@ -68,17 +69,14 @@ def quantile_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
     x = {
-        "target_scale": torch.randn(batch_size, 2),
+        "target_scale": torch.randn(BATCH_SIZE, 2),
     }
 
-    y = (torch.randn(batch_size, prediction_length), None)
+    y = (torch.randn(BATCH_SIZE, PREDICTION_LENGTH), None)
 
     quantiles = [0.1, 0.5, 0.9]  # Example quantiles
-    y_pred = torch.randn(batch_size, prediction_length, len(quantiles))
+    y_pred = torch.randn(BATCH_SIZE, PREDICTION_LENGTH, len(quantiles))
 
     y_pred, _ = torch.sort(
         y_pred, dim=-1
@@ -89,10 +87,10 @@ def quantile_forecast():
 
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
     packed_y = rnn.pack_padded_sequence(
@@ -124,16 +122,13 @@ def normal_distribution_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
     mean = 1.0
     std = 0.1
     normal_dist = torch.distributions.Normal(loc=mean, scale=std)
-    y_actual = normal_dist.sample((batch_size, prediction_length))
+    y_actual = normal_dist.sample((BATCH_SIZE, PREDICTION_LENGTH))
 
     x = {
-        "target_scale": torch.randn(batch_size, 2),
+        "target_scale": torch.randn(BATCH_SIZE, 2),
     }
 
     y = (y_actual, None)
@@ -141,8 +136,8 @@ def normal_distribution_forecast():
     # create random prediction paired with a normal distribution.
     y_pred = torch.stack(
         [
-            torch.randn(batch_size, prediction_length),
-            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+            torch.randn(BATCH_SIZE, PREDICTION_LENGTH),
+            torch.abs(torch.randn(BATCH_SIZE, PREDICTION_LENGTH)) + 0.1,
         ],
         dim=-1,
     )
@@ -151,10 +146,10 @@ def normal_distribution_forecast():
     test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
     y_packed = rnn.pack_padded_sequence(
@@ -177,9 +172,6 @@ def multivariate_normal_distribution_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
     n_targets = 2
 
     mean = torch.tensor([1.0, 1.0])
@@ -190,7 +182,7 @@ def multivariate_normal_distribution_forecast():
         loc=mean, cov_diag=std**2, cov_factor=cov_factor
     )
 
-    multivar_normal_dist = multivar_normal_dist.sample((batch_size, prediction_length))[
+    multivar_normal_dist = multivar_normal_dist.sample((BATCH_SIZE, PREDICTION_LENGTH))[
         :, :, 0
     ]
     target_mean = multivar_normal_dist.mean(dim=1)
@@ -202,9 +194,9 @@ def multivariate_normal_distribution_forecast():
 
     y = (multivar_normal_dist, None)
 
-    mean = torch.randn(batch_size, prediction_length, n_targets)
-    diag_vars = torch.abs(torch.randn(batch_size, prediction_length, n_targets)) + 0.1
-    cov_factors = torch.randn(batch_size, prediction_length, n_targets * 1)  # rank = 1
+    mean = torch.randn(BATCH_SIZE, PREDICTION_LENGTH, n_targets)
+    diag_vars = torch.abs(torch.randn(BATCH_SIZE, PREDICTION_LENGTH, n_targets)) + 0.1
+    cov_factors = torch.randn(BATCH_SIZE, PREDICTION_LENGTH, n_targets * 1)  # rank = 1
 
     y_pred = torch.cat([mean, diag_vars, cov_factors], dim=-1)
 
@@ -212,10 +204,10 @@ def multivariate_normal_distribution_forecast():
     test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
     y_packed = rnn.pack_padded_sequence(
@@ -234,9 +226,6 @@ def negative_binomial_distribution_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
     mean = 100.0
     shape = 1.0
 
@@ -247,7 +236,7 @@ def negative_binomial_distribution_forecast():
         total_count=total_count, probs=probs
     )
 
-    neg_bin_target = neg_bin_dist.sample((batch_size, prediction_length))
+    neg_bin_target = neg_bin_dist.sample((BATCH_SIZE, PREDICTION_LENGTH))
     target_mean = neg_bin_target.mean(dim=1)
     target_std = neg_bin_target.std(dim=1)
 
@@ -257,8 +246,8 @@ def negative_binomial_distribution_forecast():
 
     y_pred = torch.stack(
         [
-            torch.randn(batch_size, prediction_length),
-            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+            torch.randn(BATCH_SIZE, PREDICTION_LENGTH),
+            torch.abs(torch.randn(BATCH_SIZE, PREDICTION_LENGTH)) + 0.1,
         ],
         dim=-1,
     )
@@ -267,10 +256,10 @@ def negative_binomial_distribution_forecast():
     test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
     y_packed = rnn.pack_padded_sequence(
@@ -293,14 +282,11 @@ def log_normal_distribution_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
     mean = 2.0
     std = 0.2
 
     log_normal_dist = torch.distributions.LogNormal(mean, std)
-    log_normal_target = log_normal_dist.sample((batch_size, prediction_length))
+    log_normal_target = log_normal_dist.sample((BATCH_SIZE, PREDICTION_LENGTH))
 
     target_mean = log_normal_target.mean(dim=1)
     target_std = log_normal_target.std(dim=1)
@@ -312,8 +298,8 @@ def log_normal_distribution_forecast():
     # create random prediction paired with a log normal distribution.
     y_pred = torch.stack(
         [
-            torch.randn(batch_size, prediction_length),
-            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+            torch.randn(BATCH_SIZE, PREDICTION_LENGTH),
+            torch.abs(torch.randn(BATCH_SIZE, PREDICTION_LENGTH)) + 0.1,
         ],
         dim=-1,
     )
@@ -335,14 +321,11 @@ def beta_distribution_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
     initial_mean = 2.0
     initial_shape = 5.0
 
     beta_dist = torch.distributions.Beta(initial_mean, initial_shape)
-    beta_target = beta_dist.sample((batch_size, prediction_length))
+    beta_target = beta_dist.sample((BATCH_SIZE, PREDICTION_LENGTH))
 
     target_mean = beta_target.mean(dim=1)
     target_std = beta_target.std(dim=1)
@@ -354,8 +337,8 @@ def beta_distribution_forecast():
     # create random prediction paired with a beta distribution.
     y_pred = torch.stack(
         [
-            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
-            torch.abs(torch.randn(batch_size, prediction_length)) + 0.1,
+            torch.abs(torch.randn(BATCH_SIZE, PREDICTION_LENGTH)) + 0.1,
+            torch.abs(torch.randn(BATCH_SIZE, PREDICTION_LENGTH)) + 0.1,
         ],
         dim=-1,
     )
@@ -365,10 +348,10 @@ def beta_distribution_forecast():
 
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
     y_packed = rnn.pack_padded_sequence(
@@ -389,10 +372,7 @@ def implicit_quantile_network_distribution_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
-    target = torch.randn(batch_size, prediction_length)
+    target = torch.randn(BATCH_SIZE, PREDICTION_LENGTH)
     target_mean = target.mean(dim=1)
     target_std = target.std(dim=1)
 
@@ -402,16 +382,16 @@ def implicit_quantile_network_distribution_forecast():
 
     output_size = 5
 
-    y_pred = torch.randn(batch_size, prediction_length, output_size)
+    y_pred = torch.randn(BATCH_SIZE, PREDICTION_LENGTH, output_size)
 
     test_cases = {}
     test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
     y_packed = rnn.pack_padded_sequence(
@@ -433,12 +413,9 @@ def mqf2_distribution_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
-
     hidden_size = 4  # default hidden size for MQF2.
 
-    target = torch.randn(batch_size, prediction_length)
+    target = torch.randn(BATCH_SIZE, PREDICTION_LENGTH)
     target_mean = target.mean(dim=1)
     target_std = target.std(dim=1)
 
@@ -446,16 +423,16 @@ def mqf2_distribution_forecast():
 
     y = (target, None)
 
-    y_pred = torch.randn(batch_size, prediction_length, hidden_size)
+    y_pred = torch.randn(BATCH_SIZE, PREDICTION_LENGTH, hidden_size)
 
     test_cases = {}
     test_cases["standard"] = {"x": x, "y": y, "y_pred": y_pred}
     lengths = torch.tensor(
         [
-            prediction_length,
-            prediction_length - 2,
-            prediction_length - 4,
-            prediction_length - 6,
+            PREDICTION_LENGTH,
+            PREDICTION_LENGTH - 2,
+            PREDICTION_LENGTH - 4,
+            PREDICTION_LENGTH - 6,
         ]
     )
     y_packed = rnn.pack_padded_sequence(
@@ -477,21 +454,17 @@ def classification_forecast():
     torch.manual_seed(42)
     np.random.seed(42)
 
-    batch_size, timesteps = 4, 20
-    prediction_length = timesteps // 2
     n_classes = 3
 
-    target = torch.randint(0, n_classes, size=(batch_size, prediction_length))
+    target = torch.randint(0, n_classes, size=(BATCH_SIZE, PREDICTION_LENGTH))
 
-    y_pred = torch.rand(batch_size, prediction_length, n_classes)
+    y_pred = torch.rand(BATCH_SIZE, PREDICTION_LENGTH, n_classes)
 
     x = {}
 
     y = (target, None)
 
-    prediction_length = timesteps // 2
-
-    y_pred = torch.rand(batch_size, prediction_length, n_classes)  # noqa: E501
+    y_pred = torch.rand(BATCH_SIZE, PREDICTION_LENGTH, n_classes)  # noqa: E501
 
     test_cases = {}
 
@@ -499,10 +472,10 @@ def classification_forecast():
 
     lengths = torch.tensor(
         [
-            prediction_length,
-            (prediction_length) - 2,
-            (prediction_length) - 4,
-            (prediction_length) - 6,
+            PREDICTION_LENGTH,
+            (PREDICTION_LENGTH) - 2,
+            (PREDICTION_LENGTH) - 4,
+            (PREDICTION_LENGTH) - 6,
         ]
     )
 
