@@ -30,7 +30,8 @@ and you should take into account. Here is an overview over the pros and cons of 
    :py:class:`~pytorch_forecasting.models.nhits.NHiTS`,                                                    "x",          "x",                "x",          "",               "",               "",           "",                            "",                        "",           1
    :py:class:`~pytorch_forecasting.models.deepar.DeepAR`,                                                  "x",          "x",                "x",          "",               "x",              "x",          "x [#deepvar]_ ",              "x",                       "",           3
    :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`,          "x",          "x",                "x",          "x",              "",               "x",          "",                            "x",                       "x",          4
-   :py:class:`~pytorch_forecasting.model.tide.TiDEModel`,                                                  "x",          "x",                "x",          "",               "",               "",           "",                            "x",                       "",           3
+   :py:class:`~pytorch_forecasting.models.tide.TiDEModel`,                                                 "x",          "x",                "x",          "",               "",               "",           "",                            "x",                       "",           3
+   :py:class:`~pytorch_forecasting.models.xlstm.xLSTMTime`,                                                "x",          "x",                "x",          "",               "",               "",           "",                            "x",                       "",           3
 
 .. [#deepvar] Accounting for correlations using a multivariate loss function which converts the network into a DeepVAR model.
 
@@ -71,7 +72,7 @@ a model that can learn relations between the timeseries can improve accuracy.
 Not that only :ref:`models that can process covariates <model-covariates>` can
 learn relationships between different timeseries.
 If the timeseries denote different entities or exhibit very similar patterns accross the board,
-a model such as :py:class:`~pytorch_forecasting.models.nbeats.NBeats` will work as well.
+a model such as :py:class:`~pytorch_forecasting.models.nbeats.NBeats` will not work as well.
 
 If you have only one or very few timeseries,
 they should be very long in order for a deep learning approach to work well. Consider also
