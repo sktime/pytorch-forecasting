@@ -57,9 +57,15 @@ def _integration(
         metadata, dict
     ), f"Expected metadata to be dict, got {type(metadata)}"
 
+    if "loss" in kwargs:
+        loss = kwargs["loss"]
+        kwargs.pop("loss")
+    else:
+        loss = nn.MSELoss()
+
     net = estimator_cls(
         metadata=metadata,
-        loss=nn.MSELoss(),
+        loss=loss,
         **kwargs,
     )
 
