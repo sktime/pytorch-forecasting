@@ -6,7 +6,6 @@ import torch.nn as nn
 from pytorch_forecasting.layers._dsipts import _sub_nn as sub_nn
 from pytorch_forecasting.layers._dsipts._residual_block_dsipts import ResidualBlock
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
-from pytorch_forecasting.utils._utils import beauty_string
 
 
 class TIDE(BaseModel):
