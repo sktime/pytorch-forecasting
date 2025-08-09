@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 import pickle
 import shutil
 import sys
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
+from test_models.conftest import make_dataloaders
 import torch
 
 from pytorch_forecasting import Baseline, TimeSeriesDataSet
@@ -28,18 +30,6 @@ from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
     optimize_hyperparameters,
 )
-
-if sys.version.startswith("3.6"):  # python 3.6 does not have nullcontext
-    from contextlib import contextmanager
-
-    @contextmanager
-    def nullcontext(enter_result=None):
-        yield enter_result
-
-else:
-    from contextlib import nullcontext
-
-from test_models.conftest import make_dataloaders
 
 
 def test_integration(multiple_dataloaders_with_covariates, tmp_path):

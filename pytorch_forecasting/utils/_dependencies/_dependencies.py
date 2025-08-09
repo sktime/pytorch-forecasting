@@ -5,6 +5,8 @@ Copied from sktime/skbase.
 
 from skbase.utils.dependencies._dependencies import _check_soft_dependencies
 
+__all__ = ["_check_soft_dependencies", "_check_matplotlib"]
+
 
 def _check_matplotlib(ref="This feature", raise_error=True):
     """Check if matplotlib is installed.
