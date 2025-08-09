@@ -54,8 +54,10 @@ from pytorch_forecasting.utils import (
     apply_to_list,
     concat_sequences,
     create_mask,
+    detach,
     get_embedding_size,
     groupby_apply,
+    move_to_device,
     to_list,
 )
 from pytorch_forecasting.utils._classproperty import classproperty
@@ -308,6 +310,8 @@ class PredictCallback(BasePredictionWriter):
         else:
             raise ValueError(f"Unknown mode {self.mode} - see docs for valid arguments")
 
+        out = move_to_device(detach(out), "cpu")
+        x = move_to_device(detach(x), "cpu")
         self._output.append(out)
         out = dict(output=out)
         if self.return_x:
@@ -720,7 +724,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         x, y = batch
         log, out = self.step(x, y, batch_idx)
-        self.training_step_outputs.append(log)
+        self.training_step_outputs.append(detach(log))
         return log
 
     def on_train_epoch_end(self):
@@ -739,7 +743,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         x, y = batch
         log, out = self.step(x, y, batch_idx)
         log.update(self.create_log(x, y, out, batch_idx))
-        self.validation_step_outputs.append(log)
+        self.validation_step_outputs.append(detach(log))
         return log
 
     def on_validation_epoch_end(self):
@@ -750,7 +754,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         x, y = batch
         log, out = self.step(x, y, batch_idx)
         log.update(self.create_log(x, y, out, batch_idx))
-        self.testing_step_outputs.append(log)
+        self.testing_step_outputs.append(detach(log))
         return log
 
     def on_test_epoch_end(self):
@@ -934,7 +938,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             loss.requires_grad_(True)
         self.log(
             f"{self.current_stage}_loss",
-            loss,
+            detach(loss),
             on_step=self.training,
             on_epoch=True,
             prog_bar=True,
