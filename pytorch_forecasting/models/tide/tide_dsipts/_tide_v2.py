@@ -186,11 +186,9 @@ class TIDE(BaseModel):
 
         if self.aux_past_channels > 0:  # if we have more numerical variables about past
             aux_num_past = batch["encoder_cont"]
-            assert self.aux_past_channels == aux_num_past.size(2), beauty_string(
+            assert self.aux_past_channels == aux_num_past.size(2), (
                 f"{self.aux_past_channels} LAYERS FOR PAST VARS AND "
-                f"{aux_num_past.size(2)} VARS",
-                "section",
-                True,
+                f"{aux_num_past.size(2)} VARS"
             )  # to check if we are using the expected number of variables about past
             # concat all embedded vars and mean of them
             aux_emb_num_past = torch.Tensor().to(self.device)
@@ -206,11 +204,9 @@ class TIDE(BaseModel):
         ):  # if we have more numerical variables about future
             # AUX means AUXILIARY variables
             aux_num_fut = batch["x_num_future"].to(self.device)
-            assert self.aux_fut_channels == aux_num_fut.size(2), beauty_string(
+            assert self.aux_fut_channels == aux_num_fut.size(2), (
                 f"{self.aux_fut_channels} LAYERS FOR PAST VARS AND "
-                f"{aux_num_fut.size(2)} VARS",
-                "section",
-                True,
+                f"{aux_num_fut.size(2)} VARS"
             )  # to check if we are using the expected number of variables about fut
             # concat all embedded vars and mean of them
             aux_emb_num_fut = torch.Tensor().to(self.device)
