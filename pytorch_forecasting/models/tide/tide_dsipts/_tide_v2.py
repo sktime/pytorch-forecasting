@@ -5,11 +5,18 @@ import torch.nn as nn
 
 from pytorch_forecasting.layers._dsipts import _sub_nn as sub_nn
 from pytorch_forecasting.layers._dsipts._residual_block_dsipts import ResidualBlock
-from pytorch_forecasting.models.base._base_dsipts_v2 import Base
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 from pytorch_forecasting.utils._utils import beauty_string
 
 
-class TIDE(Base):
+class TIDE(BaseModel):
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.tide.tide_dsipts import TIDE_pkg_v2
+
+        return TIDE_pkg_v2
+
     def __init__(
         self,
         metadata: dict,
@@ -40,7 +47,7 @@ class TIDE(Base):
         Every encoder and decoder head is composed by one Residual Block, like the temporal decoder and the feature projection for covariates.
         """  # noqa: E501
 
-        super().__init__(**kwargs)
+        super().__init__(loss=loss)
         self.save_hyperparameters(logger=False)
 
         self.dropout = dropout_rate
@@ -141,7 +148,7 @@ class TIDE(Base):
             self.future_steps * self.output_channels * self.mul,
         )
 
-    def forward(self, X: dict) -> float:
+    def forward(self, X: dict) -> dict:
         """training process of the diffusion network
 
         Args:
@@ -247,16 +254,14 @@ class TIDE(Base):
         )
         temp_dec_output = self.temporal_decoder(temp_dec_input, False)
         temp_dec_output = temp_dec_output.view(
-            B, self.future_steps, self.output_channels, self.mul
+            B, self.future_steps, self.output_channels
         )
 
         linear_regr = self.linear_target(y_past.view(B, -1))
-        linear_output = linear_regr.view(
-            B, self.future_steps, self.output_channels, self.mul
-        )
+        linear_output = linear_regr.view(B, self.future_steps, self.output_channels)
 
         output = temp_dec_output + linear_output
-        return output
+        return {"prediction": output}
 
     # function to concat embedded categorical variables
     def cat_categorical_vars(self, batch: dict):

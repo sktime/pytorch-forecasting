@@ -8,11 +8,11 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
 
     _tags = {
         "info:name": "TIDE",
-        "authors": ["agobbifbk"],
+        "authors": ["fbk_dsipts"],
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.tide.tide_dsipts._tide_v2 import TIDE
 
@@ -109,6 +109,8 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        import torch.nn as nn
+
         return [
             dict(
                 hidden_size=16,
@@ -124,6 +126,7 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
                 n_add_dec=2,
                 dropout_rate=0.2,
                 data_loader_kwargs=dict(max_encoder_length=5, max_prediction_length=3),
+                loss=nn.MSELoss(),
             ),
             dict(
                 hidden_size=64,
@@ -132,5 +135,6 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
                 n_add_dec=2,
                 dropout_rate=0.1,
                 data_loader_kwargs=dict(max_encoder_length=4, max_prediction_length=2),
+                loss=nn.PoissonNLLLoss(),
             ),
         ]
