@@ -385,7 +385,6 @@ def mock_device(request):
             patch("torch.cuda.is_available", return_value=True),
             patch("torch.cuda._lazy_init", return_value=None),
             patch("torch.cuda.device_count", return_value=1),
-            patch("torch.cuda.Device", return_value=mock_device),
             patch("torch.cuda.get_device_properties", return_value=mock_properties),
             patch("torch.cuda.get_device_capability", return_value=(8, 0)),
             patch("torch.cuda.set_device", return_value=None),
