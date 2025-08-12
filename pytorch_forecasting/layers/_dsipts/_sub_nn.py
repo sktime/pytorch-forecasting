@@ -9,12 +9,17 @@ class embedding_cat_variables(nn.Module):
     def __init__(self, seq_len: int, lag: int, d_model: int, emb_dims: list, device):
         """Class for embedding categorical variables, adding 3 positional variables during forward
 
-        Args:
-            seq_len (int): length of the sequence (sum of past and future steps)
-            lag (int): number of future step to be predicted
-            hiden_size (int): dimension of all variables after they are embedded
-            emb_dims (list): size of the dictionary for embedding. One dimension for each categorical variable
-            device : -
+        Parameters
+        ----------
+        seq_len: int
+            length of the sequence (sum of past and future steps)
+        lag: (int):
+            number of future step to be predicted
+        hiden_size: int
+            dimension of all variables after they are embedded
+        emb_dims: list
+            size of the dictionary for embedding. One dimension for each categorical variable
+        device : torch.device
         """  # noqa: E501
         super().__init__()
         self.seq_len = seq_len
@@ -29,15 +34,20 @@ class embedding_cat_variables(nn.Module):
         self, x: Union[torch.Tensor, int], device: torch.device
     ) -> torch.Tensor:
         """All components of x are concatenated with 3 new variables for data augmentation, in the order:
+
         - pos_seq: assign at each step its time-position
         - pos_fut: assign at each step its future position. 0 if it is a past step
         - is_fut: explicit for each step if it is a future(1) or past one(0)
 
-        Args:
-            x (torch.Tensor): [bs, seq_len, num_vars]
+        Parameters
+        ----------
+            x: torch.Tensor
+                `[bs, seq_len, num_vars]`
 
-        Returns:
-            torch.Tensor: [bs, seq_len, num_vars+3, n_embd]
+        Returns
+        ------
+            torch.Tensor:
+                `[bs, seq_len, num_vars+3, n_embd]`
         """  # noqa: E501
         if isinstance(x, int):
             no_emb = True

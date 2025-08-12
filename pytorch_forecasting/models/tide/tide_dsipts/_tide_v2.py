@@ -9,6 +9,13 @@ from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
 class TIDE(BaseModel):
+    """Long-term Forecasting with TiDE: Time-series Dense Encoder
+    https://arxiv.org/abs/2304.08424
+
+    This NN uses as subnet the ResidualBlocks, which is composed by skip connection and activation+dropout.
+    Every encoder and decoder head is composed by one Residual Block, like the temporal decoder and the feature projection for covariates.
+    """  # noqa: E501
+
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
@@ -20,12 +27,6 @@ class TIDE(BaseModel):
         self,
         metadata: dict,
         loss: nn.Module,
-        # out_channels: int,
-        # past_steps: int,
-        # future_steps: int,
-        # past_channels: int,
-        # future_channels: int,
-        # specific params
         hidden_size: int,
         d_model: int,
         n_add_enc: int,
@@ -39,12 +40,43 @@ class TIDE(BaseModel):
         scheduler_config: Union[dict, None] = None,
         **kwargs,
     ) -> None:
-        """Long-term Forecasting with TiDE: Time-series Dense Encoder
-        https://arxiv.org/abs/2304.08424
+        """Initialise the model.
 
-        This NN uses as subnet the ResidualBlocks, which is composed by skip connection and activation+dropout.
-        Every encoder and decoder head is composed by one Residual Block, like the temporal decoder and the feature projection for covariates.
-        """  # noqa: E501
+        Parameters
+        ----------
+        metadata : dict
+            Metadata for the model from ``EncoderDecoderDataModule``. This can include
+            information about the dataset, such as the number of time steps, number of
+            features, etc. It is used to initialize the model
+            and ensure it is compatible with the data being used.
+        loss : nn.Module
+            Loss function module (e.g., ``MSELoss``, ``QuantileLoss``).
+        hidden_size : int
+            Dimensionality of hidden layers in projections (R).
+        d_model : int
+            Dimensionality of model projections after feature projection (R̃).
+        n_add_enc : int
+            Number of additional encoder residual blocks (after the first).
+        n_add_dec : int
+            Number of additional decoder residual blocks (after the first).
+        dropout_rate : float
+            Dropout probability applied in residual blocks.
+        activation : str, optional
+            Name of activation function to use (e.g., ``"relu"``).
+        embs : list of int, optional
+            List specifying embedding sizes for categorical variables.
+        persistence_weight : float, optional
+            Weight for the persistence (autoregressive) component.
+        optim : str or None, optional
+            Name of optimizer (e.g., ``"adam"``), or None to use default.
+        optim_config : dict or None, optional
+            Optimizer configuration dictionary.
+        scheduler_config : dict or None, optional
+            Scheduler configuration dictionary.
+        **kwargs
+            Additional keyword arguments passed to `BaseModel`.
+
+        """
 
         super().__init__(loss=loss)
         self.save_hyperparameters(logger=False)
@@ -150,11 +182,15 @@ class TIDE(BaseModel):
     def forward(self, X: dict) -> dict:
         """training process of the diffusion network
 
-        Args:
-            x (dict): variables loaded
+        Parameters
+        ----------
+        X : dict
+            variables loaded
 
-        Returns:
-            float: total loss about the prediction of the noises over all subnets extracted
+        Returns
+        -------
+            float:
+                total loss about the prediction of the noises over all subnets extracted
         """  # noqa: E501
         if isinstance(X, tuple):
             x_batch, y_batch = X
@@ -262,10 +298,12 @@ class TIDE(BaseModel):
     def cat_categorical_vars(self, batch: dict):
         """Extracting categorical context about past and future
 
-        Args:
-            batch (dict): Keys checked -> ['x_cat_past', 'x_cat_future']
+        Parameters
+        --------
+        batch (dict): Keys checked -> ['x_cat_past', 'x_cat_future']
 
-        Returns:
+        Returns
+        -------
             List[torch.Tensor, torch.Tensor]: cat_emb_past, cat_emb_fut
         """
         cat_past = batch.get(
@@ -300,12 +338,14 @@ class TIDE(BaseModel):
     ) -> torch.Tensor:
         """Function to remove variables from tensors in chosen dimension and position
 
-        Args:
-            tensor (torch.Tensor): starting tensor
-            indexes_to_exclude (list): index of the chosen dimension we want t oexclude
-            dimension (int): dimension of the tensor on which we want to work (not list od dims!!)
+        Parameters
+        ----------
+        tensor (torch.Tensor): starting tensor
+        indexes_to_exclude (list): index of the chosen dimension we want t oexclude
+        dimension (int): dimension of the tensor on which we want to work (not list od dims!!)
 
-        Returns:
+        Returns
+        -------
             torch.Tensor: new tensor without the chosen variables
         """  # noqa: E501
 

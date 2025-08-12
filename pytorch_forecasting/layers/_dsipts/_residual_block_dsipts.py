@@ -12,11 +12,16 @@ class ResidualBlock(nn.Module):
 
         in_size and out_size to handle dimensions at different stages of the NN
 
-        Args:
-            in_size (int):
-            out_size (int):
-            dropout_rate (float):
-            activation_fun (str, optional): activation function to use in the Residual Block. Defaults to nn.ReLU.
+        Parameters
+        ----------
+        in_size: int
+            input size
+        out_size: int
+            output size
+        dropout_rate: float
+            dropout
+        activation_fun: str, Optional
+            activation function to use in the Residual Block. Defaults to nn.ReLU.
         """  # noqa: E501
         import ast
 
