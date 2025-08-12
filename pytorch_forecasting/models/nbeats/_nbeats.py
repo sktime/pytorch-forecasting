@@ -88,6 +88,13 @@ class NBeats(NBeatsAdapter):
         Additional arguments forwarded to :py:class:`~BaseModel`.
     """  # noqa: E501
 
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
+
+        return NBeats_pkg
+
     def __init__(
         self,
         stack_types: Optional[list[str]] = None,

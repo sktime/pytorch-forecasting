@@ -13,6 +13,15 @@ from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
 class TFT(BaseModel):
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
+            TFT_pkg_v2,
+        )
+
+        return TFT_pkg_v2
+
     def __init__(
         self,
         loss: nn.Module,
