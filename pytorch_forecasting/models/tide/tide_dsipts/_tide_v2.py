@@ -300,11 +300,13 @@ class TIDE(BaseModel):
 
         Parameters
         --------
-        batch (dict): Keys checked -> ['x_cat_past', 'x_cat_future']
+        batch: dict
+            dataloader batch
 
         Returns
         -------
-            List[torch.Tensor, torch.Tensor]: cat_emb_past, cat_emb_fut
+            List[torch.Tensor, torch.Tensor]:
+                cat_emb_past, cat_emb_fut
         """
         cat_past = batch.get(
             "encoder_cat",
@@ -340,13 +342,17 @@ class TIDE(BaseModel):
 
         Parameters
         ----------
-        tensor (torch.Tensor): starting tensor
-        indexes_to_exclude (list): index of the chosen dimension we want t oexclude
-        dimension (int): dimension of the tensor on which we want to work (not list od dims!!)
+        tensor: torch.Tensor
+            starting tensor
+        indexes_to_exclude: list
+            index of the chosen dimension we want t oexclude
+        dimension: int
+            dimension of the tensor on which we want to work (not list od dims!!)
 
         Returns
         -------
-            torch.Tensor: new tensor without the chosen variables
+            torch.Tensor:
+                new tensor without the chosen variables
         """  # noqa: E501
 
         remaining_idx = torch.tensor(
