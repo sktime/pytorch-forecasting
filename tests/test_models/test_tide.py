@@ -7,12 +7,12 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import pandas as pd
 import pytest
+from skbase.utils.dependencies import _check_soft_dependencies
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.models import TiDEModel
 from pytorch_forecasting.tests._conftest import make_dataloaders
-from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def _integration(
@@ -192,7 +192,7 @@ def test_pickle(model):
 
 
 @pytest.mark.skipif(
-    "matplotlib" not in _get_installed_packages(),
+    not _check_soft_dependencies("matplotlib", severity="none"),
     reason="skip test if required package matplotlib not installed",
 )
 def test_prediction_visualization(model, dataloaders_with_covariates):
