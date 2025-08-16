@@ -8,6 +8,7 @@ from pytorch_forecasting.layers._attention import (
     TriangularCausalMask,
 )
 from pytorch_forecasting.layers._decomposition import SeriesDecomposition
+from pytorch_forecasting.layers._dsipts import ResidualBlock, embedding_cat_variables
 from pytorch_forecasting.layers._embeddings import (
     DataEmbedding_inverted,
     EnEmbedding,
@@ -48,4 +49,6 @@ __all__ = [
     "sLSTMLayer",
     "sLSTMNetwork",
     "SeriesDecomposition",
+    "ResidualBlock",
+    "embedding_cat_variables",
 ]
