@@ -394,6 +394,7 @@ class MQF2DistributionLoss(DistributionLoss):
         self.prediction_length = prediction_length
         self.es_num_samples = es_num_samples
         self.beta = beta
+        self._transformation = None
 
         # define picnn
         convexnet = PICNN(
@@ -421,11 +422,19 @@ class MQF2DistributionLoss(DistributionLoss):
 
         self.picnn = SequentialNet(networks)
 
+    def to(self, device):
+        """Move the loss and its components to the specified device."""
+        self.picnn = self.picnn.to(device)
+        return super().to(device)
+
     @property
     def is_energy_score(self) -> bool:
         return self.es_num_samples is not None
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
+        if hasattr(self.picnn, "to"):
+            self.picnn = self.picnn.to(x.device)
+
         distr = self.distribution_class(
             picnn=self.picnn,
             hidden_state=x[..., :-2],
