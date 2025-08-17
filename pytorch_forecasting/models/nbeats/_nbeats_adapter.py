@@ -8,12 +8,12 @@ import torch
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
-from pytorch_forecasting.metrics import MASE
-from pytorch_forecasting.models.base_model import BaseModel
-from pytorch_forecasting.models.nbeats.sub_modules import (
+from pytorch_forecasting.layers._nbeats._blocks import (
     NBEATSSeasonalBlock,
     NBEATSTrendBlock,
 )
+from pytorch_forecasting.metrics import MASE
+from pytorch_forecasting.models.base_model import BaseModel
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 
