@@ -82,6 +82,31 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         **kwargs,
     )
 
+    x, y = next(iter(train_dataloader))
+    output = net(x)
+
+    # add test for the raw output shape from the model.
+    if isinstance(loss, QuantileLoss):
+        if len(net.target_positions) == 1:
+            # Single target case
+            assert output["prediction"].shape[2] == len(loss.quantiles)
+        else:
+            # Multiple target case
+            assert all(o.shape[2] == len(loss.quantiles) for o in output["prediction"])
+    else:
+        if len(net.target_positions) == 1:
+            # Single target case
+            assert output["prediction"].shape[2] == 1, (
+                "The output tensor should have a third dimension of size 1 for single",
+                "target.",
+            )
+        else:
+            # Multiple target case
+            assert all(o.shape[2] == 1 for o in output["prediction"]), (
+                "Each tensor in the output list should have a",
+                "third dimension of size 1.",
+            )
+
     try:
         trainer.fit(
             net,
