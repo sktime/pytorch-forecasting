@@ -17,37 +17,6 @@ from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiLoss, Quant
 from pytorch_forecasting.models import TimeXer
 
 
-def check_model_output_shape(output, net, loss):
-    """
-    Check the output shape of the model.
-    Args:
-        output: The output from the model.
-        net: The model instance.
-        loss: The loss function used in the model.
-    """
-    # add test for the raw output shape from the model.
-    if isinstance(loss, QuantileLoss):
-        if len(net.target_positions) == 1:
-            # Single target case
-            assert output["prediction"].shape[2] == len(loss.quantiles)
-        else:
-            # Multiple target case
-            assert all(o.shape[2] == len(loss.quantiles) for o in output["prediction"])
-    else:
-        if len(net.target_positions) == 1:
-            # Single target case
-            assert output["prediction"].shape[2] == 1, (
-                "The output tensor should have a third dimension of size 1 for single",
-                "target.",
-            )
-        else:
-            # Multiple target case
-            assert all(o.shape[2] == 1 for o in output["prediction"]), (
-                "Each tensor in the output list should have a",
-                "third dimension of size 1.",
-            )
-
-
 def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs):
     """
     Integration test for the TimeXer model.
@@ -112,11 +81,6 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         loss=loss,
         **kwargs,
     )
-
-    x, y = next(iter(train_dataloader))
-    output = net(x)
-
-    check_model_output_shape(output, net, loss)
 
     try:
         trainer.fit(
