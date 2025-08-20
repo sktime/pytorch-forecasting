@@ -126,6 +126,26 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
             trainer_kwargs=trainer_kwargs,
         )
 
+        predictions = net.predict(
+            val_dataloader,
+            return_index=True,
+            return_x=True,
+            return_y=True,
+            fast_dev_run=True,
+            trainer_kwargs=trainer_kwargs,
+        )
+
+        if isinstance(predictions.output, torch.Tensor):
+            assert predictions.output.ndim == 2, (
+                f"shapes of the output should be [batch_size, n_targets], "
+                f"but got {predictions.output.shape}"
+            )
+        else:
+            assert all(p.ndim for p in predictions.output), (
+                f"shapes of the output should be [batch_size, n_targets], "
+                f"but got {predictions.output.shape}"
+            )
+
     finally:
         # remove the temporary directory created for the test
         shutil.rmtree(tmp_path, ignore_errors=True)
