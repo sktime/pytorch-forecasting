@@ -1430,7 +1430,7 @@ class TimeSeriesDataSet(Dataset):
             time index
         """
 
-        def _to_tensor(cols, long=True) -> torch.Tensor:
+        def _to_tensor(cols, long=True, real=False) -> torch.Tensor:
             """Convert data[cols] to torch tensor.
 
             Converts sub-frames to numpy and then to torch tensor.
@@ -1439,16 +1439,21 @@ class TimeSeriesDataSet(Dataset):
             * float columns are converted to torch.float
             * integer columns are converted to torch.int64 or torch.long,
               depending on the long argument
+            * mixed columns are converted to their commonest type.
+            * if real argument is True, force the conversion to torch.float
             """
             if not isinstance(cols, list) and cols not in data.columns:
                 return None
             if isinstance(cols, list) and len(cols) == 0:
                 dtypekind = "f"
             elif isinstance(cols, list):  # and len(cols) > 0
-                dtypekind = data.dtypes[cols[0]].kind
+                # dtypekind = data.dtypes[cols[0]].kind
+                dtypekind = data[cols].to_numpy().dtype.kind
             else:
                 dtypekind = data.dtypes[cols].kind
-            if not long:
+            if real:
+                return torch.tensor(data[cols].to_numpy(np.float64), dtype=torch.float)
+            elif not long:
                 return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.int64)
             elif dtypekind in "bi":
                 return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.long)
