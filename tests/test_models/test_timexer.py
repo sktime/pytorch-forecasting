@@ -117,15 +117,6 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         net = TimeXer.load_from_checkpoint(
             trainer.checkpoint_callback.best_model_path,
         )
-
-        net.predict(
-            val_dataloader,
-            return_index=True,
-            return_x=True,
-            fast_dev_run=True,
-            trainer_kwargs=trainer_kwargs,
-        )
-
         predictions = net.predict(
             val_dataloader,
             return_index=True,
