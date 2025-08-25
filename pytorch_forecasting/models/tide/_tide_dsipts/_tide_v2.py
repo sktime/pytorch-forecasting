@@ -3,8 +3,8 @@ from typing import Union
 import torch
 import torch.nn as nn
 
-from pytorch_forecasting.layers._dsipts import _sub_nn as sub_nn
-from pytorch_forecasting.layers._dsipts._residual_block_dsipts import ResidualBlock
+from pytorch_forecasting.layers._blocks._residual_block_dsipts import ResidualBlock
+from pytorch_forecasting.layers._embeddings import _sub_nn as sub_nn
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -19,7 +19,7 @@ class TIDE(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.tide.tide_dsipts import TIDE_pkg_v2
+        from pytorch_forecasting.models.tide._tide_dsipts import TIDE_pkg_v2
 
         return TIDE_pkg_v2
 

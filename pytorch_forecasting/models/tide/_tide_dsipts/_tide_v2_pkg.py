@@ -14,7 +14,7 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.tide.tide_dsipts._tide_v2 import TIDE
+        from pytorch_forecasting.models.tide._tide_dsipts._tide_v2 import TIDE
 
         return TIDE
 
