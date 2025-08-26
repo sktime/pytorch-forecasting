@@ -1448,7 +1448,7 @@ class TimeSeriesDataSet(Dataset):
                 dtypekind = "f"
             elif isinstance(cols, list):  # and len(cols) > 0
                 # dtypekind = data.dtypes[cols[0]].kind
-                dtypekind = data[cols].to_numpy().dtype.kind
+                dtypekind = np.result_type(*data[cols].dtypes.to_list()).kind
             else:
                 dtypekind = data.dtypes[cols].kind
             if real:
