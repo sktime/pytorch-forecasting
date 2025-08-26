@@ -147,6 +147,13 @@ class NBeatsKAN(NBeatsAdapter):
     achieving strong zero-shot cross-market electricity price forecasting performance.
     """  # noqa: E501
 
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.nbeats._nbeatskan_pkg import NBeatsKAN_pkg
+
+        return NBeatsKAN_pkg
+
     def __init__(
         self,
         stack_types: Optional[list[str]] = None,
