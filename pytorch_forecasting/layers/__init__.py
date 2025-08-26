@@ -7,11 +7,13 @@ from pytorch_forecasting.layers._attention import (
     FullAttention,
     TriangularCausalMask,
 )
+from pytorch_forecasting.layers._blocks import ResidualBlock
 from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.layers._embeddings import (
     DataEmbedding_inverted,
     EnEmbedding,
     PositionalEmbedding,
+    embedding_cat_variables,
 )
 from pytorch_forecasting.layers._encoders import (
     Encoder,
@@ -50,4 +52,6 @@ __all__ = [
     "sLSTMNetwork",
     "SeriesDecomposition",
     "RevIN",
+    "ResidualBlock",
+    "embedding_cat_variables",
 ]
