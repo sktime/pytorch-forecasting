@@ -31,12 +31,22 @@ class Samformer(BaseModel):
         Weight for persistence baseline. Default is 0.0.
     """
 
+    @classmethod
+    def _pkg(cls):
+        """Return the package class for this model."""
+        from pytorch_forecasting.models.samformer._samformer_v2_pkg import (
+            Samformer_pkg_v2,
+        )
+
+        return Samformer_pkg_v2
+
     def __init__(
         self,
         loss: nn.Module,
         # specific params
         hidden_size: int,
         use_revin: bool,
+        # out_channels has to be 1, due to lack of MultiLoss support in v2.
         out_channels: Optional[Union[int, list[int]]] = 1,
         persistence_weight: float = 0.0,
         logging_metrics: Optional[list[nn.Module]] = None,
@@ -44,6 +54,8 @@ class Samformer(BaseModel):
         optimizer_params: Optional[dict] = None,
         lr_scheduler: Optional[str] = None,
         lr_scheduler_params: Optional[dict] = None,
+        metadata: Optional[dict] = None,
+        **kwargs,
     ):
         super().__init__(
             loss=loss,
@@ -55,15 +67,23 @@ class Samformer(BaseModel):
         )
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "optimizer"])
+        self.metadata = metadata
+        self.n_quantiles = 1
+
+        if hasattr(loss, "quantiles") and loss.quantiles is not None:
+            self.n_quantiles = len(loss.quantiles)
 
         self.max_encoder_length = self.metadata["max_encoder_length"]
         self.max_prediction_length = self.metadata["max_prediction_length"]
         self.encoder_cont = self.metadata["encoder_cont"]
-        self.encoder_input_dim = self.encoder_cont
-        self.decoder_cont = self.metadata["decoder_cont"]
-        self.decoder_input_dim = self.decoder_cont
+        self.encoder_input_dim = self.encoder_cont + 1  # +1 for target variable input.
 
         self.hidden_size = hidden_size
+        if out_channels != 1:
+            raise ValueError(
+                "out_channels has to be 1 for Samformer,",
+                " due to lack of MultiLoss support in v2.",
+            )
         self.out_channels = out_channels
         self.use_revin = use_revin
         self.persistence_weight = persistence_weight
@@ -94,7 +114,10 @@ class Samformer(BaseModel):
         dict[str, torch.Tensor]
             Output predictions.
         """
-        input_tensor = x.get("encoder_cont")
+        encoder_cont = x["encoder_cont"]
+        target = x["target_past"]
+        input_tensor = torch.cat((encoder_cont, target), dim=-1)
+        # batch_size = input_tensor.shape[0]
 
         if self.use_revin:
             x_norm = self.revin(input_tensor, mode="norm").transpose(1, 2)
@@ -110,25 +133,12 @@ class Samformer(BaseModel):
         out = x_norm + att_score
         out = self.linear_forecaster(out)
 
-        if self.use_revin:
-            out = self.revin(out, mode="denorm")
+        out = out.transpose(1, 2)
 
-        prediction = out.transpose(1, 2)  # (batch, timesteps, channels)
+        target_predictions = out[:, :, -1]  # (batch_size, max_prediction_length)
 
-        prediction = prediction[..., self.output_channel_indices]
-
-        # single target case.
-        if isinstance(self.out_channels, int) and self.out_channels == 1:
-            if prediction.shape[-1] != 1:
-                prediction = prediction[..., 0]
-            return {"predictions": prediction}
-
-        # multi-target case.
-        elif isinstance(self.out_channels, list):
-            predictions_list = []
-            target_pred = prediction[..., self.out_channels]
-            for i in range(len(self.out_channels)):
-                target_pred_i = target_pred[..., i]
-                predictions_list.append(target_pred_i)
-
-            return {"prediction": predictions_list}
+        if self.n_quantiles > 1:
+            target_predictions = target_predictions.expand(-1, -1, self.n_quantiles)
+        elif self.n_quantiles == 1:
+            target_predictions = target_predictions.unsqueeze(-1)
+        return {"prediction": target_predictions}

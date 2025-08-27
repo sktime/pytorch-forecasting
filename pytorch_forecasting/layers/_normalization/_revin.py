@@ -32,10 +32,20 @@ class RevIN(nn.Module):
         if self.affine:
             self._init_params()
 
+    def forward(self, x, mode: str):
+        if mode == "norm":
+            self._get_statistics(x)
+            x = self._normalize(x)
+        elif mode == "denorm":
+            x = self._denormalize(x)
+        else:
+            raise NotImplementedError
+        return x
+
     def _init_params(self):
         """Initialize learnable parameters if affine is True."""
-        self.weight = nn.Parameter(torch.ones(self.num_features))
-        self.bias = nn.Parameter(torch.zeros(self.num_features))
+        self.affine_weight = nn.Parameter(torch.ones(self.num_features))
+        self.affine_bias = nn.Parameter(torch.zeros(self.num_features))
 
     def _get_statistics(self, x):
         dim2reduce = tuple(range(1, x.ndim - 1))
