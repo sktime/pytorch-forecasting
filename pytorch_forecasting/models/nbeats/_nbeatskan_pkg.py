@@ -60,9 +60,24 @@ class NBeatsKAN_pkg(_BasePtForecaster):
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
-        """Get dataloaders from parameters."""
+        loss = params.get("loss", None)
+        data_loader_kwargs = params.get("data_loader_kwargs", {})
+        from pytorch_forecasting.metrics import TweedieLoss
         from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates,
             dataloaders_fixed_window_without_covariates,
+            make_dataloaders,
         )
+
+        if isinstance(loss, TweedieLoss):
+            dwc = data_with_covariates()
+            dl_default_kwargs = dict(
+                target="target",
+                time_varying_unknown_reals=["target"],
+                add_relative_time_idx=False,
+            )
+            dl_default_kwargs.update(data_loader_kwargs)
+            dataloaders_with_covariates = make_dataloaders(dwc, **dl_default_kwargs)
+            return dataloaders_with_covariates
 
         return dataloaders_fixed_window_without_covariates()
