@@ -2,6 +2,7 @@
 PyTorch Forecasting package for timeseries forecasting with PyTorch.
 """
 
+from pytorch_forecasting.utils._estimator_checks import check_estimator
 from pytorch_forecasting.utils._utils import (
     InitialParameterRepresenterMixIn,
     OutputMixIn,
@@ -48,4 +49,5 @@ __all__ = [
     "repr_class",
     "unpack_sequence",
     "unsqueeze_like",
+    "check_estimator",
 ]
