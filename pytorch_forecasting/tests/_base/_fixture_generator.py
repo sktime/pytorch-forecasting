@@ -1,7 +1,6 @@
 from inspect import isclass
 
-from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
-from skbase.testing import QuickTester
+from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator, QuickTester
 
 from pytorch_forecasting._registry import all_objects
 
