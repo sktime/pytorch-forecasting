@@ -85,6 +85,11 @@ def check_estimator(
     Running one specific test-fixture-combination for NBeats
 
     >>> check_estimator(
+    ...    NBeats
+    ... )
+    All tests PASSED!
+
+    >>> check_estimator(
     ...    NBeats, fixtures_to_run="test_pkg_linkage[NBeats-1]"
     ... )
     All tests PASSED!
