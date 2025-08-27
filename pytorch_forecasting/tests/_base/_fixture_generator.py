@@ -1,6 +1,7 @@
 from inspect import isclass
 
 from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator
+from skbase.testing import QuickTester
 
 from pytorch_forecasting._registry import all_objects
 
@@ -9,7 +10,7 @@ from pytorch_forecasting._registry import all_objects
 ONLY_CHANGED_MODULES = False
 
 
-class BaseFixtureGenerator(_BaseFixtureGenerator):
+class BaseFixtureGenerator(_BaseFixtureGenerator, QuickTester):
     """Fixture generator for base testing functionality in sktime.
 
     Test classes inheriting from this and not overriding pytest_generate_tests

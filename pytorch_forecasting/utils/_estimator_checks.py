@@ -85,11 +85,6 @@ def check_estimator(
     Running one specific test-fixture-combination for NBeats
 
     >>> check_estimator(
-    ...    NBeats
-    ... )
-    All tests PASSED!
-
-    >>> check_estimator(
     ...    NBeats, fixtures_to_run="test_pkg_linkage[NBeats-1]"
     ... )
     All tests PASSED!
@@ -220,7 +215,7 @@ def parametrize_with_checks(objs, obj_varname="obj", check_varname="test_name"):
     ... def test_sktime_compatible_estimator(estimator, test_name):
     ...     check_estimator(estimator, tests_to_run=test_name, raise_exceptions=True)
 
-    >>> @parametrize_with_checks([NBeats, DecoderMLPn])
+    >>> @parametrize_with_checks([NBeats, DecoderMLP])
     ... def test_sktime_compatible_estimators(obj, test_name):
     ...     check_estimator(obj, tests_to_run=test_name, raise_exceptions=True)
     """
