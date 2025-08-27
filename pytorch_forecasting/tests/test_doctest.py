@@ -2,10 +2,10 @@
 # copy of the sktime utility of the same name (BSD-3)
 """Doctest checks directed through pytest with conditional skipping."""
 
+from functools import lru_cache
 import importlib
 import inspect
 import pkgutil
-from functools import lru_cache
 
 EXCLUDE_MODULES_STARTING_WITH = ("all", "test")
 
