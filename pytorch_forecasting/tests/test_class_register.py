@@ -1,4 +1,5 @@
 # copyright: pytorch-forecasting developers, BSD-3-Clause License (see LICENSE file)
+# mostly based on the sktime utilities of the same name (BSD-3 Clause)
 """Registry and dispatcher for test classes.
 
 Module does not contain tests, only test utilities.

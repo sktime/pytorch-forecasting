@@ -1,3 +1,6 @@
+# copyright: pytorch-forecasting developers, BSD-3-Clause License (see LICENSE file)
+# mostly based on the sktime utility of the same name (BSD-3 Clause)
+# which in turn was inspired by the scikit-learn utility of the same name
 """Estimator checker for extension."""
 
 __author__ = ["fkiraly"]
