@@ -1436,11 +1436,15 @@ class TimeSeriesDataSet(Dataset):
             Converts sub-frames to numpy and then to torch tensor.
             Makes the following choices for types:
 
-            * float columns are converted to torch.float
-            * integer columns are converted to torch.int64 or torch.long,
-              depending on the long argument
-            * mixed columns are converted to their commonest type.
-            * if real argument is True, force the conversion to torch.float
+            - real is True:
+                * the sub-frame is converted to a torch.float32 tensor
+            - long is True (and real is False):
+                * the sub-frame is converted to a torch.long tensor
+            - real is False and long is False:
+                * if all columns are integer or boolean, the sub-frame is
+                  converted to a torch.int64 tensor
+                * if one column is a float, the sub-frame is converted to
+                  a torch.float32 tensor
             """
             if not isinstance(cols, list) and cols not in data.columns:
                 return None
