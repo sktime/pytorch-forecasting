@@ -87,11 +87,6 @@ def check_estimator(
     >>> check_estimator(
     ...    NBeats, fixtures_to_run="test_pkg_linkage[NBeats-1]"
     ... )
-    Test
-
-    >>> check_estimator(
-    ...    NBeats, fixtures_to_run="test_pkg_linkage[NBeats-1]"
-    ... )
     All tests PASSED!
     {'test_pkg_linkage[NBeats-1]': 'PASSED'}
     """
