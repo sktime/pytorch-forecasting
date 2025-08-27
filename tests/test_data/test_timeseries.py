@@ -678,3 +678,41 @@ def test_graph_sampler(test_dataset):
         if idx > 100:
             break
     print(a)
+
+
+def test_correct_dtype_inference():
+    # Create a small dataset
+    data = pd.DataFrame(
+        {
+            "time_idx": np.arange(30),
+            "value": np.sin(np.arange(30) / 5) + np.random.normal(scale=1, size=30),
+            "group": ["A"] * 30,
+        }
+    )
+
+    # Define the dataset
+    dataset = TimeSeriesDataSet(
+        data.copy(),
+        time_idx="time_idx",
+        target="value",
+        group_ids=["group"],
+        static_categoricals=["group"],
+        max_encoder_length=4,
+        max_prediction_length=2,
+        time_varying_unknown_reals=["value"],
+        target_normalizer=None,
+        # WATCH THIS
+        time_varying_known_reals=["time_idx"],
+        scalers=dict(time_idx=None),
+    )
+
+    # and the dataloader
+    dataloader = dataset.to_dataloader(batch_size=8)
+
+    x, y = next(iter(dataset))
+    # real features must be real
+    assert x["x_cont"].dtype is torch.float
+
+    x, y = next(iter(dataloader))
+    # real features must be real
+    assert x["encoder_cont"].dtype is torch.float
