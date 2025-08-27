@@ -174,8 +174,13 @@ class Samformer(BaseModel):
 
         target_predictions = out[:, :, -1]  # (batch_size, max_prediction_length)
 
+        if target_predictions.ndim == 1:
+            target_predictions = target_predictions.unsqueeze(0)
+
         if self.n_quantiles > 1:
-            target_predictions = target_predictions.expand(-1, -1, self.n_quantiles)
+            target_predictions = target_predictions.unsqueeze(-1).expand(
+                -1, -1, self.n_quantiles
+            )
         elif self.n_quantiles == 1:
             target_predictions = target_predictions.unsqueeze(-1)
         return {"prediction": target_predictions}

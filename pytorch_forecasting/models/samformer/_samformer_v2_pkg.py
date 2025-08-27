@@ -113,6 +113,8 @@ class Samformer_pkg_v2(_BasePtForecasterV2):
         """
         import torch.nn as nn
 
+        from pytorch_forecasting.metrics import QuantileLoss
+
         return [
             {
                 "loss": nn.MSELoss(),
@@ -125,10 +127,10 @@ class Samformer_pkg_v2(_BasePtForecasterV2):
                 "use_revin": True,
                 "out_channels": 1,
                 "persistence_weight": 0.0,
-                # "data_loader_kwargs": dict(
-                #     max_encoder_length=8,
-                #     max_prediction_length=2,
-                #     batch_size=2,
-                # ),  # noqa: E501
             },
+            # {
+            #     "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+            #     "hidden_size": 32,
+            #     "use_revin": False,
+            # },
         ]
