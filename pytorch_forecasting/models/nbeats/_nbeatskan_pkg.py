@@ -9,6 +9,8 @@ class NBeatsKAN_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "NBeatsKAN",
         "info:compute": 1,
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
         "authors": ["Sohaib-Ahmed21"],
         "capability:exogenous": False,
         "capability:multivariate": False,
