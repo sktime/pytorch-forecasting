@@ -711,8 +711,8 @@ def test_correct_dtype_inference():
 
     x, y = next(iter(dataset))
     # real features must be real
-    assert x["x_cont"].dtype is torch.float32
+    assert x["x_cont"].dtype is torch.float
 
     x, y = next(iter(dataloader))
     # real features must be real
-    assert x["encoder_cont"].dtype is torch.float32
+    assert x["encoder_cont"].dtype is torch.float
