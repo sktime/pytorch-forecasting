@@ -25,8 +25,17 @@ class NBeatsKAN_pkg(_BasePtForecaster):
         return NBeatsKAN
 
     @classmethod
-    def get_test_train_params(cls):
-        """Return testing parameter settings for the trainer."""
+    def get_base_test_params(cls):
+        """Return testing parameter settings for the trainer.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
         return [
             {"backcast_loss_ratio": 0.0},  # pure forecast loss
             {"backcast_loss_ratio": 1.0},  # equal forecast/backcast
