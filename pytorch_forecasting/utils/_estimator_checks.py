@@ -65,7 +65,7 @@ def check_estimator(
     Examples
     --------
     >>> from pytorch_forecasting.models import NBeats
-    >>> from pytorch_forecasting.utilss import check_estimator
+    >>> from pytorch_forecasting.utils import check_estimator
 
     Running all tests for NBeats class,
     this uses all instances from get_test_params and compatible scenarios
