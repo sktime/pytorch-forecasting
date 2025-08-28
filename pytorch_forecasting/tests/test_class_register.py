@@ -44,8 +44,8 @@ def get_test_classes_for_obj(obj):
         these are references to the actual classes, not strings
         if obj was not a descendant of BaseObject or BaseEstimator, returns empty list
     """
-    if hasattr(obj, "_pkg"):
-        obj = obj._pkg
+    if hasattr(obj, "pkg"):
+        obj = obj.pkg
 
     testclass_dict = get_test_class_registry()
 
