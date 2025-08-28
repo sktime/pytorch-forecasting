@@ -16,16 +16,25 @@ def check_estimator(
     tests_to_exclude=None,
     fixtures_to_exclude=None,
 ):
-    """Run all tests on one single estimator.
+    """Run all tests on one single estimator or pytorch-forecasting object.
 
-    Tests that are run on estimator:
-        all tests in test_all_estimators
-        all interface compatibility tests from the module of estimator's scitype
-            for example, test_all_forecasters if estimator is a forecaster
+    This utility runs all tests from the unified API conformance suites
+    applying to the estimator, including tests for the specific subtype
+    and all supertypes.
+
+    If ``estimator`` is an instance, tests are run on the specific instance
+    and its class;
+    if ``estimator`` is a class, tests are run on the class, and all instances
+    constructed via its ``create_test_instances_and_names`` method.
+
+    For packaged objects such as neural network models, fetches the package
+    class via the ``pkg`` attribute and also runs all tests on the package class.
 
     Parameters
     ----------
     estimator : estimator class or estimator instance
+        can be any object from ``pytorch-forecasting`` for which suite tests exist.
+
     raise_exceptions : bool, optional, default=False
         whether to return exceptions/failures in the results dict, or raise them
 
@@ -114,7 +123,7 @@ def check_estimator(
 
     for test_cls in test_clss_for_est:
         test_cls_results = test_cls().run_tests(
-            estimator=estimator,
+            obj=estimator,
             raise_exceptions=raise_exceptions,
             tests_to_run=tests_to_run,
             fixtures_to_run=fixtures_to_run,
