@@ -37,11 +37,12 @@ def b_batch(x, grid, k=0):
     pip install pykan
     Then use:
 
-    >>> from kan.spline import B_batch
+    >>> from pytorch_forecasting.layers._kan._utils import b_batch
     >>> import torch
     >>> x = torch.rand(100, 2)
     >>> grid = torch.linspace(-1, 1, steps=11)[None, :].expand(2, 11)
-    >>> B_batch(x, grid, k=3).shape
+    >>> b_batch(x, grid, k=3).shape
+    torch.Size([100, 2, 7])
     """
 
     x = x.unsqueeze(dim=2)
