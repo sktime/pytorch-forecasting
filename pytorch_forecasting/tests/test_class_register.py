@@ -50,7 +50,7 @@ def get_test_classes_for_obj(obj):
     testclass_dict = get_test_class_registry()
 
     try:
-        obj_scitypes = obj.get_tag("object_type")
+        obj_scitypes = obj.get_class_tag("object_type")
         if not isinstance(obj_scitypes, (list, tuple, set)):
             obj_scitypes = [obj_scitypes]
     except Exception:
