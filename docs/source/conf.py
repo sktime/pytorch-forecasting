@@ -18,6 +18,7 @@ import sys
 from sphinx.application import Sphinx
 from sphinx.ext.autosummary import Autosummary
 from sphinx.pycode import ModuleAnalyzer
+from sphinx.util import logging as sphinx_logging
 
 SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
@@ -148,8 +149,10 @@ def setup(app: Sphinx):
         if "model_overview" not in extensions:
             extensions.append("model_overview")
     except Exception as exc:
-        # avoid hard-failing docs builds; make the reason visible in Sphinx output
-        app.warn(f"model_overview extension not loaded: {exc}")
+        # avoid hard-failing docs builds; make the reason visible in Sphinx logs
+        sphinx_logging.getLogger(__name__).warning(
+            "model_overview extension not loaded: %s", exc
+        )
 
 
 # extension configuration
