@@ -147,8 +147,9 @@ def setup(app: Sphinx):
     try:
         if "model_overview" not in extensions:
             extensions.append("model_overview")
-    except Exception:
-        pass
+    except Exception as exc:
+        # avoid hard-failing docs builds; make the reason visible in Sphinx output
+        app.warn(f"model_overview extension not loaded: {exc}")
 
 
 # extension configuration
