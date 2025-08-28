@@ -7,7 +7,6 @@ listing all registry models with tags and links to API docs.
 from __future__ import annotations
 
 import os
-from typing import List
 
 
 def _safe_import_all_objects():
@@ -20,27 +19,24 @@ def _safe_import_all_objects():
         return None, e
 
 
-def _render_lines() -> List[str]:
+def _render_lines() -> list[str]:
     all_objects, err = _safe_import_all_objects()
 
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append("Models")
     lines.append("======")
     lines.append("")
-    lines.append(
-        "(This page is auto-generated from the registry at build time. Do not edit manually.)"
-    )
+    lines.append("(This page is auto-generated from the registry at build time.)")
+    lines.append("Do not edit manually.")
     lines.append("")
 
     if all_objects is None:
-        lines.extend(
-            [
-                ".. note::",
-                f"   Failed to import registry for model overview.",
-                f"   Build-time error: ``{err}``",
-                "",
-            ]
-        )
+        lines.extend([
+            ".. note::",
+            "   Failed to import registry for model overview.",
+            f"   Build-time error: ``{err}``",
+            "",
+        ])
         return lines
 
     try:
@@ -59,17 +55,15 @@ def _render_lines() -> List[str]:
             return_names=True,
         )
     except Exception as e:  # pragma: no cover - defensive
-        lines.extend(
-            [
-                ".. note::",
-                f"   Registry query failed: ``{e}``",
-                "",
-            ]
-        )
+        lines.extend([
+            ".. note::",
+            f"   Registry query failed: ``{e}``",
+            "",
+        ])
         return lines
 
     if df is None or len(df) == 0:
-        lines.extend([".. note::", "   No models found in registry.", ""]) 
+        lines.extend([".. note::", "   No models found in registry.", ""])
         return lines
 
     # header
@@ -77,9 +71,16 @@ def _render_lines() -> List[str]:
     lines.append("   :header-rows: 1")
     lines.append("   :widths: 28 10 10 12 14 16 12")
     lines.append("")
-    lines.append(
-        "   * - Model\n     - Version\n     - Covariates\n     - Multivariate\n     - Pred. intervals\n     - Flexible history\n     - Cold-start"
-    )
+    header_cols = [
+        "Model",
+        "Version",
+        "Covariates",
+        "Multivariate",
+        "Pred. intervals",
+        "Flexible history",
+        "Cold-start",
+    ]
+    lines.append("   * - " + "\n     - ".join(header_cols))
 
     # rows
     for _, row in df.sort_values("names").iterrows():
@@ -97,13 +98,20 @@ def _render_lines() -> List[str]:
                 return ""
             return "?"
 
-        lines.append(
-            "   * - "
-            + f":py:class:`~{qualname}`\n     - {row.get('object_type', '')}\n     - {_mark(row.get('capability:exogenous'))}\n     - {_mark(row.get('capability:multivariate'))}\n     - {_mark(row.get('capability:pred_int'))}\n     - {_mark(row.get('capability:flexible_history_length'))}\n     - {_mark(row.get('capability:cold_start'))}"
-        )
+        row_cells = [
+            f":py:class:`~{qualname}`",
+            f"{row.get('object_type', '')}",
+            _mark(row.get("capability:exogenous")),
+            _mark(row.get("capability:multivariate")),
+            _mark(row.get("capability:pred_int")),
+            _mark(row.get("capability:flexible_history_length")),
+            _mark(row.get("capability:cold_start")),
+        ]
+        lines.append("   * - " + "\n     - ".join(row_cells))
 
     lines.append("")
     return lines
+
 
 
 def _write_models_rst(app) -> None:
@@ -113,6 +121,7 @@ def _write_models_rst(app) -> None:
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     with open(out_file, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
+
 
 
 def setup(app):
