@@ -16,7 +16,7 @@ class TFT_pkg_v2(_BasePtForecasterV2):
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.temporal_fusion_transformer._tft_v2 import TFT
 

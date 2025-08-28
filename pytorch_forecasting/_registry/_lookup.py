@@ -16,7 +16,7 @@ from pathlib import Path
 
 from skbase.lookup import all_objects as _all_objects
 
-from pytorch_forecasting.models.base import _BaseObject
+from pytorch_forecasting.base._base_object import _BaseObject
 
 
 def all_objects(

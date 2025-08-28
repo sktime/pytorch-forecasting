@@ -1,9 +1,13 @@
+from functools import wraps
 import itertools
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 import torch
 from torch.nn.utils import rnn
 
+from pytorch_forecasting import TemporalFusionTransformer, TimeSeriesDataSet
+from pytorch_forecasting.data import NaNLabelEncoder
 from pytorch_forecasting.data.encoders import TorchNormalizer
 from pytorch_forecasting.metrics import (
     MAE,
@@ -15,7 +19,11 @@ from pytorch_forecasting.metrics import (
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
-from pytorch_forecasting.metrics.base_metrics import AggregationMetric, CompositeMetric
+from pytorch_forecasting.metrics.base_metrics import (
+    AggregationMetric,
+    CompositeMetric,
+)
+from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def test_composite_metric():
@@ -301,3 +309,264 @@ def test_ImplicitQuantileNetworkDistributionLoss():
 
     point_prediction = loss.to_prediction(pred, n_samples=None)
     assert point_prediction.ndim == loss.to_prediction(pred, n_samples=100).ndim
+
+
+@pytest.fixture
+def sample_dataset():
+    """Fixture to create a sample TimeSeriesDataSet for testing."""
+    import numpy as np
+    import pandas as pd
+
+    rows = 15
+    df = pd.DataFrame(
+        {
+            "time": pd.date_range("2025-01-01", periods=rows, freq="h"),
+            "label": ["test"] * rows,
+            "var1": np.random.randn(rows).cumsum(),
+            "var2": np.random.randn(rows).cumsum(),
+        }
+    )
+    df = df.sort_values("time").reset_index(drop=True)
+    df["past_var1"] = df["var1"].shift(-1)
+    df.dropna(subset=["past_var1"], inplace=True)
+    df["time_idx"] = range(len(df))
+    return TimeSeriesDataSet(
+        df,
+        time_idx="time_idx",
+        target="past_var1",
+        group_ids=["label"],
+        static_categoricals=["label"],
+        time_varying_known_reals=["var1", "var2"],
+        time_varying_unknown_reals=["past_var1"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        categorical_encoders={"label": NaNLabelEncoder(add_nan=False)},
+    )
+
+
+@pytest.fixture(params=["cuda", "cpu"])
+def mock_device(request):
+    """Fixture to create a mock device for testing."""
+    # Create a torch.device object
+    device_str = f"{request.param}:0" if request.param == "cuda" else "cpu"
+    mock_device = torch.device(device_str)
+
+    orig_tensor = torch.tensor
+    orig_empty = torch.empty
+
+    @wraps(orig_tensor)
+    def mock_tensor(data, *args, **kwargs):
+        # Force device to CPU
+        kwargs["device"] = "cpu"
+        tensor = orig_tensor(data, *args, **kwargs)
+        tensor.device = mock_device
+        return tensor
+
+    @wraps(orig_empty)
+    def mock_empty(*args, **kwargs):
+        kwargs["device"] = "cpu"
+        tensor = orig_empty(*args, **kwargs)
+        tensor.device = mock_device
+        return tensor
+
+    if request.param == "cuda":
+        mock_properties = type(
+            "CudaDeviceProperties",
+            (),
+            {
+                "major": 8,
+                "minor": 0,
+                "name": "Mocked CUDA Device",
+                "total_memory": 8 * 1024 * 1024 * 1024,
+            },
+        )()
+
+        with (
+            patch("torch.cuda.is_available", return_value=True),
+            patch("torch.cuda._lazy_init", return_value=None),
+            patch("torch.cuda.device_count", return_value=1),
+            patch("torch.cuda.get_device_properties", return_value=mock_properties),
+            patch("torch.cuda.get_device_capability", return_value=(8, 0)),
+            patch("torch.cuda.set_device", return_value=None),
+            patch("torch.empty", new=mock_empty),
+            patch("torch.tensor", new=mock_tensor),
+            patch(
+                "torch.Tensor.to",
+                new=lambda self, device, *args, **kwargs: self.clone()
+                if isinstance(device, (str, torch.device))
+                and str(device).startswith("cuda")
+                else self,
+            ),
+            patch(
+                "torch.Tensor.device",
+                new_callable=PropertyMock,
+                return_value=mock_device,
+            ),
+            patch("torch.Tensor.cuda", new=lambda self, *args, **kwargs: self.clone()),
+            patch("torch.nn.Module.cuda", new=lambda self, *args, **kwargs: self),
+            patch("torch.nn.Module.to", new=lambda self, device, *args, **kwargs: self),
+        ):
+            yield "cuda"
+    else:
+        yield "cpu"
+
+
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
+)
+def test_MQF2DistributionLoss_device_handling(mock_device):
+    from pytorch_forecasting.metrics import MQF2DistributionLoss
+
+    loss = MQF2DistributionLoss(prediction_length=2)
+
+    assert next(loss.picnn.parameters()).device.type == mock_device
+
+    if mock_device == "cuda":
+        loss.cuda()
+        assert next(loss.picnn.parameters()).device.type == "cuda"
+    elif mock_device == "cpu":
+        loss.cpu()
+        assert next(loss.picnn.parameters()).device.type == "cpu"
+    loss.to(mock_device)
+    assert next(loss.picnn.parameters()).device.type == mock_device
+
+
+device_params = [
+    pytest.param(
+        "cuda",
+        marks=pytest.mark.skipif(
+            not torch.cuda.is_available(), reason="CUDA is not available"
+        ),
+    ),
+    "cpu",
+]
+
+
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
+)
+@pytest.mark.parametrize("device", device_params)
+def test_MQF2DistributionLoss_full_workflow(sample_dataset, device):
+    """
+    Test the complete workflow from training to prediction with MQF2DistributionLoss.
+    """
+    import lightning.pytorch as pl
+
+    from pytorch_forecasting.metrics import MQF2DistributionLoss
+
+    model = TemporalFusionTransformer.from_dataset(
+        sample_dataset, loss=MQF2DistributionLoss(prediction_length=2)
+    )
+
+    trainer = pl.Trainer(
+        max_epochs=1,
+        accelerator=device,
+        devices="auto",
+        gradient_clip_val=0.1,
+        limit_train_batches=30,
+        limit_val_batches=3,
+    )
+    dataloader = sample_dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
+
+    trainer.fit(model, dataloader)
+
+    raw_predictions = model.predict(
+        dataloader,
+        mode="raw",
+        return_x=True,
+        trainer_kwargs=dict(accelerator=device, devices="auto", logger=False),
+    )
+    # Verify predictions are on correct device
+    pred_device = raw_predictions.output["prediction"].device.type
+    target_device = raw_predictions.x["encoder_target"].device.type
+    assert pred_device == device
+    assert target_device == device
+    try:
+        model.plot_prediction(raw_predictions.x, raw_predictions.output, idx=0)
+        plot_success = True
+    except RuntimeError as e:
+        if "device" in str(e).lower() or "expected" in str(e).lower():
+            plot_success = False
+            pytest.fail(f"Device mismatch error during plotting: {e}")
+        else:
+            raise e
+    assert plot_success, "Plotting failed due to device mismatch"
+
+
+@pytest.mark.skipif(
+    "cpflows" not in _get_installed_packages(),
+    reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
+)
+def test_MQF2DistributionLoss_device_synchronization(mock_device, sample_dataset):
+    """Test that MQF2DistributionLoss components are synchronized with the device."""
+    from pytorch_forecasting.metrics import MQF2DistributionLoss
+
+    model = TemporalFusionTransformer.from_dataset(
+        sample_dataset, loss=MQF2DistributionLoss(prediction_length=2)
+    )
+    fake_prediction = torch.randn(4, 2, 8)
+
+    if mock_device == "cuda":
+        fake_prediction = fake_prediction.cuda()
+        model.loss.map_x_to_distribution(fake_prediction)
+        assert next(model.loss.picnn.parameters()).device.type == "cuda"
+    if mock_device == "cpu":
+        fake_prediction = fake_prediction.cpu()
+        model.loss.map_x_to_distribution(fake_prediction)
+        assert next(model.loss.picnn.parameters()).device.type == "cpu"
+
+
+def test_CrossEntropyLoss():
+    batch_size = 3
+    n_timesteps = 5
+    n_classes = 3
+
+    target = torch.randint(0, n_classes, (batch_size, n_timesteps))
+
+    y_pred = torch.rand((batch_size, n_timesteps, n_classes))
+
+    from pytorch_forecasting.metrics import CrossEntropy
+
+    loss = CrossEntropy()
+    res = loss(y_pred, target)
+    assert isinstance(res, torch.Tensor)
+    assert res.ndim == 0
+
+    point_prediction = loss.to_prediction(y_pred)
+    assert point_prediction.shape == (batch_size, n_timesteps)
+    assert point_prediction.dtype == torch.int64
+
+
+def test_MASE():
+    batch_size = 4
+    encoder_length = 10
+    decoder_length = 5
+
+    encoder_target = torch.rand((batch_size, encoder_length))
+    decoder_target = torch.rand((batch_size, decoder_length))
+
+    y_pred = torch.rand((batch_size, decoder_length))
+
+    # create encoder_lengths tensor with value `encoder_length` for each batch.
+    encoder_lengths = torch.full((batch_size,), encoder_length, dtype=torch.long)
+
+    from pytorch_forecasting.metrics import MASE
+
+    metric = MASE()
+
+    metric.update(y_pred, decoder_target, encoder_target, encoder_lengths)
+    loss_val = metric.compute()
+    assert isinstance(loss_val, torch.Tensor)
+    assert loss_val.ndim == 0, "MASE should return a scalar value"
+
+    scaling = MASE.calculate_scaling(
+        decoder_target,
+        torch.full((batch_size,), decoder_length, dtype=torch.long),
+        encoder_target,
+        encoder_lengths,
+    )
+
+    assert scaling.shape == (batch_size,)
+    assert (scaling > 0).all(), "Scaling should be positive"

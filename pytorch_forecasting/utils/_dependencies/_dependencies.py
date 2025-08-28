@@ -16,7 +16,11 @@ def _get_installed_packages_private():
     from importlib.metadata import distributions, version
 
     dists = distributions()
-    package_names = {dist.metadata["Name"] for dist in dists}
+    package_names = {
+        dist.metadata["Name"]
+        for dist in dists
+        if dist.metadata and "Name" in dist.metadata
+    }
     package_versions = {pkg_name: version(pkg_name) for pkg_name in package_names}
     # developer note:
     # we cannot just use distributions naively,

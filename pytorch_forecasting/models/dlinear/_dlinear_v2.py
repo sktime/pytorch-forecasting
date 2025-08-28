@@ -63,6 +63,13 @@ class DLinear(TslibBaseModel):
         will be accomodated in future versions.
     """
 
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.dlinear._dlinear_pkg_v2 import DLinear_pkg_v2
+
+        return DLinear_pkg_v2
+
     def __init__(
         self,
         loss: nn.Module,
@@ -102,9 +109,9 @@ class DLinear(TslibBaseModel):
 
     def _weight_init(self, m: nn.Module):
         if isinstance(m, nn.Linear):
-            nn.init.constant(m.weight.data, 1.0 / self.context_length)
+            nn.init.constant_(m.weight.data, 1.0 / self.context_length)
             if m.bias is not None:
-                nn.init.constant(m.bias.data, 0.0)
+                nn.init.constant_(m.bias.data, 0.0)
 
     def _init_network(self):
         """

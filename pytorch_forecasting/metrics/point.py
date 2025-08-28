@@ -166,7 +166,7 @@ class MASE(MultiHorizonMetric):
     """
     Mean absolute scaled error
 
-    Defined as ``(y_pred - target).abs() / all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
+    Defined as ``(y_pred - target).abs() / (all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
     ``all_targets`` are here the concatenated encoder and decoder targets
     """  # noqa: E501
 

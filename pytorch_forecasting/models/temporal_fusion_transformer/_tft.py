@@ -127,6 +127,15 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
     **kwargs: additional arguments to :py:class:`~BaseModel`.
     """  # noqa: E501
 
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg import (
+            TemporalFusionTransformer_pkg,
+        )
+
+        return TemporalFusionTransformer_pkg
+
     def __init__(
         self,
         hidden_size: int = 16,

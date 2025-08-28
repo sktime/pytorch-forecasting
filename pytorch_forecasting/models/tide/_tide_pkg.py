@@ -9,6 +9,8 @@ class TiDEModel_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "TiDEModel",
         "info:compute": 3,
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
         "authors": ["Sohaib-Ahmed21"],
         "capability:exogenous": True,
         "capability:multivariate": True,
@@ -18,14 +20,14 @@ class TiDEModel_pkg(_BasePtForecaster):
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.tide import TiDEModel
 
         return TiDEModel
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_base_test_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns
@@ -35,7 +37,6 @@ class TiDEModel_pkg(_BasePtForecaster):
         """
 
         from pytorch_forecasting.data.encoders import GroupNormalizer
-        from pytorch_forecasting.metrics import SMAPE
 
         params = [
             {
@@ -52,7 +53,6 @@ class TiDEModel_pkg(_BasePtForecaster):
             {
                 "dropout": 0.2,
                 "use_layer_norm": True,
-                "loss": SMAPE(),
                 "data_loader_kwargs": dict(
                     target_normalizer=GroupNormalizer(
                         groups=["agency", "sku"], transformation="softplus"
@@ -83,10 +83,14 @@ class TiDEModel_pkg(_BasePtForecaster):
             Train, validation, and test dataloaders.
         """
         trainer_kwargs = params.get("trainer_kwargs", {})
-        clip_target = params.get("clip_target", False)
+        loss = params.get("loss", None)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        from pytorch_forecasting.metrics import (
+            NegativeBinomialDistributionLoss,
+            PoissonLoss,
+            TweedieLoss,
+        )
         from pytorch_forecasting.tests._conftest import make_dataloaders
         from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
@@ -98,7 +102,7 @@ class TiDEModel_pkg(_BasePtForecaster):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
 
         dwc = dwc.copy()
-        if clip_target:
+        if isinstance(loss, (TweedieLoss, PoissonLoss)):
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
         else:
             dwc["target"] = dwc["volume"]
