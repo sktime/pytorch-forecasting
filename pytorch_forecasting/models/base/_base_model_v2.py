@@ -91,18 +91,6 @@ class BaseModel(LightningModule):
         """
         raise NotImplementedError("Forward method must be implemented by subclass.")
 
-    def _calculate_loss(
-        self, y_hat: Union[torch.Tensor, list], y: Union[torch.Tensor, list]
-    ) -> torch.Tensor:
-        """Helper function to calculate loss for single or multi-target cases."""
-        if isinstance(y, (list, tuple)):
-            total_loss = 0.0
-            for pred, target in zip(y_hat, y):
-                total_loss += self.loss(pred, target)
-            return total_loss / len(y)
-        else:  # Single-target case
-            return self.loss(y_hat, y)
-
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
