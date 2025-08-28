@@ -23,6 +23,12 @@ SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
 
 sys.path.insert(0, str(PROJECT_PATH))  # noqa
+sys.path.insert(0, os.path.abspath("../.."))
+
+# make the local _ext folder importable
+_EXT_PATH = SOURCE_PATH.joinpath("_ext")
+if str(_EXT_PATH) not in sys.path:
+    sys.path.insert(0, str(_EXT_PATH))
 
 import pytorch_forecasting  # isort:skip
 
@@ -137,6 +143,12 @@ def setup(app: Sphinx):
     app.connect("autodoc-skip-member", skip)
     app.add_directive("moduleautosummary", ModuleAutoSummary)
     app.add_js_file("https://buttons.github.io/buttons.js", **{"async": "async"})
+    # load custom model overview generator if available
+    try:
+        if "model_overview" not in extensions:
+            extensions.append("model_overview")
+    except Exception:
+        pass
 
 
 # extension configuration
@@ -190,3 +202,6 @@ suppress_warnings = [
 nbsphinx_execute = "never"  # always
 nbsphinx_allow_errors = False  # False
 nbsphinx_timeout = 600  # seconds
+
+
+# (model overview generation moved to docs/source/_ext/model_overview.py)
