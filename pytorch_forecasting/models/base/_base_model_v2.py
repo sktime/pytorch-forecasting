@@ -14,13 +14,14 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.metrics import Metric
 from pytorch_forecasting.utils._classproperty import classproperty
 
 
 class BaseModel(LightningModule):
     def __init__(
         self,
-        loss: nn.Module,
+        loss: Metric,
         logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[dict] = None,
@@ -32,7 +33,7 @@ class BaseModel(LightningModule):
 
         Parameters
         ----------
-        loss : nn.Module
+        loss : Metric
             Loss function to use for training.
         logging_metrics : Optional[List[nn.Module]], optional
             List of metrics to log during training, validation, and testing.
@@ -89,6 +90,18 @@ class BaseModel(LightningModule):
             Dictionary containing output tensors
         """
         raise NotImplementedError("Forward method must be implemented by subclass.")
+
+    def _calculate_loss(
+        self, y_hat: Union[torch.Tensor, list], y: Union[torch.Tensor, list]
+    ) -> torch.Tensor:
+        """Helper function to calculate loss for single or multi-target cases."""
+        if isinstance(y, (list, tuple)):
+            total_loss = 0.0
+            for pred, target in zip(y_hat, y):
+                total_loss += self.loss(pred, target)
+            return total_loss / len(y)
+        else:  # Single-target case
+            return self.loss(y_hat, y)
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
