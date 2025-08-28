@@ -4,6 +4,7 @@ Sphinx extension: Auto-generate pytorch_forecasting model overview.
 This writes/overwrites docs/source/models.rst during the build,
 listing all registry models with tags and links to API docs.
 """
+
 from __future__ import annotations
 
 import os
@@ -31,12 +32,14 @@ def _render_lines() -> list[str]:
     lines.append("")
 
     if all_objects is None:
-        lines.extend([
-            ".. note::",
-            "   Failed to import registry for model overview.",
-            f"   Build-time error: ``{err}``",
-            "",
-        ])
+        lines.extend(
+            [
+                ".. note::",
+                "   Failed to import registry for model overview.",
+                f"   Build-time error: ``{err}``",
+                "",
+            ]
+        )
         return lines
 
     try:
@@ -55,11 +58,13 @@ def _render_lines() -> list[str]:
             return_names=True,
         )
     except Exception as e:  # pragma: no cover - defensive
-        lines.extend([
-            ".. note::",
-            f"   Registry query failed: ``{e}``",
-            "",
-        ])
+        lines.extend(
+            [
+                ".. note::",
+                f"   Registry query failed: ``{e}``",
+                "",
+            ]
+        )
         return lines
 
     if df is None or len(df) == 0:
@@ -113,15 +118,43 @@ def _render_lines() -> list[str]:
     return lines
 
 
+def _is_safe_mode() -> bool:
+    """Return True if we should avoid heavy registry imports (e.g., on RTD)."""
+    if os.environ.get("READTHEDOCS", "").lower() in {"1", "true", "yes"}:
+        return True
+    if os.environ.get("PF_SKIP_MODEL_OVERVIEW", "").lower() in {"1", "true", "yes"}:
+        return True
+    return False
+
 
 def _write_models_rst(app) -> None:
     # confdir is docs/source
     out_file = os.path.join(app.confdir, "models.rst")
-    lines = _render_lines()
+    try:
+        if _is_safe_mode():
+            # minimal page on hosted builders to avoid heavy optional deps
+            lines = [
+                "Models",
+                "======",
+                "",
+                "(Model overview generation is disabled in this build environment.)",
+                "Use a local build to view the full, registry-driven table.",
+                "",
+            ]
+        else:
+            lines = _render_lines()
+    except Exception as exc:  # pragma: no cover - defensive
+        lines = [
+            "Models",
+            "======",
+            "",
+            "(Model overview could not be generated due to a build-time error.)",
+            f"Error: ``{exc}``",
+            "",
+        ]
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     with open(out_file, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
-
 
 
 def setup(app):
@@ -131,5 +164,3 @@ def setup(app):
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }
-
-
