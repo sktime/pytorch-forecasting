@@ -125,6 +125,9 @@ class ModuleAutoSummary(Autosummary):
     def get_items(self, names):
         new_names = []
         for name in names:
+            # Skip if module doesn't exist in sys.modules
+            if name not in sys.modules:
+                continue
             mod = sys.modules[name]
             mod_items = getattr(mod, "__all__", mod.__dict__)
             for t in mod_items:
