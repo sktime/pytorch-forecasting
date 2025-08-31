@@ -49,11 +49,9 @@ def _render_lines() -> list[str]:
             return_tags=[
                 "object_type",
                 "info:name",
-                "capability:exogenous",
-                "capability:multivariate",
-                "capability:pred_int",
-                "capability:flexible_history_length",
-                "capability:cold_start",
+                "authors",
+                "maintainers",
+                "dependencies",
             ],
             return_names=True,
         )
@@ -74,16 +72,14 @@ def _render_lines() -> list[str]:
     # header
     lines.append(".. list-table:: Available forecasting models")
     lines.append("   :header-rows: 1")
-    lines.append("   :widths: 28 10 10 12 14 16 12")
+    lines.append("   :widths: 30 15 20 20 15")
     lines.append("")
     header_cols = [
-        "Model",
-        "Version",
-        "Covariates",
-        "Multivariate",
-        "Pred. intervals",
-        "Flexible history",
-        "Cold-start",
+        "Class Name",
+        "Estimator Type",
+        "Authors",
+        "Maintainers",
+        "Dependencies",
     ]
     lines.append("   * - " + "\n     - ".join(header_cols))
 
@@ -96,21 +92,26 @@ def _render_lines() -> list[str]:
         except Exception:
             qualname = f"{pkg_cls.__module__}.{pkg_cls.__name__}"
 
-        def _mark(v):
-            if v is True:
-                return "x"
-            if v is False:
-                return ""
-            return "?"
+        # Get object type (forecaster_pytorch_v1 or forecaster_pytorch_v2)
+        object_type = row.get("object_type", "")
+        if object_type == "forecaster_pytorch_v1":
+            estimator_type = "forecaster_v1"
+        elif object_type == "forecaster_pytorch_v2":
+            estimator_type = "forecaster_v2"
+        else:
+            estimator_type = object_type
+
+        # Get authors and maintainers from tags
+        authors = row.get("authors", "pytorch-forecasting developers")
+        maintainers = row.get("maintainers", "pytorch-forecasting developers")
+        dependencies = row.get("dependencies", "None")
 
         row_cells = [
             f":py:class:`~{qualname}`",
-            f"{row.get('object_type', '')}",
-            _mark(row.get("capability:exogenous")),
-            _mark(row.get("capability:multivariate")),
-            _mark(row.get("capability:pred_int")),
-            _mark(row.get("capability:flexible_history_length")),
-            _mark(row.get("capability:cold_start")),
+            estimator_type,
+            authors,
+            maintainers,
+            dependencies,
         ]
         lines.append("   * - " + "\n     - ".join(row_cells))
 
