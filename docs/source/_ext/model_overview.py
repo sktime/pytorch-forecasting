@@ -50,8 +50,7 @@ def _render_lines() -> list[str]:
                 "object_type",
                 "info:name",
                 "authors",
-                "maintainers",
-                "dependencies",
+                "python_dependencies",
             ],
             return_names=True,
         )
@@ -101,17 +100,29 @@ def _render_lines() -> list[str]:
         else:
             estimator_type = object_type
 
-        # Get authors and maintainers from tags
-        authors = row.get("authors", "pytorch-forecasting developers")
-        maintainers = row.get("maintainers", "pytorch-forecasting developers")
-        dependencies = row.get("dependencies", "None")
+        # Get authors from tags
+        authors = row.get("authors", [])
+        if isinstance(authors, list) and authors:
+            authors_str = ", ".join(authors)
+        else:
+            authors_str = "pytorch-forecasting developers"
+
+        # No maintainers tag exists, so use authors as maintainers
+        maintainers_str = authors_str
+
+        # Get dependencies from tags
+        dependencies = row.get("python_dependencies", [])
+        if isinstance(dependencies, list) and dependencies:
+            dependencies_str = ", ".join(dependencies)
+        else:
+            dependencies_str = "None"
 
         row_cells = [
             f":py:class:`~{qualname}`",
             estimator_type,
-            authors,
-            maintainers,
-            dependencies,
+            authors_str,
+            maintainers_str,
+            dependencies_str,
         ]
         lines.append("   * - " + "\n     - ".join(row_cells))
 
