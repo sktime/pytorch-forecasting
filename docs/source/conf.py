@@ -18,11 +18,18 @@ import sys
 from sphinx.application import Sphinx
 from sphinx.ext.autosummary import Autosummary
 from sphinx.pycode import ModuleAnalyzer
+from sphinx.util import logging as sphinx_logging
 
 SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
 
 sys.path.insert(0, str(PROJECT_PATH))  # noqa
+sys.path.insert(0, os.path.abspath("../.."))
+
+# make the local _ext folder importable
+_EXT_PATH = SOURCE_PATH.joinpath("_ext")
+if str(_EXT_PATH) not in sys.path:
+    sys.path.insert(0, str(_EXT_PATH))
 
 import pytorch_forecasting  # isort:skip
 
@@ -118,6 +125,9 @@ class ModuleAutoSummary(Autosummary):
     def get_items(self, names):
         new_names = []
         for name in names:
+            # Skip if module doesn't exist in sys.modules
+            if name not in sys.modules:
+                continue
             mod = sys.modules[name]
             mod_items = getattr(mod, "__all__", mod.__dict__)
             for t in mod_items:
@@ -137,6 +147,15 @@ def setup(app: Sphinx):
     app.connect("autodoc-skip-member", skip)
     app.add_directive("moduleautosummary", ModuleAutoSummary)
     app.add_js_file("https://buttons.github.io/buttons.js", **{"async": "async"})
+    # load custom model overview generator if available
+    try:
+        if "model_overview" not in extensions:
+            extensions.append("model_overview")
+    except Exception as exc:
+        # avoid hard-failing docs builds; make the reason visible in Sphinx logs
+        sphinx_logging.getLogger(__name__).warning(
+            "model_overview extension not loaded: %s", exc
+        )
 
 
 # extension configuration
@@ -190,3 +209,6 @@ suppress_warnings = [
 nbsphinx_execute = "never"  # always
 nbsphinx_allow_errors = False  # False
 nbsphinx_timeout = 600  # seconds
+
+
+# (model overview generation moved to docs/source/_ext/model_overview.py)
