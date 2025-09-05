@@ -170,6 +170,10 @@ class _TslibDataset(Dataset):
             x["target_scale"] = processed_data["target_scale"]
 
         y = processed_data["target"][future_indices]
+        if self.data_module.n_targets > 1:
+            y = list(torch.split(y, 1, dim=1))
+        else:
+            y = y.squeeze(-1)
 
         return x, y
 
@@ -294,6 +298,7 @@ class TslibDataModule(LightningDataModule):
         self.window_stride = window_stride
 
         self.time_series_metadata = time_series_dataset.get_metadata()
+        self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
             if self.time_series_metadata["col_type"].get(col) == "C":
@@ -816,5 +821,13 @@ class TslibDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        y_batch = torch.stack([y for _, y in batch])
+        if isinstance(batch[0][1], (list, tuple)):
+            num_targets = len(batch[0][1])
+            y_batch = []
+            for i in range(num_targets):
+                target_tensors = [sample_y[i] for _, sample_y in batch]
+                stacked_target = torch.stack(target_tensors)
+                y_batch.append(stacked_target)
+        else:
+            y_batch = torch.stack([y for _, y in batch])
         return x_batch, y_batch

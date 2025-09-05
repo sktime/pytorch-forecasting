@@ -151,6 +151,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._min_encoder_length = min_encoder_length or max_encoder_length
         self._categorical_encoders = _coerce_to_dict(categorical_encoders)
         self._scalers = _coerce_to_dict(scalers)
+        self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
         self.categorical_indices = []
         self.continuous_indices = []
@@ -547,8 +548,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     )
 
             y = data["target"][decoder_indices]
-            if y.ndim == 1:
-                y = y.unsqueeze(-1)
+
+            if self.data_module.n_targets > 1:
+                y = list(torch.split(y, 1, dim=1))
+            else:
+                y = y.squeeze(-1)
 
             return x, y
 
@@ -730,5 +734,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        y_batch = torch.stack([y for _, y in batch])
+        if isinstance(batch[0][1], (list, tuple)):
+            num_targets = len(batch[0][1])
+            y_batch = []
+            for i in range(num_targets):
+                target_tensors = [sample_y[i] for _, sample_y in batch]
+                stacked_target = torch.stack(target_tensors)
+                y_batch.append(stacked_target)
+        else:
+            y_batch = torch.stack([y for _, y in batch])
         return x_batch, y_batch
