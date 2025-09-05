@@ -239,7 +239,7 @@ class DLinear(TslibBaseModel):
         Returns
         -------
         output: torch.Tensor
-            Reshaped tensor (batch_size, prediction_length, n_features, n_quantiles)
+            Reshaped tensor (batch_size, prediction_length, n_quantiles)
             or (batch_size, prediction_length, n_features) if n_quantiles is None.
         """
         if self.n_quantiles is not None:
