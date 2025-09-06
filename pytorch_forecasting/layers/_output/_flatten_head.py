@@ -38,8 +38,9 @@ class FlattenHead(nn.Module):
         x = self.flatten(x)
         x = self.linear(x)
         x = self.dropout(x)
+        x = x.permute(0, 2, 1)
 
         if self.n_quantiles is not None:
-            batch_size, n_vars = x.shape[0], x.shape[1]
-            x = x.reshape(batch_size, n_vars, -1, self.n_quantiles)
+            batch_size = x.shape[0]
+            x = x.reshape(batch_size, -1, self.n_quantiles)
         return x
