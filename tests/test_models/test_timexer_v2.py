@@ -297,7 +297,7 @@ def test_quantile_predictions(basic_metadata):
         output = model(sample_input_data)
 
     predictions = output["prediction"]
-    assert predictions.shape == (batch_size, 8, 1, 3)
+    assert predictions.shape == (batch_size, 8, 3)
 
 
 def test_missing_history_target_handling(basic_metadata):
