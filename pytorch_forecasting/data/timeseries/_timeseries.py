@@ -20,7 +20,7 @@ from sklearn.utils.validation import check_is_fitted
 import torch
 from torch.distributions import Beta
 from torch.nn.utils import rnn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import BatchSampler, DataLoader, Dataset, RandomSampler
 from torch.utils.data.sampler import Sampler, SequentialSampler
 
 from pytorch_forecasting.data.encoders import (
@@ -476,9 +476,14 @@ class TimeSeriesDataSet(Dataset):
         ] = None,
         randomize_length: Union[None, tuple[float, float], bool] = False,
         predict_mode: bool = False,
+        precompute: bool = False,
     ):
         """Timeseries dataset holding data for models."""
         super().__init__()
+
+        self.precollate_cache = []
+        self.precollate_idx = 0
+        self.precompute = precompute
 
         # write variables to self and handle defaults
         # -------------------------------------------
@@ -2095,7 +2100,7 @@ class TimeSeriesDataSet(Dataset):
             ).clip(max=self.max_prediction_length)
         return decoder_length
 
-    def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+    def __item_tensor__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
         """
         Get sample for model
 
@@ -2355,6 +2360,75 @@ class TimeSeriesDataSet(Dataset):
             ),
             (target, weight),
         )
+
+    def __precompute__(self, kwargs):
+        """
+        Precompute sample for model
+
+        Args:
+        **kwargs: additional arguments passed to ``DataLoader`` constructor
+        """
+        batch_sampler = kwargs["batch_sampler"]
+        if batch_sampler is None:
+            sampler = (
+                RandomSampler(self) if kwargs["shuffle"] else SequentialSampler(self)
+            )
+            batch_sampler = BatchSampler(
+                sampler=sampler,
+                batch_size=kwargs["batch_size"],
+                drop_last=kwargs["drop_last"],
+            )
+        else:
+            if isinstance(batch_sampler, str):
+                sampler = kwargs["batch_sampler"]
+                if sampler == "synchronized":
+                    batch_sampler = TimeSynchronizedBatchSampler(
+                        SequentialSampler(self),
+                        batch_size=kwargs["batch_size"],
+                        shuffle=kwargs["shuffle"],
+                        drop_last=kwargs["drop_last"],
+                    )
+                else:
+                    raise ValueError(
+                        f"batch_sampler '{batch_sampler}' is not recognized."
+                    )
+            else:
+                raise ValueError(f"batch_sampler '{batch_sampler}' is not recognized.")
+
+        for batch in batch_sampler:
+            batch_samples = []
+
+            for idx in batch:
+                batch_result = self.__item_tensor__(idx)
+                batch_samples.append(batch_result)
+
+            batch = self._collate_fn(batch_samples)
+            self.precollate_cache.append(batch)
+
+    def __getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+        """
+        Get sample for model
+
+        Args:
+            idx (int): index of prediction (between ``0`` and ``len(dataset) - 1``)
+
+        Returns:
+            tuple[dict[str, torch.Tensor], torch.Tensor]: x and y for model
+        """
+        if self.precompute:
+            return None
+
+        return self.__item_tensor__(idx)
+
+    def __fast_collate_fn__(self):
+        def _collate_fn_(batches):
+            if self.precollate_idx >= len(self.precollate_cache):
+                self.precollate_idx = 0
+            batch = self.precollate_cache[self.precollate_idx]
+            self.precollate_idx += 1
+            return batch
+
+        return _collate_fn_
 
     @staticmethod
     def _collate_fn(
@@ -2627,7 +2701,11 @@ class TimeSeriesDataSet(Dataset):
         )
         default_kwargs.update(kwargs)
         kwargs = default_kwargs
-        if kwargs["batch_sampler"] is not None:
+
+        if self.precompute:
+            kwargs["collate_fn"] = self.__fast_collate_fn__()
+            self.__precompute__(kwargs)
+        elif kwargs["batch_sampler"] is not None:
             sampler = kwargs["batch_sampler"]
             if isinstance(sampler, str):
                 if sampler == "synchronized":
