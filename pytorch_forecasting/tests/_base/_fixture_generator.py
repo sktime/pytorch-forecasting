@@ -1,6 +1,5 @@
 from copy import deepcopy
 from inspect import getfullargspec, isclass
-from inspect import isclass
 
 from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator, QuickTester
 from skbase.testing.utils._conditional_fixtures import (
