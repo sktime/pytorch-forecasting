@@ -360,25 +360,32 @@ class BaseFixtureGenerator(_BaseFixtureGenerator, QuickTesterWithPkg):
 
 
 def make_builtin_fixture_equivalents(name):
-    import tempfile
-    from pathlib import Path
     import io
     import logging
+    from pathlib import Path
+    import tempfile
 
     values = {}
     if "tmp_path" == name:
         return Path(tempfile.mkdtemp())
     if "capsys" == name:
         # crude emulation using StringIO
-        return type("Capsys", (), {
-            "out": io.StringIO(),
-            "err": io.StringIO(),
-            "readouterr": lambda self: (self.out.getvalue(), self.err.getvalue())
-        })()
+        return type(
+                "Capsys",
+                (),
+                {
+                    "out": io.StringIO(),
+                    "err": io.StringIO(),
+                    "readouterr": lambda x: (x.out.getvalue(), x.err.getvalue()),
+            },
+        )()
+
     if "monkeypatch" == name:
         from _pytest.monkeypatch import MonkeyPatch
         return MonkeyPatch()
+
     if "caplog" == name:
+
         class Caplog:
             def __init__(self):
                 self.records = []
@@ -390,4 +397,5 @@ def make_builtin_fixture_equivalents(name):
                 self.records.clear()
 
         return Caplog()
+
     return values
