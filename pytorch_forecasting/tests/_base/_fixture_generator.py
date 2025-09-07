@@ -119,7 +119,7 @@ class QuickTesterWithPkg(QuickTester):
                 object_class = obj.get_cls()
 
         def _generate_object_pkg(test_name, **kwargs):
-            return [object_pkg], [object_class.__name__]
+            return [object_pkg], [object_pkg.__name__]
 
         def _generate_object_class(test_name, **kwargs):
             return [object_class], [object_class.__name__]
