@@ -1,7 +1,6 @@
 from copy import deepcopy
 from inspect import getfullargspec, isclass
 
-from _pytest.outcomes import Skipped
 from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator, QuickTester
 from skbase.testing.utils._conditional_fixtures import (
     create_conditional_fixtures_and_names,
@@ -82,6 +81,9 @@ class QuickTesterWithPkg(QuickTester):
         ------
         if raise_exception=True, raises any exception produced by the tests directly
         """
+        from _pytest.outcomes import Skipped
+        from skbase.utils.stdout_mute import StdoutMute
+
         tests_to_run = self._check_none_str_or_list_of_str(
             tests_to_run, var_name="tests_to_run"
         )
@@ -226,7 +228,8 @@ class QuickTesterWithPkg(QuickTester):
                 print_if_verbose(f"{key}")
 
                 try:
-                    test_fun(**deepcopy(args))
+                    with StdoutMute(active=not verbose):
+                        test_fun(**deepcopy(args))
                     results[key] = "PASSED"
                     print_if_verbose("PASSED")
                 except Skipped as err:
