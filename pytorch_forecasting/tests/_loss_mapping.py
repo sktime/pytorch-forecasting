@@ -1,4 +1,3 @@
-from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics import (
     MAE,
     MAPE,
@@ -16,6 +15,16 @@ from pytorch_forecasting.metrics import (
     PoissonLoss,
     QuantileLoss,
     TweedieLoss,
+)
+
+from pytorch_forecasting.metrics._distributions_pkg import (
+    BetaDistributionLoss_pkg,
+    ImplicitQuantileNetworkDistributionLoss_pkg,
+    LogNormalDistributionLoss_pkg,
+    MQF2DistributionLoss_pkg,
+    MultivariateNormalDistributionLoss_pkg,
+    NegativeBinomialDistributionLoss_pkg,
+    NormalDistributionLoss_pkg,
 )
 
 POINT_LOSSES_NUMERIC = [
@@ -46,6 +55,15 @@ DISTR_LOSSES_NUMERIC = [
     # todo: still need some debugging to add the MQF2DistributionLoss
 ]
 
+METRIC_PKGS = [
+    BetaDistributionLoss_pkg,
+    NegativeBinomialDistributionLoss_pkg,
+    MultivariateNormalDistributionLoss_pkg,
+    LogNormalDistributionLoss_pkg, 
+    NormalDistributionLoss_pkg,
+    ImplicitQuantileNetworkDistributionLoss_pkg
+]
+
 LOSSES_BY_PRED_AND_Y_TYPE = {
     ("point", "numeric"): POINT_LOSSES_NUMERIC,
     ("point", "category"): POINT_LOSSES_CATEGORY,
@@ -55,46 +73,11 @@ LOSSES_BY_PRED_AND_Y_TYPE = {
     ("distr", "category"): [],
 }
 
-
 LOSS_SPECIFIC_PARAMS = {
-    "BetaDistributionLoss": {
-        "clip_target": True,
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], transformation="logit"
-            )
-        },
-    },
-    "LogNormalDistributionLoss": {
-        "clip_target": True,
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], transformation="log1p"
-            )
-        },
-    },
-    "NegativeBinomialDistributionLoss": {
-        "clip_target": False,
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(groups=["agency", "sku"], center=False)
-        },
-    },
-    "MultivariateNormalDistributionLoss": {
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], transformation="log1p"
-            )
-        },
-    },
-    "MQF2DistributionLoss": {
-        "clip_target": True,
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], center=False, transformation="log1p"
-            )
-        },
-        "trainer_kwargs": dict(accelerator="cpu"),
-    },
+    pkg._tags.get("info:metric_name", pkg.__name__.replace("_pkg", "")): {
+        k: v for k, v in pkg._tags.items() if k not in ["metric_type", "distribution_type", "info:metric_name", "requires:data_type"]
+    }
+    for pkg in METRIC_PKGS
 }
 
 

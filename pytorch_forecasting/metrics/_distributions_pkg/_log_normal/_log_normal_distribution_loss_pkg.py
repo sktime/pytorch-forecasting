@@ -6,7 +6,7 @@ import torch
 
 from pytorch_forecasting.data import TorchNormalizer
 from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
-
+from pytorch_forecasting.data.encoders import GroupNormalizer
 
 class LogNormalDistributionLoss_pkg(_BasePtMetric):
     """
@@ -18,6 +18,12 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "log_normal",
         "info:metric_name": "LogNormalDistributionLoss",
         "requires:data_type": "log_normal_distribution_forecast",
+        "clip_target": True,
+        "data_loader_kwargs": {
+            "target_normalizer": GroupNormalizer(
+                groups=["agency", "sku"], transformation="log1p"
+            )
+        },
     }
 
     @classmethod
