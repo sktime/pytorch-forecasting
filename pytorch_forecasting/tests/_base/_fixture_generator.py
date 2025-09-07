@@ -382,6 +382,7 @@ def make_builtin_fixture_equivalents(name):
 
     if "monkeypatch" == name:
         from _pytest.monkeypatch import MonkeyPatch
+
         return MonkeyPatch()
 
     if "caplog" == name:
