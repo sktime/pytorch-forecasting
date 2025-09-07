@@ -5,6 +5,7 @@ from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator, QuickT
 from skbase.testing.utils._conditional_fixtures import (
     create_conditional_fixtures_and_names,
 )
+from _pytest.outcomes import Skipped
 
 from pytorch_forecasting._registry import all_objects
 
