@@ -50,8 +50,14 @@ def check_estimator(
         If both tests_to_run and fixtures_to_run are provided, runs the *union*,
         i.e., all test-fixture combinations for tests in tests_to_run,
             plus all test-fixture combinations in fixtures_to_run.
-    verbose : str, optional, default=True.
-        whether to print out informative summary of tests run.
+
+    verbose : int or bool, optional, default=1.
+        verbosity level for printouts from tests run.
+
+        * 0 or False: no printout
+        * 1 or True (default): print summary of test run, but no print from tests
+        * 2: print all test output, including output from within the tests
+
     tests_to_exclude : str or list of str, names of tests to exclude. default = None
         removes tests that should not be run, after subsetting via tests_to_run.
     fixtures_to_exclude : str or list of str, fixtures to exclude. default = None
@@ -141,7 +147,7 @@ def check_estimator(
     else:
         msg = "All tests PASSED!"
 
-    if verbose:
+    if int(verbose) > 0:
         # printing is an intended feature, for console usage and interactive debugging
         print(msg)  # noqa T001
 

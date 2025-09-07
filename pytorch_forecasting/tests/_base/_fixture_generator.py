@@ -67,8 +67,12 @@ class QuickTesterWithPkg(QuickTester):
             removes test-fixture combinations that should not be run.
             This is done after subsetting via fixtures_to_run.
 
-        verbose : bool, optional, default=False
-            whether to print the results of the tests as they are run
+    verbose : int or bool, optional, default=0.
+        verbosity level for printouts from tests run.
+
+        * 0 or False (default): no printout
+        * 1 or True: print summary of test run, but no print from tests
+        * 2: print all test output, including output from within the tests
 
         Returns
         -------
@@ -200,7 +204,7 @@ class QuickTesterWithPkg(QuickTester):
                     )
 
             def print_if_verbose(msg):
-                if verbose:
+                if int(verbose) > 0:
                     print(msg)  # noqa: T001, T201
 
             # loop B: for each test, we loop over all fixtures
