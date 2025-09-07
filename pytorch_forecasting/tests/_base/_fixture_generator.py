@@ -49,7 +49,7 @@ class QuickTesterWithPkg(QuickTester):
         ----------
         obj : subclass of scikit-base BaseObject, or instance thereof
             scikit-base object class or scikit-base object instance
-            
+
         raise_exceptions : bool, optional, default=False
             whether to return exceptions/failures in the results dict, or raise them
 
