@@ -371,12 +371,12 @@ def make_builtin_fixture_equivalents(name):
     if "capsys" == name:
         # crude emulation using StringIO
         return type(
-                "Capsys",
-                (),
-                {
-                    "out": io.StringIO(),
-                    "err": io.StringIO(),
-                    "readouterr": lambda x: (x.out.getvalue(), x.err.getvalue()),
+            "Capsys",
+            (),
+            {
+                "out": io.StringIO(),
+                "err": io.StringIO(),
+                "readouterr": lambda x: (x.out.getvalue(), x.err.getvalue()),
             },
         )()
 
