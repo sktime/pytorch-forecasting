@@ -31,23 +31,30 @@ class QuickTesterWithPkg(QuickTester):
     ):
         """Run all tests on one single object.
 
-        All tests in self are run on the following object type fixtures:
-            if est is a class, then object_class = est, and
-                object_instance loops over est.create_test_instance()
-            if est is an object, then object_class = est.__class__, and
-                object_instance = est
+        All tests in ``self`` are run on the following object type fixtures:
 
-        This is compatible with pytest.mark.parametrize decoration,
-            but currently only with multiple *single variable* annotations.
+        * if est is a class, then ``object_class`` = ``est``, and
+          ``object_instance`` loops over ``est.create_test_instance()``
+        * if est is an object, then ``object_class`` = ``est.__class__``, and
+          ``object_instance`` = ``est``
+
+        Compatibility with ``pytest`` fixtures:
+
+        * ``run_tests`` is compatible with ``pytest.mark.parametrize`` decoration,
+          but currently only with multiple *single variable* annotations.
+        * the following ``pytest`` reserved fixture names are supported:
+          ``tmp_path``, ``monkeypatch``, ``capsys``, ``caplog``
 
         Parameters
         ----------
-        obj : object class or object instance
-
+        obj : subclass of scikit-base BaseObject, or instance thereof
+            scikit-base object class or scikit-base object instance
+            
         raise_exceptions : bool, optional, default=False
             whether to return exceptions/failures in the results dict, or raise them
-                if False: returns exceptions in returned `results` dict
-                if True: raises exceptions as they occur
+
+            * if False: returns exceptions in returned ``results`` dict
+            * if True: raises exceptions as they occur
 
         tests_to_run : str or list of str, names of tests to run. default = all tests
             sub-sets tests that are run to the tests given here.
@@ -55,16 +62,17 @@ class QuickTesterWithPkg(QuickTester):
         fixtures_to_run : str or list of str, pytest test-fixture combination codes.
             which test-fixture combinations to run. Default = run all of them.
             sub-sets tests and fixtures to run to the list given here.
-            If both tests_to_run and fixtures_to_run are provided, runs the *union*,
-            i.e., all test-fixture combinations for tests in tests_to_run,
-                plus all test-fixture combinations in fixtures_to_run.
+            If both ``tests_to_run`` and ``fixtures_to_run`` are provided,
+            runs the *union* of tests implied by both,
+            i.e., all test-fixture combinations for tests in ``tests_to_run``,
+            plus all test-fixture combinations in ``fixtures_to_run``.
 
         tests_to_exclude : str or list of str, names of tests to exclude. default = None
-            removes tests that should not be run, after subsetting via tests_to_run.
+            removes tests that should not be run, after subsetting via ``tests_to_run``.
 
         fixtures_to_exclude : str or list of str, fixtures to exclude. default = None
             removes test-fixture combinations that should not be run.
-            This is done after subsetting via fixtures_to_run.
+            This is done after subsetting via ``fixtures_to_run``.
 
         verbose : int or bool, optional, default=0.
             verbosity level for printouts from tests run.
@@ -76,16 +84,20 @@ class QuickTesterWithPkg(QuickTester):
         Returns
         -------
         results : dict of results of the tests in self
-            keys are test/fixture strings, identical as in pytest, e.g., test[fixture]
-            entries are the string "PASSED" if the test passed,
-                or the exception raised if the test did not pass
-            returned only if all tests pass, or raise_exceptions=False
+            keys are test/fixture strings, identical as in pytest,
+            e.g., ``test[fixture]``
+            entries are the string ``"PASSED"`` if the test passed,
+            or the exception raised if the test did not pass.
+
+            ``results`` is returned only if all tests pass,
+            or ``raise_exceptions=False``.
 
         Raises
         ------
         if raise_exception=True, raises any exception produced by the tests directly
         """
         from _pytest.outcomes import Skipped
+        from skbase.utils.stderr_mute import StderrMute
         from skbase.utils.stdout_mute import StdoutMute
 
         tests_to_run = self._check_none_str_or_list_of_str(
@@ -232,7 +244,7 @@ class QuickTesterWithPkg(QuickTester):
                 print_if_verbose(f"{key}")
 
                 try:
-                    with StdoutMute(active=verbose < 2):
+                    with StderrMute(active=verbose < 2), StdoutMute(active=verbose < 2):
                         test_fun(**deepcopy(args))
                     results[key] = "PASSED"
                     print_if_verbose("PASSED")
