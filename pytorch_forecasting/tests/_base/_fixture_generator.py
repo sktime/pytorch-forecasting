@@ -1,7 +1,6 @@
 from copy import deepcopy
 from inspect import getfullargspec, isclass
 
-from _pytest.outcomes import Skipped
 from skbase.testing import BaseFixtureGenerator as _BaseFixtureGenerator, QuickTester
 from skbase.testing.utils._conditional_fixtures import (
     create_conditional_fixtures_and_names,
@@ -86,6 +85,9 @@ class QuickTesterWithPkg(QuickTester):
         ------
         if raise_exception=True, raises any exception produced by the tests directly
         """
+        from _pytest.outcomes import Skipped
+        from skbase.utils.stdout_mute import StdoutMute
+
         tests_to_run = self._check_none_str_or_list_of_str(
             tests_to_run, var_name="tests_to_run"
         )
@@ -123,7 +125,7 @@ class QuickTesterWithPkg(QuickTester):
                 object_class = obj.get_cls()
 
         def _generate_object_pkg(test_name, **kwargs):
-            return [object_pkg], [object_class.__name__]
+            return [object_pkg], [object_pkg.__name__]
 
         def _generate_object_class(test_name, **kwargs):
             return [object_class], [object_class.__name__]
@@ -170,8 +172,8 @@ class QuickTesterWithPkg(QuickTester):
             fixture_sequence = self.fixture_sequence
 
             # all arguments except the first one (self)
-            fixture_vars = getfullargspec(test_fun)[0][1:]
-            fixture_vars = [var for var in fixture_sequence if var in fixture_vars]
+            test_fun_vars = getfullargspec(test_fun)[0][1:]
+            fixture_vars = [var for var in fixture_sequence if var in test_fun_vars]
 
             # this call retrieves the conditional fixtures
             #  for the test test_name, and the object
@@ -216,6 +218,10 @@ class QuickTesterWithPkg(QuickTester):
                 key = f"{test_name}[{fixt_name}]"
                 args = dict(zip(fixture_vars, params))
 
+                for f in test_fun_vars:
+                    if f not in args:
+                        args[f] = make_builtin_fixture_equivalents(f)
+
                 # we subset to test-fixtures to run by this, if given
                 #  key is identical to the pytest test-fixture string identifier
                 if fixtures_to_run is not None and key not in fixtures_to_run:
@@ -226,7 +232,8 @@ class QuickTesterWithPkg(QuickTester):
                 print_if_verbose(f"{key}")
 
                 try:
-                    test_fun(**deepcopy(args))
+                    with StdoutMute(active=not verbose):
+                        test_fun(**deepcopy(args))
                     results[key] = "PASSED"
                     print_if_verbose("PASSED")
                 except Skipped as err:
@@ -357,3 +364,46 @@ class BaseFixtureGenerator(_BaseFixtureGenerator, QuickTesterWithPkg):
         object_names = [obj.__name__ for obj in object_classes_to_test]
 
         return object_classes_to_test, object_names
+
+
+def make_builtin_fixture_equivalents(name):
+    import io
+    import logging
+    from pathlib import Path
+    import tempfile
+
+    values = {}
+    if "tmp_path" == name:
+        return Path(tempfile.mkdtemp())
+    if "capsys" == name:
+        # crude emulation using StringIO
+        return type(
+            "Capsys",
+            (),
+            {
+                "out": io.StringIO(),
+                "err": io.StringIO(),
+                "readouterr": lambda x: (x.out.getvalue(), x.err.getvalue()),
+            },
+        )()
+
+    if "monkeypatch" == name:
+        from _pytest.monkeypatch import MonkeyPatch
+
+        return MonkeyPatch()
+
+    if "caplog" == name:
+
+        class Caplog:
+            def __init__(self):
+                self.records = []
+                self.handler = logging.Handler()
+                self.handler.emit = self.records.append
+                logging.getLogger().addHandler(self.handler)
+
+            def clear(self):
+                self.records.clear()
+
+        return Caplog()
+
+    return values

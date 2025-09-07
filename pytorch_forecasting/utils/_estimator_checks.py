@@ -100,10 +100,10 @@ def check_estimator(
     Running one specific test-fixture-combination for NBeats
 
     >>> check_estimator(
-    ...    NBeats, fixtures_to_run="test_pkg_linkage[NBeats-1]"
+    ...    NBeats, fixtures_to_run="test_pkg_linkage[NBeats_pkg-NBeats]"
     ... )
     All tests PASSED!
-    {'test_pkg_linkage[NBeats-1]': 'PASSED'}
+    {'test_pkg_linkage[NBeats_pkg-NBeats]': 'PASSED'}
     """
     from skbase.utils.dependencies import _check_soft_dependencies
 
