@@ -383,7 +383,7 @@ class TestAllPtForecasters(EstimatorPackageConfig, EstimatorFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
-        """Fails for certain, for testing."""
+        """Test end-to-end workflow training and predicting using model."""
 
         object_class = object_pkg.get_cls()
         dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)

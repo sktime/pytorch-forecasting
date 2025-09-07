@@ -166,8 +166,8 @@ class QuickTesterWithPkg(QuickTester):
             fixture_sequence = self.fixture_sequence
 
             # all arguments except the first one (self)
-            fixture_vars = getfullargspec(test_fun)[0][1:]
-            fixture_vars = [var for var in fixture_sequence if var in fixture_vars]
+            test_fun_vars = getfullargspec(test_fun)[0][1:]
+            fixture_vars = [var for var in fixture_sequence if var in test_fun_vars]
 
             # this call retrieves the conditional fixtures
             #  for the test test_name, and the object
@@ -211,6 +211,10 @@ class QuickTesterWithPkg(QuickTester):
                     params = (params,)
                 key = f"{test_name}[{fixt_name}]"
                 args = dict(zip(fixture_vars, params))
+
+                for f in test_fun_vars:
+                    if f not in args:
+                        args[f] = make_builtin_fixture_equivalents(f)
 
                 # we subset to test-fixtures to run by this, if given
                 #  key is identical to the pytest test-fixture string identifier
@@ -353,3 +357,37 @@ class BaseFixtureGenerator(_BaseFixtureGenerator, QuickTesterWithPkg):
         object_names = [obj.__name__ for obj in object_classes_to_test]
 
         return object_classes_to_test, object_names
+
+
+def make_builtin_fixture_equivalents(name):
+    import tempfile
+    from pathlib import Path
+    import io
+    import logging
+
+    values = {}
+    if "tmp_path" == name:
+        return Path(tempfile.mkdtemp())
+    if "capsys" == name:
+        # crude emulation using StringIO
+        return type("Capsys", (), {
+            "out": io.StringIO(),
+            "err": io.StringIO(),
+            "readouterr": lambda self: (self.out.getvalue(), self.err.getvalue())
+        })()
+    if "monkeypatch" == name:
+        from _pytest.monkeypatch import MonkeyPatch
+        return MonkeyPatch()
+    if "caplog" == name:
+        class Caplog:
+            def __init__(self):
+                self.records = []
+                self.handler = logging.Handler()
+                self.handler.emit = self.records.append
+                logging.getLogger().addHandler(self.handler)
+
+            def clear(self):
+                self.records.clear()
+
+        return Caplog()
+    return values
