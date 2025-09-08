@@ -3,8 +3,9 @@ Package container for the Negative Binomial distribution loss metric.
 """
 
 from pytorch_forecasting.data import TorchNormalizer
-from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
 from pytorch_forecasting.data.encoders import GroupNormalizer
+from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
+
 
 class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
     """
@@ -45,7 +46,10 @@ class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
         """
         Returns test dataloaders configured for NegativeBinomialDistributionLoss.
         """
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates, make_dataloaders
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates,
+            make_dataloaders,
+        )
 
         if params is None:
             params = {}

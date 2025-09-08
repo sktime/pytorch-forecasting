@@ -42,7 +42,10 @@ class QuantileLoss_pkg(_BasePtMetric):
         """
         Returns test dataloaders configured for QuantileLoss.
         """
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates, make_dataloaders
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates,
+            make_dataloaders,
+        )
 
         if params is None:
             params = {}

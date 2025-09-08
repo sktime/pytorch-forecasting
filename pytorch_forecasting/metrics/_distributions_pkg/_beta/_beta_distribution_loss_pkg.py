@@ -3,8 +3,9 @@ Package container for the Beta distribution loss metric.
 """
 
 from pytorch_forecasting.data import TorchNormalizer
-from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
 from pytorch_forecasting.data.encoders import GroupNormalizer
+from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
+
 
 class BetaDistributionLoss_pkg(_BasePtMetric):
     """
@@ -39,13 +40,16 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         Returns a TorchNormalizer instance for rescaling parameters.
         """
         return TorchNormalizer(transformation="logit")
-    
+
     @classmethod
     def _get_test_dataloaders_from(cls, params=None):
         """
         Return test dataloaders configured for BetaDistributionLoss.
         """
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates, make_dataloaders
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates,
+            make_dataloaders,
+        )
 
         if params is None:
             params = {}
