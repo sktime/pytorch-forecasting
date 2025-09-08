@@ -41,6 +41,16 @@ class NBeats_pkg(_BasePtForecaster):
         return [{}, {"backcast_loss_ratio": 1.0}]
 
     @classmethod
+    def get_test_train_params(cls):
+        """
+        Return a list of parameter dictionaries for integration tests.
+        """
+        return [
+            {},
+            {"backcast_loss_ratio": 1.0},
+        ]
+
+    @classmethod
     def _get_test_dataloaders_from(cls, params):
         """Get dataloaders from parameters.
 
