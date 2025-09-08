@@ -18,6 +18,8 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
         "requires:data_type": "implicit_quantile_network_distribution_forecast",
         "capability:quantile_generation": True,
         "shape:adds_quantile_dimension": True,
+        "compatible_pred_types": ["distr"],
+        "compatible_y_types": ["numeric"],
     }
 
     @classmethod
@@ -44,3 +46,19 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
         fixture for testing the ImplicitQuantileNetworkDistributionLoss metric.
         """
         return [{"input_size": 5}]
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params=None):
+        """
+        Returns test dataloaders configured for ImplicitQuantileNetworkDistributionLoss.
+        """
+        from pytorch_forecasting.tests._data_scenarios import data_with_covariates, make_dataloaders
+
+        if params is None:
+            params = {}
+        data_loader_kwargs = cls._tags.get("data_loader_kwargs", {}).copy()
+        data_loader_kwargs.update(params.get("data_loader_kwargs", {}))
+
+        data = data_with_covariates()
+        dataloaders = make_dataloaders(data **data_loader_kwargs)
+        return dataloaders

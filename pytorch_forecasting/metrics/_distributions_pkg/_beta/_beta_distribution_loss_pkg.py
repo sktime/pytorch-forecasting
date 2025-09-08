@@ -22,6 +22,9 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
                 groups=["agency", "sku"], transformation="logit"
             )
         },
+        "compatible_pred_types": ["distr"],
+        "compatible_y_types": ["numeric"],
+        "expected_loss_ndim": 2,
     }
 
     @classmethod
@@ -36,3 +39,22 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         Returns a TorchNormalizer instance for rescaling parameters.
         """
         return TorchNormalizer(transformation="logit")
+    
+    @classmethod
+    def _get_test_dataloaders_from(cls, params=None):
+        """
+        Return test dataloaders configured for BetaDistributionLoss.
+        """
+        from pytorch_forecasting.tests._data_scenarios import data_with_covariates, make_dataloaders
+
+        if params is None:
+            params = {}
+        clip_target = cls._tags.get("clip_target", False)
+        data_loader_kwargs = cls._tags.get("data_loader_kwargs", {}).copy()
+        data_loader_kwargs.update(params.get("data_loader_kwargs", {}))
+
+        data = data_with_covariates()
+        if clip_target:
+            data["target"] = data["target"].clip(1e-4, 1 - 1e-4)
+        dataloaders = make_dataloaders(data, **data_loader_kwargs)
+        return dataloaders

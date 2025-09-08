@@ -13,7 +13,6 @@ from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenera
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
 from pytorch_forecasting.tests._loss_mapping import (
     LOSS_SPECIFIC_PARAMS,
-    LOSSES_BY_PRED_AND_Y_TYPE,
     get_compatible_losses,
 )
 
