@@ -28,6 +28,7 @@ from pytorch_forecasting.models.duet.sub_modules.utils.masked_attention import (
     FullAttention,
     Mahalanobis_mask,
 )
+from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 
 # Default hyperparameters as specified in the official implementation.
 DEFAULT_DUET_HYPER_PARAMS = {
@@ -54,16 +55,15 @@ DEFAULT_DUET_HYPER_PARAMS = {
     "moving_avg": 25,
     "batch_size": 256,
     "lradj": "type3",
-    "lr": 0.02,
-    "num_epochs": 1,  # <--- Set to 1 for quick testing, default 100
+    # "num_epochs": 1,  # <--- Set to 1 for quick testing, default 100
     "num_workers": 0,
-    "loss": "huber",
+    # "loss": "huber",
     "patience": 10,
     "num_experts": 4,
     "noisy_gating": True,
     "k": 1,
     "CI": False,
-    "parallel_strategy": "DP",
+    # "parallel_strategy": "DP",
 }
 
 
@@ -118,6 +118,14 @@ class DUETModel(BaseModelWithCovariates):
             output_transformer=output_transformer,
             dataset_parameters=dataset_parameters,
         )
+
+        self.cat_embeddings = MultiEmbedding(
+            embedding_sizes=self.hparams.embedding_sizes,
+            embedding_paddings=self.hparams.embedding_paddings,
+            categorical_groups=self.hparams.categorical_groups,
+            x_categoricals=self.hparams.x_categoricals,
+        )
+
         self.cluster = Linear_extractor_cluster(self.hparams)
         self.CI = self.hparams.CI
         self.n_vars = self.hparams.enc_in
@@ -151,65 +159,41 @@ class DUETModel(BaseModelWithCovariates):
         )
 
     def forward(self, x: dict) -> dict:
-        input_tensor = x["encoder_cont"]
-        batch_size = input_tensor.shape[0]
+        embedded_features = self.cat_embeddings(x["encoder_cat"])
+        cont_tensor = x["encoder_cont"]
 
-        if torch.isnan(input_tensor).any():
-            raise ValueError("Input tensor contains NaN values.")
+        input_tensor = torch.cat([cont_tensor, embedded_features["cols"]], dim=-1)
+
+        print(input_tensor.shape)
+
+        batch_size = input_tensor.shape[0]  # noqa: F841
 
         if self.hparams.CI:
             channel_independent_input = rearrange(input_tensor, "b l n -> (b n) l 1")
 
-            if torch.isnan(channel_independent_input).any():
-                raise ValueError("Input tensor contains NaN values.")
-
             reshaped_output, L_importance = self.cluster(channel_independent_input)
 
-            if torch.isnan(reshaped_output).any():
-                raise ValueError("Input tensor contains NaN values.")
-
             temporal_feature = rearrange(
-                reshaped_output, "(b n) d -> b d n", b=batch_size
+                reshaped_output, "(b n) l 1 -> b l n", b=input_tensor.shape[0]
             )  # noqa: E501
         else:
             temporal_feature, L_importance = self.cluster(input_tensor)
 
-        if torch.isnan(temporal_feature).any():
-            raise ValueError("Input tensor contains NaN values.")
-
         temporal_feature = rearrange(temporal_feature, "b d n -> b n d")
 
-        if torch.isnan(temporal_feature).any():
-            raise ValueError("Input tensor contains NaN values #2.")
-
-        if len(self.hparams.time_varying_reals_encoder) > 1:
+        if self.n_vars > 1:
             # Multivariate case: apply channel transformer
 
             changed_input = rearrange(input_tensor, "b l n -> b n l")
 
-            if torch.isnan(changed_input).any():
-                raise ValueError("Input tensor contains NaN values.")
-
             channel_mask = self.mask_generator(changed_input)
-
-            if torch.isnan(channel_mask).any():
-                raise ValueError("Input tensor contains NaN values.")
 
             channel_group_feature, _ = self.Channel_transformer(
                 x=temporal_feature, attn_mask=channel_mask
             )
-
-            if torch.isnan(channel_group_feature).any():
-                raise ValueError("Input tensor contains NaN values.")
         else:
             # For univariate case, the group feature is just the temporal feature
             channel_group_feature = temporal_feature
-
-        # <<<<<<<<<<<<<<<< START OF FIX >>>>>>>>>>>>>>>>
-        # We have features for all channels in `channel_group_feature`
-        # (shape: batch_size, n_channels, d_model)
-        # We only want to predict the target(s). `self.target_positions`
-        # gives us their indices.
 
         # Select the features for the target variable(s)
         target_features = torch.stack(
@@ -231,15 +215,9 @@ class DUETModel(BaseModelWithCovariates):
 
         normalized_prediction = rearrange(normalized_prediction, "b n p -> b p n")
 
-        if torch.isnan(normalized_prediction).any():
-            raise ValueError("Predictions contain NaN value.")
-
         prediction = self.transform_output(
             prediction=normalized_prediction, target_scale=x["target_scale"]
         )
-
-        if torch.isnan(prediction).any():
-            raise ValueError("Predictions contain NaN values.")
 
         return self.to_network_output(prediction=prediction, L_importance=L_importance)
 
@@ -247,9 +225,7 @@ class DUETModel(BaseModelWithCovariates):
     def from_dataset(
         cls,
         dataset: TimeSeriesDataSet,
-        allowed_encoder_known_variable_names: list[
-            str
-        ] = None,  # Match parent signature
+        allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ):
         """
@@ -259,6 +235,9 @@ class DUETModel(BaseModelWithCovariates):
         new_kwargs.update(kwargs)
 
         # Add parameters that we can infer from the dataset for DUET's specific needs
+        print("Dataset reals:", dataset.reals)
+        print("Dataset categoricals:", dataset.categoricals)
+
         new_kwargs.update(
             {
                 "seq_len": dataset.max_encoder_length,
@@ -267,8 +246,8 @@ class DUETModel(BaseModelWithCovariates):
             }
         )
 
-        print("------------------------In DUETModel.from_dataset()")
-        print(new_kwargs)
+        print(f"DUETModel: inferred parameters {new_kwargs}")
+        print("Dataset params:", dataset.get_parameters())
 
         return super().from_dataset(
             dataset,

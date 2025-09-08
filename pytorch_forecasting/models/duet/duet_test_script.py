@@ -1,6 +1,3 @@
-import sys
-from typing import Tuple  # noqa: UP035
-
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.tuner import Tuner
@@ -13,12 +10,9 @@ from pytorch_forecasting.metrics import MAE, MAPE, SMAPE
 from pytorch_forecasting.models.duet.duet import DUETModel
 
 
-class CustomModelSummary(Callback):
+class ModelSummary(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
-        # This hook is called after the validation loop for an epoch has finished.
-        # Access the logged metrics from the trainer's logger
-        # The key for the validation metrics might vary depending on how you log them.
-        # Common keys are 'val_loss', 'val_acc', etc.
+        """Log metrics at the end of each validation epoch."""
         metrics = trainer.callback_metrics
 
         print(f"\n--- Epoch {trainer.current_epoch} Summary ---")
@@ -36,32 +30,19 @@ def configure_dataset() -> tuple[TimeSeriesDataSet, TimeSeriesDataSet]:
     df.drop("name", axis=1, inplace=True)
     df["date"] = pd.to_datetime(df["date"])
     df.sort_values(by=["cols", "date"], inplace=True)
-
     df["data"] = df.groupby("cols")["data"].transform(lambda x: x.ffill())
-
-    # It's also good practice to backfill any NaNs that might remain at the start of a
-    #  series
     df["data"] = df.groupby("cols")["data"].transform(lambda x: x.bfill())
-    # -----------------------------
 
-    print("------------------Data Properties After Filling NaNs------------------")
-    print(f"Remaining NaNs in 'data' column: {df['date'].isna().sum()}")
-    print("----------------------------------------------------------------------")
+    # Creating time_idx column
     df["time_idx"] = df.groupby("cols").cumcount()
-
-    print("--- Checking for Infinite values in all columns ---")
-    # Select only numeric columns to check for infinity
-    numeric_cols = df.select_dtypes(include=np.number).columns
-    print((df[numeric_cols] == np.inf).sum())
-    print((df[numeric_cols] == -np.inf).sum())
-    print("-------------------------------------------------")
 
     print("------------------Data Properties------------------")
     print(df.info())
     print("---------------------------------------------------")
 
     max_time_idx = df["time_idx"].max()
-    # Use 80% of the data for training
+
+    # Training on 80% of data
     training_cutoff = int(max_time_idx * 0.8)
 
     # Create the training dataset
@@ -94,31 +75,40 @@ def test_duet_from_dataset():
         train=False, batch_size=32, num_workers=0
     )
 
-    # print(type(train_dataloader))
-    # print(type(val_dataloader))
-
-    # for x, y in train_dataloader:
-    #     print(x)
-    #     print(len(x))
-    #     print(y)
-    #     print(len(y))
-    #     break
+    # {"CI": 1, "batch_size": 32, "d_ff": 128, "d_model": 128, "dropout": 0.3,
+    # "e_layers": 1, "factor": 3, "fc_dropout": 0.1, "horizon": 96, "k": 1,
+    # "loss": "MAE", "lr": 0.0005, "lradj": "type1", "n_heads": 1, "norm": true,
+    # "num_epochs": 100, "num_experts": 3, "patch_len": 48, "patience": 5,
+    # "seq_len": 512}
 
     model = DUETModel.from_dataset(
         trainset,
-        learning_rate=1e-8,
+        CI=1,
+        d_ff=128,
+        d_model=128,
+        dropout=0.3,
+        e_layers=1,
+        factor=3,
+        fc_dropout=0.1,
+        k=1,
+        lradj="type1",
+        n_heads=1,
+        norm=True,
+        num_experts=3,
+        patch_len=48,
+        patience=5,
+        learning_rate=5e-4,
         loss=MAE(),
     )
 
     trainer = pl.Trainer(
-        max_epochs=10,  # Set a small number of epochs for testing
-        accelerator="auto",  # Automatically uses GPU if available
+        max_epochs=4,
+        accelerator="auto",
         gradient_clip_val=0.1,
-        # Use a smaller subset of batches for faster testing
-        limit_train_batches=50,
-        limit_val_batches=50,
-        fast_dev_run=True,
-        callbacks=[CustomModelSummary()],
+        limit_train_batches=50,  # for faster testing
+        limit_val_batches=50,  # for faster testing
+        fast_dev_run=True,  # for faster testing
+        callbacks=[ModelSummary()],
     )
 
     # Find optimal learning rate
