@@ -36,7 +36,7 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
         train_dataloader.dataset,
         learning_rate=0.15,
         log_gradient_flow=True,
-        widths=[4, 4, 4],
+        widths=[4, 4],
         log_interval=1000,
         backcast_loss_ratio=1.0,
     )
@@ -77,7 +77,7 @@ def model(dataloaders_fixed_window_without_covariates):
         dataset,
         learning_rate=0.15,
         log_gradient_flow=True,
-        widths=[4, 4, 4],
+        widths=[4, 4],
         log_interval=1000,
         backcast_loss_ratio=1.0,
     )
@@ -101,3 +101,39 @@ def test_interpretation(model, dataloaders_fixed_window_without_covariates):
         fast_dev_run=True,
     )
     model.plot_interpretation(raw_predictions.x, raw_predictions.output, idx=0)
+
+
+def test_direct_initialization():
+    # Test that the model can be initialized directly without from_dataset
+    net = NBeats(
+        stack_types=["trend", "seasonality"],
+        num_blocks=[3, 3],
+        num_block_layers=[3, 3],
+        widths=[32, 512],
+        sharing=[True, True],
+        expansion_coefficient_lengths=[3, 7],
+        prediction_length=24,
+        context_length=72,
+    )
+    assert len(net.net_blocks) == 6  # 2 stacks * 3 blocks each
+    assert net.hparams.prediction_length == 24
+    assert net.hparams.context_length == 72
+
+    # Test validation of parameters
+    with pytest.raises(ValueError, match="stack_types must contain only"):
+        NBeats(stack_types=["invalid_type"])
+
+    with pytest.raises(ValueError, match="Length of num_blocks"):
+        NBeats(
+            stack_types=["trend", "seasonality"],
+            num_blocks=[3],  # Should be length 2
+            prediction_length=24,
+            context_length=72,
+        )
+
+    with pytest.raises(ValueError, match="prediction_length must be"):
+        NBeats(
+            stack_types=["trend", "seasonality"],
+            prediction_length=0,  # Invalid
+            context_length=72,
+        )
