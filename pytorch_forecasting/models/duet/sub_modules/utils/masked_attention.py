@@ -154,21 +154,12 @@ class Mahalanobis_mask(nn.Module):
         X1 = XF.unsqueeze(2)
         X2 = XF.unsqueeze(1)
 
-        print("X1:", X1)
-        print("X2:", X2)
-
         # B x C x C x D
         diff = X1 - X2
 
-        print("Diff:", diff)
-
         temp = torch.einsum("dk,bxck->bxcd", self.A, diff)
 
-        print("Temp:", temp)
-
         dist = torch.einsum("bxcd,bxcd->bxc", temp, temp)
-
-        print("Distance:", dist)
 
         # exp_dist = torch.exp(-dist)
         exp_dist = 1 / (dist + 1e-10)

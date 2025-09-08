@@ -43,35 +43,35 @@ DEFAULT_DUET_HYPER_PARAMS = {
     "freq": "h",
     "factor": 1,
     "n_heads": 8,
-    "seg_len": 6,
-    "win_size": 2,
     "activation": "gelu",
     "output_attention": 0,
     "patch_len": 16,
     "stride": 8,
-    "period_len": 4,
     "dropout": 0.2,
     "fc_dropout": 0.2,
     "moving_avg": 25,
     "batch_size": 256,
     "lradj": "type3",
-    # "num_epochs": 1,  # <--- Set to 1 for quick testing, default 100
     "num_workers": 0,
-    # "loss": "huber",
     "patience": 10,
     "num_experts": 4,
     "noisy_gating": True,
     "k": 1,
     "CI": False,
-    # "parallel_strategy": "DP",
 }
 
 
 class DUETModel(BaseModelWithCovariates):
+    """
+    Initial implementation of DUET: Dual Clustering Enhanced Multivariate Time
+    Series Forecasting
+
+    Original paper: https://arxiv.org/pdf/2412.10859
+    """
+
     def __init__(
         self,
-        # --- Parameters for BaseModelWithCovariates (explicitly listed) ---
-        # These are "consumed" here and not passed to the parent's __init__
+        # Parameters for BaseModelWithCovariates
         static_categoricals: list[str],
         static_reals: list[str],
         time_varying_categoricals_encoder: list[str],
@@ -84,32 +84,94 @@ class DUETModel(BaseModelWithCovariates):
         embedding_labels: dict,
         embedding_paddings: list[str],
         categorical_groups: dict,
-        # --- Parameters for DUET's architecture ---
-        seq_len: int,
-        pred_len: int,
-        enc_in: int,
-        d_model: int,
-        n_heads: int,
-        e_layers: int,
-        d_ff: int,
-        dropout: float,
-        fc_dropout: float,
-        activation: str,
-        output_attention: bool,
-        factor: int,
-        CI: bool,
-        num_experts: int,
-        noisy_gating: bool,
-        k: int,
-        # --- Parameters for the BaseModel parent (will be passed up) ---
+        # Parameters for BaseModel
         loss: Metric,
         learning_rate: float,
         dataset_parameters: dict,
         optimizer: str = "adam",
         output_transformer: Callable = None,
-        # Standard BaseModel parameters
+        # Parameters for DUET's architecture
+        dec_in: int = 1,
+        c_out: int = 1,
+        e_layers: int = 2,
+        d_layers: int = 1,
+        d_model: int = 512,
+        d_ff: int = 2048,
+        hidden_size: int = 256,
+        freq: str = "h",
+        factor: int = 1,
+        n_heads: int = 8,
+        activation: str = "gelu",
+        output_attention: int = 0,
+        patch_len: int = 16,
+        stride: int = 8,
+        dropout: float = 0.2,
+        fc_dropout: float = 0.2,
+        moving_avg: int = 25,
+        lradj: str = "type3",
+        num_workers: int = 0,
+        patience: int = 10,
+        num_experts: int = 4,
+        noisy_gating: bool = True,
+        k: int = 1,
+        CI: bool = False,
         **kwargs,
     ):
+        """
+        Initialize DUET model.
+
+        Args:
+            static_categoricals: names of static categorical variables
+            static_reals: names of static continuous variables
+            time_varying_categoricals_encoder: names of categorical variables for encoder
+            time_varying_categoricals_decoder: names of categorical variables for decoder
+            time_varying_reals_encoder: names of continuous variables for encoder
+            time_varying_reals_decoder: names of continuous variables for decoder
+            x_reals: order of continuous variables in tensor passed to forward function
+            x_categoricals: order of categorical variables in tensor passed to forward function
+            embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
+                embedding size
+            embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
+            embedding_labels: dictionary mapping (string) indices to list of categorical labels
+            categorical_groups: dictionary where values
+                are list of categorical variables that are forming together a new categorical
+                variable which is the key in the dictionary
+            loss: loss function to use. Can be any instance of torchmetrics.Metric
+            learning_rate: learning rate to use
+            dataset_parameters: dictionary containing parameters of the dataset
+            optimizer: optimizer to use (default: "adam")
+            output_transformer: function to transform the output of the network
+            dec_in: number of input features to the decoder
+            c_out: number of output features
+            e_layers: number of encoder layers
+            d_layers: number of decoder layers
+            d_model: dimensionality of the model's hidden states. It is the size of the
+                vectors used to represent the time series data throughout the model.
+            d_ff: dimensionality of the feedforward network model
+            hidden_size: hidden size for the distributional router's encoder,
+                which is part of the Mixture of Experts mechanism.
+            freq: frequency of the time series data. This is used for generating time
+                based features.
+            factor: factor for the attention mechanism
+            n_heads: number of attention heads
+            activation: activation function used in the model
+            output_attention: whether to output attention weights
+            patch_len: length of each patch when using patching mechanism
+            stride: stride for the patching mechanism
+            dropout: dropout rate applied within the encoder layers to prevent overfitting
+            fc_dropout: dropout rate applied to the final fully connected layer
+            moving_avg: window size for moving average, used in the decomposition of the time series
+            batch_size: batch size used during training
+            lradj: learning rate adjustment strategy
+            num_workers: number of workers for data loading
+            patience: number of epochs with no improvement after which training will be stopped
+            num_experts: number of experts in the Mixture of Experts mechanism
+            noisy_gating: whether to use noisy gating in the Mixture of Experts mechanism
+            k: number of experts to be selected by the router for each input
+            CI: whether to use channel independent configuration. If True, the model
+                processes each channel (variate) of the time series independently before combining them.
+            **kwargs: additional arguments
+        """  # noqa: E501
         self.save_hyperparameters()
         super().__init__(
             loss=loss,
@@ -164,8 +226,6 @@ class DUETModel(BaseModelWithCovariates):
 
         input_tensor = torch.cat([cont_tensor, embedded_features["cols"]], dim=-1)
 
-        print(input_tensor.shape)
-
         batch_size = input_tensor.shape[0]  # noqa: F841
 
         if self.hparams.CI:
@@ -204,16 +264,16 @@ class DUETModel(BaseModelWithCovariates):
             dim=0,
         )
 
-        if torch.isnan(target_features).any():
-            raise ValueError("Target features contain NaN values.")
+        # if torch.isnan(target_features).any():
+        #     raise ValueError("Target features contain NaN values.")
 
-        # Pass only the target features to the prediction head
+        # Passing only the target features to the prediction head
         normalized_prediction = self.linear_head(target_features)
 
-        if torch.isnan(normalized_prediction).any():
-            raise ValueError("Predictions contain NaN values.")
+        # if torch.isnan(normalized_prediction).any():
+        #     raise ValueError("Predictions contain NaN values.")
 
-        normalized_prediction = rearrange(normalized_prediction, "b n p -> b p n")
+        normalized_prediction = rearrange(normalized_prediction, "b n d -> b d n")
 
         prediction = self.transform_output(
             prediction=normalized_prediction, target_scale=x["target_scale"]
@@ -234,10 +294,7 @@ class DUETModel(BaseModelWithCovariates):
         new_kwargs = DEFAULT_DUET_HYPER_PARAMS.copy()
         new_kwargs.update(kwargs)
 
-        # Add parameters that we can infer from the dataset for DUET's specific needs
-        print("Dataset reals:", dataset.reals)
-        print("Dataset categoricals:", dataset.categoricals)
-
+        # Adding parameters we infer from the dataset
         new_kwargs.update(
             {
                 "seq_len": dataset.max_encoder_length,
@@ -245,9 +302,6 @@ class DUETModel(BaseModelWithCovariates):
                 "enc_in": len(dataset.reals) + len(dataset.categoricals),
             }
         )
-
-        print(f"DUETModel: inferred parameters {new_kwargs}")
-        print("Dataset params:", dataset.get_parameters())
 
         return super().from_dataset(
             dataset,
