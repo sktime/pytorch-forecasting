@@ -7,6 +7,17 @@ from pytorch_forecasting.metrics._distributions_pkg import (
     NegativeBinomialDistributionLoss_pkg,
     NormalDistributionLoss_pkg,
 )
+
+from pytorch_forecasting.metrics import (
+    BetaDistributionLoss,
+    ImplicitQuantileNetworkDistributionLoss,
+    LogNormalDistributionLoss,
+    MQF2DistributionLoss,
+    MultivariateNormalDistributionLoss,
+    NegativeBinomialDistributionLoss,
+    NormalDistributionLoss,
+)
+
 from pytorch_forecasting.metrics._point_pkg import (
     CrossEntropy_pkg,
     MAE_pkg,
@@ -40,17 +51,32 @@ METRIC_PKGS = [
     QuantileLoss_pkg,
 ]
 
+DISTR_LOSSES_NUMERIC = [
+    NormalDistributionLoss(),
+    NegativeBinomialDistributionLoss(),
+    MultivariateNormalDistributionLoss(),
+    LogNormalDistributionLoss(),
+    BetaDistributionLoss(),
+    ImplicitQuantileNetworkDistributionLoss(),
+    # todo: still need some debugging to add the MQF2DistributionLoss
+]
+
 LOSS_SPECIFIC_PARAMS = {
     pkg._tags.get("info:metric_name", pkg.__name__.replace("_pkg", "")): {
         k: v
         for k, v in pkg._tags.items()
-        if k
-        not in [
-            "metric_type",
-            "distribution_type",
-            "info:metric_name",
-            "requires:data_type",
-        ]
+        if not (
+            k.startswith("info:") or
+            k.startswith("capability:") or
+            k.startswith("shape:") or
+            k in [
+                "metric_type",
+                "distribution_type",
+                "requires:data_type",
+                "no_rescaling",
+                "expected_loss_ndim",
+            ]
+        )
     }
     for pkg in METRIC_PKGS
 }
