@@ -7,18 +7,16 @@ from pytorch_forecasting.metrics._distributions_pkg import (
     NegativeBinomialDistributionLoss_pkg,
     NormalDistributionLoss_pkg,
 )
-
 from pytorch_forecasting.metrics._point_pkg import (
+    CrossEntropy_pkg,
     MAE_pkg,
     MAPE_pkg,
     MASE_pkg,
+    PoissonLoss_pkg,
     RMSE_pkg,
     SMAPE_pkg,
-    PoissonLoss_pkg,
-    CrossEntropy_pkg,
     TweedieLoss_pkg,
 )
-
 from pytorch_forecasting.metrics._quantile_pkg import QuantileLoss_pkg
 
 # Remove legacy lists and mappings for losses by pred/y type and tensor shape checks.
@@ -39,7 +37,7 @@ METRIC_PKGS = [
     PoissonLoss_pkg,
     TweedieLoss_pkg,
     CrossEntropy_pkg,
-    QuantileLoss_pkg
+    QuantileLoss_pkg,
 ]
 
 LOSS_SPECIFIC_PARAMS = {
@@ -56,6 +54,7 @@ LOSS_SPECIFIC_PARAMS = {
     }
     for pkg in METRIC_PKGS
 }
+
 
 def get_compatible_losses(pred_types, y_types):
     """
