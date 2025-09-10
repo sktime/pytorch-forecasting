@@ -18,8 +18,8 @@ class CrossEntropy_pkg(_BasePtMetric):
         "requires:data_type": "classification_forecast",
         "info:metric_name": "CrossEntropy",
         "no_rescaling": True,
-        "compatible_pred_types": ["point"],
-        "compatible_y_types": ["category"],
+        "info:pred_type": ["point"],
+        "info:y_type": ["category"],
     }
 
     @classmethod

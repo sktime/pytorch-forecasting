@@ -16,8 +16,8 @@ class MAE_pkg(_BasePtMetric):
         "metric_type": "point",
         "requires:data_type": "point_forecast",
         "info:metric_name": "MAE",
-        "compatible_pred_types": ["point"],
-        "compatible_y_types": ["numeric"],
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
     }
 
     @classmethod

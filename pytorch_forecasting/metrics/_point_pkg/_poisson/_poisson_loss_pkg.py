@@ -18,8 +18,8 @@ class PoissonLoss_pkg(_BasePtMetric):
         "requires:data_type": "point_forecast",
         "capability:quantile_generation": True,
         "shape:adds_quantile_dimension": True,
-        "compatible_pred_types": ["point"],
-        "compatible_y_types": ["numeric"],
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
     }
 
     @classmethod

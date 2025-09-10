@@ -1,21 +1,3 @@
-from pytorch_forecasting.metrics import (
-    MAE,
-    MAPE,
-    MASE,
-    RMSE,
-    SMAPE,
-    BetaDistributionLoss,
-    CrossEntropy,
-    ImplicitQuantileNetworkDistributionLoss,
-    LogNormalDistributionLoss,
-    MQF2DistributionLoss,
-    MultivariateNormalDistributionLoss,
-    NegativeBinomialDistributionLoss,
-    NormalDistributionLoss,
-    PoissonLoss,
-    QuantileLoss,
-    TweedieLoss,
-)
 from pytorch_forecasting.metrics._distributions_pkg import (
     BetaDistributionLoss_pkg,
     ImplicitQuantileNetworkDistributionLoss_pkg,
@@ -25,6 +7,19 @@ from pytorch_forecasting.metrics._distributions_pkg import (
     NegativeBinomialDistributionLoss_pkg,
     NormalDistributionLoss_pkg,
 )
+
+from pytorch_forecasting.metrics._point_pkg import (
+    MAE_pkg,
+    MAPE_pkg,
+    MASE_pkg,
+    RMSE_pkg,
+    SMAPE_pkg,
+    PoissonLoss_pkg,
+    CrossEntropy_pkg,
+    TweedieLoss_pkg,
+)
+
+from pytorch_forecasting.metrics._quantile_pkg import QuantileLoss_pkg
 
 # Remove legacy lists and mappings for losses by pred/y type and tensor shape checks.
 # Use tags and _get_test_dataloaders_from for all compatibility and test setup.
@@ -36,6 +31,15 @@ METRIC_PKGS = [
     LogNormalDistributionLoss_pkg,
     NormalDistributionLoss_pkg,
     ImplicitQuantileNetworkDistributionLoss_pkg,
+    MAE_pkg,
+    MAPE_pkg,
+    MASE_pkg,
+    RMSE_pkg,
+    SMAPE_pkg,
+    PoissonLoss_pkg,
+    TweedieLoss_pkg,
+    CrossEntropy_pkg,
+    QuantileLoss_pkg
 ]
 
 LOSS_SPECIFIC_PARAMS = {
@@ -53,15 +57,14 @@ LOSS_SPECIFIC_PARAMS = {
     for pkg in METRIC_PKGS
 }
 
-
 def get_compatible_losses(pred_types, y_types):
     """
     Get compatible losses based on prediction types and target types.
     """
     compatible_losses = []
     for pkg in METRIC_PKGS:
-        pkg_pred_types = pkg._tags.get("compatible_pred_types", [])
-        pkg_y_types = pkg._tags.get("compatible_y_types", [])
+        pkg_pred_types = pkg._tags.get("info:pred_type", [])
+        pkg_y_types = pkg._tags.get("info:y_type", [])
         if any(pt in pred_types for pt in pkg_pred_types) and any(
             yt in y_types for yt in pkg_y_types
         ):

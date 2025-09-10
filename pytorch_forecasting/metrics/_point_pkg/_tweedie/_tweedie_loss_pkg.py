@@ -16,8 +16,8 @@ class TweedieLoss_pkg(_BasePtMetric):
         "metric_type": "point",
         "info:metric_name": "TweedieLoss",
         "requires:data_type": "point_forecast",
-        "compatible_pred_types": ["point"],
-        "compatible_y_types": ["numeric"],
+        "info:pred_type": ["point"],
+        "info:y_types": ["numeric"],
     }  # noqa: E501
 
     @classmethod

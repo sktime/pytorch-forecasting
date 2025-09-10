@@ -17,8 +17,8 @@ class NormalDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "normal",
         "info:metric_name": "NormalDistributionLoss",
         "requires:data_type": "normal_distribution_forecast",
-        "compatible_pred_types": ["distr"],
-        "compatible_y_types": ["numeric"],
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
         "expected_loss_ndim": 2,
     }
 

@@ -18,8 +18,8 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
         "requires:data_type": "implicit_quantile_network_distribution_forecast",
         "capability:quantile_generation": True,
         "shape:adds_quantile_dimension": True,
-        "compatible_pred_types": ["distr"],
-        "compatible_y_types": ["numeric"],
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
     }
 
     @classmethod

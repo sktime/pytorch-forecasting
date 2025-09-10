@@ -21,8 +21,8 @@ class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
         "data_loader_kwargs": {
             "target_normalizer": GroupNormalizer(groups=["agency", "sku"], center=False)
         },
-        "compatible_pred_types": ["distr"],
-        "compatible_y_types": ["numeric"],
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
         "expected_loss_ndim": 2,
     }
 
