@@ -15,10 +15,6 @@ Feature and maintenance update.
 * [ENH] Added test to check batch shape mismatch between precompute=True and False by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 * [ENH] Added benchmark test to compare with and without `precompute=True` in GPU and CPU by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
 
-### Documentation
-
-* [DOC] Added tutorial for enabling `precompute=True`by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
-
 ### All Contributors
 
 @jobs-git
