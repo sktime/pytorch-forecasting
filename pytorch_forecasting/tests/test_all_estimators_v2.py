@@ -85,7 +85,7 @@ def _integration(
         output = net(x)
     net.train()
     prediction = output["prediction"]
-    n_dims = len(prediction.shape)
+    n_dims = prediction.ndim
     assert n_dims == 3, (
         f"Prediction output must be 3D, but got {n_dims}D tensor "
         f"with shape {output.shape}"
