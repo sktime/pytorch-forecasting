@@ -117,20 +117,20 @@ class Samformer_pkg_v2(_BasePtForecasterV2):
 
         return [
             {
-                "loss": nn.MSELoss(),
+                # "loss": nn.MSELoss(),
                 "hidden_size": 32,
                 "use_revin": False,
             },
             {
-                "loss": nn.MSELoss(),
+                # "loss": nn.MSELoss(),
                 "hidden_size": 16,
                 "use_revin": True,
                 "out_channels": 1,
                 "persistence_weight": 0.0,
             },
-            # {
-            #     "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
-            #     "hidden_size": 32,
-            #     "use_revin": False,
-            # },
+            {
+                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+                "hidden_size": 32,
+                "use_revin": False,
+            },
         ]
