@@ -1435,25 +1435,34 @@ class TimeSeriesDataSet(Dataset):
             time index
         """
 
-        def _to_tensor(cols, long=True) -> torch.Tensor:
+        def _to_tensor(cols, long=True, real=False) -> torch.Tensor:
             """Convert data[cols] to torch tensor.
 
             Converts sub-frames to numpy and then to torch tensor.
             Makes the following choices for types:
 
-            * float columns are converted to torch.float
-            * integer columns are converted to torch.int64 or torch.long,
-              depending on the long argument
+            - real is True:
+                * the sub-frame is converted to a torch.float32 tensor
+            - long is True (and real is False):
+                * the sub-frame is converted to a torch.long tensor
+            - real is False and long is False:
+                * if all columns are integer or boolean, the sub-frame is
+                  converted to a torch.int64 tensor
+                * if one column is a float, the sub-frame is converted to
+                  a torch.float32 tensor
             """
             if not isinstance(cols, list) and cols not in data.columns:
                 return None
             if isinstance(cols, list) and len(cols) == 0:
                 dtypekind = "f"
             elif isinstance(cols, list):  # and len(cols) > 0
-                dtypekind = data.dtypes[cols[0]].kind
+                # dtypekind = data.dtypes[cols[0]].kind
+                dtypekind = np.result_type(*data[cols].dtypes.to_list()).kind
             else:
                 dtypekind = data.dtypes[cols].kind
-            if not long:
+            if real:
+                return torch.tensor(data[cols].to_numpy(np.float64), dtype=torch.float)
+            elif not long:
                 return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.int64)
             elif dtypekind in "bi":
                 return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.long)

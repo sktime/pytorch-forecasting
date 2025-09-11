@@ -63,6 +63,13 @@ class DLinear(TslibBaseModel):
         will be accomodated in future versions.
     """
 
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.dlinear._dlinear_pkg_v2 import DLinear_pkg_v2
+
+        return DLinear_pkg_v2
+
     def __init__(
         self,
         loss: nn.Module,

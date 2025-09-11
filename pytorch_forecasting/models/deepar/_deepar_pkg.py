@@ -9,23 +9,26 @@ class DeepAR_pkg(_BasePtForecaster):
     _tags = {
         "info:name": "DeepAR",
         "info:compute": 3,
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
+        "python_dependencies": ["cpflows"],
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models import DeepAR
 
         return DeepAR
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_base_test_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns
@@ -36,82 +39,19 @@ class DeepAR_pkg(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from pytorch_forecasting.data.encoders import GroupNormalizer
-        from pytorch_forecasting.metrics import (
-            BetaDistributionLoss,
-            ImplicitQuantileNetworkDistributionLoss,
-            LogNormalDistributionLoss,
-            MultivariateNormalDistributionLoss,
-            NegativeBinomialDistributionLoss,
-        )
-
         params = [
             {},
             {"cell_type": "GRU"},
-            dict(
-                loss=LogNormalDistributionLoss(),
-                clip_target=True,
-                data_loader_kwargs=dict(
-                    target_normalizer=GroupNormalizer(
-                        groups=["agency", "sku"], transformation="log"
-                    )
-                ),
-            ),
-            dict(
-                loss=NegativeBinomialDistributionLoss(),
-                clip_target=False,
-                data_loader_kwargs=dict(
-                    target_normalizer=GroupNormalizer(
-                        groups=["agency", "sku"], center=False
-                    )
-                ),
-            ),
-            dict(
-                loss=BetaDistributionLoss(),
-                clip_target=True,
-                data_loader_kwargs=dict(
-                    target_normalizer=GroupNormalizer(
-                        groups=["agency", "sku"], transformation="logit"
-                    )
-                ),
-            ),
-            dict(
-                data_loader_kwargs=dict(
+            {
+                "data_loader_kwargs": dict(
                     lags={"volume": [2, 5]},
                     target="volume",
                     time_varying_unknown_reals=["volume"],
                     min_encoder_length=2,
                 ),
-            ),
-            dict(
-                data_loader_kwargs=dict(
-                    time_varying_unknown_reals=["volume", "discount"],
-                    target=["volume", "discount"],
-                    lags={"volume": [2], "discount": [2]},
-                ),
-            ),
-            dict(
-                loss=ImplicitQuantileNetworkDistributionLoss(hidden_size=8),
-            ),
-            dict(
-                loss=MultivariateNormalDistributionLoss(),
-                trainer_kwargs=dict(accelerator="cpu"),
-            ),
-            dict(
-                loss=MultivariateNormalDistributionLoss(),
-                data_loader_kwargs=dict(
-                    target_normalizer=GroupNormalizer(
-                        groups=["agency", "sku"], transformation="log1p"
-                    )
-                ),
-                trainer_kwargs=dict(accelerator="cpu"),
-            ),
+            },
         ]
-        defaults = {
-            "hidden_size": 5,
-            "cell_type": "LSTM",
-            "n_plotting_samples": 100,
-        }
+        defaults = {"hidden_size": 5, "cell_type": "LSTM", "n_plotting_samples": 100}
         for param in params:
             param.update(defaults)
         return params
@@ -136,7 +76,13 @@ class DeepAR_pkg(_BasePtForecaster):
         clip_target = params.get("clip_target", False)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        from pytorch_forecasting.metrics import NegativeBinomialDistributionLoss
+        import inspect
+
+        from pytorch_forecasting.metrics import (
+            LogNormalDistributionLoss,
+            MQF2DistributionLoss,
+            NegativeBinomialDistributionLoss,
+        )
         from pytorch_forecasting.tests._conftest import make_dataloaders
         from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
@@ -144,6 +90,13 @@ class DeepAR_pkg(_BasePtForecaster):
 
         if isinstance(loss, NegativeBinomialDistributionLoss):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
+        # todo: still need some debugging to add the MQF2DistributionLoss
+        # elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
+        #     dwc = dwc.assign(volume=lambda x: x.volume.round())
+        #     data_loader_kwargs["target"] = "volume"
+        #     data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
+        elif isinstance(loss, LogNormalDistributionLoss):
+            dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
 
         dwc = dwc.copy()
         if clip_target:
