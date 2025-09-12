@@ -1,24 +1,6 @@
 """NHiTS package container."""
 
-from pytorch_forecasting.metrics.distributions import (
-    BetaDistributionLoss,
-    ImplicitQuantileNetworkDistributionLoss,
-    LogNormalDistributionLoss,
-    MultivariateNormalDistributionLoss,
-    NegativeBinomialDistributionLoss,
-    NormalDistributionLoss,
-)
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
-
-DISTR_LOSSES_NUMERIC = [
-    NormalDistributionLoss(),
-    NegativeBinomialDistributionLoss(),
-    MultivariateNormalDistributionLoss(),
-    LogNormalDistributionLoss(),
-    BetaDistributionLoss(),
-    ImplicitQuantileNetworkDistributionLoss(),
-    # todo: still need some debugging to add the MQF2DistributionLoss
-]
 
 
 class NHiTS_pkg(_BasePtForecaster):
@@ -95,6 +77,9 @@ class NHiTS_pkg(_BasePtForecaster):
             MQF2DistributionLoss,
             MultivariateNormalDistributionLoss,
             NegativeBinomialDistributionLoss,
+            NormalDistributionLoss,
+            BetaDistributionLoss,
+            ImplicitQuantileNetworkDistributionLoss,
             TweedieLoss,
         )
         from pytorch_forecasting.tests._data_scenarios import (
@@ -102,6 +87,16 @@ class NHiTS_pkg(_BasePtForecaster):
             dataloaders_fixed_window_without_covariates,
             make_dataloaders,
         )
+
+        DISTR_LOSSES_NUMERIC = [
+            NormalDistributionLoss(),
+            NegativeBinomialDistributionLoss(),
+            MultivariateNormalDistributionLoss(),
+            LogNormalDistributionLoss(),
+            BetaDistributionLoss(),
+            ImplicitQuantileNetworkDistributionLoss(),
+            # todo: still need some debugging to add the MQF2DistributionLoss
+        ]
 
         distr_losses = tuple(
             type(l)
