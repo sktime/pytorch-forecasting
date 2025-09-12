@@ -62,6 +62,7 @@ class NHiTS_pkg(_BasePtForecaster):
             LogNormalDistributionLoss,
             MultivariateNormalDistributionLoss,
             NegativeBinomialDistributionLoss,
+            PoissonLoss,
         )
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates,
@@ -69,9 +70,18 @@ class NHiTS_pkg(_BasePtForecaster):
             make_dataloaders,
         )
 
-        # Use fixed window dataloaders for MultivariateNormalDistributionLoss
         if isinstance(loss, MultivariateNormalDistributionLoss):
             return dataloaders_fixed_window_without_covariates()
+
+        if isinstance(loss, PoissonLoss):
+            dl_default_kwargs = dict(
+                target="agency",
+                time_varying_unknown_reals=[],
+                add_relative_time_idx=False,
+            )
+            dl_default_kwargs.update(data_loader_kwargs)
+            data = data_with_covariates()
+            return make_dataloaders(data, **dl_default_kwargs)
 
         # For other distribution losses, use covariates and apply preprocessing
         dwc = data_with_covariates()
