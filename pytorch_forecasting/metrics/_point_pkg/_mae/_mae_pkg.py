@@ -31,17 +31,4 @@ class MAE_pkg(_BasePtMetric):
         """
         Returns test dataloaders configured for MAE.
         """
-        from pytorch_forecasting.tests._data_scenarios import (
-            data_with_covariates,
-            make_dataloaders,
-        )
-
-        if params is None:
-            params = {}
-        data_loader_kwargs = params.get("data_loader_kwargs", {})
-        # For point metrics, default target is "target"
-        data_loader_kwargs.setdefault("target", "target")
-
-        data = data_with_covariates()
-        dataloaders = make_dataloaders(data, **data_loader_kwargs)
-        return dataloaders
+        return super()._get_test_dataloaders_from(params=params, target="agency")

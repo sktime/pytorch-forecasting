@@ -1,12 +1,3 @@
-from pytorch_forecasting.metrics import (
-    BetaDistributionLoss,
-    ImplicitQuantileNetworkDistributionLoss,
-    LogNormalDistributionLoss,
-    MQF2DistributionLoss,
-    MultivariateNormalDistributionLoss,
-    NegativeBinomialDistributionLoss,
-    NormalDistributionLoss,
-)
 from pytorch_forecasting.metrics._distributions_pkg import (
     BetaDistributionLoss_pkg,
     ImplicitQuantileNetworkDistributionLoss_pkg,
@@ -47,16 +38,6 @@ METRIC_PKGS = [
     TweedieLoss_pkg,
     CrossEntropy_pkg,
     QuantileLoss_pkg,
-]
-
-DISTR_LOSSES_NUMERIC = [
-    NormalDistributionLoss(),
-    NegativeBinomialDistributionLoss(),
-    MultivariateNormalDistributionLoss(),
-    LogNormalDistributionLoss(),
-    BetaDistributionLoss(),
-    ImplicitQuantileNetworkDistributionLoss(),
-    # todo: still need some debugging to add the MQF2DistributionLoss
 ]
 
 LOSS_SPECIFIC_PARAMS = {

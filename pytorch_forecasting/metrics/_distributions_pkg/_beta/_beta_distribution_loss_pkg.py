@@ -42,23 +42,8 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         return TorchNormalizer(transformation="logit")
 
     @classmethod
-    def _get_test_dataloaders_from(cls, params=None):
+    def _get_test_dataloaders(cls, params=None):
         """
-        Return test dataloaders configured for BetaDistributionLoss.
+        Returns test dataloaders configured for BetaDistributionLoss.
         """
-        from pytorch_forecasting.tests._data_scenarios import (
-            data_with_covariates,
-            make_dataloaders,
-        )
-
-        if params is None:
-            params = {}
-        clip_target = cls._tags.get("clip_target", False)
-        data_loader_kwargs = cls._tags.get("data_loader_kwargs", {}).copy()
-        data_loader_kwargs.update(params.get("data_loader_kwargs", {}))
-
-        data = data_with_covariates()
-        if clip_target:
-            data["target"] = data["target"].clip(1e-4, 1 - 1e-4)
-        dataloaders = make_dataloaders(data, **data_loader_kwargs)
-        return dataloaders
+        return super()._get_test_dataloaders_from(params, target="agency")
