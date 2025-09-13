@@ -18,6 +18,8 @@ class CrossEntropy_pkg(_BasePtMetric):
         "requires:data_type": "classification_forecast",
         "info:metric_name": "CrossEntropy",
         "no_rescaling": True,
+        "info:pred_type": ["point"],
+        "info:y_type": ["category"],
     }
 
     @classmethod
@@ -25,3 +27,10 @@ class CrossEntropy_pkg(_BasePtMetric):
         from pytorch_forecasting.metrics import CrossEntropy
 
         return CrossEntropy
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params=None):
+        """
+        Returns test dataloaders configured for CrossEntropy.
+        """
+        super()._get_test_dataloaders_from(params=params, target="category")

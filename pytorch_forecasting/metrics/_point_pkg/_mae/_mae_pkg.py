@@ -16,6 +16,8 @@ class MAE_pkg(_BasePtMetric):
         "metric_type": "point",
         "requires:data_type": "point_forecast",
         "info:metric_name": "MAE",
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
     }
 
     @classmethod
@@ -23,3 +25,10 @@ class MAE_pkg(_BasePtMetric):
         from pytorch_forecasting.metrics import MAE
 
         return MAE
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params=None):
+        """
+        Returns test dataloaders configured for MAE.
+        """
+        return super()._get_test_dataloaders_from(params=params, target="agency")
