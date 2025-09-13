@@ -51,18 +51,17 @@ class NHiTS_pkg(_BasePtForecaster):
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
-        """
-        Get dataloaders from parameters.
-        """
         loss = params.get("loss", None)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
         clip_target = params.get("clip_target", False)
 
         from pytorch_forecasting.metrics import (
+            BetaDistributionLoss,
             LogNormalDistributionLoss,
+            MQF2DistributionLoss,
             MultivariateNormalDistributionLoss,
             NegativeBinomialDistributionLoss,
-            PoissonLoss,
+            TweedieLoss,
         )
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates,
@@ -70,35 +69,46 @@ class NHiTS_pkg(_BasePtForecaster):
             make_dataloaders,
         )
 
+        # Use fixed window dataloaders for MultivariateNormalDistributionLoss
         if isinstance(loss, MultivariateNormalDistributionLoss):
             return dataloaders_fixed_window_without_covariates()
 
-        if isinstance(loss, PoissonLoss):
+        # For other distribution losses, use covariates and apply preprocessing
+        if isinstance(
+            loss,
+            (
+                LogNormalDistributionLoss,
+                NegativeBinomialDistributionLoss,
+                MQF2DistributionLoss,
+                BetaDistributionLoss,
+            ),
+        ):
+            dwc = data_with_covariates()
+            if clip_target:
+                dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
+            else:
+                dwc["target"] = dwc["volume"]
             dl_default_kwargs = dict(
-                target="agency",
-                time_varying_unknown_reals=[],
+                target="volume",
+                time_varying_unknown_reals=["volume"],
                 add_relative_time_idx=False,
             )
             dl_default_kwargs.update(data_loader_kwargs)
-            data = data_with_covariates()
-            return make_dataloaders(data, **dl_default_kwargs)
 
-        # For other distribution losses, use covariates and apply preprocessing
-        dwc = data_with_covariates()
-        if clip_target:
-            dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
-        else:
-            dwc["target"] = dwc["volume"]
-        dl_default_kwargs = dict(
-            target="volume",
-            time_varying_unknown_reals=["volume"],
-            add_relative_time_idx=False,
-        )
-        dl_default_kwargs.update(data_loader_kwargs)
+            if isinstance(loss, NegativeBinomialDistributionLoss):
+                dwc = dwc.assign(volume=lambda x: x.volume.round())
+            elif isinstance(loss, LogNormalDistributionLoss):
+                dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
+            return make_dataloaders(dwc, **dl_default_kwargs)
 
-        if isinstance(loss, NegativeBinomialDistributionLoss):
-            dwc = dwc.assign(volume=lambda x: x.volume.round())
-        elif isinstance(loss, LogNormalDistributionLoss):
-            dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
+        if isinstance(loss, TweedieLoss):
+            dwc = data_with_covariates()
+            dl_default_kwargs = dict(
+                target="target",
+                time_varying_unknown_reals=["target"],
+                add_relative_time_idx=False,
+            )
+            dl_default_kwargs.update(data_loader_kwargs)
+            return make_dataloaders(dwc, **dl_default_kwargs)
 
-        return make_dataloaders(dwc, **dl_default_kwargs)
+        return dataloaders_fixed_window_without_covariates()
