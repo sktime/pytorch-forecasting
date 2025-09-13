@@ -40,7 +40,6 @@ METRIC_PKGS = [
     QuantileLoss_pkg,
 ]
 
-# Only extract relevant static metadata from _tags, not runtime config like clip_target or data_loader_kwargs
 LOSS_SPECIFIC_PARAMS = {
     pkg._tags.get("info:metric_name", pkg.__name__.replace("_pkg", "")): {
         "clip_target": getattr(pkg, "clip_target", None),
