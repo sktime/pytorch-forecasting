@@ -44,12 +44,13 @@ def check_estimator(
     tests_to_run : str or list of str, optional. Default = run all tests.
         Names (test/function name string) of tests to run.
         sub-sets tests that are run to the tests given here.
+
     fixtures_to_run : str or list of str, optional. Default = run all tests.
         pytest test-fixture combination codes, which test-fixture combinations to run.
         sub-sets tests and fixtures to run to the list given here.
         If both tests_to_run and fixtures_to_run are provided, runs the *union*,
         i.e., all test-fixture combinations for tests in tests_to_run,
-            plus all test-fixture combinations in fixtures_to_run.
+        plus all test-fixture combinations in fixtures_to_run.
 
     verbose : int or bool, optional, default=1.
         verbosity level for printouts from tests run.
@@ -66,15 +67,16 @@ def check_estimator(
 
     Returns
     -------
-    results : dict of results of the tests in self
-        keys are test/fixture strings, identical as in pytest, e.g., test[fixture]
-        entries are the string "PASSED" if the test passed,
-        or the exception raised if the test did not pass
-        returned only if all tests pass, or raise_exceptions=False
+    results : dict
+        dictionary of results of the tests in self
+        keys are test/fixture strings, identical as in pytest, e.g., ``test[fixture]``;
+        entries are the string ``"PASSED"`` if the test passed,
+        or the exception raised if the test did not pass.
+        returned only if all tests pass, or ``raise_exceptions=False``
 
     Raises
     ------
-    if raise_exceptions=True,
+    if ``raise_exceptions=True``,
     raises any exception produced by the tests directly
 
     Examples
@@ -135,7 +137,7 @@ def check_estimator(
             fixtures_to_run=fixtures_to_run,
             tests_to_exclude=tests_to_exclude,
             fixtures_to_exclude=fixtures_to_exclude,
-            verbose=verbose and raise_exceptions,
+            verbose=verbose if raise_exceptions else False,
         )
         results.update(test_cls_results)
 
