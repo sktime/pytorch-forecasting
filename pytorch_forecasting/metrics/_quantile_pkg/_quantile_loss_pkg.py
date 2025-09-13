@@ -38,7 +38,7 @@ class QuantileLoss_pkg(_BasePtMetric):
         ]
 
     @classmethod
-    def _get_test_dataloaders_from(cls, params=None):
+    def _get_test_dataloaders(cls, params=None):
         """
         Returns test dataloaders configured for QuantileLoss.
         """

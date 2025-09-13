@@ -29,7 +29,7 @@ class SMAPE_pkg(_BasePtMetric):
         return SMAPE
 
     @classmethod
-    def _get_test_dataloaders_from(cls, params=None):
+    def _get_test_dataloaders(cls, params=None):
         """
         Returns test dataloaders configured for SMAPE.
         """

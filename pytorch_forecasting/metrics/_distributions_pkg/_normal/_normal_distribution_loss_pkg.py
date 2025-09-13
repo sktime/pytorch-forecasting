@@ -19,7 +19,7 @@ class NormalDistributionLoss_pkg(_BasePtMetric):
         "requires:data_type": "normal_distribution_forecast",
         "info:pred_type": ["distr"],
         "info:y_type": ["numeric"],
-        "expected_loss_ndim": 2,
+        "loss_ndim": 2,
     }
 
     @classmethod
@@ -29,7 +29,7 @@ class NormalDistributionLoss_pkg(_BasePtMetric):
         return NormalDistributionLoss
 
     @classmethod
-    def _get_test_dataloaders_from(cls, params=None):
+    def _get_test_dataloaders(cls, params=None):
         """
         Returns test dataloaders configured for NormalDistributionLoss.
         """

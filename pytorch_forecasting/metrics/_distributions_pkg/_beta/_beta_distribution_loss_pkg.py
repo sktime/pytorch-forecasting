@@ -17,15 +17,16 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "beta",
         "info:metric_name": "BetaDistributionLoss",
         "requires:data_type": "beta_distribution_forecast",
-        "clip_target": True,
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], transformation="logit"
-            )
-        },
         "info:pred_type": ["distr"],
         "info:y_type": ["numeric"],
-        "expected_loss_ndim": 2,
+        "loss_ndim": 2,
+    }
+
+    clip_target = True
+    data_loader_kwargs = {
+        "target_normalizer": GroupNormalizer(
+            groups=["agency", "sku"], transformation="logit"
+        )
     }
 
     @classmethod
@@ -46,4 +47,8 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         """
         Returns test dataloaders configured for BetaDistributionLoss.
         """
-        return super()._get_test_dataloaders_from(params, target="agency")
+        kwargs = dict(target="agency")
+        kwargs.update(cls.data_loader_kwargs)
+        return super()._get_test_dataloaders_from(
+            params, clip_target=cls.clip_target, **kwargs
+        )

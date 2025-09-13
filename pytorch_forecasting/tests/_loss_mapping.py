@@ -40,26 +40,16 @@ METRIC_PKGS = [
     QuantileLoss_pkg,
 ]
 
+# Only extract relevant static metadata from _tags, not runtime config like clip_target or data_loader_kwargs
 LOSS_SPECIFIC_PARAMS = {
     pkg._tags.get("info:metric_name", pkg.__name__.replace("_pkg", "")): {
-        k: v
-        for k, v in pkg._tags.items()
-        if not (
-            k.startswith("info:")
-            or k.startswith("capability:")
-            or k.startswith("shape:")
-            or k
-            in [
-                "metric_type",
-                "distribution_type",
-                "requires:data_type",
-                "no_rescaling",
-                "expected_loss_ndim",
-            ]
-        )
+        "clip_target": getattr(pkg, "clip_target", None),
+        "data_loader_kwargs": getattr(pkg, "data_loader_kwargs", {}),
     }
     for pkg in METRIC_PKGS
 }
+
+print(LOSS_SPECIFIC_PARAMS)
 
 
 def get_compatible_losses(pred_types, y_types):
@@ -79,7 +69,7 @@ def get_compatible_losses(pred_types, y_types):
 
 def get_test_dataloaders_for_loss(pkg, params=None):
     """
-    Get test dataloaders for a given loss package using its tags and method.
+    Get test dataloaders for a given loss package using its method.
     """
     return pkg._get_test_dataloaders_from(params or {})
 
@@ -88,7 +78,7 @@ def check_loss_output_shape(pkg, y_pred, y_true):
     """
     Check that the output shape of the loss matches the expected shape from tags.
     """
-    expected_ndim = pkg._tags.get("expected_loss_ndim", None)
+    expected_ndim = pkg._tags.get("loss_ndim", None)
     loss_instance = pkg.get_cls()()
     result = loss_instance(y_pred, y_true)
     if expected_ndim is not None:

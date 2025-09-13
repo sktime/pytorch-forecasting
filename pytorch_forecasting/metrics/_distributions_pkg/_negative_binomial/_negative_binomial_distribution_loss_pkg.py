@@ -17,13 +17,14 @@ class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "negative_binomial",
         "info:metric_name": "NegativeBinomialDistributionLoss",
         "requires:data_type": "negative_binomial_distribution_forecast",
-        "clip_target": False,
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(groups=["agency", "sku"], center=False)
-        },
         "info:pred_type": ["distr"],
         "info:y_type": ["numeric"],
-        "expected_loss_ndim": 2,
+        "loss_ndim": 2,
+    }
+
+    clip_target = False
+    data_loader_kwargs = {
+        "target_normalizer": GroupNormalizer(groups=["agency", "sku"], center=False)
     }
 
     @classmethod
@@ -42,8 +43,12 @@ class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
         return TorchNormalizer(center=False)
 
     @classmethod
-    def _get_test_dataloaders_from(cls, params=None):
+    def _get_test_dataloaders(cls, params=None):
         """
         Returns test dataloaders configured for NegativeBinomialDistributionLoss.
         """
-        super()._get_test_dataloaders_from(params, target="agency")
+        kwargs = dict(target="agency")
+        kwargs.update(cls.data_loader_kwargs)
+        return super()._get_test_dataloaders_from(
+            params, clip_target=cls.clip_target, **kwargs
+        )

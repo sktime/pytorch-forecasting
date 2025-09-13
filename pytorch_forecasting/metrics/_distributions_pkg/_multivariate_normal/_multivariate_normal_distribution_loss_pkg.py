@@ -18,14 +18,15 @@ class MultivariateNormalDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "multivariate_normal",
         "info:metric_name": "MultivariateNormalDistributionLoss",
         "requires:data_type": "multivariate_normal_distribution_forecast",
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], transformation="log1p"
-            )
-        },
         "info:pred_type": ["distr"],
         "info:y_type": ["numeric"],
-        "expected_loss_ndim": 2,
+        "loss_ndim": 2,
+    }
+
+    data_loader_kwargs = {
+        "target_normalizer": GroupNormalizer(
+            groups=["agency", "sku"], transformation="log1p"
+        )
     }
 
     @classmethod
@@ -37,8 +38,10 @@ class MultivariateNormalDistributionLoss_pkg(_BasePtMetric):
         return MultivariateNormalDistributionLoss
 
     @classmethod
-    def _get_test_dataloaders_from(cls, params=None):
+    def _get_test_dataloaders(cls, params=None):
         """
         Returns test dataloaders configured for MultivariateNormalDistributionLoss.
         """
-        super()._get_test_dataloaders_from(params=params, target="agency")
+        kwargs = dict(target="agency")
+        kwargs.update(cls.data_loader_kwargs)
+        return super()._get_test_dataloaders_from(params, **kwargs)

@@ -84,7 +84,7 @@ class _BasePtMetric(_BaseObject):
         return TorchNormalizer()
 
     @classmethod
-    def _get_test_dataloaders_from(cls, params=None, **kwargs):
+    def _get_test_dataloaders_from(cls, params, **kwargs):
         """
         Returns test dataloaders configured for the metric.
         Child classes can override or pass kwargs for customization.
@@ -92,10 +92,10 @@ class _BasePtMetric(_BaseObject):
         if params is None:
             params = {}
         data_loader_kwargs = {}
-        data_loader_kwargs.update(cls._tags.get("data_loader_kwargs", {}))
         data_loader_kwargs.update(params.get("data_loader_kwargs", {}))
         data_loader_kwargs.update(kwargs)
-        clip_target = cls._tags.get("clip_target", False)
+        clip_target = params.get("clip_target", False)
+
         data = data_with_covariates()
         if clip_target:
             data["target"] = data["target"].clip(1e-4, 1 - 1e-4)

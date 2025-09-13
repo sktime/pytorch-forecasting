@@ -19,15 +19,16 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "log_normal",
         "info:metric_name": "LogNormalDistributionLoss",
         "requires:data_type": "log_normal_distribution_forecast",
-        "clip_target": True,
-        "data_loader_kwargs": {
-            "target_normalizer": GroupNormalizer(
-                groups=["agency", "sku"], transformation="log1p"
-            )
-        },
         "info:pred_type": ["distr"],
         "info:y_type": ["numeric"],
-        "expected_loss_ndim": 2,
+        "loss_ndim": 2,
+    }
+
+    clip_target = True
+    data_loader_kwargs = {
+        "target_normalizer": GroupNormalizer(
+            groups=["agency", "sku"], transformation="log1p"
+        )
     }
 
     @classmethod
@@ -64,4 +65,8 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
         """
         Returns test dataloaders configured for LogNormalDistributionLoss.
         """
-        super()._get_test_dataloaders_from(params=params, target="agency")
+        kwargs = dict(target="agency")
+        kwargs.update(cls.data_loader_kwargs)
+        return super()._get_test_dataloaders_from(
+            params, clip_target=cls.clip_target, **kwargs
+        )
