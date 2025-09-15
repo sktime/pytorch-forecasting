@@ -19,6 +19,26 @@ from pytorch_forecasting.utils._classproperty import classproperty
 
 
 class BaseModel(LightningModule):
+    """Base model for time series forecasting.
+
+    Parameters
+    ----------
+    loss : Descendants of ``pytorch_forecasting.metrics.Metric`` class
+        Loss function to use for training.
+    logging_metrics : Optional[List[nn.Module]], optional
+        List of metrics to log during training, validation, and testing.
+    optimizer : Optional[Union[Optimizer, str]], optional
+        Optimizer to use for training.
+        Can be a string ("adam", "sgd") or an instance of `torch.optim.Optimizer`.
+    optimizer_params : Optional[Dict], optional
+        Parameters for the optimizer.
+    lr_scheduler : Optional[str], optional
+        Learning rate scheduler to use.
+        Supported values: "reduce_lr_on_plateau", "step_lr".
+    lr_scheduler_params : Optional[Dict], optional
+        Parameters for the learning rate scheduler.
+    """
+
     def __init__(
         self,
         loss: Metric,
@@ -28,26 +48,6 @@ class BaseModel(LightningModule):
         lr_scheduler: Optional[str] = None,
         lr_scheduler_params: Optional[dict] = None,
     ):
-        """
-        Base model for time series forecasting.
-
-        Parameters
-        ----------
-        loss : Metric
-            Loss function to use for training.
-        logging_metrics : Optional[List[nn.Module]], optional
-            List of metrics to log during training, validation, and testing.
-        optimizer : Optional[Union[Optimizer, str]], optional
-            Optimizer to use for training.
-            Can be a string ("adam", "sgd") or an instance of `torch.optim.Optimizer`.
-        optimizer_params : Optional[Dict], optional
-            Parameters for the optimizer.
-        lr_scheduler : Optional[str], optional
-            Learning rate scheduler to use.
-            Supported values: "reduce_lr_on_plateau", "step_lr".
-        lr_scheduler_params : Optional[Dict], optional
-            Parameters for the learning rate scheduler.
-        """
         super().__init__()
         self.loss = loss
         self.logging_metrics = logging_metrics if logging_metrics is not None else []

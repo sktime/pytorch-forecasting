@@ -19,7 +19,7 @@ class TslibBaseModel(BaseModel):
 
     Parameters
     ----------
-    loss : Metric
+    loss : Descendants of ``pytorch_forecasting.metrics.Metric`` class
         Loss function to use for training.
     logging_metrics : Optional[list[nn.Module]], optional
         list of metrics to log during training, validation, and testing.

@@ -127,7 +127,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.train_val_test_split = train_val_test_split
 
         warn(
-            "TimeSeries is part of an experimental rework of the "
+            "EncoderDecoderTimeSeriesDataModule is part of an experimental "
+            "rework of the "
             "pytorch-forecasting data layer, "
             "scheduled for release with v2.0.0. "
             "The API is not stable and may change without prior warning. "
@@ -383,6 +384,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         def __getitem__(self, idx):
             """Retrieve a processed time series window for dataloader input.
 
+            Parameters
+            ----------
+            idx : int
+                Index of the window to retrieve from the dataset.
+
+            Returns
+            -------
             x : dict
                 Dictionary containing model inputs:
 
@@ -406,6 +414,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                   Time indices for the encoder sequence.
                 * ``decoder_time_idx`` : tensor of shape (pred_length,)
                   Time indices for the decoder sequence.
+                * ``target_past`` : torch.Tensor of shape (enc_length,)
+                  Historical target values for the encoder sequence.
                 * ``target_scale`` : tensor of shape (1,)
                   Scaling factor for the target values.
                 * ``encoder_mask`` : tensor of shape (enc_length,)
@@ -421,8 +431,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 * ``static_continuous_features`` : tensor of shape (1, 0), optional
                   Placeholder for static continuous features (currently empty).
 
-            y : tensor of shape ``(pred_length, n_targets)``
+            y : torch.Tensor or list of torch.Tensor
                 Target values for the decoder sequence.
+                If ``n_targets`` > 1, a list of tensors each of shape (pred_length, 1)
+                is returned. Otherwise, a tensor of shape (pred_length,) is returned.
             """
             series_idx, start_idx, enc_length, pred_length = self.windows[idx]
             data = self.data_module._preprocess_data(series_idx)

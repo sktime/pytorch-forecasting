@@ -70,10 +70,65 @@ class _TslibDataset(Dataset):
 
         Returns
         -------
-        x: dict[str, torch.Tensor]
-            A dictionary containing the processed data.
-        y: torch.Tensor
-            The target variable.
+        x : dict[str, torch.Tensor]
+            Dict containing processed inputs for the model, with the following keys:
+
+            * ``history_cont`` : torch.Tensor of shape
+                                    (context_length, n_history_cont_features)
+                Continuous features for the encoder (historical data).
+            * ``history_cat`` : torch.Tensor of shape
+                                    (context_length, n_history_cat_features)
+                Categorical features for the encoder (historical data).
+            * ``future_cont`` : torch.Tensor of shape
+                                    (prediction_length, n_future_cont_features)
+                Known continuous features for the decoder (future data).
+            * ``future_cat`` : torch.Tensor of shape
+                                    (prediction_length, n_future_cat_features)
+                Known categorical features for the decoder (future data).
+            * ``history_length`` : torch.Tensor of shape (1,)
+                Length of the encoder sequence.
+            * ``future_length`` : torch.Tensor of shape (1,)
+                Length of the decoder sequence.
+            * ``history_mask`` : torch.Tensor of shape (context_length,)
+                Boolean mask indicating valid encoder time points.
+            * ``future_mask`` : torch.Tensor of shape (prediction_length,)
+                Boolean mask indicating valid decoder time points.
+            * ``groups`` : torch.Tensor of shape (1,)
+                Group identifier for the time series instance.
+            * ``history_time_idx`` : torch.Tensor of shape (context_length,)
+                Time indices for the encoder sequence.
+            * ``future_time_idx`` : torch.Tensor of shape (prediction_length,)
+                Time indices for the decoder sequence.
+            * ``history_target`` : torch.Tensor of shape (context_length,)
+                Historical target values for the encoder sequence.
+            * ``future_target`` : torch.Tensor of shape (prediction_length,)
+                Target values for the decoder sequence.
+            * ``future_target_len`` : torch.Tensor of shape (1,)
+                Length of the decoder target sequence.
+
+            Optional fields, depending on dataset configuration:
+
+            * ``history_relative_time_idx`` : torch.Tensor of shape (context_length,),
+                                                optional
+                Relative time indices for the encoder sequence, present if
+                `add_relative_time_idx` is True.
+            * ``future_relative_time_idx`` : torch.Tensor of shape (prediction_length,),
+                                                optional
+                Relative time indices for the decoder sequence, present if
+                `add_relative_time_idx` is True.
+            * ``static_categorical_features`` : torch.Tensor of shape
+                                                (1, n_static_features), optional
+                Static categorical features if available.
+            * ``static_continuous_features`` : torch.Tensor of shape
+                                                (1, n_static_features), optional
+                Static continuous features if available.
+            * ``target_scale`` : torch.Tensor of shape (1,), optional
+                Scaling factor for the target values if provided by the dataset.
+
+        y : torch.Tensor or list of torch.Tensor
+            Target values for the decoder sequence.
+            If ``n_targets`` > 1, a list of tensors each of shape (prediction_length, 1)
+            is returned. Otherwise, a tensor of shape (prediction_length,) is returned.
         """
 
         series_idx, start_idx, context_length, prediction_length = self.windows[idx]
@@ -779,8 +834,11 @@ class TslibDataModule(LightningDataModule):
 
         Returns
         -------
-        tuple[dict[str, torch.Tensor], torch.Tensor]
+        tuple[dict[str, torch.Tensor], torch.Tensor or list of torch.Tensor]
             A tuple containing the collated data and the target variable.
+            If the dataset has multiple targets, a list of tensors each of shape
+            (batch_size, prediction_length, 1). Otherwise, a single tensor of shape
+            (batch_size, prediction_length).
         """
 
         x_batch = {
