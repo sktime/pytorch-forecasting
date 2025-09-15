@@ -837,7 +837,7 @@ class TslibDataModule(LightningDataModule):
         tuple[dict[str, torch.Tensor], torch.Tensor or list of torch.Tensor]
             A tuple containing the collated data and the target variable.
             If the dataset has multiple targets, a list of tensors each of shape
-            (batch_size, prediction_length, 1). Otherwise, a single tensor of shape
+            (batch_size, prediction_length,). Otherwise, a single tensor of shape
             (batch_size, prediction_length).
         """
 
