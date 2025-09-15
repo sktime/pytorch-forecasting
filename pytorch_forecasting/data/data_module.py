@@ -433,7 +433,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y : torch.Tensor or list of torch.Tensor
                 Target values for the decoder sequence.
-                If ``n_targets`` > 1, a list of tensors each of shape (pred_length, 1)
+                If ``n_targets`` > 1, a list of tensors each of shape (pred_length,)
                 is returned. Otherwise, a tensor of shape (pred_length,) is returned.
             """
             series_idx, start_idx, enc_length, pred_length = self.windows[idx]
@@ -562,7 +562,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             y = data["target"][decoder_indices]
 
             if self.data_module.n_targets > 1:
-                y = list(torch.split(y, 1, dim=1))
+                y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
             else:
                 y = y.squeeze(-1)
 

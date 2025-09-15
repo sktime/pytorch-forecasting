@@ -127,7 +127,7 @@ class _TslibDataset(Dataset):
 
         y : torch.Tensor or list of torch.Tensor
             Target values for the decoder sequence.
-            If ``n_targets`` > 1, a list of tensors each of shape (prediction_length, 1)
+            If ``n_targets`` > 1, a list of tensors each of shape (prediction_length,)
             is returned. Otherwise, a tensor of shape (prediction_length,) is returned.
         """
 
@@ -226,7 +226,7 @@ class _TslibDataset(Dataset):
 
         y = processed_data["target"][future_indices]
         if self.data_module.n_targets > 1:
-            y = list(torch.split(y, 1, dim=1))
+            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
         else:
             y = y.squeeze(-1)
 
