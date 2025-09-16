@@ -22,12 +22,17 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         "loss_ndim": 2,
     }
 
-    clip_target = True
-    data_loader_kwargs = {
-        "target_normalizer": GroupNormalizer(
-            groups=["agency", "sku"], transformation="logit"
-        )
-    }
+    @property
+    def clip_target(cls):
+        return True
+
+    @property
+    def data_loader_kwargs(cls):
+        return {
+            "target_normalizer": GroupNormalizer(
+                groups=["agency", "sku"], transformation="logit"
+            )
+        }
 
     @classmethod
     def get_cls(cls):

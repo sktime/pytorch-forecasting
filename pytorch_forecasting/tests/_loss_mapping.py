@@ -41,14 +41,12 @@ METRIC_PKGS = [
 ]
 
 LOSS_SPECIFIC_PARAMS = {
-    pkg._tags.get("info:metric_name", pkg.__name__.replace("_pkg", "")): {
-        "clip_target": getattr(pkg, "clip_target", None),
-        "data_loader_kwargs": getattr(pkg, "data_loader_kwargs", {}),
+    pkg.get_class_tag("info:metric_name", pkg.__name__.replace("_pkg", "")): {
+        "clip_target": getattr(pkg(), "clip_target", False),
+        "data_loader_kwargs": getattr(pkg(), "data_loader_kwargs", {}),
     }
     for pkg in METRIC_PKGS
 }
-
-print(LOSS_SPECIFIC_PARAMS)
 
 
 def get_compatible_losses(pred_types, y_types):
@@ -57,8 +55,8 @@ def get_compatible_losses(pred_types, y_types):
     """
     compatible_losses = []
     for pkg in METRIC_PKGS:
-        pkg_pred_types = pkg._tags.get("info:pred_type", [])
-        pkg_y_types = pkg._tags.get("info:y_type", [])
+        pkg_pred_types = pkg.get_class_tag("info:pred_type", [])
+        pkg_y_types = pkg.get_class_tag("info:y_type", [])
         if any(pt in pred_types for pt in pkg_pred_types) and any(
             yt in y_types for yt in pkg_y_types
         ):
@@ -77,7 +75,7 @@ def check_loss_output_shape(pkg, y_pred, y_true):
     """
     Check that the output shape of the loss matches the expected shape from tags.
     """
-    expected_ndim = pkg._tags.get("loss_ndim", None)
+    expected_ndim = pkg.get_class_tag("loss_ndim", None)
     loss_instance = pkg.get_cls()()
     result = loss_instance(y_pred, y_true)
     if expected_ndim is not None:

@@ -22,10 +22,15 @@ class NegativeBinomialDistributionLoss_pkg(_BasePtMetric):
         "loss_ndim": 2,
     }
 
-    clip_target = False
-    data_loader_kwargs = {
-        "target_normalizer": GroupNormalizer(groups=["agency", "sku"], center=False)
-    }
+    @property
+    def clip_target(self):
+        return False
+
+    @property
+    def data_loader_kwargs(self):
+        return {
+            "target_normalizer": GroupNormalizer(groups=["agency", "sku"], center=False)
+        }
 
     @classmethod
     def get_cls(cls):
