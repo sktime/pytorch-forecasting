@@ -339,22 +339,17 @@ def _integration(
             f"with shape {output.shape}"
         )
 
-        if n_dims == 2:
-            batch_size, prediction_length = output.shape
-            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
-            assert (
-                prediction_length > 0
-            ), f"Prediction length must be positive, got {prediction_length}"
-
-        elif n_dims == 3:
-            batch_size, prediction_length, n_features = output.shape
-            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
-            assert (
-                prediction_length > 0
-            ), f"Prediction length must be positive, got {prediction_length}"
-            assert (
-                n_features > 0
-            ), f"Number of features must be positive, got {n_features}"
+        batch_size, prediction_length, n_features = output.shape
+        assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
+        assert (
+            prediction_length > 0
+        ), f"Prediction length must be positive, got {prediction_length}"
+        assert (
+            # todo: compare n_features with expected 3rd dimension of the corresponding
+            # loss function on which model is trained and
+            # predictions generated in this test.
+            n_features > 0  # this should be n_features == net.loss.expected_dim
+        ), f"Number of features must be positive, got {n_features}"
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
