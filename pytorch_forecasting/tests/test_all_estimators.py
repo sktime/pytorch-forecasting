@@ -335,7 +335,7 @@ def _integration(
         n_dims = len(output.shape)
 
         assert n_dims == 3, (
-            f"Prediction output must be 2D or 3D, but got {n_dims}D tensor "
+            f"Prediction output must be 3D, but got {n_dims}D tensor "
             f"with shape {output.shape}"
         )
 
