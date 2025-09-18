@@ -5,10 +5,10 @@
 EXCLUDE_ESTIMATORS = [
     "DummySkipped",
     "ClassName",  # exclude classes from extension templates
-    "NBeatsKAN",
-    "NBeats",
-    "TimeXer",
-    "xLSTMTime",
+    "NBeatsKAN_pkg",
+    "NBeats_pkg",
+    "TimeXer_pkg",
+    "xLSTMTime_pkg",
 ]
 
 # dictionary of lists of str, names of tests to exclude from testing
