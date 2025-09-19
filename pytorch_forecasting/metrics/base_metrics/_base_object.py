@@ -1,6 +1,10 @@
 """Base object class for pytorch-forecasting metrics."""
 
 from pytorch_forecasting.base._base_object import _BaseObject
+from pytorch_forecasting.tests._data_scenarios import (
+    data_with_covariates,
+    make_dataloaders,
+)
 
 
 class _BasePtMetric(_BaseObject):
@@ -78,3 +82,22 @@ class _BasePtMetric(_BaseObject):
         from pytorch_forecasting.data import TorchNormalizer
 
         return TorchNormalizer()
+
+    @classmethod
+    def _get_test_dataloaders_from(cls, params, **kwargs):
+        """
+        Returns test dataloaders configured for the metric.
+        Child classes can override or pass kwargs for customization.
+        """
+        if params is None:
+            params = {}
+        data_loader_kwargs = {}
+        data_loader_kwargs.update(params.get("data_loader_kwargs", {}))
+        data_loader_kwargs.update(kwargs)
+        clip_target = params.get("clip_target", False)
+
+        data = data_with_covariates()
+        if clip_target:
+            data["target"] = data["target"].clip(1e-4, 1 - 1e-4)
+        dataloaders = make_dataloaders(data, **data_loader_kwargs)
+        return dataloaders

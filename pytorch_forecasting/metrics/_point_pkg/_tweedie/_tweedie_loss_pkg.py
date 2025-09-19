@@ -16,6 +16,9 @@ class TweedieLoss_pkg(_BasePtMetric):
         "metric_type": "point",
         "info:metric_name": "TweedieLoss",
         "requires:data_type": "point_forecast",
+        "info:pred_type": ["point"],
+        "info:y_types": ["numeric"],
+        "loss_ndim": 1,
     }  # noqa: E501
 
     @classmethod
@@ -23,3 +26,10 @@ class TweedieLoss_pkg(_BasePtMetric):
         from pytorch_forecasting.metrics.point import TweedieLoss
 
         return TweedieLoss
+
+    @classmethod
+    def _get_test_dataloaders(cls, params=None):
+        """
+        Returns test dataloaders configured for TweedieLoss.
+        """
+        return super()._get_test_dataloaders_from(params, target="agency")

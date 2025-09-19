@@ -17,6 +17,9 @@ class NormalDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "normal",
         "info:metric_name": "NormalDistributionLoss",
         "requires:data_type": "normal_distribution_forecast",
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
+        "loss_ndim": 2,
     }
 
     @classmethod
@@ -24,3 +27,10 @@ class NormalDistributionLoss_pkg(_BasePtMetric):
         from pytorch_forecasting.metrics.distributions import NormalDistributionLoss
 
         return NormalDistributionLoss
+
+    @classmethod
+    def _get_test_dataloaders(cls, params=None):
+        """
+        Returns test dataloaders configured for NormalDistributionLoss.
+        """
+        super()._get_test_dataloaders_from(params=params, target="agency")

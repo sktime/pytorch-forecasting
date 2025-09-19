@@ -5,6 +5,7 @@ Package container for the Log Normal distribution loss metric.
 import torch
 
 from pytorch_forecasting.data import TorchNormalizer
+from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
 
 
@@ -18,7 +19,22 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
         "distribution_type": "log_normal",
         "info:metric_name": "LogNormalDistributionLoss",
         "requires:data_type": "log_normal_distribution_forecast",
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
+        "loss_ndim": 2,
     }
+
+    @property
+    def clip_target(self):
+        return True
+
+    @property
+    def data_loader_kwargs(self):
+        return {
+            "target_normalizer": GroupNormalizer(
+                groups=["agency", "sku"], transformation="log1p"
+            )
+        }
 
     @classmethod
     def get_cls(cls):
@@ -48,3 +64,14 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
             )
 
         return y_pred, y
+
+    @classmethod
+    def _get_test_dataloaders(cls, params=None):
+        """
+        Returns test dataloaders configured for LogNormalDistributionLoss.
+        """
+        kwargs = dict(target="agency")
+        kwargs.update(cls.data_loader_kwargs)
+        return super()._get_test_dataloaders_from(
+            params, clip_target=cls.clip_target, **kwargs
+        )
