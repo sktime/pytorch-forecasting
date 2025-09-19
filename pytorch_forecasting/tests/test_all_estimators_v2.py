@@ -1,6 +1,5 @@
 """Automated tests based on the skbase test suite template."""
 
-from inspect import isclass
 import shutil
 
 import lightning.pytorch as pl
@@ -9,6 +8,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import torch
 import torch.nn as nn
 
+from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.tests.test_all_estimators import (
     EstimatorFixtureGenerator,
     EstimatorPackageConfig,
@@ -62,7 +62,7 @@ def _integration(
         loss = kwargs["loss"]
         kwargs.pop("loss")
     else:
-        loss = nn.MSELoss()
+        loss = SMAPE()
 
     net = estimator_cls(
         metadata=metadata,
