@@ -109,7 +109,7 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        import torch.nn as nn
+        from pytorch_forecasting.metrics import MAE, MAPE
 
         return [
             dict(
@@ -126,7 +126,7 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
                 n_add_dec=2,
                 dropout_rate=0.2,
                 data_loader_kwargs=dict(max_encoder_length=5, max_prediction_length=3),
-                loss=nn.MSELoss(),
+                loss=MAE(),
             ),
             dict(
                 hidden_size=64,
@@ -135,6 +135,6 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
                 n_add_dec=2,
                 dropout_rate=0.1,
                 data_loader_kwargs=dict(max_encoder_length=4, max_prediction_length=2),
-                loss=nn.PoissonNLLLoss(),
+                loss=MAPE(),
             ),
         ]
