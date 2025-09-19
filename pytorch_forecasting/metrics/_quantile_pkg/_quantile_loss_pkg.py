@@ -18,7 +18,7 @@ class QuantileLoss_pkg(_BasePtMetric):
         "requires:data_type": "quantile_forecast",
         "info:pred_type": ["quantile"],
         "info:y_type": ["numeric"],
-        "num_quantiles": 2,
+        "loss_ndim": "num_quantiles",
     }  # noqa: E501
 
     @classmethod
