@@ -20,6 +20,7 @@ class CrossEntropy_pkg(_BasePtMetric):
         "no_rescaling": True,
         "info:pred_type": ["point"],
         "info:y_type": ["category"],
+        "loss_ndim": 1,
     }
 
     @classmethod

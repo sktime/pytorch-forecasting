@@ -20,6 +20,7 @@ class PoissonLoss_pkg(_BasePtMetric):
         "shape:adds_quantile_dimension": True,
         "info:pred_type": ["point"],
         "info:y_type": ["numeric"],
+        "loss_ndim": 1,
     }
 
     @classmethod

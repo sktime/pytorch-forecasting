@@ -18,6 +18,7 @@ class TweedieLoss_pkg(_BasePtMetric):
         "requires:data_type": "point_forecast",
         "info:pred_type": ["point"],
         "info:y_types": ["numeric"],
+        "loss_ndim": 1,
     }  # noqa: E501
 
     @classmethod

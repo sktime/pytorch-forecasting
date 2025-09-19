@@ -19,14 +19,23 @@ class MQF2DistributionLoss_pkg(_BasePtMetric):
         "python_dependencies": ["cpflows"],
         "capability:quantile_generation": True,
         "requires:data_type": "mqf2_distribution_forecast",
-        "clip_target": True,
-        "data_loader_kwargs": {
+    }
+
+    @property
+    def clip_target(self):
+        return True
+
+    @property
+    def data_loader_kwargs(self):
+        return {
             "target_normalizer": GroupNormalizer(
                 groups=["agency", "sku"], center=False, transformation="log1p"
             )
-        },
-        "trainer_kwargs": dict(accelerator="cpu"),
-    }
+        }
+
+    @property
+    def trainer_kwargs(self):
+        return dict(accelerator="cpu")
 
     @classmethod
     def get_cls(cls):

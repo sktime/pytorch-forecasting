@@ -51,6 +51,20 @@ class NHiTS_pkg(_BasePtForecaster):
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
+        """Get dataloaders from parameters.
+
+        Parameters
+        ----------
+        params : dict
+            Parameters to create dataloaders.
+            One of the elements in the list returned by ``get_test_train_params``.
+
+        Returns
+        -------
+        dataloaders : dict with keys "train", "val", "test", values torch DataLoader
+            Dict of dataloaders created from the parameters.
+            Train, validation, and test dataloaders, in this order.
+        """
         loss = params.get("loss", None)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
         clip_target = params.get("clip_target", False)
@@ -97,6 +111,7 @@ class NHiTS_pkg(_BasePtForecaster):
 
             if isinstance(loss, NegativeBinomialDistributionLoss):
                 dwc = dwc.assign(volume=lambda x: x.volume.round())
+            # todo: still need some debugging to add the MQF2DistributionLoss
             elif isinstance(loss, LogNormalDistributionLoss):
                 dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
             return make_dataloaders(dwc, **dl_default_kwargs)

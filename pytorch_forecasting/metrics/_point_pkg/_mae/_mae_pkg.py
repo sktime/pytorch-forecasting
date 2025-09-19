@@ -18,6 +18,7 @@ class MAE_pkg(_BasePtMetric):
         "info:metric_name": "MAE",
         "info:pred_type": ["point"],
         "info:y_type": ["numeric"],
+        "loss_ndim": 1,
     }
 
     @classmethod

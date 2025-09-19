@@ -16,6 +16,7 @@ class MASE_pkg(_BasePtMetric):
         "requires:data_type": "point_forecast",
         "info:pred_type": ["point"],
         "info:y_type": ["numeric"],
+        "loss_ndim": 1,
     }
 
     @classmethod
