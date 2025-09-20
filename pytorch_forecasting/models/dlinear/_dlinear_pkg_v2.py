@@ -2,7 +2,10 @@
 Packages container for DLinear model.
 """
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.models.base._base_object import (
+    _BasePtForecasterV2,
+    _TSlibConfigBase,
+)
 
 
 class DLinear_pkg_v2(_BasePtForecasterV2):
@@ -125,3 +128,9 @@ class DLinear_pkg_v2(_BasePtForecasterV2):
                 logging_metrics=[SMAPE()],
             ),
         ]
+
+
+class DLinear_pkg_v2_metadata(_TSlibConfigBase):
+    @classmethod
+    def _check_metadata_dlinear(self, metadata):
+        super()._check_metadata(metadata)
