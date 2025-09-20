@@ -12,7 +12,6 @@ from skbase.utils.dependencies import _check_soft_dependencies
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
 from pytorch_forecasting.tests._loss_mapping import (
-    LOSS_SPECIFIC_PARAMS,
     get_compatible_losses,
 )
 
@@ -195,16 +194,16 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
         """
         all_train_kwargs = []
         train_kwargs_names = []
-        for loss_item in compatible_losses:
-            if inspect.isclass(loss_item):
-                loss_name = loss_item.__name__
-                loss = loss_item
-            else:
-                loss_name = loss_item.__class__.__name__
-                loss = loss_item
-            loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
-            loss_params["loss"] = loss
-
+        for pkg_cls, loss in compatible_losses:
+            loss_name = loss.__class__.__name__
+            pkg_instance = pkg_cls()
+            clip_target = getattr(pkg_instance, "clip_target", False)
+            data_loader_kwargs = getattr(pkg_instance, "data_loader_kwargs", {})
+            loss_params = {
+                "clip_target": clip_target,
+                "data_loader_kwargs": data_loader_kwargs,
+                "loss": loss,
+            }
             for i, base_params in enumerate(base_params_list):
                 final_params = _nested_update(base_params, loss_params)
                 all_train_kwargs.append(final_params)

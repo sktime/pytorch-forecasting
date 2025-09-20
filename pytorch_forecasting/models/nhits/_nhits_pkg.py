@@ -70,12 +70,7 @@ class NHiTS_pkg(_BasePtForecaster):
         clip_target = params.get("clip_target", False)
 
         from pytorch_forecasting.metrics import (
-            BetaDistributionLoss,
-            LogNormalDistributionLoss,
             MQF2DistributionLoss,
-            MultivariateNormalDistributionLoss,
-            NegativeBinomialDistributionLoss,
-            TweedieLoss,
         )
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates,
@@ -84,18 +79,16 @@ class NHiTS_pkg(_BasePtForecaster):
         )
 
         # Use fixed window dataloaders for MultivariateNormalDistributionLoss
-        if isinstance(loss, MultivariateNormalDistributionLoss):
+        if hasattr(
+            loss, "get_class_tag"
+        ) and "multivariate_normal" in loss.get_class_tag("distribution_type", ""):
             return dataloaders_fixed_window_without_covariates()
 
         # For other distribution losses, use covariates and apply preprocessing
-        if isinstance(
-            loss,
-            (
-                LogNormalDistributionLoss,
-                NegativeBinomialDistributionLoss,
-                MQF2DistributionLoss,
-                BetaDistributionLoss,
-            ),
+        distr_types = {"log_normal", "negative_binomial", "mqf2", "beta"}
+        if (
+            hasattr(loss, "get_class_tag")
+            and loss.get_class_tag("distribution_type", "") in distr_types
         ):
             dwc = data_with_covariates()
             if clip_target:
@@ -109,14 +102,16 @@ class NHiTS_pkg(_BasePtForecaster):
             )
             dl_default_kwargs.update(data_loader_kwargs)
 
-            if isinstance(loss, NegativeBinomialDistributionLoss):
+            if loss.get_class_tag("distribution_type", "") == "negative_binomial":
                 dwc = dwc.assign(volume=lambda x: x.volume.round())
-            # todo: still need some debugging to add the MQF2DistributionLoss
-            elif isinstance(loss, LogNormalDistributionLoss):
+            elif loss.get_class_tag("distribution_type", "") == "log_normal":
                 dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
             return make_dataloaders(dwc, **dl_default_kwargs)
 
-        if isinstance(loss, TweedieLoss):
+        if (
+            hasattr(loss, "get_class_tag")
+            and loss.get_class_tag("info:metric_name", "") == "TweedieLoss"
+        ):
             dwc = data_with_covariates()
             dl_default_kwargs = dict(
                 target="target",
