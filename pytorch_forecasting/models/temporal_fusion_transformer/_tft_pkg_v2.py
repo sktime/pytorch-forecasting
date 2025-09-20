@@ -1,6 +1,7 @@
 """TFT package container."""
 
 from pytorch_forecasting.models.base import _BasePtForecasterV2
+from pytorch_forecasting.models.base._base_object import _EncoderDecoderConfigBase
 
 
 class TFT_pkg_v2(_BasePtForecasterV2):
@@ -137,3 +138,9 @@ class TFT_pkg_v2(_BasePtForecasterV2):
             ),
             dict(attention_head_size=2),
         ]
+
+
+class TFT_pkg_v2_metadata(_EncoderDecoderConfigBase):
+    @classmethod
+    def _check_metadata_tft(self, metadata):
+        super()._check_metadata(metadata)
