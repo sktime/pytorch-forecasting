@@ -18,6 +18,8 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
         "requires:data_type": "implicit_quantile_network_distribution_forecast",
         "capability:quantile_generation": True,
         "shape:adds_quantile_dimension": True,
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
     }
 
     @classmethod
@@ -44,3 +46,10 @@ class ImplicitQuantileNetworkDistributionLoss_pkg(_BasePtMetric):
         fixture for testing the ImplicitQuantileNetworkDistributionLoss metric.
         """
         return [{"input_size": 5}]
+
+    @classmethod
+    def _get_test_dataloaders(cls, params=None):
+        """
+        Returns test dataloaders configured for ImplicitQuantileNetworkDistributionLoss.
+        """
+        return super()._get_test_dataloaders_from(params)

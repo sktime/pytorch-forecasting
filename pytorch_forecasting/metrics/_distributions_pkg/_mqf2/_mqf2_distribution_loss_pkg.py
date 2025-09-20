@@ -3,6 +3,7 @@ Package container for the MQF2 distribution loss metric.
 """
 
 from pytorch_forecasting.data import TorchNormalizer
+from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics.base_metrics._base_object import _BasePtMetric
 
 
@@ -19,6 +20,22 @@ class MQF2DistributionLoss_pkg(_BasePtMetric):
         "capability:quantile_generation": True,
         "requires:data_type": "mqf2_distribution_forecast",
     }
+
+    @property
+    def clip_target(self):
+        return True
+
+    @property
+    def data_loader_kwargs(self):
+        return {
+            "target_normalizer": GroupNormalizer(
+                groups=["agency", "sku"], center=False, transformation="log1p"
+            )
+        }
+
+    @property
+    def trainer_kwargs(self):
+        return dict(accelerator="cpu")
 
     @classmethod
     def get_cls(cls):

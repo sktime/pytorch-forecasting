@@ -65,38 +65,31 @@ class NHiTS_pkg(_BasePtForecaster):
             Dict of dataloaders created from the parameters.
             Train, validation, and test dataloaders, in this order.
         """
-
         loss = params.get("loss", None)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
         clip_target = params.get("clip_target", False)
 
-        import inspect
-
         from pytorch_forecasting.metrics import (
-            LogNormalDistributionLoss,
             MQF2DistributionLoss,
-            MultivariateNormalDistributionLoss,
-            NegativeBinomialDistributionLoss,
-            TweedieLoss,
         )
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates,
             dataloaders_fixed_window_without_covariates,
             make_dataloaders,
         )
-        from pytorch_forecasting.tests._loss_mapping import DISTR_LOSSES_NUMERIC
 
-        distr_losses = tuple(
-            type(l)
-            for l in DISTR_LOSSES_NUMERIC
-            if not isinstance(l, MultivariateNormalDistributionLoss)
-            # use dataloaders without covariates as default settings of nhits
-            # (hidden_size = 512) is not compatible with
-            # MultivariateNormalDistributionLoss causing Cholesky
-            # decomposition to fail during loss computation.
-        )
+        # Use fixed window dataloaders for MultivariateNormalDistributionLoss
+        if hasattr(
+            loss, "get_class_tag"
+        ) and "multivariate_normal" in loss.get_class_tag("distribution_type", ""):
+            return dataloaders_fixed_window_without_covariates()
 
-        if isinstance(loss, distr_losses):
+        # For other distribution losses, use covariates and apply preprocessing
+        distr_types = {"log_normal", "negative_binomial", "mqf2", "beta"}
+        if (
+            hasattr(loss, "get_class_tag")
+            and loss.get_class_tag("distribution_type", "") in distr_types
+        ):
             dwc = data_with_covariates()
             if clip_target:
                 dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
@@ -109,19 +102,16 @@ class NHiTS_pkg(_BasePtForecaster):
             )
             dl_default_kwargs.update(data_loader_kwargs)
 
-            if isinstance(loss, NegativeBinomialDistributionLoss):
+            if loss.get_class_tag("distribution_type", "") == "negative_binomial":
                 dwc = dwc.assign(volume=lambda x: x.volume.round())
-            # todo: still need some debugging to add the MQF2DistributionLoss
-            # elif inspect.isclass(loss) and issubclass(loss, MQF2DistributionLoss):
-            #     dwc = dwc.assign(volume=lambda x: x.volume.round())
-            #     data_loader_kwargs["target"] = "volume"
-            #     data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
-            elif isinstance(loss, LogNormalDistributionLoss):
+            elif loss.get_class_tag("distribution_type", "") == "log_normal":
                 dwc["volume"] = dwc["volume"].clip(1e-3, 1.0)
-            dataloaders_with_covariates = make_dataloaders(dwc, **dl_default_kwargs)
-            return dataloaders_with_covariates
+            return make_dataloaders(dwc, **dl_default_kwargs)
 
-        if isinstance(loss, TweedieLoss):
+        if (
+            hasattr(loss, "get_class_tag")
+            and loss.get_class_tag("info:metric_name", "") == "TweedieLoss"
+        ):
             dwc = data_with_covariates()
             dl_default_kwargs = dict(
                 target="target",
@@ -129,7 +119,6 @@ class NHiTS_pkg(_BasePtForecaster):
                 add_relative_time_idx=False,
             )
             dl_default_kwargs.update(data_loader_kwargs)
-            dataloaders_with_covariates = make_dataloaders(dwc, **dl_default_kwargs)
-            return dataloaders_with_covariates
+            return make_dataloaders(dwc, **dl_default_kwargs)
 
         return dataloaders_fixed_window_without_covariates()

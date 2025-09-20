@@ -18,6 +18,9 @@ class PoissonLoss_pkg(_BasePtMetric):
         "requires:data_type": "point_forecast",
         "capability:quantile_generation": True,
         "shape:adds_quantile_dimension": True,
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
+        "loss_ndim": 1,
     }
 
     @classmethod
@@ -25,3 +28,10 @@ class PoissonLoss_pkg(_BasePtMetric):
         from pytorch_forecasting.metrics.point import PoissonLoss
 
         return PoissonLoss
+
+    @classmethod
+    def _get_test_dataloaders(cls, params=None):
+        """
+        Returns test dataloaders configured for PoissonLoss.
+        """
+        return super()._get_test_dataloaders_from(params=params, target="agency")

@@ -16,6 +16,9 @@ class QuantileLoss_pkg(_BasePtMetric):
         "metric_type": "quantile",
         "info:metric_name": "QuantileLoss",
         "requires:data_type": "quantile_forecast",
+        "info:pred_type": ["quantile"],
+        "info:y_type": ["numeric"],
+        "loss_ndim": "num_quantiles",
     }  # noqa: E501
 
     @classmethod
@@ -34,3 +37,10 @@ class QuantileLoss_pkg(_BasePtMetric):
                 "quantiles": [0.2, 0.5],
             },
         ]
+
+    @classmethod
+    def _get_test_dataloaders(cls, params=None):
+        """
+        Returns test dataloaders configured for QuantileLoss.
+        """
+        return super()._get_test_dataloaders_from(params, target="agency")
