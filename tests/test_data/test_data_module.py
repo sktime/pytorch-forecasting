@@ -469,4 +469,4 @@ def test_multivariate_target():
     dm.setup()
 
     x, y = dm.train_dataset[0]
-    assert y.shape[-1] == 2
+    assert len(y) == 2
