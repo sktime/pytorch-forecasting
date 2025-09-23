@@ -311,11 +311,6 @@ class TimeXer(TslibBaseModel):
 
         dec_out = self.head(enc_out)
 
-        if self.n_quantiles is not None:
-            dec_out = dec_out.permute(0, 2, 1, 3)
-        else:
-            dec_out = dec_out.permute(0, 2, 1)
-
         return dec_out
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -329,10 +324,6 @@ class TimeXer(TslibBaseModel):
 
         out = self._forecast(x)
         prediction = out[:, : self.prediction_length, :]
-
-        # check to see if the output shape is equal to number of targets
-        if prediction.size(2) != self.target_dim:
-            prediction = prediction[:, :, : self.target_dim]
 
         if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])
