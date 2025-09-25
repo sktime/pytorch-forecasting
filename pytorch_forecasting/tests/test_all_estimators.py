@@ -333,27 +333,22 @@ def _integration(
         output = raw_predictions.output.prediction
         n_dims = len(output.shape)
 
-        assert n_dims in [2, 3], (
-            f"Prediction output must be 2D or 3D, but got {n_dims}D tensor "
+        assert n_dims == 3, (
+            f"Prediction output must be 3D, but got {n_dims}D tensor "
             f"with shape {output.shape}"
         )
 
-        if n_dims == 2:
-            batch_size, prediction_length = output.shape
-            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
-            assert (
-                prediction_length > 0
-            ), f"Prediction length must be positive, got {prediction_length}"
-
-        elif n_dims == 3:
-            batch_size, prediction_length, n_features = output.shape
-            assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
-            assert (
-                prediction_length > 0
-            ), f"Prediction length must be positive, got {prediction_length}"
-            assert (
-                n_features > 0
-            ), f"Number of features must be positive, got {n_features}"
+        batch_size, prediction_length, n_features = output.shape
+        assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
+        assert (
+            prediction_length > 0
+        ), f"Prediction length must be positive, got {prediction_length}"
+        assert (
+            # todo: compare n_features with expected 3rd dimension of the corresponding
+            # loss function on which model is trained and
+            # predictions generated in this test.
+            n_features > 0  # this should be n_features == net.loss.expected_dim
+        ), f"Number of features must be positive, got {n_features}"
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
