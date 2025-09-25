@@ -1,4 +1,6 @@
-from einops import rearrange
+from pytorch_forecasting.utils._dependencies._safe_import import _safe_import
+
+rearrange = _safe_import("einops.rearrange")
 import torch
 from torch.distributions.normal import Normal
 import torch.nn as nn

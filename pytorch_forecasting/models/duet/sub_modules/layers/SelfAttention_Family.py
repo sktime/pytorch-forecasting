@@ -1,11 +1,19 @@
 from math import sqrt
 
-from einops import rearrange, repeat
+from pytorch_forecasting.utils._dependencies._safe_import import _safe_import
+
+rearrange = _safe_import("einops.rearrange")
+repeat = _safe_import("einops.repeat")
+LSHSelfAttention = _safe_import("reformer_pytorch.LSHSelfAttention")
+
 import numpy as np
-from reformer_pytorch import LSHSelfAttention
 import torch
 import torch.nn as nn
-from ts_benchmark.baselines.duet.utils.masking import ProbMask, TriangularCausalMask
+
+from pytorch_forecasting.models.duet.sub_modules.utils.masking import (
+    ProbMask,
+    TriangularCausalMask,
+)
 
 
 class DSAttention(nn.Module):

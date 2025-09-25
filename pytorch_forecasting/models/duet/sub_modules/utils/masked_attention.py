@@ -1,7 +1,9 @@
 import math
 from math import sqrt
 
-from einops import rearrange
+from pytorch_forecasting.utils._dependencies._safe_import import _safe_import
+
+rearrange = _safe_import("einops.rearrange")
 import torch
 import torch.fft
 import torch.nn as nn
