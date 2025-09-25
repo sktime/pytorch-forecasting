@@ -13,7 +13,6 @@ from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenera
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
 from pytorch_forecasting.tests._loss_mapping import (
     LOSS_SPECIFIC_PARAMS,
-    LOSSES_BY_PRED_AND_Y_TYPE,
     get_compatible_losses,
 )
 
@@ -384,7 +383,7 @@ class TestAllPtForecasters(EstimatorPackageConfig, EstimatorFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
-        """Fails for certain, for testing."""
+        """Test end-to-end workflow training and predicting using model."""
 
         object_class = object_pkg.get_cls()
         dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
