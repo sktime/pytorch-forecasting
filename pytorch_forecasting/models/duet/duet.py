@@ -2,13 +2,14 @@ from copy import copy
 from logging import config
 from typing import Callable, Optional, Union
 
-from pytorch_forecasting.utils._dependencies._safe_import import _safe_import
-
-rearrange = _safe_import("einops.rearrange")
 import numpy as np
 import torch
 import torch.nn as nn
-from torchmetrics import Metric
+
+from pytorch_forecasting.utils._dependencies._safe_import import _safe_import
+
+Metric = _safe_import("torchmetrics.Metric")
+rearrange = _safe_import("einops.rearrange")
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import (
