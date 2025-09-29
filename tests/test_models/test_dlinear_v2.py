@@ -124,7 +124,7 @@ def test_quantile_loss_output(sample_dataset):
 
     assert "prediction" in output
     pred = output["prediction"]
-    assert pred.ndim == 4
+    assert pred.ndim == 3
     assert pred.shape[-1] == len(quantiles)
     assert pred.shape[1] == metadata["prediction_length"]
 

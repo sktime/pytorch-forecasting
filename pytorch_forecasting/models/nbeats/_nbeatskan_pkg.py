@@ -1,17 +1,17 @@
-"""NBeats package container."""
+"""NBeatsKAN package container."""
 
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class NBeats_pkg(_BasePtForecaster):
-    """NBeats package container."""
+class NBeatsKAN_pkg(_BasePtForecaster):
+    """NBeatsKAN package container."""
 
     _tags = {
-        "info:name": "NBeats",
+        "info:name": "NBeatsKAN",
         "info:compute": 1,
         "info:pred_type": ["point"],
         "info:y_type": ["numeric"],
-        "authors": ["jdb78"],
+        "authors": ["Sohaib-Ahmed21"],
         "capability:exogenous": False,
         "capability:multivariate": False,
         "capability:pred_int": False,
@@ -23,9 +23,9 @@ class NBeats_pkg(_BasePtForecaster):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models import NBeats
+        from pytorch_forecasting.models import NBeatsKAN
 
-        return NBeats
+        return NBeatsKAN
 
     @classmethod
     def get_base_test_params(cls):
@@ -39,24 +39,28 @@ class NBeats_pkg(_BasePtForecaster):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        return [{}, {"backcast_loss_ratio": 1.0}]
+        return [
+            {"backcast_loss_ratio": 0.0},  # pure forecast loss
+            {"backcast_loss_ratio": 1.0},  # equal forecast/backcast
+            {
+                "stack_types": ["generic"],
+                "expansion_coefficient_lengths": [16],
+            },
+            {
+                "num_blocks": [1, 2],
+                "num_block_layers": [2, 3],
+            },  # varying block structure
+            {
+                "num": 7,
+                "k": 4,
+                "sparse_init": True,
+                "grid_range": [-0.5, 0.5],
+                "sp_trainable": False,
+            },  # complex KAN config
+        ]
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
-        """Get dataloaders from parameters.
-
-        Parameters
-        ----------
-        params : dict
-            Parameters to create dataloaders.
-            One of the elements in the list returned by ``get_test_train_params``.
-
-        Returns
-        -------
-        dataloaders : dict with keys "train", "val", "test", values torch DataLoader
-            Dict of dataloaders created from the parameters.
-            Train, validation, and test dataloaders, in this order.
-        """
         loss = params.get("loss", None)
         data_loader_kwargs = params.get("data_loader_kwargs", {})
         from pytorch_forecasting.metrics import TweedieLoss

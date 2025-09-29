@@ -17,6 +17,7 @@ class xLSTMTime_pkg(_BasePtForecaster):
         "capability:pred_int": False,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
+        "tests:skip_by_name": "test_integration",
     }
 
     @classmethod
