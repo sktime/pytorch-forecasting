@@ -1,13 +1,14 @@
 """Automated tests based on the skbase test suite template."""
 
-from inspect import isclass
 import shutil
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
+import torch
 import torch.nn as nn
 
+from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.tests.test_all_estimators import (
     EstimatorFixtureGenerator,
     EstimatorPackageConfig,
@@ -57,9 +58,15 @@ def _integration(
         metadata, dict
     ), f"Expected metadata to be dict, got {type(metadata)}"
 
+    if "loss" in kwargs:
+        loss = kwargs["loss"]
+        kwargs.pop("loss")
+    else:
+        loss = SMAPE()
+
     net = estimator_cls(
         metadata=metadata,
-        loss=nn.MSELoss(),
+        loss=loss,
         **kwargs,
     )
 
@@ -70,6 +77,19 @@ def _integration(
     )
     test_outputs = trainer.test(net, dataloaders=test_dataloader)
     assert len(test_outputs) > 0
+
+    # todo: add the predict pipeline and make this test cleaner
+    x, y = next(iter(test_dataloader))
+    net.eval()
+    with torch.no_grad():
+        output = net(x)
+    net.train()
+    prediction = output["prediction"]
+    n_dims = prediction.ndim
+    assert n_dims == 3, (
+        f"Prediction output must be 3D, but got {n_dims}D tensor "
+        f"with shape {output.shape}"
+    )
 
     shutil.rmtree(tmp_path, ignore_errors=True)
 
