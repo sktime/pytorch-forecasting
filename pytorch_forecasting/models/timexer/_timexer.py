@@ -214,8 +214,13 @@ class TimeXer(BaseModelWithCovariates):
         if enc_in is None:
             self.enc_in = len(self.reals)
 
+        # NOTE: assume point prediction as default here,
+        # with single median quantile being the point prediction.
+        # hence self.n_quantiles = 1 for point predictions.
         self.n_quantiles = 1
 
+        # set n_quantiles to the length of the quantiles list passed
+        # into the "quantiles" parameter when QuantileLoss is used.
         if isinstance(loss, QuantileLoss):
             self.n_quantiles = len(loss.quantiles)
 
