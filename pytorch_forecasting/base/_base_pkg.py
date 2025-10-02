@@ -93,8 +93,10 @@ class Base_pkg(_BasePtForecasterV2):
         """Converts various data input types into a DataLoader for prediction."""
         if isinstance(data, TimeSeries):  # D1 Layer
             dm = self._build_datamodule(data)
+            dm.setup(stage="predict")
             return dm.predict_dataloader()
         elif isinstance(data, LightningDataModule):  # D2 Layer
+            data.setup(stage="predict")
             return data.predict_dataloader()
         elif isinstance(data, DataLoader):
             return data
@@ -160,7 +162,7 @@ class Base_pkg(_BasePtForecasterV2):
         self.trainer = Trainer(**self.trainer_cfg, callbacks=callbacks)
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
 
-        if save_ckpt:
+        if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             dm_cfg_path = best_model_path.parent / "datamodule_cfg.pkl"
             with open(dm_cfg_path, "wb") as f:
@@ -173,6 +175,7 @@ class Base_pkg(_BasePtForecasterV2):
     def predict(
         self,
         data: Union[TimeSeries, LightningDataModule, DataLoader],
+        output_dir: Optional[Union[str, Path]] = None,
         **kwargs,
     ) -> Union[dict[str, torch.Tensor], None]:
         """
@@ -202,5 +205,15 @@ class Base_pkg(_BasePtForecasterV2):
             )
 
         dataloader = self._load_dataloader(data)
+        predictions = self.model.predict(dataloader, **kwargs)
+
+        if output_dir:
+            output_path = Path(output_dir)
+            output_path.mkdir(parents=True, exist_ok=True)
+            output_file = output_path / "predictions.pkl"
+            with open(output_file, "wb") as f:
+                pickle.dump(predictions, f)
+            print(f"Predictions saved to {output_file}")
+            return None
 
         return self.model.predict(dataloader, **kwargs)
