@@ -13,10 +13,10 @@ Release focusing on:
 * `xLSTMTime` implementation by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1709
 
 #### `pytorch-forecasting` ***Beta v2***
-* `DLinear` model from `tslib` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
 * Implementing D2 data module, tests and `TimeXer` model from `tslib`  for PTF v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1836
+* Add `DLinear` model from `tslib` for PTF v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
 * Add `Samformer` model for  PTF v2 from DSIPTS by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1952
-* `Tide` model in PTF v2 interface by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
+* `Tide` model in PTF v2 interface from `dsipts` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
 
 ### Enhancements
 * [ENH] Test framework for `ptf-v2` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1841
