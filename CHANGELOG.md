@@ -71,6 +71,25 @@ Release focusing on:
 * [MNT] Update CODEOWNERS with current core dev state by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1972
 * [MNT] python 3.9 end-of-life by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1980
 
+### All Contributors
+@agobbifbk,
+@caph1993,
+@cngmid,
+@fkiraly,
+@fnhirwa,
+@Himanshu-Verma-ds,
+@hubkrieb,
+@jdb78,
+@lohraspco,
+@phoeenniixx,
+@Pinaka07,
+@PranavBhatP,
+@sanskarmodi8,
+@Sohaib-Ahmed21,
+@szepeviktor
+@Vishnu-Rangiah,
+@zju-ys
+
 ## v1.4.0
 
 Feature and maintenance update.
