@@ -151,6 +151,7 @@ class xLSTMTime(AutoRegressiveBaseModel):
         output = output.transpose(1, 2)
 
         output = output[0, ..., : self.hparams.output_size]
+        output = output.unsqueeze(-1)
         return self.to_network_output(prediction=output)
 
     @classmethod
