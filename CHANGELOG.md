@@ -8,12 +8,12 @@ Release focusing on:
 * New estimators in `pytorch-forecasting` *v1* and *beta v2*.
 
 ### Highlights
-* [ENH] Kolmogorov Arnold Block for NBeats by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1751
-* [ENH] Implementing D2 data module, tests and `TimeXer` model from `tslib`  for v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1836
-* [ENH] Add `Samformer` model for  PTF v2 from DSIPTS by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1952
-* [ENH] `DLinear` model from `tslib` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
-* [ENH] `xLSTMTime` implementation by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1709
-* [ENH] `Tide` model in `v2` interface by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
+* Kolmogorov Arnold Block for `NBeats` by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1751
+* Implementing D2 data module, tests and `TimeXer` model from `tslib`  for PTF v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1836
+* Add `Samformer` model for  PTF v2 from DSIPTS by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1952
+* `DLinear` model from `tslib` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
+* `xLSTMTime` implementation by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1709
+* `Tide` model in PTF v2 interface by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
 
 ### Enhancements
 * [ENH] Test framework for `ptf-v2` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1841
