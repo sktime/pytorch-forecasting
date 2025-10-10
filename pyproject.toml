@@ -1,7 +1,7 @@
 [project]
 name = "pytorch-forecasting"
 readme = "README.md"         # Markdown files are supported
-version = "1.4.0"            # is being replaced automatically
+version = "1.5.0"            # is being replaced automatically
 
 authors = [
   {name = "Jan Beitner"},
