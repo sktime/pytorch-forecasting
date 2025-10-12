@@ -694,7 +694,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         if self._scaler and self.continuous_indices:
             for i, orig_idx in enumerate(self.continuous_indices):
-                col_name = self.time_series_metadata["cols"]["x"]["orig_idx"]
+                col_name = self.time_series_metadata["cols"]["x"][orig_idx]
                 if col_name in self._scalers:
                     scaler = self._scalers[col_name]
                     feature_data = train_features[:, orig_idx]
