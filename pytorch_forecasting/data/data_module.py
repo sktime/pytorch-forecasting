@@ -692,7 +692,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     target_np = target_np.reshape(-1, 1)
                 self._target_normalizer.fit(target_np)
 
-        if self._scaler and self.continuous_indices:
+        if self._scalers and self.continuous_indices:
             for i, orig_idx in enumerate(self.continuous_indices):
                 col_name = self.time_series_metadata["cols"]["x"][orig_idx]
                 if col_name in self._scalers:
