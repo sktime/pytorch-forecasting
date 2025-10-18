@@ -353,7 +353,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                             # input numpy np.array
                             feature_data_np = feature_data.numpy().reshape(-1, 1)
                             scaled_feature_np = scaler.transform(feature_data_np)
-                            continuous[:, i] = torch.tensor(scaled_feature_np.flatten())
+                            continuous[:, i] = torch.from_numpy(
+                                scaled_feature_np.flatten()
+                            )  # noqa: E501
                     except Exception as e:
                         import warnings
 
@@ -379,12 +381,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                         for i in range(target.shape[1]):
                             target_np = target[:, i].numpy().reshape(-1, 1)
                             scaled = self._target_normalizer.transform(target_np)
-                            target_scaled.append(torch.tensor(scaled.flatten()))
+                            target_scaled.append(torch.from_numpy(scaled.flatten()))
                         target = torch.stack(target_scaled, dim=1)
                     else:
                         target_np = target.numpy().reshape(-1, 1)
                         target_scaled = self._target_normalizer.transform(target_np)
-                        target = torch.tensor(target_scaled.flatten())
+                        target = torch.from_numpy(target_scaled.flatten())
             except Exception as e:
                 import warnings
 
