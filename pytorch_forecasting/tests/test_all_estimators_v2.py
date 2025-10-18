@@ -109,7 +109,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         datamodule_cfg = params_copy.pop("datamodule_cfg", {})
         model_cfg = params_copy
 
-        test_data = object_pkg.get_test_data(**datamodule_cfg)
+        test_data = object_pkg.get_test_dataset_from(**datamodule_cfg)
 
         _integration(
             estimator_cls=object_pkg,
