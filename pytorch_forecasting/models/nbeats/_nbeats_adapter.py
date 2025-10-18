@@ -93,20 +93,23 @@ class NBeatsAdapter(BaseModel):
             forecast = forecast + forecast_block
 
         return self.to_network_output(
-            prediction=self.transform_output(forecast, target_scale=x["target_scale"]),
+            prediction=self.transform_output(
+                forecast.unsqueeze(-1), target_scale=x["target_scale"]
+            ),
             backcast=self.transform_output(
-                prediction=target - backcast, target_scale=x["target_scale"]
+                prediction=(target - backcast).unsqueeze(-1),
+                target_scale=x["target_scale"],
             ),
             trend=self.transform_output(
-                torch.stack(trend_forecast, dim=0).sum(0),
+                torch.stack(trend_forecast, dim=0).sum(0).unsqueeze(-1),
                 target_scale=x["target_scale"],
             ),
             seasonality=self.transform_output(
-                torch.stack(seasonal_forecast, dim=0).sum(0),
+                torch.stack(seasonal_forecast, dim=0).sum(0).unsqueeze(-1),
                 target_scale=x["target_scale"],
             ),
             generic=self.transform_output(
-                torch.stack(generic_forecast, dim=0).sum(0),
+                torch.stack(generic_forecast, dim=0).sum(0).unsqueeze(-1),
                 target_scale=x["target_scale"],
             ),
         )
