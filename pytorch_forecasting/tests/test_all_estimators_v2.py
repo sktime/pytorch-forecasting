@@ -1,6 +1,7 @@
 """Automated tests based on the skbase test suite template."""
 
 import shutil
+from typing import Any, Optional
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
@@ -8,6 +9,8 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import torch
 import torch.nn as nn
 
+from pytorch_forecasting.base._base_pkg import Base_pkg
+from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.tests.test_all_estimators import (
     EstimatorFixtureGenerator,
@@ -20,76 +23,67 @@ ONLY_CHANGED_MODULES = False
 
 
 def _integration(
-    estimator_cls,
-    dataloaders,
-    tmp_path,
-    data_loader_kwargs={},
-    clip_target: bool = False,
-    trainer_kwargs=None,
+    estimator_cls: type[Base_pkg],
+    test_data: dict[str, TimeSeries],
+    model_cfg: dict[str, Any],
+    datamodule_cfg: dict[str, Any],
+    tmp_path: str,
+    trainer_cfg: Optional[dict[str, Any]] = None,
     **kwargs,
 ):
-    train_dataloader = dataloaders["train"]
-    val_dataloader = dataloaders["val"]
-    test_dataloader = dataloaders["test"]
+    train_data = test_data["train"]
+    predict_data = test_data["predict"]
 
-    early_stop_callback = EarlyStopping(
-        monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
-    )
+    default_model_cfg = {"loss": SMAPE()}
+
+    default_datamodule_cfg = {
+        "train_val_test_split": (0.8, 0.2),
+        "add_relative_time_idx": True,
+        "batch_size": 2,
+    }
 
     logger = TensorBoardLogger(tmp_path)
-    if trainer_kwargs is None:
-        trainer_kwargs = {}
-    trainer = pl.Trainer(
-        max_epochs=3,
-        gradient_clip_val=0.1,
-        callbacks=[early_stop_callback],
-        enable_checkpointing=True,
-        default_root_dir=tmp_path,
-        limit_train_batches=2,
-        limit_val_batches=2,
-        limit_test_batches=2,
-        logger=logger,
-        **trainer_kwargs,
-    )
-    training_data_module = dataloaders.get("data_module")
-    metadata = training_data_module.metadata
+    default_trainer_cfg = {
+        "max_epochs": 3,
+        "gradient_clip_val": 0.1,
+        "enable_checkpointing": True,
+        "default_root_dir": tmp_path,
+        "limit_train_batches": 2,
+        "limit_val_batches": 2,
+        "logger": logger,
+    }
+    default_model_cfg.update(model_cfg)
+    default_datamodule_cfg.update(datamodule_cfg)
+    if trainer_cfg is not None:
+        default_trainer_cfg.update(trainer_cfg)
 
-    assert isinstance(
-        metadata, dict
-    ), f"Expected metadata to be dict, got {type(metadata)}"
-
-    if "loss" in kwargs:
-        loss = kwargs["loss"]
-        kwargs.pop("loss")
-    else:
-        loss = SMAPE()
-
-    net = estimator_cls(
-        metadata=metadata,
-        loss=loss,
-        **kwargs,
+    pkg = estimator_cls(
+        model_cfg=default_model_cfg,
+        trainer_cfg=default_trainer_cfg,
+        datamodule_cfg=default_datamodule_cfg,
     )
 
-    trainer.fit(
-        net,
-        train_dataloaders=train_dataloader,
-        val_dataloaders=val_dataloader,
-    )
-    test_outputs = trainer.test(net, dataloaders=test_dataloader)
-    assert len(test_outputs) > 0
+    pkg.fit(train_data)
 
-    # todo: add the predict pipeline and make this test cleaner
-    x, y = next(iter(test_dataloader))
-    net.eval()
-    with torch.no_grad():
-        output = net(x)
-    net.train()
-    prediction = output["prediction"]
-    n_dims = prediction.ndim
-    assert n_dims == 3, (
-        f"Prediction output must be 3D, but got {n_dims}D tensor "
-        f"with shape {output.shape}"
+    predictions = pkg.predict(
+        predict_data,
+        mode="raw",
     )
+
+    assert predictions is not None
+    assert isinstance(predictions, dict)
+    assert "prediction" in predictions
+
+    pred_tensor = predictions["prediction"]
+    assert isinstance(pred_tensor, torch.Tensor)
+    assert pred_tensor.ndim == 3, f"Prediction must be 3D, got {pred_tensor.ndim}D"
+
+    expected_pred_len = datamodule_cfg.get("prediction_length")
+    if expected_pred_len:
+        assert pred_tensor.shape[1] == expected_pred_len, (
+            f"Pred length mismatch: expected {expected_pred_len}, "
+            f"got {pred_tensor.shape[1]}"
+        )
 
     shutil.rmtree(tmp_path, ignore_errors=True)
 
@@ -111,10 +105,19 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
-        object_class = object_pkg.get_cls()
-        dataloaders = object_pkg._get_test_datamodule_from(trainer_kwargs)
+        params_copy = trainer_kwargs.copy()
+        datamodule_cfg = params_copy.pop("datamodule_cfg", {})
+        model_cfg = params_copy
 
-        _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
+        test_data = object_pkg.get_test_data(**datamodule_cfg)
+
+        _integration(
+            estimator_cls=object_pkg,
+            test_data=test_data,
+            model_cfg=model_cfg,
+            datamodule_cfg=datamodule_cfg,
+            tmp_path=tmp_path,
+        )
 
     def test_pkg_linkage(self, object_pkg, object_class):
         """Test that the package is linked correctly."""

@@ -137,23 +137,15 @@ class BaseModel(LightningModule):
 
     def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
         """Converts raw model output to point forecasts."""
-        if isinstance(self.loss, MultiLoss):
-            # Assuming first loss is the primary one for prediction
-            return self.loss.losses[0].to_prediction(out["prediction"][0])
-        else:
-            return self.loss.to_prediction(out["prediction"])
+        # todo: add MultiLoss support
+        return self.loss.to_prediction(out["prediction"])
 
     def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
         """Converts raw model output to quantile forecasts."""
+        # todo: add MultiLoss support
         quantiles = kwargs.get("quantiles")  # Allow overriding default quantiles
-        if isinstance(self.loss, MultiLoss):
-            # Assuming first loss is the primary one for quantiles
-            loss = self.loss.losses[0]
-            q = quantiles or loss.quantiles
-            return loss.to_quantiles(out["prediction"][0], quantiles=q)
-        else:
-            q = quantiles or self.loss.quantiles
-            return self.loss.to_quantiles(out["prediction"], quantiles=q)
+        q = quantiles or self.loss.quantiles
+        return self.loss.to_quantiles(out["prediction"], quantiles=q)
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int

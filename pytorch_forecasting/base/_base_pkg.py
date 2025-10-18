@@ -17,13 +17,13 @@ class Base_pkg(_BasePtForecasterV2):
     Base model package class acting as a high-level wrapper for the Lightning workflow.
 
     This class simplifies the user experience by managing model, datamodule, and trainer
-    configurations, and providing streamlined `fit` and `predict` methods.
+    configurations, and providing streamlined ``fit`` and ``predict`` methods.
 
     Parameters
     ----------
     model_cfg : dict, optional
         Model configs for the initialisation of the model. Required if not loading
-        from a checkpoint. Defaults to {}.
+        from a checkpoint. Defaults to ``{}``.
     trainer_cfg : dict, optional
         Configs to initialise ``lightning.Trainer``. Defaults to {}.
     datamodule_cfg : Union[dict, str, Path], optional
@@ -58,8 +58,6 @@ class Base_pkg(_BasePtForecasterV2):
         self.trainer = None
         self.datamodule = None
 
-        self._build_model()
-
     @classmethod
     def get_cls(cls):
         """Get the underlying model class."""
@@ -70,13 +68,32 @@ class Base_pkg(_BasePtForecasterV2):
         """Get the underlying DataModule class."""
         raise NotImplementedError("Subclasses must implement `get_datamodule_cls`.")
 
-    def _build_model(self):
+    @classmethod
+    def get_test_data(cls, **kwargs):
+        """
+        Creates and returns D1 TimeSeries dataSet objects for testing.
+        """
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates_v2,
+            make_datasets_v2,
+        )
+
+        raw_data = data_with_covariates_v2()
+
+        datasets_info = make_datasets_v2(raw_data, **kwargs)
+
+        return {
+            "train": datasets_info["training_dataset"],
+            "predict": datasets_info["validation_dataset"],
+        }
+
+    def _build_model(self, metadata: dict):
         """Instantiates the model, either from a checkpoint or from config."""
         model_cls = self.get_cls()
         if self.ckpt_path:
             self.model = model_cls.load_from_checkpoint(self.ckpt_path)
         elif self.model_cfg:
-            self.model = model_cls(**self.model_cfg)
+            self.model = model_cls(**self.model_cfg, metadata=metadata)
         else:
             self.model = None
 
@@ -108,9 +125,8 @@ class Base_pkg(_BasePtForecasterV2):
 
     def fit(
         self,
-        train_data: Union[TimeSeries, LightningDataModule],
+        data: Union[TimeSeries, LightningDataModule],
         # todo: we should create a base data_module for different data_modules
-        val_data: Optional[Union[TimeSeries, LightningDataModule]] = None,
         save_ckpt: bool = True,
         ckpt_dir: Union[str, Path] = "checkpoints",
         **trainer_fit_kwargs,
@@ -120,10 +136,9 @@ class Base_pkg(_BasePtForecasterV2):
 
         Parameters
         ----------
-        train_data : Union[TimeSeries, LightningDataModule]
-            Training data (D1 or D2 layer).
-        val_data : Union[TimeSeries, LightningDataModule], optional
-            Validation data.
+        data : Union[TimeSeries, LightningDataModule]
+            The data to fit on (D1 or D2 layer). This object is responsible
+            for providing both training and validation data.
         save_ckpt : bool, default=True
             If True, save the best model checkpoint and the `datamodule_cfg`.
         ckpt_dir : Union[str, Path], default="checkpoints"
@@ -136,17 +151,22 @@ class Base_pkg(_BasePtForecasterV2):
         Optional[Path]
             The path to the best model checkpoint if `save_ckpt=True`, else None.
         """
-        if self.model is None:
-            raise RuntimeError(
-                "Model is not initialized. Provide `model_cfg` or `ckpt_path`."
-            )
-
-        if isinstance(train_data, TimeSeries):
-            self.datamodule = self._build_datamodule(train_data)
+        if isinstance(data, TimeSeries):
+            self.datamodule = self._build_datamodule(data)
         else:
-            self.datamodule = train_data
+            self.datamodule = data
+        self.datamodule.setup(stage="fit")
 
-        callbacks = self.trainer_cfg.get("callbacks", [])
+        if self.model is None:
+            if not self.model_cfg:
+                raise RuntimeError(
+                    "`model_cfg` must be provided to train from scratch."
+                )
+            metadata = self.datamodule.metadata
+            self._build_model(metadata)
+
+        callbacks = self.trainer_cfg.get("callbacks", []).copy()
+        checkpoint_cb = None
         if save_ckpt:
             ckpt_dir = Path(ckpt_dir)
             ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -158,10 +178,12 @@ class Base_pkg(_BasePtForecasterV2):
                 mode="min",
             )
             callbacks.append(checkpoint_cb)
+        trainer_init_cfg = self.trainer_cfg.copy()
+        trainer_init_cfg.pop("callbacks", None)
 
-        self.trainer = Trainer(**self.trainer_cfg, callbacks=callbacks)
+        self.trainer = Trainer(**trainer_init_cfg, callbacks=callbacks)
+
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
-
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             dm_cfg_path = best_model_path.parent / "datamodule_cfg.pkl"
@@ -216,4 +238,4 @@ class Base_pkg(_BasePtForecasterV2):
             print(f"Predictions saved to {output_file}")
             return None
 
-        return self.model.predict(dataloader, **kwargs)
+        return predictions

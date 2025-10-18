@@ -2,21 +2,19 @@ from typing import Any, Optional
 from warnings import warn
 
 from lightning import Trainer
+from lightning.pytorch import LightningModule
 from lightning.pytorch.callbacks import BasePredictionWriter
 import torch
-
-from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
 class PredictCallback(BasePredictionWriter):
     """
     Callback to capture predictions and related information internally.
 
-    This callback is used by `BaseModel.predict()` to process raw model outputs
-    into the desired format (`prediction`, `quantiles`, or `raw`) and collect
-    any additional requested info (`x`, `y`, `index`, etc.). The results are
-    collated and stored in memory, accessible via the `.result` property. It does
-    not write to disk.
+    This callback is used by ``BaseModel.predict()`` to process raw model outputs
+    into the desired format (``prediction``, ``quantiles``, or ``raw``) and collect
+    any additional requested info (``x``, ``y``, ``index``, etc.). The results are
+    collated and stored in memory, accessible via the ``.result`` property.
 
     Parameters
     ----------
@@ -40,16 +38,17 @@ class PredictCallback(BasePredictionWriter):
         self.kwargs = kwargs
         self._reset_data()
 
-    def _reset_data(self):
+    def _reset_data(self, result: bool = True):
         """Clear collected data for a new prediction run."""
         self.predictions = []
         self.info = {key: [] for key in self.return_info}
-        self._result = None
+        if result:
+            self._result = None
 
     def on_predict_batch_end(
         self,
         trainer: Trainer,
-        pl_module: BaseModel,
+        pl_module: LightningModule,
         outputs: Any,
         batch: Any,
         batch_idx: int,
@@ -81,7 +80,7 @@ class PredictCallback(BasePredictionWriter):
             else:
                 warn(f"Unknown return_info key: {key}")
 
-    def on_predict_epoch_end(self, trainer: Trainer, pl_module: "BaseModel"):
+    def on_predict_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         """Collate all batch results into final tensors."""
         if self.mode == "raw" and isinstance(self.predictions[0], dict):
             keys = self.predictions[0].keys()
@@ -103,7 +102,7 @@ class PredictCallback(BasePredictionWriter):
             final_result[key] = collated_info
 
         self._result = final_result
-        self._reset_data()
+        self._reset_data(result=False)
 
     @property
     def result(self) -> dict[str, torch.Tensor]:
