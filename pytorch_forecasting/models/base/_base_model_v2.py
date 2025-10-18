@@ -123,7 +123,6 @@ class BaseModel(LightningModule):
         trainer_kwargs = kwargs.pop("trainer_kwargs", {})
         predict_callback = PredictCallback(mode=mode, return_info=return_info, **kwargs)
 
-        # Ensure callbacks list exists and append the new one
         callbacks = trainer_kwargs.get("callbacks", [])
         if not isinstance(callbacks, list):
             callbacks = [callbacks]

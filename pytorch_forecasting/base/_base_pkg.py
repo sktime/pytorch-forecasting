@@ -69,7 +69,7 @@ class Base_pkg(_BasePtForecasterV2):
         raise NotImplementedError("Subclasses must implement `get_datamodule_cls`.")
 
     @classmethod
-    def get_test_data(cls, **kwargs):
+    def get_test_dataset_from(cls, **kwargs):
         """
         Creates and returns D1 TimeSeries dataSet objects for testing.
         """
