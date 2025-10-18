@@ -143,7 +143,7 @@ class BaseModel(LightningModule):
     def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
         """Converts raw model output to quantile forecasts."""
         # todo: add MultiLoss support
-        quantiles = kwargs.get("quantiles")  # Allow overriding default quantiles
+        quantiles = kwargs.get("quantiles")
         q = quantiles or self.loss.quantiles
         return self.loss.to_quantiles(out["prediction"], quantiles=q)
 
