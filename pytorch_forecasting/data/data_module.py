@@ -351,11 +351,18 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                         elif isinstance(scaler, (StandardScaler, RobustScaler)):
                             # if scaler is a sklearn scaler, we need to
                             # input numpy np.array
-                            feature_data_np = feature_data.numpy().reshape(-1, 1)
-                            scaled_feature_np = scaler.transform(feature_data_np)
-                            continuous[:, i] = torch.from_numpy(
-                                scaled_feature_np.flatten()
+                            requires_grad = feature_data.requires_grad
+                            device = feature_data.device
+                            feature_data_np = (
+                                feature_data.cpu().detach().numpy().reshape(-1, 1)
                             )  # noqa: E501
+                            scaled_feature_np = scaler.transform(feature_data_np)
+                            scaled_tensor = torch.from_numpy(
+                                scaled_feature_np.flatten()
+                            ).to(device)
+                            if requires_grad:
+                                scaled_tensor = scaled_tensor.requires_grad_(True)
+                            continuous[:, i] = scaled_tensor
                     except Exception as e:
                         import warnings
 
@@ -376,17 +383,28 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 elif isinstance(
                     self._target_normalizer, (StandardScaler, RobustScaler)
                 ):
+                    requires_grad = target.requires_grad
+                    device = target.device
                     if target.ndim == 2:  # (seq_len, n_targets)
                         target_scaled = []
                         for i in range(target.shape[1]):
-                            target_np = target[:, i].numpy().reshape(-1, 1)
+                            target_np = (
+                                target[:, i].detach().cpu().numpy().reshape(-1, 1)
+                            )  # noqa: E501
                             scaled = self._target_normalizer.transform(target_np)
-                            target_scaled.append(torch.from_numpy(scaled.flatten()))
+                            scaled_tensor = torch.from_numpy(scaled.flatten()).to(
+                                device
+                            )  # noqa: E501
+                            if requires_grad:
+                                scaled_tensor = scaled_tensor.requires_grad_(True)
+                            target_scaled.append(scaled_tensor)
                         target = torch.stack(target_scaled, dim=1)
                     else:
-                        target_np = target.numpy().reshape(-1, 1)
+                        target_np = target.detach().cpu().numpy().reshape(-1, 1)
                         target_scaled = self._target_normalizer.transform(target_np)
-                        target = torch.from_numpy(target_scaled.flatten())
+                        target = torch.from_numpy(target_scaled.flatten()).to(device)
+                        if requires_grad:
+                            target = target.requires_grad_(True)
             except Exception as e:
                 import warnings
 
