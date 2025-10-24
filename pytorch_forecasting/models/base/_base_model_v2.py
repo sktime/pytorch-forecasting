@@ -5,6 +5,7 @@
 ########################################################################################
 
 
+import inspect
 from typing import Optional, Union
 from warnings import warn
 
@@ -49,6 +50,17 @@ class BaseModel(LightningModule):
         lr_scheduler_params: Optional[dict] = None,
     ):
         super().__init__()
+
+        # simple check for MultiLoss usage.
+        if inspect.isclass(loss) and loss.__class__.__name__ == "MultiLoss":
+            warn(
+                "\nIMPORTANT: Multi-target forecasting (MultiLoss) is NOT supported "
+                "in v2 base models. For multi-target forecasting, please use "
+                "pytorch_forecasting.models.base.BaseModel (v1) instead. "
+                "Attempting to use MultiLoss with v2 models will result in runtime errors.",  # noqa: E501
+                UserWarning,
+                stacklevel=2,
+            )
         self.loss = loss
         self.logging_metrics = logging_metrics if logging_metrics is not None else []
         self.optimizer = optimizer
