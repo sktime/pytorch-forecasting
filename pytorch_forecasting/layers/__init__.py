@@ -19,6 +19,7 @@ from pytorch_forecasting.layers._encoders import (
     Encoder,
     EncoderLayer,
 )
+from pytorch_forecasting.layers._normalization import RevIN
 from pytorch_forecasting.layers._output._flatten_head import (
     FlattenHead,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "sLSTMLayer",
     "sLSTMNetwork",
     "SeriesDecomposition",
+    "RevIN",
     "ResidualBlock",
     "embedding_cat_variables",
 ]

@@ -1,22 +1,24 @@
-"""TIDE package container."""
+"""
+Samformer package container.
+"""
 
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class TIDE_pkg_v2(_BasePtForecasterV2):
-    """TIDE package container."""
+class Samformer_pkg_v2(_BasePtForecasterV2):
+    """Samformer package container."""
 
     _tags = {
-        "info:name": "TIDE",
+        "info:name": "Samformer",
         "authors": ["fbk_dsipts"],
     }
 
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.tide._tide_dsipts._tide_v2 import TIDE
+        from pytorch_forecasting.models.samformer._samformer_v2 import Samformer
 
-        return TIDE
+        return Samformer
 
     @classmethod
     def _get_test_datamodule_from(cls, trainer_kwargs):
@@ -99,7 +101,7 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
 
     @classmethod
     def get_test_train_params(cls):
-        """Return testing parameter settings for the trainer.
+        """Return testing parameters settings for the trainer.
 
         Returns
         -------
@@ -109,32 +111,26 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from pytorch_forecasting.metrics import MAE, MAPE
+        import torch.nn as nn
+
+        from pytorch_forecasting.metrics import QuantileLoss
 
         return [
-            dict(
-                hidden_size=16,
-                d_model=8,
-                n_add_enc=1,
-                n_add_dec=1,
-                dropout_rate=0.1,
-            ),
-            dict(
-                hidden_size=32,
-                d_model=16,
-                n_add_enc=2,
-                n_add_dec=2,
-                dropout_rate=0.2,
-                data_loader_kwargs=dict(max_encoder_length=5, max_prediction_length=3),
-                loss=MAE(),
-            ),
-            dict(
-                hidden_size=64,
-                d_model=32,
-                n_add_enc=3,
-                n_add_dec=2,
-                dropout_rate=0.1,
-                data_loader_kwargs=dict(max_encoder_length=4, max_prediction_length=2),
-                loss=MAPE(),
-            ),
+            {
+                # "loss": nn.MSELoss(),
+                "hidden_size": 32,
+                "use_revin": False,
+            },
+            {
+                # "loss": nn.MSELoss(),
+                "hidden_size": 16,
+                "use_revin": True,
+                "out_channels": 1,
+                "persistence_weight": 0.0,
+            },
+            {
+                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+                "hidden_size": 32,
+                "use_revin": False,
+            },
         ]

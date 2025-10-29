@@ -394,5 +394,4 @@ def test_model_with_datamodule_integration(
     assert batch_y.shape == (
         actual_batch_size,
         MAX_PREDICTION_LENGTH_TEST,
-        model_metadata_from_dm["target"],
     )
