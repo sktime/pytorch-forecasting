@@ -214,8 +214,13 @@ class TimeXer(BaseModelWithCovariates):
         if enc_in is None:
             self.enc_in = len(self.reals)
 
-        self.n_quantiles = None
+        # NOTE: assume point prediction as default here,
+        # with single median quantile being the point prediction.
+        # hence self.n_quantiles = 1 for point predictions.
+        self.n_quantiles = 1
 
+        # set n_quantiles to the length of the quantiles list passed
+        # into the "quantiles" parameter when QuantileLoss is used.
         if isinstance(loss, QuantileLoss):
             self.n_quantiles = len(loss.quantiles)
 
@@ -353,10 +358,7 @@ class TimeXer(BaseModelWithCovariates):
         enc_out = enc_out.permute(0, 1, 3, 2)
 
         dec_out = self.head(enc_out)
-        if self.n_quantiles is not None:
-            dec_out = dec_out.permute(0, 2, 1, 3)
-        else:
-            dec_out = dec_out.permute(0, 2, 1)
+        dec_out = dec_out.permute(0, 2, 1, 3)
 
         return dec_out
 
@@ -395,10 +397,7 @@ class TimeXer(BaseModelWithCovariates):
         enc_out = enc_out.permute(0, 1, 3, 2)
 
         dec_out = self.head(enc_out)
-        if self.n_quantiles is not None:
-            dec_out = dec_out.permute(0, 2, 1, 3)
-        else:
-            dec_out = dec_out.permute(0, 2, 1)
+        dec_out = dec_out.permute(0, 2, 1, 3)
 
         return dec_out
 
@@ -470,25 +469,15 @@ class TimeXer(BaseModelWithCovariates):
             if prediction.size(2) != len(target_positions):
                 prediction = prediction[:, :, : len(target_positions)]
 
-            # In the case of a single target, the result will be a torch.Tensor
-            # with shape (batch_size, prediction_length)
-            # In the case of multiple targets, the result will be a list of "n_targets"
-            # tensors with shape (batch_size, prediction_length)
-            # If quantile predictions are used, the result will have an additional
-            # dimension for quantiles, resulting in a shape of
-            # (batch_size, prediction_length, n_quantiles)
-            if self.n_quantiles is not None:
-                # quantile predictions.
-                if len(target_indices) == 1:
-                    prediction = prediction[..., 0, :]
-                else:
-                    prediction = [prediction[..., i, :] for i in target_indices]
+            # output format is (batch_size, prediction_length, n_quantiles)
+            # in case of quantile loss, the output n_quantiles = self.n_quantiles
+            # which is the length of a list of float. In case of MAE, MSE, etc.
+            # n_quantiles = 1 and it mimics the behavior of a point prediction.
+            # for multi-target forecasting, the output is a list of tensors.
+            if len(target_positions) == 1:
+                prediction = prediction[..., 0, :]
             else:
-                # point predictions.
-                if len(target_indices) == 1:
-                    prediction = prediction[..., 0]
-                else:
-                    prediction = [prediction[..., i] for i in target_indices]
+                prediction = [prediction[..., i, :] for i in target_indices]
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )
