@@ -133,7 +133,7 @@ def _render_lines() -> list[str]:
 def _is_safe_mode() -> bool:
     """Return True if model overview generation is explicitly disabled.
 
-    By default, generation runs in all environments. Set PF_SKIP_MODEL_OVERVIEW=1 to disable.
+    By default, generation runs in all environments. Set PF_SKIP_MODEL_OVERVIEW=1 to skip.
     """
     if os.environ.get("PF_SKIP_MODEL_OVERVIEW", "").lower() in {"1", "true", "yes"}:
         return True
@@ -171,7 +171,8 @@ def _write_models_rst(app) -> None:
 
 
 def setup(app):
-    # generate as early as possible so Sphinx sees the written file during source discovery
+    # generate as early as possible so Sphinx
+    # sees the written file during source discovery
     app.connect("config-inited", _write_models_rst)
     return {
         "version": "1.0",
