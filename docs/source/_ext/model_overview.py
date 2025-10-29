@@ -133,7 +133,8 @@ def _render_lines() -> list[str]:
 def _is_safe_mode() -> bool:
     """Return True if model overview generation is explicitly disabled.
 
-    By default, generation runs in all environments. Set PF_SKIP_MODEL_OVERVIEW=1 to skip.
+    By default, generation runs in all environments.
+    Set PF_SKIP_MODEL_OVERVIEW=1 to skip.
     """
     if os.environ.get("PF_SKIP_MODEL_OVERVIEW", "").lower() in {"1", "true", "yes"}:
         return True
