@@ -75,7 +75,7 @@ To implement new models or other custom components, see the [How to implement ne
 
 # Usage example
 
-Networks can be trained with the [PyTorch Lighning Trainer](https://pytorch-lightning.readthedocs.io/en/latest/common/trainer.html) on [pandas Dataframes](https://pandas.pydata.org/pandas-docs/stable/user_guide/dsintro.html#dataframe) which are first converted to a [TimeSeriesDataSet](https://pytorch-forecasting.readthedocs.io/en/latest/data.html).
+Networks can be trained with the [PyTorch Lightning Trainer](https://pytorch-lightning.readthedocs.io/en/latest/common/trainer.html) on [pandas Dataframes](https://pandas.pydata.org/pandas-docs/stable/user_guide/dsintro.html#dataframe) which are first converted to a [TimeSeriesDataSet](https://pytorch-forecasting.readthedocs.io/en/latest/data.html).
 
 ```python
 # imports for training
@@ -122,7 +122,7 @@ batch_size = 128
 train_dataloader = training.to_dataloader(train=True, batch_size=batch_size, num_workers=2)
 val_dataloader = validation.to_dataloader(train=False, batch_size=batch_size, num_workers=2)
 
-# create PyTorch Lighning Trainer with early stopping
+# create PyTorch Lightning Trainer with early stopping
 early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min")
 lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(

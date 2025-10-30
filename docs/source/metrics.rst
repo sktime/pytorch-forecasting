@@ -30,7 +30,7 @@ predictions add up. For example:
 
 Here we add to MAE an additional loss. This additional loss is the MAE calculated on the mean predictions
 and actuals. We can also use other metrics such as SMAPE to ensure aggregated results are unbiased in that metric.
-One important point to keep in mind is that this metric is calculated accross samples, i.e. it will vary depending
+One important point to keep in mind is that this metric is calculated across samples, i.e. it will vary depending
 on the batch size. In particular, errors tend to average out with increased batch sizes.
 
 

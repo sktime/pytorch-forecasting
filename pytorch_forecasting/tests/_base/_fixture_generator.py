@@ -157,7 +157,7 @@ class QuickTesterWithPkg(QuickTester):
             temp_generator_dict["object_instance"] = _generate_object_instance_cls
         # override of generator_dict end, temp_generator_dict is now prepared
 
-        # sub-setting to specific tests to run, if tests or fixtures were speified
+        # sub-setting to specific tests to run, if tests or fixtures were specified
         if tests_to_run is None and fixtures_to_run is None:
             test_names_subset = test_names
         else:

@@ -1,5 +1,5 @@
 """
-Basic test frameowrk for TimeXer v2 model.
+Basic test framework for TimeXer v2 model.
 TODO:
 - Add tests for testing the scaling of features, once that is implemented in the D1/D2
   level.
