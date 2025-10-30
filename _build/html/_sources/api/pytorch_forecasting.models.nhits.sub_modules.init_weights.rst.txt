@@ -1,0 +1,6 @@
+init\_weights
+=============
+
+.. currentmodule:: pytorch_forecasting.models.nhits.sub_modules
+
+.. autofunction:: init_weights

@@ -1,0 +1,6 @@
+\_get\_sys\_info
+================
+
+.. currentmodule:: pytorch_forecasting.utils._maint._show_versions
+
+.. autofunction:: _get_sys_info

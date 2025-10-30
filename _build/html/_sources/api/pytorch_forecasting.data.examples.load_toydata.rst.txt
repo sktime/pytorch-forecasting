@@ -1,0 +1,6 @@
+load\_toydata
+=============
+
+.. currentmodule:: pytorch_forecasting.data.examples
+
+.. autofunction:: load_toydata

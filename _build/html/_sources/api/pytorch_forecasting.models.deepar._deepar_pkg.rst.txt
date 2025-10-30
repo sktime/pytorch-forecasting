@@ -1,0 +1,31 @@
+\_deepar\_pkg
+=============
+
+.. automodule:: pytorch_forecasting.models.deepar._deepar_pkg
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      DeepAR_pkg
+   
+   
+
+   
+   
+   
+
+
+

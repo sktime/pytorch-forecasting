@@ -1,0 +1,51 @@
+MultiLoss
+=========
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: MultiLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MultiLoss.compute
+      ~MultiLoss.forward
+      ~MultiLoss.persistent
+      ~MultiLoss.reset
+      ~MultiLoss.to_prediction
+      ~MultiLoss.to_quantiles
+      ~MultiLoss.update
+   
+   
+
+   
+    
+   
+   
+   
+   

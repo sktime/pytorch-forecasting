@@ -1,0 +1,33 @@
+NHiTSBlock
+==========
+
+.. currentmodule:: pytorch_forecasting.models.nhits.sub_modules
+
+
+.. autoclass:: NHiTSBlock
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NHiTSBlock.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

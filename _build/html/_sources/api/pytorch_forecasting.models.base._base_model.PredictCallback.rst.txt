@@ -1,0 +1,166 @@
+PredictCallback
+===============
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+
+.. autoclass:: PredictCallback
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~PredictCallback.load_state_dict
+      ~PredictCallback.on_after_backward
+      ~PredictCallback.on_before_backward
+      ~PredictCallback.on_before_optimizer_step
+      ~PredictCallback.on_before_zero_grad
+      ~PredictCallback.on_exception
+      ~PredictCallback.on_fit_end
+      ~PredictCallback.on_fit_start
+      ~PredictCallback.on_load_checkpoint
+      ~PredictCallback.on_predict_batch_end
+      ~PredictCallback.on_predict_batch_start
+      ~PredictCallback.on_predict_end
+      ~PredictCallback.on_predict_epoch_end
+      ~PredictCallback.on_predict_epoch_start
+      ~PredictCallback.on_predict_start
+      ~PredictCallback.on_sanity_check_end
+      ~PredictCallback.on_sanity_check_start
+      ~PredictCallback.on_save_checkpoint
+      ~PredictCallback.on_test_batch_end
+      ~PredictCallback.on_test_batch_start
+      ~PredictCallback.on_test_end
+      ~PredictCallback.on_test_epoch_end
+      ~PredictCallback.on_test_epoch_start
+      ~PredictCallback.on_test_start
+      ~PredictCallback.on_train_batch_end
+      ~PredictCallback.on_train_batch_start
+      ~PredictCallback.on_train_end
+      ~PredictCallback.on_train_epoch_end
+      ~PredictCallback.on_train_epoch_start
+      ~PredictCallback.on_train_start
+      ~PredictCallback.on_validation_batch_end
+      ~PredictCallback.on_validation_batch_start
+      ~PredictCallback.on_validation_end
+      ~PredictCallback.on_validation_epoch_end
+      ~PredictCallback.on_validation_epoch_start
+      ~PredictCallback.on_validation_start
+      ~PredictCallback.setup
+      ~PredictCallback.state_dict
+      ~PredictCallback.teardown
+      ~PredictCallback.write_on_batch_end
+      ~PredictCallback.write_on_epoch_end
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PredictCallback.result
+      ~PredictCallback.state_key
+   
+   

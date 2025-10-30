@@ -1,0 +1,47 @@
+RecurrentNetwork\_pkg
+=====================
+
+.. currentmodule:: pytorch_forecasting.models.rnn._rnn_pkg
+
+
+.. autoclass:: RecurrentNetwork_pkg
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RecurrentNetwork_pkg.create_test_instance
+      ~RecurrentNetwork_pkg.create_test_instances_and_names
+      ~RecurrentNetwork_pkg.get_base_test_params
+      ~RecurrentNetwork_pkg.get_cls
+      ~RecurrentNetwork_pkg.name
+   
+   
+
+   
+    
+   
+   
+   
+   

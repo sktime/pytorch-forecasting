@@ -1,0 +1,32 @@
+tests
+=====
+
+.. automodule:: pytorch_forecasting.utils._dependencies.tests
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.utils._dependencies.tests.test_safe_import
+

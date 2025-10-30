@@ -1,0 +1,34 @@
+mlp
+===
+
+.. automodule:: pytorch_forecasting.models.mlp
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.mlp._decodermlp
+   pytorch_forecasting.models.mlp._decodermlp_pkg
+   pytorch_forecasting.models.mlp.submodules
+

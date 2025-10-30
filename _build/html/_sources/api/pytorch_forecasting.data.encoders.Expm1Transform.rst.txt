@@ -1,0 +1,67 @@
+Expm1Transform
+==============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: Expm1Transform
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Expm1Transform.forward_shape
+      ~Expm1Transform.inverse_shape
+      ~Expm1Transform.log_abs_det_jacobian
+      ~Expm1Transform.with_cache
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Expm1Transform.bijective
+      ~Expm1Transform.codomain
+      ~Expm1Transform.domain
+      ~Expm1Transform.event_dim
+      ~Expm1Transform.inv
+      ~Expm1Transform.sign
+   
+   

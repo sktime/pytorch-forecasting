@@ -1,0 +1,47 @@
+\_BasePtMetric
+==============
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_object
+
+
+.. autoclass:: _BasePtMetric
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~_BasePtMetric.get_cls
+      ~_BasePtMetric.get_encoder
+      ~_BasePtMetric.get_metric_test_params
+      ~_BasePtMetric.name
+      ~_BasePtMetric.prepare_test_inputs
+   
+   
+
+   
+    
+   
+   
+   
+   

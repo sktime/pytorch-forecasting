@@ -1,0 +1,38 @@
+point
+=====
+
+.. automodule:: pytorch_forecasting.metrics.point
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      CrossEntropy
+      MAE
+      MAPE
+      MASE
+      PoissonLoss
+      RMSE
+      SMAPE
+      TweedieLoss
+   
+   
+
+   
+   
+   
+
+
+

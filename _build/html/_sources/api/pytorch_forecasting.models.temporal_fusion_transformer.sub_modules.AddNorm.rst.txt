@@ -1,0 +1,33 @@
+AddNorm
+=======
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+
+.. autoclass:: AddNorm
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AddNorm.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

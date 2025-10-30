@@ -1,0 +1,45 @@
+MultiHorizonMetric
+==================
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: MultiHorizonMetric
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MultiHorizonMetric.compute
+      ~MultiHorizonMetric.loss
+      ~MultiHorizonMetric.mask_losses
+      ~MultiHorizonMetric.reduce_loss
+      ~MultiHorizonMetric.update
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,36 @@
+MultivariateNormalDistributionLoss
+==================================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: MultivariateNormalDistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MultivariateNormalDistributionLoss.map_x_to_distribution
+      ~MultivariateNormalDistributionLoss.rescale_parameters
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,31 @@
+\_tide
+======
+
+.. automodule:: pytorch_forecasting.models.tide._tide
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      TiDEModel
+   
+   
+
+   
+   
+   
+
+
+

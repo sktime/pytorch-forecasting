@@ -1,0 +1,33 @@
+\_ResidualBlock
+===============
+
+.. currentmodule:: pytorch_forecasting.models.tide.sub_modules
+
+
+.. autoclass:: _ResidualBlock
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~_ResidualBlock.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,36 @@
+TiDEModel
+=========
+
+.. currentmodule:: pytorch_forecasting.models.tide._tide
+
+
+.. autoclass:: TiDEModel
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TiDEModel.forward
+      ~TiDEModel.from_dataset
+   
+   
+
+   
+    
+   
+   
+   
+   

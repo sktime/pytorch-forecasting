@@ -1,0 +1,42 @@
+Baseline
+========
+
+.. currentmodule:: pytorch_forecasting.models.baseline
+
+
+.. autoclass:: Baseline
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Baseline.forward
+      ~Baseline.forward_one_target
+      ~Baseline.to_prediction
+      ~Baseline.to_quantiles
+   
+   
+
+   
+    
+   
+   
+   
+   

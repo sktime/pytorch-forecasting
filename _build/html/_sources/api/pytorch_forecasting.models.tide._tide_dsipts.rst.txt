@@ -1,0 +1,33 @@
+\_tide\_dsipts
+==============
+
+.. automodule:: pytorch_forecasting.models.tide._tide_dsipts
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.tide._tide_dsipts._tide_v2
+   pytorch_forecasting.models.tide._tide_dsipts._tide_v2_pkg
+

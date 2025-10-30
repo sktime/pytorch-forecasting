@@ -1,0 +1,36 @@
+timexer
+=======
+
+.. automodule:: pytorch_forecasting.models.timexer
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.timexer._timexer
+   pytorch_forecasting.models.timexer._timexer_pkg
+   pytorch_forecasting.models.timexer._timexer_pkg_v2
+   pytorch_forecasting.models.timexer._timexer_v2
+   pytorch_forecasting.models.timexer.sub_modules
+

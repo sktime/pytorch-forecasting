@@ -1,0 +1,6 @@
+move\_to\_device
+================
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: move_to_device

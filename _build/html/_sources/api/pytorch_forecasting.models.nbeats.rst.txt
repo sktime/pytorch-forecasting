@@ -1,0 +1,34 @@
+nbeats
+======
+
+.. automodule:: pytorch_forecasting.models.nbeats
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.nbeats._nbeats
+   pytorch_forecasting.models.nbeats._nbeats_pkg
+   pytorch_forecasting.models.nbeats.sub_modules
+

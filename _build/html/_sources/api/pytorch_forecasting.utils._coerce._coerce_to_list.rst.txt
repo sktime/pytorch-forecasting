@@ -1,0 +1,6 @@
+\_coerce\_to\_list
+==================
+
+.. currentmodule:: pytorch_forecasting.utils._coerce
+
+.. autofunction:: _coerce_to_list

@@ -1,0 +1,33 @@
+AttentionLayer
+==============
+
+.. currentmodule:: pytorch_forecasting.models.timexer.sub_modules
+
+
+.. autoclass:: AttentionLayer
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AttentionLayer.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

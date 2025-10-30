@@ -1,0 +1,45 @@
+ImplicitQuantileNetworkDistributionLoss
+=======================================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: ImplicitQuantileNetworkDistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ImplicitQuantileNetworkDistributionLoss.loss
+      ~ImplicitQuantileNetworkDistributionLoss.rescale_parameters
+      ~ImplicitQuantileNetworkDistributionLoss.sample
+      ~ImplicitQuantileNetworkDistributionLoss.to_prediction
+      ~ImplicitQuantileNetworkDistributionLoss.to_quantiles
+   
+   
+
+   
+    
+   
+   
+   
+   

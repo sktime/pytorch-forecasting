@@ -103,27 +103,32 @@ Do not edit manually.
      - pytorch-forecasting developers
      - pytorch-forecasting developers
      - None
+   * - :py:class:`~pytorch_forecasting.models.nbeats._grid_callback.GridUpdateCallback`
+     - forecaster_v1
+     - pytorch-forecasting developers
+     - pytorch-forecasting developers
+     - None
    * - :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.InterpretableMultiHeadAttention`
      - forecaster_v2
      - pytorch-forecasting developers
      - pytorch-forecasting developers
      - None
-   * - :py:class:`~pytorch_forecasting.models.nbeats.sub_modules.NBEATSGenericBlock`
-     - forecaster_v1
-     - pytorch-forecasting developers
-     - pytorch-forecasting developers
-     - None
-   * - :py:class:`~pytorch_forecasting.models.nbeats.sub_modules.NBEATSSeasonalBlock`
-     - forecaster_v1
-     - pytorch-forecasting developers
-     - pytorch-forecasting developers
-     - None
-   * - :py:class:`~pytorch_forecasting.models.nbeats.sub_modules.NBEATSTrendBlock`
-     - forecaster_v1
-     - pytorch-forecasting developers
-     - pytorch-forecasting developers
-     - None
    * - :py:class:`~pytorch_forecasting.models.nbeats._nbeats.NBeats`
+     - forecaster_v1
+     - pytorch-forecasting developers
+     - pytorch-forecasting developers
+     - None
+   * - :py:class:`~pytorch_forecasting.models.nbeats._nbeats_adapter.NBeatsAdapter`
+     - forecaster_v1
+     - pytorch-forecasting developers
+     - pytorch-forecasting developers
+     - None
+   * - :py:class:`~pytorch_forecasting.models.nbeats._nbeatskan.NBeatsKAN`
+     - forecaster_v1
+     - pytorch-forecasting developers
+     - pytorch-forecasting developers
+     - None
+   * - :py:class:`~pytorch_forecasting.models.nbeats._nbeatskan_pkg.NBeatsKAN_pkg`
      - forecaster_v1
      - pytorch-forecasting developers
      - pytorch-forecasting developers

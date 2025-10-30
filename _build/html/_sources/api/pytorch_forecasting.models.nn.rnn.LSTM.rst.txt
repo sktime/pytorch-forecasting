@@ -1,0 +1,39 @@
+LSTM
+====
+
+.. currentmodule:: pytorch_forecasting.models.nn.rnn
+
+
+.. autoclass:: LSTM
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LSTM.handle_no_encoding
+      ~LSTM.init_hidden_state
+      ~LSTM.repeat_interleave
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,38 @@
+TimeSynchronizedBatchSampler
+============================
+
+.. currentmodule:: pytorch_forecasting.data.samplers
+
+
+.. autoclass:: TimeSynchronizedBatchSampler
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TimeSynchronizedBatchSampler.construct_batch_groups
+      ~TimeSynchronizedBatchSampler.get_groups
+   
+   
+
+   
+    
+   
+   
+   
+   

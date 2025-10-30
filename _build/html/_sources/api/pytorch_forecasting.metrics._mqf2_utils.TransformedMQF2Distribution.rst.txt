@@ -1,0 +1,112 @@
+TransformedMQF2Distribution
+===========================
+
+.. currentmodule:: pytorch_forecasting.metrics._mqf2_utils
+
+
+.. autoclass:: TransformedMQF2Distribution
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TransformedMQF2Distribution.cdf
+      ~TransformedMQF2Distribution.energy_score
+      ~TransformedMQF2Distribution.entropy
+      ~TransformedMQF2Distribution.enumerate_support
+      ~TransformedMQF2Distribution.expand
+      ~TransformedMQF2Distribution.icdf
+      ~TransformedMQF2Distribution.log_prob
+      ~TransformedMQF2Distribution.perplexity
+      ~TransformedMQF2Distribution.quantile
+      ~TransformedMQF2Distribution.repeat_scale
+      ~TransformedMQF2Distribution.rsample
+      ~TransformedMQF2Distribution.sample
+      ~TransformedMQF2Distribution.sample_n
+      ~TransformedMQF2Distribution.scale_input
+      ~TransformedMQF2Distribution.set_default_validate_args
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TransformedMQF2Distribution.arg_constraints
+      ~TransformedMQF2Distribution.batch_shape
+      ~TransformedMQF2Distribution.event_shape
+      ~TransformedMQF2Distribution.has_enumerate_support
+      ~TransformedMQF2Distribution.has_rsample
+      ~TransformedMQF2Distribution.mean
+      ~TransformedMQF2Distribution.mode
+      ~TransformedMQF2Distribution.stddev
+      ~TransformedMQF2Distribution.support
+      ~TransformedMQF2Distribution.variance
+   
+   

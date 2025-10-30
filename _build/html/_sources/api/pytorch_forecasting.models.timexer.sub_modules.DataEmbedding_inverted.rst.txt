@@ -1,0 +1,33 @@
+DataEmbedding\_inverted
+=======================
+
+.. currentmodule:: pytorch_forecasting.models.timexer.sub_modules
+
+
+.. autoclass:: DataEmbedding_inverted
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DataEmbedding_inverted.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,23 @@
+\_safe\_import
+==============
+
+.. automodule:: pytorch_forecasting.utils._dependencies._safe_import
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

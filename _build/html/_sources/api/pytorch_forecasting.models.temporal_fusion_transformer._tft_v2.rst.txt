@@ -1,0 +1,31 @@
+\_tft\_v2
+=========
+
+.. automodule:: pytorch_forecasting.models.temporal_fusion_transformer._tft_v2
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      TFT
+   
+   
+
+   
+   
+   
+
+
+

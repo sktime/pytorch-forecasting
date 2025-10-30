@@ -1,0 +1,1005 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pytorch_forecasting.models.nbeats._nbeats &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pytorch_forecasting/models/nbeats/_nbeats';</script>
+    <link rel="icon" href="../../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../../../../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pytorch_forecasting.models.nbeats._nbeats</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pytorch_forecasting.models.nbeats._nbeats</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">N-Beats model for timeseries forecasting without covariates.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
+
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data</span> <span class="kn">import</span> <span class="n">TimeSeriesDataSet</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data.encoders</span> <span class="kn">import</span> <span class="n">NaNLabelEncoder</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.metrics</span> <span class="kn">import</span> <span class="n">MAE</span><span class="p">,</span> <span class="n">MAPE</span><span class="p">,</span> <span class="n">MASE</span><span class="p">,</span> <span class="n">RMSE</span><span class="p">,</span> <span class="n">SMAPE</span><span class="p">,</span> <span class="n">MultiHorizonMetric</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.base</span> <span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.nbeats.sub_modules</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">NBEATSGenericBlock</span><span class="p">,</span>
+    <span class="n">NBEATSSeasonalBlock</span><span class="p">,</span>
+    <span class="n">NBEATSTrendBlock</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.utils._dependencies</span> <span class="kn">import</span> <span class="n">_check_matplotlib</span>
+
+
+<div class="viewcode-block" id="NBeats">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.nbeats._nbeats.NBeats.html#pytorch_forecasting.models.nbeats._nbeats.NBeats">[docs]</a>
+<span class="k">class</span> <span class="nc">NBeats</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;N-Beats model for timeseries forecasting without covariates.&quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_pkg</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Package for the model.&quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">pytorch_forecasting.models.nbeats._nbeats_pkg</span> <span class="kn">import</span> <span class="n">NBeats_pkg</span>
+
+        <span class="k">return</span> <span class="n">NBeats_pkg</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">stack_types</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_blocks</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_block_layers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">widths</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">sharing</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">bool</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">expansion_coefficient_lengths</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prediction_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">context_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-2</span><span class="p">,</span>
+        <span class="n">log_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">log_gradient_flow</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">log_val_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">weight_decay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span><span class="p">,</span>
+        <span class="n">loss</span><span class="p">:</span> <span class="n">MultiHorizonMetric</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reduce_on_plateau_patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">backcast_loss_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">logging_metrics</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize NBeats Model - use its :py:meth:`~from_dataset` method if possible.</span>
+
+<span class="sd">        Based on the article</span>
+<span class="sd">        `N-BEATS: Neural basis expansion analysis for interpretable time series</span>
+<span class="sd">        forecasting &lt;http://arxiv.org/abs/1905.10437&gt;`_. The network has (if used as ensemble) outperformed all</span>
+<span class="sd">        other methods</span>
+<span class="sd">        including ensembles of traditional statical methods in the M4 competition. The M4 competition is arguably</span>
+<span class="sd">        the most</span>
+<span class="sd">        important benchmark for univariate time series forecasting.</span>
+
+<span class="sd">        The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently shown to consistently outperform</span>
+<span class="sd">        N-BEATS.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            stack_types: One of the following values: “generic”, “seasonality&quot; or “trend&quot;. A list of strings</span>
+<span class="sd">                of length 1 or ‘num_stacks’. Default and recommended value</span>
+<span class="sd">                for generic mode: [“generic”] Recommended value for interpretable mode: [“trend”,”seasonality”]</span>
+<span class="sd">            num_blocks: The number of blocks per stack. A list of ints of length 1 or ‘num_stacks’.</span>
+<span class="sd">                Default and recommended value for generic mode: [1] Recommended value for interpretable mode: [3]</span>
+<span class="sd">            num_block_layers: Number of fully connected layers with ReLu activation per block. A list of ints of length</span>
+<span class="sd">                1 or ‘num_stacks’.</span>
+<span class="sd">                Default and recommended value for generic mode: [4] Recommended value for interpretable mode: [4]</span>
+<span class="sd">            width: Widths of the fully connected layers with ReLu activation in the blocks.</span>
+<span class="sd">                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [512]</span>
+<span class="sd">                Recommended value for interpretable mode: [256, 2048]</span>
+<span class="sd">            sharing: Whether the weights are shared with the other blocks per stack.</span>
+<span class="sd">                A list of ints of length 1 or ‘num_stacks’. Default and recommended value for generic mode: [False]</span>
+<span class="sd">                Recommended value for interpretable mode: [True]</span>
+<span class="sd">            expansion_coefficient_length: If the type is “G” (generic), then the length of the expansion</span>
+<span class="sd">                coefficient.</span>
+<span class="sd">                If type is “T” (trend), then it corresponds to the degree of the polynomial. If the type is “S”</span>
+<span class="sd">                (seasonal) then this is the minimum period allowed, e.g. 2 for changes every timestep.</span>
+<span class="sd">                A list of ints of length 1 or ‘num_stacks’. Default value for generic mode: [32] Recommended value for</span>
+<span class="sd">                interpretable mode: [3]</span>
+<span class="sd">            prediction_length: Length of the prediction. Also known as &#39;horizon&#39;.</span>
+<span class="sd">            context_length: Number of time units that condition the predictions. Also known as &#39;lookback period&#39;.</span>
+<span class="sd">                Should be between 1-10 times the prediction length.</span>
+<span class="sd">            backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.</span>
+<span class="sd">                A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and</span>
+<span class="sd">                forecast lengths). Defaults to 0.0, i.e. no weight.</span>
+<span class="sd">            loss: loss to optimize. Defaults to MASE().</span>
+<span class="sd">            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training</span>
+<span class="sd">                failures</span>
+<span class="sd">            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10</span>
+<span class="sd">            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.</span>
+<span class="sd">                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])</span>
+<span class="sd">            **kwargs: additional arguments to :py:class:`~BaseModel`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="n">expansion_coefficient_lengths</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">expansion_coefficient_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sharing</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sharing</span> <span class="o">=</span> <span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">widths</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">widths</span> <span class="o">=</span> <span class="p">[</span><span class="mi">32</span><span class="p">,</span> <span class="mi">512</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">num_block_layers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">num_block_layers</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">num_blocks</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">num_blocks</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">stack_types</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stack_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;trend&quot;</span><span class="p">,</span> <span class="s2">&quot;seasonality&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">logging_metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging_metrics</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">([</span><span class="n">SMAPE</span><span class="p">(),</span> <span class="n">MAE</span><span class="p">(),</span> <span class="n">RMSE</span><span class="p">(),</span> <span class="n">MAPE</span><span class="p">(),</span> <span class="n">MASE</span><span class="p">()])</span>
+        <span class="k">if</span> <span class="n">loss</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">MASE</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_hyperparameters</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">logging_metrics</span><span class="o">=</span><span class="n">logging_metrics</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># setup stacks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">net_blocks</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">stack_id</span><span class="p">,</span> <span class="n">stack_type</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">stack_types</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_blocks</span><span class="p">[</span><span class="n">stack_id</span><span class="p">]):</span>
+                <span class="k">if</span> <span class="n">stack_type</span> <span class="o">==</span> <span class="s2">&quot;generic&quot;</span><span class="p">:</span>
+                    <span class="n">net_block</span> <span class="o">=</span> <span class="n">NBEATSGenericBlock</span><span class="p">(</span>
+                        <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">widths</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">thetas_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">expansion_coefficient_lengths</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">num_block_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">num_block_layers</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">backcast_length</span><span class="o">=</span><span class="n">context_length</span><span class="p">,</span>
+                        <span class="n">forecast_length</span><span class="o">=</span><span class="n">prediction_length</span><span class="p">,</span>
+                        <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">stack_type</span> <span class="o">==</span> <span class="s2">&quot;seasonality&quot;</span><span class="p">:</span>
+                    <span class="n">net_block</span> <span class="o">=</span> <span class="n">NBEATSSeasonalBlock</span><span class="p">(</span>
+                        <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">widths</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">num_block_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">num_block_layers</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">backcast_length</span><span class="o">=</span><span class="n">context_length</span><span class="p">,</span>
+                        <span class="n">forecast_length</span><span class="o">=</span><span class="n">prediction_length</span><span class="p">,</span>
+                        <span class="n">min_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">expansion_coefficient_lengths</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">stack_type</span> <span class="o">==</span> <span class="s2">&quot;trend&quot;</span><span class="p">:</span>
+                    <span class="n">net_block</span> <span class="o">=</span> <span class="n">NBEATSTrendBlock</span><span class="p">(</span>
+                        <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">widths</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">thetas_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">expansion_coefficient_lengths</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">num_block_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">num_block_layers</span><span class="p">[</span><span class="n">stack_id</span><span class="p">],</span>
+                        <span class="n">backcast_length</span><span class="o">=</span><span class="n">context_length</span><span class="p">,</span>
+                        <span class="n">forecast_length</span><span class="o">=</span><span class="n">prediction_length</span><span class="p">,</span>
+                        <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown stack type </span><span class="si">{</span><span class="n">stack_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">net_blocks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">net_block</span><span class="p">)</span>
+
+<div class="viewcode-block" id="NBeats.forward">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.nbeats._nbeats.NBeats.html#pytorch_forecasting.models.nbeats._nbeats.NBeats.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Pass forward of network.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (Dict[str, torch.Tensor]): input from dataloader generated from</span>
+<span class="sd">                :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, torch.Tensor]: output of model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">timesteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">context_length</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">prediction_length</span>
+        <span class="n">generic_forecast</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">timesteps</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">trend_forecast</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">timesteps</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">seasonal_forecast</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">timesteps</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">forecast</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">prediction_length</span><span class="p">),</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">backcast</span> <span class="o">=</span> <span class="n">target</span>  <span class="c1"># initialize backcast</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">block</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">net_blocks</span><span class="p">):</span>
+            <span class="c1"># evaluate block</span>
+            <span class="n">backcast_block</span><span class="p">,</span> <span class="n">forecast_block</span> <span class="o">=</span> <span class="n">block</span><span class="p">(</span><span class="n">backcast</span><span class="p">)</span>
+
+            <span class="c1"># add for interpretation</span>
+            <span class="n">full</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">backcast_block</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span> <span class="n">forecast_block</span><span class="o">.</span><span class="n">detach</span><span class="p">()],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="n">NBEATSTrendBlock</span><span class="p">):</span>
+                <span class="n">trend_forecast</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="n">NBEATSSeasonalBlock</span><span class="p">):</span>
+                <span class="n">seasonal_forecast</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">generic_forecast</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">full</span><span class="p">)</span>
+
+            <span class="c1"># update backcast and forecast</span>
+            <span class="n">backcast</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">backcast</span> <span class="o">-</span> <span class="n">backcast_block</span>
+            <span class="p">)</span>  <span class="c1"># do not use backcast -= backcast_block as this signifies an inline operation # noqa : E501</span>
+            <span class="n">forecast</span> <span class="o">=</span> <span class="n">forecast</span> <span class="o">+</span> <span class="n">forecast_block</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_network_output</span><span class="p">(</span>
+            <span class="n">prediction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transform_output</span><span class="p">(</span><span class="n">forecast</span><span class="p">,</span> <span class="n">target_scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">]),</span>
+            <span class="n">backcast</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transform_output</span><span class="p">(</span>
+                <span class="n">prediction</span><span class="o">=</span><span class="n">target</span> <span class="o">-</span> <span class="n">backcast</span><span class="p">,</span> <span class="n">target_scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">]</span>
+            <span class="p">),</span>
+            <span class="n">trend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transform_output</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">trend_forecast</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                <span class="n">target_scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">],</span>
+            <span class="p">),</span>
+            <span class="n">seasonality</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transform_output</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">seasonal_forecast</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                <span class="n">target_scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">],</span>
+            <span class="p">),</span>
+            <span class="n">generic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transform_output</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">generic_forecast</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                <span class="n">target_scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">],</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NBeats.from_dataset">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.nbeats._nbeats.NBeats.html#pytorch_forecasting.models.nbeats._nbeats.NBeats.from_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">TimeSeriesDataSet</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to create network from :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataset (TimeSeriesDataSet): dataset where sole predictor is the target.</span>
+<span class="sd">            **kwargs: additional arguments to be passed to ``__init__`` method.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            NBeats</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="n">new_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;prediction_length&quot;</span><span class="p">:</span> <span class="n">dataset</span><span class="o">.</span><span class="n">max_prediction_length</span><span class="p">,</span>
+            <span class="s2">&quot;context_length&quot;</span><span class="p">:</span> <span class="n">dataset</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">new_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># validate arguments</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="nb">str</span>
+        <span class="p">),</span> <span class="s2">&quot;only one target is allowed (passed as string to dataset)&quot;</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="o">.</span><span class="n">target_normalizer</span><span class="p">,</span> <span class="n">NaNLabelEncoder</span>
+        <span class="p">),</span> <span class="s2">&quot;only regression tasks are supported - target must not be categorical&quot;</span>
+        <span class="k">assert</span> <span class="n">dataset</span><span class="o">.</span><span class="n">min_encoder_length</span> <span class="o">==</span> <span class="n">dataset</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">,</span> <span class="p">(</span>
+            <span class="s2">&quot;only fixed encoder length is allowed,&quot;</span>
+            <span class="s2">&quot; but min_encoder_length != max_encoder_length&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">dataset</span><span class="o">.</span><span class="n">max_prediction_length</span> <span class="o">==</span> <span class="n">dataset</span><span class="o">.</span><span class="n">min_prediction_length</span><span class="p">,</span> <span class="p">(</span>
+            <span class="s2">&quot;only fixed prediction length is allowed,&quot;</span>
+            <span class="s2">&quot; but max_prediction_length != min_prediction_length&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">dataset</span><span class="o">.</span><span class="n">randomize_length</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="p">),</span> <span class="s2">&quot;length has to be fixed, but randomize_length is not None&quot;</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="n">dataset</span><span class="o">.</span><span class="n">add_relative_time_idx</span>
+        <span class="p">),</span> <span class="s2">&quot;add_relative_time_idx has to be False&quot;</span>
+
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">flat_categoricals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">reals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">_time_varying_unknown_reals</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="ow">and</span> <span class="n">dataset</span><span class="o">.</span><span class="n">_time_varying_unknown_reals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">dataset</span><span class="o">.</span><span class="n">target</span>
+        <span class="p">),</span> <span class="p">(</span>
+            <span class="s2">&quot;The only variable as input should be the&quot;</span>
+            <span class="s2">&quot; target which is part of time_varying_unknown_reals&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># initialize class</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">from_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="o">**</span><span class="n">new_kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NBeats.step">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.nbeats._nbeats.NBeats.html#pytorch_forecasting.models.nbeats._nbeats.NBeats.step">[docs]</a>
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Take training / validation step.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">log</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">batch_idx</span><span class="o">=</span><span class="n">batch_idx</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">backcast_loss_ratio</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">predicting</span>
+        <span class="p">):</span>  <span class="c1"># add loss from backcast</span>
+            <span class="n">backcast</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;backcast&quot;</span><span class="p">]</span>
+            <span class="n">backcast_weight</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">backcast_loss_ratio</span>
+                <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">prediction_length</span>
+                <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">context_length</span>
+            <span class="p">)</span>
+            <span class="n">backcast_weight</span> <span class="o">=</span> <span class="n">backcast_weight</span> <span class="o">/</span> <span class="p">(</span><span class="n">backcast_weight</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># normalize</span>
+            <span class="n">forecast_weight</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">backcast_weight</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">,</span> <span class="n">MASE</span><span class="p">):</span>
+                <span class="n">backcast_loss</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">backcast</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_target&quot;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_target&quot;</span><span class="p">])</span>
+                    <span class="o">*</span> <span class="n">backcast_weight</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">backcast_loss</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">backcast</span><span class="p">,</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_target&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="n">backcast_weight</span>
+                <span class="p">)</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_backcast_loss&quot;</span><span class="p">,</span>
+                <span class="n">backcast_loss</span><span class="p">,</span>
+                <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">on_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">,</span>
+                <span class="n">batch_size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_target&quot;</span><span class="p">]),</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_forecast_loss&quot;</span><span class="p">,</span>
+                <span class="n">log</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">],</span>
+                <span class="n">on_epoch</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">on_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">,</span>
+                <span class="n">batch_size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_target&quot;</span><span class="p">]),</span>
+            <span class="p">)</span>
+            <span class="n">log</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">log</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">forecast_weight</span> <span class="o">+</span> <span class="n">backcast_loss</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_interpretation</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">batch_idx</span><span class="o">=</span><span class="n">batch_idx</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">log</span><span class="p">,</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="NBeats.log_interpretation">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.nbeats._nbeats.NBeats.html#pytorch_forecasting.models.nbeats._nbeats.NBeats.log_interpretation">[docs]</a>
+    <span class="k">def</span> <span class="nf">log_interpretation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log interpretation of network predictions in tensorboard.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mpl_available</span> <span class="o">=</span> <span class="n">_check_matplotlib</span><span class="p">(</span><span class="s2">&quot;log_interpretation&quot;</span><span class="p">,</span> <span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Don&#39;t log figures if matplotlib or add_figure is not available</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mpl_available</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logger_supports</span><span class="p">(</span><span class="s2">&quot;add_figure&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">label</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">,</span> <span class="s2">&quot;train&quot;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_interval</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">batch_idx</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_interval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_interpretation</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">idx</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2"> interpretation of item 0 in &quot;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;step </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;batch </span><span class="si">{</span><span class="n">batch_idx</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">add_figure</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">global_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NBeats.plot_interpretation">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.nbeats._nbeats.NBeats.html#pytorch_forecasting.models.nbeats._nbeats.NBeats.plot_interpretation">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_interpretation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">output</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">plot_seasonality_and_generic_on_secondary_axis</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot interpretation.</span>
+
+<span class="sd">        Plot two pannels: prediction and backcast vs actuals and</span>
+<span class="sd">        decomposition of prediction into trend, seasonality and generic forecast.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (Dict[str, torch.Tensor]): network input</span>
+<span class="sd">            output (Dict[str, torch.Tensor]): network output</span>
+<span class="sd">            idx (int): index of sample for which to plot the interpretation.</span>
+<span class="sd">            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which to plot the interpretation.</span>
+<span class="sd">                Defaults to None.</span>
+<span class="sd">            plot_seasonality_and_generic_on_secondary_axis (bool, optional): if to plot seasonality and</span>
+<span class="sd">                generic forecast on secondary axis in second panel. Defaults to False.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            plt.Figure: matplotlib figure</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="n">_check_matplotlib</span><span class="p">(</span><span class="s2">&quot;plot_interpretation&quot;</span><span class="p">)</span>
+
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_figure</span><span class="p">()</span>
+
+        <span class="n">time</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+            <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">context_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">prediction_length</span>
+        <span class="p">)</span>
+
+        <span class="c1"># plot target vs prediction</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">time</span><span class="p">,</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_target&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_target&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]])</span>
+            <span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+            <span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;target&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">time</span><span class="p">,</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">output</span><span class="p">[</span><span class="s2">&quot;backcast&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span>
+                    <span class="n">output</span><span class="p">[</span><span class="s2">&quot;prediction&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span>
+                <span class="p">],</span>
+                <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">)</span>
+
+        <span class="c1"># plot blocks</span>
+        <span class="n">prop_cycle</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s2">&quot;axes.prop_cycle&quot;</span><span class="p">])</span>
+        <span class="nb">next</span><span class="p">(</span><span class="n">prop_cycle</span><span class="p">)</span>  <span class="c1"># prediction</span>
+        <span class="nb">next</span><span class="p">(</span><span class="n">prop_cycle</span><span class="p">)</span>  <span class="c1"># observations</span>
+        <span class="k">if</span> <span class="n">plot_seasonality_and_generic_on_secondary_axis</span><span class="p">:</span>
+            <span class="n">ax2</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">twinx</span><span class="p">()</span>
+            <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Seasonality / Generic&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax2</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">title</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;trend&quot;</span><span class="p">,</span> <span class="s2">&quot;seasonality&quot;</span><span class="p">,</span> <span class="s2">&quot;generic&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">title</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">stack_types</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">title</span> <span class="o">==</span> <span class="s2">&quot;trend&quot;</span><span class="p">:</span>
+                <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                    <span class="n">time</span><span class="p">,</span>
+                    <span class="n">output</span><span class="p">[</span><span class="n">title</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+                    <span class="n">label</span><span class="o">=</span><span class="n">title</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
+                    <span class="n">c</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="n">prop_cycle</span><span class="p">)[</span><span class="s2">&quot;color&quot;</span><span class="p">],</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                    <span class="n">time</span><span class="p">,</span>
+                    <span class="n">output</span><span class="p">[</span><span class="n">title</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+                    <span class="n">label</span><span class="o">=</span><span class="n">title</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
+                    <span class="n">c</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="n">prop_cycle</span><span class="p">)[</span><span class="s2">&quot;color&quot;</span><span class="p">],</span>
+                <span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Decomposition&quot;</span><span class="p">)</span>
+
+        <span class="n">fig</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

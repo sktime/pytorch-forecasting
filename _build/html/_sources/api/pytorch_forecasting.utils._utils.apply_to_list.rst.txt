@@ -1,0 +1,6 @@
+apply\_to\_list
+===============
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: apply_to_list

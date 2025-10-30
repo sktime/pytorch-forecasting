@@ -1,0 +1,39 @@
+CrossEntropy
+============
+
+.. currentmodule:: pytorch_forecasting.metrics.point
+
+
+.. autoclass:: CrossEntropy
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CrossEntropy.loss
+      ~CrossEntropy.to_prediction
+      ~CrossEntropy.to_quantiles
+   
+   
+
+   
+    
+   
+   
+   
+   

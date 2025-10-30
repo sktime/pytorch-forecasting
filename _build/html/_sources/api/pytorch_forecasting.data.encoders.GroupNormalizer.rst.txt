@@ -1,0 +1,88 @@
+GroupNormalizer
+===============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: GroupNormalizer
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GroupNormalizer.extra_repr
+      ~GroupNormalizer.fit
+      ~GroupNormalizer.fit_transform
+      ~GroupNormalizer.get_metadata_routing
+      ~GroupNormalizer.get_norm
+      ~GroupNormalizer.get_parameters
+      ~GroupNormalizer.get_params
+      ~GroupNormalizer.get_transform
+      ~GroupNormalizer.inverse_preprocess
+      ~GroupNormalizer.inverse_transform
+      ~GroupNormalizer.preprocess
+      ~GroupNormalizer.set_output
+      ~GroupNormalizer.set_params
+      ~GroupNormalizer.set_transform_request
+      ~GroupNormalizer.transform
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GroupNormalizer.TRANSFORMATIONS
+      ~GroupNormalizer.names
+   
+   

@@ -1,0 +1,42 @@
+BaseModelWithCovariates
+=======================
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+
+.. autoclass:: BaseModelWithCovariates
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BaseModelWithCovariates.calculate_prediction_actual_by_variable
+      ~BaseModelWithCovariates.extract_features
+      ~BaseModelWithCovariates.from_dataset
+      ~BaseModelWithCovariates.plot_prediction_actual_by_variable
+   
+   
+
+   
+    
+   
+   
+   
+   

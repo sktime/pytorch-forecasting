@@ -1,0 +1,33 @@
+EnEmbedding
+===========
+
+.. currentmodule:: pytorch_forecasting.models.timexer.sub_modules
+
+
+.. autoclass:: EnEmbedding
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~EnEmbedding.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

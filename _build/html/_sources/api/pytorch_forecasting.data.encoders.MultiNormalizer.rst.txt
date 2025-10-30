@@ -1,0 +1,82 @@
+MultiNormalizer
+===============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: MultiNormalizer
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MultiNormalizer.extra_repr
+      ~MultiNormalizer.fit
+      ~MultiNormalizer.fit_transform
+      ~MultiNormalizer.get_metadata_routing
+      ~MultiNormalizer.get_parameters
+      ~MultiNormalizer.get_params
+      ~MultiNormalizer.get_transform
+      ~MultiNormalizer.inverse_preprocess
+      ~MultiNormalizer.inverse_transform
+      ~MultiNormalizer.preprocess
+      ~MultiNormalizer.set_output
+      ~MultiNormalizer.set_params
+      ~MultiNormalizer.set_transform_request
+      ~MultiNormalizer.transform
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MultiNormalizer.TRANSFORMATIONS
+   
+   

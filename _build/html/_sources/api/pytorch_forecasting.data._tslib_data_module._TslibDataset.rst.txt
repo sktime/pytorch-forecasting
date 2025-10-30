@@ -1,0 +1,27 @@
+\_TslibDataset
+==============
+
+.. currentmodule:: pytorch_forecasting.data._tslib_data_module
+
+
+.. autoclass:: _TslibDataset
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,6 @@
+get\_rnn
+========
+
+.. currentmodule:: pytorch_forecasting.models.nn.rnn
+
+.. autofunction:: get_rnn

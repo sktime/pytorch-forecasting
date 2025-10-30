@@ -1,0 +1,6 @@
+softplus\_inv
+=============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+.. autofunction:: softplus_inv

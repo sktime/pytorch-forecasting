@@ -1,0 +1,36 @@
+TweedieLoss
+===========
+
+.. currentmodule:: pytorch_forecasting.metrics.point
+
+
+.. autoclass:: TweedieLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TweedieLoss.loss
+      ~TweedieLoss.to_prediction
+   
+   
+
+   
+    
+   
+   
+   
+   

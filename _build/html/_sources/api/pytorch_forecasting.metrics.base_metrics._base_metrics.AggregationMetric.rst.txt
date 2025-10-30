@@ -1,0 +1,45 @@
+AggregationMetric
+=================
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: AggregationMetric
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AggregationMetric.compute
+      ~AggregationMetric.forward
+      ~AggregationMetric.persistent
+      ~AggregationMetric.reset
+      ~AggregationMetric.update
+   
+   
+
+   
+    
+   
+   
+   
+   

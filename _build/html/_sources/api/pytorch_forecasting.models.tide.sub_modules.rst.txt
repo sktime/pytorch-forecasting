@@ -1,0 +1,32 @@
+sub\_modules
+============
+
+.. automodule:: pytorch_forecasting.models.tide.sub_modules
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      _ResidualBlock
+      _TideModule
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,6 @@
+\_plus\_one
+===========
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+.. autofunction:: _plus_one

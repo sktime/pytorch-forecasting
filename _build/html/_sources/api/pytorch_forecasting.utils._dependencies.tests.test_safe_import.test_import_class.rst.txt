@@ -1,0 +1,6 @@
+test\_import\_class
+===================
+
+.. currentmodule:: pytorch_forecasting.utils._dependencies.tests.test_safe_import
+
+.. autofunction:: test_import_class

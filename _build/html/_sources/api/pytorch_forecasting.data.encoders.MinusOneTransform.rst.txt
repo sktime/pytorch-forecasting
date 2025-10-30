@@ -1,0 +1,67 @@
+MinusOneTransform
+=================
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: MinusOneTransform
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MinusOneTransform.forward_shape
+      ~MinusOneTransform.inverse_shape
+      ~MinusOneTransform.log_abs_det_jacobian
+      ~MinusOneTransform.with_cache
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MinusOneTransform.bijective
+      ~MinusOneTransform.codomain
+      ~MinusOneTransform.domain
+      ~MinusOneTransform.event_dim
+      ~MinusOneTransform.inv
+      ~MinusOneTransform.sign
+   
+   

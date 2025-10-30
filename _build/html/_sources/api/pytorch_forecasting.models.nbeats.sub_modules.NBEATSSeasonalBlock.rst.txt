@@ -1,0 +1,36 @@
+NBEATSSeasonalBlock
+===================
+
+.. currentmodule:: pytorch_forecasting.models.nbeats.sub_modules
+
+
+.. autoclass:: NBEATSSeasonalBlock
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NBEATSSeasonalBlock.forward
+      ~NBEATSSeasonalBlock.get_frequencies
+   
+   
+
+   
+    
+   
+   
+   
+   

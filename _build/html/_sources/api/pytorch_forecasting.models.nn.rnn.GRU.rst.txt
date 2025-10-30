@@ -1,0 +1,39 @@
+GRU
+===
+
+.. currentmodule:: pytorch_forecasting.models.nn.rnn
+
+
+.. autoclass:: GRU
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GRU.handle_no_encoding
+      ~GRU.init_hidden_state
+      ~GRU.repeat_interleave
+   
+   
+
+   
+    
+   
+   
+   
+   

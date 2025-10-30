@@ -1,0 +1,6 @@
+groupby\_apply
+==============
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: groupby_apply

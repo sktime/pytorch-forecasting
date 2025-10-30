@@ -1,0 +1,6 @@
+test\_import\_with\_different\_pkg\_name\_1
+===========================================
+
+.. currentmodule:: pytorch_forecasting.utils._dependencies.tests.test_safe_import
+
+.. autofunction:: test_import_with_different_pkg_name_1

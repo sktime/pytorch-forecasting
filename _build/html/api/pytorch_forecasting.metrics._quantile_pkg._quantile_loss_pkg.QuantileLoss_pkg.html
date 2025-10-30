@@ -1,0 +1,1093 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>QuantileLoss_pkg &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg';</script>
+    <link rel="icon" href="../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Metric" href="pytorch_forecasting.metrics.base_metrics._base_metrics.Metric.html" />
+    <link rel="prev" title="Metrics" href="../metrics.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="pytorch_forecasting.data.html">data</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.data._tslib_data_module.html">_tslib_data_module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data._tslib_data_module.TslibDataModule.html">TslibDataModule</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data._tslib_data_module._TslibDataset.html">_TslibDataset</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.data.data_module.html">data_module</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.html">EncoderDecoderTimeSeriesDataModule</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.data.encoders.html">encoders</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders._clipped_log.html">_clipped_log</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders._clipped_logit.html">_clipped_logit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders._identity.html">_identity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders._minus_one.html">_minus_one</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders._plus_one.html">_plus_one</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders._square.html">_square</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.softplus_inv.html">softplus_inv</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.EncoderNormalizer.html">EncoderNormalizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.Expm1Transform.html">Expm1Transform</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.GroupNormalizer.html">GroupNormalizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.MinusOneTransform.html">MinusOneTransform</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.MultiNormalizer.html">MultiNormalizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.NaNLabelEncoder.html">NaNLabelEncoder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.ReLuTransform.html">ReLuTransform</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.SoftplusTransform.html">SoftplusTransform</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.TorchNormalizer.html">TorchNormalizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.encoders.TransformMixIn.html">TransformMixIn</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.data.examples.html">examples</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.examples._get_data_by_filename.html">_get_data_by_filename</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.examples.generate_ar_data.html">generate_ar_data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.examples.get_stallion_data.html">get_stallion_data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.examples.load_toydata.html">load_toydata</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.data.samplers.html">samplers</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.samplers.GroupedSampler.html">GroupedSampler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.data.samplers.TimeSynchronizedBatchSampler.html">TimeSynchronizedBatchSampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="pytorch_forecasting.data.tests.html">tests</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.data.timeseries.html">timeseries</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.data.timeseries._timeseries.html">_timeseries</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.data.timeseries._timeseries._find_end_indices.html">_find_end_indices</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.data.timeseries._timeseries.check_for_nonfinite.html">check_for_nonfinite</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.data.timeseries._timeseries.TimeSeriesDataSet.html">TimeSeriesDataSet</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.data.timeseries._timeseries_v2.html">_timeseries_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries.html">TimeSeries</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="pytorch_forecasting.models.html">models</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.base.html">base</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.html">_base_model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model._concatenate_output.html">_concatenate_output</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model._torch_cat_na.html">_torch_cat_na</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.AutoRegressiveBaseModel.html">AutoRegressiveBaseModel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.AutoRegressiveBaseModelWithCovariates.html">AutoRegressiveBaseModelWithCovariates</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.BaseModel.html">BaseModel</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.BaseModelWithCovariates.html">BaseModelWithCovariates</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.PredictCallback.html">PredictCallback</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.PredictTuple.html">PredictTuple</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model.Prediction.html">Prediction</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.base._base_model_v2.html">_base_model_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_model_v2.BaseModel.html">BaseModel</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.base._base_object.html">_base_object</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_object._BasePtForecaster.html">_BasePtForecaster</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_object._BasePtForecasterV2.html">_BasePtForecasterV2</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._base_object._BasePtForecaster_Common.html">_BasePtForecaster_Common</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.base._tslib_base_model_v2.html">_tslib_base_model_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.base._tslib_base_model_v2.TslibBaseModel.html">TslibBaseModel</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="pytorch_forecasting.models.base_model.html">base_model</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.baseline.html">baseline</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.models.baseline.Baseline.html">Baseline</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.deepar.html">deepar</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.deepar._deepar.html">_deepar</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.deepar._deepar.DeepAR.html">DeepAR</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.deepar._deepar_pkg.html">_deepar_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.deepar._deepar_pkg.DeepAR_pkg.html">DeepAR_pkg</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.dlinear.html">dlinear</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.dlinear._dlinear_pkg_v2.html">_dlinear_pkg_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.dlinear._dlinear_pkg_v2.DLinear_pkg_v2.html">DLinear_pkg_v2</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.dlinear._dlinear_v2.html">_dlinear_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.dlinear._dlinear_v2.DLinear.html">DLinear</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.mlp.html">mlp</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.mlp._decodermlp.html">_decodermlp</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.mlp._decodermlp.DecoderMLP.html">DecoderMLP</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.mlp._decodermlp_pkg.html">_decodermlp_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.mlp._decodermlp_pkg.DecoderMLP_pkg.html">DecoderMLP_pkg</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.mlp.submodules.html">submodules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.mlp.submodules.FullyConnectedModule.html">FullyConnectedModule</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.nbeats.html">nbeats</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nbeats._nbeats.html">_nbeats</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats._nbeats.NBeats.html">NBeats</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nbeats._nbeats_pkg.html">_nbeats_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats._nbeats_pkg.NBeats_pkg.html">NBeats_pkg</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nbeats.sub_modules.html">sub_modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats.sub_modules.linear.html">linear</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats.sub_modules.linspace.html">linspace</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats.sub_modules.NBEATSBlock.html">NBEATSBlock</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats.sub_modules.NBEATSGenericBlock.html">NBEATSGenericBlock</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats.sub_modules.NBEATSSeasonalBlock.html">NBEATSSeasonalBlock</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nbeats.sub_modules.NBEATSTrendBlock.html">NBEATSTrendBlock</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.nhits.html">nhits</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nhits._nhits.html">_nhits</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits._nhits.NHiTS.html">NHiTS</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nhits._nhits_pkg.html">_nhits_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits._nhits_pkg.NHiTS_pkg.html">NHiTS_pkg</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nhits.sub_modules.html">sub_modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits.sub_modules.init_weights.html">init_weights</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits.sub_modules.IdentityBasis.html">IdentityBasis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits.sub_modules.MLP.html">MLP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits.sub_modules.NHiTS.html">NHiTS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits.sub_modules.NHiTSBlock.html">NHiTSBlock</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nhits.sub_modules.StaticFeaturesEncoder.html">StaticFeaturesEncoder</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.nn.html">nn</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nn.embeddings.html">embeddings</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nn.embeddings.MultiEmbedding.html">MultiEmbedding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nn.embeddings.TimeDistributedEmbeddingBag.html">TimeDistributedEmbeddingBag</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.nn.rnn.html">rnn</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nn.rnn.get_rnn.html">get_rnn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nn.rnn.GRU.html">GRU</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nn.rnn.LSTM.html">LSTM</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.nn.rnn.RNN.html">RNN</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.rnn.html">rnn</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.rnn._rnn.html">_rnn</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.rnn._rnn.RecurrentNetwork.html">RecurrentNetwork</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.rnn._rnn_pkg.html">_rnn_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.rnn._rnn_pkg.RecurrentNetwork_pkg.html">RecurrentNetwork_pkg</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.html">temporal_fusion_transformer</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft.html">_tft</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html">TemporalFusionTransformer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg.html">_tft_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg.TemporalFusionTransformer_pkg.html">TemporalFusionTransformer_pkg</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2.html">_tft_pkg_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2.TFT_pkg_v2.html">TFT_pkg_v2</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft_v2.html">_tft_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer._tft_v2.TFT.html">TFT</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.html">sub_modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.AddNorm.html">AddNorm</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.GateAddNorm.html">GateAddNorm</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.GatedLinearUnit.html">GatedLinearUnit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.GatedResidualNetwork.html">GatedResidualNetwork</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.InterpretableMultiHeadAttention.html">InterpretableMultiHeadAttention</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.PositionalEncoder.html">PositionalEncoder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.ResampleNorm.html">ResampleNorm</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.ScaledDotProductAttention.html">ScaledDotProductAttention</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.TimeDistributed.html">TimeDistributed</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.TimeDistributedInterpolation.html">TimeDistributedInterpolation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.sub_modules.VariableSelectionNetwork.html">VariableSelectionNetwork</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.tuning.html">tuning</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.tuning._lazywhere.html">_lazywhere</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.temporal_fusion_transformer.tuning.optimize_hyperparameters.html">optimize_hyperparameters</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.tide.html">tide</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.tide._tide.html">_tide</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.tide._tide.TiDEModel.html">TiDEModel</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.tide._tide_dsipts.html">_tide_dsipts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.tide._tide_dsipts._tide_v2.html">_tide_v2</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.tide._tide_dsipts._tide_v2_pkg.html">_tide_v2_pkg</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.tide._tide_pkg.html">_tide_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.tide._tide_pkg.TiDEModel_pkg.html">TiDEModel_pkg</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.tide.sub_modules.html">sub_modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.tide.sub_modules._ResidualBlock.html">_ResidualBlock</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.tide.sub_modules._TideModule.html">_TideModule</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.timexer.html">timexer</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer.html">_timexer</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer.TimeXer.html">TimeXer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer_pkg.html">_timexer_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer_pkg.TimeXer_pkg.html">TimeXer_pkg</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer_pkg_v2.html">_timexer_pkg_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer_pkg_v2.TimeXer_pkg_v2.html">TimeXer_pkg_v2</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer_v2.html">_timexer_v2</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer._timexer_v2.TimeXer.html">TimeXer</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.html">sub_modules</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.AttentionLayer.html">AttentionLayer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.DataEmbedding_inverted.html">DataEmbedding_inverted</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.EnEmbedding.html">EnEmbedding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.Encoder.html">Encoder</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.EncoderLayer.html">EncoderLayer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.FlattenHead.html">FlattenHead</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.FullAttention.html">FullAttention</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.PositionalEmbedding.html">PositionalEmbedding</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.timexer.sub_modules.TriangularCausalMask.html">TriangularCausalMask</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.models.xlstm.html">xlstm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.xlstm._xlstm.html">_xlstm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.xlstm._xlstm.xLSTMTime.html">xLSTMTime</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.models.xlstm._xlstm_pkg.html">_xlstm_pkg</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.models.xlstm._xlstm_pkg.xLSTMTime_pkg.html">xLSTMTime_pkg</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="pytorch_forecasting.metrics.html">metrics</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="pytorch_forecasting.metrics._distributions_pkg.html">_distributions_pkg</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.metrics._mqf2_utils.html">_mqf2_utils</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics._mqf2_utils.DeepConvexNet.html">DeepConvexNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.html">MQF2Distribution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics._mqf2_utils.SequentialNet.html">SequentialNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics._mqf2_utils.TransformedMQF2Distribution.html">TransformedMQF2Distribution</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="pytorch_forecasting.metrics._point_pkg.html">_point_pkg</a></li>
+<li class="toctree-l2 current active has-children"><a class="reference internal" href="pytorch_forecasting.metrics._quantile_pkg.html">_quantile_pkg</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l3 current active has-children"><a class="reference internal" href="pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.html">_quantile_loss_pkg</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l4 current active"><a class="current reference internal" href="#">QuantileLoss_pkg</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics.html">base_metrics</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.html">_base_metrics</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.convert_torchmetric_to_pytorch_forecasting_metric.html">convert_torchmetric_to_pytorch_forecasting_metric</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.AggregationMetric.html">AggregationMetric</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.CompositeMetric.html">CompositeMetric</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.DistributionLoss.html">DistributionLoss</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.Metric.html">Metric</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.MultiHorizonMetric.html">MultiHorizonMetric</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.MultiLoss.html">MultiLoss</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.MultivariateDistributionLoss.html">MultivariateDistributionLoss</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_metrics.TorchMetricWrapper.html">TorchMetricWrapper</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_object.html">_base_object</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_object._BasePtMetric.html">_BasePtMetric</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.html">distributions</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.BetaDistributionLoss.html">BetaDistributionLoss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.ImplicitQuantileNetwork.html">ImplicitQuantileNetwork</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html">ImplicitQuantileNetworkDistributionLoss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.html">LogNormalDistributionLoss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html">MQF2DistributionLoss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.html">MultivariateNormalDistributionLoss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.html">NegativeBinomialDistributionLoss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.distributions.NormalDistributionLoss.html">NormalDistributionLoss</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.metrics.point.html">point</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.CrossEntropy.html">CrossEntropy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.MAE.html">MAE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.MAPE.html">MAPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.MASE.html">MASE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.PoissonLoss.html">PoissonLoss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.RMSE.html">RMSE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.SMAPE.html">SMAPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.point.TweedieLoss.html">TweedieLoss</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.metrics.quantile.html">quantile</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.metrics.quantile.QuantileLoss.html">QuantileLoss</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="pytorch_forecasting.utils.html">utils</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.utils._classproperty.html">_classproperty</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._classproperty.classproperty.html">classproperty</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.utils._coerce.html">_coerce</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._coerce._coerce_to_dict.html">_coerce_to_dict</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._coerce._coerce_to_list.html">_coerce_to_list</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.utils._dependencies.html">_dependencies</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.utils._dependencies._dependencies.html">_dependencies</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.utils._dependencies._dependencies._check_matplotlib.html">_check_matplotlib</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.utils._dependencies._dependencies._get_installed_packages.html">_get_installed_packages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.utils._dependencies._dependencies._get_installed_packages_private.html">_get_installed_packages_private</a></li>
+</ul>
+</details></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._dependencies._safe_import.html">_safe_import</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.utils._dependencies.tests.html">tests</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.utils._dependencies.tests.test_safe_import.html">test_safe_import</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.utils._maint.html">_maint</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pytorch_forecasting.utils._maint._show_versions.html">_show_versions</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.utils._maint._show_versions._get_deps_info.html">_get_deps_info</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.utils._maint._show_versions._get_sys_info.html">_get_sys_info</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pytorch_forecasting.utils._maint._show_versions.show_versions.html">show_versions</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pytorch_forecasting.utils._utils.html">_utils</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.apply_to_list.html">apply_to_list</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.autocorrelation.html">autocorrelation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.concat_sequences.html">concat_sequences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.create_mask.html">create_mask</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.detach.html">detach</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.get_embedding_size.html">get_embedding_size</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.groupby_apply.html">groupby_apply</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.integer_histogram.html">integer_histogram</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.masked_op.html">masked_op</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.move_to_device.html">move_to_device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.next_fast_len.html">next_fast_len</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.padded_stack.html">padded_stack</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.profile.html">profile</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.repr_class.html">repr_class</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.to_list.html">to_list</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.unpack_sequence.html">unpack_sequence</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.unsqueeze_like.html">unsqueeze_like</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.InitialParameterRepresenterMixIn.html">InitialParameterRepresenterMixIn</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.OutputMixIn.html">OutputMixIn</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pytorch_forecasting.utils._utils.TupleOutputMixIn.html">TupleOutputMixIn</a></li>
+</ul>
+</details></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../metrics.html" class="nav-link">Metrics</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">QuantileLoss_pkg</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="quantileloss-pkg">
+<h1>QuantileLoss_pkg<a class="headerlink" href="#quantileloss-pkg" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.</span></span><span class="sig-name descname"><span class="pre">QuantileLoss_pkg</span></span><a class="reference internal" href="../_modules/pytorch_forecasting/metrics/_quantile_pkg/_quantile_loss_pkg.html#QuantileLoss_pkg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="pytorch_forecasting.metrics.base_metrics._base_object._BasePtMetric.html#pytorch_forecasting.metrics.base_metrics._base_object._BasePtMetric" title="pytorch_forecasting.metrics.base_metrics._base_object._BasePtMetric"><code class="xref py py-class docutils literal notranslate"><span class="pre">_BasePtMetric</span></code></a></p>
+<p>Quantile loss metric for quantile forecasts.</p>
+<p>Defined as <code class="docutils literal notranslate"><span class="pre">(y_pred</span> <span class="pre">-</span> <span class="pre">target).abs()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Inherited-members<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cls</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_encoder</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_metric_test_params</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare_test_inputs</span></code></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.get_cls">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_cls</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytorch_forecasting/metrics/_quantile_pkg/_quantile_loss_pkg.html#QuantileLoss_pkg.get_cls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.get_cls" title="Link to this definition">#</a></dt>
+<dd><p>Get the metric class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The metric class.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>type</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.get_metric_test_params">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_metric_test_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytorch_forecasting/metrics/_quantile_pkg/_quantile_loss_pkg.html#QuantileLoss_pkg.get_metric_test_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.get_metric_test_params" title="Link to this definition">#</a></dt>
+<dd><p>Returns parameters for initializing the metric for testing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary containing parameters for initializing the metric.d</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../metrics.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Metrics</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="pytorch_forecasting.metrics.base_metrics._base_metrics.Metric.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Metric</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg"><code class="docutils literal notranslate"><span class="pre">QuantileLoss_pkg</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.get_cls"><code class="docutils literal notranslate"><span class="pre">QuantileLoss_pkg.get_cls()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.get_metric_test_params"><code class="docutils literal notranslate"><span class="pre">QuantileLoss_pkg.get_metric_test_params()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,67 @@
+Prediction
+==========
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+
+.. autoclass:: Prediction
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Prediction.count
+      ~Prediction.get
+      ~Prediction.iget
+      ~Prediction.items
+      ~Prediction.keys
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Prediction.decoder_lengths
+      ~Prediction.index
+      ~Prediction.output
+      ~Prediction.x
+      ~Prediction.y
+   
+   

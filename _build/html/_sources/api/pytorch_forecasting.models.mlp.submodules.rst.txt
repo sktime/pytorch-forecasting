@@ -1,0 +1,31 @@
+submodules
+==========
+
+.. automodule:: pytorch_forecasting.models.mlp.submodules
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      FullyConnectedModule
+   
+   
+
+   
+   
+   
+
+
+

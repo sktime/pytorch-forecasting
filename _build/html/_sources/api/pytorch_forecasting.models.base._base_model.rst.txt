@@ -1,0 +1,46 @@
+\_base\_model
+=============
+
+.. automodule:: pytorch_forecasting.models.base._base_model
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      _concatenate_output
+      _torch_cat_na
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      AutoRegressiveBaseModel
+      AutoRegressiveBaseModelWithCovariates
+      BaseModel
+      BaseModelWithCovariates
+      PredictCallback
+      PredictTuple
+      Prediction
+   
+   
+
+   
+   
+   
+
+
+

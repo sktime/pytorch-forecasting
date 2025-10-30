@@ -1,0 +1,1676 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pytorch_forecasting.models.temporal_fusion_transformer._tft &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pytorch_forecasting/models/temporal_fusion_transformer/_tft';</script>
+    <link rel="icon" href="../../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../../../../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pytorch_forecasting.models.temporal_fusion_transformer._tft</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pytorch_forecasting.models.temporal_fusion_transformer._tft</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The temporal fusion transformer is a powerful predictive model for forecasting timeseries</span>
+<span class="sd">&quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
+<span class="kn">from</span> <span class="nn">torchmetrics</span> <span class="kn">import</span> <span class="n">Metric</span> <span class="k">as</span> <span class="n">LightningMetric</span>
+
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data</span> <span class="kn">import</span> <span class="n">TimeSeriesDataSet</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.metrics</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MAE</span><span class="p">,</span>
+    <span class="n">MAPE</span><span class="p">,</span>
+    <span class="n">RMSE</span><span class="p">,</span>
+    <span class="n">SMAPE</span><span class="p">,</span>
+    <span class="n">MultiHorizonMetric</span><span class="p">,</span>
+    <span class="n">QuantileLoss</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.base</span> <span class="kn">import</span> <span class="n">BaseModelWithCovariates</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.nn</span> <span class="kn">import</span> <span class="n">LSTM</span><span class="p">,</span> <span class="n">MultiEmbedding</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.temporal_fusion_transformer.sub_modules</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AddNorm</span><span class="p">,</span>
+    <span class="n">GateAddNorm</span><span class="p">,</span>
+    <span class="n">GatedLinearUnit</span><span class="p">,</span>
+    <span class="n">GatedResidualNetwork</span><span class="p">,</span>
+    <span class="n">InterpretableMultiHeadAttention</span><span class="p">,</span>
+    <span class="n">VariableSelectionNetwork</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.utils</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">create_mask</span><span class="p">,</span>
+    <span class="n">detach</span><span class="p">,</span>
+    <span class="n">integer_histogram</span><span class="p">,</span>
+    <span class="n">masked_op</span><span class="p">,</span>
+    <span class="n">padded_stack</span><span class="p">,</span>
+    <span class="n">to_list</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.utils._dependencies</span> <span class="kn">import</span> <span class="n">_check_matplotlib</span>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer">[docs]</a>
+<span class="k">class</span> <span class="nc">TemporalFusionTransformer</span><span class="p">(</span><span class="n">BaseModelWithCovariates</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Temporal Fusion Transformer for forecasting timeseries.</span>
+
+<span class="sd">    Initialize via :py:meth:`~from_dataset` method if possible.</span>
+
+<span class="sd">    Implementation of</span>
+<span class="sd">    `Temporal Fusion Transformers for Interpretable Multi-horizon Time Series</span>
+<span class="sd">    Forecasting &lt;https://arxiv.org/pdf/1912.09363.pdf&gt;`_.</span>
+
+<span class="sd">    Enhancements compared to the original implementation:</span>
+
+<span class="sd">    * static variables can be continuous</span>
+<span class="sd">    * multiple categorical variables can be summarized with an EmbeddingBag</span>
+<span class="sd">    * variable encoder and decoder length by sample</span>
+<span class="sd">    * categorical embeddings are not transformed by variable selection network</span>
+<span class="sd">      (because it is a redundant operation)</span>
+<span class="sd">    * variable dimension in variable selection network are scaled up via linear interpolation to reduce</span>
+<span class="sd">      number of parameters</span>
+<span class="sd">    * non-linear variable processing in variable selection network can be</span>
+<span class="sd">      shared among decoder and encoder (not shared by default)</span>
+<span class="sd">    * capabilities added through base model such as monotone constraints</span>
+
+<span class="sd">    Tune its hyperparameters with</span>
+<span class="sd">    :py:func:`~pytorch_forecasting.models.temporal_fusion_transformer.tuning.optimize_hyperparameters`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hidden_size : int, default=16</span>
+<span class="sd">        hidden size of network which is its main hyperparameter.</span>
+<span class="sd">        Can range from 8 to 512.</span>
+<span class="sd">    lstm_layers : int, default=1</span>
+<span class="sd">        number of LSTM layers (2 is mostly optimal)</span>
+<span class="sd">    dropout : float, default=0.1</span>
+<span class="sd">        dropout rate</span>
+<span class="sd">    output_size : int or list of int, default=7</span>
+<span class="sd">        number of outputs</span>
+<span class="sd">        (e.g. number of quantiles for QuantileLoss and one target or list of output sizes).</span>
+<span class="sd">    loss : MultiHorizonMetric, default=QuantileLoss()</span>
+<span class="sd">        loss function taking prediction and targets</span>
+<span class="sd">    attention_head_size : int, default=4</span>
+<span class="sd">        number of attention heads (4 is a good default)</span>
+<span class="sd">    max_encoder_length : int, default=10</span>
+<span class="sd">        length to encode,</span>
+<span class="sd">        can be far longer than the decoder length but does not have to be</span>
+<span class="sd">    static_categoricals: names of static categorical variables</span>
+<span class="sd">    static_reals: names of static continuous variables</span>
+<span class="sd">    time_varying_categoricals_encoder: names of categorical variables for encoder</span>
+<span class="sd">    time_varying_categoricals_decoder: names of categorical variables for decoder</span>
+<span class="sd">    time_varying_reals_encoder: names of continuous variables for encoder</span>
+<span class="sd">    time_varying_reals_decoder: names of continuous variables for decoder</span>
+<span class="sd">    categorical_groups: dictionary where values</span>
+<span class="sd">        are list of categorical variables that are forming together a new categorical</span>
+<span class="sd">        variable which is the key in the dictionary</span>
+<span class="sd">    x_reals: order of continuous variables in tensor passed to forward function</span>
+<span class="sd">    x_categoricals: order of categorical variables in tensor passed to forward function</span>
+<span class="sd">    hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical</span>
+<span class="sd">        embedding size)</span>
+<span class="sd">    hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection</span>
+<span class="sd">        (fallback to hidden_continuous_size if index is not in dictionary)</span>
+<span class="sd">    embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and</span>
+<span class="sd">        embedding size</span>
+<span class="sd">    embedding_paddings: list of indices for embeddings which transform the zero&#39;s embedding to a zero vector</span>
+<span class="sd">    embedding_labels: dictionary mapping (string) indices to list of categorical labels</span>
+<span class="sd">    learning_rate: learning rate</span>
+<span class="sd">    log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if &gt; 0. If &lt; 1.0</span>
+<span class="sd">        , will log multiple entries per batch. Defaults to -1.</span>
+<span class="sd">    log_val_interval: frequency with which to log validation set metrics, defaults to log_interval</span>
+<span class="sd">    log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training</span>
+<span class="sd">        failures</span>
+<span class="sd">    reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10</span>
+<span class="sd">    monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder</span>
+<span class="sd">        variables mapping</span>
+<span class="sd">        position (e.g. ``&quot;0&quot;`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,</span>
+<span class="sd">        larger numbers add more weight to the constraint vs. the loss but are usually not necessary).</span>
+<span class="sd">        This constraint significantly slows down training. Defaults to {}.</span>
+<span class="sd">    share_single_variable_networks (bool): if to share the single variable networks between the encoder and</span>
+<span class="sd">        decoder. Defaults to False.</span>
+<span class="sd">    causal_attention (bool): If to attend only at previous timesteps in the decoder or also include future</span>
+<span class="sd">        predictions. Defaults to True.</span>
+<span class="sd">    logging_metrics (nn.ModuleList[LightningMetric]): list of metrics that are logged during training.</span>
+<span class="sd">        Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()]).</span>
+<span class="sd">    mask_bias : float, optional</span>
+<span class="sd">        Bias for the mask in ScaledDotProductAttention.forward, by default -1e9.</span>
+<span class="sd">        Set to -float(&quot;inf&quot;) to allow mixed precision training.</span>
+<span class="sd">    **kwargs: additional arguments to :py:class:`~BaseModel`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_pkg</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Package containing the model.&quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg</span> <span class="kn">import</span> <span class="p">(</span>
+            <span class="n">TemporalFusionTransformer_pkg</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">TemporalFusionTransformer_pkg</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">hidden_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+        <span class="n">lstm_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">output_size</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+        <span class="n">loss</span><span class="p">:</span> <span class="n">MultiHorizonMetric</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">attention_head_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="n">max_encoder_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">static_categoricals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">static_reals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_categoricals_encoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_categoricals_decoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">categorical_groups</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_reals_encoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_reals_decoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">x_reals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">x_categoricals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">hidden_continuous_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+        <span class="n">hidden_continuous_sizes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">embedding_sizes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">embedding_paddings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">embedding_labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span><span class="p">,</span>
+        <span class="n">log_interval</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">log_val_interval</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">log_gradient_flow</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">reduce_on_plateau_patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">monotone_constaints</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">share_single_variable_networks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">causal_attention</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">logging_metrics</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mask_bias</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e9</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">monotone_constaints</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">monotone_constaints</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">embedding_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">embedding_labels</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">embedding_paddings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">embedding_paddings</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">embedding_sizes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">embedding_sizes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">hidden_continuous_sizes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hidden_continuous_sizes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">x_categoricals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x_categoricals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">x_reals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x_reals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">time_varying_reals_decoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_reals_decoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">time_varying_reals_encoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_reals_encoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">categorical_groups</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">categorical_groups</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">time_varying_categoricals_decoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_categoricals_decoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">time_varying_categoricals_encoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_categoricals_encoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">static_reals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">static_reals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">static_categoricals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">static_categoricals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">logging_metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging_metrics</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">([</span><span class="n">SMAPE</span><span class="p">(),</span> <span class="n">MAE</span><span class="p">(),</span> <span class="n">RMSE</span><span class="p">(),</span> <span class="n">MAPE</span><span class="p">()])</span>
+        <span class="k">if</span> <span class="n">loss</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">QuantileLoss</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_hyperparameters</span><span class="p">()</span>
+        <span class="c1"># store loss function separately as it is a module</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">loss</span><span class="p">,</span> <span class="n">LightningMetric</span>
+        <span class="p">),</span> <span class="s2">&quot;Loss has to be a PyTorch Lightning `Metric`&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">logging_metrics</span><span class="o">=</span><span class="n">logging_metrics</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># processing inputs</span>
+        <span class="c1"># embeddings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_embeddings</span> <span class="o">=</span> <span class="n">MultiEmbedding</span><span class="p">(</span>
+            <span class="n">embedding_sizes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">embedding_sizes</span><span class="p">,</span>
+            <span class="n">categorical_groups</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">categorical_groups</span><span class="p">,</span>
+            <span class="n">embedding_paddings</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">embedding_paddings</span><span class="p">,</span>
+            <span class="n">x_categoricals</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">x_categoricals</span><span class="p">,</span>
+            <span class="n">max_embedding_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># continuous variable processing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prescalers</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span>
+                    <span class="mi">1</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                        <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_size</span>
+                    <span class="p">),</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">reals</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># variable selection</span>
+        <span class="c1"># variable selection for static variables</span>
+        <span class="n">static_input_sizes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_embeddings</span><span class="o">.</span><span class="n">output_size</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">static_categoricals</span>
+        <span class="p">}</span>
+        <span class="n">static_input_sizes</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_size</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">static_reals</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_variable_selection</span> <span class="o">=</span> <span class="n">VariableSelectionNetwork</span><span class="p">(</span>
+            <span class="n">input_sizes</span><span class="o">=</span><span class="n">static_input_sizes</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">input_embedding_flags</span><span class="o">=</span><span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="kc">True</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">static_categoricals</span>
+            <span class="p">},</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+            <span class="n">prescalers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prescalers</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># variable selection for encoder and decoder</span>
+        <span class="n">encoder_input_sizes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_embeddings</span><span class="o">.</span><span class="n">output_size</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">time_varying_categoricals_encoder</span>
+        <span class="p">}</span>
+        <span class="n">encoder_input_sizes</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_size</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">time_varying_reals_encoder</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="n">decoder_input_sizes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_embeddings</span><span class="o">.</span><span class="n">output_size</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">time_varying_categoricals_decoder</span>
+        <span class="p">}</span>
+        <span class="n">decoder_input_sizes</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_continuous_size</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">time_varying_reals_decoder</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># create single variable grns that are shared across decoder and encoder</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">share_single_variable_networks</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shared_single_variable_grns</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">input_size</span> <span class="ow">in</span> <span class="n">encoder_input_sizes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shared_single_variable_grns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+                    <span class="n">input_size</span><span class="p">,</span>
+                    <span class="nb">min</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">),</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">input_size</span> <span class="ow">in</span> <span class="n">decoder_input_sizes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_single_variable_grns</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">shared_single_variable_grns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+                        <span class="n">input_size</span><span class="p">,</span>
+                        <span class="nb">min</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">),</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">encoder_variable_selection</span> <span class="o">=</span> <span class="n">VariableSelectionNetwork</span><span class="p">(</span>
+            <span class="n">input_sizes</span><span class="o">=</span><span class="n">encoder_input_sizes</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">input_embedding_flags</span><span class="o">=</span><span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="kc">True</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">time_varying_categoricals_encoder</span>
+            <span class="p">},</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+            <span class="n">context_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">prescalers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prescalers</span><span class="p">,</span>
+            <span class="n">single_variable_grns</span><span class="o">=</span><span class="p">(</span>
+                <span class="p">{}</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">share_single_variable_networks</span>
+                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_single_variable_grns</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">decoder_variable_selection</span> <span class="o">=</span> <span class="n">VariableSelectionNetwork</span><span class="p">(</span>
+            <span class="n">input_sizes</span><span class="o">=</span><span class="n">decoder_input_sizes</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">input_embedding_flags</span><span class="o">=</span><span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="kc">True</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">time_varying_categoricals_decoder</span>
+            <span class="p">},</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+            <span class="n">context_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">prescalers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prescalers</span><span class="p">,</span>
+            <span class="n">single_variable_grns</span><span class="o">=</span><span class="p">(</span>
+                <span class="p">{}</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">share_single_variable_networks</span>
+                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_single_variable_grns</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># static encoders</span>
+        <span class="c1"># for variable selection</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_context_variable_selection</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">output_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># for hidden state of the lstm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_context_initial_hidden_lstm</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">output_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># for cell state of the lstm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_context_initial_cell_lstm</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">output_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># for post lstm static enrichment</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_context_enrichment</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># lstm encoder (history) and decoder (future) for local processing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_encoder</span> <span class="o">=</span> <span class="n">LSTM</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">num_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">lstm_layers</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">lstm_layers</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm_decoder</span> <span class="o">=</span> <span class="n">LSTM</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">num_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">lstm_layers</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">lstm_layers</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># skip connection for lstm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_gate_encoder</span> <span class="o">=</span> <span class="n">GatedLinearUnit</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_gate_decoder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_gate_encoder</span>
+        <span class="c1"># self.post_lstm_gate_decoder = GatedLinearUnit(</span>
+        <span class="c1">#           self.hparams.hidden_size, dropout=self.hparams.dropout)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_add_norm_encoder</span> <span class="o">=</span> <span class="n">AddNorm</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">trainable_add</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="c1"># self.post_lstm_add_norm_decoder = AddNorm(</span>
+        <span class="c1">#                               self.hparams.hidden_size, trainable_add=True)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_add_norm_decoder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_add_norm_encoder</span>
+
+        <span class="c1"># static enrichment and processing past LSTM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">static_enrichment</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">output_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+            <span class="n">context_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># attention for long-range processing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">multihead_attn</span> <span class="o">=</span> <span class="n">InterpretableMultiHeadAttention</span><span class="p">(</span>
+            <span class="n">d_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">n_head</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">attention_head_size</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+            <span class="n">mask_bias</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">mask_bias</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_attn_gate_norm</span> <span class="o">=</span> <span class="n">GateAddNorm</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span> <span class="n">trainable_add</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos_wise_ff</span> <span class="o">=</span> <span class="n">GatedResidualNetwork</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># output processing -&gt; no dropout at this late stage</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pre_output_gate_norm</span> <span class="o">=</span> <span class="n">GateAddNorm</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">trainable_add</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_targets</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># if to run with multiple targets</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">output_size</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">output_size</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">output_size</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">output_size</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="TemporalFusionTransformer.from_dataset">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.from_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dataset</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">TimeSeriesDataSet</span><span class="p">,</span>
+        <span class="n">allowed_encoder_known_variable_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create model from dataset.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataset: timeseries dataset</span>
+<span class="sd">            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all</span>
+<span class="sd">            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemporalFusionTransformer</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="c1"># add maximum encoder length</span>
+        <span class="c1"># update defaults</span>
+        <span class="n">new_kwargs</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">new_kwargs</span><span class="p">[</span><span class="s2">&quot;max_encoder_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">max_encoder_length</span>
+        <span class="n">new_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">deduce_default_output_parameters</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">QuantileLoss</span><span class="p">())</span>
+        <span class="p">)</span>
+
+        <span class="c1"># create class and return</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">from_dataset</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="p">,</span>
+            <span class="n">allowed_encoder_known_variable_names</span><span class="o">=</span><span class="n">allowed_encoder_known_variable_names</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">new_kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.expand_static_context">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.expand_static_context">[docs]</a>
+    <span class="k">def</span> <span class="nf">expand_static_context</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        add time dimension to static context</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">context</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.get_attention_mask">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.get_attention_mask">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_attention_mask</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">encoder_lengths</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">LongTensor</span><span class="p">,</span> <span class="n">decoder_lengths</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">LongTensor</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns causal mask to apply for self-attention layer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">decoder_length</span> <span class="o">=</span> <span class="n">decoder_lengths</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">causal_attention</span><span class="p">:</span>
+            <span class="c1"># indices to which is attended</span>
+            <span class="n">attend_step</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">decoder_length</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="c1"># indices for which is predicted</span>
+            <span class="n">predict_step</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">decoder_length</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="c1"># do not attend to steps to self or after prediction</span>
+            <span class="n">decoder_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">attend_step</span> <span class="o">&gt;=</span> <span class="n">predict_step</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">encoder_lengths</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># there is value in attending to future forecasts if</span>
+            <span class="c1"># they are made with knowledge currently available</span>
+            <span class="c1">#   one possibility is here to use a second attention layer</span>
+            <span class="c1"># for future attention</span>
+            <span class="c1"># (assuming different effects matter in the future than the past)</span>
+            <span class="c1">#  or alternatively using the same layer but</span>
+            <span class="c1"># allowing forward attention - i.e. only</span>
+            <span class="c1">#  masking out non-available data and self</span>
+            <span class="n">decoder_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">create_mask</span><span class="p">(</span><span class="n">decoder_length</span><span class="p">,</span> <span class="n">decoder_lengths</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">decoder_length</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="c1"># do not attend to steps where data is padded</span>
+        <span class="n">encoder_mask</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">create_mask</span><span class="p">(</span><span class="n">encoder_lengths</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">encoder_lengths</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">decoder_length</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># combine masks along attended time - first encoder and then decoder</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">encoder_mask</span><span class="p">,</span>
+                <span class="n">decoder_mask</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">mask</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.forward">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        input dimensions: n_samples x time x variables</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">encoder_lengths</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span>
+        <span class="n">decoder_lengths</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">]</span>
+        <span class="n">x_cat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cat&quot;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_cat&quot;</span><span class="p">]],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>  <span class="c1"># concatenate in time dimension</span>
+        <span class="n">x_cont</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_cont&quot;</span><span class="p">]],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>  <span class="c1"># concatenate in time dimension</span>
+        <span class="n">timesteps</span> <span class="o">=</span> <span class="n">x_cont</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># encode + decode length</span>
+        <span class="n">max_encoder_length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">encoder_lengths</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="n">input_vectors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_embeddings</span><span class="p">(</span><span class="n">x_cat</span><span class="p">)</span>
+        <span class="n">input_vectors</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="n">x_cont</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">x_reals</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">reals</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Embedding and variable selection</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">static_variables</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># static embeddings will be constant over entire batch</span>
+            <span class="n">static_embedding</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="n">input_vectors</span><span class="p">[</span><span class="n">name</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_variables</span>
+            <span class="p">}</span>
+            <span class="n">static_embedding</span><span class="p">,</span> <span class="n">static_variable_selection</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">static_variable_selection</span><span class="p">(</span><span class="n">static_embedding</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">static_embedding</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">x_cont</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">static_variable_selection</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">x_cont</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
+
+        <span class="n">static_context_variable_selection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expand_static_context</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">static_context_variable_selection</span><span class="p">(</span><span class="n">static_embedding</span><span class="p">),</span> <span class="n">timesteps</span>
+        <span class="p">)</span>
+
+        <span class="n">embeddings_varying_encoder</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">input_vectors</span><span class="p">[</span><span class="n">name</span><span class="p">][:,</span> <span class="p">:</span><span class="n">max_encoder_length</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder_variables</span>
+        <span class="p">}</span>
+        <span class="n">embeddings_varying_encoder</span><span class="p">,</span> <span class="n">encoder_sparse_weights</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">encoder_variable_selection</span><span class="p">(</span>
+                <span class="n">embeddings_varying_encoder</span><span class="p">,</span>
+                <span class="n">static_context_variable_selection</span><span class="p">[:,</span> <span class="p">:</span><span class="n">max_encoder_length</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">embeddings_varying_decoder</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">input_vectors</span><span class="p">[</span><span class="n">name</span><span class="p">][:,</span> <span class="n">max_encoder_length</span><span class="p">:]</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">decoder_variables</span>  <span class="c1"># select decoder</span>
+        <span class="p">}</span>
+        <span class="n">embeddings_varying_decoder</span><span class="p">,</span> <span class="n">decoder_sparse_weights</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decoder_variable_selection</span><span class="p">(</span>
+                <span class="n">embeddings_varying_decoder</span><span class="p">,</span>
+                <span class="n">static_context_variable_selection</span><span class="p">[:,</span> <span class="n">max_encoder_length</span><span class="p">:],</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># LSTM</span>
+        <span class="c1"># calculate initial state</span>
+        <span class="n">input_hidden</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_context_initial_hidden_lstm</span><span class="p">(</span><span class="n">static_embedding</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">lstm_layers</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="n">input_cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_context_initial_cell_lstm</span><span class="p">(</span><span class="n">static_embedding</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">lstm_layers</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="c1"># run local encoder</span>
+        <span class="n">encoder_output</span><span class="p">,</span> <span class="p">(</span><span class="n">hidden</span><span class="p">,</span> <span class="n">cell</span><span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lstm_encoder</span><span class="p">(</span>
+            <span class="n">embeddings_varying_encoder</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">input_hidden</span><span class="p">,</span> <span class="n">input_cell</span><span class="p">),</span>
+            <span class="n">lengths</span><span class="o">=</span><span class="n">encoder_lengths</span><span class="p">,</span>
+            <span class="n">enforce_sorted</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># run local decoder</span>
+        <span class="n">decoder_output</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lstm_decoder</span><span class="p">(</span>
+            <span class="n">embeddings_varying_decoder</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">hidden</span><span class="p">,</span> <span class="n">cell</span><span class="p">),</span>
+            <span class="n">lengths</span><span class="o">=</span><span class="n">decoder_lengths</span><span class="p">,</span>
+            <span class="n">enforce_sorted</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># skip connection over lstm</span>
+        <span class="n">lstm_output_encoder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_gate_encoder</span><span class="p">(</span><span class="n">encoder_output</span><span class="p">)</span>
+        <span class="n">lstm_output_encoder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_add_norm_encoder</span><span class="p">(</span>
+            <span class="n">lstm_output_encoder</span><span class="p">,</span> <span class="n">embeddings_varying_encoder</span>
+        <span class="p">)</span>
+
+        <span class="n">lstm_output_decoder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_gate_decoder</span><span class="p">(</span><span class="n">decoder_output</span><span class="p">)</span>
+        <span class="n">lstm_output_decoder</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_lstm_add_norm_decoder</span><span class="p">(</span>
+            <span class="n">lstm_output_decoder</span><span class="p">,</span> <span class="n">embeddings_varying_decoder</span>
+        <span class="p">)</span>
+
+        <span class="n">lstm_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">lstm_output_encoder</span><span class="p">,</span> <span class="n">lstm_output_decoder</span><span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># static enrichment</span>
+        <span class="n">static_context_enrichment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_context_enrichment</span><span class="p">(</span><span class="n">static_embedding</span><span class="p">)</span>
+        <span class="n">attn_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">static_enrichment</span><span class="p">(</span>
+            <span class="n">lstm_output</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expand_static_context</span><span class="p">(</span><span class="n">static_context_enrichment</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Attention</span>
+        <span class="n">attn_output</span><span class="p">,</span> <span class="n">attn_output_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">multihead_attn</span><span class="p">(</span>
+            <span class="n">q</span><span class="o">=</span><span class="n">attn_input</span><span class="p">[:,</span> <span class="n">max_encoder_length</span><span class="p">:],</span>  <span class="c1"># query only for predictions</span>
+            <span class="n">k</span><span class="o">=</span><span class="n">attn_input</span><span class="p">,</span>
+            <span class="n">v</span><span class="o">=</span><span class="n">attn_input</span><span class="p">,</span>
+            <span class="n">mask</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_attention_mask</span><span class="p">(</span>
+                <span class="n">encoder_lengths</span><span class="o">=</span><span class="n">encoder_lengths</span><span class="p">,</span> <span class="n">decoder_lengths</span><span class="o">=</span><span class="n">decoder_lengths</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># skip connection over attention</span>
+        <span class="n">attn_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">post_attn_gate_norm</span><span class="p">(</span>
+            <span class="n">attn_output</span><span class="p">,</span> <span class="n">attn_input</span><span class="p">[:,</span> <span class="n">max_encoder_length</span><span class="p">:]</span>
+        <span class="p">)</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos_wise_ff</span><span class="p">(</span><span class="n">attn_output</span><span class="p">)</span>
+
+        <span class="c1"># skip connection over temporal fusion decoder (not LSTM decoder</span>
+        <span class="c1"># despite the LSTM output contains</span>
+        <span class="c1"># a skip from the variable selection network)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pre_output_gate_norm</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">lstm_output</span><span class="p">[:,</span> <span class="n">max_encoder_length</span><span class="p">:])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_targets</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># if to use multi-target architecture</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="p">[</span><span class="n">output_layer</span><span class="p">(</span><span class="n">output</span><span class="p">)</span> <span class="k">for</span> <span class="n">output_layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_network_output</span><span class="p">(</span>
+            <span class="n">prediction</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">transform_output</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">target_scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">]),</span>
+            <span class="n">encoder_attention</span><span class="o">=</span><span class="n">attn_output_weights</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">max_encoder_length</span><span class="p">],</span>
+            <span class="n">decoder_attention</span><span class="o">=</span><span class="n">attn_output_weights</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">max_encoder_length</span><span class="p">:],</span>
+            <span class="n">static_variables</span><span class="o">=</span><span class="n">static_variable_selection</span><span class="p">,</span>
+            <span class="n">encoder_variables</span><span class="o">=</span><span class="n">encoder_sparse_weights</span><span class="p">,</span>
+            <span class="n">decoder_variables</span><span class="o">=</span><span class="n">decoder_sparse_weights</span><span class="p">,</span>
+            <span class="n">decoder_lengths</span><span class="o">=</span><span class="n">decoder_lengths</span><span class="p">,</span>
+            <span class="n">encoder_lengths</span><span class="o">=</span><span class="n">encoder_lengths</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.on_fit_end">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.on_fit_end">[docs]</a>
+    <span class="k">def</span> <span class="nf">on_fit_end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_interval</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_embeddings</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.create_log">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.create_log">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_log</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_interval</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">log</span><span class="p">[</span><span class="s2">&quot;interpretation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_interpretation</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">log</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_log_interpretation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+        <span class="c1"># calculate interpretations etc for latter logging</span>
+        <span class="n">interpretation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpret_output</span><span class="p">(</span>
+            <span class="n">detach</span><span class="p">(</span><span class="n">out</span><span class="p">),</span>
+            <span class="n">reduction</span><span class="o">=</span><span class="s2">&quot;sum&quot;</span><span class="p">,</span>
+            <span class="n">attention_prediction_horizon</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># attention only for first prediction horizon # noqa: E501</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">interpretation</span>
+
+<div class="viewcode-block" id="TemporalFusionTransformer.on_epoch_end">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.on_epoch_end">[docs]</a>
+    <span class="k">def</span> <span class="nf">on_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        run at epoch end for training or validation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_interval</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_interpretation</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.interpret_output">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.interpret_output">[docs]</a>
+    <span class="k">def</span> <span class="nf">interpret_output</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">reduction</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+        <span class="n">attention_prediction_horizon</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        interpret output of model</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            out: output as produced by ``forward()``</span>
+<span class="sd">            reduction: &quot;none&quot; for no averaging over batches, &quot;sum&quot; for summing attentions, &quot;mean&quot; for</span>
+<span class="sd">                normalizing by encode lengths</span>
+<span class="sd">            attention_prediction_horizon: which prediction horizon to use for attention</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            interpretations that can be plotted with ``plot_interpretation()``</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="c1"># take attention and concatenate if a list to proper attention object</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_attention&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_attention&quot;</span><span class="p">],</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="c1"># start with decoder attention</span>
+            <span class="c1"># assume issue is in last dimension, we need to find max</span>
+            <span class="n">max_last_dimension</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_attention&quot;</span><span class="p">])</span>
+            <span class="n">first_elm</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_attention&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="c1"># create new attention tensor into which we will scatter</span>
+            <span class="n">decoder_attention</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">*</span><span class="n">first_elm</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">max_last_dimension</span><span class="p">),</span>
+                <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">first_elm</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">first_elm</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># scatter into tensor</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_attention&quot;</span><span class="p">]):</span>
+                <span class="n">decoder_length</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span>
+                <span class="n">decoder_attention</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:</span><span class="n">decoder_length</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">decoder_length</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">decoder_attention</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_attention&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="n">decoder_mask</span> <span class="o">=</span> <span class="n">create_mask</span><span class="p">(</span>
+                <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_attention&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">decoder_attention</span><span class="p">[</span>
+                <span class="n">decoder_mask</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span><span class="o">.</span><span class="n">expand_as</span><span class="p">(</span><span class="n">decoder_attention</span><span class="p">)</span>
+            <span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_attention&quot;</span><span class="p">],</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+            <span class="c1"># same game for encoder attention</span>
+            <span class="c1"># create new attention tensor into which we will scatter</span>
+            <span class="n">first_elm</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_attention&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">encoder_attention</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">*</span><span class="n">first_elm</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">),</span>
+                <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">first_elm</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">first_elm</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># scatter into tensor</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_attention&quot;</span><span class="p">]):</span>
+                <span class="n">encoder_length</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span>
+                <span class="n">encoder_attention</span><span class="p">[</span>
+                    <span class="n">idx</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span> <span class="o">-</span> <span class="n">encoder_length</span> <span class="p">:</span>
+                <span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">encoder_length</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># roll encoder attention (so start last encoder value is on the right)</span>
+            <span class="n">encoder_attention</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_attention&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="n">shifts</span> <span class="o">=</span> <span class="n">encoder_attention</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span>
+            <span class="n">new_index</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                    <span class="n">encoder_attention</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">encoder_attention</span><span class="o">.</span><span class="n">device</span>
+                <span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span><span class="o">.</span><span class="n">expand_as</span><span class="p">(</span><span class="n">encoder_attention</span><span class="p">)</span>
+                <span class="o">-</span> <span class="n">shifts</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="p">)</span> <span class="o">%</span> <span class="n">encoder_attention</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">encoder_attention</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">encoder_attention</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">new_index</span><span class="p">)</span>
+            <span class="c1"># expand encoder_attention to full size</span>
+            <span class="k">if</span> <span class="n">encoder_attention</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">:</span>
+                <span class="n">encoder_attention</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+                            <span class="p">(</span>
+                                <span class="o">*</span><span class="n">encoder_attention</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span>
+                                <span class="o">-</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span>
+                            <span class="p">),</span>
+                            <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">),</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">encoder_attention</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                            <span class="n">device</span><span class="o">=</span><span class="n">encoder_attention</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                        <span class="p">),</span>
+                        <span class="n">encoder_attention</span><span class="p">,</span>
+                    <span class="p">],</span>
+                    <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="c1"># combine attention vector</span>
+        <span class="n">attention</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">encoder_attention</span><span class="p">,</span> <span class="n">decoder_attention</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">attention</span><span class="p">[</span><span class="n">attention</span> <span class="o">&lt;</span> <span class="mf">1e-5</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">)</span>
+
+        <span class="c1"># histogram of decode and encode lengths</span>
+        <span class="n">encoder_length_histogram</span> <span class="o">=</span> <span class="n">integer_histogram</span><span class="p">(</span>
+            <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">],</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span>
+        <span class="p">)</span>
+        <span class="n">decoder_length_histogram</span> <span class="o">=</span> <span class="n">integer_histogram</span><span class="p">(</span>
+            <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">],</span> <span class="nb">min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_variables&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># mask where decoder and encoder where not applied</span>
+        <span class="c1"># when averaging variable selection weights</span>
+        <span class="n">encoder_variables</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_variables&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">encode_mask</span> <span class="o">=</span> <span class="n">create_mask</span><span class="p">(</span><span class="n">encoder_variables</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">])</span>
+        <span class="n">encoder_variables</span> <span class="o">=</span> <span class="n">encoder_variables</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span>
+            <span class="n">encode_mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="mf">0.0</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">encoder_variables</span> <span class="o">/=</span> <span class="p">(</span>
+            <span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]))</span>
+            <span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">decoder_variables</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_variables&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">decode_mask</span> <span class="o">=</span> <span class="n">create_mask</span><span class="p">(</span><span class="n">decoder_variables</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">])</span>
+        <span class="n">decoder_variables</span> <span class="o">=</span> <span class="n">decoder_variables</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span>
+            <span class="n">decode_mask</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="mf">0.0</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">decoder_variables</span> <span class="o">/=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># static variables need no masking</span>
+        <span class="n">static_variables</span> <span class="o">=</span> <span class="n">out</span><span class="p">[</span><span class="s2">&quot;static_variables&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># attention is batch x time x heads x time_to_attend</span>
+        <span class="c1"># average over heads + only keep prediction attention and</span>
+        <span class="c1"># attention on observed timesteps</span>
+        <span class="n">attention</span> <span class="o">=</span> <span class="n">masked_op</span><span class="p">(</span>
+            <span class="n">attention</span><span class="p">[</span>
+                <span class="p">:,</span>
+                <span class="n">attention_prediction_horizon</span><span class="p">,</span>
+                <span class="p">:,</span>
+                <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span> <span class="o">+</span> <span class="n">attention_prediction_horizon</span><span class="p">,</span>
+            <span class="p">],</span>
+            <span class="n">op</span><span class="o">=</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+            <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">reduction</span> <span class="o">!=</span> <span class="s2">&quot;none&quot;</span><span class="p">:</span>  <span class="c1"># if to average over batches</span>
+            <span class="n">static_variables</span> <span class="o">=</span> <span class="n">static_variables</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">encoder_variables</span> <span class="o">=</span> <span class="n">encoder_variables</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">decoder_variables</span> <span class="o">=</span> <span class="n">decoder_variables</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">attention</span> <span class="o">=</span> <span class="n">masked_op</span><span class="p">(</span><span class="n">attention</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">reduction</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">attention</span> <span class="o">=</span> <span class="n">attention</span> <span class="o">/</span> <span class="n">masked_op</span><span class="p">(</span><span class="n">attention</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s2">&quot;sum&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span>
+                <span class="o">-</span><span class="mi">1</span>
+            <span class="p">)</span>  <span class="c1"># renormalize</span>
+
+        <span class="n">interpretation</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="o">.</span><span class="n">masked_fill</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">attention</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="n">static_variables</span><span class="o">=</span><span class="n">static_variables</span><span class="p">,</span>
+            <span class="n">encoder_variables</span><span class="o">=</span><span class="n">encoder_variables</span><span class="p">,</span>
+            <span class="n">decoder_variables</span><span class="o">=</span><span class="n">decoder_variables</span><span class="p">,</span>
+            <span class="n">encoder_length_histogram</span><span class="o">=</span><span class="n">encoder_length_histogram</span><span class="p">,</span>
+            <span class="n">decoder_length_histogram</span><span class="o">=</span><span class="n">decoder_length_histogram</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">interpretation</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.plot_prediction">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.plot_prediction">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_prediction</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">plot_attention</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">add_loss_to_title</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">show_future_observed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot actuals vs prediction and attention</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (Dict[str, torch.Tensor]): network input</span>
+<span class="sd">            out (Dict[str, torch.Tensor]): network output</span>
+<span class="sd">            idx (int): sample index</span>
+<span class="sd">            plot_attention: if to plot attention on secondary axis</span>
+<span class="sd">            add_loss_to_title: if to add loss to title. Default to False.</span>
+<span class="sd">            show_future_observed: if to show actuals for future. Defaults to True.</span>
+<span class="sd">            ax: matplotlib axes to plot on</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            plt.Figure: matplotlib figure</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># plot prediction as normal</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">plot_prediction</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">out</span><span class="p">,</span>
+            <span class="n">idx</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span>
+            <span class="n">add_loss_to_title</span><span class="o">=</span><span class="n">add_loss_to_title</span><span class="p">,</span>
+            <span class="n">show_future_observed</span><span class="o">=</span><span class="n">show_future_observed</span><span class="p">,</span>
+            <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># add attention on secondary axis</span>
+        <span class="k">if</span> <span class="n">plot_attention</span><span class="p">:</span>
+            <span class="n">interpretation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpret_output</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">iget</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">to_list</span><span class="p">(</span><span class="n">fig</span><span class="p">):</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">ax2</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">twinx</span><span class="p">()</span>
+                <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Attention&quot;</span><span class="p">)</span>
+                <span class="n">encoder_length</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">encoder_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">encoder_length</span><span class="p">:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.plot_interpretation">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.plot_interpretation">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_interpretation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interpretation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make figures that interpret model.</span>
+
+<span class="sd">        * Attention</span>
+<span class="sd">        * Variable selection weights / importances</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            interpretation: as obtained from ``interpret_output()``</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dictionary of matplotlib figures</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">_check_matplotlib</span><span class="p">(</span><span class="s2">&quot;plot_interpretation&quot;</span><span class="p">)</span>
+
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+        <span class="n">figs</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># attention</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">attention</span> <span class="o">=</span> <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+        <span class="n">attention</span> <span class="o">=</span> <span class="n">attention</span> <span class="o">/</span> <span class="n">attention</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">,</span>
+                <span class="n">attention</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">attention</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time index&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Attention&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Attention&quot;</span><span class="p">)</span>
+        <span class="n">figs</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fig</span>
+
+        <span class="c1"># variable selection</span>
+        <span class="k">def</span> <span class="nf">make_selection_plot</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.25</span> <span class="o">+</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">values</span> <span class="o">/</span> <span class="n">values</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">barh</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)),</span>
+                <span class="n">values</span><span class="p">[</span><span class="n">order</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span>
+                <span class="n">tick_label</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">labels</span><span class="p">)[</span><span class="n">order</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Importance in %&quot;</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">fig</span>
+
+        <span class="n">figs</span><span class="p">[</span><span class="s2">&quot;static_variables&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_selection_plot</span><span class="p">(</span>
+            <span class="s2">&quot;Static variables importance&quot;</span><span class="p">,</span>
+            <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;static_variables&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">static_variables</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">figs</span><span class="p">[</span><span class="s2">&quot;encoder_variables&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_selection_plot</span><span class="p">(</span>
+            <span class="s2">&quot;Encoder variables importance&quot;</span><span class="p">,</span>
+            <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;encoder_variables&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">encoder_variables</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">figs</span><span class="p">[</span><span class="s2">&quot;decoder_variables&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_selection_plot</span><span class="p">(</span>
+            <span class="s2">&quot;Decoder variables importance&quot;</span><span class="p">,</span>
+            <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;decoder_variables&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decoder_variables</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">figs</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.log_interpretation">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.log_interpretation">[docs]</a>
+    <span class="k">def</span> <span class="nf">log_interpretation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outputs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log interpretation metrics to tensorboard.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># extract interpretations</span>
+        <span class="n">interpretation</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="c1"># use padded_stack because decoder</span>
+            <span class="c1"># length histogram can be of different length</span>
+            <span class="n">name</span><span class="p">:</span> <span class="n">padded_stack</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;interpretation&quot;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">],</span>
+                <span class="n">side</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+                <span class="n">value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;interpretation&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="c1"># normalize attention with length histogram squared to account for:</span>
+        <span class="c1"># 1. zeros in attention and</span>
+        <span class="c1"># 2. higher attention due to less values</span>
+        <span class="n">attention_occurances</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;encoder_length_histogram&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">attention_occurances</span> <span class="o">=</span> <span class="n">attention_occurances</span> <span class="o">/</span> <span class="n">attention_occurances</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">attention_occurances</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">attention_occurances</span><span class="p">,</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span>
+                    <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">attention_occurances</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">attention_occurances</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                    <span class="n">device</span><span class="o">=</span><span class="n">attention_occurances</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">],</span>
+            <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">interpretation</span><span class="p">[</span>
+            <span class="s2">&quot;attention&quot;</span>
+        <span class="p">]</span> <span class="o">/</span> <span class="n">attention_occurances</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">interpretation</span><span class="p">[</span><span class="s2">&quot;attention&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="n">mpl_available</span> <span class="o">=</span> <span class="n">_check_matplotlib</span><span class="p">(</span><span class="s2">&quot;log_interpretation&quot;</span><span class="p">,</span> <span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Don&#39;t log figures if matplotlib or add_figure is not available</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mpl_available</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logger_supports</span><span class="p">(</span><span class="s2">&quot;add_figure&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+        <span class="n">figs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_interpretation</span><span class="p">(</span><span class="n">interpretation</span><span class="p">)</span>  <span class="c1"># make interpretation figures</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_stage</span>
+        <span class="c1"># log to tensorboard</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">fig</span> <span class="ow">in</span> <span class="n">figs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">add_figure</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> importance&quot;</span><span class="p">,</span>
+                <span class="n">fig</span><span class="p">,</span>
+                <span class="n">global_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># log lengths of encoder/decoder</span>
+        <span class="k">for</span> <span class="nb">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;encoder&quot;</span><span class="p">,</span> <span class="s2">&quot;decoder&quot;</span><span class="p">]:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+            <span class="n">lengths</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">padded_stack</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">out</span><span class="p">[</span><span class="s2">&quot;interpretation&quot;</span><span class="p">][</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="si">}</span><span class="s2">_length_histogram&quot;</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">out</span> <span class="ow">in</span> <span class="n">outputs</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+                <span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+                <span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="nb">type</span> <span class="o">==</span> <span class="s2">&quot;decoder&quot;</span><span class="p">:</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">lengths</span><span class="p">)),</span> <span class="n">lengths</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2"> length&quot;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Number of samples&quot;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2"> length distribution in </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> epoch&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">add_figure</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">type</span><span class="si">}</span><span class="s2"> length distribution&quot;</span><span class="p">,</span>
+                <span class="n">fig</span><span class="p">,</span>
+                <span class="n">global_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TemporalFusionTransformer.log_embeddings">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.html#pytorch_forecasting.models.temporal_fusion_transformer._tft.TemporalFusionTransformer.log_embeddings">[docs]</a>
+    <span class="k">def</span> <span class="nf">log_embeddings</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log embeddings to tensorboard</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Don&#39;t log embeddings if add_embedding is not available</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_logger_supports</span><span class="p">(</span><span class="s2">&quot;add_embedding&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">emb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_embeddings</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">embedding_labels</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">experiment</span><span class="o">.</span><span class="n">add_embedding</span><span class="p">(</span>
+                <span class="n">emb</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+                <span class="n">tag</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">global_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
+            <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

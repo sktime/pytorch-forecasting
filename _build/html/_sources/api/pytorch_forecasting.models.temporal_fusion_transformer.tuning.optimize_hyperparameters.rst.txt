@@ -1,0 +1,6 @@
+optimize\_hyperparameters
+=========================
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.tuning
+
+.. autofunction:: optimize_hyperparameters

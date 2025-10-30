@@ -1,0 +1,6 @@
+linspace
+========
+
+.. currentmodule:: pytorch_forecasting.models.nbeats.sub_modules
+
+.. autofunction:: linspace

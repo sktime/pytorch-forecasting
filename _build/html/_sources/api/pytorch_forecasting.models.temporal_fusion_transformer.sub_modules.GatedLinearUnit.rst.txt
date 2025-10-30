@@ -1,0 +1,36 @@
+GatedLinearUnit
+===============
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+
+.. autoclass:: GatedLinearUnit
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GatedLinearUnit.forward
+      ~GatedLinearUnit.init_weights
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,33 @@
+MLP
+===
+
+.. currentmodule:: pytorch_forecasting.models.nhits.sub_modules
+
+
+.. autoclass:: MLP
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MLP.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

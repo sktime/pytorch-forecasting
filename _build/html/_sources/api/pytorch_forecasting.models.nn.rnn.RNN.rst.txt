@@ -1,0 +1,42 @@
+RNN
+===
+
+.. currentmodule:: pytorch_forecasting.models.nn.rnn
+
+
+.. autoclass:: RNN
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RNN.forward
+      ~RNN.handle_no_encoding
+      ~RNN.init_hidden_state
+      ~RNN.repeat_interleave
+   
+   
+
+   
+    
+   
+   
+   
+   

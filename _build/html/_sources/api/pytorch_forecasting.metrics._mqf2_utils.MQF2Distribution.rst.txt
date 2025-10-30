@@ -1,0 +1,118 @@
+MQF2Distribution
+================
+
+.. currentmodule:: pytorch_forecasting.metrics._mqf2_utils
+
+
+.. autoclass:: MQF2Distribution
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MQF2Distribution.cdf
+      ~MQF2Distribution.energy_score
+      ~MQF2Distribution.entropy
+      ~MQF2Distribution.enumerate_support
+      ~MQF2Distribution.expand
+      ~MQF2Distribution.get_numel
+      ~MQF2Distribution.icdf
+      ~MQF2Distribution.log_prob
+      ~MQF2Distribution.loss
+      ~MQF2Distribution.perplexity
+      ~MQF2Distribution.quantile
+      ~MQF2Distribution.rsample
+      ~MQF2Distribution.sample
+      ~MQF2Distribution.sample_n
+      ~MQF2Distribution.set_default_validate_args
+      ~MQF2Distribution.stack_sliding_view
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MQF2Distribution.arg_constraints
+      ~MQF2Distribution.batch_shape
+      ~MQF2Distribution.event_dim
+      ~MQF2Distribution.event_shape
+      ~MQF2Distribution.has_enumerate_support
+      ~MQF2Distribution.has_rsample
+      ~MQF2Distribution.mean
+      ~MQF2Distribution.mode
+      ~MQF2Distribution.stddev
+      ~MQF2Distribution.support
+      ~MQF2Distribution.variance
+   
+   

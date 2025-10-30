@@ -1,0 +1,6 @@
+create\_mask
+============
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: create_mask

@@ -1,0 +1,6 @@
+\_check\_matplotlib
+===================
+
+.. currentmodule:: pytorch_forecasting.utils._dependencies._dependencies
+
+.. autofunction:: _check_matplotlib

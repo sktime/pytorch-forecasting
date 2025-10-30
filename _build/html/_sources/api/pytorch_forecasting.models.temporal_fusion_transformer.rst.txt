@@ -1,0 +1,37 @@
+temporal\_fusion\_transformer
+=============================
+
+.. automodule:: pytorch_forecasting.models.temporal_fusion_transformer
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.temporal_fusion_transformer._tft
+   pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg
+   pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2
+   pytorch_forecasting.models.temporal_fusion_transformer._tft_v2
+   pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+   pytorch_forecasting.models.temporal_fusion_transformer.tuning
+

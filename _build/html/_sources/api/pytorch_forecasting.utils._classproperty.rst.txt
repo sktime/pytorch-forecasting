@@ -1,0 +1,31 @@
+\_classproperty
+===============
+
+.. automodule:: pytorch_forecasting.utils._classproperty
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      classproperty
+   
+   
+
+   
+   
+   
+
+
+

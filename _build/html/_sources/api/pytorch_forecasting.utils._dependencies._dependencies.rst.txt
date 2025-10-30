@@ -1,0 +1,33 @@
+\_dependencies
+==============
+
+.. automodule:: pytorch_forecasting.utils._dependencies._dependencies
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      _check_matplotlib
+      _get_installed_packages
+      _get_installed_packages_private
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

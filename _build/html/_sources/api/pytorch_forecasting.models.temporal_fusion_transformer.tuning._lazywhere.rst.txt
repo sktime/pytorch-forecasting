@@ -1,0 +1,6 @@
+\_lazywhere
+===========
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.tuning
+
+.. autofunction:: _lazywhere

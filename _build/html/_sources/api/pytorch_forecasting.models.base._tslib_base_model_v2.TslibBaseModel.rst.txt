@@ -1,0 +1,39 @@
+TslibBaseModel
+==============
+
+.. currentmodule:: pytorch_forecasting.models.base._tslib_base_model_v2
+
+
+.. autoclass:: TslibBaseModel
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TslibBaseModel.forward
+      ~TslibBaseModel.predict_step
+      ~TslibBaseModel.transform_output
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,6 @@
+detach
+======
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: detach

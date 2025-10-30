@@ -1,0 +1,33 @@
+DLinear
+=======
+
+.. currentmodule:: pytorch_forecasting.models.dlinear._dlinear_v2
+
+
+.. autoclass:: DLinear
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DLinear.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,35 @@
+base
+====
+
+.. automodule:: pytorch_forecasting.models.base
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.base._base_model
+   pytorch_forecasting.models.base._base_model_v2
+   pytorch_forecasting.models.base._base_object
+   pytorch_forecasting.models.base._tslib_base_model_v2
+

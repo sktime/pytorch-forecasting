@@ -1,0 +1,44 @@
+\_BasePtForecaster
+==================
+
+.. currentmodule:: pytorch_forecasting.models.base._base_object
+
+
+.. autoclass:: _BasePtForecaster
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~_BasePtForecaster.create_test_instance
+      ~_BasePtForecaster.create_test_instances_and_names
+      ~_BasePtForecaster.get_cls
+      ~_BasePtForecaster.name
+   
+   
+
+   
+    
+   
+   
+   
+   

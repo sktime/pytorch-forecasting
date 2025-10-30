@@ -1,0 +1,39 @@
+NegativeBinomialDistributionLoss
+================================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: NegativeBinomialDistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NegativeBinomialDistributionLoss.map_x_to_distribution
+      ~NegativeBinomialDistributionLoss.rescale_parameters
+      ~NegativeBinomialDistributionLoss.to_prediction
+   
+   
+
+   
+    
+   
+   
+   
+   

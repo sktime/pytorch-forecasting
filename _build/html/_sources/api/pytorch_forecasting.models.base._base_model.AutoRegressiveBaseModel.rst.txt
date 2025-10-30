@@ -1,0 +1,42 @@
+AutoRegressiveBaseModel
+=======================
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+
+.. autoclass:: AutoRegressiveBaseModel
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AutoRegressiveBaseModel.decode_autoregressive
+      ~AutoRegressiveBaseModel.from_dataset
+      ~AutoRegressiveBaseModel.output_to_prediction
+      ~AutoRegressiveBaseModel.plot_prediction
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,6 @@
+unsqueeze\_like
+===============
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: unsqueeze_like

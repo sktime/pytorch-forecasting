@@ -1,0 +1,45 @@
+NHiTS
+=====
+
+.. currentmodule:: pytorch_forecasting.models.nhits._nhits
+
+
+.. autoclass:: NHiTS
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NHiTS.forward
+      ~NHiTS.from_dataset
+      ~NHiTS.log_interpretation
+      ~NHiTS.plot_interpretation
+      ~NHiTS.step
+   
+   
+
+   
+    
+   
+   
+   
+   

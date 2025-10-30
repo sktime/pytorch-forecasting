@@ -1,0 +1,55 @@
+PredictTuple
+============
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+
+.. autoclass:: PredictTuple
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~PredictTuple.count
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PredictTuple.decoder_lengths
+      ~PredictTuple.index
+      ~PredictTuple.output
+      ~PredictTuple.x
+      ~PredictTuple.y
+   
+   

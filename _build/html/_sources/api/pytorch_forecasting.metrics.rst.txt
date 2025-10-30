@@ -1,0 +1,39 @@
+﻿metrics
+=======
+
+.. automodule:: pytorch_forecasting.metrics
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.metrics._distributions_pkg
+   pytorch_forecasting.metrics._mqf2_utils
+   pytorch_forecasting.metrics._point_pkg
+   pytorch_forecasting.metrics._quantile_pkg
+   pytorch_forecasting.metrics.base_metrics
+   pytorch_forecasting.metrics.distributions
+   pytorch_forecasting.metrics.point
+   pytorch_forecasting.metrics.quantile
+

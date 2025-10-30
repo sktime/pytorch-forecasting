@@ -1,0 +1,32 @@
+\_tslib\_data\_module
+=====================
+
+.. automodule:: pytorch_forecasting.data._tslib_data_module
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      TslibDataModule
+      _TslibDataset
+   
+   
+
+   
+   
+   
+
+
+

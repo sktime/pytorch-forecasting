@@ -1,0 +1,31 @@
+\_nbeats
+========
+
+.. automodule:: pytorch_forecasting.models.nbeats._nbeats
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      NBeats
+   
+   
+
+   
+   
+   
+
+
+

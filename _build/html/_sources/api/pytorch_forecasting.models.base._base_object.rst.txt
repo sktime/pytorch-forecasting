@@ -1,0 +1,33 @@
+\_base\_object
+==============
+
+.. automodule:: pytorch_forecasting.models.base._base_object
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      _BasePtForecaster
+      _BasePtForecasterV2
+      _BasePtForecaster_Common
+   
+   
+
+   
+   
+   
+
+
+

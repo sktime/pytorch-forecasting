@@ -1,0 +1,35 @@
+TupleOutputMixIn
+================
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+
+.. autoclass:: TupleOutputMixIn
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TupleOutputMixIn.to_network_output
+   
+   
+
+   
+    
+   
+   
+   
+   

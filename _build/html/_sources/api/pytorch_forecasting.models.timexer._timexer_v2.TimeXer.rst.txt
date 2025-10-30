@@ -1,0 +1,33 @@
+TimeXer
+=======
+
+.. currentmodule:: pytorch_forecasting.models.timexer._timexer_v2
+
+
+.. autoclass:: TimeXer
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TimeXer.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

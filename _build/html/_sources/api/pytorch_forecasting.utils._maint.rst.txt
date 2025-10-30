@@ -1,0 +1,32 @@
+\_maint
+=======
+
+.. automodule:: pytorch_forecasting.utils._maint
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.utils._maint._show_versions
+

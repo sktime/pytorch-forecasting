@@ -1,0 +1,922 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pytorch_forecasting.models.tide._tide_dsipts._tide_v2 &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pytorch_forecasting/models/tide/_tide_dsipts/_tide_v2';</script>
+    <link rel="icon" href="../../../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../../../../../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pytorch_forecasting.models.tide._tide_dsipts._tide_v2</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pytorch_forecasting.models.tide._tide_dsipts._tide_v2</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.layers._blocks._residual_block_dsipts</span> <span class="kn">import</span> <span class="n">ResidualBlock</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.layers._embeddings</span> <span class="kn">import</span> <span class="n">_sub_nn</span> <span class="k">as</span> <span class="n">sub_nn</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.base._base_model_v2</span> <span class="kn">import</span> <span class="n">BaseModel</span>
+
+
+<div class="viewcode-block" id="TIDE">
+<a class="viewcode-back" href="../../../../../api/pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE.html#pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE">[docs]</a>
+<span class="k">class</span> <span class="nc">TIDE</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Long-term Forecasting with TiDE: Time-series Dense Encoder</span>
+<span class="sd">    https://arxiv.org/abs/2304.08424</span>
+
+<span class="sd">    This NN uses as subnet the ResidualBlocks, which is composed by skip connection and activation+dropout.</span>
+<span class="sd">    Every encoder and decoder head is composed by one Residual Block, like the temporal decoder and the feature projection for covariates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_pkg</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Package containing the model.&quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">pytorch_forecasting.models.tide._tide_dsipts</span> <span class="kn">import</span> <span class="n">TIDE_pkg_v2</span>
+
+        <span class="k">return</span> <span class="n">TIDE_pkg_v2</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">loss</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">hidden_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">d_model</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">n_add_enc</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">n_add_dec</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dropout_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">activation</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">embs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span>
+        <span class="n">persistence_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">optim</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">optim_config</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scheduler_config</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise the model.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        metadata : dict</span>
+<span class="sd">            Metadata for the model from ``EncoderDecoderDataModule``. This can include</span>
+<span class="sd">            information about the dataset, such as the number of time steps, number of</span>
+<span class="sd">            features, etc. It is used to initialize the model</span>
+<span class="sd">            and ensure it is compatible with the data being used.</span>
+<span class="sd">        loss : nn.Module</span>
+<span class="sd">            Loss function module (e.g., ``MSELoss``, ``QuantileLoss``).</span>
+<span class="sd">        hidden_size : int</span>
+<span class="sd">            Dimensionality of hidden layers in projections (R).</span>
+<span class="sd">        d_model : int</span>
+<span class="sd">            Dimensionality of model projections after feature projection (R̃).</span>
+<span class="sd">        n_add_enc : int</span>
+<span class="sd">            Number of additional encoder residual blocks (after the first).</span>
+<span class="sd">        n_add_dec : int</span>
+<span class="sd">            Number of additional decoder residual blocks (after the first).</span>
+<span class="sd">        dropout_rate : float</span>
+<span class="sd">            Dropout probability applied in residual blocks.</span>
+<span class="sd">        activation : str, optional</span>
+<span class="sd">            Name of activation function to use (e.g., ``&quot;relu&quot;``).</span>
+<span class="sd">        embs : list of int, optional</span>
+<span class="sd">            List specifying embedding sizes for categorical variables.</span>
+<span class="sd">        persistence_weight : float, optional</span>
+<span class="sd">            Weight for the persistence (autoregressive) component.</span>
+<span class="sd">        optim : str or None, optional</span>
+<span class="sd">            Name of optimizer (e.g., ``&quot;adam&quot;``), or None to use default.</span>
+<span class="sd">        optim_config : dict or None, optional</span>
+<span class="sd">            Optimizer configuration dictionary.</span>
+<span class="sd">        scheduler_config : dict or None, optional</span>
+<span class="sd">            Scheduler configuration dictionary.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Additional keyword arguments passed to `BaseModel`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_hyperparameters</span><span class="p">(</span><span class="n">logger</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dropout</span> <span class="o">=</span> <span class="n">dropout_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">persistence_weight</span> <span class="o">=</span> <span class="n">persistence_weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optim</span> <span class="o">=</span> <span class="n">optim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optim_config</span> <span class="o">=</span> <span class="n">optim_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheduler_config</span> <span class="o">=</span> <span class="n">scheduler_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">loss</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span> <span class="o">=</span> <span class="n">hidden_size</span>  <span class="c1"># r</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">d_model</span> <span class="o">=</span> <span class="n">d_model</span>  <span class="c1"># r^tilda</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">past_steps</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;max_encoder_length&quot;</span><span class="p">]</span>  <span class="c1"># lookback size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;max_prediction_length&quot;</span><span class="p">]</span>  <span class="c1"># horizon size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">past_channels</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span>  <span class="c1"># psat_vars</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">future_channels</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;decoder_cont&quot;</span><span class="p">]</span>  <span class="c1"># fut_vars</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;target&quot;</span><span class="p">]</span>  <span class="c1"># target_vars</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mul</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_quantiles</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outLinear</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">d_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span><span class="p">)</span>
+
+        <span class="c1"># for other numerical variables in the past</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_past_channels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">past_channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linear_aux_past</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aux_past_channels</span><span class="p">)]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># for numerical variables in the future</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_fut_channels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_channels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linear_aux_fut</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">aux_fut_channels</span><span class="p">)]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># embedding categorical for both past and future</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seq_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">past_steps</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emb_cat_var</span> <span class="o">=</span> <span class="n">sub_nn</span><span class="o">.</span><span class="n">embedding_cat_variables</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">seq_len</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">embs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+
+        <span class="c1">## FEATURE PROJECTION</span>
+        <span class="c1"># past</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_past_channels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_past</span> <span class="o">=</span> <span class="n">ResidualBlock</span><span class="p">(</span>
+                <span class="mi">2</span> <span class="o">*</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">d_model</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_past</span> <span class="o">=</span> <span class="n">ResidualBlock</span><span class="p">(</span>
+                <span class="n">hidden_size</span><span class="p">,</span> <span class="n">d_model</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+            <span class="p">)</span>
+        <span class="c1"># future</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_fut_channels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_fut</span> <span class="o">=</span> <span class="n">ResidualBlock</span><span class="p">(</span>
+                <span class="mi">2</span> <span class="o">*</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">d_model</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_fut</span> <span class="o">=</span> <span class="n">ResidualBlock</span><span class="p">(</span>
+                <span class="n">hidden_size</span><span class="p">,</span> <span class="n">d_model</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+            <span class="p">)</span>
+
+        <span class="c1"># # ENCODER</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_input</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">past_steps</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span>
+            <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">past_steps</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span><span class="p">)</span> <span class="o">*</span> <span class="n">d_model</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span> <span class="o">*</span> <span class="n">d_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">first_encoder</span> <span class="o">=</span> <span class="n">ResidualBlock</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_input</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_encoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">ResidualBlock</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_add_enc</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># # DECODER</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">first_decoder</span> <span class="o">=</span> <span class="n">ResidualBlock</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_decoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">ResidualBlock</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">enc_dim_output</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_add_dec</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1">## TEMPORAL DECOER</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temporal_decoder</span> <span class="o">=</span> <span class="n">ResidualBlock</span><span class="p">(</span>
+            <span class="mi">2</span> <span class="o">*</span> <span class="n">d_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">dropout_rate</span><span class="p">,</span> <span class="n">activation</span>
+        <span class="p">)</span>
+
+        <span class="c1"># linear for Y lookback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linear_target</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">past_steps</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="TIDE.forward">
+<a class="viewcode-back" href="../../../../../api/pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE.html#pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;training process of the diffusion network</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X : dict</span>
+<span class="sd">            variables loaded</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            float:</span>
+<span class="sd">                total loss about the prediction of the noises over all subnets extracted</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">x_batch</span><span class="p">,</span> <span class="n">y_batch</span> <span class="o">=</span> <span class="n">X</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">x_batch</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">X</span>
+
+        <span class="k">if</span> <span class="s2">&quot;x_num_past&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_num_past&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;x_num_future&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_num_future&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;decoder_cont&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;x_cat_past&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_cat_past&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;encoder_cat&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;x_cat_future&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+            <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_cat_future&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;decoder_cat&quot;</span><span class="p">]</span>
+
+        <span class="n">y_past</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;target_past&quot;</span><span class="p">]</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">y_past</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># LOADING EMBEDDING CATEGORICAL VARIABLES</span>
+        <span class="n">emb_cat_past</span><span class="p">,</span> <span class="n">emb_cat_fut</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat_categorical_vars</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+
+        <span class="n">emb_cat_past</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">emb_cat_past</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">emb_cat_fut</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">emb_cat_fut</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1">### LOADING PAST AND FUTURE NUMERICAL VARIABLES</span>
+        <span class="c1"># load in the model auxiliar numerical variables</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_past_channels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># if we have more numerical variables about past</span>
+            <span class="n">aux_num_past</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_past_channels</span> <span class="o">==</span> <span class="n">aux_num_past</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">aux_past_channels</span><span class="si">}</span><span class="s2"> LAYERS FOR PAST VARS AND &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">aux_num_past</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> VARS&quot;</span>
+            <span class="p">)</span>  <span class="c1"># to check if we are using the expected number of variables about past</span>
+            <span class="c1"># concat all embedded vars and mean of them</span>
+            <span class="n">aux_emb_num_past</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear_aux_past</span><span class="p">):</span>
+                <span class="n">aux_emb_past</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">aux_num_past</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">[</span><span class="n">i</span><span class="p">]])</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">aux_emb_num_past</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">aux_emb_num_past</span><span class="p">,</span> <span class="n">aux_emb_past</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">aux_emb_num_past</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">aux_emb_num_past</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">aux_emb_num_past</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># non available vars</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">aux_fut_channels</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="p">):</span>  <span class="c1"># if we have more numerical variables about future</span>
+            <span class="c1"># AUX means AUXILIARY variables</span>
+            <span class="n">aux_num_fut</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_num_future&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_fut_channels</span> <span class="o">==</span> <span class="n">aux_num_fut</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">aux_fut_channels</span><span class="si">}</span><span class="s2"> LAYERS FOR PAST VARS AND &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">aux_num_fut</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> VARS&quot;</span>
+            <span class="p">)</span>  <span class="c1"># to check if we are using the expected number of variables about fut</span>
+            <span class="c1"># concat all embedded vars and mean of them</span>
+            <span class="n">aux_emb_num_fut</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linear_aux_fut</span><span class="p">):</span>
+                <span class="n">aux_emb_fut</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">aux_num_fut</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">[</span><span class="n">j</span><span class="p">]])</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">aux_emb_num_fut</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">aux_emb_num_fut</span><span class="p">,</span> <span class="n">aux_emb_fut</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">aux_emb_num_fut</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">aux_emb_num_fut</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">aux_emb_num_fut</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># non available vars</span>
+
+        <span class="c1"># past^tilda</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_past_channels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">emb_past</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">emb_cat_past</span><span class="p">,</span> <span class="n">aux_emb_num_past</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span>
+            <span class="p">)</span>  <span class="c1"># [B, L, 2R] #</span>
+            <span class="n">proj_past</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_past</span><span class="p">(</span><span class="n">emb_past</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>  <span class="c1"># [B, L, R^tilda] #</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">proj_past</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_past</span><span class="p">(</span><span class="n">emb_cat_past</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>  <span class="c1"># [B, L, R^tilda] #</span>
+
+        <span class="c1"># fut^tilda</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_fut_channels</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">emb_fut</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">emb_cat_fut</span><span class="p">,</span> <span class="n">aux_emb_num_fut</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="c1"># [B, H, 2R] #</span>
+            <span class="n">proj_fut</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_fut</span><span class="p">(</span><span class="n">emb_fut</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>  <span class="c1"># [B, H, R^tilda] #</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">proj_fut</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feat_proj_fut</span><span class="p">(</span><span class="n">emb_cat_fut</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>  <span class="c1"># [B, H, R^tilda] #</span>
+
+        <span class="n">concat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">y_past</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">proj_past</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">proj_fut</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>  <span class="c1"># [B, L*self.mul + (L+H)*R^tilda] #</span>
+        <span class="n">dense_enc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_encoder</span><span class="p">(</span><span class="n">concat</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">lay_enc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_encoder</span><span class="p">:</span>
+            <span class="n">dense_enc</span> <span class="o">=</span> <span class="n">lay_enc</span><span class="p">(</span><span class="n">dense_enc</span><span class="p">)</span>
+
+        <span class="n">dense_dec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">first_decoder</span><span class="p">(</span><span class="n">dense_enc</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">lay_dec</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_decoder</span><span class="p">:</span>
+            <span class="n">dense_dec</span> <span class="o">=</span> <span class="n">lay_dec</span><span class="p">(</span><span class="n">dense_dec</span><span class="p">)</span>
+
+        <span class="n">temp_dec_input</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">dense_dec</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">d_model</span><span class="p">),</span> <span class="n">proj_fut</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">2</span>
+        <span class="p">)</span>
+        <span class="n">temp_dec_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">temporal_decoder</span><span class="p">(</span><span class="n">temp_dec_input</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">temp_dec_output</span> <span class="o">=</span> <span class="n">temp_dec_output</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span>
+        <span class="p">)</span>
+
+        <span class="n">linear_regr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear_target</span><span class="p">(</span><span class="n">y_past</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">linear_output</span> <span class="o">=</span> <span class="n">linear_regr</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_channels</span><span class="p">)</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="n">temp_dec_output</span> <span class="o">+</span> <span class="n">linear_output</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;prediction&quot;</span><span class="p">:</span> <span class="n">output</span><span class="p">}</span></div>
+
+
+    <span class="c1"># function to concat embedded categorical variables</span>
+<div class="viewcode-block" id="TIDE.cat_categorical_vars">
+<a class="viewcode-back" href="../../../../../api/pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE.html#pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE.cat_categorical_vars">[docs]</a>
+    <span class="k">def</span> <span class="nf">cat_categorical_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extracting categorical context about past and future</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        --------</span>
+<span class="sd">        batch: dict</span>
+<span class="sd">            dataloader batch</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            List[torch.Tensor, torch.Tensor]:</span>
+<span class="sd">                cat_emb_past, cat_emb_fut</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cat_past</span> <span class="o">=</span> <span class="n">batch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;encoder_cat&quot;</span><span class="p">,</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">past_steps</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">cat_fut</span> <span class="o">=</span> <span class="n">batch</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;decoder_cat&quot;</span><span class="p">,</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="c1"># GET AVAILABLE CATEGORICAL CONTEXT</span>
+        <span class="k">if</span> <span class="s2">&quot;x_cat_past&quot;</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">cat_past</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_cat_past&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;x_cat_future&quot;</span> <span class="ow">in</span> <span class="n">batch</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">cat_fut</span> <span class="o">=</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_cat_future&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="c1"># CONCAT THEM, according to self.emb_cat_var usage</span>
+        <span class="k">if</span> <span class="n">cat_past</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">emb_cat_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_cat_var</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s2">&quot;x_num_past&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cat_full</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">cat_past</span><span class="p">,</span> <span class="n">cat_fut</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">emb_cat_full</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">emb_cat_var</span><span class="p">(</span><span class="n">cat_full</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">cat_emb_past</span> <span class="o">=</span> <span class="n">emb_cat_full</span><span class="p">[:,</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">past_steps</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">cat_emb_fut</span> <span class="o">=</span> <span class="n">emb_cat_full</span><span class="p">[:,</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">future_steps</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+
+        <span class="k">return</span> <span class="n">cat_emb_past</span><span class="p">,</span> <span class="n">cat_emb_fut</span></div>
+
+
+    <span class="c1"># function to extract from batch[&#39;x_num_past&#39;] all variables except the</span>
+    <span class="c1"># one autoregressive</span>
+<div class="viewcode-block" id="TIDE.remove_var">
+<a class="viewcode-back" href="../../../../../api/pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE.html#pytorch_forecasting.models.tide._tide_dsipts._tide_v2.TIDE.remove_var">[docs]</a>
+    <span class="k">def</span> <span class="nf">remove_var</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">indexes_to_exclude</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">dimension</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Function to remove variables from tensors in chosen dimension and position</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        tensor: torch.Tensor</span>
+<span class="sd">            starting tensor</span>
+<span class="sd">        indexes_to_exclude: list</span>
+<span class="sd">            index of the chosen dimension we want t oexclude</span>
+<span class="sd">        dimension: int</span>
+<span class="sd">            dimension of the tensor on which we want to work (not list od dims!!)</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            torch.Tensor:</span>
+<span class="sd">                new tensor without the chosen variables</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+        <span class="n">remaining_idx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">dimension</span><span class="p">))</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">indexes_to_exclude</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="c1"># Select the desired sub-tensor</span>
+        <span class="n">extracted_subtensors</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">index_select</span><span class="p">(</span>
+            <span class="n">tensor</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">dimension</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">remaining_idx</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">extracted_subtensors</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,31 @@
+data\_module
+============
+
+.. automodule:: pytorch_forecasting.data.data_module
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      EncoderDecoderTimeSeriesDataModule
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,6 @@
+\_torch\_cat\_na
+================
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+.. autofunction:: _torch_cat_na

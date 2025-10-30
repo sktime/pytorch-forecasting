@@ -1,0 +1,41 @@
+rnn
+===
+
+.. automodule:: pytorch_forecasting.models.nn.rnn
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      get_rnn
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      GRU
+      LSTM
+      RNN
+   
+   
+
+   
+   
+   
+
+
+

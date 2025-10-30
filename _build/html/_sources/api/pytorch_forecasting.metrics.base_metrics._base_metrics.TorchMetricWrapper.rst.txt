@@ -1,0 +1,45 @@
+TorchMetricWrapper
+==================
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: TorchMetricWrapper
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TorchMetricWrapper.compute
+      ~TorchMetricWrapper.forward
+      ~TorchMetricWrapper.persistent
+      ~TorchMetricWrapper.reset
+      ~TorchMetricWrapper.update
+   
+   
+
+   
+    
+   
+   
+   
+   

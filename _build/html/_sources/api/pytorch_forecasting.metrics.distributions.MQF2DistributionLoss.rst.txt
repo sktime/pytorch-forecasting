@@ -1,0 +1,45 @@
+MQF2DistributionLoss
+====================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: MQF2DistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MQF2DistributionLoss.loss
+      ~MQF2DistributionLoss.map_x_to_distribution
+      ~MQF2DistributionLoss.rescale_parameters
+      ~MQF2DistributionLoss.to
+      ~MQF2DistributionLoss.to_quantiles
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,36 @@
+DecoderMLP
+==========
+
+.. currentmodule:: pytorch_forecasting.models.mlp._decodermlp
+
+
+.. autoclass:: DecoderMLP
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DecoderMLP.forward
+      ~DecoderMLP.from_dataset
+   
+   
+
+   
+    
+   
+   
+   
+   

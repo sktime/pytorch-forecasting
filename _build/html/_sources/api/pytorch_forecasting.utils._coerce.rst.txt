@@ -1,0 +1,32 @@
+\_coerce
+========
+
+.. automodule:: pytorch_forecasting.utils._coerce
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      _coerce_to_dict
+      _coerce_to_list
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
