@@ -17,7 +17,54 @@ def _safe_import_all_objects():
 
         return all_objects, None
     except Exception as e:  # pragma: no cover - defensive
-        return None, e
+        # fallback to manual discovery if registry fails (e.g., skbase not available)
+        return _manual_model_discovery(), e
+
+
+def _manual_model_discovery():
+    """Fallback model discovery when registry is not available."""
+    import importlib
+    import inspect
+    from pathlib import Path
+    
+    models = []
+    models_dir = Path(__file__).parent.parent.parent.parent / "pytorch_forecasting" / "models"
+    
+    # Known model packages
+    model_packages = [
+        "deepar", "dlinear", "mlp", "nbeats", "nhits", 
+        "rnn", "temporal_fusion_transformer", "tide", "timexer", "xlstm"
+    ]
+    
+    for pkg_name in model_packages:
+        try:
+            module_name = f"pytorch_forecasting.models.{pkg_name}"
+            module = importlib.import_module(module_name)
+            
+            # Look for model classes in the module
+            for name, obj in inspect.getmembers(module):
+                if (inspect.isclass(obj) and 
+                    hasattr(obj, '__module__') and 
+                    obj.__module__.startswith(module_name) and
+                    not name.startswith('_')):
+                    
+                    # Determine estimator type based on package name
+                    if pkg_name in ["deepar", "dlinear", "mlp", "nbeats", "nhits", "rnn"]:
+                        estimator_type = "forecaster_v1"
+                    else:
+                        estimator_type = "forecaster_v2"
+                    
+                    models.append({
+                        'names': name,
+                        'objects': obj,
+                        'object_type': estimator_type,
+                        'authors': getattr(obj, 'authors', ['pytorch-forecasting developers']),
+                        'python_dependencies': getattr(obj, 'python_dependencies', [])
+                    })
+        except Exception:
+            continue
+    
+    return models
 
 
 def _render_lines() -> list[str]:
@@ -42,29 +89,36 @@ def _render_lines() -> list[str]:
         )
         return lines
 
-    try:
-        df = all_objects(
-            object_types=["forecaster_pytorch_v1", "forecaster_pytorch_v2"],
-            as_dataframe=True,
-            return_tags=[
-                "object_type",
-                "info:name",
-                "authors",
-                "python_dependencies",
-            ],
-            return_names=True,
-        )
-    except Exception as e:  # pragma: no cover - defensive
-        lines.extend(
-            [
-                ".. note::",
-                f"   Registry query failed: ``{e}``",
-                "",
-            ]
-        )
-        return lines
+    # Handle both registry DataFrame and manual discovery list
+    if isinstance(all_objects, list):
+        # Manual discovery fallback
+        models_data = all_objects
+    else:
+        # Registry DataFrame
+        try:
+            df = all_objects(
+                object_types=["forecaster_pytorch_v1", "forecaster_pytorch_v2"],
+                as_dataframe=True,
+                return_tags=[
+                    "object_type",
+                    "info:name",
+                    "authors",
+                    "python_dependencies",
+                ],
+                return_names=True,
+            )
+            models_data = df.to_dict('records') if df is not None else []
+        except Exception as e:  # pragma: no cover - defensive
+            lines.extend(
+                [
+                    ".. note::",
+                    f"   Registry query failed: ``{e}``",
+                    "",
+                ]
+            )
+            return lines
 
-    if df is None or len(df) == 0:
+    if not models_data:
         lines.extend([".. note::", "   No models found in registry.", ""])
         return lines
 
@@ -83,7 +137,10 @@ def _render_lines() -> list[str]:
     lines.append("   * - " + "\n     - ".join(header_cols))
 
     # rows
-    for _, row in df.sort_values("names").iterrows():
+    # Sort models by name
+    sorted_models = sorted(models_data, key=lambda x: x.get("names", ""))
+    
+    for row in sorted_models:
         pkg_cls = row["objects"]
         try:
             model_cls = pkg_cls.get_model_cls()
@@ -141,7 +198,13 @@ def _is_safe_mode() -> bool:
     return False
 
 
-def _write_models_rst(app) -> None:
+def _write_models_rst(app, config=None) -> None:
+    """Write models.rst file.
+    
+    This can be called either from:
+    - config-inited event (app, config)
+    - builder-inited event (app)
+    """
     # confdir is docs/source
     out_file = os.path.join(app.confdir, "models.rst")
     try:
@@ -169,12 +232,17 @@ def _write_models_rst(app) -> None:
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     with open(out_file, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
+    
+    # Print confirmation for debugging
+    print(f"[model_overview] Wrote {len(lines)} lines to {out_file}")
 
 
 def setup(app):
-    # generate as early as possible so Sphinx
-    # sees the written file during source discovery
-    app.connect("config-inited", _write_models_rst)
+    """Setup the Sphinx extension."""
+    # Use builder-inited instead of config-inited
+    # This ensures the extension is fully loaded
+    app.connect("builder-inited", lambda app: _write_models_rst(app))
+    
     return {
         "version": "1.0",
         "parallel_read_safe": True,

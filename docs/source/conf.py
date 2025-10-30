@@ -15,6 +15,9 @@ from pathlib import Path
 import shutil
 import sys
 
+# Add _ext directory to Python path for local extensions
+sys.path.append(os.path.abspath("../_ext"))
+
 from sphinx.application import Sphinx
 from sphinx.ext.autosummary import Autosummary
 from sphinx.pycode import ModuleAnalyzer
@@ -56,6 +59,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
+    "model_overview",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -147,15 +151,7 @@ def setup(app: Sphinx):
     app.connect("autodoc-skip-member", skip)
     app.add_directive("moduleautosummary", ModuleAutoSummary)
     app.add_js_file("https://buttons.github.io/buttons.js", **{"async": "async"})
-    # load custom model overview generator if available
-    try:
-        if "model_overview" not in extensions:
-            extensions.append("model_overview")
-    except Exception as exc:
-        # avoid hard-failing docs builds; make the reason visible in Sphinx logs
-        sphinx_logging.getLogger(__name__).warning(
-            "model_overview extension not loaded: %s", exc
-        )
+    # model_overview extension is loaded via extensions list
 
 
 # extension configuration
