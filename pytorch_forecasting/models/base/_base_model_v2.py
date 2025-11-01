@@ -99,7 +99,8 @@ class BaseModel(LightningModule):
         dataloader: DataLoader,
         mode: str = "prediction",
         return_info: Optional[list[str]] = None,
-        **kwargs,
+        mode_kwargs: dict[str, Any] = None,
+        trainer_kwargs: dict[str, Any] = None,
     ) -> dict[str, torch.Tensor]:
         """
         Generate predictions for new data using the `lightning.Trainer`.
@@ -112,16 +113,20 @@ class BaseModel(LightningModule):
             The prediction mode ("prediction", "quantiles", or "raw").
         return_info : list[str], optional
             A list of additional information to return.
-        **kwargs :
-            Additional arguments for `to_prediction`/`to_quantiles` or `Trainer`.
+        mode_kwargs : dict[str, Any]
+            Additional arguments for `to_prediction`/`to_quantiles`.
+        trainer_kwargs: dict[str, Any]
+            Additional arguments for `Trainer`.
 
         Returns
         -------
         dict[str, torch.Tensor]
             A dictionary of prediction results.
         """
-        trainer_kwargs = kwargs.pop("trainer_kwargs", {})
-        predict_callback = PredictCallback(mode=mode, return_info=return_info, **kwargs)
+        trainer_kwargs = trainer_kwargs or {}
+        predict_callback = PredictCallback(
+            mode=mode, return_info=return_info, mode_kwargs=mode_kwargs
+        )
 
         callbacks = trainer_kwargs.get("callbacks", [])
         if not isinstance(callbacks, list):
@@ -137,14 +142,20 @@ class BaseModel(LightningModule):
     def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
         """Converts raw model output to point forecasts."""
         # todo: add MultiLoss support
-        return self.loss.to_prediction(out["prediction"])
+        try:
+            out = self.loss.to_prediction(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self.loss.to_prediction(out["prediction"])
+        return out
 
     def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
         """Converts raw model output to quantile forecasts."""
         # todo: add MultiLoss support
-        quantiles = kwargs.get("quantiles")
-        q = quantiles or self.loss.quantiles
-        return self.loss.to_quantiles(out["prediction"], quantiles=q)
+        try:
+            out = self.loss.to_quantiles(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self.loss.to_quantiles(out["prediction"])
+        return out
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int

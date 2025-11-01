@@ -30,12 +30,12 @@ class PredictCallback(BasePredictionWriter):
         self,
         mode: str = "prediction",
         return_info: Optional[list[str]] = None,
-        **kwargs,
+        mode_kwargs: dict[str, Any] = None,
     ):
         super().__init__(write_interval="epoch")
         self.mode = mode
         self.return_info = return_info or []
-        self.kwargs = kwargs
+        self.mode_kwargs = mode_kwargs or {}
         self._reset_data()
 
     def _reset_data(self, result: bool = True):
@@ -60,9 +60,9 @@ class PredictCallback(BasePredictionWriter):
         if self.mode == "raw":
             processed_output = outputs
         elif self.mode == "prediction":
-            processed_output = pl_module.to_prediction(outputs, **self.kwargs)
+            processed_output = pl_module.to_prediction(outputs, **self.mode_kwargs)
         elif self.mode == "quantiles":
-            processed_output = pl_module.to_quantiles(outputs, **self.kwargs)
+            processed_output = pl_module.to_quantiles(outputs, **self.mode_kwargs)
         else:
             raise ValueError(f"Invalid prediction mode: {self.mode}")
 
