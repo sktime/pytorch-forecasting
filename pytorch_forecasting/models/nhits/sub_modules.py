@@ -103,21 +103,21 @@ class MLP(nn.Module):
     ):
         super().__init__()
 
-        activ = getattr(nn, activation)()
+        active = getattr(nn, activation)()
 
         self.layers: nn.Sequential
 
         layers = [
             nn.Linear(in_features, hidden_size[0]),
         ]
-        layers.append(activ)
+        layers.append(active)
 
         if dropout > 0:
             layers.append(nn.Dropout(p=dropout))
 
         for i in range(len(hidden_size) - 1):
             layers.append(nn.Linear(hidden_size[i], hidden_size[i + 1]))
-            layers.append(activ)
+            layers.append(active)
 
             if dropout > 0:
                 layers.append(nn.Dropout(p=dropout))

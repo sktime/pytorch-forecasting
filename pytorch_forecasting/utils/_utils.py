@@ -136,7 +136,7 @@ def create_mask(
     size: int, lengths: torch.LongTensor, inverse: bool = False
 ) -> torch.BoolTensor:
     """
-    Create boolean masks of shape len(lenghts) x size.
+    Create boolean masks of shape len(lengths) x size.
 
     An entry at (i, j) is True if lengths[i] > j.
 
@@ -363,7 +363,7 @@ def apply_to_list(obj: Union[list[Any], Any], func: Callable) -> Union[list[Any]
     Apply function to a list of objects or directly if passed value is not a list.
 
     This is useful if the passed object could be either a list to whose elements
-    a function needs to be applied or just an object to whicht to apply the function.
+    a function needs to be applied or just an object to which to apply the function.
 
     Args:
         obj (Union[List[Any], Any]): list/tuple on whose elements to apply function,
@@ -542,7 +542,7 @@ def masked_op(
     elif op == "sum":
         return summed
     else:
-        raise ValueError(f"unkown operation {op}")
+        raise ValueError(f"unknown operation {op}")
 
 
 def repr_class(

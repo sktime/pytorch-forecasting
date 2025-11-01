@@ -45,12 +45,12 @@ Release focusing on:
 * [BUG] Fix issue with `EncodeNormalizer(method='standard', center=False)` for scale value by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1902
 * [BUG] fixed memory leak in `TimeSeriesDataset` by using `@cached_property` and clean-up of index construction by @Vishnu-Rangiah in https://github.com/sktime/pytorch-forecasting/pull/1905
 * [BUG] Fix issue with `plot_prediction_actual_by_variable`  unsupported operand type(s) for *: 'numpy.ndarray' and 'Tensor' by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1903
-* [BUG] Correcly set lagged variables to known when lag >= horizon by @hubkrieb in https://github.com/sktime/pytorch-forecasting/pull/1910
+* [BUG] Correctly set lagged variables to known when lag >= horizon by @hubkrieb in https://github.com/sktime/pytorch-forecasting/pull/1910
 * [BUG] Updated base_model.py to account for importing error by @Himanshu-Verma-ds in https://github.com/sktime/pytorch-forecasting/pull/1488
 * [BUG][DOC] Fix documentation: pass loss argument to BaseModel in custom models tutorial example by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1931
 * [BUG] fix broken version inspection if package distribution has `None` name by @lohraspco in https://github.com/sktime/pytorch-forecasting/pull/1926
 * [BUG] fix sporadic `tkinter` failures in CI by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1937
-* [BUG] Device inconstency in `MQF2DistributionLoss` raising: RuntimeError: Expected all tensors to be on the same device by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1916
+* [BUG] Device inconsistency in `MQF2DistributionLoss` raising: RuntimeError: Expected all tensors to be on the same device by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1916
 * [BUG] fixed memory leak in BaseModel by detach some tensor by @zju-ys in https://github.com/sktime/pytorch-forecasting/pull/1924
 * [BUG] Fix `TimeSeriesDataSet` wrong inferred `tensor` `dtype` when `time_idx` is included in features by @cngmid in https://github.com/sktime/pytorch-forecasting/pull/1950
 * [BUG] standardize output format of xLSTMTime estimator for point predictions by @sanskarmodi8 in https://github.com/sktime/pytorch-forecasting/pull/1978
@@ -381,7 +381,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Changed
 
-- Dropping Python 3.6 suppport, adding 3.10 support (#479)
+- Dropping Python 3.6 support, adding 3.10 support (#479)
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
 - Changed transformation format for Encoders to dict from tuple (#949)
 
@@ -408,7 +408,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 - More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)
-- Fix concatentation of attention (#902)
+- Fix concatenation of attention (#902)
 
 ### Fixed
 
@@ -430,7 +430,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Fixed
 
 - Fix inattention mutation to `x_cont` (#732).
-- Compatability with pytorch-lightning 1.5 (#758)
+- Compatibility with pytorch-lightning 1.5 (#758)
 
 ### Contributors
 
@@ -517,7 +517,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Added
 
-- Adding a filter functionality to the timeseries datasset (#329)
+- Adding a filter functionality to the timeseries dataset (#329)
 - Add simple models such as LSTM, GRU and a MLP on the decoder (#380)
 - Allow usage of any torch optimizer such as SGD (#380)
 
@@ -586,7 +586,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Added
 
 - Adding support for multiple targets in the TimeSeriesDataSet (#199) and amended tutorials.
-- Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
+- Temporal fusion transformer and DeepAR with support for multiple targets (#199)
 - Check for non-finite values in TimeSeriesDataSet and better validate scaler argument (#220)
 - LSTM and GRU implementations that can handle zero-length sequences (#235)
 - Helpers for implementing auto-regressive models (#236)

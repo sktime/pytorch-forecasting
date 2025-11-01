@@ -60,7 +60,7 @@ class DLinear(TslibBaseModel):
     Notes
     -----
     [1] This implementation supports only continuous features. Categorical variables
-        will be accomodated in future versions.
+        will be accommodated in future versions.
     """
 
     @classmethod

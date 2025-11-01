@@ -62,7 +62,7 @@ class TimeXer(TslibBaseModel):
         for the target variable are used.
     exogenous_vars: Optional[list[str]], default=None
         List of exogenous variable names to be used in the model. If None, all historical values
-        for continous variables are used.
+        for continuous variables are used.
     logging_metrics: Optional[list[nn.Module]], default=None
         List of metrics to log during training, validation, and testing.
     optimizer: Optional[Union[Optimizer, str]], default='adam'
@@ -85,7 +85,7 @@ class TimeXer(TslibBaseModel):
 
     Notes
     -----
-    [1] This implementation handles only continous variables in the context length. Categorical variables
+    [1] This implementation handles only continuous variables in the context length. Categorical variables
         support will be added in the future.
     [2] The `TimeXer` model obtains many of its attributes from the `TslibBaseModel` class, which is a base class
         where a lot of the boiler plate code for metadata handling and model initialization is implemented.

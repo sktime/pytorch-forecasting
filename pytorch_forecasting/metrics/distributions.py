@@ -366,7 +366,7 @@ class MQF2DistributionLoss(DistributionLoss):
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             hidden_size (int, optional): hidden size per prediction length. Defaults to 4.
             es_num_samples (int, optional): Number of samples to calculate energy score.
-                If None, maximum liklihood is used as opposed to energy score for optimization.
+                If None, maximum likelihood is used as opposed to energy score for optimization.
                 Defaults to 50.
             beta (float, optional): between 0 and 1.0 to control how scale sensitive metric is (1=fully sensitive).
                 Defaults to 1.0.

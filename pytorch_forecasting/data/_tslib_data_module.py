@@ -1,5 +1,5 @@
 """
-Experimmental data module for integrating `tslib` time series deep learning library.
+Experimental data module for integrating `tslib` time series deep learning library.
 """
 
 from typing import Any, Optional, Union
@@ -135,7 +135,7 @@ class _TslibDataset(Dataset):
 
         processed_data = self.data_module._preprocess_data(series_idx)
 
-        continous_features = processed_data["features"]["continuous"]
+        continuous_features = processed_data["features"]["continuous"]
         categorical_features = processed_data["features"]["categorical"]
 
         end_idx = start_idx + context_length + prediction_length
@@ -144,17 +144,17 @@ class _TslibDataset(Dataset):
 
         metadata = self.data_module.metadata
 
-        history_cont = continous_features[history_indices]
+        history_cont = continuous_features[history_indices]
         history_cat = categorical_features[history_indices]
 
-        future_cont = continous_features[future_indices]
+        future_cont = continuous_features[future_indices]
         future_cat = categorical_features[future_indices]
 
         known_features = set(metadata["feature_names"]["known"])
         continuous_feature_names = metadata["feature_names"]["continuous"]
         categorical_feature_names = metadata["feature_names"]["categorical"]
 
-        # use masking to filter out known and unknow features.
+        # use masking to filter out known and unknown features.
         cont_known_mask = torch.tensor(
             [feat in known_features for feat in continuous_feature_names],
             dtype=torch.bool,
@@ -390,8 +390,8 @@ class TslibDataModule(LightningDataModule):
         if not has_continuous:
             warnings.warn(
                 "No continuous features found in the dataset. "
-                "Some models (TimeXer) requires continous features. "
-                "Consider adding continous featuresinto the dataset.",
+                "Some models (TimeXer) requires continuous features. "
+                "Consider adding continuous featuresinto the dataset.",
                 UserWarning,
             )
 
@@ -555,7 +555,7 @@ class TslibDataModule(LightningDataModule):
         -----
         - The target data `y` and features `x` are converted to torch.float32 tensors.
         - The timepoints before the cutoff time are masked off.
-        - Splits data into categorical and continous features, which are grouped based on the indices.
+        - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
 
         series = self.time_series_dataset[idx]
@@ -578,7 +578,7 @@ class TslibDataModule(LightningDataModule):
         else:
             features = torch.tensor(features, dtype=torch.float32)
 
-        # scaling and normlization
+        # scaling and normalization
         target_scale = {}
 
         categorical_features = (

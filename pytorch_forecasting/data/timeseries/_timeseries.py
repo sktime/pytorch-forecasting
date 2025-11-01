@@ -211,14 +211,14 @@ class TimeSeriesDataSet(Dataset):
     time_idx : str
         integer typed column denoting the time index within ``data``.
         This columns is used to determine the sequence of samples.
-        If there are no missings observations,
+        If there are no missing observations,
         the time index should increase by ``+1`` for each subsequent sample.
         The first time_idx for each series does not necessarily
         have to be ``0`` but any value is allowed.
 
     target : Union[str, list[str]]
         column(s) in ``data`` denoting the forecasting target.
-        Can be categorical or continous dtype.
+        Can be categorical or continuous dtype.
 
     group_ids : list[str]
         list of column names identifying a time series instance within ``data``
@@ -269,7 +269,7 @@ class TimeSeriesDataSet(Dataset):
         list of categorical variables that are not known in the future
         and change over time.
         entries can be also lists which are then encoded together
-        (e.g. useful for weather categories).
+        (e.g. useful for whether categories).
         Target variables should be included here, if categorical.
 
     time_varying_unknown_reals : list of str, optional, default=None
@@ -299,7 +299,7 @@ class TimeSeriesDataSet(Dataset):
         Missing values refer to gaps in the ``time_idx``, e.g. if a specific
         timeseries has only samples for 1, 2, 4, 5, the sample for 3 will be
         generated on-the-fly.
-        Allow missings does not deal with ``NA`` values. You should fill NA values
+        Allow missing does not deal with ``NA`` values. You should fill NA values
         before passing the dataframe to the TimeSeriesDataSet.
 
     lags : dict[str, list[int]], optional, default=None
@@ -358,7 +358,7 @@ class TimeSeriesDataSet(Dataset):
         Other options
         are :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer`,
         :py:class:`~pytorch_forecasting.data.encoders.GroupNormalizer`
-        or scikit-learn's ``StandarScaler()``,
+        or scikit-learn's ``StandardScaler()``,
         ``RobustScaler()`` or ``None`` for using no normalizer / normalizer
         with ``center=0`` and ``scale=1``
         (``method="identity"``).
@@ -380,7 +380,7 @@ class TimeSeriesDataSet(Dataset):
         per time series (i.e. only from the latest provided samples).
         Effectively, this will select each time series identified by ``group_ids``
         the last ``max_prediction_length`` samples of each time series as
-        prediction samples and everthing previous up to ``max_encoder_length``
+        prediction samples and everything previous up to ``max_encoder_length``
         samples as encoder samples.
         If False, the TimeSeriesDataSet will create subsequences by sliding a
         window over the data samples.
@@ -395,13 +395,13 @@ class TimeSeriesDataSet(Dataset):
 
     # todo: integrate graphs
     # - add option to pass networkx graph to the dataset -> clearly defined
-    # - create method to create networkx graph for hierachies -> clearly defined
+    # - create method to create networkx graph for hierarchies -> clearly defined
     # - convert networkx graph to pytorch geometric graph
     # - create sampler to sample from the graph
     # - create option in `to_dataloader` method to use a graph sampler
     #     -> automatically changing collate function which returns graphs
     #     -> should incorporate entire dataset but be compatible with current approach
-    # - integrate hierachical loss somehow into loss metrics
+    # - integrate hierarchical loss somehow into loss metrics
 
     # how to get there:
     # - add networkx and pytorch_geometric to requirements BUT as extras
@@ -824,7 +824,7 @@ class TimeSeriesDataSet(Dataset):
         """
         vars = {}
         for name in self._lags:
-            vars.update({lag_name: name for lag_name in self._get_lagged_names(name)})
+            vars.update(dict.fromkeys(self._get_lagged_names(name), name))
         return vars
 
     @cached_property
@@ -958,7 +958,7 @@ class TimeSeriesDataSet(Dataset):
                 normalizers.append(NaNLabelEncoder())
                 if self.add_target_scales:
                     warnings.warn(
-                        "Target scales will be only added for continous targets",
+                        "Target scales will be only added for continuous targets",
                         UserWarning,
                     )
             else:  # real
@@ -1141,7 +1141,7 @@ class TimeSeriesDataSet(Dataset):
 
         # encode them
         for name in dict.fromkeys(group_ids_to_encode + self.flat_categoricals):
-            # targets and its lagged versions are handled separetely
+            # targets and its lagged versions are handled separately
             if name not in self.target_names and name not in self.lagged_targets:
                 data[name] = self.transform_values(
                     name,
@@ -1426,7 +1426,7 @@ class TimeSeriesDataSet(Dataset):
         Returns
         -------
         dict[str, torch.Tensor]
-            dictionary of tensors for continous, categorical data, groups, target and
+            dictionary of tensors for continuous, categorical data, groups, target and
             time index
         """
 
@@ -1555,13 +1555,13 @@ class TimeSeriesDataSet(Dataset):
         """
         groups = {}
         for group_name, sublist in self._variable_groups.items():
-            groups.update({name: group_name for name in sublist})
+            groups.update(dict.fromkeys(sublist, group_name))
         return groups
 
     @property
     def reals(self) -> list[str]:
         """
-        Continous variables as used for modelling.
+        Continuous variables as used for modelling.
 
         Returns:
             list[str]: list of variables
@@ -1780,7 +1780,7 @@ class TimeSeriesDataSet(Dataset):
         # therefore we iterate until it is found
         if (df_index["time_diff_to_next"] != 1).any():
             msg = (
-                "Time difference between steps has been idenfied as larger than 1 - "
+                "Time difference between steps has been identified as larger than 1 - "
                 "set allow_missing_timesteps=True"
             )
             assert self.allow_missing_timesteps, msg
@@ -2569,7 +2569,7 @@ class TimeSeriesDataSet(Dataset):
                 float tensor of scaled continuous variables for encoder
             * encoder_target : float (batch_size x n_encoder_time_steps) or list thereof
                 if list, each entry for a different target.
-                float tensor with unscaled continous target
+                float tensor with unscaled continuous target
                 or encoded categorical target,
                 list of tensors for multiple targets
             * encoder_lengths : long (batch_size)
@@ -2581,7 +2581,7 @@ class TimeSeriesDataSet(Dataset):
                 float tensor of scaled continuous variables for decoder
             * decoder_target : float (batch_size x n_decoder_time_steps) or list thereof
                 if list, with each entry for a different target.
-                float tensor with unscaled continous target or encoded categorical
+                float tensor with unscaled continuous target or encoded categorical
                 target for decoder
                 - this corresponds to first entry of ``y``,
                 list of tensors for multiple targets
@@ -2613,7 +2613,8 @@ class TimeSeriesDataSet(Dataset):
 
             from torch.utils.data import WeightedRandomSampler
 
-            # length of probabilties for sampler have to be equal to the length of index
+            # length of probabilities for sampler have to be equal
+            # to the length of index
             probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
             sampler = WeightedRandomSampler(probabilities, len(probabilities))
             dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)

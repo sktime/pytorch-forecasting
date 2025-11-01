@@ -27,7 +27,7 @@ Creating datasets
   200 for the decoder length. Consider that longer lengths increase the time it takes
   for your model to train.
 
-  The ratio of decoder and encoder length depends on the used alogrithm.
+  The ratio of decoder and encoder length depends on the used algorithm.
   Look at :ref:`documentation <models>` to get clues.
 
 * **It takes very long to create the dataset. Why is that?**
@@ -61,7 +61,7 @@ Training models
 
 * **Why does the learning rate finder not finish?**
 
-  First, ensure that the trainer does not have the keword ``fast_dev_run=True`` and
+  First, ensure that the trainer does not have the keyword ``fast_dev_run=True`` and
   ``limit_train_batches=...`` set. Second, use a target normalizer in your training dataset.
   Third, increase the ``early_stop_threshold`` argument
   of the ``lr_find`` method to a large number.

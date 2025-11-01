@@ -92,7 +92,7 @@ class NHiTS(BaseModelWithCovariates):
                 Defaults to hidden_size.
             loss: loss to optimize. Defaults to MASE(). QuantileLoss is also supported
             shared_weights (bool, optional): if True, weights of blocks are shared in each stack. Defaults to True.
-            naive_level (bool, optional): if True, native forecast of last observation is added at the beginnging.
+            naive_level (bool, optional): if True, native forecast of last observation is added at the beginning.
                 Defaults to True.
             initialization (str, optional): Initialization method. One of ['orthogonal', 'he_uniform', 'glorot_uniform',
                 'glorot_normal', 'lecun_normal']. Defaults to "lecun_normal".
@@ -129,7 +129,7 @@ class NHiTS(BaseModelWithCovariates):
                 variable which is the key in the dictionary
             x_reals: order of continuous variables in tensor passed to forward function
             x_categoricals: order of categorical variables in tensor passed to forward function
-            hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical
+            hidden_continuous_size: default for hidden size for processing continuous variables (similar to categorical
                 embedding size)
             hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
                 (fallback to hidden_continuous_size if index is not in dictionary)
@@ -515,7 +515,7 @@ class NHiTS(BaseModelWithCovariates):
         """
         Plot interpretation.
 
-        Plot two pannels: prediction and backcast vs actuals and
+        Plot two panels: prediction and backcast vs actuals and
         decomposition of prediction into different block predictions which capture different frequencies.
 
         Args:

@@ -93,19 +93,19 @@ class NBeatsKAN(NBeatsAdapter):
         Parameter for KAN layer. the scale of noise injected at initialization.
         Default: 0.1.
     scale_base_mu : float
-        Parameter for KAN layer. the scale of the residual function b(x) is intialized
-        to be N(scale_base_mu, scale_base_sigma^2). Deafult: 0.0.
+        Parameter for KAN layer. the scale of the residual function b(x) is initialized
+        to be N(scale_base_mu, scale_base_sigma^2). Default: 0.0.
     scale_base_sigma : float
-        Parameter for KAN layer. the scale of the residual function b(x) is intialized
-        to be N(scale_base_mu, scale_base_sigma^2). Deafult: 1.0.
+        Parameter for KAN layer. the scale of the residual function b(x) is initialized
+        to be N(scale_base_mu, scale_base_sigma^2). Default: 1.0.
     scale_sp : float
-        Parameter for KAN layer. the scale of the base function spline(x). Deafult: 1.0.
+        Parameter for KAN layer. the scale of the base function spline(x). Default: 1.0.
     base_fun : callable
         Parameter for KAN layer. residual function b(x). Default: None.
     grid_eps : float
         Parameter for KAN layer. When grid_eps = 1, the grid is uniform;
         when grid_eps = 0, the grid is partitioned using percentiles of samples.
-        0 < grid_eps < 1 interpolates between the two extremes. Deafult: 0.02.
+        0 < grid_eps < 1 interpolates between the two extremes. Default: 0.02.
     grid_range : list of int
         Parameter for KAN layer. list/np.array of shape (2,). setting the range of grids.
         Default: None.

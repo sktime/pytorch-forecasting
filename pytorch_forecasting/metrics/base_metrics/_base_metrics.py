@@ -55,9 +55,9 @@ class Metric(LightningMetric):
 
     def compute(self) -> torch.Tensor:
         """
-        Abstract method that calcualtes metric
+        Abstract method that calculates metric
 
-        Should be overriden in derived classes
+        Should be overridden in derived classes
 
         Args:
             y_pred: network output
@@ -265,7 +265,7 @@ def convert_torchmetric_to_pytorch_forecasting_metric(
 
 class MultiLoss(LightningMetric):
     """
-    Metric that can be used with muliple metrics.
+    Metric that can be used with multiple metrics.
     """
 
     full_state_update = False
@@ -712,7 +712,7 @@ class AggregationMetric(Metric):
     def __init__(self, metric: Metric, **kwargs):
         """
         Args:
-            metric (Metric): metric which to calculate on aggreation.
+            metric (Metric): metric which to calculate on aggregation.
         """
         super().__init__(**kwargs)
         self.metric = metric
@@ -917,7 +917,7 @@ class MultiHorizonMetric(Metric):
         Mask losses.
 
         Args:
-            losses (torch.Tensor): total loss. first dimenion are samples, second timesteps
+            losses (torch.Tensor): total loss. the first dimension indexes samples, the second indexes timesteps
             lengths (torch.Tensor): total length
             reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
 
@@ -950,7 +950,7 @@ class MultiHorizonMetric(Metric):
         Reduce loss.
 
         Args:
-            losses (torch.Tensor): total loss. first dimenion are samples, second timesteps
+            losses (torch.Tensor): total loss. the first dimension indexes samples, the second indexes timesteps
             lengths (torch.Tensor): total length
             reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
 
@@ -1067,7 +1067,7 @@ class DistributionLoss(MultiHorizonMetric):
         Sample from distribution.
 
         Args:
-            y_pred: prediction output of network (shape batch_size x n_timesteps x n_paramters)
+            y_pred: prediction output of network (shape batch_size x n_timesteps x n_parameters)
             n_samples (int): number of samples to draw
 
         Returns:
@@ -1124,7 +1124,7 @@ class MultivariateDistributionLoss(DistributionLoss):
         Sample from distribution.
 
         Args:
-            y_pred: prediction output of network (shape batch_size x n_timesteps x n_paramters)
+            y_pred: prediction output of network (shape batch_size x n_timesteps x n_parameters)
             n_samples (int): number of samples to draw
 
         Returns:

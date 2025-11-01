@@ -232,7 +232,7 @@ class MASE(MultiHorizonMetric):
 
     @staticmethod
     def calculate_scaling(target, lengths, encoder_target, encoder_lengths):
-        # calcualte mean(abs(diff(targets)))
+        # calculate mean(abs(diff(targets)))
         eps = 1e-6
         batch_size = target.size(0)
         total_lengths = lengths + encoder_lengths

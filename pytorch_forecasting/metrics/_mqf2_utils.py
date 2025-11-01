@@ -352,7 +352,7 @@ class MQF2Distribution(Distribution):
         ----------
         z
             A batch of time series with shape
-            (batch_size, context_length + prediciton_length - 1)
+            (batch_size, context_length + prediction_length - 1)
         Returns
         -------
         loss
