@@ -824,7 +824,7 @@ class TimeSeriesDataSet(Dataset):
         """
         vars = {}
         for name in self._lags:
-            vars.update({lag_name: name for lag_name in self._get_lagged_names(name)})
+            vars.update(dict.fromkeys(self._get_lagged_names(name), name))
         return vars
 
     @cached_property
@@ -1555,7 +1555,7 @@ class TimeSeriesDataSet(Dataset):
         """
         groups = {}
         for group_name, sublist in self._variable_groups.items():
-            groups.update({name: group_name for name in sublist})
+            groups.update(dict.fromkeys(sublist, group_name))
         return groups
 
     @property
@@ -2613,7 +2613,8 @@ class TimeSeriesDataSet(Dataset):
 
             from torch.utils.data import WeightedRandomSampler
 
-            # length of probabilities for sampler have to be equal to the length of index
+            # length of probabilities for sampler have to be equal
+            # to the length of index
             probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
             sampler = WeightedRandomSampler(probabilities, len(probabilities))
             dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)

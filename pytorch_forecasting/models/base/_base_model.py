@@ -1942,7 +1942,7 @@ class BaseModelWithCovariates(BaseModel):
         """Mapping of categorical variables to categorical groups"""
         groups = {}
         for group_name, sublist in self.hparams.categorical_groups.items():
-            groups.update({name: group_name for name in sublist})
+            groups.update(dict.fromkeys(sublist, group_name))
         return groups
 
     @classmethod

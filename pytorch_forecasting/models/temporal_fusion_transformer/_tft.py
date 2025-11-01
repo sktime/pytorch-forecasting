@@ -250,9 +250,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         self.static_variable_selection = VariableSelectionNetwork(
             input_sizes=static_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={
-                name: True for name in self.hparams.static_categoricals
-            },
+            input_embedding_flags=dict.fromkeys(self.hparams.static_categoricals, True),
             dropout=self.hparams.dropout,
             prescalers=self.prescalers,
         )
@@ -306,9 +304,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         self.encoder_variable_selection = VariableSelectionNetwork(
             input_sizes=encoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={
-                name: True for name in self.hparams.time_varying_categoricals_encoder
-            },
+            input_embedding_flags=dict.fromkeys(
+                self.hparams.time_varying_categoricals_encoder,
+                True
+            ),
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
@@ -322,9 +321,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         self.decoder_variable_selection = VariableSelectionNetwork(
             input_sizes=decoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={
-                name: True for name in self.hparams.time_varying_categoricals_decoder
-            },
+            input_embedding_flags=dict.fromkeys(
+                self.hparams.time_varying_categoricals_decoder,
+                True
+            ),
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
