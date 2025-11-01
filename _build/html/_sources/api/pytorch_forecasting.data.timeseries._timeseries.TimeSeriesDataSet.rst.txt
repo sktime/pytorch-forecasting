@@ -1,0 +1,118 @@
+TimeSeriesDataSet
+=================
+
+.. currentmodule:: pytorch_forecasting.data.timeseries._timeseries
+
+
+.. autoclass:: TimeSeriesDataSet
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TimeSeriesDataSet.calculate_decoder_length
+      ~TimeSeriesDataSet.filter
+      ~TimeSeriesDataSet.from_dataset
+      ~TimeSeriesDataSet.from_parameters
+      ~TimeSeriesDataSet.get_parameters
+      ~TimeSeriesDataSet.get_transformer
+      ~TimeSeriesDataSet.load
+      ~TimeSeriesDataSet.plot_randomization
+      ~TimeSeriesDataSet.reset_overwrite_values
+      ~TimeSeriesDataSet.save
+      ~TimeSeriesDataSet.set_overwrite_values
+      ~TimeSeriesDataSet.to_dataloader
+      ~TimeSeriesDataSet.transform_values
+      ~TimeSeriesDataSet.x_to_index
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TimeSeriesDataSet.categoricals
+      ~TimeSeriesDataSet.decoded_index
+      ~TimeSeriesDataSet.dropout_categoricals
+      ~TimeSeriesDataSet.flat_categoricals
+      ~TimeSeriesDataSet.lagged_targets
+      ~TimeSeriesDataSet.lagged_variables
+      ~TimeSeriesDataSet.max_lag
+      ~TimeSeriesDataSet.min_lag
+      ~TimeSeriesDataSet.multi_target
+      ~TimeSeriesDataSet.reals
+      ~TimeSeriesDataSet.target_names
+      ~TimeSeriesDataSet.target_normalizers
+      ~TimeSeriesDataSet.variable_to_group_mapping
+   
+   

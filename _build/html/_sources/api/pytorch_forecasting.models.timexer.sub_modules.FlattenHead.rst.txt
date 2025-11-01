@@ -1,0 +1,33 @@
+FlattenHead
+===========
+
+.. currentmodule:: pytorch_forecasting.models.timexer.sub_modules
+
+
+.. autoclass:: FlattenHead
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FlattenHead.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,39 @@
+BetaDistributionLoss
+====================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: BetaDistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BetaDistributionLoss.loss
+      ~BetaDistributionLoss.map_x_to_distribution
+      ~BetaDistributionLoss.rescale_parameters
+   
+   
+
+   
+    
+   
+   
+   
+   

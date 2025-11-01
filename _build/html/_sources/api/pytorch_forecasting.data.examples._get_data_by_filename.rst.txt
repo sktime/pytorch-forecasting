@@ -1,0 +1,6 @@
+\_get\_data\_by\_filename
+=========================
+
+.. currentmodule:: pytorch_forecasting.data.examples
+
+.. autofunction:: _get_data_by_filename

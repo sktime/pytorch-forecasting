@@ -1,0 +1,34 @@
+examples
+========
+
+.. automodule:: pytorch_forecasting.data.examples
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      _get_data_by_filename
+      generate_ar_data
+      get_stallion_data
+      load_toydata
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

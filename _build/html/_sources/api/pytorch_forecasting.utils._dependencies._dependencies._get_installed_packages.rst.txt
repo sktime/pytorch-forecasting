@@ -1,0 +1,6 @@
+\_get\_installed\_packages
+==========================
+
+.. currentmodule:: pytorch_forecasting.utils._dependencies._dependencies
+
+.. autofunction:: _get_installed_packages

@@ -1,0 +1,39 @@
+QuantileLoss
+============
+
+.. currentmodule:: pytorch_forecasting.metrics.quantile
+
+
+.. autoclass:: QuantileLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~QuantileLoss.loss
+      ~QuantileLoss.to_prediction
+      ~QuantileLoss.to_quantiles
+   
+   
+
+   
+    
+   
+   
+   
+   

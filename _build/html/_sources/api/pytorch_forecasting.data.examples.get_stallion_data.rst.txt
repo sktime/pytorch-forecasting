@@ -1,0 +1,6 @@
+get\_stallion\_data
+===================
+
+.. currentmodule:: pytorch_forecasting.data.examples
+
+.. autofunction:: get_stallion_data

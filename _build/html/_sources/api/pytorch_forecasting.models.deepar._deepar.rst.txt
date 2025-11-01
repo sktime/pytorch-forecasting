@@ -1,0 +1,31 @@
+\_deepar
+========
+
+.. automodule:: pytorch_forecasting.models.deepar._deepar
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      DeepAR
+   
+   
+
+   
+   
+   
+
+
+

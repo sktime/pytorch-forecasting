@@ -1,0 +1,33 @@
+Encoder
+=======
+
+.. currentmodule:: pytorch_forecasting.models.timexer.sub_modules
+
+
+.. autoclass:: Encoder
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Encoder.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

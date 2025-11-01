@@ -1,0 +1,35 @@
+InitialParameterRepresenterMixIn
+================================
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+
+.. autoclass:: InitialParameterRepresenterMixIn
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~InitialParameterRepresenterMixIn.extra_repr
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,114 @@
+BaseModel
+=========
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+
+.. autoclass:: BaseModel
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BaseModel.configure_optimizers
+      ~BaseModel.create_log
+      ~BaseModel.deduce_default_output_parameters
+      ~BaseModel.forward
+      ~BaseModel.from_dataset
+      ~BaseModel.log
+      ~BaseModel.log_gradient_flow
+      ~BaseModel.log_metrics
+      ~BaseModel.log_prediction
+      ~BaseModel.on_after_backward
+      ~BaseModel.on_epoch_end
+      ~BaseModel.on_load_checkpoint
+      ~BaseModel.on_save_checkpoint
+      ~BaseModel.on_test_epoch_end
+      ~BaseModel.on_train_epoch_end
+      ~BaseModel.on_validation_epoch_end
+      ~BaseModel.plot_prediction
+      ~BaseModel.predict
+      ~BaseModel.predict_dependency
+      ~BaseModel.predict_step
+      ~BaseModel.size
+      ~BaseModel.step
+      ~BaseModel.test_step
+      ~BaseModel.to_prediction
+      ~BaseModel.to_quantiles
+      ~BaseModel.training_step
+      ~BaseModel.transform_output
+      ~BaseModel.validation_step
+   
+   
+
+   
+    
+   
+   
+   
+   

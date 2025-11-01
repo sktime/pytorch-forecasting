@@ -20,3 +20,7 @@ repos:
       - id: nbqa-black
       - id: nbqa-ruff
       - id: nbqa-check-ast
+
+exclude: |
+  ^_build/
+  ^\.venv311/

@@ -1,0 +1,51 @@
+CompositeMetric
+===============
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: CompositeMetric
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CompositeMetric.compute
+      ~CompositeMetric.forward
+      ~CompositeMetric.persistent
+      ~CompositeMetric.reset
+      ~CompositeMetric.to_prediction
+      ~CompositeMetric.to_quantiles
+      ~CompositeMetric.update
+   
+   
+
+   
+    
+   
+   
+   
+   

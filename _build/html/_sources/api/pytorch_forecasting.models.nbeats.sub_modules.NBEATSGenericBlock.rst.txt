@@ -1,0 +1,33 @@
+NBEATSGenericBlock
+==================
+
+.. currentmodule:: pytorch_forecasting.models.nbeats.sub_modules
+
+
+.. autoclass:: NBEATSGenericBlock
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NBEATSGenericBlock.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

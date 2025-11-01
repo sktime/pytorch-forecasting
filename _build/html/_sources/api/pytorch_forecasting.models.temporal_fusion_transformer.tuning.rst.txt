@@ -1,0 +1,32 @@
+tuning
+======
+
+.. automodule:: pytorch_forecasting.models.temporal_fusion_transformer.tuning
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      _lazywhere
+      optimize_hyperparameters
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

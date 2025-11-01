@@ -1,0 +1,33 @@
+ScaledDotProductAttention
+=========================
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+
+.. autoclass:: ScaledDotProductAttention
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScaledDotProductAttention.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

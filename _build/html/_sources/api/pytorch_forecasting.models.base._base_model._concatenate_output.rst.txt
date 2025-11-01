@@ -1,0 +1,6 @@
+\_concatenate\_output
+=====================
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model
+
+.. autofunction:: _concatenate_output

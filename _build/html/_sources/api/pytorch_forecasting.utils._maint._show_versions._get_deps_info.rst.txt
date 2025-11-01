@@ -1,0 +1,6 @@
+\_get\_deps\_info
+=================
+
+.. currentmodule:: pytorch_forecasting.utils._maint._show_versions
+
+.. autofunction:: _get_deps_info

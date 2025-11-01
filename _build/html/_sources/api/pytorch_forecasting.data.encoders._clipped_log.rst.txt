@@ -1,0 +1,6 @@
+\_clipped\_log
+==============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+.. autofunction:: _clipped_log

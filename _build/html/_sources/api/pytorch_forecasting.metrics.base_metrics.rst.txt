@@ -1,0 +1,33 @@
+base\_metrics
+=============
+
+.. automodule:: pytorch_forecasting.metrics.base_metrics
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.metrics.base_metrics._base_metrics
+   pytorch_forecasting.metrics.base_metrics._base_object
+

@@ -1,0 +1,6 @@
+padded\_stack
+=============
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: padded_stack

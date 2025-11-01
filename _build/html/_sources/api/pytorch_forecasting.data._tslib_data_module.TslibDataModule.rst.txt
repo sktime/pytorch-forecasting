@@ -1,0 +1,109 @@
+TslibDataModule
+===============
+
+.. currentmodule:: pytorch_forecasting.data._tslib_data_module
+
+
+.. autoclass:: TslibDataModule
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TslibDataModule.collate_fn
+      ~TslibDataModule.from_datasets
+      ~TslibDataModule.load_from_checkpoint
+      ~TslibDataModule.load_state_dict
+      ~TslibDataModule.on_after_batch_transfer
+      ~TslibDataModule.on_before_batch_transfer
+      ~TslibDataModule.on_exception
+      ~TslibDataModule.predict_dataloader
+      ~TslibDataModule.prepare_data
+      ~TslibDataModule.save_hyperparameters
+      ~TslibDataModule.setup
+      ~TslibDataModule.state_dict
+      ~TslibDataModule.teardown
+      ~TslibDataModule.test_dataloader
+      ~TslibDataModule.train_dataloader
+      ~TslibDataModule.transfer_batch_to_device
+      ~TslibDataModule.val_dataloader
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TslibDataModule.CHECKPOINT_HYPER_PARAMS_KEY
+      ~TslibDataModule.CHECKPOINT_HYPER_PARAMS_NAME
+      ~TslibDataModule.CHECKPOINT_HYPER_PARAMS_TYPE
+      ~TslibDataModule.hparams
+      ~TslibDataModule.hparams_initial
+      ~TslibDataModule.metadata
+      ~TslibDataModule.name
+   
+   

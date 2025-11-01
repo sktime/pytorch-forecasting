@@ -1,0 +1,31 @@
+\_tide\_v2
+==========
+
+.. automodule:: pytorch_forecasting.models.tide._tide_dsipts._tide_v2
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      TIDE
+   
+   
+
+   
+   
+   
+
+
+

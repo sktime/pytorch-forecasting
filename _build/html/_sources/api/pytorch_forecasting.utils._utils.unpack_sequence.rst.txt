@@ -1,0 +1,6 @@
+unpack\_sequence
+================
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: unpack_sequence

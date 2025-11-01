@@ -1,0 +1,6 @@
+profile
+=======
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: profile

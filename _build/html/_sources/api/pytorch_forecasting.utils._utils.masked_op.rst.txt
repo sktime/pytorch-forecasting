@@ -1,0 +1,6 @@
+masked\_op
+==========
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: masked_op

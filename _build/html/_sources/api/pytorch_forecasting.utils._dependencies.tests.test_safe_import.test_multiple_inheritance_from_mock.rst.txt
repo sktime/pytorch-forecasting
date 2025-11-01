@@ -1,0 +1,6 @@
+test\_multiple\_inheritance\_from\_mock
+=======================================
+
+.. currentmodule:: pytorch_forecasting.utils._dependencies.tests.test_safe_import
+
+.. autofunction:: test_multiple_inheritance_from_mock

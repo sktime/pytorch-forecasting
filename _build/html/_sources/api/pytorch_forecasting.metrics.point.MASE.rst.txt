@@ -1,0 +1,39 @@
+MASE
+====
+
+.. currentmodule:: pytorch_forecasting.metrics.point
+
+
+.. autoclass:: MASE
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MASE.calculate_scaling
+      ~MASE.loss
+      ~MASE.update
+   
+   
+
+   
+    
+   
+   
+   
+   

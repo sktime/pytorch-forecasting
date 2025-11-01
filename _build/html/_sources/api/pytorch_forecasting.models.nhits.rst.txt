@@ -1,0 +1,34 @@
+nhits
+=====
+
+.. automodule:: pytorch_forecasting.models.nhits
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.nhits._nhits
+   pytorch_forecasting.models.nhits._nhits_pkg
+   pytorch_forecasting.models.nhits.sub_modules
+

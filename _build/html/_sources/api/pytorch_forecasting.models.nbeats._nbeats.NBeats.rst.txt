@@ -1,0 +1,45 @@
+NBeats
+======
+
+.. currentmodule:: pytorch_forecasting.models.nbeats._nbeats
+
+
+.. autoclass:: NBeats
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NBeats.forward
+      ~NBeats.from_dataset
+      ~NBeats.log_interpretation
+      ~NBeats.plot_interpretation
+      ~NBeats.step
+   
+   
+
+   
+    
+   
+   
+   
+   

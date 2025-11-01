@@ -1,0 +1,6 @@
+get\_embedding\_size
+====================
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: get_embedding_size

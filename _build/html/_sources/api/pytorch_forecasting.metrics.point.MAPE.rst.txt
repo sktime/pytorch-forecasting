@@ -1,0 +1,33 @@
+MAPE
+====
+
+.. currentmodule:: pytorch_forecasting.metrics.point
+
+
+.. autoclass:: MAPE
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MAPE.loss
+   
+   
+
+   
+    
+   
+   
+   
+   

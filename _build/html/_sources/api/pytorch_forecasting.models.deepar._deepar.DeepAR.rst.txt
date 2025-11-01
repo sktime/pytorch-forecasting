@@ -1,0 +1,54 @@
+DeepAR
+======
+
+.. currentmodule:: pytorch_forecasting.models.deepar._deepar
+
+
+.. autoclass:: DeepAR
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DeepAR.construct_input_vector
+      ~DeepAR.create_log
+      ~DeepAR.decode
+      ~DeepAR.decode_all
+      ~DeepAR.encode
+      ~DeepAR.forward
+      ~DeepAR.from_dataset
+      ~DeepAR.predict
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,33 @@
+SMAPE
+=====
+
+.. currentmodule:: pytorch_forecasting.metrics.point
+
+
+.. autoclass:: SMAPE
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SMAPE.loss
+   
+   
+
+   
+    
+   
+   
+   
+   

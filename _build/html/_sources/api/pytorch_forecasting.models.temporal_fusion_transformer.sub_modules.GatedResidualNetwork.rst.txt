@@ -1,0 +1,36 @@
+GatedResidualNetwork
+====================
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+
+.. autoclass:: GatedResidualNetwork
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GatedResidualNetwork.forward
+      ~GatedResidualNetwork.init_weights
+   
+   
+
+   
+    
+   
+   
+   
+   

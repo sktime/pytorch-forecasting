@@ -1,0 +1,55 @@
+classproperty
+=============
+
+.. currentmodule:: pytorch_forecasting.utils._classproperty
+
+
+.. autoclass:: classproperty
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~classproperty.deleter
+      ~classproperty.getter
+      ~classproperty.setter
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~classproperty.fdel
+      ~classproperty.fget
+      ~classproperty.fset
+   
+   

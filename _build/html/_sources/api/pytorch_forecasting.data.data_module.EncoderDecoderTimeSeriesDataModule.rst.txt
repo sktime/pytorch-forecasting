@@ -1,0 +1,109 @@
+EncoderDecoderTimeSeriesDataModule
+==================================
+
+.. currentmodule:: pytorch_forecasting.data.data_module
+
+
+.. autoclass:: EncoderDecoderTimeSeriesDataModule
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~EncoderDecoderTimeSeriesDataModule.collate_fn
+      ~EncoderDecoderTimeSeriesDataModule.from_datasets
+      ~EncoderDecoderTimeSeriesDataModule.load_from_checkpoint
+      ~EncoderDecoderTimeSeriesDataModule.load_state_dict
+      ~EncoderDecoderTimeSeriesDataModule.on_after_batch_transfer
+      ~EncoderDecoderTimeSeriesDataModule.on_before_batch_transfer
+      ~EncoderDecoderTimeSeriesDataModule.on_exception
+      ~EncoderDecoderTimeSeriesDataModule.predict_dataloader
+      ~EncoderDecoderTimeSeriesDataModule.prepare_data
+      ~EncoderDecoderTimeSeriesDataModule.save_hyperparameters
+      ~EncoderDecoderTimeSeriesDataModule.setup
+      ~EncoderDecoderTimeSeriesDataModule.state_dict
+      ~EncoderDecoderTimeSeriesDataModule.teardown
+      ~EncoderDecoderTimeSeriesDataModule.test_dataloader
+      ~EncoderDecoderTimeSeriesDataModule.train_dataloader
+      ~EncoderDecoderTimeSeriesDataModule.transfer_batch_to_device
+      ~EncoderDecoderTimeSeriesDataModule.val_dataloader
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EncoderDecoderTimeSeriesDataModule.CHECKPOINT_HYPER_PARAMS_KEY
+      ~EncoderDecoderTimeSeriesDataModule.CHECKPOINT_HYPER_PARAMS_NAME
+      ~EncoderDecoderTimeSeriesDataModule.CHECKPOINT_HYPER_PARAMS_TYPE
+      ~EncoderDecoderTimeSeriesDataModule.hparams
+      ~EncoderDecoderTimeSeriesDataModule.hparams_initial
+      ~EncoderDecoderTimeSeriesDataModule.metadata
+      ~EncoderDecoderTimeSeriesDataModule.name
+   
+   

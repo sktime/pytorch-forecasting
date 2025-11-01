@@ -1,0 +1,33 @@
+TFT
+===
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer._tft_v2
+
+
+.. autoclass:: TFT
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TFT.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

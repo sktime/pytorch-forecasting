@@ -1,0 +1,33 @@
+dlinear
+=======
+
+.. automodule:: pytorch_forecasting.models.dlinear
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.dlinear._dlinear_pkg_v2
+   pytorch_forecasting.models.dlinear._dlinear_v2
+

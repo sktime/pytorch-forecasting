@@ -1,0 +1,39 @@
+SequentialNet
+=============
+
+.. currentmodule:: pytorch_forecasting.metrics._mqf2_utils
+
+
+.. autoclass:: SequentialNet
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SequentialNet.energy_score
+      ~SequentialNet.es_sample
+      ~SequentialNet.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

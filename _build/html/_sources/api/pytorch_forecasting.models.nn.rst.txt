@@ -1,0 +1,33 @@
+nn
+==
+
+.. automodule:: pytorch_forecasting.models.nn
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.nn.embeddings
+   pytorch_forecasting.models.nn.rnn
+

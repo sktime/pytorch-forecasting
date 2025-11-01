@@ -1,0 +1,1076 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pytorch_forecasting.models.deepar._deepar &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pytorch_forecasting/models/deepar/_deepar';</script>
+    <link rel="icon" href="../../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../../../../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pytorch_forecasting.models.deepar._deepar</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pytorch_forecasting.models.deepar._deepar</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">`DeepAR: Probabilistic forecasting with autoregressive recurrent networks</span>
+<span class="sd">&lt;https://www.sciencedirect.com/science/article/pii/S0169207019301888&gt;`_</span>
+<span class="sd">which is the one of the most popular forecasting algorithms and is often used as a baseline</span>
+<span class="sd">&quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data.dataloader</span> <span class="kn">import</span> <span class="n">DataLoader</span>
+
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data.encoders</span> <span class="kn">import</span> <span class="n">MultiNormalizer</span><span class="p">,</span> <span class="n">NaNLabelEncoder</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data.timeseries</span> <span class="kn">import</span> <span class="n">TimeSeriesDataSet</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.metrics</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MAE</span><span class="p">,</span>
+    <span class="n">MAPE</span><span class="p">,</span>
+    <span class="n">MASE</span><span class="p">,</span>
+    <span class="n">RMSE</span><span class="p">,</span>
+    <span class="n">SMAPE</span><span class="p">,</span>
+    <span class="n">DistributionLoss</span><span class="p">,</span>
+    <span class="n">MultiLoss</span><span class="p">,</span>
+    <span class="n">MultivariateDistributionLoss</span><span class="p">,</span>
+    <span class="n">NormalDistributionLoss</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.base</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AutoRegressiveBaseModelWithCovariates</span><span class="p">,</span>
+    <span class="n">Prediction</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.models.nn</span> <span class="kn">import</span> <span class="n">HiddenState</span><span class="p">,</span> <span class="n">MultiEmbedding</span><span class="p">,</span> <span class="n">get_rnn</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.utils</span> <span class="kn">import</span> <span class="n">apply_to_list</span><span class="p">,</span> <span class="n">to_list</span>
+
+
+<div class="viewcode-block" id="DeepAR">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR">[docs]</a>
+<span class="k">class</span> <span class="nc">DeepAR</span><span class="p">(</span><span class="n">AutoRegressiveBaseModelWithCovariates</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;DeepAR: Probabilistic forecasting with autoregressive recurrent networks.&quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_pkg</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Package containing the model.&quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">pytorch_forecasting.models.deepar._deepar_pkg</span> <span class="kn">import</span> <span class="n">DeepAR_pkg</span>
+
+        <span class="k">return</span> <span class="n">DeepAR_pkg</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cell_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;LSTM&quot;</span><span class="p">,</span>
+        <span class="n">hidden_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">rnn_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">static_categoricals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">static_reals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_categoricals_encoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_categoricals_decoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">categorical_groups</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_reals_encoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_varying_reals_decoder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">embedding_sizes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">embedding_paddings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">embedding_labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">x_reals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">x_categoricals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">n_validation_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">n_plotting_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">target_lags</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">loss</span><span class="p">:</span> <span class="n">DistributionLoss</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">logging_metrics</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        DeepAR Network.</span>
+
+<span class="sd">        The code is based on the article `DeepAR: Probabilistic forecasting with autoregressive recurrent networks</span>
+<span class="sd">        &lt;https://www.sciencedirect.com/science/article/pii/S0169207019301888&gt;`_.</span>
+
+<span class="sd">        By using a Multivariate Loss such as the</span>
+<span class="sd">        :py:class:`~pytorch_forecasting.metrics.MultivariateNormalDistributionLoss`,</span>
+<span class="sd">        the network is converted into a `DeepVAR network &lt;http://arxiv.org/abs/1910.03002&gt;`_.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cell_type (str, optional): Recurrent cell type [&quot;LSTM&quot;, &quot;GRU&quot;]. Defaults to &quot;LSTM&quot;.</span>
+<span class="sd">            hidden_size (int, optional): hidden recurrent size - the most important hyperparameter along with</span>
+<span class="sd">                ``rnn_layers``. Defaults to 10.</span>
+<span class="sd">            rnn_layers (int, optional): Number of RNN layers - important hyperparameter. Defaults to 2.</span>
+<span class="sd">            dropout (float, optional): Dropout in RNN layers. Defaults to 0.1.</span>
+<span class="sd">            static_categoricals: integer of positions of static categorical variables</span>
+<span class="sd">            static_reals: integer of positions of static continuous variables</span>
+<span class="sd">            time_varying_categoricals_encoder: integer of positions of categorical variables for encoder</span>
+<span class="sd">            time_varying_categoricals_decoder: integer of positions of categorical variables for decoder</span>
+<span class="sd">            time_varying_reals_encoder: integer of positions of continuous variables for encoder</span>
+<span class="sd">            time_varying_reals_decoder: integer of positions of continuous variables for decoder</span>
+<span class="sd">            categorical_groups: dictionary where values</span>
+<span class="sd">                are list of categorical variables that are forming together a new categorical</span>
+<span class="sd">                variable which is the key in the dictionary</span>
+<span class="sd">            x_reals: order of continuous variables in tensor passed to forward function</span>
+<span class="sd">            x_categoricals: order of categorical variables in tensor passed to forward function</span>
+<span class="sd">            embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and</span>
+<span class="sd">                embedding size</span>
+<span class="sd">            embedding_paddings: list of indices for embeddings which transform the zero&#39;s embedding to a zero vector</span>
+<span class="sd">            embedding_labels: dictionary mapping (string) indices to list of categorical labels</span>
+<span class="sd">            n_validation_samples (int, optional): Number of samples to use for calculating validation metrics.</span>
+<span class="sd">                Defaults to None, i.e. no sampling at validation stage and using &quot;mean&quot; of distribution for logging</span>
+<span class="sd">                metrics calculation.</span>
+<span class="sd">            n_plotting_samples (int, optional): Number of samples to generate for plotting predictions</span>
+<span class="sd">                during training. Defaults to ``n_validation_samples`` if not None or 100 otherwise.</span>
+<span class="sd">            target (str, optional): Target variable or list of target variables. Defaults to None.</span>
+<span class="sd">            target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped to list of time steps by</span>
+<span class="sd">                which the variable should be lagged.</span>
+<span class="sd">                Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,</span>
+<span class="sd">                add at least the target variables with the corresponding lags to improve performance.</span>
+<span class="sd">                Defaults to no lags, i.e. an empty dictionary.</span>
+<span class="sd">            loss (DistributionLoss, optional): Distribution loss function. Keep in mind that each distribution</span>
+<span class="sd">                loss function might have specific requirements for target normalization.</span>
+<span class="sd">                Defaults to :py:class:`~pytorch_forecasting.metrics.NormalDistributionLoss`.</span>
+<span class="sd">            logging_metrics (nn.ModuleList, optional): Metrics to log during training.</span>
+<span class="sd">                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="n">loss</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">NormalDistributionLoss</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">logging_metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging_metrics</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">([</span><span class="n">SMAPE</span><span class="p">(),</span> <span class="n">MAE</span><span class="p">(),</span> <span class="n">RMSE</span><span class="p">(),</span> <span class="n">MAPE</span><span class="p">(),</span> <span class="n">MASE</span><span class="p">()])</span>
+        <span class="k">if</span> <span class="n">n_plotting_samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">n_validation_samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">n_plotting_samples</span> <span class="o">=</span> <span class="n">n_validation_samples</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">n_plotting_samples</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="k">if</span> <span class="n">static_categoricals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">static_categoricals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">static_reals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">static_reals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">time_varying_categoricals_encoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_categoricals_encoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">time_varying_categoricals_decoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_categoricals_decoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">categorical_groups</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">categorical_groups</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">time_varying_reals_encoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_reals_encoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">time_varying_reals_decoder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">time_varying_reals_decoder</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">embedding_sizes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">embedding_sizes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">embedding_paddings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">embedding_paddings</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">embedding_labels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">embedding_labels</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">x_reals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x_reals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">x_categoricals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x_categoricals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">target_lags</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">target_lags</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_hyperparameters</span><span class="p">()</span>
+        <span class="c1"># store loss function separately as it is a module</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">,</span> <span class="n">logging_metrics</span><span class="o">=</span><span class="n">logging_metrics</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span> <span class="o">=</span> <span class="n">MultiEmbedding</span><span class="p">(</span>
+            <span class="n">embedding_sizes</span><span class="o">=</span><span class="n">embedding_sizes</span><span class="p">,</span>
+            <span class="n">embedding_paddings</span><span class="o">=</span><span class="n">embedding_paddings</span><span class="p">,</span>
+            <span class="n">categorical_groups</span><span class="o">=</span><span class="n">categorical_groups</span><span class="p">,</span>
+            <span class="n">x_categoricals</span><span class="o">=</span><span class="n">x_categoricals</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">lagged_target_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span> <span class="k">for</span> <span class="n">lags</span> <span class="ow">in</span> <span class="n">target_lags</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lags</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder_variables</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">to_list</span><span class="p">(</span><span class="n">target</span><span class="p">))</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span>
+            <span class="n">lagged_target_names</span>
+        <span class="p">)</span> <span class="o">==</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">decoder_variables</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">lagged_target_names</span><span class="p">),</span> <span class="p">(</span>
+            <span class="s2">&quot;Encoder and decoder variables have to be&quot;</span>
+            <span class="s2">&quot; the same apart from target variable&quot;</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">targeti</span> <span class="ow">in</span> <span class="n">to_list</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">targeti</span> <span class="ow">in</span> <span class="n">time_varying_reals_encoder</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;target </span><span class="si">{</span><span class="n">targeti</span><span class="si">}</span><span class="s2"> has to be real&quot;</span>  <span class="c1"># todo: remove this restriction</span>
+        <span class="k">assert</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">DistributionLoss</span><span class="p">))</span> <span class="ow">or</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">MultiLoss</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+        <span class="p">),</span> <span class="s2">&quot;number of targets should be equivalent to number of loss metrics&quot;</span>
+
+        <span class="n">rnn_class</span> <span class="o">=</span> <span class="n">get_rnn</span><span class="p">(</span><span class="n">cell_type</span><span class="p">)</span>
+        <span class="n">cont_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reals</span><span class="p">)</span>
+        <span class="n">cat_size</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span><span class="o">.</span><span class="n">output_size</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">input_size</span> <span class="o">=</span> <span class="n">cont_size</span> <span class="o">+</span> <span class="n">cat_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rnn</span> <span class="o">=</span> <span class="n">rnn_class</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="n">input_size</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span>
+            <span class="n">num_layers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">rnn_layers</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">dropout</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">rnn_layers</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># add linear layers for argument projects</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>  <span class="c1"># single target</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">distribution_projector</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">distribution_arguments</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># multi target</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">distribution_projector</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleList</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+                    <span class="k">for</span> <span class="n">args</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">distribution_arguments</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="DeepAR.from_dataset">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR.from_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dataset</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">TimeSeriesDataSet</span><span class="p">,</span>
+        <span class="n">allowed_encoder_known_variable_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create model from dataset.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataset: timeseries dataset</span>
+<span class="sd">            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all</span>
+<span class="sd">            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DeepAR network</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="n">new_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">multi_target</span><span class="p">:</span>
+            <span class="n">new_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+                <span class="s2">&quot;loss&quot;</span><span class="p">,</span>
+                <span class="n">MultiLoss</span><span class="p">([</span><span class="n">NormalDistributionLoss</span><span class="p">()]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">target_names</span><span class="p">)),</span>
+            <span class="p">)</span>
+        <span class="n">new_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">target_normalizer</span><span class="p">,</span> <span class="n">NaNLabelEncoder</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">target_normalizer</span><span class="p">,</span> <span class="n">MultiNormalizer</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="nb">all</span><span class="p">(</span>
+                    <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">normalizer</span><span class="p">,</span> <span class="n">NaNLabelEncoder</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">normalizer</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">target_normalizer</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">),</span> <span class="p">(</span>
+            <span class="s2">&quot;target(s) should be continuous - categorical targets are not supported&quot;</span>
+        <span class="p">)</span>  <span class="c1"># todo: remove this restriction # noqa: E501</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="n">MultivariateDistributionLoss</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">dataset</span><span class="o">.</span><span class="n">min_prediction_length</span> <span class="o">==</span> <span class="n">dataset</span><span class="o">.</span><span class="n">max_prediction_length</span>
+            <span class="p">),</span> <span class="s2">&quot;Multivariate models require constant prediction lenghts&quot;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">from_dataset</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="p">,</span>
+            <span class="n">allowed_encoder_known_variable_names</span><span class="o">=</span><span class="n">allowed_encoder_known_variable_names</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">new_kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeepAR.construct_input_vector">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR.construct_input_vector">[docs]</a>
+    <span class="k">def</span> <span class="nf">construct_input_vector</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x_cat</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">x_cont</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">one_off_target</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create input vector into RNN network</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            one_off_target: tensor to insert into first position of target.</span>
+<span class="sd">                If None (default), remove first time step.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># create input vector</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categoricals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">embeddings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embeddings</span><span class="p">(</span><span class="n">x_cat</span><span class="p">)</span>
+            <span class="n">flat_embeddings</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">embeddings</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">input_vector</span> <span class="o">=</span> <span class="n">flat_embeddings</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">input_vector</span> <span class="o">=</span> <span class="n">x_cont</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categoricals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">input_vector</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">x_cont</span><span class="p">,</span> <span class="n">flat_embeddings</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># shift target by one</span>
+        <span class="n">input_vector</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_positions</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span>
+            <span class="n">input_vector</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_positions</span><span class="p">],</span> <span class="n">shifts</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">one_off_target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># set first target input (which is rolled over)</span>
+            <span class="n">input_vector</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_positions</span><span class="p">]</span> <span class="o">=</span> <span class="n">one_off_target</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">input_vector</span> <span class="o">=</span> <span class="n">input_vector</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span>
+
+        <span class="c1"># shift target</span>
+        <span class="k">return</span> <span class="n">input_vector</span></div>
+
+
+<div class="viewcode-block" id="DeepAR.encode">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR.encode">[docs]</a>
+    <span class="k">def</span> <span class="nf">encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HiddenState</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Encode sequence into hidden state</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># encode using rnn</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">encoder_lengths</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">input_vector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">construct_input_vector</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cat&quot;</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">])</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">hidden_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnn</span><span class="p">(</span>
+            <span class="n">input_vector</span><span class="p">,</span> <span class="n">lengths</span><span class="o">=</span><span class="n">encoder_lengths</span><span class="p">,</span> <span class="n">enforce_sorted</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>  <span class="c1"># second ouput is not needed (hidden state)</span>
+        <span class="k">return</span> <span class="n">hidden_state</span></div>
+
+
+    <span class="k">def</span> <span class="nf">decode_all</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">hidden_state</span><span class="p">:</span> <span class="n">HiddenState</span><span class="p">,</span>
+        <span class="n">lengths</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">decoder_output</span><span class="p">,</span> <span class="n">hidden_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnn</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">hidden_state</span><span class="p">,</span> <span class="n">lengths</span><span class="o">=</span><span class="n">lengths</span><span class="p">,</span> <span class="n">enforce_sorted</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">target</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>  <span class="c1"># single target</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_projector</span><span class="p">(</span><span class="n">decoder_output</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">projector</span><span class="p">(</span><span class="n">decoder_output</span><span class="p">)</span> <span class="k">for</span> <span class="n">projector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_projector</span>
+            <span class="p">]</span>
+        <span class="k">return</span> <span class="n">output</span><span class="p">,</span> <span class="n">hidden_state</span>
+
+<div class="viewcode-block" id="DeepAR.decode">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR.decode">[docs]</a>
+    <span class="k">def</span> <span class="nf">decode</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_vector</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">decoder_lengths</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">hidden_state</span><span class="p">:</span> <span class="n">HiddenState</span><span class="p">,</span>
+        <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Decode hidden state of RNN into prediction. If n_smaples is given,</span>
+<span class="sd">        decode not by using actual values but rather by</span>
+<span class="sd">        sampling new targets from past predictions iteratively</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n_samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">output</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_all</span><span class="p">(</span>
+                <span class="n">input_vector</span><span class="p">,</span> <span class="n">hidden_state</span><span class="p">,</span> <span class="n">lengths</span><span class="o">=</span><span class="n">decoder_lengths</span>
+            <span class="p">)</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform_output</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">target_scale</span><span class="o">=</span><span class="n">target_scale</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># run in eval, i.e. simulation mode</span>
+            <span class="n">target_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_positions</span>
+            <span class="n">lagged_target_positions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lagged_target_positions</span>
+            <span class="c1"># repeat for n_samples</span>
+            <span class="n">input_vector</span> <span class="o">=</span> <span class="n">input_vector</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">n_samples</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">hidden_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnn</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">hidden_state</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">)</span>
+            <span class="n">target_scale</span> <span class="o">=</span> <span class="n">apply_to_list</span><span class="p">(</span>
+                <span class="n">target_scale</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">n_samples</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># define function to run at every decoding step</span>
+            <span class="k">def</span> <span class="nf">decode_one</span><span class="p">(</span>
+                <span class="n">idx</span><span class="p">,</span>
+                <span class="n">lagged_targets</span><span class="p">,</span>
+                <span class="n">hidden_state</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">input_vector</span><span class="p">[:,</span> <span class="p">[</span><span class="n">idx</span><span class="p">]]</span>
+                <span class="n">x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">target_pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">lagged_targets</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">lag</span><span class="p">,</span> <span class="n">lag_positions</span> <span class="ow">in</span> <span class="n">lagged_target_positions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">idx</span> <span class="o">&gt;</span> <span class="n">lag</span><span class="p">:</span>
+                        <span class="n">x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">lag_positions</span><span class="p">]</span> <span class="o">=</span> <span class="n">lagged_targets</span><span class="p">[</span><span class="o">-</span><span class="n">lag</span><span class="p">]</span>
+                <span class="n">prediction</span><span class="p">,</span> <span class="n">hidden_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_all</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">hidden_state</span><span class="p">)</span>
+                <span class="n">prediction</span> <span class="o">=</span> <span class="n">apply_to_list</span><span class="p">(</span>
+                    <span class="n">prediction</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+                <span class="p">)</span>  <span class="c1"># select first time step</span>
+                <span class="k">return</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">hidden_state</span>
+
+            <span class="c1"># make predictions which are fed into next step</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_autoregressive</span><span class="p">(</span>
+                <span class="n">decode_one</span><span class="p">,</span>
+                <span class="n">first_target</span><span class="o">=</span><span class="n">input_vector</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">target_pos</span><span class="p">],</span>
+                <span class="n">first_hidden_state</span><span class="o">=</span><span class="n">hidden_state</span><span class="p">,</span>
+                <span class="n">target_scale</span><span class="o">=</span><span class="n">target_scale</span><span class="p">,</span>
+                <span class="n">n_decoder_steps</span><span class="o">=</span><span class="n">input_vector</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># reshape predictions for n_samples:</span>
+            <span class="c1"># from n_samples * batch_size x time steps</span>
+            <span class="c1"># to batch_size x time steps x n_samples</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">apply_to_list</span><span class="p">(</span>
+                <span class="n">output</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">,</span> <span class="n">input_vector</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span>
+                    <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">output</span></div>
+
+
+<div class="viewcode-block" id="DeepAR.forward">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Forward network</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hidden_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># decode</span>
+        <span class="n">input_vector</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">construct_input_vector</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_cat&quot;</span><span class="p">],</span>
+            <span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_cont&quot;</span><span class="p">],</span>
+            <span class="n">one_off_target</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">][</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">device</span>
+                <span class="p">),</span>
+                <span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">target_positions</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">contiguous</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">n_samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;cannot sample from decoder when training&quot;</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span>
+            <span class="n">input_vector</span><span class="p">,</span>
+            <span class="n">decoder_lengths</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">],</span>
+            <span class="n">target_scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">],</span>
+            <span class="n">hidden_state</span><span class="o">=</span><span class="n">hidden_state</span><span class="p">,</span>
+            <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># return relevant part</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_network_output</span><span class="p">(</span><span class="n">prediction</span><span class="o">=</span><span class="n">output</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeepAR.create_log">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR.create_log">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">batch_idx</span><span class="p">):</span>
+        <span class="n">n_samples</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">n_validation_samples</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hparams</span><span class="o">.</span><span class="n">n_plotting_samples</span><span class="p">,</span>
+        <span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">]</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_log</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">,</span>
+            <span class="n">out</span><span class="p">,</span>
+            <span class="n">batch_idx</span><span class="p">,</span>
+            <span class="n">prediction_kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">),</span>
+            <span class="n">quantiles_kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">log</span></div>
+
+
+<div class="viewcode-block" id="DeepAR.predict">
+<a class="viewcode-back" href="../../../../api/pytorch_forecasting.models.deepar._deepar.DeepAR.html#pytorch_forecasting.models.deepar._deepar.DeepAR.predict">[docs]</a>
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">DataLoader</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">TimeSeriesDataSet</span><span class="p">],</span>
+        <span class="n">mode</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;prediction&quot;</span><span class="p">,</span>
+        <span class="n">return_index</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">return_decoder_lengths</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span>
+        <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">fast_dev_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">return_x</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">return_y</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">mode_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">trainer_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">write_interval</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;batch&quot;</span><span class="p">,</span> <span class="s2">&quot;epoch&quot;</span><span class="p">,</span> <span class="s2">&quot;batch_and_epoch&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;batch&quot;</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Prediction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        predict dataloader</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataloader: dataloader, dataframe or dataset</span>
+<span class="sd">            mode: one of &quot;prediction&quot;, &quot;quantiles&quot;, &quot;samples&quot; or &quot;raw&quot;, or tuple ``(&quot;raw&quot;, output_name)`` where</span>
+<span class="sd">                output_name is a name in the dictionary returned by ``forward()``</span>
+<span class="sd">            return_index: if to return the prediction index (in the same order as the output, i.e. the row of the</span>
+<span class="sd">                dataframe corresponds to the first dimension of the output and the given time index is the time index</span>
+<span class="sd">                of the first prediction)</span>
+<span class="sd">            return_decoder_lengths: if to return decoder_lengths (in the same order as the output</span>
+<span class="sd">            batch_size: batch size for dataloader - only used if data is not a dataloader is passed</span>
+<span class="sd">            num_workers: number of workers for dataloader - only used if data is not a dataloader is passed</span>
+<span class="sd">            fast_dev_run: if to only return results of first batch</span>
+<span class="sd">            show_progress_bar: if to show progress bar. Defaults to False.</span>
+<span class="sd">            return_x: if to return network inputs (in the same order as prediction output)</span>
+<span class="sd">            return_y: if to return network targets (in the same order as prediction output)</span>
+<span class="sd">            mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``</span>
+<span class="sd">                for modes &quot;prediction&quot; and &quot;quantiles&quot;</span>
+<span class="sd">            trainer_kwargs (Dict[str, Any], optional): keyword arguments for the trainer</span>
+<span class="sd">            write_interval: interval to write predictions to disk</span>
+<span class="sd">            output_dir: directory to write predictions to. Defaults to None. If set function will return empty list</span>
+<span class="sd">            n_samples: number of samples to draw. Defaults to 100.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Prediction: if one of the ```return`` arguments is present,</span>
+<span class="sd">                prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span> <span class="s2">&quot;quantiles&quot;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">mode_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">mode_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">use_metric</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">mode_kwargs</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">mode_kwargs</span><span class="p">)</span>
+                    <span class="n">mode_kwargs</span><span class="p">[</span><span class="s2">&quot;use_metric&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;samples&quot;</span><span class="p">:</span>
+                <span class="n">mode</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;raw&quot;</span><span class="p">,</span> <span class="s2">&quot;prediction&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+            <span class="n">return_decoder_lengths</span><span class="o">=</span><span class="n">return_decoder_lengths</span><span class="p">,</span>
+            <span class="n">return_index</span><span class="o">=</span><span class="n">return_index</span><span class="p">,</span>
+            <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>  <span class="c1"># new keyword that is passed to forward function</span>
+            <span class="n">return_x</span><span class="o">=</span><span class="n">return_x</span><span class="p">,</span>
+            <span class="n">fast_dev_run</span><span class="o">=</span><span class="n">fast_dev_run</span><span class="p">,</span>
+            <span class="n">num_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">mode_kwargs</span><span class="o">=</span><span class="n">mode_kwargs</span><span class="p">,</span>
+            <span class="n">trainer_kwargs</span><span class="o">=</span><span class="n">trainer_kwargs</span><span class="p">,</span>
+            <span class="n">write_interval</span><span class="o">=</span><span class="n">write_interval</span><span class="p">,</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">return_y</span><span class="o">=</span><span class="n">return_y</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

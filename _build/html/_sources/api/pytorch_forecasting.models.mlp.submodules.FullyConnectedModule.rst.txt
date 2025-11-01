@@ -1,0 +1,33 @@
+FullyConnectedModule
+====================
+
+.. currentmodule:: pytorch_forecasting.models.mlp.submodules
+
+
+.. autoclass:: FullyConnectedModule
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~FullyConnectedModule.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

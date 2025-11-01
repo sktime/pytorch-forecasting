@@ -1,0 +1,36 @@
+DeepConvexNet
+=============
+
+.. currentmodule:: pytorch_forecasting.metrics._mqf2_utils
+
+
+.. autoclass:: DeepConvexNet
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DeepConvexNet.forward_transform
+      ~DeepConvexNet.get_potential
+   
+   
+
+   
+    
+   
+   
+   
+   

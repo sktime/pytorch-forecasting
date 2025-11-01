@@ -1,0 +1,88 @@
+NaNLabelEncoder
+===============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: NaNLabelEncoder
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NaNLabelEncoder.extra_repr
+      ~NaNLabelEncoder.fit
+      ~NaNLabelEncoder.fit_transform
+      ~NaNLabelEncoder.get_metadata_routing
+      ~NaNLabelEncoder.get_parameters
+      ~NaNLabelEncoder.get_params
+      ~NaNLabelEncoder.get_transform
+      ~NaNLabelEncoder.inverse_preprocess
+      ~NaNLabelEncoder.inverse_transform
+      ~NaNLabelEncoder.is_numeric
+      ~NaNLabelEncoder.preprocess
+      ~NaNLabelEncoder.set_fit_request
+      ~NaNLabelEncoder.set_output
+      ~NaNLabelEncoder.set_params
+      ~NaNLabelEncoder.set_transform_request
+      ~NaNLabelEncoder.transform
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NaNLabelEncoder.TRANSFORMATIONS
+   
+   

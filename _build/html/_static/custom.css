@@ -1,0 +1,58 @@
+.container-xl {
+  max-width: 4000px;
+}
+
+.bd-content {
+  flex-grow: 1;
+  max-width: 100%;
+}
+.bd-page-width {
+  max-width: 100rem;
+}
+.bd-main .bd-content .bd-article-container {
+  max-width: 100%;
+}
+
+a.reference.internal.nav-link {
+  color: #727991 !important;
+}
+
+html[data-theme="light"] {
+  --pst-color-primary: #ee4c2c;
+}
+a.nav-link
+{
+  color: #647db6 !important;
+}
+
+a.nav-link[href="https://github.com/sktime/pytorch-forecasting"]
+{
+  color: #ee4c2c !important;
+}
+
+code {
+  color: #d14 !important;
+}
+
+pre code,
+a > code,
+.reference {
+  color: #647db6 !important;
+}
+
+dt:target,
+span.highlighted {
+  background-color: #fff !important;
+}
+
+/* code highlighting */
+.highlight > pre > .mi {
+  color: #d14 !important;
+}
+.highlight > pre > .mf {
+  color: #d14 !important;
+}
+
+.highlight > pre > .s2 {
+  color: #647db6 !important;
+}

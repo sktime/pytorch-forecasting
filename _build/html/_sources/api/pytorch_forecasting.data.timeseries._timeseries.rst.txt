@@ -1,0 +1,40 @@
+\_timeseries
+============
+
+.. automodule:: pytorch_forecasting.data.timeseries._timeseries
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      _find_end_indices
+      check_for_nonfinite
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      TimeSeriesDataSet
+   
+   
+
+   
+   
+   
+
+
+

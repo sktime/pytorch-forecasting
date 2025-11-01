@@ -1,0 +1,66 @@
+TemporalFusionTransformer
+=========================
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer._tft
+
+
+.. autoclass:: TemporalFusionTransformer
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TemporalFusionTransformer.create_log
+      ~TemporalFusionTransformer.expand_static_context
+      ~TemporalFusionTransformer.forward
+      ~TemporalFusionTransformer.from_dataset
+      ~TemporalFusionTransformer.get_attention_mask
+      ~TemporalFusionTransformer.interpret_output
+      ~TemporalFusionTransformer.log_embeddings
+      ~TemporalFusionTransformer.log_interpretation
+      ~TemporalFusionTransformer.on_epoch_end
+      ~TemporalFusionTransformer.on_fit_end
+      ~TemporalFusionTransformer.plot_interpretation
+      ~TemporalFusionTransformer.plot_prediction
+   
+   
+
+   
+    
+   
+   
+   
+   

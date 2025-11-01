@@ -1,0 +1,33 @@
+deepar
+======
+
+.. automodule:: pytorch_forecasting.models.deepar
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.deepar._deepar
+   pytorch_forecasting.models.deepar._deepar_pkg
+

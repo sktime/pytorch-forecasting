@@ -1,0 +1,82 @@
+TorchNormalizer
+===============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: TorchNormalizer
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TorchNormalizer.extra_repr
+      ~TorchNormalizer.fit
+      ~TorchNormalizer.fit_transform
+      ~TorchNormalizer.get_metadata_routing
+      ~TorchNormalizer.get_parameters
+      ~TorchNormalizer.get_params
+      ~TorchNormalizer.get_transform
+      ~TorchNormalizer.inverse_preprocess
+      ~TorchNormalizer.inverse_transform
+      ~TorchNormalizer.preprocess
+      ~TorchNormalizer.set_output
+      ~TorchNormalizer.set_params
+      ~TorchNormalizer.set_transform_request
+      ~TorchNormalizer.transform
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TorchNormalizer.TRANSFORMATIONS
+   
+   

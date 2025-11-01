@@ -1,0 +1,774 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Metrics &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'metrics';</script>
+    <link rel="icon" href="_static/favicon.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="QuantileLoss_pkg" href="api/pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.html" />
+    <link rel="prev" title="Models" href="models.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.html">QuantileLoss_pkg</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.DistributionLoss.html">DistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.Metric.html">Metric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.MultiHorizonMetric.html">MultiHorizonMetric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.MultiLoss.html">MultiLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.MultivariateDistributionLoss.html">MultivariateDistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.convert_torchmetric_to_pytorch_forecasting_metric.html">convert_torchmetric_to_pytorch_forecasting_metric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.BetaDistributionLoss.html">BetaDistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html">ImplicitQuantileNetworkDistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.html">LogNormalDistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html">MQF2DistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.html">MultivariateNormalDistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.html">NegativeBinomialDistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.NormalDistributionLoss.html">NormalDistributionLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.CrossEntropy.html">CrossEntropy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.MAE.html">MAE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.MAPE.html">MAPE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.MASE.html">MASE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.PoissonLoss.html">PoissonLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.RMSE.html">RMSE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.SMAPE.html">SMAPE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.point.TweedieLoss.html">TweedieLoss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.metrics.quantile.QuantileLoss.html">QuantileLoss</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Metrics</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="metrics">
+<h1>Metrics<a class="headerlink" href="#metrics" title="Link to this heading">#</a></h1>
+<p>Multiple metrics have been implemented to ease adaptation.</p>
+<p>In particular, these metrics can be applied to the multi-horizon forecasting problem, i.e.
+can take tensors that are not only of shape <code class="docutils literal notranslate"><span class="pre">n_samples</span></code> but also <code class="docutils literal notranslate"><span class="pre">n_samples</span> <span class="pre">x</span> <span class="pre">prediction_horizon</span></code>
+or even <code class="docutils literal notranslate"><span class="pre">n_samples</span> <span class="pre">x</span> <span class="pre">prediction_horizon</span> <span class="pre">x</span> <span class="pre">n_outputs</span></code>, where <code class="docutils literal notranslate"><span class="pre">n_outputs</span></code> could be the number
+of forecasted quantiles.</p>
+<p>Metrics can be easily combined by addition, e.g.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pytorch_forecasting.metrics</span> <span class="kn">import</span> <span class="n">SMAPE</span><span class="p">,</span> <span class="n">MAE</span>
+
+<span class="n">composite_metric</span> <span class="o">=</span> <span class="n">SMAPE</span><span class="p">()</span> <span class="o">+</span> <span class="mf">1e-4</span> <span class="o">*</span> <span class="n">MAE</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Such composite metrics are useful when training because they can reduce outliers in other metrics.
+In the example, SMAPE is mostly optimized, while large outliers in MAE are avoided.</p>
+<p>Further, one can modify a loss metric to reduce a mean prediction bias, i.e. ensure that
+predictions add up. For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pytorch_forecasting.metrics</span> <span class="kn">import</span> <span class="n">MAE</span><span class="p">,</span> <span class="n">AggregationMetric</span>
+
+<span class="n">composite_metric</span> <span class="o">=</span> <span class="n">MAE</span><span class="p">()</span> <span class="o">+</span> <span class="n">AggregationMetric</span><span class="p">(</span><span class="n">metric</span><span class="o">=</span><span class="n">MAE</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Here we add to MAE an additional loss. This additional loss is the MAE calculated on the mean predictions
+and actuals. We can also use other metrics such as SMAPE to ensure aggregated results are unbiased in that metric.
+One important point to keep in mind is that this metric is calculated accross samples, i.e. it will vary depending
+on the batch size. In particular, errors tend to average out with increased batch sizes.</p>
+<section id="details">
+<h2>Details<a class="headerlink" href="#details" title="Link to this heading">#</a></h2>
+<p>See the API documentation for further details on available metrics:</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._distributions_pkg._beta._beta_distribution_loss_pkg.BetaDistributionLoss_pkg</span></code></p></td>
+<td><p>Beta distribution loss metric for distribution forecasts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._distributions_pkg._implicit_quantile_network._implicit_quantile_network_distribution_loss_pkg.ImplicitQuantileNetworkDistributionLoss_pkg</span></code></p></td>
+<td><p>Implicit quantile network distribution loss metric for distribution forecasts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._distributions_pkg._log_normal._log_normal_distribution_loss_pkg.LogNormalDistributionLoss_pkg</span></code></p></td>
+<td><p>Log-normal distribution loss metric for distribution forecasts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._distributions_pkg._mqf2._mqf2_distribution_loss_pkg.MQF2DistributionLoss_pkg</span></code></p></td>
+<td><p>MQF2 distribution loss metric for distribution forecasts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._distributions_pkg._multivariate_normal._multivariate_normal_distribution_loss_pkg.MultivariateNormalDistributionLoss_pkg</span></code></p></td>
+<td><p>Multivariate normal distribution loss metric for distribution forecasts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._distributions_pkg._negative_binomial._negative_binomial_distribution_loss_pkg.NegativeBinomialDistributionLoss_pkg</span></code></p></td>
+<td><p>Negative binomial distribution loss metric for distribution forecasts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._distributions_pkg._normal._normal_distribution_loss_pkg.NormalDistributionLoss_pkg</span></code></p></td>
+<td><p>Normal distribution loss metric for distribution forecasts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._cross_entropy._cross_entropy_pkg.CrossEntropy_pkg</span></code></p></td>
+<td><p>Package container for CrossEntropyLoss - a loss function for categorical targets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._mae._mae_pkg.MAE_pkg</span></code></p></td>
+<td><p>Mean Average Error (MAE) metric for point forecasts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._mape._mape_pkg.MAPE_pkg</span></code></p></td>
+<td><p>Mean absolute percentage error metric for point forecasts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._mase._mase_pkg.MASE_pkg</span></code></p></td>
+<td><p>Mean Average scaled Error (MASE) metric for point forecasts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._poisson._poisson_loss_pkg.PoissonLoss_pkg</span></code></p></td>
+<td><p>Poisson loss for count data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._rmse._rmse_pkg.RMSE_pkg</span></code></p></td>
+<td><p>Root mean square error metric for point forecasts.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._smape._smape_pkg.SMAPE_pkg</span></code></p></td>
+<td><p>Symmetric mean absolute percentage error metric for point forecasts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._point_pkg._tweedie._tweedie_loss_pkg.TweedieLoss_pkg</span></code></p></td>
+<td><p>Tweedie loss for regression with exponential dispersion models.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.html#pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg" title="pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg</span></code></a></p></td>
+<td><p>Quantile loss metric for quantile forecasts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.DistributionLoss.html#pytorch_forecasting.metrics.base_metrics._base_metrics.DistributionLoss" title="pytorch_forecasting.metrics.base_metrics._base_metrics.DistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.base_metrics._base_metrics.DistributionLoss</span></code></a>([...])</p></td>
+<td><p>DistributionLoss base class.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.Metric.html#pytorch_forecasting.metrics.base_metrics._base_metrics.Metric" title="pytorch_forecasting.metrics.base_metrics._base_metrics.Metric"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.base_metrics._base_metrics.Metric</span></code></a>([...])</p></td>
+<td><p>Base metric class that has basic functions that can handle predicting quantiles and operate in log space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.MultiHorizonMetric.html#pytorch_forecasting.metrics.base_metrics._base_metrics.MultiHorizonMetric" title="pytorch_forecasting.metrics.base_metrics._base_metrics.MultiHorizonMetric"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.base_metrics._base_metrics.MultiHorizonMetric</span></code></a>([...])</p></td>
+<td><p>Abstract class for defining metric for a multihorizon forecast</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.MultiLoss.html#pytorch_forecasting.metrics.base_metrics._base_metrics.MultiLoss" title="pytorch_forecasting.metrics.base_metrics._base_metrics.MultiLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.base_metrics._base_metrics.MultiLoss</span></code></a>(metrics)</p></td>
+<td><p>Metric that can be used with muliple metrics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.MultivariateDistributionLoss.html#pytorch_forecasting.metrics.base_metrics._base_metrics.MultivariateDistributionLoss" title="pytorch_forecasting.metrics.base_metrics._base_metrics.MultivariateDistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.base_metrics._base_metrics.MultivariateDistributionLoss</span></code></a>([...])</p></td>
+<td><p>Base class for multivariate distribution losses.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.base_metrics._base_metrics.convert_torchmetric_to_pytorch_forecasting_metric.html#pytorch_forecasting.metrics.base_metrics._base_metrics.convert_torchmetric_to_pytorch_forecasting_metric" title="pytorch_forecasting.metrics.base_metrics._base_metrics.convert_torchmetric_to_pytorch_forecasting_metric"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.base_metrics._base_metrics.convert_torchmetric_to_pytorch_forecasting_metric</span></code></a>(metric)</p></td>
+<td><p>If necessary, convert a torchmetric to a PyTorch Forecasting metric that works with PyTorch Forecasting models.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.BetaDistributionLoss.html#pytorch_forecasting.metrics.distributions.BetaDistributionLoss" title="pytorch_forecasting.metrics.distributions.BetaDistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.distributions.BetaDistributionLoss</span></code></a>([...])</p></td>
+<td><p>Beta distribution loss for unit interval data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss" title="pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss</span></code></a>([...])</p></td>
+<td><p>Implicit Quantile Network Distribution Loss.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss" title="pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss</span></code></a>([...])</p></td>
+<td><p>Log-normal loss.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html#pytorch_forecasting.metrics.distributions.MQF2DistributionLoss" title="pytorch_forecasting.metrics.distributions.MQF2DistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.distributions.MQF2DistributionLoss</span></code></a>(...)</p></td>
+<td><p>Multivariate quantile loss based on the article <a class="reference external" href="http://arxiv.org/abs/2202.11316">Multivariate Quantile Function Forecaster</a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss" title="pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss</span></code></a>([...])</p></td>
+<td><p>Multivariate low-rank normal distribution loss.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.html#pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss" title="pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss</span></code></a>([...])</p></td>
+<td><p>Negative binomial loss, e.g. for count data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.distributions.NormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.NormalDistributionLoss" title="pytorch_forecasting.metrics.distributions.NormalDistributionLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.distributions.NormalDistributionLoss</span></code></a>([...])</p></td>
+<td><p>Normal distribution loss.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.CrossEntropy.html#pytorch_forecasting.metrics.point.CrossEntropy" title="pytorch_forecasting.metrics.point.CrossEntropy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.CrossEntropy</span></code></a>([...])</p></td>
+<td><p>Cross entropy loss for classification.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.MAE.html#pytorch_forecasting.metrics.point.MAE" title="pytorch_forecasting.metrics.point.MAE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.MAE</span></code></a>([...])</p></td>
+<td><p>Mean average absolute error.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.MAPE.html#pytorch_forecasting.metrics.point.MAPE" title="pytorch_forecasting.metrics.point.MAPE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.MAPE</span></code></a>([...])</p></td>
+<td><p>Mean absolute percentage.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.MASE.html#pytorch_forecasting.metrics.point.MASE" title="pytorch_forecasting.metrics.point.MASE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.MASE</span></code></a>([...])</p></td>
+<td><p>Mean absolute scaled error</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.PoissonLoss.html#pytorch_forecasting.metrics.point.PoissonLoss" title="pytorch_forecasting.metrics.point.PoissonLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.PoissonLoss</span></code></a>([...])</p></td>
+<td><p>Poisson loss for count data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.RMSE.html#pytorch_forecasting.metrics.point.RMSE" title="pytorch_forecasting.metrics.point.RMSE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.RMSE</span></code></a>([...])</p></td>
+<td><p>Root mean square error</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.SMAPE.html#pytorch_forecasting.metrics.point.SMAPE" title="pytorch_forecasting.metrics.point.SMAPE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.SMAPE</span></code></a>([...])</p></td>
+<td><p>Symmetric mean absolute percentage.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.point.TweedieLoss.html#pytorch_forecasting.metrics.point.TweedieLoss" title="pytorch_forecasting.metrics.point.TweedieLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.point.TweedieLoss</span></code></a>([...])</p></td>
+<td><p>Tweedie loss.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.metrics.quantile.QuantileLoss.html#pytorch_forecasting.metrics.quantile.QuantileLoss" title="pytorch_forecasting.metrics.quantile.QuantileLoss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.metrics.quantile.QuantileLoss</span></code></a>([...])</p></td>
+<td><p>Quantile loss, i.e. a quantile of <code class="docutils literal notranslate"><span class="pre">q=0.5</span></code> will give half of the mean absolute error as it is calculated as.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="models.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Models</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="api/pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg.QuantileLoss_pkg.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">QuantileLoss_pkg</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#details">Details</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/metrics.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

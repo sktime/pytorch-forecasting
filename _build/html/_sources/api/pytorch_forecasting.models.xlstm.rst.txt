@@ -1,0 +1,33 @@
+xlstm
+=====
+
+.. automodule:: pytorch_forecasting.models.xlstm
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.xlstm._xlstm
+   pytorch_forecasting.models.xlstm._xlstm_pkg
+

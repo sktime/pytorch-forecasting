@@ -1,0 +1,46 @@
+\_base\_metrics
+===============
+
+.. automodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      convert_torchmetric_to_pytorch_forecasting_metric
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      AggregationMetric
+      CompositeMetric
+      DistributionLoss
+      Metric
+      MultiHorizonMetric
+      MultiLoss
+      MultivariateDistributionLoss
+      TorchMetricWrapper
+   
+   
+
+   
+   
+   
+
+
+

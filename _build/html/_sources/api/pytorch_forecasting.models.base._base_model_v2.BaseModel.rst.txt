@@ -1,0 +1,51 @@
+BaseModel
+=========
+
+.. currentmodule:: pytorch_forecasting.models.base._base_model_v2
+
+
+.. autoclass:: BaseModel
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BaseModel.configure_optimizers
+      ~BaseModel.forward
+      ~BaseModel.log_metrics
+      ~BaseModel.predict_step
+      ~BaseModel.test_step
+      ~BaseModel.training_step
+      ~BaseModel.validation_step
+   
+   
+
+   
+    
+   
+   
+   
+   

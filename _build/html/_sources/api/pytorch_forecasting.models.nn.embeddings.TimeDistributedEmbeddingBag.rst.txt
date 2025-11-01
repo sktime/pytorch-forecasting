@@ -1,0 +1,33 @@
+TimeDistributedEmbeddingBag
+===========================
+
+.. currentmodule:: pytorch_forecasting.models.nn.embeddings
+
+
+.. autoclass:: TimeDistributedEmbeddingBag
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TimeDistributedEmbeddingBag.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

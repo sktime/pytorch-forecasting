@@ -1,0 +1,31 @@
+\_tslib\_base\_model\_v2
+========================
+
+.. automodule:: pytorch_forecasting.models.base._tslib_base_model_v2
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      TslibBaseModel
+   
+   
+
+   
+   
+   
+
+
+

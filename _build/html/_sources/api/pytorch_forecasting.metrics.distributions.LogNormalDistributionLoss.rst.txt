@@ -1,0 +1,36 @@
+LogNormalDistributionLoss
+=========================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: LogNormalDistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LogNormalDistributionLoss.map_x_to_distribution
+      ~LogNormalDistributionLoss.rescale_parameters
+   
+   
+
+   
+    
+   
+   
+   
+   

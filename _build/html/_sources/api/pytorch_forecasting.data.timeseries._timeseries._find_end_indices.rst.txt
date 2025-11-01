@@ -1,0 +1,6 @@
+\_find\_end\_indices
+====================
+
+.. currentmodule:: pytorch_forecasting.data.timeseries._timeseries
+
+.. autofunction:: _find_end_indices

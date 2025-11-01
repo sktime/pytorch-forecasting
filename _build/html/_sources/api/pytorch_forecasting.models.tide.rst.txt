@@ -1,0 +1,35 @@
+tide
+====
+
+.. automodule:: pytorch_forecasting.models.tide
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.tide._tide
+   pytorch_forecasting.models.tide._tide_dsipts
+   pytorch_forecasting.models.tide._tide_pkg
+   pytorch_forecasting.models.tide.sub_modules
+

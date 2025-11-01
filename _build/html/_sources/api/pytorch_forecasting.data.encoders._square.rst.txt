@@ -1,0 +1,6 @@
+\_square
+========
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+.. autofunction:: _square

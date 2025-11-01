@@ -1,0 +1,6 @@
+autocorrelation
+===============
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: autocorrelation

@@ -1,0 +1,6 @@
+concat\_sequences
+=================
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: concat_sequences

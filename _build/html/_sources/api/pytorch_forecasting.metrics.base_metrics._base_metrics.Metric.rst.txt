@@ -1,0 +1,48 @@
+Metric
+======
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: Metric
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Metric.compute
+      ~Metric.extra_repr
+      ~Metric.rescale_parameters
+      ~Metric.to_prediction
+      ~Metric.to_quantiles
+      ~Metric.update
+   
+   
+
+   
+    
+   
+   
+   
+   

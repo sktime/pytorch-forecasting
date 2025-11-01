@@ -1,0 +1,36 @@
+TimeDistributedInterpolation
+============================
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+
+.. autoclass:: TimeDistributedInterpolation
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TimeDistributedInterpolation.forward
+      ~TimeDistributedInterpolation.interpolate
+   
+   
+
+   
+    
+   
+   
+   
+   

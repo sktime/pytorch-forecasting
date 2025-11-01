@@ -1,0 +1,1296 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pytorch_forecasting.data.data_module &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pytorch_forecasting/data/data_module';</script>
+    <link rel="icon" href="../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pytorch_forecasting.data.data_module</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pytorch_forecasting.data.data_module</h1><div class="highlight"><pre>
+<span></span><span class="c1">#######################################################################################</span>
+<span class="c1"># Disclaimer: This data-module is still work in progress and experimental, please</span>
+<span class="c1"># use with care. This data-module is a basic skeleton of how the data-handling pipeline</span>
+<span class="c1"># may look like in the future.</span>
+<span class="c1"># This is D2 layer that will handle the preprocessing and data loaders.</span>
+<span class="c1"># For now, this pipeline handles the simplest situation: The whole data can be loaded</span>
+<span class="c1"># into the memory.</span>
+<span class="c1">#######################################################################################</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">warnings</span> <span class="kn">import</span> <span class="n">warn</span>
+
+<span class="kn">from</span> <span class="nn">lightning.pytorch</span> <span class="kn">import</span> <span class="n">LightningDataModule</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">RobustScaler</span><span class="p">,</span> <span class="n">StandardScaler</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">Dataset</span>
+
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data.encoders</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EncoderNormalizer</span><span class="p">,</span>
+    <span class="n">NaNLabelEncoder</span><span class="p">,</span>
+    <span class="n">TorchNormalizer</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data.timeseries</span> <span class="kn">import</span> <span class="n">TimeSeries</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.utils._coerce</span> <span class="kn">import</span> <span class="n">_coerce_to_dict</span>
+
+<span class="n">NORMALIZER</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="n">TorchNormalizer</span><span class="p">,</span> <span class="n">NaNLabelEncoder</span><span class="p">,</span> <span class="n">EncoderNormalizer</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="EncoderDecoderTimeSeriesDataModule">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.html#pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule">[docs]</a>
+<span class="k">class</span> <span class="nc">EncoderDecoderTimeSeriesDataModule</span><span class="p">(</span><span class="n">LightningDataModule</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Lightning DataModule for processing time series data in an encoder-decoder format.</span>
+
+<span class="sd">    This module handles preprocessing, splitting, and batching of time series data</span>
+<span class="sd">    for use in deep learning models. It supports categorical and continuous features,</span>
+<span class="sd">    various scalers, and automatic target normalization.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    time_series_dataset : TimeSeries</span>
+<span class="sd">        The dataset containing time series data.</span>
+<span class="sd">    max_encoder_length : int, default=30</span>
+<span class="sd">        Maximum length of the encoder input sequence.</span>
+<span class="sd">    min_encoder_length : Optional[int], default=None</span>
+<span class="sd">        Minimum length of the encoder input sequence.</span>
+<span class="sd">        Defaults to `max_encoder_length` if not specified.</span>
+<span class="sd">    max_prediction_length : int, default=1</span>
+<span class="sd">        Maximum length of the decoder output sequence.</span>
+<span class="sd">    min_prediction_length : Optional[int], default=None</span>
+<span class="sd">        Minimum length of the decoder output sequence.</span>
+<span class="sd">        Defaults to `max_prediction_length` if not specified.</span>
+<span class="sd">    min_prediction_idx : Optional[int], default=None</span>
+<span class="sd">        Minimum index from which predictions start.</span>
+<span class="sd">    allow_missing_timesteps : bool, default=False</span>
+<span class="sd">        Whether to allow missing timesteps in the dataset.</span>
+<span class="sd">    add_relative_time_idx : bool, default=False</span>
+<span class="sd">        Whether to add a relative time index feature.</span>
+<span class="sd">    add_target_scales : bool, default=False</span>
+<span class="sd">        Whether to add target scaling information.</span>
+<span class="sd">    add_encoder_length : Union[bool, str], default=&quot;auto&quot;</span>
+<span class="sd">        Whether to include encoder length information.</span>
+<span class="sd">    target_normalizer :</span>
+<span class="sd">        Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None],</span>
+<span class="sd">         default=&quot;auto&quot;</span>
+<span class="sd">        Normalizer for the target variable. If &quot;auto&quot;, uses `RobustScaler`.</span>
+
+<span class="sd">    categorical_encoders : Optional[Dict[str, NaNLabelEncoder]], default=None</span>
+<span class="sd">        Dictionary of categorical encoders.</span>
+
+<span class="sd">    scalers :</span>
+<span class="sd">    Optional[Dict[str, Union[StandardScaler, RobustScaler,</span>
+<span class="sd">                        TorchNormalizer, EncoderNormalizer]]], default=None</span>
+<span class="sd">        Dictionary of feature scalers.</span>
+
+<span class="sd">    randomize_length : Union[None, Tuple[float, float], bool], default=False</span>
+<span class="sd">        Whether to randomize input sequence length.</span>
+<span class="sd">    batch_size : int, default=32</span>
+<span class="sd">        Batch size for DataLoader.</span>
+<span class="sd">    num_workers : int, default=0</span>
+<span class="sd">        Number of workers for DataLoader.</span>
+<span class="sd">    train_val_test_split : tuple, default=(0.7, 0.15, 0.15)</span>
+<span class="sd">        Proportions for train, validation, and test dataset splits.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">time_series_dataset</span><span class="p">:</span> <span class="n">TimeSeries</span><span class="p">,</span>
+        <span class="n">max_encoder_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+        <span class="n">min_encoder_length</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_prediction_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">min_prediction_length</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">min_prediction_idx</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">allow_missing_timesteps</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">add_relative_time_idx</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">add_target_scales</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">add_encoder_length</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+        <span class="n">target_normalizer</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span>
+            <span class="n">NORMALIZER</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">NORMALIZER</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">NORMALIZER</span><span class="p">],</span> <span class="kc">None</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+        <span class="n">categorical_encoders</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">NaNLabelEncoder</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scalers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span>
+            <span class="nb">dict</span><span class="p">[</span>
+                <span class="nb">str</span><span class="p">,</span>
+                <span class="n">Union</span><span class="p">[</span><span class="n">StandardScaler</span><span class="p">,</span> <span class="n">RobustScaler</span><span class="p">,</span> <span class="n">TorchNormalizer</span><span class="p">,</span> <span class="n">EncoderNormalizer</span><span class="p">],</span>
+            <span class="p">]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">randomize_length</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+        <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">train_val_test_split</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">),</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span> <span class="o">=</span> <span class="n">time_series_dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_encoder_length</span> <span class="o">=</span> <span class="n">max_encoder_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_encoder_length</span> <span class="o">=</span> <span class="n">min_encoder_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_prediction_length</span> <span class="o">=</span> <span class="n">max_prediction_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_prediction_length</span> <span class="o">=</span> <span class="n">min_prediction_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_prediction_idx</span> <span class="o">=</span> <span class="n">min_prediction_idx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allow_missing_timesteps</span> <span class="o">=</span> <span class="n">allow_missing_timesteps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_relative_time_idx</span> <span class="o">=</span> <span class="n">add_relative_time_idx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_target_scales</span> <span class="o">=</span> <span class="n">add_target_scales</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_encoder_length</span> <span class="o">=</span> <span class="n">add_encoder_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">randomize_length</span> <span class="o">=</span> <span class="n">randomize_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_normalizer</span> <span class="o">=</span> <span class="n">target_normalizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">categorical_encoders</span> <span class="o">=</span> <span class="n">categorical_encoders</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span> <span class="o">=</span> <span class="n">scalers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span> <span class="o">=</span> <span class="n">num_workers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_val_test_split</span> <span class="o">=</span> <span class="n">train_val_test_split</span>
+
+        <span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;TimeSeries is part of an experimental rework of the &quot;</span>
+            <span class="s2">&quot;pytorch-forecasting data layer, &quot;</span>
+            <span class="s2">&quot;scheduled for release with v2.0.0. &quot;</span>
+            <span class="s2">&quot;The API is not stable and may change without prior warning. &quot;</span>
+            <span class="s2">&quot;For beta testing, but not for stable production use. &quot;</span>
+            <span class="s2">&quot;Feedback and suggestions are very welcome in &quot;</span>
+            <span class="s2">&quot;pytorch-forecasting issue 1736, &quot;</span>
+            <span class="s2">&quot;https://github.com/sktime/pytorch-forecasting/issues/1736&quot;</span><span class="p">,</span>
+            <span class="ne">UserWarning</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># handle defaults and derived attributes</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_normalizer</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">target_normalizer</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_target_normalizer</span> <span class="o">=</span> <span class="n">RobustScaler</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_target_normalizer</span> <span class="o">=</span> <span class="n">target_normalizer</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span> <span class="o">=</span> <span class="n">time_series_dataset</span><span class="o">.</span><span class="n">get_metadata</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_prediction_length</span> <span class="o">=</span> <span class="n">min_prediction_length</span> <span class="ow">or</span> <span class="n">max_prediction_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_encoder_length</span> <span class="o">=</span> <span class="n">min_encoder_length</span> <span class="ow">or</span> <span class="n">max_encoder_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_categorical_encoders</span> <span class="o">=</span> <span class="n">_coerce_to_dict</span><span class="p">(</span><span class="n">categorical_encoders</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalers</span> <span class="o">=</span> <span class="n">_coerce_to_dict</span><span class="p">(</span><span class="n">scalers</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">categorical_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">continuous_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;col_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">categorical_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">continuous_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_prepare_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prepare metadata for model initialisation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            dictionary containing the following keys:</span>
+
+<span class="sd">            * ``encoder_cat``: Number of categorical variables in the encoder.</span>
+<span class="sd">                Computed as ``len(self.categorical_indices)``, which counts the</span>
+<span class="sd">                categorical feature indices.</span>
+<span class="sd">            * ``encoder_cont``: Number of continuous variables in the encoder.</span>
+<span class="sd">                Computed as ``len(self.continuous_indices)``, which counts the</span>
+<span class="sd">                continuous feature indices.</span>
+<span class="sd">            * ``decoder_cat``: Number of categorical variables in the decoder that</span>
+<span class="sd">                are known in advance.</span>
+<span class="sd">                Computed by filtering ``self.time_series_metadata[&quot;cols&quot;][&quot;x&quot;]``</span>
+<span class="sd">                where col_type == &quot;C&quot;(categorical) and col_known == &quot;K&quot; (known)</span>
+<span class="sd">            * ``decoder_cont``:  Number of continuous variables in the decoder that</span>
+<span class="sd">                are known in advance.</span>
+<span class="sd">                Computed by filtering ``self.time_series_metadata[&quot;cols&quot;][&quot;x&quot;]``</span>
+<span class="sd">                where col_type == &quot;F&quot;(continuous) and col_known == &quot;K&quot;(known)</span>
+<span class="sd">            * ``target``: Number of target variables.</span>
+<span class="sd">                Computed as ``len(self.time_series_metadata[&quot;cols&quot;][&quot;y&quot;])``, which</span>
+<span class="sd">                gives the number of output target columns..</span>
+<span class="sd">            * ``static_categorical_features``: Number of static categorical features</span>
+<span class="sd">                Computed by filtering ``self.time_series_metadata[&quot;cols&quot;][&quot;st&quot;]``</span>
+<span class="sd">                (static features) where col_type == &quot;C&quot; (categorical).</span>
+<span class="sd">            * ``static_continuous_features``: Number of static continuous features</span>
+<span class="sd">                Computed as difference of</span>
+<span class="sd">                ``len(self.time_series_metadata[&quot;cols&quot;][&quot;st&quot;])`` (static features)</span>
+<span class="sd">                and static_categorical_features that gives static continuous feature</span>
+<span class="sd">            * ``max_encoder_length``: maximum encoder length</span>
+<span class="sd">                Taken directly from `self.max_encoder_length`.</span>
+<span class="sd">            * ``max_prediction_length``: maximum prediction length</span>
+<span class="sd">                Taken directly from `self.max_prediction_length`.</span>
+<span class="sd">            * ``min_encoder_length``: minimum encoder length</span>
+<span class="sd">                Taken directly from `self.min_encoder_length`.</span>
+<span class="sd">            * ``min_prediction_length``: minimum prediction length</span>
+<span class="sd">                Taken directly from `self.min_prediction_length`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">encoder_cat_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">categorical_indices</span><span class="p">)</span>
+        <span class="n">encoder_cont_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">continuous_indices</span><span class="p">)</span>
+
+        <span class="n">decoder_cat_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">col</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;col_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;col_known&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;K&quot;</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">decoder_cont_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">col</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;col_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;col_known&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;K&quot;</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">target_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">])</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;encoder_cat&quot;</span><span class="p">:</span> <span class="n">encoder_cat_count</span><span class="p">,</span>
+            <span class="s2">&quot;encoder_cont&quot;</span><span class="p">:</span> <span class="n">encoder_cont_count</span><span class="p">,</span>
+            <span class="s2">&quot;decoder_cat&quot;</span><span class="p">:</span> <span class="n">decoder_cat_count</span><span class="p">,</span>
+            <span class="s2">&quot;decoder_cont&quot;</span><span class="p">:</span> <span class="n">decoder_cont_count</span><span class="p">,</span>
+            <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">target_count</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;st&quot;</span><span class="p">]:</span>
+            <span class="n">static_cat_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">col</span>
+                    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;st&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;col_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">static_cont_count</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;st&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="n">static_cat_count</span>
+            <span class="p">)</span>
+
+            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;static_categorical_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">static_cat_count</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;static_continuous_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">static_cont_count</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;static_categorical_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;static_continuous_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;max_encoder_length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">,</span>
+                <span class="s2">&quot;max_prediction_length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_prediction_length</span><span class="p">,</span>
+                <span class="s2">&quot;min_encoder_length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_encoder_length</span><span class="p">,</span>
+                <span class="s2">&quot;min_prediction_length&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_prediction_length</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">metadata</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute metadata for model initialization.</span>
+
+<span class="sd">        This property returns a dictionary containing the shapes and key information</span>
+<span class="sd">        related to the time series model. The metadata includes:</span>
+
+<span class="sd">        * ``encoder_cat``: Number of categorical variables in the encoder.</span>
+<span class="sd">        * ``encoder_cont``: Number of continuous variables in the encoder.</span>
+<span class="sd">        * ``decoder_cat``: Number of categorical variables in the decoder that are</span>
+<span class="sd">                            known in advance.</span>
+<span class="sd">        * ``decoder_cont``:  Number of continuous variables in the decoder that are</span>
+<span class="sd">                            known in advance.</span>
+<span class="sd">        * ``target``: Number of target variables.</span>
+
+<span class="sd">        If static features are present, the following keys are added:</span>
+
+<span class="sd">        * ``static_categorical_features``: Number of static categorical features</span>
+<span class="sd">        * ``static_continuous_features``: Number of static continuous features</span>
+
+<span class="sd">        It also contains the following information:</span>
+
+<span class="sd">        * ``max_encoder_length``: maximum encoder length</span>
+<span class="sd">        * ``max_prediction_length``: maximum prediction length</span>
+<span class="sd">        * ``min_encoder_length``: minimum encoder length</span>
+<span class="sd">        * ``min_prediction_length``: minimum prediction length</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_metadata</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_metadata</span>
+
+    <span class="k">def</span> <span class="nf">_preprocess_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">series_idx</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.</span>
+
+<span class="sd">        Preprocessing steps</span>
+<span class="sd">        --------------------</span>
+
+<span class="sd">        * Converts target (`y`) and features (`x`) to `torch.float32`.</span>
+<span class="sd">        * Masks time points that are at or before the cutoff time.</span>
+<span class="sd">        * Splits features into categorical and continuous subsets based on</span>
+<span class="sd">            predefined indices.</span>
+
+
+<span class="sd">        TODO: add scalers, target normalizers etc.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">[</span><span class="n">series_idx</span><span class="p">]</span>
+
+        <span class="n">target</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">]</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;t&quot;</span><span class="p">]</span>
+        <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="s2">&quot;cutoff_time&quot;</span><span class="p">]</span>
+
+        <span class="n">time_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">times</span> <span class="o">&lt;=</span> <span class="n">cutoff_time</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># TODO: add scalers, target normalizers etc.</span>
+
+        <span class="n">categorical</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">features</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">categorical_indices</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">categorical_indices</span>
+            <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">continuous</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">features</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuous_indices</span><span class="p">]</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuous_indices</span>
+            <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">features</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;features&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;categorical&quot;</span><span class="p">:</span> <span class="n">categorical</span><span class="p">,</span> <span class="s2">&quot;continuous&quot;</span><span class="p">:</span> <span class="n">continuous</span><span class="p">},</span>
+            <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">target</span><span class="p">,</span>
+            <span class="s2">&quot;static&quot;</span><span class="p">:</span> <span class="n">sample</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;st&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="s2">&quot;group&quot;</span><span class="p">:</span> <span class="n">sample</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">])),</span>
+            <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="p">),</span>
+            <span class="s2">&quot;time_mask&quot;</span><span class="p">:</span> <span class="n">time_mask</span><span class="p">,</span>
+            <span class="s2">&quot;times&quot;</span><span class="p">:</span> <span class="n">times</span><span class="p">,</span>
+            <span class="s2">&quot;cutoff_time&quot;</span><span class="p">:</span> <span class="n">cutoff_time</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">class</span> <span class="nc">_ProcessedEncoderDecoderDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;PyTorch Dataset for processed encoder-decoder time series data.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dataset : TimeSeries</span>
+<span class="sd">            The base time series dataset that provides access to raw data and metadata.</span>
+<span class="sd">        data_module : EncoderDecoderTimeSeriesDataModule</span>
+<span class="sd">            The data module handling preprocessing and metadata configuration.</span>
+<span class="sd">        windows : List[Tuple[int, int, int, int]]</span>
+<span class="sd">            List of window tuples containing</span>
+<span class="sd">            (series_idx, start_idx, enc_length, pred_length).</span>
+<span class="sd">        add_relative_time_idx : bool, default=False</span>
+<span class="sd">            Whether to include relative time indices.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="p">:</span> <span class="n">TimeSeries</span><span class="p">,</span>
+            <span class="n">data_module</span><span class="p">:</span> <span class="s2">&quot;EncoderDecoderTimeSeriesDataModule&quot;</span><span class="p">,</span>
+            <span class="n">windows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
+            <span class="n">add_relative_time_idx</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_module</span> <span class="o">=</span> <span class="n">data_module</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">windows</span> <span class="o">=</span> <span class="n">windows</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add_relative_time_idx</span> <span class="o">=</span> <span class="n">add_relative_time_idx</span>
+
+        <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">windows</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Retrieve a processed time series window for dataloader input.</span>
+
+<span class="sd">            x : dict</span>
+<span class="sd">                Dictionary containing model inputs:</span>
+
+<span class="sd">                * ``encoder_cat`` : tensor of shape (enc_length, n_cat_features)</span>
+<span class="sd">                  Categorical features for the encoder.</span>
+<span class="sd">                * ``encoder_cont`` : tensor of shape (enc_length, n_cont_features)</span>
+<span class="sd">                  Continuous features for the encoder.</span>
+<span class="sd">                * ``decoder_cat`` : tensor of shape (pred_length, n_cat_features)</span>
+<span class="sd">                  Categorical features for the decoder.</span>
+<span class="sd">                * ``decoder_cont`` : tensor of shape (pred_length, n_cont_features)</span>
+<span class="sd">                  Continuous features for the decoder.</span>
+<span class="sd">                * ``encoder_lengths`` : tensor of shape (1,)</span>
+<span class="sd">                  Length of the encoder sequence.</span>
+<span class="sd">                * ``decoder_lengths`` : tensor of shape (1,)</span>
+<span class="sd">                  Length of the decoder sequence.</span>
+<span class="sd">                * ``decoder_target_lengths`` : tensor of shape (1,)</span>
+<span class="sd">                  Length of the decoder target sequence.</span>
+<span class="sd">                * ``groups`` : tensor of shape (1,)</span>
+<span class="sd">                  Group identifier for the time series instance.</span>
+<span class="sd">                * ``encoder_time_idx`` : tensor of shape (enc_length,)</span>
+<span class="sd">                  Time indices for the encoder sequence.</span>
+<span class="sd">                * ``decoder_time_idx`` : tensor of shape (pred_length,)</span>
+<span class="sd">                  Time indices for the decoder sequence.</span>
+<span class="sd">                * ``target_scale`` : tensor of shape (1,)</span>
+<span class="sd">                  Scaling factor for the target values.</span>
+<span class="sd">                * ``encoder_mask`` : tensor of shape (enc_length,)</span>
+<span class="sd">                  Boolean mask indicating valid encoder time points.</span>
+<span class="sd">                * ``decoder_mask`` : tensor of shape (pred_length,)</span>
+<span class="sd">                  Boolean mask indicating valid decoder time points.</span>
+
+<span class="sd">                  If static features are present, the following keys are added:</span>
+
+<span class="sd">                * ``static_categorical_features`` : tensor of shape</span>
+<span class="sd">                                                    (1, n_static_cat_features), optional</span>
+<span class="sd">                  Static categorical features, if available.</span>
+<span class="sd">                * ``static_continuous_features`` : tensor of shape (1, 0), optional</span>
+<span class="sd">                  Placeholder for static continuous features (currently empty).</span>
+
+<span class="sd">            y : tensor of shape ``(pred_length, n_targets)``</span>
+<span class="sd">                Target values for the decoder sequence.</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">series_idx</span><span class="p">,</span> <span class="n">start_idx</span><span class="p">,</span> <span class="n">enc_length</span><span class="p">,</span> <span class="n">pred_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">windows</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_module</span><span class="o">.</span><span class="n">_preprocess_data</span><span class="p">(</span><span class="n">series_idx</span><span class="p">)</span>
+
+            <span class="n">end_idx</span> <span class="o">=</span> <span class="n">start_idx</span> <span class="o">+</span> <span class="n">enc_length</span> <span class="o">+</span> <span class="n">pred_length</span>
+            <span class="n">encoder_indices</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">start_idx</span><span class="p">,</span> <span class="n">start_idx</span> <span class="o">+</span> <span class="n">enc_length</span><span class="p">)</span>
+            <span class="n">decoder_indices</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">start_idx</span> <span class="o">+</span> <span class="n">enc_length</span><span class="p">,</span> <span class="n">end_idx</span><span class="p">)</span>
+
+            <span class="n">target_past</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;target&quot;</span><span class="p">][</span><span class="n">encoder_indices</span><span class="p">]</span>
+            <span class="n">target_scale</span> <span class="o">=</span> <span class="n">target_past</span><span class="p">[</span><span class="o">~</span><span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">target_past</span><span class="p">)]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">target_scale</span><span class="p">)</span> <span class="ow">or</span> <span class="n">target_scale</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">target_scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+
+            <span class="n">encoder_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">data</span><span class="p">[</span><span class="s2">&quot;time_mask&quot;</span><span class="p">][</span><span class="n">encoder_indices</span><span class="p">]</span>
+                <span class="k">if</span> <span class="s2">&quot;time_mask&quot;</span> <span class="ow">in</span> <span class="n">data</span>
+                <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">enc_length</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">decoder_mask</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">data</span><span class="p">[</span><span class="s2">&quot;time_mask&quot;</span><span class="p">][</span><span class="n">decoder_indices</span><span class="p">]</span>
+                <span class="k">if</span> <span class="s2">&quot;time_mask&quot;</span> <span class="ow">in</span> <span class="n">data</span>
+                <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">pred_length</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="n">encoder_cat</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="s2">&quot;categorical&quot;</span><span class="p">][</span><span class="n">encoder_indices</span><span class="p">]</span>
+            <span class="n">encoder_cont</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="s2">&quot;continuous&quot;</span><span class="p">][</span><span class="n">encoder_indices</span><span class="p">]</span>
+
+            <span class="n">features</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_module</span><span class="o">.</span><span class="n">time_series_metadata</span>
+
+            <span class="n">known_cat_indices</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">i</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;col_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span>
+                <span class="ow">and</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;col_known&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;K&quot;</span>
+            <span class="p">]</span>
+
+            <span class="n">known_cont_indices</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">i</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;col_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span>
+                <span class="ow">and</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;col_known&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;K&quot;</span>
+            <span class="p">]</span>
+
+            <span class="n">cat_map</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">orig_idx</span><span class="p">:</span> <span class="n">i</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">orig_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_module</span><span class="o">.</span><span class="n">categorical_indices</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="n">cont_map</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">orig_idx</span><span class="p">:</span> <span class="n">i</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">orig_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_module</span><span class="o">.</span><span class="n">continuous_indices</span><span class="p">)</span>
+            <span class="p">}</span>
+
+            <span class="n">mapped_known_cat_indices</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">cat_map</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">known_cat_indices</span> <span class="k">if</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">cat_map</span>
+            <span class="p">]</span>
+            <span class="n">mapped_known_cont_indices</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">cont_map</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">known_cont_indices</span> <span class="k">if</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">cont_map</span>
+            <span class="p">]</span>
+
+            <span class="n">decoder_cat</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">features</span><span class="p">[</span><span class="s2">&quot;categorical&quot;</span><span class="p">][</span><span class="n">decoder_indices</span><span class="p">][:,</span> <span class="n">mapped_known_cat_indices</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">mapped_known_cat_indices</span>
+                <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">pred_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="p">)</span>
+
+            <span class="n">decoder_cont</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">features</span><span class="p">[</span><span class="s2">&quot;continuous&quot;</span><span class="p">][</span><span class="n">decoder_indices</span><span class="p">][:,</span> <span class="n">mapped_known_cont_indices</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">mapped_known_cont_indices</span>
+                <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">pred_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="p">)</span>
+
+            <span class="n">x</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;encoder_cat&quot;</span><span class="p">:</span> <span class="n">encoder_cat</span><span class="p">,</span>
+                <span class="s2">&quot;encoder_cont&quot;</span><span class="p">:</span> <span class="n">encoder_cont</span><span class="p">,</span>
+                <span class="s2">&quot;decoder_cat&quot;</span><span class="p">:</span> <span class="n">decoder_cat</span><span class="p">,</span>
+                <span class="s2">&quot;decoder_cont&quot;</span><span class="p">:</span> <span class="n">decoder_cont</span><span class="p">,</span>
+                <span class="s2">&quot;encoder_lengths&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">enc_length</span><span class="p">),</span>
+                <span class="s2">&quot;decoder_lengths&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">pred_length</span><span class="p">),</span>
+                <span class="s2">&quot;decoder_target_lengths&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">pred_length</span><span class="p">),</span>
+                <span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;group&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;target_past&quot;</span><span class="p">:</span> <span class="n">target_past</span><span class="p">,</span>
+                <span class="s2">&quot;encoder_time_idx&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">enc_length</span><span class="p">),</span>
+                <span class="s2">&quot;decoder_time_idx&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">enc_length</span><span class="p">,</span> <span class="n">enc_length</span> <span class="o">+</span> <span class="n">pred_length</span><span class="p">),</span>
+                <span class="s2">&quot;target_scale&quot;</span><span class="p">:</span> <span class="n">target_scale</span><span class="p">,</span>
+                <span class="s2">&quot;encoder_mask&quot;</span><span class="p">:</span> <span class="n">encoder_mask</span><span class="p">,</span>
+                <span class="s2">&quot;decoder_mask&quot;</span><span class="p">:</span> <span class="n">decoder_mask</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;static&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">raw_st_tensor</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">)</span>
+                <span class="n">static_col_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_module</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;cols&quot;</span><span class="p">][</span><span class="s2">&quot;st&quot;</span><span class="p">]</span>
+
+                <span class="n">is_categorical_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">data_module</span><span class="o">.</span><span class="n">time_series_metadata</span><span class="p">[</span><span class="s2">&quot;col_type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col_name</span><span class="p">)</span>
+                        <span class="o">==</span> <span class="s2">&quot;C&quot;</span>
+                        <span class="k">for</span> <span class="n">col_name</span> <span class="ow">in</span> <span class="n">static_col_names</span>
+                    <span class="p">],</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="n">is_continuous_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">is_categorical_mask</span>
+
+                <span class="n">st_cat_values_for_item</span> <span class="o">=</span> <span class="n">raw_st_tensor</span><span class="p">[</span><span class="n">is_categorical_mask</span><span class="p">]</span>
+                <span class="n">st_cont_values_for_item</span> <span class="o">=</span> <span class="n">raw_st_tensor</span><span class="p">[</span><span class="n">is_continuous_mask</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">st_cat_values_for_item</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;static_categorical_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">st_cat_values_for_item</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span>
+                        <span class="mi">0</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;static_categorical_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
+                    <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">st_cont_values_for_item</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;static_continuous_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">st_cont_values_for_item</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span>
+                        <span class="mi">0</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;static_continuous_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span>
+                    <span class="p">)</span>
+
+            <span class="n">y</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;target&quot;</span><span class="p">][</span><span class="n">decoder_indices</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span>
+
+    <span class="k">def</span> <span class="nf">_create_windows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate sliding windows for training, validation, and testing.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        List[Tuple[int, int, int, int]]</span>
+<span class="sd">            A list of tuples, where each tuple consists of:</span>
+<span class="sd">            - ``series_idx`` : int</span>
+<span class="sd">              Index of the time series in `time_series_dataset`.</span>
+<span class="sd">            - ``start_idx`` : int</span>
+<span class="sd">              Start index of the encoder window.</span>
+<span class="sd">            - ``enc_length`` : int</span>
+<span class="sd">              Length of the encoder input sequence.</span>
+<span class="sd">            - ``pred_length`` : int</span>
+<span class="sd">              Length of the decoder output sequence.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">windows</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+            <span class="n">series_idx</span> <span class="o">=</span> <span class="n">idx</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">[</span><span class="n">series_idx</span><span class="p">]</span>
+            <span class="n">sequence_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">sequence_length</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_encoder_length</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_prediction_length</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">effective_min_prediction_idx</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">min_prediction_idx</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_prediction_idx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_encoder_length</span>
+            <span class="p">)</span>
+
+            <span class="n">max_prediction_idx</span> <span class="o">=</span> <span class="n">sequence_length</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_prediction_length</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">max_prediction_idx</span> <span class="o">&lt;=</span> <span class="n">effective_min_prediction_idx</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">for</span> <span class="n">start_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="n">max_prediction_idx</span> <span class="o">-</span> <span class="n">effective_min_prediction_idx</span>
+            <span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">start_idx</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_encoder_length</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_prediction_length</span>
+                    <span class="o">&lt;=</span> <span class="n">sequence_length</span>
+                <span class="p">):</span>
+                    <span class="n">windows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">(</span>
+                            <span class="n">series_idx</span><span class="p">,</span>
+                            <span class="n">start_idx</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">max_encoder_length</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">max_prediction_length</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">windows</span>
+
+<div class="viewcode-block" id="EncoderDecoderTimeSeriesDataModule.setup">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.html#pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.setup">[docs]</a>
+    <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stage</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prepare the datasets for training, validation, testing, or prediction.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        stage : Optional[str], default=None</span>
+<span class="sd">            Specifies the stage of setup. Can be one of:</span>
+<span class="sd">            - ``&quot;fit&quot;`` : Prepares training and validation datasets.</span>
+<span class="sd">            - ``&quot;test&quot;`` : Prepares the test dataset.</span>
+<span class="sd">            - ``&quot;predict&quot;`` : Prepares the dataset for inference.</span>
+<span class="sd">            - ``None`` : Prepares ``fit`` datasets.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total_series</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_split_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">total_series</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_train_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_val_test_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">total_series</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_val_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_val_test_split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">total_series</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_train_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_indices</span><span class="p">[:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_size</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_val_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_indices</span><span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_size</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_size</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val_size</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_test_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_indices</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_train_size</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val_size</span> <span class="p">:]</span>
+
+        <span class="k">if</span> <span class="n">stage</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">stage</span> <span class="o">==</span> <span class="s2">&quot;fit&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;train_dataset&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;val_dataset&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_windows</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_train_indices</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">val_windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_windows</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_val_indices</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ProcessedEncoderDecoderDataset</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_windows</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_relative_time_idx</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">val_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ProcessedEncoderDecoderDataset</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">val_windows</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_relative_time_idx</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">stage</span> <span class="o">==</span> <span class="s2">&quot;test&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;test_dataset&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_windows</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_test_indices</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ProcessedEncoderDecoderDataset</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">test_windows</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">add_relative_time_idx</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">stage</span> <span class="o">==</span> <span class="s2">&quot;predict&quot;</span><span class="p">:</span>
+            <span class="n">predict_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">predict_windows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_windows</span><span class="p">(</span><span class="n">predict_indices</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">predict_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ProcessedEncoderDecoderDataset</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">time_series_dataset</span><span class="p">,</span>
+                <span class="bp">self</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">predict_windows</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">add_relative_time_idx</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EncoderDecoderTimeSeriesDataModule.train_dataloader">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.html#pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.train_dataloader">[docs]</a>
+    <span class="k">def</span> <span class="nf">train_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">DataLoader</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_dataset</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">collate_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EncoderDecoderTimeSeriesDataModule.val_dataloader">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.html#pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.val_dataloader">[docs]</a>
+    <span class="k">def</span> <span class="nf">val_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">DataLoader</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">val_dataset</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">collate_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EncoderDecoderTimeSeriesDataModule.test_dataloader">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.html#pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.test_dataloader">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">DataLoader</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_dataset</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">collate_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EncoderDecoderTimeSeriesDataModule.predict_dataloader">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.html#pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule.predict_dataloader">[docs]</a>
+    <span class="k">def</span> <span class="nf">predict_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">DataLoader</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">predict_dataset</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">num_workers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
+            <span class="n">collate_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">collate_fn</span><span class="p">(</span><span class="n">batch</span><span class="p">):</span>
+        <span class="n">x_batch</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;encoder_cat&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cat&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;encoder_cont&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_cont&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;decoder_cat&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_cat&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;decoder_cont&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_cont&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;encoder_lengths&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_lengths&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;decoder_lengths&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_lengths&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;decoder_target_lengths&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_target_lengths&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;groups&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;target_past&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_past&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;encoder_time_idx&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_time_idx&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;decoder_time_idx&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_time_idx&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;target_scale&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;target_scale&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;encoder_mask&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;encoder_mask&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+            <span class="s2">&quot;decoder_mask&quot;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;decoder_mask&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]),</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="s2">&quot;static_categorical_features&quot;</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">x_batch</span><span class="p">[</span><span class="s2">&quot;static_categorical_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;static_categorical_features&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">x_batch</span><span class="p">[</span><span class="s2">&quot;static_continuous_features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s2">&quot;static_continuous_features&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="n">y_batch</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">y</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">x_batch</span><span class="p">,</span> <span class="n">y_batch</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

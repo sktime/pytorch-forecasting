@@ -1,0 +1,33 @@
+NBEATSTrendBlock
+================
+
+.. currentmodule:: pytorch_forecasting.models.nbeats.sub_modules
+
+
+.. autoclass:: NBEATSTrendBlock
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NBEATSTrendBlock.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

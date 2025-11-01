@@ -1,0 +1,39 @@
+TIDE
+====
+
+.. currentmodule:: pytorch_forecasting.models.tide._tide_dsipts._tide_v2
+
+
+.. autoclass:: TIDE
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TIDE.cat_categorical_vars
+      ~TIDE.forward
+      ~TIDE.remove_var
+   
+   
+
+   
+    
+   
+   
+   
+   

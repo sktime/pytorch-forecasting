@@ -1,0 +1,38 @@
+distributions
+=============
+
+.. automodule:: pytorch_forecasting.metrics.distributions
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      BetaDistributionLoss
+      ImplicitQuantileNetwork
+      ImplicitQuantileNetworkDistributionLoss
+      LogNormalDistributionLoss
+      MQF2DistributionLoss
+      MultivariateNormalDistributionLoss
+      NegativeBinomialDistributionLoss
+      NormalDistributionLoss
+   
+   
+
+   
+   
+   
+
+
+

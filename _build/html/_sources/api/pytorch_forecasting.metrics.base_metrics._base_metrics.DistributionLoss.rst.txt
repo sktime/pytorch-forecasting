@@ -1,0 +1,45 @@
+DistributionLoss
+================
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: DistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DistributionLoss.loss
+      ~DistributionLoss.map_x_to_distribution
+      ~DistributionLoss.sample
+      ~DistributionLoss.to_prediction
+      ~DistributionLoss.to_quantiles
+   
+   
+
+   
+    
+   
+   
+   
+   

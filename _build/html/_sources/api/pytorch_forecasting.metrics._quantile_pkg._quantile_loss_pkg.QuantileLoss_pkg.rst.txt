@@ -1,0 +1,47 @@
+QuantileLoss\_pkg
+=================
+
+.. currentmodule:: pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg
+
+
+.. autoclass:: QuantileLoss_pkg
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~QuantileLoss_pkg.get_cls
+      ~QuantileLoss_pkg.get_encoder
+      ~QuantileLoss_pkg.get_metric_test_params
+      ~QuantileLoss_pkg.name
+      ~QuantileLoss_pkg.prepare_test_inputs
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,36 @@
+MultivariateDistributionLoss
+============================
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+
+.. autoclass:: MultivariateDistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MultivariateDistributionLoss.loss
+      ~MultivariateDistributionLoss.sample
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,1145 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pytorch_forecasting.metrics._mqf2_utils &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pytorch_forecasting/metrics/_mqf2_utils';</script>
+    <link rel="icon" href="../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pytorch_forecasting.metrics._mqf2_utils</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pytorch_forecasting.metrics._mqf2_utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Classes and functions for the MQF2 metric.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch.distributions</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AffineTransform</span><span class="p">,</span>
+    <span class="n">Distribution</span><span class="p">,</span>
+    <span class="n">Normal</span><span class="p">,</span>
+    <span class="n">TransformedDistribution</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.utils._dependencies</span> <span class="kn">import</span> <span class="n">_safe_import</span>
+
+<span class="n">DeepConvexFlow</span> <span class="o">=</span> <span class="n">_safe_import</span><span class="p">(</span><span class="s2">&quot;cpflows.flows.DeepConvexFlow&quot;</span><span class="p">)</span>
+<span class="n">SequentialFlow</span> <span class="o">=</span> <span class="n">_safe_import</span><span class="p">(</span><span class="s2">&quot;cpflows.flows.SequentialFlow&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DeepConvexNet">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.DeepConvexNet.html#pytorch_forecasting.metrics._mqf2_utils.DeepConvexNet">[docs]</a>
+<span class="k">class</span> <span class="nc">DeepConvexNet</span><span class="p">(</span><span class="n">DeepConvexFlow</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class that takes a partially input convex neural network (picnn)</span>
+<span class="sd">    as input and equips it with functions of logdet</span>
+<span class="sd">    computation (both estimation and exact computation).</span>
+<span class="sd">    This class is based on DeepConvexFlow of the CP-Flow</span>
+<span class="sd">    repo (https://github.com/CW-Huang/CP-Flow)</span>
+<span class="sd">    For details of the logdet estimator, see</span>
+<span class="sd">    ``Convex potential flows: Universal probability distributions</span>
+<span class="sd">    with optimal transport and convex optimization``</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    picnn</span>
+<span class="sd">        A partially input convex neural network (picnn)</span>
+<span class="sd">    dim</span>
+<span class="sd">        Dimension of the input</span>
+<span class="sd">    is_energy_score</span>
+<span class="sd">        Indicates if energy score is used as the objective function</span>
+<span class="sd">        If yes, the network is not required to be strictly convex,</span>
+<span class="sd">        so we can just use the picnn</span>
+<span class="sd">        otherwise, a quadratic term is added to the output of picnn</span>
+<span class="sd">        to render it strictly convex</span>
+<span class="sd">    m1</span>
+<span class="sd">        Dimension of the Krylov subspace of the Lanczos tridiagonalization</span>
+<span class="sd">        used in approximating H of logdet(H)</span>
+<span class="sd">    m2</span>
+<span class="sd">        Iteration number of the conjugate gradient algorithm</span>
+<span class="sd">        used to approximate logdet(H)</span>
+<span class="sd">    rtol</span>
+<span class="sd">        relative tolerance of the conjugate gradient algorithm</span>
+<span class="sd">    atol</span>
+<span class="sd">        absolute tolerance of the conjugate gradient algorithm</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">picnn</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">is_energy_score</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">estimate_logdet</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">m1</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">m2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">picnn</span><span class="p">,</span>
+            <span class="n">dim</span><span class="p">,</span>
+            <span class="n">m1</span><span class="o">=</span><span class="n">m1</span><span class="p">,</span>
+            <span class="n">m2</span><span class="o">=</span><span class="n">m2</span><span class="p">,</span>
+            <span class="n">rtol</span><span class="o">=</span><span class="n">rtol</span><span class="p">,</span>
+            <span class="n">atol</span><span class="o">=</span><span class="n">atol</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">icnn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span> <span class="o">=</span> <span class="n">is_energy_score</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimate_logdet</span> <span class="o">=</span> <span class="n">estimate_logdet</span>
+
+    <span class="k">def</span> <span class="nf">get_potential</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">output</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w1</span><span class="p">)</span> <span class="o">*</span> <span class="n">output</span>
+                <span class="o">+</span> <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward_transform</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">logdet</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">extra</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimate_logdet</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward_transform_stochastic</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">logdet</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">extra</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward_transform_bruteforce</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">logdet</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="SequentialNet">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.SequentialNet.html#pytorch_forecasting.metrics._mqf2_utils.SequentialNet">[docs]</a>
+<span class="k">class</span> <span class="nc">SequentialNet</span><span class="p">(</span><span class="n">SequentialFlow</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class that combines a list of DeepConvexNet and ActNorm</span>
+<span class="sd">    layers and provides energy score computation</span>
+<span class="sd">    This class is based on SequentialFlow of the CP-Flow repo</span>
+<span class="sd">    (https://github.com/CW-Huang/CP-Flow)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    networks</span>
+<span class="sd">        list of DeepConvexNet and/or ActNorm instances</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">networks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">networks</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">networks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flows</span>
+
+<div class="viewcode-block" id="SequentialNet.forward">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.SequentialNet.html#pytorch_forecasting.metrics._mqf2_utils.SequentialNet.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">network</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">networks</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">DeepConvexNet</span><span class="p">):</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">network</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">network</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="SequentialNet.es_sample">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.SequentialNet.html#pytorch_forecasting.metrics._mqf2_utils.SequentialNet.es_sample">[docs]</a>
+    <span class="k">def</span> <span class="nf">es_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hidden_state</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">dimension</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Auxiliary function for energy score computation</span>
+<span class="sd">        Drawing samples conditioned on the hidden state</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        hidden_state</span>
+<span class="sd">            hidden_state which the samples conditioned</span>
+<span class="sd">            on (num_samples, hidden_size)</span>
+<span class="sd">        dimension</span>
+<span class="sd">            dimension of the input</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        samples</span>
+<span class="sd">            samples drawn (num_samples, dimension)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">num_samples</span> <span class="o">=</span> <span class="n">hidden_state</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">zero</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">one</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">zero</span><span class="p">)</span>
+        <span class="n">standard_normal</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="n">zero</span><span class="p">,</span> <span class="n">one</span><span class="p">)</span>
+
+        <span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span>
+            <span class="n">standard_normal</span><span class="o">.</span><span class="n">sample</span><span class="p">([</span><span class="n">num_samples</span> <span class="o">*</span> <span class="n">dimension</span><span class="p">])</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+                <span class="n">num_samples</span><span class="p">,</span> <span class="n">dimension</span>
+            <span class="p">),</span>
+            <span class="n">context</span><span class="o">=</span><span class="n">hidden_state</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+<div class="viewcode-block" id="SequentialNet.energy_score">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.SequentialNet.html#pytorch_forecasting.metrics._mqf2_utils.SequentialNet.energy_score">[docs]</a>
+    <span class="k">def</span> <span class="nf">energy_score</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">hidden_state</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">es_num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the (approximated) energy score sum_i ES(g,z_i),</span>
+<span class="sd">        where ES(g,z_i) =</span>
+<span class="sd">        -1/(2*es_num_samples^2) * sum_{w,w&#39;} ||w-w&#39;||_2^beta</span>
+<span class="sd">        + 1/es_num_samples * sum_{w&#39;&#39;} ||w&#39;&#39;-z_i||_2^beta,</span>
+<span class="sd">        w&#39;s are samples drawn from the</span>
+<span class="sd">        quantile function g(., h_i) (gradient of picnn),</span>
+<span class="sd">        h_i is the hidden state associated with z_i,</span>
+<span class="sd">        and es_num_samples is the number of samples drawn</span>
+<span class="sd">        for each of w, w&#39;, w&#39;&#39; in energy score approximation</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        z</span>
+<span class="sd">            Observations (numel_batch, dimension)</span>
+<span class="sd">        hidden_state</span>
+<span class="sd">            Hidden state (numel_batch, hidden_size)</span>
+<span class="sd">        es_num_samples</span>
+<span class="sd">            Number of samples drawn for each of w, w&#39;, w&#39;&#39;</span>
+<span class="sd">            in energy score approximation</span>
+<span class="sd">        beta</span>
+<span class="sd">            Hyperparameter of the energy score, see the formula above</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loss</span>
+<span class="sd">            energy score (numel_batch)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">numel_batch</span><span class="p">,</span> <span class="n">dimension</span> <span class="o">=</span> <span class="n">z</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">z</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># (numel_batch * dimension * es_num_samples x hidden_size)</span>
+
+        <span class="n">hidden_state_repeat</span> <span class="o">=</span> <span class="n">hidden_state</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span>
+            <span class="n">repeats</span><span class="o">=</span><span class="n">es_num_samples</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+
+        <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">es_sample</span><span class="p">(</span><span class="n">hidden_state_repeat</span><span class="p">,</span> <span class="n">dimension</span><span class="p">)</span>
+        <span class="n">w_prime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">es_sample</span><span class="p">(</span><span class="n">hidden_state_repeat</span><span class="p">,</span> <span class="n">dimension</span><span class="p">)</span>
+
+        <span class="n">first_term</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span>
+                <span class="n">w</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">numel_batch</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">es_num_samples</span><span class="p">,</span> <span class="n">dimension</span><span class="p">)</span>
+                <span class="o">-</span> <span class="n">w_prime</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">numel_batch</span><span class="p">,</span> <span class="n">es_num_samples</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dimension</span><span class="p">),</span>
+                <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">**</span> <span class="n">beta</span>
+        <span class="p">)</span>
+
+        <span class="n">mean_first_term</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">first_term</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">numel_batch</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># since both tensors are huge (numel_batch*es_num_samples, dimension),</span>
+        <span class="c1"># delete to free up GPU memories</span>
+        <span class="k">del</span> <span class="n">w</span><span class="p">,</span> <span class="n">w_prime</span>
+
+        <span class="n">z_repeat</span> <span class="o">=</span> <span class="n">z</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="n">repeats</span><span class="o">=</span><span class="n">es_num_samples</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">w_bar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">es_sample</span><span class="p">(</span><span class="n">hidden_state_repeat</span><span class="p">,</span> <span class="n">dimension</span><span class="p">)</span>
+
+        <span class="n">second_term</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span>
+                <span class="n">w_bar</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">numel_batch</span><span class="p">,</span> <span class="n">es_num_samples</span><span class="p">,</span> <span class="n">dimension</span><span class="p">)</span>
+                <span class="o">-</span> <span class="n">z_repeat</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">numel_batch</span><span class="p">,</span> <span class="n">es_num_samples</span><span class="p">,</span> <span class="n">dimension</span><span class="p">),</span>
+                <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">**</span> <span class="n">beta</span>
+        <span class="p">)</span>
+
+        <span class="n">mean_second_term</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">second_term</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">numel_batch</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">loss</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">mean_first_term</span> <span class="o">+</span> <span class="n">mean_second_term</span>
+
+        <span class="k">return</span> <span class="n">loss</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MQF2Distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution">[docs]</a>
+<span class="k">class</span> <span class="nc">MQF2Distribution</span><span class="p">(</span><span class="n">Distribution</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Distribution class for the model MQF2 proposed in the paper</span>
+<span class="sd">    ``Multivariate Quantile Function Forecaster``</span>
+<span class="sd">    by Kan, Aubet, Januschowski, Park, Benidis, Ruthotto, Gasthaus</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    picnn</span>
+<span class="sd">        A SequentialNet instance of a</span>
+<span class="sd">        partially input convex neural network (picnn)</span>
+<span class="sd">    hidden_state</span>
+<span class="sd">        hidden_state obtained by unrolling the RNN encoder</span>
+<span class="sd">        shape = (batch_size, context_length, hidden_size) in training</span>
+<span class="sd">        shape = (batch_size, hidden_size) in inference</span>
+<span class="sd">    prediction_length</span>
+<span class="sd">        Length of the prediction horizon</span>
+<span class="sd">    is_energy_score</span>
+<span class="sd">        If True, use energy score as objective function</span>
+<span class="sd">        otherwise use maximum likelihood as</span>
+<span class="sd">        objective function (normalizing flows)</span>
+<span class="sd">    es_num_samples</span>
+<span class="sd">        Number of samples drawn to approximate the energy score</span>
+<span class="sd">    beta</span>
+<span class="sd">        Hyperparameter of the energy score (power of the two terms)</span>
+<span class="sd">    threshold_input</span>
+<span class="sd">        Clamping threshold of the (scaled) input when maximum</span>
+<span class="sd">        likelihood is used as objective function</span>
+<span class="sd">        this is used to make the forecaster more robust</span>
+<span class="sd">        to outliers in training samples</span>
+<span class="sd">    validate_args</span>
+<span class="sd">        Sets whether validation is enabled or disabled</span>
+<span class="sd">        For more details, refer to the descriptions in</span>
+<span class="sd">        torch.distributions.distribution.Distribution</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">picnn</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+        <span class="n">hidden_state</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">prediction_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">is_energy_score</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">es_num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">threshold_input</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+        <span class="n">validate_args</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span> <span class="o">=</span> <span class="n">picnn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span> <span class="o">=</span> <span class="n">hidden_state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span> <span class="o">=</span> <span class="n">prediction_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span> <span class="o">=</span> <span class="n">is_energy_score</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">es_num_samples</span> <span class="o">=</span> <span class="n">es_num_samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">threshold_input</span> <span class="o">=</span> <span class="n">threshold_input</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">batch_shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_length</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">numel_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_numel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_shape</span><span class="p">)</span>
+
+        <span class="c1"># mean zero and std one</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">mu</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">standard_normal</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MQF2Distribution.stack_sliding_view">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.stack_sliding_view">[docs]</a>
+    <span class="k">def</span> <span class="nf">stack_sliding_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Auxiliary function for loss computation</span>
+<span class="sd">        Unfolds the observations by sliding a window of size prediction_length</span>
+<span class="sd">        over the observations z</span>
+<span class="sd">        Then, reshapes the observations into a 2-dimensional tensor for</span>
+<span class="sd">        further computation</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        z</span>
+<span class="sd">            A batch of time series with shape</span>
+<span class="sd">            (batch_size, context_length + prediction_length - 1)</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Tensor</span>
+<span class="sd">            Unfolded time series with shape</span>
+<span class="sd">            (batch_size * context_length, prediction_length)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="n">z</span><span class="o">.</span><span class="n">unfold</span><span class="p">(</span><span class="n">dimension</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">z</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">z</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">z</span></div>
+
+
+    <span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_score</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MQF2Distribution.log_prob">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.log_prob">[docs]</a>
+    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the log likelihood  log(g(z)) + logdet(dg(z)/dz),</span>
+<span class="sd">        where g is the gradient of the picnn</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        z</span>
+<span class="sd">            A batch of time series with shape</span>
+<span class="sd">            (batch_size, context_length + prediciton_length - 1)</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loss</span>
+<span class="sd">            Tesnor of shape (batch_size * context_length,)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="nb">min</span><span class="o">=-</span><span class="bp">self</span><span class="o">.</span><span class="n">threshold_input</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">threshold_input</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack_sliding_view</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+        <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="o">.</span><span class="n">logp</span><span class="p">(</span>
+            <span class="n">z</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">loss</span></div>
+
+
+<div class="viewcode-block" id="MQF2Distribution.energy_score">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.energy_score">[docs]</a>
+    <span class="k">def</span> <span class="nf">energy_score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the (approximated) energy score sum_i ES(g,z_i),</span>
+<span class="sd">        where ES(g,z_i) =</span>
+<span class="sd">        -1/(2*es_num_samples^2) * sum_{w,w&#39;} ||w-w&#39;||_2^beta</span>
+<span class="sd">        + 1/es_num_samples * sum_{w&#39;&#39;} ||w&#39;&#39;-z_i||_2^beta,</span>
+<span class="sd">        w&#39;s are samples drawn from the</span>
+<span class="sd">        quantile function g(., h_i) (gradient of picnn),</span>
+<span class="sd">        h_i is the hidden state associated with z_i,</span>
+<span class="sd">        and es_num_samples is the number of samples drawn</span>
+<span class="sd">        for each of w, w&#39;, w&#39;&#39; in energy score approximation</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        z</span>
+<span class="sd">            A batch of time series with shape</span>
+<span class="sd">            (batch_size, context_length + prediction_length - 1)</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loss</span>
+<span class="sd">            Tensor of shape (batch_size * context_length,)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">es_num_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">es_num_samples</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">beta</span>
+
+        <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack_sliding_view</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">reshaped_hidden_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="o">.</span><span class="n">energy_score</span><span class="p">(</span>
+            <span class="n">z</span><span class="p">,</span> <span class="n">reshaped_hidden_state</span><span class="p">,</span> <span class="n">es_num_samples</span><span class="o">=</span><span class="n">es_num_samples</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="n">beta</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">loss</span></div>
+
+
+<div class="viewcode-block" id="MQF2Distribution.rsample">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.rsample">[docs]</a>
+    <span class="k">def</span> <span class="nf">rsample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">())</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates the sample paths</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sample_shape</span>
+<span class="sd">            Shape of the samples</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sample_paths</span>
+<span class="sd">            Tesnor of shape (batch_size, * sample_shape, prediction_length)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">numel_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">numel_batch</span>
+        <span class="n">prediction_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span>
+
+        <span class="n">num_samples_per_batch</span> <span class="o">=</span> <span class="n">MQF2Distribution</span><span class="o">.</span><span class="n">get_numel</span><span class="p">(</span><span class="n">sample_shape</span><span class="p">)</span>
+        <span class="n">num_samples</span> <span class="o">=</span> <span class="n">num_samples_per_batch</span> <span class="o">*</span> <span class="n">numel_batch</span>
+
+        <span class="n">hidden_state_repeat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span>
+            <span class="n">repeats</span><span class="o">=</span><span class="n">num_samples_per_batch</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="n">prediction_length</span><span class="p">),</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">layout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">layout</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span>
+            <span class="nb">min</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mi">1</span> <span class="o">-</span> <span class="mf">1e-4</span>
+        <span class="p">)</span>  <span class="c1"># prevent numerical issues by preventing to sample beyond 0.1% and 99.9% percentiles # noqa: E501</span>
+
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">hidden_state_repeat</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">numel_batch</span><span class="p">,)</span> <span class="o">+</span> <span class="n">sample_shape</span> <span class="o">+</span> <span class="p">(</span><span class="n">prediction_length</span><span class="p">,))</span>
+            <span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+<div class="viewcode-block" id="MQF2Distribution.quantile">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.MQF2Distribution.quantile">[docs]</a>
+    <span class="k">def</span> <span class="nf">quantile</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">hidden_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates the predicted paths associated with the quantile levels alpha</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        alpha</span>
+<span class="sd">            quantile levels,</span>
+<span class="sd">            shape = (batch_shape, prediction_length)</span>
+<span class="sd">        hidden_state</span>
+<span class="sd">            hidden_state, shape = (batch_shape, hidden_size)</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        results</span>
+<span class="sd">            predicted paths of shape = (batch_shape, prediction_length)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">hidden_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hidden_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span>
+
+        <span class="n">normal_quantile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">standard_normal</span><span class="o">.</span><span class="n">icdf</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+
+        <span class="c1"># In the energy score approach, we directly draw samples from picnn</span>
+        <span class="c1"># In the MLE (Normalizing flows) approach, we need to invert the picnn</span>
+        <span class="c1"># (go backward through the flow) to draw samples</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="p">(</span><span class="n">normal_quantile</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">hidden_state</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="o">.</span><span class="n">reverse</span><span class="p">(</span><span class="n">normal_quantile</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">hidden_state</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_numel</span><span class="p">(</span><span class="n">tensor_shape</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="c1"># Auxiliary function</span>
+        <span class="c1"># compute number of elements specified in a torch.Size()</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">tensor_shape</span><span class="p">))</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">batch_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">:</span>
+        <span class="c1"># last dimension is the hidden state size</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">event_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span><span class="p">,)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">event_dim</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span></div>
+
+
+
+<div class="viewcode-block" id="TransformedMQF2Distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.TransformedMQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.TransformedMQF2Distribution">[docs]</a>
+<span class="k">class</span> <span class="nc">TransformedMQF2Distribution</span><span class="p">(</span><span class="n">TransformedDistribution</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">base_distribution</span><span class="p">:</span> <span class="n">MQF2Distribution</span><span class="p">,</span>
+        <span class="n">transforms</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">AffineTransform</span><span class="p">],</span>
+        <span class="n">validate_args</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">base_distribution</span><span class="p">,</span> <span class="n">transforms</span><span class="p">,</span> <span class="n">validate_args</span><span class="o">=</span><span class="n">validate_args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">scale_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+        <span class="c1"># Auxiliary function to scale the observations</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">y</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">_inverse</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">AffineTransform</span><span class="p">):</span>
+                <span class="n">scale</span> <span class="o">=</span> <span class="n">scale</span> <span class="o">*</span> <span class="n">t</span><span class="o">.</span><span class="n">scale</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">scale</span> <span class="o">=</span> <span class="n">t</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">y</span><span class="p">,</span> <span class="n">scale</span>
+
+    <span class="k">def</span> <span class="nf">repeat_scale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">scale</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">context_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TransformedMQF2Distribution.log_prob">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics._mqf2_utils.TransformedMQF2Distribution.html#pytorch_forecasting.metrics._mqf2_utils.TransformedMQF2Distribution.log_prob">[docs]</a>
+    <span class="k">def</span> <span class="nf">log_prob</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">prediction_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">prediction_length</span>
+
+        <span class="n">z</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale_input</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+        <span class="n">repeated_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat_scale</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
+
+        <span class="c1"># the log scale term can be omitted</span>
+        <span class="c1"># in optimization because it is a constant</span>
+        <span class="c1"># prediction_length is the dimension of each sample</span>
+        <span class="k">return</span> <span class="n">p</span> <span class="o">-</span> <span class="n">prediction_length</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">repeated_scale</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">energy_score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">beta</span>
+
+        <span class="n">z</span><span class="p">,</span> <span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scale_input</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">energy_score</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+        <span class="n">repeated_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat_scale</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">loss</span> <span class="o">*</span> <span class="p">(</span><span class="n">repeated_scale</span><span class="o">**</span><span class="n">beta</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">quantile</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">hidden_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">hidden_state</span><span class="o">=</span><span class="n">hidden_state</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">prediction_length</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">:</span>
+            <span class="c1"># transform separate for each prediction horizon</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape_as</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

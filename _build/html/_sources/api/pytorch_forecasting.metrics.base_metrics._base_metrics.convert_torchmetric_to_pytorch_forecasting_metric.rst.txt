@@ -1,0 +1,6 @@
+convert\_torchmetric\_to\_pytorch\_forecasting\_metric
+======================================================
+
+.. currentmodule:: pytorch_forecasting.metrics.base_metrics._base_metrics
+
+.. autofunction:: convert_torchmetric_to_pytorch_forecasting_metric

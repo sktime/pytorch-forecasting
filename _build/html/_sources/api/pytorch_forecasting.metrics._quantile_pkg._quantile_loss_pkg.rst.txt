@@ -1,0 +1,31 @@
+\_quantile\_loss\_pkg
+=====================
+
+.. automodule:: pytorch_forecasting.metrics._quantile_pkg._quantile_loss_pkg
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      QuantileLoss_pkg
+   
+   
+
+   
+   
+   
+
+
+

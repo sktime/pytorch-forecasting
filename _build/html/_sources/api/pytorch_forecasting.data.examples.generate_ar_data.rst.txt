@@ -1,0 +1,6 @@
+generate\_ar\_data
+==================
+
+.. currentmodule:: pytorch_forecasting.data.examples
+
+.. autofunction:: generate_ar_data

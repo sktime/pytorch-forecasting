@@ -1,0 +1,33 @@
+ImplicitQuantileNetwork
+=======================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: ImplicitQuantileNetwork
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ImplicitQuantileNetwork.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,41 @@
+sub\_modules
+============
+
+.. automodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      AddNorm
+      GateAddNorm
+      GatedLinearUnit
+      GatedResidualNetwork
+      InterpretableMultiHeadAttention
+      PositionalEncoder
+      ResampleNorm
+      ScaledDotProductAttention
+      TimeDistributed
+      TimeDistributedInterpolation
+      VariableSelectionNetwork
+   
+   
+
+   
+   
+   
+
+
+

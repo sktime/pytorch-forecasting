@@ -1,0 +1,36 @@
+NormalDistributionLoss
+======================
+
+.. currentmodule:: pytorch_forecasting.metrics.distributions
+
+
+.. autoclass:: NormalDistributionLoss
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NormalDistributionLoss.map_x_to_distribution
+      ~NormalDistributionLoss.rescale_parameters
+   
+   
+
+   
+    
+   
+   
+   
+   

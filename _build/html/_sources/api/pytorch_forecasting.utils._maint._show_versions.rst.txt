@@ -1,0 +1,33 @@
+\_show\_versions
+================
+
+.. automodule:: pytorch_forecasting.utils._maint._show_versions
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      _get_deps_info
+      _get_sys_info
+      show_versions
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

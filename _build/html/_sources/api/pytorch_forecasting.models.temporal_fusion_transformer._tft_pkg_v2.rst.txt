@@ -1,0 +1,31 @@
+\_tft\_pkg\_v2
+==============
+
+.. automodule:: pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      TFT_pkg_v2
+   
+   
+
+   
+   
+   
+
+
+

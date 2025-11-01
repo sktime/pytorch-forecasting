@@ -1,0 +1,36 @@
+xLSTMTime
+=========
+
+.. currentmodule:: pytorch_forecasting.models.xlstm._xlstm
+
+
+.. autoclass:: xLSTMTime
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~xLSTMTime.forward
+      ~xLSTMTime.from_dataset
+   
+   
+
+   
+    
+   
+   
+   
+   

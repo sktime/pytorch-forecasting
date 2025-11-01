@@ -1,0 +1,48 @@
+MultiEmbedding
+==============
+
+.. currentmodule:: pytorch_forecasting.models.nn.embeddings
+
+
+.. autoclass:: MultiEmbedding
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MultiEmbedding.forward
+      ~MultiEmbedding.init_embeddings
+      ~MultiEmbedding.items
+      ~MultiEmbedding.keys
+      ~MultiEmbedding.names
+      ~MultiEmbedding.values
+   
+   
+
+   
+    
+   
+   
+   
+   

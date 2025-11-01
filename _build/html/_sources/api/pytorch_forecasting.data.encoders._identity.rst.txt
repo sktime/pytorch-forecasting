@@ -1,0 +1,6 @@
+\_identity
+==========
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+.. autofunction:: _identity

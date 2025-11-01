@@ -1,0 +1,31 @@
+\_rnn
+=====
+
+.. automodule:: pytorch_forecasting.models.rnn._rnn
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      RecurrentNetwork
+   
+   
+
+   
+   
+   
+
+
+

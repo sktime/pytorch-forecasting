@@ -1,0 +1,6 @@
+check\_for\_nonfinite
+=====================
+
+.. currentmodule:: pytorch_forecasting.data.timeseries._timeseries
+
+.. autofunction:: check_for_nonfinite

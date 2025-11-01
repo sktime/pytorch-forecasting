@@ -1,0 +1,36 @@
+InterpretableMultiHeadAttention
+===============================
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+
+.. autoclass:: InterpretableMultiHeadAttention
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~InterpretableMultiHeadAttention.forward
+      ~InterpretableMultiHeadAttention.init_weights
+   
+   
+
+   
+    
+   
+   
+   
+   

@@ -1,0 +1,6 @@
+repr\_class
+===========
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: repr_class

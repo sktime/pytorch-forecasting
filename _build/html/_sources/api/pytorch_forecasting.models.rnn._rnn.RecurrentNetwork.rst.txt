@@ -1,0 +1,48 @@
+RecurrentNetwork
+================
+
+.. currentmodule:: pytorch_forecasting.models.rnn._rnn
+
+
+.. autoclass:: RecurrentNetwork
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~RecurrentNetwork.construct_input_vector
+      ~RecurrentNetwork.decode
+      ~RecurrentNetwork.decode_all
+      ~RecurrentNetwork.encode
+      ~RecurrentNetwork.forward
+      ~RecurrentNetwork.from_dataset
+   
+   
+
+   
+    
+   
+   
+   
+   

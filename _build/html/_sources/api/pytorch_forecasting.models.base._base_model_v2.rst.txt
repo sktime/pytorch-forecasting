@@ -1,0 +1,31 @@
+\_base\_model\_v2
+=================
+
+.. automodule:: pytorch_forecasting.models.base._base_model_v2
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: custom-class-template.rst
+   
+      BaseModel
+   
+   
+
+   
+   
+   
+
+
+

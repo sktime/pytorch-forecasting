@@ -1,0 +1,6 @@
+next\_fast\_len
+===============
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: next_fast_len

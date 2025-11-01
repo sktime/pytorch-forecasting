@@ -1,0 +1,45 @@
+﻿models
+======
+
+.. automodule:: pytorch_forecasting.models
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :template: custom-module-template.rst
+   :recursive:
+
+   pytorch_forecasting.models.base
+   pytorch_forecasting.models.base_model
+   pytorch_forecasting.models.baseline
+   pytorch_forecasting.models.deepar
+   pytorch_forecasting.models.dlinear
+   pytorch_forecasting.models.mlp
+   pytorch_forecasting.models.nbeats
+   pytorch_forecasting.models.nhits
+   pytorch_forecasting.models.nn
+   pytorch_forecasting.models.rnn
+   pytorch_forecasting.models.temporal_fusion_transformer
+   pytorch_forecasting.models.tide
+   pytorch_forecasting.models.timexer
+   pytorch_forecasting.models.xlstm
+

@@ -1,0 +1,39 @@
+test\_safe\_import
+==================
+
+.. automodule:: pytorch_forecasting.utils._dependencies.tests.test_safe_import
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :template: custom-base-template.rst
+   
+      test_import_class
+      test_import_existing_object
+      test_import_missing_module
+      test_import_present_module
+      test_import_submodule
+      test_import_with_different_pkg_name_1
+      test_import_with_different_pkg_name_2
+      test_import_without_pkg_name
+      test_multiple_inheritance_from_mock
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

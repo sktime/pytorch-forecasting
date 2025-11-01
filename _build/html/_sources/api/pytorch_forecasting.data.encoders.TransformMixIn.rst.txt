@@ -1,0 +1,49 @@
+TransformMixIn
+==============
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: TransformMixIn
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~TransformMixIn.get_transform
+      ~TransformMixIn.inverse_preprocess
+      ~TransformMixIn.preprocess
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TransformMixIn.TRANSFORMATIONS
+   
+   

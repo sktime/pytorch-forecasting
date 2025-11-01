@@ -1,0 +1,33 @@
+VariableSelectionNetwork
+========================
+
+.. currentmodule:: pytorch_forecasting.models.temporal_fusion_transformer.sub_modules
+
+
+.. autoclass:: VariableSelectionNetwork
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~VariableSelectionNetwork.forward
+   
+   
+
+   
+    
+   
+   
+   
+   

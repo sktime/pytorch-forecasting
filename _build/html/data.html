@@ -1,0 +1,836 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Data &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'data';</script>
+    <link rel="icon" href="_static/favicon.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="TorchNormalizer" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html" />
+    <link rel="prev" title="Tutorials" href="tutorials.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="#">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html">EncoderNormalizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.encoders.GroupNormalizer.html">GroupNormalizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.encoders.MultiNormalizer.html">MultiNormalizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html">NaNLabelEncoder</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html">TorchNormalizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.samplers.TimeSynchronizedBatchSampler.html">TimeSynchronizedBatchSampler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.timeseries._timeseries.TimeSeriesDataSet.html">TimeSeriesDataSet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries.html">TimeSeries</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Data</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="data">
+<h1>Data<a class="headerlink" href="#data" title="Link to this heading">#</a></h1>
+<p>Loading data for timeseries forecasting is not trivial - in particular if covariates are included and values are missing.
+PyTorch Forecasting provides the <code class="xref py py-class docutils literal notranslate"><span class="pre">TimeSeriesDataSet</span></code> which comes with a <code class="xref py py-meth docutils literal notranslate"><span class="pre">to_dataloader()</span></code>
+method to convert it to a dataloader and a <code class="xref py py-meth docutils literal notranslate"><span class="pre">from_dataset()</span></code> method to create, e.g. a validation
+or test dataset from a training dataset using the same label encoders and data normalization.</p>
+<p>Further, timeseries have to be (almost always) normalized for a neural network to learn efficiently. PyTorch Forecasting
+provides multiple such target normalizers (some of which can also be used for normalizing covariates).</p>
+<section id="time-series-data-set">
+<h2>Time series data set<a class="headerlink" href="#time-series-data-set" title="Link to this heading">#</a></h2>
+<p>The time series dataset is the central data-holding object in PyTorch Forecasting. It primarily takes
+a pandas DataFrame along with some metadata. See the <span class="xref std std-ref">tutorial on passing data to models</span> to learn more it is coupled to models.</p>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytorch_forecasting.data.timeseries.</span></span><span class="sig-name descname"><span class="pre">TimeSeriesDataSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_encoder_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_encoder_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_prediction_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_prediction_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_prediction_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">static_categoricals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">static_reals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_varying_known_categoricals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_varying_known_reals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_varying_unknown_categoricals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_varying_unknown_reals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable_groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constant_fill_strategy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_missing_timesteps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lags</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_relative_time_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_target_scales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_encoder_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_normalizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html#pytorch_forecasting.data.encoders.TorchNormalizer" title="pytorch_forecasting.data.encoders.TorchNormalizer"><span class="pre">TorchNormalizer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html#pytorch_forecasting.data.encoders.NaNLabelEncoder" title="pytorch_forecasting.data.encoders.NaNLabelEncoder"><span class="pre">NaNLabelEncoder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><span class="pre">EncoderNormalizer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html#pytorch_forecasting.data.encoders.TorchNormalizer" title="pytorch_forecasting.data.encoders.TorchNormalizer"><span class="pre">TorchNormalizer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html#pytorch_forecasting.data.encoders.NaNLabelEncoder" title="pytorch_forecasting.data.encoders.NaNLabelEncoder"><span class="pre">NaNLabelEncoder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><span class="pre">EncoderNormalizer</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html#pytorch_forecasting.data.encoders.TorchNormalizer" title="pytorch_forecasting.data.encoders.TorchNormalizer"><span class="pre">TorchNormalizer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html#pytorch_forecasting.data.encoders.NaNLabelEncoder" title="pytorch_forecasting.data.encoders.NaNLabelEncoder"><span class="pre">NaNLabelEncoder</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><span class="pre">EncoderNormalizer</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'auto'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">categorical_encoders</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html#pytorch_forecasting.data.encoders.NaNLabelEncoder" title="pytorch_forecasting.data.encoders.NaNLabelEncoder"><span class="pre">NaNLabelEncoder</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html#sklearn.preprocessing.StandardScaler" title="(in scikit-learn v1.7)"><span class="pre">StandardScaler</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html#sklearn.preprocessing.RobustScaler" title="(in scikit-learn v1.7)"><span class="pre">RobustScaler</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html#pytorch_forecasting.data.encoders.TorchNormalizer" title="pytorch_forecasting.data.encoders.TorchNormalizer"><span class="pre">TorchNormalizer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><span class="pre">EncoderNormalizer</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">randomize_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predict_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pytorch_forecasting/data/timeseries/_timeseries.html#TimeSeriesDataSet"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>PyTorch Dataset for fitting timeseries models.</p>
+<p>The dataset automates common tasks such as</p>
+<ul class="simple">
+<li><p>scaling and encoding of variables</p></li>
+<li><p>normalizing the target variable</p></li>
+<li><p>efficiently converting timeseries in pandas dataframes to torch tensors</p></li>
+<li><p>holding information about static and time-varying variables known and unknown in
+the future</p></li>
+<li><p>holding information about related categories (such as holidays)</p></li>
+<li><p>downsampling for data augmentation</p></li>
+<li><p>generating inference, validation and test datasets</p></li>
+</ul>
+<p>The <span class="xref std std-ref">tutorial on passing data to models</span> is helpful to
+understand the output of the dataset
+and how it is coupled to models.</p>
+<p>Each sample is a subsequence of a full time series. The subsequence consists of
+encoder and decoder/prediction
+timepoints for a given time series. This class constructs an index which defined
+which subsequences exists and
+can be samples from (<code class="docutils literal notranslate"><span class="pre">index</span></code> attribute). The samples in the index are defined
+by the various parameters.
+to the class (encoder and prediction lengths, minimum prediction length, randomize
+length and predict keywords).
+How samples are
+sampled into batches for training, is determined by the DataLoader.
+The class provides the
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">to_dataloader()</span></code> method
+to convert the dataset into a dataloader.</p>
+<p>Large datasets:</p>
+<p>Currently the class is limited to in-memory operations (that can be sped up by an
+existing installation of <a class="reference external" href="https://pypi.org/project/numba/">numba</a>).
+If you have extremely large data,
+however, you can pass prefitted encoders and and scalers to it and a subset of
+sequences to the class to
+construct a valid dataset (plus, likely the EncoderNormalizer should be used to
+normalize targets).
+when fitting a network, you would then to create a custom DataLoader that rotates
+through the datasets.
+There are currently no in-built methods to do this.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pd.DataFrame</em>) – dataframe with sequence data - each row can be identified with
+<code class="docutils literal notranslate"><span class="pre">time_idx</span></code> and the <code class="docutils literal notranslate"><span class="pre">group_ids</span></code></p></li>
+<li><p><strong>time_idx</strong> (<em>str</em>) – integer typed column denoting the time index within <code class="docutils literal notranslate"><span class="pre">data</span></code>.
+This columns is used to determine the sequence of samples.
+If there are no missings observations,
+the time index should increase by <code class="docutils literal notranslate"><span class="pre">+1</span></code> for each subsequent sample.
+The first time_idx for each series does not necessarily
+have to be <code class="docutils literal notranslate"><span class="pre">0</span></code> but any value is allowed.</p></li>
+<li><p><strong>target</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>list</em><em>[</em><em>str</em><em>]</em><em>]</em>) – column(s) in <code class="docutils literal notranslate"><span class="pre">data</span></code> denoting the forecasting target.
+Can be categorical or continous dtype.</p></li>
+<li><p><strong>group_ids</strong> (<em>list</em><em>[</em><em>str</em><em>]</em>) – list of column names identifying a time series instance within <code class="docutils literal notranslate"><span class="pre">data</span></code>
+This means that the <code class="docutils literal notranslate"><span class="pre">group_ids</span></code>
+identify a sample together with the <code class="docutils literal notranslate"><span class="pre">time_idx</span></code>.
+If you have only one timeseries, set this to the
+name of column that is constant.</p></li>
+<li><p><strong>weight</strong> (<em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – column name for weights. Defaults to None.</p></li>
+<li><p><strong>max_encoder_length</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default=30</em>) – maximum length to encode.
+This is the maximum history length used by the time series dataset.</p></li>
+<li><p><strong>min_encoder_length</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default=max_encoder_length</em>) – minimum allowed length to encode. Defaults to max_encoder_length.</p></li>
+<li><p><strong>min_prediction_idx</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default = first time_idx in data</em>) – minimum <code class="docutils literal notranslate"><span class="pre">time_idx</span></code> from where to start predictions.
+This parameter can be useful to create a validation or test set.</p></li>
+<li><p><strong>max_prediction_length</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default=1</em>) – maximum prediction/decoder length
+(choose this not too short as it can help convergence)</p></li>
+<li><p><strong>min_prediction_length</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>default=max_prediction_length</em>) – minimum prediction/decoder length</p></li>
+<li><p><strong>static_categoricals</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – list of categorical variables that do not change over time, in <code class="docutils literal notranslate"><span class="pre">data</span></code>,
+entries can be also lists which are then encoded together
+(e.g. useful for product categories)</p></li>
+<li><p><strong>static_reals</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – list of continuous variables that do not change over time</p></li>
+<li><p><strong>time_varying_known_categoricals</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – list of categorical variables that change over time and are known in the future,
+entries can be also lists which are then encoded together
+(e.g. useful for special days or promotion categories)</p></li>
+<li><p><strong>time_varying_known_reals</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – list of continuous variables that change over time and are known in the future
+(e.g. price of a product, but not demand of a product)</p></li>
+<li><p><strong>time_varying_unknown_categoricals</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – list of categorical variables that are not known in the future
+and change over time.
+entries can be also lists which are then encoded together
+(e.g. useful for weather categories).
+Target variables should be included here, if categorical.</p></li>
+<li><p><strong>time_varying_unknown_reals</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – list of continuous variables that are not known in the future
+and change over time.
+Target variables should be included here, if real.</p></li>
+<li><p><strong>variable_groups</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>list</em><em>[</em><em>str</em><em>]</em><em>]</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – dictionary mapping a name to a list of columns in the data.
+The name should be present
+in a categorical or real class argument, to be able to encode or scale the
+columns by group.
+This will effectively combine categorical variables is particularly useful
+if a categorical variable can have multiple values at the same time.
+An example are holidays which can be overlapping.</p></li>
+<li><p><strong>constant_fill_strategy</strong> (<em>dict</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – Keys must be str, values can be str, float, int or bool.
+Dictionary of column names with constants to fill in missing values if there
+are gaps in the sequence (by default forward fill strategy is used).
+The values will be only used if <code class="docutils literal notranslate"><span class="pre">allow_missing_timesteps=True</span></code>.
+A common use case is to denote that demand was 0 if the sample is not in the
+dataset.</p></li>
+<li><p><strong>allow_missing_timesteps</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – whether to allow missing timesteps that are automatically filled up.
+Missing values refer to gaps in the <code class="docutils literal notranslate"><span class="pre">time_idx</span></code>, e.g. if a specific
+timeseries has only samples for 1, 2, 4, 5, the sample for 3 will be
+generated on-the-fly.
+Allow missings does not deal with <code class="docutils literal notranslate"><span class="pre">NA</span></code> values. You should fill NA values
+before passing the dataframe to the TimeSeriesDataSet.</p></li>
+<li><p><strong>lags</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>list</em><em>[</em><em>int</em><em>]</em><em>]</em><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – dictionary of variable names mapped to list of time steps by which the
+variable should be lagged.
+Lags can be useful to indicate seasonality to the models.
+Useful to add if seasonalit(ies) of the data are known.,
+In this case, it is recommended to add the target variables
+with the corresponding lags to improve performance.
+Lags must be at not larger than the shortest time series as all time series
+will be cut by the largest lag value to prevent NA values.
+A lagged variable has to appear in the time-varying variables.
+If you only want the lagged but not the current value, lag it manually in
+your input data using
+<code class="docutils literal notranslate"><span class="pre">data[lagged_varname]</span> <span class="pre">=</span> <span class="pre">``</span>
+<span class="pre">``data.sort_values(time_idx).groupby(group_ids,</span> <span class="pre">observed=True).shift(lag)</span></code>.</p></li>
+<li><p><strong>add_relative_time_idx</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – whether to add a relative time index as feature, i.e.,
+for each sampled sequence, the index will range from -encoder_length to
+prediction_length.</p></li>
+<li><p><strong>add_target_scales</strong> (<em>bool</em><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – whether to add scales for target to static real features, i.e., add the
+center and scale of the unnormalized timeseries as features.</p></li>
+<li><p><strong>add_encoder_length</strong> (<em>Union</em><em>[</em><em>bool</em><em>, </em><em>str</em><em>]</em><em>, </em><em>optional</em><em>, </em><em>default=&quot;auto&quot;</em>) – whether to add encoder length to list of static real variables.
+Defaults to “auto”, iwhich is same as
+<code class="docutils literal notranslate"><span class="pre">True</span></code> iff <code class="docutils literal notranslate"><span class="pre">min_encoder_length</span> <span class="pre">!=</span> <span class="pre">max_encoder_length</span></code>.</p></li>
+<li><p><strong>target_normalizer</strong> (<em>torch transformer</em><em>, </em><em>str</em><em>, </em><em>list</em><em>, </em><em>tuple</em><em>, </em><em>optional</em><em>, </em><em>default=&quot;auto&quot;</em>) – Transformer that takes group_ids, target and time_idx to normalize targets.
+You can choose from
+<a class="reference internal" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html#pytorch_forecasting.data.encoders.TorchNormalizer" title="pytorch_forecasting.data.encoders.TorchNormalizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">TorchNormalizer</span></code></a>,
+<a class="reference internal" href="api/pytorch_forecasting.data.encoders.GroupNormalizer.html#pytorch_forecasting.data.encoders.GroupNormalizer" title="pytorch_forecasting.data.encoders.GroupNormalizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">GroupNormalizer</span></code></a>,
+<a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html#pytorch_forecasting.data.encoders.NaNLabelEncoder" title="pytorch_forecasting.data.encoders.NaNLabelEncoder"><code class="xref py py-class docutils literal notranslate"><span class="pre">NaNLabelEncoder</span></code></a>,
+<a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">EncoderNormalizer</span></code></a>
+(on which overfitting tests will fail)
+or <code class="docutils literal notranslate"><span class="pre">None</span></code> for using no normalizer. For multiple targets, use a
+:py:class`~pytorch_forecasting.data.encoders.MultiNormalizer`.
+By default an appropriate normalizer is chosen automatically.</p></li>
+<li><p><strong>categorical_encoders</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>BaseEstimator</em><em>]</em>) – dictionary of scikit learn label transformers.
+If you have unobserved categories in
+the future  / a cold-start problem, you can use the
+<a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html#pytorch_forecasting.data.encoders.NaNLabelEncoder" title="pytorch_forecasting.data.encoders.NaNLabelEncoder"><code class="xref py py-class docutils literal notranslate"><span class="pre">NaNLabelEncoder</span></code></a> with
+<code class="docutils literal notranslate"><span class="pre">add_nan=True</span></code>.
+Defaults effectively to sklearn’s <code class="docutils literal notranslate"><span class="pre">LabelEncoder()</span></code>.
+Prefitted encoders will not be fit again.</p></li>
+<li><p><strong>scalers</strong> (<em>optional</em><em>, </em><em>dict with str keys and torch</em><em> or </em><em>sklearn scalers as values</em>) – dictionary of scikit-learn or torch scalers.
+Defaults to sklearn’s <code class="docutils literal notranslate"><span class="pre">StandardScaler()</span></code>.
+Other options
+are <a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">EncoderNormalizer</span></code></a>,
+<a class="reference internal" href="api/pytorch_forecasting.data.encoders.GroupNormalizer.html#pytorch_forecasting.data.encoders.GroupNormalizer" title="pytorch_forecasting.data.encoders.GroupNormalizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">GroupNormalizer</span></code></a>
+or scikit-learn’s <code class="docutils literal notranslate"><span class="pre">StandarScaler()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">RobustScaler()</span></code> or <code class="docutils literal notranslate"><span class="pre">None</span></code> for using no normalizer / normalizer
+with <code class="docutils literal notranslate"><span class="pre">center=0</span></code> and <code class="docutils literal notranslate"><span class="pre">scale=1</span></code>
+(<code class="docutils literal notranslate"><span class="pre">method=&quot;identity&quot;</span></code>).
+Prefittet encoders will not be fit again (with the exception of the
+<a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">EncoderNormalizer</span></code></a> that is
+fit on every encoder sequence).</p></li>
+<li><p><strong>randomize_length</strong> (<em>optional</em><em>, </em><em>None</em><em>, </em><em>bool</em><em>, or </em><em>tuple</em><em> of </em><em>float.</em>) – None or False if not to randomize lengths.
+Tuple of beta distribution concentrations from which
+probabilities are sampled that are used to sample new sequence lengths
+with a binomial distribution.
+If True, defaults to (0.2, 0.05), i.e. ~1/4 of samples
+around minimum encoder length.
+Defaults to False otherwise.</p></li>
+<li><p><strong>predict_mode</strong> (<em>bool</em>) – If True, the TimeSeriesDataSet will only create one sequence
+per time series (i.e. only from the latest provided samples).
+Effectively, this will select each time series identified by <code class="docutils literal notranslate"><span class="pre">group_ids</span></code>
+the last <code class="docutils literal notranslate"><span class="pre">max_prediction_length</span></code> samples of each time series as
+prediction samples and everthing previous up to <code class="docutils literal notranslate"><span class="pre">max_encoder_length</span></code>
+samples as encoder samples.
+If False, the TimeSeriesDataSet will create subsequences by sliding a
+window over the data samples.
+For training use cases, it’s preferable to set predict_mode=False
+to get all subseries.
+On the other hand, predict_mode = True is ideal for validation cases.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Timeseries dataset holding data for models.</p>
+</dd></dl>
+
+</section>
+<section id="details">
+<h2>Details<a class="headerlink" href="#details" title="Link to this heading">#</a></h2>
+<p>See the API documentation for further details on available data encoders and the <code class="xref py py-class docutils literal notranslate"><span class="pre">TimeSeriesDataSet</span></code>:</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.encoders.EncoderNormalizer.html#pytorch_forecasting.data.encoders.EncoderNormalizer" title="pytorch_forecasting.data.encoders.EncoderNormalizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.encoders.EncoderNormalizer</span></code></a>([...])</p></td>
+<td><p>Special Normalizer that is fit on each encoding sequence.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.encoders.GroupNormalizer.html#pytorch_forecasting.data.encoders.GroupNormalizer" title="pytorch_forecasting.data.encoders.GroupNormalizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.encoders.GroupNormalizer</span></code></a>([...])</p></td>
+<td><p>Normalizer that scales by groups.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.encoders.MultiNormalizer.html#pytorch_forecasting.data.encoders.MultiNormalizer" title="pytorch_forecasting.data.encoders.MultiNormalizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.encoders.MultiNormalizer</span></code></a>(...)</p></td>
+<td><p>Normalizer for multiple targets.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.encoders.NaNLabelEncoder.html#pytorch_forecasting.data.encoders.NaNLabelEncoder" title="pytorch_forecasting.data.encoders.NaNLabelEncoder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.encoders.NaNLabelEncoder</span></code></a>([...])</p></td>
+<td><p>Labelencoder that can optionally always encode nan and unknown classes (in transform) as class <code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html#pytorch_forecasting.data.encoders.TorchNormalizer" title="pytorch_forecasting.data.encoders.TorchNormalizer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.encoders.TorchNormalizer</span></code></a>([...])</p></td>
+<td><p>Basic target transformer that can be fit also on torch tensors.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.samplers.TimeSynchronizedBatchSampler.html#pytorch_forecasting.data.samplers.TimeSynchronizedBatchSampler" title="pytorch_forecasting.data.samplers.TimeSynchronizedBatchSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.samplers.TimeSynchronizedBatchSampler</span></code></a>(sampler)</p></td>
+<td><p>Samples mini-batches randomly but in a time-synchronised manner.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.timeseries._timeseries.TimeSeriesDataSet.html#pytorch_forecasting.data.timeseries._timeseries.TimeSeriesDataSet" title="pytorch_forecasting.data.timeseries._timeseries.TimeSeriesDataSet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.timeseries._timeseries.TimeSeriesDataSet</span></code></a>(...)</p></td>
+<td><p>PyTorch Dataset for fitting timeseries models.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries.html#pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries" title="pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries</span></code></a>(data)</p></td>
+<td><p>PyTorch Dataset for time series data stored in pandas DataFrame.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="tutorials.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Tutorials</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="api/pytorch_forecasting.data.encoders.TorchNormalizer.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">TorchNormalizer</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#time-series-data-set">Time series data set</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#details">Details</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/data.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

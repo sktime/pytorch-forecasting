@@ -1,0 +1,67 @@
+SoftplusTransform
+=================
+
+.. currentmodule:: pytorch_forecasting.data.encoders
+
+
+.. autoclass:: SoftplusTransform
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SoftplusTransform.forward_shape
+      ~SoftplusTransform.inverse_shape
+      ~SoftplusTransform.log_abs_det_jacobian
+      ~SoftplusTransform.with_cache
+   
+   
+
+   
+    
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SoftplusTransform.bijective
+      ~SoftplusTransform.codomain
+      ~SoftplusTransform.domain
+      ~SoftplusTransform.event_dim
+      ~SoftplusTransform.inv
+      ~SoftplusTransform.sign
+   
+   

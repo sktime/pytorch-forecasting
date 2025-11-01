@@ -1,0 +1,6 @@
+\_coerce\_to\_dict
+==================
+
+.. currentmodule:: pytorch_forecasting.utils._coerce
+
+.. autofunction:: _coerce_to_dict

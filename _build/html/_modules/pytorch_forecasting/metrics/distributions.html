@@ -1,0 +1,1322 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pytorch_forecasting.metrics.distributions &#8212; pytorch-forecasting  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=9542a950" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://buttons.github.io/buttons.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/pytorch_forecasting/metrics/distributions';</script>
+    <link rel="icon" href="../../../_static/favicon.png"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-light" alt="pytorch-forecasting  documentation - Home"/>
+    <img src="../../../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="pytorch-forecasting  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+        <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../getting-started.html">
+    Getting started
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../data.html">
+    Data
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../models.html">
+    Models
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../metrics.html">
+    Metrics
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../faq.html">
+    FAQ
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../installation.html">
+    Installation
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../CHANGELOG.html">
+    Release Notes
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://github.com/sktime/pytorch-forecasting">
+    GitHub
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/sktime/pytorch-forecasting" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+          <div class="navbar-item">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">pytorch_forecasting.metrics.distributions</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for pytorch_forecasting.metrics.distributions</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Metrics that allow the parametric forecast of parameters of uni- and multivariate distributions.&quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">sklearn.base</span> <span class="kn">import</span> <span class="n">BaseEstimator</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">distributions</span><span class="p">,</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.data.encoders</span> <span class="kn">import</span> <span class="n">TorchNormalizer</span><span class="p">,</span> <span class="n">softplus_inv</span>
+<span class="kn">from</span> <span class="nn">pytorch_forecasting.metrics.base_metrics</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DistributionLoss</span><span class="p">,</span>
+    <span class="n">MultivariateDistributionLoss</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="NormalDistributionLoss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.NormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.NormalDistributionLoss">[docs]</a>
+<span class="k">class</span> <span class="nc">NormalDistributionLoss</span><span class="p">(</span><span class="n">DistributionLoss</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Normal distribution loss.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">distribution_class</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span>
+    <span class="n">distribution_arguments</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;loc&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="NormalDistributionLoss.map_x_to_distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.NormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.NormalDistributionLoss.map_x_to_distribution">[docs]</a>
+    <span class="k">def</span> <span class="nf">map_x_to_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">:</span>
+        <span class="n">distr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_class</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+        <span class="n">scaler</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">distributions</span><span class="o">.</span><span class="n">TransformedDistribution</span><span class="p">(</span><span class="n">distr</span><span class="p">,</span> <span class="p">[</span><span class="n">scaler</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">distributions</span><span class="o">.</span><span class="n">TransformedDistribution</span><span class="p">(</span>
+                <span class="n">distr</span><span class="p">,</span>
+                <span class="p">[</span>
+                    <span class="n">scaler</span><span class="p">,</span>
+                    <span class="n">TorchNormalizer</span><span class="o">.</span><span class="n">get_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span><span class="p">)[</span>
+                        <span class="s2">&quot;inverse_torch&quot;</span>
+                    <span class="p">],</span>
+                <span class="p">],</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NormalDistributionLoss.rescale_parameters">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.NormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.NormalDistributionLoss.rescale_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">rescale_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">BaseEstimator</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">target_scale</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">loc</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">loc</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">scale</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+            <span class="p">],</span>
+            <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MultivariateNormalDistributionLoss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss">[docs]</a>
+<span class="k">class</span> <span class="nc">MultivariateNormalDistributionLoss</span><span class="p">(</span><span class="n">MultivariateDistributionLoss</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Multivariate low-rank normal distribution loss.</span>
+
+<span class="sd">    Use this loss to make out of a DeepAR model a DeepVAR network.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">distribution_class</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">LowRankMultivariateNormal</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">quantiles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">reduction</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+        <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">sigma_init</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">sigma_minimum</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize metric</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name (str): metric name. Defaults to class name.</span>
+<span class="sd">            quantiles (List[float], optional): quantiles for probability range.</span>
+<span class="sd">                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].</span>
+<span class="sd">            reduction (str, optional): Reduction, &quot;none&quot;, &quot;mean&quot; or &quot;sqrt-mean&quot;. Defaults to &quot;mean&quot;.</span>
+<span class="sd">            rank (int): rank of low-rank approximation for covariance matrix. Defaults to 10.</span>
+<span class="sd">            sigma_init (float, optional): default value for diagonal covariance. Defaults to 1.0.</span>
+<span class="sd">            sigma_minimum (float, optional): minimum value for diagonal covariance. Defaults to 1e-3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="n">quantiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantiles</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.98</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">quantiles</span><span class="o">=</span><span class="n">quantiles</span><span class="p">,</span> <span class="n">reduction</span><span class="o">=</span><span class="n">reduction</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="n">rank</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_minimum</span> <span class="o">=</span> <span class="n">sigma_minimum</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma_init</span> <span class="o">=</span> <span class="n">sigma_init</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distribution_arguments</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="n">rank</span><span class="p">))</span>
+
+        <span class="c1"># determine bias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diag_bias</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">softplus_inv</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sigma_init</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_init</span> <span class="o">&gt;</span> <span class="mf">0.0</span>
+            <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="p">)</span>
+        <span class="c1"># determine normalizer to bring unscaled diagonal close to 1.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cov_factor_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rank</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MultivariateNormalDistributionLoss.map_x_to_distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.map_x_to_distribution">[docs]</a>
+    <span class="k">def</span> <span class="nf">map_x_to_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="o">.</span><span class="n">type</span> <span class="o">!=</span> <span class="s2">&quot;mps&quot;</span><span class="p">,</span> <span class="p">(</span>
+            <span class="s2">&quot;MPS accelerator has a bug&quot;</span>
+            <span class="s2">&quot; https://github.com/pytorch/pytorch/issues/98074, use cpu or gpu&quot;</span>
+        <span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">distr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_class</span><span class="p">(</span>
+            <span class="n">loc</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+            <span class="n">cov_factor</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">4</span><span class="p">:],</span>
+            <span class="n">cov_diag</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">scaler</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span>
+            <span class="n">loc</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">event_dim</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">distributions</span><span class="o">.</span><span class="n">TransformedDistribution</span><span class="p">(</span><span class="n">distr</span><span class="p">,</span> <span class="p">[</span><span class="n">scaler</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">distributions</span><span class="o">.</span><span class="n">TransformedDistribution</span><span class="p">(</span>
+                <span class="n">distr</span><span class="p">,</span>
+                <span class="p">[</span>
+                    <span class="n">scaler</span><span class="p">,</span>
+                    <span class="n">TorchNormalizer</span><span class="o">.</span><span class="n">get_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span><span class="p">)[</span>
+                        <span class="s2">&quot;inverse_torch&quot;</span>
+                    <span class="p">],</span>
+                <span class="p">],</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MultivariateNormalDistributionLoss.rescale_parameters">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.MultivariateNormalDistributionLoss.rescale_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">rescale_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">BaseEstimator</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span>
+
+        <span class="c1"># scale</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diag_bias</span><span class="p">)</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_minimum</span><span class="o">**</span><span class="mi">2</span>
+        <span class="p">)</span>
+
+        <span class="n">cov_factor</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">:]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cov_factor_scale</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">target_scale</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">loc</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">loc</span><span class="p">,</span>
+                <span class="n">scale</span><span class="p">,</span>
+                <span class="n">cov_factor</span><span class="p">,</span>
+            <span class="p">],</span>
+            <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="NegativeBinomialDistributionLoss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.html#pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss">[docs]</a>
+<span class="k">class</span> <span class="nc">NegativeBinomialDistributionLoss</span><span class="p">(</span><span class="n">DistributionLoss</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Negative binomial loss, e.g. for count data.</span>
+
+<span class="sd">    Requirements for original target normalizer:</span>
+<span class="sd">        * not centered normalization (only rescaled)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">distribution_class</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">NegativeBinomial</span>
+    <span class="n">distribution_arguments</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="NegativeBinomialDistributionLoss.map_x_to_distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.html#pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.map_x_to_distribution">[docs]</a>
+    <span class="k">def</span> <span class="nf">map_x_to_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">distributions</span><span class="o">.</span><span class="n">NegativeBinomial</span><span class="p">:</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">shape</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">/</span> <span class="p">(</span><span class="n">mean</span> <span class="o">+</span> <span class="n">r</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_class</span><span class="p">(</span><span class="n">total_count</span><span class="o">=</span><span class="n">r</span><span class="p">,</span> <span class="n">probs</span><span class="o">=</span><span class="n">p</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NegativeBinomialDistributionLoss.rescale_parameters">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.html#pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.rescale_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">rescale_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">BaseEstimator</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">encoder</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="p">(</span>
+            <span class="s2">&quot;NegativeBinomialDistributionLoss is not&quot;</span>
+            <span class="s2">&quot; compatible with `center=True` normalization&quot;</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;logit&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;log&quot;</span><span class="p">,</span>
+        <span class="p">],</span> <span class="s2">&quot;Cannot use bound transformation such as &#39;logit&#39;&quot;</span>
+        <span class="k">if</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;log1p&quot;</span><span class="p">]:</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">target_scale</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+                <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span>
+                    <span class="n">target_scale</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>  <span class="c1"># todo: is this correct?</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="n">target_scale</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+                <span class="o">/</span> <span class="n">target_scale</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">mean</span><span class="p">,</span> <span class="n">shape</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NegativeBinomialDistributionLoss.to_prediction">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.html#pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss.to_prediction">[docs]</a>
+    <span class="k">def</span> <span class="nf">to_prediction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert network prediction into a point prediction. In the case of this distribution prediction we</span>
+<span class="sd">        need to derive the mean (as a point prediction) from the distribution parameters</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            y_pred: prediction output of network</span>
+<span class="sd">            in this case the two parameters for the negative binomial</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: mean prediction</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">return</span> <span class="n">y_pred</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="LogNormalDistributionLoss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss">[docs]</a>
+<span class="k">class</span> <span class="nc">LogNormalDistributionLoss</span><span class="p">(</span><span class="n">DistributionLoss</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Log-normal loss.</span>
+
+<span class="sd">    Requirements for original target normalizer:</span>
+<span class="sd">        * normalized target in log space</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">distribution_class</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span>
+    <span class="n">distribution_arguments</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;loc&quot;</span><span class="p">,</span> <span class="s2">&quot;scale&quot;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="LogNormalDistributionLoss.map_x_to_distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.map_x_to_distribution">[docs]</a>
+    <span class="k">def</span> <span class="nf">map_x_to_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">distributions</span><span class="o">.</span><span class="n">LogNormal</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_class</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">scale</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="LogNormalDistributionLoss.rescale_parameters">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.html#pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss.rescale_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">rescale_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">BaseEstimator</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;log&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;log1p&quot;</span><span class="p">,</span>
+        <span class="p">],</span> <span class="p">(</span>
+            <span class="s2">&quot;Log distribution requires log scaling but found&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; `transformation=</span><span class="si">{</span><span class="n">encoder</span><span class="o">.</span><span class="n">transform</span><span class="si">}</span><span class="s2">`&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;logit&quot;</span>
+        <span class="p">],</span> <span class="s2">&quot;Cannot use bound transformation such as &#39;logit&#39;&quot;</span>
+
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="n">target_scale</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">target_scale</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">target_scale</span><span class="p">[</span>
+            <span class="o">...</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">loc</span><span class="p">,</span> <span class="n">scale</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="BetaDistributionLoss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.BetaDistributionLoss.html#pytorch_forecasting.metrics.distributions.BetaDistributionLoss">[docs]</a>
+<span class="k">class</span> <span class="nc">BetaDistributionLoss</span><span class="p">(</span><span class="n">DistributionLoss</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Beta distribution loss for unit interval data.</span>
+
+<span class="sd">    Requirements for original target normalizer:</span>
+<span class="sd">        * logit transformation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">distribution_class</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">Beta</span>
+    <span class="n">distribution_arguments</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="s2">&quot;shape&quot;</span><span class="p">]</span>
+    <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-4</span>
+
+<div class="viewcode-block" id="BetaDistributionLoss.map_x_to_distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.BetaDistributionLoss.html#pytorch_forecasting.metrics.distributions.BetaDistributionLoss.map_x_to_distribution">[docs]</a>
+    <span class="k">def</span> <span class="nf">map_x_to_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">distributions</span><span class="o">.</span><span class="n">Beta</span><span class="p">:</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_class</span><span class="p">(</span>
+            <span class="n">concentration0</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">*</span> <span class="n">shape</span><span class="p">,</span> <span class="n">concentration1</span><span class="o">=</span><span class="n">mean</span> <span class="o">*</span> <span class="n">shape</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BetaDistributionLoss.loss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.BetaDistributionLoss.html#pytorch_forecasting.metrics.distributions.BetaDistributionLoss.loss">[docs]</a>
+    <span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">y_actual</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate negative likelihood</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            y_pred: network output</span>
+<span class="sd">            y_actual: actual values</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: metric value on which backpropagation can be applied</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">distribution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_x_to_distribution</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span>
+        <span class="c1"># clip y_actual to avoid infinite losses</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">distribution</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">y_actual</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">loss</span></div>
+
+
+<div class="viewcode-block" id="BetaDistributionLoss.rescale_parameters">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.BetaDistributionLoss.html#pytorch_forecasting.metrics.distributions.BetaDistributionLoss.rescale_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">rescale_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">BaseEstimator</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="s2">&quot;logit&quot;</span>
+        <span class="p">],</span> <span class="s2">&quot;Beta distribution is only compatible with logit transformation&quot;</span>
+        <span class="k">assert</span> <span class="n">encoder</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="s2">&quot;Beta distribution requires normalizer to center data&quot;</span>
+
+        <span class="n">scaled_mean</span> <span class="o">=</span> <span class="n">encoder</span><span class="p">(</span>
+            <span class="nb">dict</span><span class="p">(</span><span class="n">prediction</span><span class="o">=</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">target_scale</span><span class="o">=</span><span class="n">target_scale</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># need to first transform target scale standard deviation in</span>
+        <span class="c1"># logit space to real space</span>
+        <span class="c1"># we assume a normal distribution in logit space</span>
+        <span class="c1"># (we used a logit transform and a standard scaler)</span>
+        <span class="c1"># and know that the variance of the beta distribution is</span>
+        <span class="c1"># limited by `scaled_mean * (1 - scaled_mean)`</span>
+        <span class="n">scaled_mean</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">scaled_mean</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span>
+        <span class="p">)</span>  <span class="c1"># ensure that mean is not exactly 0 or 1</span>
+        <span class="n">mean_derivative</span> <span class="o">=</span> <span class="n">scaled_mean</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">scaled_mean</span><span class="p">)</span>
+
+        <span class="c1"># we can approximate variance as</span>
+        <span class="c1"># torch.pow(torch.tanh(target_scale[..., 1].unsqueeze(1) * torch.sqrt(mean_derivative)), 2) * mean_derivative # noqa: E501</span>
+        <span class="c1"># shape is (positive) parameter * mean_derivative / var</span>
+        <span class="n">shape_scaler</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span>
+                    <span class="n">target_scale</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mean_derivative</span><span class="p">)</span>
+                <span class="p">),</span>
+                <span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span>
+        <span class="p">)</span>
+        <span class="n">scaled_shape</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">parameters</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">shape_scaler</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">scaled_mean</span><span class="p">,</span> <span class="n">scaled_shape</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MQF2DistributionLoss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html#pytorch_forecasting.metrics.distributions.MQF2DistributionLoss">[docs]</a>
+<span class="k">class</span> <span class="nc">MQF2DistributionLoss</span><span class="p">(</span><span class="n">DistributionLoss</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Multivariate quantile loss based on the article</span>
+<span class="sd">    `Multivariate Quantile Function Forecaster &lt;http://arxiv.org/abs/2202.11316&gt;`_.</span>
+
+<span class="sd">    Requires install of additional library:</span>
+<span class="sd">    ``pip install pytorch-forecasting[mqf2]``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-4</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">prediction_length</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">quantiles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">hidden_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="n">es_num_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="n">beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">icnn_hidden_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">icnn_num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">estimate_logdet</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            prediction_length (int): maximum prediction length.</span>
+<span class="sd">            quantiles (List[float], optional): default quantiles to output.</span>
+<span class="sd">                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].</span>
+<span class="sd">            hidden_size (int, optional): hidden size per prediction length. Defaults to 4.</span>
+<span class="sd">            es_num_samples (int, optional): Number of samples to calculate energy score.</span>
+<span class="sd">                If None, maximum liklihood is used as opposed to energy score for optimization.</span>
+<span class="sd">                Defaults to 50.</span>
+<span class="sd">            beta (float, optional): between 0 and 1.0 to control how scale sensitive metric is (1=fully sensitive).</span>
+<span class="sd">                Defaults to 1.0.</span>
+<span class="sd">            icnn_hidden_size (int, optional): hidden size of distribution estimating network. Defaults to 20.</span>
+<span class="sd">            icnn_num_layers (int, optional): number of hidden layers in distribution estimating network. Defaults to 2.</span>
+<span class="sd">            estimate_logdet (bool, optional): if to estimate log determinant. Defaults to False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="n">quantiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantiles</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.98</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">quantiles</span><span class="o">=</span><span class="n">quantiles</span><span class="p">)</span>
+
+        <span class="kn">from</span> <span class="nn">cpflows.flows</span> <span class="kn">import</span> <span class="n">ActNorm</span>
+        <span class="kn">from</span> <span class="nn">cpflows.icnn</span> <span class="kn">import</span> <span class="n">PICNN</span>
+
+        <span class="kn">from</span> <span class="nn">pytorch_forecasting.metrics._mqf2_utils</span> <span class="kn">import</span> <span class="p">(</span>
+            <span class="n">DeepConvexNet</span><span class="p">,</span>
+            <span class="n">MQF2Distribution</span><span class="p">,</span>
+            <span class="n">SequentialNet</span><span class="p">,</span>
+            <span class="n">TransformedMQF2Distribution</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">distribution_class</span> <span class="o">=</span> <span class="n">MQF2Distribution</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transformed_distribution_class</span> <span class="o">=</span> <span class="n">TransformedMQF2Distribution</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distribution_arguments</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span> <span class="o">=</span> <span class="n">prediction_length</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">es_num_samples</span> <span class="o">=</span> <span class="n">es_num_samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># define picnn</span>
+        <span class="n">convexnet</span> <span class="o">=</span> <span class="n">PICNN</span><span class="p">(</span>
+            <span class="n">dim</span><span class="o">=</span><span class="n">prediction_length</span><span class="p">,</span>
+            <span class="n">dimh</span><span class="o">=</span><span class="n">icnn_hidden_size</span><span class="p">,</span>
+            <span class="n">dimc</span><span class="o">=</span><span class="n">hidden_size</span> <span class="o">*</span> <span class="n">prediction_length</span><span class="p">,</span>
+            <span class="n">num_hidden_layers</span><span class="o">=</span><span class="n">icnn_num_layers</span><span class="p">,</span>
+            <span class="n">symm_act_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">deepconvexnet</span> <span class="o">=</span> <span class="n">DeepConvexNet</span><span class="p">(</span>
+            <span class="n">convexnet</span><span class="p">,</span>
+            <span class="n">prediction_length</span><span class="p">,</span>
+            <span class="n">is_energy_score</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span><span class="p">,</span>
+            <span class="n">estimate_logdet</span><span class="o">=</span><span class="n">estimate_logdet</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span><span class="p">:</span>
+            <span class="n">networks</span> <span class="o">=</span> <span class="p">[</span><span class="n">deepconvexnet</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">networks</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">ActNorm</span><span class="p">(</span><span class="n">prediction_length</span><span class="p">),</span>
+                <span class="n">deepconvexnet</span><span class="p">,</span>
+                <span class="n">ActNorm</span><span class="p">(</span><span class="n">prediction_length</span><span class="p">),</span>
+            <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span> <span class="o">=</span> <span class="n">SequentialNet</span><span class="p">(</span><span class="n">networks</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MQF2DistributionLoss.to">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html#pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.to">[docs]</a>
+    <span class="k">def</span> <span class="nf">to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Move the loss and its components to the specified device.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_energy_score</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">es_num_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="MQF2DistributionLoss.map_x_to_distribution">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html#pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.map_x_to_distribution">[docs]</a>
+    <span class="k">def</span> <span class="nf">map_x_to_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">distributions</span><span class="o">.</span><span class="n">Distribution</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="p">,</span> <span class="s2">&quot;to&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="n">distr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_class</span><span class="p">(</span>
+            <span class="n">picnn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">picnn</span><span class="p">,</span>
+            <span class="n">hidden_state</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span>
+            <span class="n">prediction_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span><span class="p">,</span>
+            <span class="n">is_energy_score</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span><span class="p">,</span>
+            <span class="n">es_num_samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">es_num_samples</span><span class="p">,</span>
+            <span class="n">beta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># rescale</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">][:,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">][:,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="n">scaler</span> <span class="o">=</span> <span class="n">distributions</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">loc</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformed_distribution_class</span><span class="p">(</span><span class="n">distr</span><span class="p">,</span> <span class="p">[</span><span class="n">scaler</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformed_distribution_class</span><span class="p">(</span>
+                <span class="n">distr</span><span class="p">,</span>
+                <span class="p">[</span>
+                    <span class="n">scaler</span><span class="p">,</span>
+                    <span class="n">TorchNormalizer</span><span class="o">.</span><span class="n">get_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span><span class="p">)[</span>
+                        <span class="s2">&quot;inverse_torch&quot;</span>
+                    <span class="p">],</span>
+                <span class="p">],</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MQF2DistributionLoss.loss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html#pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.loss">[docs]</a>
+    <span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">y_actual</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate negative likelihood</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            y_pred: network output</span>
+<span class="sd">            y_actual: actual values</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: metric value on which backpropagation can be applied</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">distribution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_x_to_distribution</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_energy_score</span><span class="p">:</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">energy_score</span><span class="p">(</span><span class="n">y_actual</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">distribution</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">y_actual</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">loss</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MQF2DistributionLoss.rescale_parameters">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html#pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.rescale_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">rescale_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">BaseEstimator</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">parameters</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">target_scale</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MQF2DistributionLoss.to_quantiles">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.html#pytorch_forecasting.metrics.distributions.MQF2DistributionLoss.to_quantiles">[docs]</a>
+    <span class="k">def</span> <span class="nf">to_quantiles</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">quantiles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert network prediction into a quantile prediction.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            y_pred: prediction output of network</span>
+<span class="sd">            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as</span>
+<span class="sd">                as defined in the class initialization.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: prediction quantiles (last dimension)</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="n">quantiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantiles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantiles</span>
+        <span class="n">distribution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_x_to_distribution</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">quantiles</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">y_pred</span><span class="o">.</span><span class="n">device</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+            <span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">y_pred</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">hidden_state</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">base_dist</span><span class="o">.</span><span class="n">hidden_state</span><span class="o">.</span><span class="n">repeat_interleave</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">quantiles</span><span class="p">),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span>
+            <span class="n">alpha</span><span class="p">,</span> <span class="n">hidden_state</span><span class="o">=</span><span class="n">hidden_state</span>
+        <span class="p">)</span>  <span class="c1"># (batch_size * quantiles x prediction_length)</span>
+
+        <span class="c1"># reshape</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">quantiles</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">prediction_length</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span>
+            <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span>
+        <span class="p">)</span>  <span class="c1"># (batch_size, prediction_length, quantile_size)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ImplicitQuantileNetwork">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetwork.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetwork">[docs]</a>
+<span class="k">class</span> <span class="nc">ImplicitQuantileNetwork</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quantile_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">PReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">input_size</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">input_size</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">PReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;cos_multipliers&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ImplicitQuantileNetwork.forward">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetwork.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetwork.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">quantiles</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="c1"># embed quantiles</span>
+        <span class="n">cos_emb_tau</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span>
+            <span class="n">quantiles</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cos_multipliers</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+        <span class="p">)</span>  <span class="c1"># n_quantiles x hidden_size</span>
+        <span class="c1"># modulates input depending on quantile</span>
+        <span class="n">cos_emb_tau</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile_layer</span><span class="p">(</span><span class="n">cos_emb_tau</span><span class="p">)</span>  <span class="c1"># n_quantiles x input_size</span>
+
+        <span class="n">emb_inputs</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="mf">1.0</span> <span class="o">+</span> <span class="n">cos_emb_tau</span>
+        <span class="p">)</span>  <span class="c1"># ... x n_quantiles x input_size</span>
+        <span class="n">emb_outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_layer</span><span class="p">(</span><span class="n">emb_inputs</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># ... x n_quantiles</span>
+        <span class="k">return</span> <span class="n">emb_outputs</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ImplicitQuantileNetworkDistributionLoss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss">[docs]</a>
+<span class="k">class</span> <span class="nc">ImplicitQuantileNetworkDistributionLoss</span><span class="p">(</span><span class="n">DistributionLoss</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Implicit Quantile Network Distribution Loss.</span>
+
+<span class="sd">    Based on `Probabilistic Time Series Forecasting with Implicit Quantile Networks</span>
+<span class="sd">    &lt;https://arxiv.org/pdf/2107.03743.pdf&gt;`_.</span>
+<span class="sd">    A network is used to directly map network outputs to a quantile.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">quantiles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">input_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+        <span class="n">hidden_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+        <span class="n">n_loss_samples</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            prediction_length (int): maximum prediction length.</span>
+<span class="sd">            quantiles (List[float], optional): default quantiles to output.</span>
+<span class="sd">                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].</span>
+<span class="sd">            input_size (int, optional): input size per prediction length. Defaults to 16.</span>
+<span class="sd">            hidden_size (int, optional): hidden size per prediction length. Defaults to 64.</span>
+<span class="sd">            n_loss_samples (int, optional): number of quantiles to sample to calculate loss.</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="n">quantiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantiles</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.98</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">quantiles</span><span class="o">=</span><span class="n">quantiles</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quantile_network</span> <span class="o">=</span> <span class="n">ImplicitQuantileNetwork</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="n">hidden_size</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distribution_arguments</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">input_size</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_loss_samples</span> <span class="o">=</span> <span class="n">n_loss_samples</span>
+
+<div class="viewcode-block" id="ImplicitQuantileNetworkDistributionLoss.sample">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.sample">[docs]</a>
+    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-3</span>
+        <span class="c1"># for a couple of random quantiles</span>
+        <span class="c1"># (excl. 0 and 1 as they would lead to infinities)</span>
+        <span class="n">quantiles</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">n_samples</span><span class="p">,),</span> <span class="n">device</span><span class="o">=</span><span class="n">y_pred</span><span class="o">.</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span>
+            <span class="n">eps</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">eps</span>
+        <span class="p">)</span>
+        <span class="c1"># make prediction</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_quantiles</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">quantiles</span><span class="o">=</span><span class="n">quantiles</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
+
+<div class="viewcode-block" id="ImplicitQuantileNetworkDistributionLoss.loss">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.loss">[docs]</a>
+    <span class="k">def</span> <span class="nf">loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">y_actual</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate negative likelihood</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            y_pred: network output</span>
+<span class="sd">            y_actual: actual values</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: metric value on which backpropagation can be applied</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-3</span>
+        <span class="c1"># for a couple of random quantiles</span>
+        <span class="c1"># (excl. 0 and 1 as they would lead to infinities)</span>
+        <span class="n">quantiles</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_loss_samples</span><span class="p">,),</span> <span class="n">device</span><span class="o">=</span><span class="n">y_pred</span><span class="o">.</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span>
+            <span class="n">eps</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">eps</span>
+        <span class="p">)</span>
+        <span class="c1"># make prediction</span>
+        <span class="n">pred_quantiles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_quantiles</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">quantiles</span><span class="o">=</span><span class="n">quantiles</span><span class="p">)</span>
+        <span class="c1"># and calculate quantile loss</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">y_actual</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">pred_quantiles</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">fmax</span><span class="p">(</span>
+            <span class="n">quantiles</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">errors</span><span class="p">,</span> <span class="p">(</span><span class="n">quantiles</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">errors</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">loss</span></div>
+
+
+<div class="viewcode-block" id="ImplicitQuantileNetworkDistributionLoss.rescale_parameters">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.rescale_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">rescale_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">target_scale</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+        <span class="n">encoder</span><span class="p">:</span> <span class="n">BaseEstimator</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">transformation</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">parameters</span><span class="p">,</span> <span class="n">target_scale</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">parameters</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)],</span>
+            <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImplicitQuantileNetworkDistributionLoss.to_prediction">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.to_prediction">[docs]</a>
+    <span class="k">def</span> <span class="nf">to_prediction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">n_samples</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_quantiles</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">quantiles</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">])</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># for a couple of random quantiles</span>
+            <span class="c1"># (excl. 0 and 1 as they would lead to infinities) make prediction</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImplicitQuantileNetworkDistributionLoss.to_quantiles">
+<a class="viewcode-back" href="../../../api/pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.html#pytorch_forecasting.metrics.distributions.ImplicitQuantileNetworkDistributionLoss.to_quantiles">[docs]</a>
+    <span class="k">def</span> <span class="nf">to_quantiles</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">quantiles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert network prediction into a quantile prediction.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            y_pred: prediction output of network</span>
+<span class="sd">            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as</span>
+<span class="sd">                as defined in the class initialization.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.Tensor: prediction quantiles (last dimension)</span>
+<span class="sd">        &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+        <span class="k">if</span> <span class="n">quantiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">quantiles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantiles</span>
+        <span class="n">quantiles</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">quantiles</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">y_pred</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># extract parameters</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">y_pred</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">y_pred</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">y_pred</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="c1"># predict quantiles</span>
+        <span class="k">if</span> <span class="n">y_pred</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">:</span>
+            <span class="n">predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">quantiles</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="n">predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile_network</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">quantiles</span><span class="p">)</span>
+        <span class="c1"># rescale output</span>
+        <span class="n">predictions</span> <span class="o">=</span> <span class="n">loc</span> <span class="o">+</span> <span class="n">predictions</span> <span class="o">*</span> <span class="n">scale</span>
+        <span class="c1"># transform output if required</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="n">TorchNormalizer</span><span class="o">.</span><span class="n">get_transform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transformation</span><span class="p">)[</span><span class="s2">&quot;reverse&quot;</span><span class="p">]</span>
+            <span class="n">predictions</span> <span class="o">=</span> <span class="n">transform</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">predictions</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2020, Jan Beitner.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

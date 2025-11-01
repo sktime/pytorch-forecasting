@@ -556,6 +556,7 @@ class TslibDataModule(LightningDataModule):
         - The target data `y` and features `x` are converted to torch.float32 tensors.
         - The timepoints before the cutoff time are masked off.
         - Splits data into categorical and continous features, which are grouped based on the indices.
+
         """  # noqa: E501
 
         series = self.time_series_dataset[idx]

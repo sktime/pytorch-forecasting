@@ -1,0 +1,47 @@
+NHiTS\_pkg
+==========
+
+.. currentmodule:: pytorch_forecasting.models.nhits._nhits_pkg
+
+
+.. autoclass:: NHiTS_pkg
+   :members:
+   :show-inheritance:
+   :exclude-members: __init__
+     
+   
+   :inherited-members:
+   
+
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~NHiTS_pkg.create_test_instance
+      ~NHiTS_pkg.create_test_instances_and_names
+      ~NHiTS_pkg.get_base_test_params
+      ~NHiTS_pkg.get_cls
+      ~NHiTS_pkg.name
+   
+   
+
+   
+    
+   
+   
+   
+   

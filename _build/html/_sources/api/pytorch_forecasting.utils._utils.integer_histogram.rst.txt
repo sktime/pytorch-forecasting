@@ -1,0 +1,6 @@
+integer\_histogram
+==================
+
+.. currentmodule:: pytorch_forecasting.utils._utils
+
+.. autofunction:: integer_histogram
