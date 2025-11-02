@@ -70,7 +70,7 @@ class TimeSeries(Dataset):
     unknown : list of str, optional, default = no variables
         list of variables that are not known in the future,
         list may also contain list of str, which are then grouped together
-        (e.g. useful for whether categories).
+        (e.g. useful for weather categories).
     static : list of str, optional, default = all variables not in known, unknown
         list of variables that do not change over time,
         list may also contain list of str, which are then grouped together.
