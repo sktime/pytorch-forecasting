@@ -244,7 +244,7 @@ def model(dataloaders_with_covariates):
 
 
 def test_model_init(dataloaders_with_covariates):
-    """Test model intialization from a dataset with different params."""
+    """Test model initialization from a dataset with different params."""
     dataset = dataloaders_with_covariates["train"].dataset
 
     context_length = dataset.max_encoder_length

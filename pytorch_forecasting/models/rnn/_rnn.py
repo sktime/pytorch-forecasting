@@ -278,7 +278,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
         _, hidden_state = self.rnn(
             input_vector, lengths=encoder_lengths, enforce_sorted=False
-        )  # second ouput is not needed (hidden state)
+        )  # second output is not needed (hidden state)
         return hidden_state
 
     def decode_all(
@@ -305,7 +305,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         n_samples: int = None,
     ) -> tuple[torch.Tensor, bool]:
         """
-        Decode hidden state of RNN into prediction. If n_smaples is given,
+        Decode hidden state of RNN into prediction. If n_samples is given,
         decode not by using actual values but rather by
         sampling new targets from past predictions iteratively
         """
