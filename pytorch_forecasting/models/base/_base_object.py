@@ -118,3 +118,56 @@ class _BasePtForecasterV2(_BasePtForecaster_Common):
     _tags = {
         "object_type": "forecaster_pytorch_v2",
     }
+
+
+class _EncoderDecoderConfigBase(_BasePtForecasterV2):
+    def _check_metadata(self, metadata):
+        assert isinstance(metadata, dict)
+        required_keys = [
+            "encoder_cat",
+            "encoder_cont",
+            "decoder_cat",
+            "decoder_cont",
+            "target",
+            "max_encoder_length",
+            "min_encoder_length",
+            "max_prediction_length",
+            "min_prediction_length",
+            "static_categorical_features",
+            "static_continuous_features",
+        ]
+
+        for key in required_keys:
+            assert key in metadata, f"Key {key} missing in metadata"
+
+        assert metadata["encoder_cat"] >= 0
+        assert metadata["encoder_cont"] >= 0
+        assert metadata["decoder_cat"] >= 0
+        assert metadata["decoder_cont"] >= 0
+        assert metadata["target"] > 0
+
+
+class _TSlibConfigBase(_BasePtForecasterV2):
+    def _check_metadata(self, metadata):
+        assert isinstance(metadata, dict)
+        required_keys = [
+            "feature_names",
+            "feature_indices",
+            "n_features",
+            "context_length",
+            "prediction_length",
+            "freq",
+            "features",
+        ]
+
+        for key in required_keys:
+            assert key in metadata, f"Key {key} missing in metadata"
+
+        assert (
+            metadata["n_features"]
+            == len(metadata["feature_names"])
+            == len(metadata["feature_indices"])
+        )
+        assert metadata["context_length"] > 0
+        assert metadata["prediction_length"] > 0
+        assert metadata["freq"] is not None
