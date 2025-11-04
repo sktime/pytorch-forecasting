@@ -381,9 +381,9 @@ class NaNLabelEncoder(
         y: Iterable
             iterable to encode
         return_norm
-            only exists for compatability with other encoders - returns a tuple if true.
+            only exists for compatibility with other encoders - returns a tuple if true.
         target_scale
-            only exists for compatability with other encoders - has no effect.
+            only exists for compatibility with other encoders - has no effect.
         ignore_na: bool
             if to ignore na values and map them to zeros
             (this is different to `add_nan=True` option which maps ONLY NAs to zeros
@@ -481,7 +481,7 @@ class NaNLabelEncoder(
         """
         Get fitted scaling parameters for a given group.
 
-        All parameters are unused - exists for compatability.
+        All parameters are unused - exists for compatibility.
 
         Returns
         -------
@@ -1097,7 +1097,7 @@ class GroupNormalizer(TorchNormalizer):
                     )[["center", "scale"]]
                     for g in self._groups
                 }
-            # calculate missings
+            # calculate missing
             if not self.center:  # swap center and scale
 
                 def swap_parameters(norm):
