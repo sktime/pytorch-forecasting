@@ -5,16 +5,19 @@
 ########################################################################################
 
 
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from warnings import warn
 
+from lightning import Trainer
 from lightning.pytorch import LightningModule
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 
-from pytorch_forecasting.metrics import Metric
+from pytorch_forecasting.callbacks.predict import PredictCallback
+from pytorch_forecasting.metrics import Metric, MultiLoss
 from pytorch_forecasting.utils._classproperty import classproperty
 
 
@@ -90,6 +93,69 @@ class BaseModel(LightningModule):
             Dictionary containing output tensors
         """
         raise NotImplementedError("Forward method must be implemented by subclass.")
+
+    def predict(
+        self,
+        dataloader: DataLoader,
+        mode: str = "prediction",
+        return_info: Optional[list[str]] = None,
+        mode_kwargs: dict[str, Any] = None,
+        trainer_kwargs: dict[str, Any] = None,
+    ) -> dict[str, torch.Tensor]:
+        """
+        Generate predictions for new data using the `lightning.Trainer`.
+
+        Parameters
+        ----------
+        dataloader : DataLoader
+            The dataloader containing the data to predict on.
+        mode : str
+            The prediction mode ("prediction", "quantiles", or "raw").
+        return_info : list[str], optional
+            A list of additional information to return.
+        mode_kwargs : dict[str, Any]
+            Additional arguments for `to_prediction`/`to_quantiles`.
+        trainer_kwargs: dict[str, Any]
+            Additional arguments for `Trainer`.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            A dictionary of prediction results.
+        """
+        trainer_kwargs = trainer_kwargs or {}
+        predict_callback = PredictCallback(
+            mode=mode, return_info=return_info, mode_kwargs=mode_kwargs
+        )
+
+        callbacks = trainer_kwargs.get("callbacks", [])
+        if not isinstance(callbacks, list):
+            callbacks = [callbacks]
+        callbacks.append(predict_callback)
+        trainer_kwargs["callbacks"] = callbacks
+
+        trainer = Trainer(**trainer_kwargs)
+        trainer.predict(self, dataloaders=dataloader)
+
+        return predict_callback.result
+
+    def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+        """Converts raw model output to point forecasts."""
+        # todo: add MultiLoss support
+        try:
+            out = self.loss.to_prediction(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self.loss.to_prediction(out["prediction"])
+        return out
+
+    def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+        """Converts raw model output to quantile forecasts."""
+        # todo: add MultiLoss support
+        try:
+            out = self.loss.to_quantiles(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self.loss.to_quantiles(out["prediction"])
+        return out
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
