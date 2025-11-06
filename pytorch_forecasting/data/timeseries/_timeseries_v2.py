@@ -236,16 +236,20 @@ class TimeSeries(Dataset):
 
         cutoff_time = data[time].max()
 
-        data_vals = data[time].values
-        data_tgt_vals = data[_target].values
-        data_feat_vals = data[feature_cols].values
+        # PyTorch wants writeable arrays
+        data_vals = data[time].to_numpy(copy=True)
+        data_tgt_vals = data[_target].to_numpy(copy=True)
+        data_feat_vals = data[feature_cols].to_numpy(copy=True)
 
         result = {
             "t": data_vals,
             "y": torch.tensor(data_tgt_vals),
             "x": torch.tensor(data_feat_vals),
             "group": torch.tensor([hash(str(group_id))]),
-            "st": torch.tensor(data[_static].iloc[0].values if _static else []),
+            # PyTorch wants writeable arrays
+            "st": torch.tensor(
+                data[_static].iloc[0].to_numpy(copy=True) if _static else []
+            ),
             "cutoff_time": cutoff_time,
         }
 
@@ -278,7 +282,10 @@ class TimeSeries(Dataset):
                     for j, col in enumerate(_known):
                         if col in feature_cols:
                             feature_idx = feature_cols.index(col)
-                            x_merged[idx, feature_idx] = future_data[col].values[i]
+                            # PyTorch wants writeable arrays
+                            x_merged[idx, feature_idx] = future_data[col].to_numpy(
+                                copy=True
+                            )[i]
 
             result.update(
                 {
@@ -293,17 +300,21 @@ class TimeSeries(Dataset):
                 weights_merged = np.full(num_timepoints, np.nan)
                 for i, t in enumerate(data_vals):
                     idx = current_time_indices[t]
-                    weights_merged[idx] = data[weight].values[i]
+                    # PyTorch wants writeable arrays
+                    weights_merged[idx] = data[weight].to_numpy(copy=True)[i]
 
                 for i, t in enumerate(data_fut_vals):
                     if t in current_time_indices and self.weight in future_data.columns:
                         idx = current_time_indices[t]
-                        weights_merged[idx] = future_data[weight].values[i]
+                        # PyTorch wants writeable arrays
+                        weights_merged[idx] = future_data[weight].to_numpy(copy=True)[i]
 
                 result["weights"] = torch.tensor(weights_merged, dtype=torch.float32)
             else:
                 result["weights"] = torch.tensor(
-                    data[self.weight].values, dtype=torch.float32
+                    # PyTorch wants writeable arrays
+                    data[self.weight].to_numpy(copy=True),
+                    dtype=torch.float32,
                 )
 
         return result
