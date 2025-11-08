@@ -49,6 +49,11 @@ How to Use This Page
 - **Filter by Capability**: Use the "Capability" dropdown to find models with specific features
 - **Click Model Names**: Click on any model name to view its detailed API documentation
 
+.. raw:: html
+   :file: _static/model_overview_table.html
+
+
+
 The table includes the following information:
 
 - **Model Name**: Name of the model with link to API documentation
