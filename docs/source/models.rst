@@ -21,18 +21,13 @@ Selecting an architecture
 Criteria for selecting an architecture depend heavily on the use-case. There are multiple selection criteria
 and you should take into account. Here is an overview over the pros and cons of the implemented models:
 
-.. csv-table:: Model comparison
-   :header: "Name",                                                                                        "Covariates", "Multiple targets", "Regression", "Classification", "Probabilistic", "Uncertainty", "Interactions between series", "Flexible history length", "Cold-start", "Required computational resources (1-5, 5=most)"
+.. note::
+   The table below is automatically generated from the model registry. It includes all available models
+   with their capabilities and properties. For a more detailed, searchable overview, see the
+   :ref:`Model Overview Page <model_overview>`.
 
-   :py:class:`~pytorch_forecasting.models.rnn.RecurrentNetwork`,                                           "x",          "x",                "x",          "",               "",               "",           "",                            "x",                       "",           2
-   :py:class:`~pytorch_forecasting.models.mlp.DecoderMLP`,                                                 "x",          "x",                "x",          "x",              "",               "x",          "",                            "x",                       "x",          1
-   :py:class:`~pytorch_forecasting.models.nbeats.NBeats`,                                                  "",           "",                 "x",          "",               "",               "",           "",                            "",                        "",           1
-   :py:class:`~pytorch_forecasting.models.nhits.NHiTS`,                                                    "x",          "x",                "x",          "",               "",               "",           "",                            "",                        "",           1
-   :py:class:`~pytorch_forecasting.models.deepar.DeepAR`,                                                  "x",          "x",                "x",          "",               "x",              "x",          "x [#deepvar]_ ",              "x",                       "",           3
-   :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`,          "x",          "x",                "x",          "x",              "",               "x",          "",                            "x",                       "x",          4
-   :py:class:`~pytorch_forecasting.model.tide.TiDEModel`,                                                  "x",          "x",                "x",          "",               "",               "",           "",                            "x",                       "",           3
-
-.. [#deepvar] Accounting for correlations using a multivariate loss function which converts the network into a DeepVAR model.
+.. raw:: html
+   :file: _static/model_overview_table.html
 
 Size and type of available data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -153,7 +148,13 @@ Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.mo
 Details and available models
 -------------------------------
 
-See the API documentation for further details on available models:
+The table above provides an automatically generated overview of all models in pytorch-forecasting,
+including their capabilities, dependencies, and properties. The table is generated from the model
+registry, ensuring it stays up-to-date as new models are added.
+
+For a more detailed, searchable overview with filtering capabilities, see the :ref:`Model Overview Page <model_overview>`.
+
+See the API documentation below for further details on available models:
 
 .. currentmodule:: pytorch_forecasting
 
