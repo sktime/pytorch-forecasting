@@ -1,5 +1,5 @@
 """
-Basic test frameowrk for TimeXer v2 model.
+Basic test framework for TimeXer v2 model.
 TODO:
 - Add tests for testing the scaling of features, once that is implemented in the D1/D2
   level.
@@ -297,7 +297,7 @@ def test_quantile_predictions(basic_metadata):
         output = model(sample_input_data)
 
     predictions = output["prediction"]
-    assert predictions.shape == (batch_size, 8, 1, 3)
+    assert predictions.shape == (batch_size, 8, 3)
 
 
 def test_missing_history_target_handling(basic_metadata):

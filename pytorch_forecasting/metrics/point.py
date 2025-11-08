@@ -166,7 +166,7 @@ class MASE(MultiHorizonMetric):
     """
     Mean absolute scaled error
 
-    Defined as ``(y_pred - target).abs() / all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
+    Defined as ``(y_pred - target).abs() / (all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
     ``all_targets`` are here the concatenated encoder and decoder targets
     """  # noqa: E501
 
@@ -232,7 +232,7 @@ class MASE(MultiHorizonMetric):
 
     @staticmethod
     def calculate_scaling(target, lengths, encoder_target, encoder_lengths):
-        # calcualte mean(abs(diff(targets)))
+        # calculate mean(abs(diff(targets)))
         eps = 1e-6
         batch_size = target.size(0)
         total_lengths = lengths + encoder_lengths

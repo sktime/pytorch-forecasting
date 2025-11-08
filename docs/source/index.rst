@@ -52,7 +52,7 @@ To use the MQF2 loss (multivariate quantile loss), also execute
 
    pip install pytorch-forecasting[mqf2]
 
-Vist :ref:`Getting started <getting-started>` to learn more about the package and detailled installation instruction.
+Visit :ref:`Getting started <getting-started>` to learn more about the package and detailed installation instruction.
 The :ref:`Tutorials <tutorials>` section provides guidance on how to use models and implement new ones.
 
 .. toctree::

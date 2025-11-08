@@ -37,6 +37,13 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
     """DeepAR: Probabilistic forecasting with autoregressive recurrent networks."""
 
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.deepar._deepar_pkg import DeepAR_pkg
+
+        return DeepAR_pkg
+
     def __init__(
         self,
         cell_type: str = "LSTM",
@@ -239,7 +246,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
             assert (
                 dataset.min_prediction_length == dataset.max_prediction_length
-            ), "Multivariate models require constant prediction lenghts"
+            ), "Multivariate models require constant prediction lengths"
         return super().from_dataset(
             dataset,
             allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,
@@ -294,7 +301,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
         _, hidden_state = self.rnn(
             input_vector, lengths=encoder_lengths, enforce_sorted=False
-        )  # second ouput is not needed (hidden state)
+        )  # second output is not needed (hidden state)
         return hidden_state
 
     def decode_all(
@@ -323,7 +330,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         n_samples: int = None,
     ) -> tuple[torch.Tensor, bool]:
         """
-        Decode hidden state of RNN into prediction. If n_smaples is given,
+        Decode hidden state of RNN into prediction. If n_samples is given,
         decode not by using actual values but rather by
         sampling new targets from past predictions iteratively
         """

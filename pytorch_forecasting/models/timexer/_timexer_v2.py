@@ -62,7 +62,7 @@ class TimeXer(TslibBaseModel):
         for the target variable are used.
     exogenous_vars: Optional[list[str]], default=None
         List of exogenous variable names to be used in the model. If None, all historical values
-        for continous variables are used.
+        for continuous variables are used.
     logging_metrics: Optional[list[nn.Module]], default=None
         List of metrics to log during training, validation, and testing.
     optimizer: Optional[Union[Optimizer, str]], default='adam'
@@ -85,11 +85,18 @@ class TimeXer(TslibBaseModel):
 
     Notes
     -----
-    [1] This implementation handles only continous variables in the context length. Categorical variables
+    [1] This implementation handles only continuous variables in the context length. Categorical variables
         support will be added in the future.
     [2] The `TimeXer` model obtains many of its attributes from the `TslibBaseModel` class, which is a base class
         where a lot of the boiler plate code for metadata handling and model initialization is implemented.
     """  # noqa: E501
+
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.timexer._timexer_pkg_v2 import TimeXer_pkg_v2
+
+        return TimeXer_pkg_v2
 
     def __init__(
         self,
@@ -304,11 +311,6 @@ class TimeXer(TslibBaseModel):
 
         dec_out = self.head(enc_out)
 
-        if self.n_quantiles is not None:
-            dec_out = dec_out.permute(0, 2, 1, 3)
-        else:
-            dec_out = dec_out.permute(0, 2, 1)
-
         return dec_out
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -322,10 +324,6 @@ class TimeXer(TslibBaseModel):
 
         out = self._forecast(x)
         prediction = out[:, : self.prediction_length, :]
-
-        # check to see if the output shape is equal to number of targets
-        if prediction.size(2) != self.target_dim:
-            prediction = prediction[:, :, : self.target_dim]
 
         if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])

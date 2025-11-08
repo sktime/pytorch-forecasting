@@ -1,5 +1,95 @@
 # Release Notes
 
+## v1.5.0
+Release focusing on:
+
+* python 3.9 end-of-life
+* changes to testing framework.
+* New estimators in `pytorch-forecasting` *v1* and *beta v2*.
+
+### Highlights
+#### `pytorch-forecasting` ***v1.5.0***
+* Kolmogorov Arnold Block for `NBeats` by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1751
+* `xLSTMTime` implementation by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1709
+
+#### `pytorch-forecasting` ***Beta v2***
+* Implementing D2 data module, tests and `TimeXer` model from `tslib`  for PTF v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1836
+* Add `DLinear` model from `tslib` for PTF v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
+* Add `Samformer` model for  PTF v2 from DSIPTS by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1952
+* `Tide` model in PTF v2 interface from `dsipts` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
+
+### Enhancements
+* [ENH] Test framework for `ptf-v2` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1841
+* [ENH] Implementing D2 data module, tests and `TimeXer` model from `tslib`  for v2 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1836
+* [ENH] `DLinear` model from `tslib` by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1874
+* [ENH] Enable `DeprecationWarning` , `PendingDeprecationWarning` and `FutureWarning` when running pytest by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1912
+* [ENH] Suppress `__array_wrap__` warning in `numpy 2` for `torch` and `pandas` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1911
+* [ENH] Suppress PyTorch deprecation warning: UserWarning: `nn.init.constant` is now deprecated in favor of `nn.init.constant_` by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1915
+* [ENH] two-way linkage of model package classes and neural network classes by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1888
+* [ENH] Add a copy of `BaseFixtureGenerator` to `pytorch-forecasting/tests/_base` as a true base class by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1919
+* [ENH] Remove references to model from the `BaseFixtureGenerator` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1923
+* [ENH] Improve test framework for v1 models by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1908
+* [ENH] `xLSTMTime` implementation by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1709
+* [ENH] Improve test framework for v1 metrics by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1907
+* [ENH] `Tide` model in `v2` interface by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1889
+* [ENH] docstring test suite for functions by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1955
+* [ENH] Add missing test for forward output of `TimeXer` as proposed in #1936 by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1951
+* [ENH] Add `Samformer` model for  PTF v2 from DSIPTS by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1952
+* [ENH] Kolmogorov Arnold Block for NBeats by @Sohaib-Ahmed21 in https://github.com/sktime/pytorch-forecasting/pull/1751
+* [ENH] Standardize output format for `tslib` v2 models by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1965
+* [ENH] Add `Metrics` support to `ptf-v2` by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1960
+* [ENH] `check_estimator` utility for checking new estimators against unified API contract by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1954
+* [ENH] Standardize testing of estimator outputs and skip tests for non-conformant estimators by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1971
+
+### Fixes
+* [BUG] Fix issue with `EncodeNormalizer(method='standard', center=False)` for scale value by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1902
+* [BUG] fixed memory leak in `TimeSeriesDataset` by using `@cached_property` and clean-up of index construction by @Vishnu-Rangiah in https://github.com/sktime/pytorch-forecasting/pull/1905
+* [BUG] Fix issue with `plot_prediction_actual_by_variable`  unsupported operand type(s) for *: 'numpy.ndarray' and 'Tensor' by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1903
+* [BUG] Correctly set lagged variables to known when lag >= horizon by @hubkrieb in https://github.com/sktime/pytorch-forecasting/pull/1910
+* [BUG] Updated base_model.py to account for importing error by @Himanshu-Verma-ds in https://github.com/sktime/pytorch-forecasting/pull/1488
+* [BUG][DOC] Fix documentation: pass loss argument to BaseModel in custom models tutorial example by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1931
+* [BUG] fix broken version inspection if package distribution has `None` name by @lohraspco in https://github.com/sktime/pytorch-forecasting/pull/1926
+* [BUG] fix sporadic `tkinter` failures in CI by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1937
+* [BUG] Device inconsistency in `MQF2DistributionLoss` raising: RuntimeError: Expected all tensors to be on the same device by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1916
+* [BUG] fixed memory leak in BaseModel by detach some tensor by @zju-ys in https://github.com/sktime/pytorch-forecasting/pull/1924
+* [BUG] Fix `TimeSeriesDataSet` wrong inferred `tensor` `dtype` when `time_idx` is included in features by @cngmid in https://github.com/sktime/pytorch-forecasting/pull/1950
+* [BUG] standardize output format of xLSTMTime estimator for point predictions by @sanskarmodi8 in https://github.com/sktime/pytorch-forecasting/pull/1978
+* [BUG] Standardize output format of NBeats and NBeatsKAN estimators by @sanskarmodi8 in https://github.com/sktime/pytorch-forecasting/pull/1977
+
+### Documentation
+* [DOC] Correct documentation for N-BEATS by @Pinaka07 in https://github.com/sktime/pytorch-forecasting/pull/1914
+* [DOC] 1.1.0 changelog - missing entries by @jdb78 in https://github.com/sktime/pytorch-forecasting/pull/1512
+* [DOC] fix minor typo in changelog by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1917
+* [DOC] Missing parenthesis in docstring of MASE by @caph1993 in https://github.com/sktime/pytorch-forecasting/pull/1944
+
+### Maintenance
+* [MNT] remove import conditionals for `python 3.6` by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1928
+* [MNT] [Dependabot](deps): bump actions/download-artifact from 4 to 5 by @dependabot[bot] in https://github.com/sktime/pytorch-forecasting/pull/1939
+* [MNT] [Dependabot](deps): Bump actions/checkout from 4 to 5 by @dependabot[bot] in https://github.com/sktime/pytorch-forecasting/pull/1942
+* [MNT] Check versions in wheels workflow by @szepeviktor in https://github.com/sktime/pytorch-forecasting/pull/1948
+* [MNT] [Dependabot](deps): Bump actions/setup-python from 5 to 6 by @dependabot[bot] in https://github.com/sktime/pytorch-forecasting/pull/1963
+* [MNT] Update CODEOWNERS with current core dev state by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1972
+* [MNT] python 3.9 end-of-life by @phoeenniixx in https://github.com/sktime/pytorch-forecasting/pull/1980
+
+### All Contributors
+@agobbifbk,
+@caph1993,
+@cngmid,
+@fkiraly,
+@fnhirwa,
+@Himanshu-Verma-ds,
+@hubkrieb,
+@jdb78,
+@lohraspco,
+@phoeenniixx,
+@Pinaka07,
+@PranavBhatP,
+@sanskarmodi8,
+@Sohaib-Ahmed21,
+@szepeviktor
+@Vishnu-Rangiah,
+@zju-ys
+
 ## v1.4.0
 
 Feature and maintenance update.
@@ -21,7 +111,7 @@ Feature and maintenance update.
 * [ENH] `TemporalFusionTransformer` - allow mixed precision training by @Marcrb2 in https://github.com/sktime/pytorch-forecasting/pull/1518
 * [ENH] move model base classes into `models.base` module - part 1 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1773
 * [ENH] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1774
-* [ENH] move model base classes into `models.base` module - part 2 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1776
+* [ENH] move model base classes into `models.base` module - part 3 by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1776
 * [ENH] tests for `TiDE` Model by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1843
 * [ENH] refactor test metadata container to include data loader configs by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1861
 * [ENH] `DecoderMLP` metadata container for v1 tests by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1859
@@ -202,6 +292,7 @@ The package name is now corrected to `pytorch-forecasting`.
 
 Maintenance update widening compatibility ranges and consolidating dependencies:
 
+* `TSMixer` model, see [TSMixer: An All-MLP Architecture for Time Series Forecasting](https://arxiv.org/abs/2303.06053).
 * support for python 3.11 and 3.12, added CI testing
 * support for MacOS, added CI testing
 * core dependencies have been minimized to `numpy`, `torch`, `lightning`, `scipy`, `pandas`, and `scikit-learn`.
@@ -217,6 +308,31 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 * from 1.2.0, the default optimizer will be changed from `"ranger"` to `"adam"` to avoid non-`torch` dependencies in defaults. `pytorch-optimize` optimizers can still be used. Users should set the optimizer explicitly to continue using `"ranger"`.
 *  from 1.1.0, the loggers do not log figures if soft dependency `matplotlib` is not present, but will raise no exceptions in this case. To log figures, ensure that `matplotlib` is installed.
+
+### All Contributors
+
+@andre-marcos-perez,
+@avirsaha,
+@bendavidsteel,
+@benHeid,
+@bohdan-safoniuk,
+@Borda,
+@CahidArda,
+@fkiraly,
+@fnhirwa,
+@germanKoch,
+@jacktang,
+@jdb78,
+@jurgispods,
+@maartensukel,
+@MBelniak,
+@orangehe,
+@pavelzw,
+@sfalkena,
+@tmct,
+@XinyuWuu,
+@yarnabrina
+
 
 ## v1.0.0 Update to pytorch 2.0 (10/04/2023)
 
@@ -265,7 +381,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Changed
 
-- Dropping Python 3.6 suppport, adding 3.10 support (#479)
+- Dropping Python 3.6 support, adding 3.10 support (#479)
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
 - Changed transformation format for Encoders to dict from tuple (#949)
 
@@ -292,7 +408,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 - More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)
-- Fix concatentation of attention (#902)
+- Fix concatenation of attention (#902)
 
 ### Fixed
 
@@ -314,7 +430,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Fixed
 
 - Fix inattention mutation to `x_cont` (#732).
-- Compatability with pytorch-lightning 1.5 (#758)
+- Compatibility with pytorch-lightning 1.5 (#758)
 
 ### Contributors
 
@@ -401,7 +517,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Added
 
-- Adding a filter functionality to the timeseries datasset (#329)
+- Adding a filter functionality to the timeseries dataset (#329)
 - Add simple models such as LSTM, GRU and a MLP on the decoder (#380)
 - Allow usage of any torch optimizer such as SGD (#380)
 
@@ -470,7 +586,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Added
 
 - Adding support for multiple targets in the TimeSeriesDataSet (#199) and amended tutorials.
-- Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
+- Temporal fusion transformer and DeepAR with support for multiple targets (#199)
 - Check for non-finite values in TimeSeriesDataSet and better validate scaler argument (#220)
 - LSTM and GRU implementations that can handle zero-length sequences (#235)
 - Helpers for implementing auto-regressive models (#236)

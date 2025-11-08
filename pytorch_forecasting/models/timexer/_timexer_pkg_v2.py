@@ -18,7 +18,7 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
     }
 
     @classmethod
-    def get_model_cls(cls):
+    def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.timexer._timexer_v2 import TimeXer
 
@@ -109,6 +109,8 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from pytorch_forecasting.metrics import QuantileLoss
+
         return [
             {},
             dict(
@@ -158,5 +160,6 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
                     context_length=16,
                     prediction_length=4,
                 ),
+                loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
             ),
         ]

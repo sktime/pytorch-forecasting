@@ -95,7 +95,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         variable which is the key in the dictionary
     x_reals: order of continuous variables in tensor passed to forward function
     x_categoricals: order of categorical variables in tensor passed to forward function
-    hidden_continuous_size: default for hidden size for processing continous variables (similar to categorical
+    hidden_continuous_size: default for hidden size for processing continuous variables (similar to categorical
         embedding size)
     hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
         (fallback to hidden_continuous_size if index is not in dictionary)
@@ -110,7 +110,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
     log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
         failures
     reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-    monotone_constaints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
+    monotone_constraints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
         variables mapping
         position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
         larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
@@ -126,6 +126,15 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         Set to -float("inf") to allow mixed precision training.
     **kwargs: additional arguments to :py:class:`~BaseModel`.
     """  # noqa: E501
+
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg import (
+            TemporalFusionTransformer_pkg,
+        )
+
+        return TemporalFusionTransformer_pkg
 
     def __init__(
         self,
@@ -155,15 +164,15 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         log_val_interval: Union[int, float] = None,
         log_gradient_flow: bool = False,
         reduce_on_plateau_patience: int = 1000,
-        monotone_constaints: Optional[dict[str, int]] = None,
+        monotone_constraints: Optional[dict[str, int]] = None,
         share_single_variable_networks: bool = False,
         causal_attention: bool = True,
         logging_metrics: nn.ModuleList = None,
         mask_bias: float = -1e9,
         **kwargs,
     ):
-        if monotone_constaints is None:
-            monotone_constaints = {}
+        if monotone_constraints is None:
+            monotone_constraints = {}
         if embedding_labels is None:
             embedding_labels = {}
         if embedding_paddings is None:
@@ -241,9 +250,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         self.static_variable_selection = VariableSelectionNetwork(
             input_sizes=static_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={
-                name: True for name in self.hparams.static_categoricals
-            },
+            input_embedding_flags=dict.fromkeys(self.hparams.static_categoricals, True),
             dropout=self.hparams.dropout,
             prescalers=self.prescalers,
         )
@@ -297,9 +304,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         self.encoder_variable_selection = VariableSelectionNetwork(
             input_sizes=encoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={
-                name: True for name in self.hparams.time_varying_categoricals_encoder
-            },
+            input_embedding_flags=dict.fromkeys(
+                self.hparams.time_varying_categoricals_encoder, True
+            ),
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
@@ -313,9 +320,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         self.decoder_variable_selection = VariableSelectionNetwork(
             input_sizes=decoder_input_sizes,
             hidden_size=self.hparams.hidden_size,
-            input_embedding_flags={
-                name: True for name in self.hparams.time_varying_categoricals_decoder
-            },
+            input_embedding_flags=dict.fromkeys(
+                self.hparams.time_varying_categoricals_decoder, True
+            ),
             dropout=self.hparams.dropout,
             context_size=self.hparams.hidden_size,
             prescalers=self.prescalers,
@@ -996,24 +1003,24 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # normalize attention with length histogram squared to account for:
         # 1. zeros in attention and
         # 2. higher attention due to less values
-        attention_occurances = (
+        attention_occurrences = (
             interpretation["encoder_length_histogram"][1:].flip(0).float().cumsum(0)
         )
-        attention_occurances = attention_occurances / attention_occurances.max()
-        attention_occurances = torch.cat(
+        attention_occurrences = attention_occurrences / attention_occurrences.max()
+        attention_occurrences = torch.cat(
             [
-                attention_occurances,
+                attention_occurrences,
                 torch.ones(
-                    interpretation["attention"].size(0) - attention_occurances.size(0),
-                    dtype=attention_occurances.dtype,
-                    device=attention_occurances.device,
+                    interpretation["attention"].size(0) - attention_occurrences.size(0),
+                    dtype=attention_occurrences.dtype,
+                    device=attention_occurrences.device,
                 ),
             ],
             dim=0,
         )
         interpretation["attention"] = interpretation[
             "attention"
-        ] / attention_occurances.pow(2).clamp(1.0)
+        ] / attention_occurrences.pow(2).clamp(1.0)
         interpretation["attention"] = (
             interpretation["attention"] / interpretation["attention"].sum()
         )

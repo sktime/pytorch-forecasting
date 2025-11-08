@@ -152,7 +152,7 @@ class TimeSeries(Dataset):
     def _prepare_metadata(self):
         """Prepare metadata for the dataset.
 
-        The funcion returns metadata that contains:
+        The function returns metadata that contains:
 
         * ``cols``: dict { 'y': list[str], 'x': list[str], 'st': list[str] }
           Names of columns for y, x, and static features.

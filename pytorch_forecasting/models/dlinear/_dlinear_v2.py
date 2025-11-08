@@ -60,8 +60,15 @@ class DLinear(TslibBaseModel):
     Notes
     -----
     [1] This implementation supports only continuous features. Categorical variables
-        will be accomodated in future versions.
+        will be accommodated in future versions.
     """
+
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.dlinear._dlinear_pkg_v2 import DLinear_pkg_v2
+
+        return DLinear_pkg_v2
 
     def __init__(
         self,
@@ -102,9 +109,9 @@ class DLinear(TslibBaseModel):
 
     def _weight_init(self, m: nn.Module):
         if isinstance(m, nn.Linear):
-            nn.init.constant(m.weight.data, 1.0 / self.context_length)
+            nn.init.constant_(m.weight.data, 1.0 / self.context_length)
             if m.bias is not None:
-                nn.init.constant(m.bias.data, 0.0)
+                nn.init.constant_(m.bias.data, 0.0)
 
     def _init_network(self):
         """
@@ -232,21 +239,16 @@ class DLinear(TslibBaseModel):
         Returns
         -------
         output: torch.Tensor
-            Reshaped tensor (batch_size, prediction_length, n_features, n_quantiles)
+            Reshaped tensor (batch_size, prediction_length, n_quantiles)
             or (batch_size, prediction_length, n_features) if n_quantiles is None.
         """
         if self.n_quantiles is not None:
-            batch_size, n_features = output.shape[0], output.shape[1]
+            batch_size = output.shape[0]
             output = output.reshape(
-                batch_size, n_features, self.prediction_length, self.n_quantiles
+                batch_size, self.prediction_length, self.n_quantiles
             )
-            output = output.permute(0, 2, 1, 3)  # (batch, time, features, quantiles)
         else:
             output = output.permute(0, 2, 1)  # (batch, time, features)
-
-        # univariate forecasting
-        if self.target_dim == 1 and output.shape[-1] == 1:
-            output = output.squeeze(-1)
 
         return output
 

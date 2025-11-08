@@ -1,16 +1,17 @@
 """Automated tests based on the skbase test suite template."""
 
-from inspect import isclass
 import shutil
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
+import torch
 import torch.nn as nn
 
+from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.tests.test_all_estimators import (
-    BaseFixtureGenerator,
-    PackageConfig,
+    EstimatorFixtureGenerator,
+    EstimatorPackageConfig,
 )
 
 # whether to test only estimators from modules that are changed w.r.t. main
@@ -57,9 +58,15 @@ def _integration(
         metadata, dict
     ), f"Expected metadata to be dict, got {type(metadata)}"
 
+    if "loss" in kwargs:
+        loss = kwargs["loss"]
+        kwargs.pop("loss")
+    else:
+        loss = SMAPE()
+
     net = estimator_cls(
         metadata=metadata,
-        loss=nn.MSELoss(),
+        loss=loss,
         **kwargs,
     )
 
@@ -71,10 +78,23 @@ def _integration(
     test_outputs = trainer.test(net, dataloaders=test_dataloader)
     assert len(test_outputs) > 0
 
+    # todo: add the predict pipeline and make this test cleaner
+    x, y = next(iter(test_dataloader))
+    net.eval()
+    with torch.no_grad():
+        output = net(x)
+    net.train()
+    prediction = output["prediction"]
+    n_dims = prediction.ndim
+    assert n_dims == 3, (
+        f"Prediction output must be 3D, but got {n_dims}D tensor "
+        f"with shape {output.shape}"
+    )
+
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
-class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
+class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
     """Generic tests for all objects in the mini package."""
 
     object_type_filter = "forecaster_pytorch_v2"
@@ -91,7 +111,7 @@ class TestAllPtForecastersV2(PackageConfig, BaseFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
-        object_class = object_pkg.get_model_cls()
+        object_class = object_pkg.get_cls()
         dataloaders = object_pkg._get_test_datamodule_from(trainer_kwargs)
 
         _integration(object_class, dataloaders, tmp_path, **trainer_kwargs)
