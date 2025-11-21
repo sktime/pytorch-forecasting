@@ -2,7 +2,10 @@
 Samformer package container.
 """
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.models.base._base_object import (
+    _BasePtForecasterV2,
+    _EncoderDecoderConfigBase,
+)
 
 
 class Samformer_pkg_v2(_BasePtForecasterV2):
@@ -134,3 +137,9 @@ class Samformer_pkg_v2(_BasePtForecasterV2):
                 "use_revin": False,
             },
         ]
+
+
+class Samformer_pkg_v2_metadata(_EncoderDecoderConfigBase):
+    @classmethod
+    def _check_metadata_samformer(self, metadata):
+        super()._check_metadata(metadata)
