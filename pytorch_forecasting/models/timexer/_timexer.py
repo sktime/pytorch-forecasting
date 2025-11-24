@@ -119,6 +119,9 @@ class TimeXer(BaseModelWithCovariates):
             regularization.
         activation (str, optional): Activation function used in feedforward networks
             ('relu' or 'gelu').
+        use_efficient_attention (bool, optional): If set to True, will use
+            PyTorch's native, optimized Scaled Dot Product Attention
+            Implementation.
         patch_length (int, optional): Length of each non-overlapping patch for
             endogenous variable tokenization.
         use_norm (bool, optional): Whether to apply normalization to input data.

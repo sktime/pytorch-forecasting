@@ -57,6 +57,9 @@ class TimeXer(TslibBaseModel):
         Factor for the attention mechanism, controlling the number of keys and values.
     activation: str, default='relu'
         Activation function to use in the feed-forward network. Common choices are 'relu', 'gelu', etc.
+    use_efficient_attention: bool, default=False
+        If set to True, will use PyTorch's native, optimized Scaled Dot Product
+        Attention Implementation.
     endogenous_vars: Optional[list[str]], default=None
         List of endogenous variable names to be used in the model. If None, all historical values
         for the target variable are used.
