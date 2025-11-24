@@ -110,6 +110,7 @@ class TimeXer(TslibBaseModel):
         patch_length: int = 4,
         factor: int = 5,
         activation: str = "relu",
+        use_efficient_attention: bool = False,
         endogenous_vars: Optional[list[str]] = None,
         exogenous_vars: Optional[list[str]] = None,
         logging_metrics: Optional[list[nn.Module]] = None,
@@ -146,6 +147,7 @@ class TimeXer(TslibBaseModel):
         self.dropout = dropout
         self.patch_length = patch_length
         self.activation = activation
+        self.use_efficient_attention = use_efficient_attention
         self.factor = factor
         self.endogenous_vars = endogenous_vars
         self.exogenous_vars = exogenous_vars
@@ -225,6 +227,7 @@ class TimeXer(TslibBaseModel):
                             self.factor,
                             attention_dropout=self.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.use_efficient_attention,
                         ),
                         self.hidden_size,
                         self.n_heads,
@@ -235,6 +238,7 @@ class TimeXer(TslibBaseModel):
                             self.factor,
                             attention_dropout=self.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.use_efficient_attention,
                         ),
                         self.hidden_size,
                         self.n_heads,
