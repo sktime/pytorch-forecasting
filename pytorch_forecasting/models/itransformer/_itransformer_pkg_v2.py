@@ -112,7 +112,7 @@ class iTransformer_pkg_v2(_BasePtForecasterV2):
                 d_ff=128,
                 dropout=0.1,
                 data_loader_kwargs=dict(
-                    batch_size=4, context_length=16, prediction_length=8
+                    batch_size=4, context_length=8, prediction_length=4
                 ),
             ),
         ]

@@ -47,7 +47,6 @@ class iTransformer(TslibBaseModel):
         dropout: float = 0.1,
         n_heads: int = 8,
         e_layers: int = 3,
-        embed: str = "fixed",
         logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[dict] = None,
@@ -75,7 +74,6 @@ class iTransformer(TslibBaseModel):
         self.dropout = dropout
         self.n_heads = n_heads
         self.e_layers = e_layers
-        self.embed = embed
         self.freq = self.metadata.get("freq", "h")
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
@@ -86,7 +84,7 @@ class iTransformer(TslibBaseModel):
         """
         Initialize the network for iTransformer's architecture.
         """
-        from pytorch_forecasting.layers import (
+        from pytorch_forecasting.models.itransformer.submodules import (
             AttentionLayer,
             DataEmbedding_inverted,
             Encoder,
@@ -95,7 +93,7 @@ class iTransformer(TslibBaseModel):
         )
 
         self.enc_embedding = DataEmbedding_inverted(
-            self.context_length, self.d_model, self.embed, self.freq, self.dropout
+            self.context_length, self.d_model, self.dropout
         )
 
         self.encoder = Encoder(
@@ -176,8 +174,8 @@ class iTransformer(TslibBaseModel):
         """
         dec_out, attns = self._forecast(x)
         prediction = dec_out[:, -self.prediction_length :, :]
-        if prediction.shape[-1] == 1:
-            prediction = prediction.squeeze(-1)
+        # if prediction.shape[-1] == 1:
+        #     prediction = prediction.squeeze(-1)
 
         if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])
