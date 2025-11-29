@@ -142,7 +142,8 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         shutil.rmtree(tmp_path, ignore_errors=True)
 
 
-def test_integration(data_with_covariates, tmp_path):
+@pytest.mark.parametrize("use_efficient_attention", [False, True])
+def test_integration(data_with_covariates, tmp_path, use_efficient_attention):
     """
     Test simple integration of the TimeXer model with a dataloader.
     Args:
@@ -163,6 +164,7 @@ def test_integration(data_with_covariates, tmp_path):
         dataloaders,
         tmp_path,
         trainer_kwargs={"accelerator": "cpu"},
+        use_efficient_attention=use_efficient_attention,
     )
 
 
