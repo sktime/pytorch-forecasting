@@ -145,7 +145,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
 @pytest.mark.parametrize(
     "use_efficient_attention",
     [False, True],
-    ids=["efficient_attn", "einsum_attn"],
+    ids=["einsum_attn", "efficient_attn"],
 )
 def test_integration(data_with_covariates, tmp_path, use_efficient_attention):
     """
