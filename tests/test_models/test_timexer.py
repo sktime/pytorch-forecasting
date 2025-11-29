@@ -254,6 +254,7 @@ def test_model_init(dataloaders_with_covariates):
 
     model1 = TimeXer.from_dataset(dataset, patch_length=patch_length_from_context)
     assert isinstance(model1, TimeXer)
+    assert model1.hparams.use_efficient_attention is False
 
     model2 = TimeXer.from_dataset(
         dataset,
