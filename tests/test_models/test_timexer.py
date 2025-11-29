@@ -272,6 +272,15 @@ def test_model_init(dataloaders_with_covariates):
     assert model2.hparams.d_ff == 64
     assert model2.hparams.patch_length == 2
 
+    # Testing initialization with efficient attention arg
+    model3 = TimeXer.from_dataset(
+        dataset,
+        patch_length=patch_length_from_context,
+        use_efficient_attention=True,
+    )
+    assert isinstance(model3, TimeXer)
+    assert model3.hparams.use_efficient_attention is True
+
 
 @pytest.mark.parametrize(
     "kwargs",
