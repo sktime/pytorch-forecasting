@@ -322,12 +322,17 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         # Normalize target if a normalizer is provided
         target_scale = None
         # Handle both target_normalizer and _target_normalizer (for "auto" case)
-        target_normalizer = getattr(self, "_target_normalizer", None) or self.target_normalizer
+        target_normalizer = (
+            getattr(self, "_target_normalizer", None) or self.target_normalizer
+        )
         if target_normalizer is not None and target_normalizer != "auto":
             # Only process TorchNormalizer instances (they have get_parameters)
             if hasattr(target_normalizer, "get_parameters"):
                 # Fit if not already fitted
-                if not hasattr(target_normalizer, "center_") or target_normalizer.center_ is None:
+                if (
+                    not hasattr(target_normalizer, "center_")
+                    or target_normalizer.center_ is None
+                ):
                     target_normalizer.fit(target)
 
                 target = target_normalizer.transform(target)
@@ -346,7 +351,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         )
 
         # Scale continuous features if scalers are provided
-        if self.scalers is not None and len(self.scalers) > 0 and continuous.shape[1] > 0:
+        if (
+            self.scalers is not None
+            and len(self.scalers) > 0
+            and continuous.shape[1] > 0
+        ):
             from sklearn.utils.validation import check_is_fitted
 
             scaled_continuous = continuous.clone()
@@ -378,7 +387,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                             scaler.fit(feature_col.numpy())
 
                         scaled_col = scaler.transform(feature_col.numpy())
-                        scaled_continuous[:, idx : idx + 1] = torch.from_numpy(scaled_col).float()
+                        scaled_continuous[:, idx : idx + 1] = torch.from_numpy(
+                            scaled_col
+                        ).float()
 
                     # torch normalizers work directly with tensors
                     elif isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
