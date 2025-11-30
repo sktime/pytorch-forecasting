@@ -6,14 +6,14 @@ import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
-from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
+from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_dummy_data
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 torch.manual_seed(23)
 
 
 def data_with_covariates():
-    data = get_stallion_data()
+    data = get_stallion_dummy_data()
     data["month"] = data.date.dt.month.astype(str)
     data["log_volume"] = np.log1p(data.volume)
     data["weight"] = 1 + np.sqrt(data.volume)
