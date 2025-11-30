@@ -1,9 +1,7 @@
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.optim import Optimizer
 
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
@@ -13,8 +11,50 @@ class iTransformer(TslibBaseModel):
     """
     An implementation of iTransformer model for v2 of pytorch-forecasting.
 
+    iTransformer repurposes the Transformer architecture by applying attention
+    and feed-forward networks on inverted dimensions. Instead of treating
+    timestamps as tokens (like traditional Transformers), iTransformer embeds
+    individual time series as variate tokens. The attention mechanism captures
+    multivariate correlations, while the feed-forward network learns nonlinear
+    representations for each variate. This inversion enables better handling
+    of long lookback windows, improved generalization across different variates,
+    and state-of-the-art performance on real-world forecasting tasks without
+    modifying the basic Transformer components.
+
     Parameters
     ----------
+    loss: nn.Module
+        Loss function to use for training.
+    output_attention: bool, default=False
+        Whether to output attention weights.
+    factor: int, default=5
+        Factor for the attention mechanism, controlling keys and values.
+    d_model: int, default=512
+        Dimension of the model embeddings and hidden representations.
+    d_ff: int, default=2048
+        Dimension of the feed-forward network.
+    activation: str, default='relu'
+        Activation function to use in the feed-forward network.
+    dropout: float, default=0.1
+        Dropout rate for regularization.
+    n_heads: int, default=8
+        Number of attention heads in the multi-head attention mechanism.
+    e_layers: int, default=3
+        Number of encoder layers in the transformer architecture.
+    logging_metrics: Optional[list[nn.Module]], default=None
+        List of metrics to log during training, validation, and testing.
+    optimizer: Optional[Union[Optimizer, str]], default='adam'
+        Optimizer to use for training. Can be a string name or an instance of an optimizer.
+    optimizer_params: Optional[dict], default=None
+        Parameters for the optimizer. If None, default parameters for the optimizer will be used.
+    lr_scheduler: Optional[str], default=None
+        Learning rate scheduler to use. If None, no scheduler is used.
+    lr_scheduler_params: Optional[dict], default=None
+        Parameters for the learning rate scheduler. If None, default parameters for the scheduler will be used.
+    metadata: Optional[dict], default=None
+        Metadata for the model from TslibDataModule. This can include information about the dataset,
+        such as the number of time steps, number of features, etc. It is used to initialize the model
+        and ensure it is compatible with the data being used.
 
     References
     ----------
@@ -23,8 +63,9 @@ class iTransformer(TslibBaseModel):
 
     Notes
     -----
-
-    """
+    [1] The `iTransformer` model obtains many of its attributes from the `TslibBaseModel` class, which is a base class
+        where a lot of the boiler plate code for metadata handling and model initialization is implemented.
+    """  # noqa: E501
 
     @classmethod
     def _pkg(cls):
@@ -39,7 +80,6 @@ class iTransformer(TslibBaseModel):
         self,
         loss: nn.Module,
         output_attention: bool = False,
-        use_norm: bool = False,
         factor: int = 5,
         d_model: int = 512,
         d_ff: int = 2048,
@@ -66,7 +106,6 @@ class iTransformer(TslibBaseModel):
         )
 
         self.output_attention = output_attention
-        self.use_norm = use_norm
         self.factor = factor
         self.d_model = d_model
         self.d_ff = d_ff
@@ -84,12 +123,14 @@ class iTransformer(TslibBaseModel):
         """
         Initialize the network for iTransformer's architecture.
         """
-        from pytorch_forecasting.models.itransformer.submodules import (
+        from pytorch_forecasting.layers import (
             AttentionLayer,
             DataEmbedding_inverted,
+            FullAttention,
+        )
+        from pytorch_forecasting.models.itransformer.submodules import (
             Encoder,
             EncoderLayer,
-            FullAttention,
         )
 
         self.enc_embedding = DataEmbedding_inverted(
@@ -141,15 +182,6 @@ class iTransformer(TslibBaseModel):
         x_enc = x["history_target"]
         x_mark_enc = x["history_cont"]
 
-        if self.use_norm:
-            # Normalization from Non-stationary Transformer
-            means = x_enc.mean(1, keepdim=True).detach()
-            x_enc = x_enc - means
-            stdev = torch.sqrt(
-                torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-5
-            )
-            x_enc /= stdev
-
         _, _, N = x_enc.shape  # B L N
         # Embedding
         # B L N -> B N E
@@ -162,15 +194,6 @@ class iTransformer(TslibBaseModel):
         dec_out = self.projector(enc_out).permute(0, 2, 1)[
             :, :, :N
         ]  # filter covariates
-
-        if self.use_norm:
-            # De-Normalization from Non-stationary Transformer
-            dec_out = dec_out * (
-                stdev[:, 0, :].unsqueeze(1).repeat(1, self.prediction_length, 1)
-            )
-            dec_out = dec_out + (
-                means[:, 0, :].unsqueeze(1).repeat(1, self.prediction_length, 1)
-            )
 
         return dec_out, attns
 
