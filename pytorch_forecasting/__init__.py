@@ -4,12 +4,27 @@ PyTorch Forecasting package for timeseries forecasting with PyTorch.
 
 __version__ = "1.5.0"
 
+import torch
+
 from pytorch_forecasting.data import (
     EncoderNormalizer,
     GroupNormalizer,
     MultiNormalizer,
     NaNLabelEncoder,
     TimeSeriesDataSet,
+)
+from pytorch_forecasting.data.encoders import TorchNormalizer
+
+# Register custom classes as safe globals for PyTorch 2.6+ safe unpickling
+# This allows checkpoints containing these classes to be loaded with weights_only=True
+torch.serialization.add_safe_globals(
+    [
+        EncoderNormalizer,
+        GroupNormalizer,
+        MultiNormalizer,
+        NaNLabelEncoder,
+        TorchNormalizer,
+    ]
 )
 from pytorch_forecasting.metrics import (
     MAE,
