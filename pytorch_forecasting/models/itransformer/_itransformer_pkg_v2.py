@@ -11,7 +11,7 @@ class iTransformer_pkg_v2(_BasePtForecasterV2):
         "authors": ["JATAYU000"],
         "capability:exogenous": True,
         "capability:multivariate": True,
-        "capability:pred_int": False,
+        "capability:pred_int": True,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
     }

@@ -96,6 +96,11 @@ class iTransformer(TslibBaseModel):
             self.context_length, self.d_model, self.dropout
         )
 
+        self.n_quantiles = None
+
+        if hasattr(self.loss, "quantiles") and self.loss.quantiles is not None:
+            self.n_quantiles = len(self.loss.quantiles)
+
         self.encoder = Encoder(
             [
                 EncoderLayer(
@@ -118,7 +123,12 @@ class iTransformer(TslibBaseModel):
             ],
             norm_layer=torch.nn.LayerNorm(self.d_model),
         )
-        self.projector = nn.Linear(self.d_model, self.prediction_length, bias=True)
+        if self.n_quantiles is not None:
+            self.projector = nn.Linear(
+                self.d_model, self.prediction_length * self.n_quantiles, bias=True
+            )
+        else:
+            self.projector = nn.Linear(self.d_model, self.prediction_length, bias=True)
 
     def _forecast(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
@@ -173,12 +183,18 @@ class iTransformer(TslibBaseModel):
             dict[str, torch.Tensor]: Model predictions.
         """
         dec_out, attns = self._forecast(x)
+
+        if self.n_quantiles is not None:
+            batch_size = dec_out.shape[0]
+            dec_out = dec_out.reshape(
+                batch_size, self.prediction_length, self.n_quantiles
+            )
+
         prediction = dec_out[:, -self.prediction_length :, :]
-        # if prediction.shape[-1] == 1:
-        #     prediction = prediction.squeeze(-1)
 
         if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])
+
         if self.output_attention:
             return {"prediction": prediction, "attention_weights": attns}
         else:
