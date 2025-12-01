@@ -2,10 +2,6 @@
 Implementation of `nn.Modules` for iTransformer model.
 """
 
-from math import sqrt
-
-import numpy as np
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -64,23 +60,3 @@ class EncoderLayer(nn.Module):
         y = self.dropout(self.conv2(y).transpose(-1, 1))
 
         return self.norm2(x + y), attn
-
-
-# class DataEmbedding_inverted(nn.Module):
-#     def __init__(self, c_in, d_model, dropout=0.1):
-#         super().__init__()
-#         self.value_embedding = nn.Linear(c_in, d_model)
-#         self.dropout = nn.Dropout(p=dropout)
-
-#     def forward(self, x, x_mark):
-#         x = x.permute(0, 2, 1)
-#         # x: [Batch Variate Time]
-#         if x_mark is None:
-#             x = self.value_embedding(x)
-#         else:
-#             # the potential to take covariates (e.g. timestamps) as tokens
-#             # If they differ, convert x_mark:
-#             x_mark = x_mark.float()
-#             x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1))
-#         # x: [Batch Variate d_model]
-#         return self.dropout(x)
