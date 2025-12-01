@@ -71,7 +71,7 @@ def _integration(
             )
         # check loading
         net = DecoderMLP.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path
+            trainer.checkpoint_callback.best_model_path, weights_only=False
         )
 
         # check prediction

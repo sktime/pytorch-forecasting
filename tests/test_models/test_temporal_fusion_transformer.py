@@ -185,7 +185,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
 
             # check loading
             net = TemporalFusionTransformer.load_from_checkpoint(
-                trainer.checkpoint_callback.best_model_path
+                trainer.checkpoint_callback.best_model_path, weights_only=False
             )
 
             # check prediction
@@ -505,7 +505,9 @@ def test_no_exogenous_variable():
         val_dataloaders=validation_data_loader,
     )
     best_model_path = trainer.checkpoint_callback.best_model_path
-    best_model = TemporalFusionTransformer.load_from_checkpoint(best_model_path)
+    best_model = TemporalFusionTransformer.load_from_checkpoint(
+        best_model_path, weights_only=False
+    )
     best_model.predict(
         validation_data_loader,
         return_x=True,
