@@ -90,7 +90,9 @@ def _integration(
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
         # check loading
-        net = DeepAR.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        net = DeepAR.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path, weights_only=False
+        )
 
         # check prediction
         net.predict(

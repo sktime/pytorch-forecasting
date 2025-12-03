@@ -318,7 +318,7 @@ def _integration(
         assert len(test_outputs) > 0
         # check loading
         net = estimator_cls.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path
+            trainer.checkpoint_callback.best_model_path, weights_only=False
         )
 
         # check prediction

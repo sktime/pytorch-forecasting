@@ -50,7 +50,9 @@ def test_integration(dataloaders_fixed_window_without_covariates, tmp_path):
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
         # check loading
-        net = NBeats.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        net = NBeats.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path, weights_only=False
+        )
 
         # check prediction
         net.predict(

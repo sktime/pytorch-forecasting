@@ -115,7 +115,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
 
         # test the checkpointing feature
         net = TimeXer.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path,
+            trainer.checkpoint_callback.best_model_path, weights_only=False
         )
         predictions = net.predict(
             val_dataloader,

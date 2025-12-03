@@ -84,7 +84,7 @@ def _integration(
         assert len(test_outputs) > 0
         # check loading
         net = estimator_cls.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path
+            trainer.checkpoint_callback.best_model_path, weights_only=False
         )
 
         # check prediction
@@ -261,7 +261,7 @@ def test_no_exogenous_variable():
         val_dataloaders=validation_data_loader,
     )
     best_model_path = trainer.checkpoint_callback.best_model_path
-    best_model = TiDEModel.load_from_checkpoint(best_model_path)
+    best_model = TiDEModel.load_from_checkpoint(best_model_path, weights_only=False)
     best_model.predict(
         validation_data_loader,
         fast_dev_run=True,
