@@ -142,7 +142,12 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
         shutil.rmtree(tmp_path, ignore_errors=True)
 
 
-def test_integration(data_with_covariates, tmp_path):
+@pytest.mark.parametrize(
+    "use_efficient_attention",
+    [False, True],
+    ids=["einsum_attn", "efficient_attn"],
+)
+def test_integration(data_with_covariates, tmp_path, use_efficient_attention):
     """
     Test simple integration of the TimeXer model with a dataloader.
     Args:
@@ -163,6 +168,7 @@ def test_integration(data_with_covariates, tmp_path):
         dataloaders,
         tmp_path,
         trainer_kwargs={"accelerator": "cpu"},
+        use_efficient_attention=use_efficient_attention,
     )
 
 
@@ -254,6 +260,7 @@ def test_model_init(dataloaders_with_covariates):
 
     model1 = TimeXer.from_dataset(dataset, patch_length=patch_length_from_context)
     assert isinstance(model1, TimeXer)
+    assert model1.hparams.use_efficient_attention is False
 
     model2 = TimeXer.from_dataset(
         dataset,
@@ -271,6 +278,15 @@ def test_model_init(dataloaders_with_covariates):
     assert model2.hparams.e_layers == 2
     assert model2.hparams.d_ff == 64
     assert model2.hparams.patch_length == 2
+
+    # Testing initialization with efficient attention arg
+    model3 = TimeXer.from_dataset(
+        dataset,
+        patch_length=patch_length_from_context,
+        use_efficient_attention=True,
+    )
+    assert isinstance(model3, TimeXer)
+    assert model3.hparams.use_efficient_attention is True
 
 
 @pytest.mark.parametrize(
