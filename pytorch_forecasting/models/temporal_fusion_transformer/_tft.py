@@ -203,7 +203,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
         if loss is None:
             loss = QuantileLoss()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["output_transformer"])
         # store loss function separately as it is a module
         assert isinstance(
             loss, LightningMetric
