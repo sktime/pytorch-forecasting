@@ -121,7 +121,11 @@ class TimeXer(BaseModelWithCovariates):
             ('relu' or 'gelu').
         use_efficient_attention (bool, optional): If set to True, will use
             PyTorch's native, optimized Scaled Dot Product Attention
-            Implementation.
+            implementation which can reduce computation time and memory
+            consumption for longer sequences. PyTorch automatically selects the
+            optimal backend (FlashAttention-2, Memory-Efficient Attention, or
+            their own C++ implementation) based on user's input properties,
+            hardware capabilities, and build configuration.
         patch_length (int, optional): Length of each non-overlapping patch for
             endogenous variable tokenization.
         use_norm (bool, optional): Whether to apply normalization to input data.

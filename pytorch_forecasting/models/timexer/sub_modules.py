@@ -37,8 +37,13 @@ class FullAttention(nn.Module):
         scale (float): Scaling factor for attention scores.
         attention_dropout (float): Dropout rate for attention scores.
         output_attention (bool): Whether to output attention weights.
-        use_efficient_attention (bool): Whether to use torch's native efficient
-            scaled dot product attention implementation.
+        use_efficient_attention (bool): Whether to use PyTorch's native,
+            optimized Scaled Dot Product Attention implementation which can
+            reduce computation time and memory consumption for longer sequences.
+            PyTorch automatically selects the optimal backend (FlashAttention-2,
+            Memory-Efficient Attention, or their own C++ implementation) based
+            on user's input properties, hardware capabilities, and build
+            configuration.
     """
 
     def __init__(

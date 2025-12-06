@@ -59,7 +59,11 @@ class TimeXer(TslibBaseModel):
         Activation function to use in the feed-forward network. Common choices are 'relu', 'gelu', etc.
     use_efficient_attention: bool, default=False
         If set to True, will use PyTorch's native, optimized Scaled Dot Product
-        Attention Implementation.
+        Attention implementation which can reduce computation time and memory
+        consumption for longer sequences. PyTorch automatically selects the
+        optimal backend (FlashAttention-2, Memory-Efficient Attention, or their
+        own C++ implementation) based on user's input properties, hardware
+        capabilities, and build configuration.
     endogenous_vars: Optional[list[str]], default=None
         List of endogenous variable names to be used in the model. If None, all historical values
         for the target variable are used.
