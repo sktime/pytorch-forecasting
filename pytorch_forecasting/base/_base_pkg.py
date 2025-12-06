@@ -29,10 +29,12 @@ class Base_pkg(_BasePtForecasterV2):
         Configs to initialise ``lightning.Trainer``. Defaults to {}.
     datamodule_cfg : Union[dict, str, Path], optional
         Configs to initialise a ``LightningDataModule``.
+
         - If dict, the keys and values are used as configuration parameters.
         - If str or Path, it should be a path to a ``.pkl`` file containing
           the serialized configuration dictionary. Required for reproducibility
           when loading a model for inference. Defaults to {}.
+
     ckpt_path : Union[str, Path], optional
         Path to the checkpoint from which to load the model. If provided, `model_cfg`
         is ignored. Defaults to None.
