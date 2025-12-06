@@ -7,6 +7,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.core.datamodule import LightningDataModule
 import torch
 from torch.utils.data import DataLoader
+import yaml
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
@@ -39,24 +40,71 @@ class Base_pkg(_BasePtForecasterV2):
 
     def __init__(
         self,
-        model_cfg: Optional[dict[str, Any]] = None,
-        trainer_cfg: Optional[dict[str, Any]] = None,
+        model_cfg: Optional[Union[dict[str, Any], str, Path]] = None,
+        trainer_cfg: Optional[Union[dict[str, Any], str, Path]] = None,
         datamodule_cfg: Optional[Union[dict[str, Any], str, Path]] = None,
         ckpt_path: Optional[Union[str, Path]] = None,
     ):
-        self.model_cfg = model_cfg or {}
-        self.trainer_cfg = trainer_cfg or {}
         self.ckpt_path = Path(ckpt_path) if ckpt_path else None
+        self.model_cfg = self._load_config(
+            model_cfg, ckpt_path=self.ckpt_path, auto_file_name="model_cfg.pkl"
+        )
+        print(self.model_cfg)
 
-        if isinstance(datamodule_cfg, (str, Path)):
-            with open(datamodule_cfg, "rb") as f:
-                self.datamodule_cfg = pickle.load(f)  # noqa : S301
-        else:
-            self.datamodule_cfg = datamodule_cfg or {}
+        self.datamodule_cfg = self._load_config(
+            datamodule_cfg,
+            ckpt_path=self.ckpt_path,
+            auto_file_name="datamodule_cfg.pkl",
+        )
+        self.trainer_cfg = self._load_config(trainer_cfg)
+        self.metadata = self._load_config(
+            None, ckpt_path=self.ckpt_path, auto_file_name="metadata.pkl"
+        )
 
         self.model = None
         self.trainer = None
         self.datamodule = None
+        if self.ckpt_path:
+            print(self.metadata)
+            self._build_model(metadata=self.metadata, **self.model_cfg)
+        else:
+            self.model = None
+
+    @staticmethod
+    def _load_config(
+        config: Union[dict, str, Path, None],
+        ckpt_path: Optional[Union[str, Path]] = None,
+        auto_file_name: Optional[str] = None,
+    ) -> dict:
+        """
+        Loads configuration from a dictionary, YAML file, or Pickle file.
+        """
+        if config is None:
+            if ckpt_path and auto_file_name:
+                path = Path(ckpt_path).parent / auto_file_name
+                if path.exists():
+                    with open(path, "rb") as f:
+                        return pickle.load(f)  # noqa : S301
+            return {}
+
+        if isinstance(config, dict):
+            return config
+
+        path = Path(config)
+        if not path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {path}")
+
+        suffix = path.suffix.lower()
+        print(suffix)
+
+        if suffix in [".yaml", ".yml"]:
+            with open(path) as f:
+                return yaml.safe_load(f) or {}
+
+        else:
+            raise ValueError(
+                f"Unsupported config format: {suffix}. Use .yaml, .yml, or .pkl"
+            )
 
     @classmethod
     def get_cls(cls):
@@ -87,11 +135,13 @@ class Base_pkg(_BasePtForecasterV2):
             "predict": datasets_info["validation_dataset"],
         }
 
-    def _build_model(self, metadata: dict):
+    def _build_model(self, metadata: dict, **kwargs):
         """Instantiates the model, either from a checkpoint or from config."""
         model_cls = self.get_cls()
         if self.ckpt_path:
-            self.model = model_cls.load_from_checkpoint(self.ckpt_path)
+            self.model = model_cls.load_from_checkpoint(
+                self.ckpt_path, metadata=metadata, **kwargs
+            )
         elif self.model_cfg:
             self.model = model_cls(**self.model_cfg, metadata=metadata)
         else:
@@ -123,12 +173,27 @@ class Base_pkg(_BasePtForecasterV2):
                 "Expected TimeSeriesDataSet, LightningDataModule, or DataLoader."
             )
 
+    def _save_artifact(self, output_dir: Path):
+        """Save all configuration artifacts."""
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(output_dir / "datamodule_cfg.pkl", "wb") as f:
+            pickle.dump(self.datamodule_cfg, f)
+
+        with open(output_dir / "model_cfg.pkl", "wb") as f:
+            pickle.dump(self.model_cfg, f)
+
+        if self.datamodule is not None and hasattr(self.datamodule, "metadata"):
+            with open(output_dir / "metadata.pkl", "wb") as f:
+                pickle.dump(self.datamodule.metadata, f)
+
     def fit(
         self,
         data: Union[TimeSeries, LightningDataModule],
         # todo: we should create a base data_module for different data_modules
         save_ckpt: bool = True,
         ckpt_dir: Union[str, Path] = "checkpoints",
+        ckpt_kwargs: Optional[dict[str, Any]] = None,
         **trainer_fit_kwargs,
     ):
         """
@@ -143,6 +208,8 @@ class Base_pkg(_BasePtForecasterV2):
             If True, save the best model checkpoint and the `datamodule_cfg`.
         ckpt_dir : Union[str, Path], default="checkpoints"
             Directory to save artifacts.
+        ckpt_kwargs : dict, optional
+            Keyword arguments passed to ``ModelCheckpoint``.
         **trainer_fit_kwargs :
             Additional keyword arguments passed to `trainer.fit()`.
 
@@ -170,13 +237,16 @@ class Base_pkg(_BasePtForecasterV2):
         if save_ckpt:
             ckpt_dir = Path(ckpt_dir)
             ckpt_dir.mkdir(parents=True, exist_ok=True)
-            checkpoint_cb = ModelCheckpoint(
-                dirpath=ckpt_dir,
-                filename="best-{epoch}-{val_loss:.2f}",
-                save_top_k=1,
-                monitor="val_loss",
-                mode="min",
-            )
+            default_ckpt_kwargs = {
+                "dirpath": ckpt_dir,
+                "filename": "best-{epoch}-{step}",
+                "save_top_k": 1,
+                "monitor": "val_loss",
+                "mode": "min",
+            }
+            if ckpt_kwargs:
+                default_ckpt_kwargs.update(ckpt_kwargs)
+            checkpoint_cb = ModelCheckpoint(**default_ckpt_kwargs)
             callbacks.append(checkpoint_cb)
         trainer_init_cfg = self.trainer_cfg.copy()
         trainer_init_cfg.pop("callbacks", None)
@@ -186,11 +256,8 @@ class Base_pkg(_BasePtForecasterV2):
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
-            dm_cfg_path = best_model_path.parent / "datamodule_cfg.pkl"
-            with open(dm_cfg_path, "wb") as f:
-                pickle.dump(self.datamodule_cfg, f)
-            print(f"Best model saved to: {best_model_path}")
-            print(f"DataModule config saved to: {dm_cfg_path}")
+            self._save_artifact(best_model_path.parent)
+            print(f"Artifacts saved in: {best_model_path.parent}")
             return best_model_path
         return None
 
