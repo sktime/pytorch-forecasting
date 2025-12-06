@@ -35,7 +35,7 @@ class _BasePtMetric(_BaseObject):
     def prepare_test_inputs(cls, test_case):
         """Prepare test inputs for the metric.
 
-        This can be overriden by subclasses to provide special handling
+        This can be overridden by subclasses to provide special handling
         of test inputs.
 
         Parameters

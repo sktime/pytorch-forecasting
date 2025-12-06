@@ -30,10 +30,10 @@ class KANLayer(nn.Module):
     noise_scale : float
         the scale of noise injected at initialization. Default: 0.1.
     scale_base_mu : float
-        the scale of the residual function b(x) is intialized to be
+        the scale of the residual function b(x) is initialized to be
         N(scale_base_mu, scale_base_sigma^2).
     scale_base_sigma : float
-        the scale of the residual function b(x) is intialized to be
+        the scale of the residual function b(x) is initialized to be
         N(scale_base_mu, scale_base_sigma^2).
     scale_sp : float
         the scale of the base function spline(x).

@@ -15,7 +15,7 @@ class embedding_cat_variables(nn.Module):
             length of the sequence (sum of past and future steps)
         lag: (int):
             number of future step to be predicted
-        hiden_size: int
+        hidden_size: int
             dimension of all variables after they are embedded
         emb_dims: list
             size of the dictionary for embedding. One dimension for each categorical variable

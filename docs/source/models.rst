@@ -9,7 +9,7 @@ Model parameters very much depend on the dataset for which they are destined.
 
 PyTorch Forecasting provides a ``.from_dataset()`` method for each model that
 takes a :py:class:`~data.timeseries.TimeSeriesDataSet` and additional parameters
-that cannot directy derived from the dataset such as, e.g. ``learning_rate`` or ``hidden_size``.
+that cannot directly derived from the dataset such as, e.g. ``learning_rate`` or ``hidden_size``.
 
 To tune models, `optuna <https://optuna.readthedocs.io/>`_ can be used. For example, tuning of the
 :py:class:`~models.temporal_fusion_transformer.TemporalFusionTransformer`
@@ -47,7 +47,7 @@ Availability of covariates
 .. _model-covariates:
 
 If you have covariates, that is variables in addition to the target variable itself that hold information
-about the target, then your case will benefit from a model that can accomodate covariates. A model that
+about the target, then your case will benefit from a model that can accommodate covariates. A model that
 cannot use covariates is :py:class:`~pytorch_forecasting.models.nbeats.NBeats`.
 
 Length of timeseries
@@ -58,7 +58,7 @@ most models are created and tested on very long timeseries while in practice sho
 timeseries are often encountered. A model that can leverage covariates well such as the
 :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`
 will typically perform better than other models on short timeseries. It is a significant step
-from short timeseries to making cold-start predictions soley based on static covariates, i.e.
+from short timeseries to making cold-start predictions solely based on static covariates, i.e.
 making predictions without observed history. For example,
 this is only supported by the
 :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`
@@ -72,7 +72,7 @@ If your time series are related to each other (e.g. all sales of products of the
 a model that can learn relations between the timeseries can improve accuracy.
 Not that only :ref:`models that can process covariates <model-covariates>` can
 learn relationships between different timeseries.
-If the timeseries denote different entities or exhibit very similar patterns accross the board,
+If the timeseries denote different entities or exhibit very similar patterns across the board,
 a model such as :py:class:`~pytorch_forecasting.models.nbeats.NBeats` will not work as well.
 
 If you have only one or very few timeseries,
@@ -86,7 +86,7 @@ Not every can do regression, classification or handle multiple targets. Some are
 geared towards a single task. For example, :py:class:`~pytorch_forecasting.models.nbeats.NBeats`
 can only be used for regression on a single target without covariates while the
 :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer` supports
-multiple targets and even hetrogeneous targets where some are continuous variables and others categorical,
+multiple targets and even heterogeneous targets where some are continuous variables and others categorical,
 i.e. regression and classification at the same time. :py:class:`~pytorch_forecasting.models.deepar.DeepAR`
 can handle multiple targets but only works for regression tasks.
 
@@ -97,18 +97,18 @@ Supporting uncertainty
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Not all models support uncertainty estimation. Those that do, might do so in different fashions.
-Non-parameteric models provide forecasts that are not bound to a given distribution
+Non-parametric models provide forecasts that are not bound to a given distribution
 while parametric models assume that the data follows a specific distribution.
 
 The parametric models will be a better choice if you
 know how your data (and potentially error) is distributed. However, if you are missing this information or
 cannot make an educated guess that matches reality rather well, the model's uncertainty estimates will
-be adversely impacted. In this case, a non-parameteric model will do much better.
+be adversely impacted. In this case, a non-parametric model will do much better.
 
-:py:class:`~pytorch_forecasting.models.deepar.DeepAR` is an example for a parameteric model while
+:py:class:`~pytorch_forecasting.models.deepar.DeepAR` is an example for a parametric model while
 the :py:class:`~pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer`
 can output quantile forecasts that can fit any distribution.
-Models based on normalizing flows marry the two worlds by providing a non-parameteric estimate
+Models based on normalizing flows marry the two worlds by providing a non-parametric estimate
 of a full probability distribution. PyTorch Forecasting currently does not provide
 support for these but
 `Pyro, a package for probabilistic programming <https://pyro.ai/examples/normalizing_flows_i.html>`_ does
@@ -120,7 +120,7 @@ Computational requirements
 Some models have simpler architectures and less parameters than others which can
 lead to significantly different training times. However, this not a general rule as demonstrated
 by Zhuohan et al. in `Train Large, Then Compress: Rethinking Model Size for Efficient Training and Inference of Transformers
-<https://arxiv.org/abs/2002.11794>`_. Because the data for a sample for timeseries models is often far samller than it
+<https://arxiv.org/abs/2002.11794>`_. Because the data for a sample for timeseries models is often far smaller than it
 is for computer vision or language tasks, GPUs are often underused and increasing the width of models can be an effective way
 to fully use a GPU. This can increase the speed of training while also improving accuracy.
 The other path to pushing utilization of a GPU up is increasing the batch size.
