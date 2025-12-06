@@ -36,7 +36,7 @@ class FullAttention(nn.Module):
         scale (float): Scaling factor for attention scores.
         attention_dropout (float): Dropout rate for attention scores.
         output_attention (bool): Whether to output attention weights.
-        efficient_attention (bool): Whether to use torch's native efficient
+        use_efficient_attention (bool): Whether to use torch's native efficient
             scaled dot product attention implementation.
     """
 
