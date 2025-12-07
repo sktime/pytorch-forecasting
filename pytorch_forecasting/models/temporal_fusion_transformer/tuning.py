@@ -3,6 +3,7 @@ Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedoc
 """
 
 import copy
+import functools
 import logging
 import os
 from typing import Any, Union
@@ -13,6 +14,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.tuner import Tuner
 import numpy as np
 import scipy._lib._util
+import torch
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
@@ -21,6 +23,24 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 optuna_logger = logging.getLogger("optuna")
+
+
+# todo: Remove this class once lightning allows the pass of weights_only to tuner
+class NewTuner(Tuner):
+    def lr_find(self, *args, **kwargs):
+        original_load = torch.load
+
+        @functools.wraps(original_load)
+        def new_load(*load_args, **load_kwargs):
+            load_kwargs["weights_only"] = False
+            return original_load(*load_args, **load_kwargs)
+
+        torch.load = new_load
+
+        try:
+            return super().lr_find(*args, **kwargs)
+        finally:
+            torch.load = original_load
 
 
 # ToDo: remove this once statsmodels release a version compatible with latest
@@ -209,7 +229,7 @@ def optimize_hyperparameters(
                 enable_progress_bar=False,
                 enable_model_summary=False,
             )
-            tuner = Tuner(lr_trainer)
+            tuner = NewTuner(lr_trainer)
             res = tuner.lr_find(
                 model,
                 train_dataloaders=train_dataloaders,
