@@ -340,6 +340,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             else torch.zeros((features.shape[0], 0))
         )
 
+        target_original = target.clone()
+
         if not self._normalizer_fitted:
             warn(
                 "Normalizers and scalers have not been fitted on " "training data",
@@ -373,6 +375,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         return {
             "features": {"categorical": categorical, "continuous": continuous},
             "target": target,
+            "target_original": target_original,
             "static": sample.get("st", None),
             "group": sample.get("group", torch.tensor([0])),
             "length": len(target),
@@ -531,6 +534,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             target_past = data["target"][encoder_indices]
 
+            target_original_past = data["target_original"][encoder_indices]
+            target_scale = (
+                target_original_past[~torch.isnan(target_original_past)].abs().mean()
+            )  # noqa: E501
+            if torch.isnan(target_scale) or target_scale == 0:
+                target_scale = torch.tensor(1.0)
+
             encoder_mask = (
                 data["time_mask"][encoder_indices]
                 if "time_mask" in data
@@ -602,9 +612,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "target_past": target_past,
                 "encoder_time_idx": torch.arange(enc_length),
                 "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
+                "target_scale": target_scale,
                 "encoder_mask": encoder_mask,
                 "decoder_mask": decoder_mask,
-                "target_normalizer": self.data_module._target_normalizer,
             }
             if data["static"] is not None:
                 raw_st_tensor = data.get("static")
