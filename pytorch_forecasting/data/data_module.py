@@ -530,9 +530,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             decoder_indices = slice(start_idx + enc_length, end_idx)
 
             target_past = data["target"][encoder_indices]
-            target_scale = target_past[~torch.isnan(target_past)].abs().mean()
-            if torch.isnan(target_scale) or target_scale == 0:
-                target_scale = torch.tensor(1.0)
 
             encoder_mask = (
                 data["time_mask"][encoder_indices]
@@ -605,9 +602,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "target_past": target_past,
                 "encoder_time_idx": torch.arange(enc_length),
                 "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
-                "target_scale": target_scale,
                 "encoder_mask": encoder_mask,
                 "decoder_mask": decoder_mask,
+                "target_normalizer": self.data_module._target_normalizer,
             }
             if data["static"] is not None:
                 raw_st_tensor = data.get("static")
