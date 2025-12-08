@@ -157,6 +157,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.categorical_indices = []
         self.continuous_indices = []
         self._metadata = None
+        self._normalizer_fitted = False
 
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
             if self.time_series_metadata["col_type"].get(col) == "C":
@@ -329,7 +330,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         # TODO: add scalers, target normalizers etc.
 
         categorical = (
-            features[:, self.categorical_indices].long()
+            features[:, self.categorical_indices]
             if self.categorical_indices
             else torch.zeros((features.shape[0], 0))
         )
@@ -339,11 +340,35 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             else torch.zeros((features.shape[0], 0))
         )
 
-        if self._scalers and self.continuous_indices:
-            continuous = self._scale_features(continuous)
+        if not self._normalizer_fitted:
+            warn(
+                "Normalizers and scalers have not been fitted on " "training data",
+                UserWarning,
+            )
 
-        if self._target_normalizer is not None:
-            target = self._normalize_target(target)
+        if self._target_normalizer is not None and self._normalizer_fitted:
+            normalized_target = target.clone()
+            if isinstance(self._target_normalizer, TorchNormalizer):
+                normalized_target = self._target_normalizer.transform(target)
+            target = normalized_target
+
+        # applying feature scalers.
+        if self._normalizer_fitted and self.continuous_indices:
+            normalized_cont = continuous.clone()
+            feature_names = [
+                self.time_series_metadata["cols"]["x"][idx]
+                for idx in self.continuous_indices
+            ]
+
+            for feat_idx, feat_name in enumerate(feature_names):
+                if feat_name in self._scalers:
+                    scaler = self._scalers[feat_name]
+                    feature_data = continuous[:, feat_idx]
+
+                    if isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
+                        normalized_cont[:, feat_idx] = scaler.transform(feature_data)
+
+            continuous = normalized_cont
 
         return {
             "features": {"categorical": categorical, "continuous": continuous},
@@ -356,87 +381,60 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "cutoff_time": cutoff_time,
         }
 
-    def _scale_features(self, continuous_feat: torch.Tensor) -> torch.Tensor:
-        """Apply scalers to continuous features."""
+    def _fit_scalers(self, train_indices):
+        """Fit scalers on the training data."""
 
-        for i, orig_idx in enumerate(self.continuous_indices):
-            col_name = self.time_series_metadata["cols"]["x"][orig_idx]
-            if col_name not in self._scalers:
+        if self._target_normalizer is None:
+            return
+
+        all_targets = []
+        for idx in train_indices:
+            sample = self.time_series_dataset[idx]
+            target = sample["y"]
+            if isinstance(target, torch.Tensor):
+                all_targets.append(target)
+            else:
+                all_targets.append(torch.tensor(target, dtype=torch.float32))
+
+        if not all_targets:
+            return
+
+        all_targets = torch.cat(all_targets, dim=0)
+
+        if all_targets.ndim > 1 and all_targets.shape[1] == 1:
+            all_targets = all_targets.squeeze(-1)
+
+        if isinstance(self._target_normalizer, TorchNormalizer):
+            self._target_normalizer.fit(all_targets)
+
+        if not self._scalers or not self.continuous_indices:
+            self._normalizer_fitted = True
+            return
+
+        features_to_scale = {
+            self.time_series_metadata["cols"]["x"][idx]: pos
+            for pos, idx in enumerate(self.continuous_indices)
+        }
+
+        for feat_name, scaler in self._scalers.items():
+            if feat_name not in features_to_scale:
                 continue
+            feat_idx = features_to_scale[feat_name]
+            feat_data = []
 
-            scaler = self._scalers[col_name]
-            feature_data = continuous_feat[:, i]
+            for idx in train_indices:
+                sample = self.time_series_dataset[idx]
+                feature_data = sample["x"][:, feat_idx]
 
-            try:
-                if isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
-                    continuous_feat[:, i] = scaler.transform(feature_data)
-                elif isinstance(scaler, (StandardScaler, RobustScaler)):
-                    feature_np = feature_data.detach().cpu().numpy().reshape(-1, 1)
-                    scaled_np = scaler.transform(feature_np)
-                    continuous_feat[:, i] = torch.from_numpy(scaled_np.flatten()).to(
-                        feature_data.device
-                    )
-            except Exception as e:
-                import warnings
+                if not isinstance(feature_data, torch.Tensor):
+                    feature_data = torch.tensor(feature_data, dtype=torch.float32)
 
-                warnings.warn(
-                    f"Failed to scale feature '{col_name}': {e}. Using unscaled values.",  # noqa: E501
-                    UserWarning,
-                )
+                feat_data.append(feature_data)
+            feat_data = torch.cat(feat_data, dim=0)
 
-        return continuous_feat
-
-    def _normalize_target(self, target: torch.Tensor) -> torch.Tensor:
-        """Apply target normalizer to target variable.
-
-        Note
-        ----
-        Only single target normalization is supported as
-        EncoderDecoderTimeSeriesDataModule does not support multiple targets yet.
-        """
-        norm_target = target
-        if self._target_normalizer is None:
-            return norm_target
-
-        if isinstance(self._target_normalizer, (TorchNormalizer, EncoderNormalizer)):
-            norm_target = self._target_normalizer.transform(target)
-
-        elif isinstance(self._target_normalizer, (StandardScaler, RobustScaler)):
-            device = target.device
-            target_np = target.detach().cpu().numpy().reshape(-1, 1)
-            scaled_np = self._target_normalizer.transform(target_np)
-            norm_target = torch.from_numpy(scaled_np.flatten()).to(device)
-        return norm_target
-
-    def _get_target_scale(self):
-        """Return the scale factor for the target variable from the fitted normalizer."""  # noqa: E501
-
-        if self._target_normalizer is None:
-            return torch.tensor(1.0)
-
-        if hasattr(self._target_normalizer, "scale_"):
-            scale = self._target_normalizer.scale_
-            if isinstance(scale, torch.Tensor):
-                return scale
-            else:
-                return torch.tensor(scale, dtype=torch.float32)
-        else:
-            return torch.tensor(1.0)
-
-    def _get_target_center(self):
-        """Return the center value for the target variable from the fitted normalizer."""  # noqa: E501
-
-        if self._target_normalizer is None:
-            return torch.tensor(0.0)
-
-        if hasattr(self._target_normalizer, "center_"):
-            mean = self._target_normalizer.center_
-            if isinstance(mean, torch.Tensor):
-                return mean
-            else:
-                return torch.tensor(mean, dtype=torch.float32)
-        else:
-            return torch.tensor(0.0)
+            if isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
+                scaler.fit(feat_data)
+        self._normalizer_fitted = True
 
     class _ProcessedEncoderDecoderDataset(Dataset):
         """PyTorch Dataset for processed encoder-decoder time series data.
@@ -532,8 +530,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             decoder_indices = slice(start_idx + enc_length, end_idx)
 
             target_past = data["target"][encoder_indices]
-            target_scale = self.data_module._get_target_scale()
-            # target_center = self.data_module._get_target_center()
+            target_scale = target_past[~torch.isnan(target_past)].abs().mean()
+            if torch.isnan(target_scale) or target_scale == 0:
+                target_scale = torch.tensor(1.0)
 
             encoder_mask = (
                 data["time_mask"][encoder_indices]
@@ -710,52 +709,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         return windows
 
-    def _fit_scalers(self, train_indices: torch.Tensor):
-        """Fit scaler on the training dataset.
-
-        Parameters
-        ----------
-        train_indices : torch.Tensor
-            Indices of the training time series in `time_series_dataset`.
-        """
-
-        train_targets = []
-        train_features = []
-
-        for series_idx in train_indices:
-            sample = self.time_series_dataset[series_idx.item()]
-            target = sample["y"]
-            features = sample["x"]
-
-            train_targets.append(target)
-            train_features.append(features)
-
-        train_targets = torch.cat(train_targets, dim=0)
-        train_features = torch.cat(train_features, dim=0)
-
-        if self._target_normalizer is not None:
-            if isinstance(
-                self._target_normalizer, (TorchNormalizer, EncoderNormalizer)
-            ):
-                self._target_normalizer.fit(train_targets)
-            elif isinstance(self._target_normalizer, (StandardScaler, RobustScaler)):
-                target_np = train_targets.numpy()
-                if target_np.ndim == 1:
-                    target_np = target_np.reshape(-1, 1)
-                self._target_normalizer.fit(target_np)
-
-        if self._scalers and self.continuous_indices:
-            for i, orig_idx in enumerate(self.continuous_indices):
-                col_name = self.time_series_metadata["cols"]["x"][orig_idx]
-                if col_name in self._scalers:
-                    scaler = self._scalers[col_name]
-                    feature_data = train_features[:, orig_idx]
-
-                    if isinstance(scaler, (StandardScaler, RobustScaler)):
-                        feature_data = feature_data.numpy().reshape(-1, 1)
-
-                    scaler.fit(feature_data)
-
     def setup(self, stage: Optional[str] = None):
         """Prepare the datasets for training, validation, testing, or prediction.
 
@@ -780,10 +733,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         ]
         self._test_indices = self._split_indices[self._train_size + self._val_size :]
 
-        if (stage is None or stage == "fit") and len(self._train_indices) > 0:
-            self._fit_scalers(self._train_indices)
-
         if stage is None or stage == "fit":
+            self._fit_scalers(self._train_indices)
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
                 self.train_windows = self._create_windows(self._train_indices)
                 self.val_windows = self._create_windows(self._val_indices)
