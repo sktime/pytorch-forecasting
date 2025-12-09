@@ -37,8 +37,7 @@ class _NewTuner(Tuner):
             load_kwargs["weights_only"] = False
             return original_fit(*load_args, **load_kwargs)
 
-        if not _check_soft_dependencies("lightning<2.6", severity="none"):
-            self._trainer.fit = new_fit
+        self._trainer.fit = new_fit
 
         try:
             return super().lr_find(*args, **kwargs)
