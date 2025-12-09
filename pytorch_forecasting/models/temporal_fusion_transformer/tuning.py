@@ -30,7 +30,7 @@ optuna_logger = logging.getLogger("optuna")
 # todo: Remove this class once lightning allows the pass of weights_only to tuner
 class _NewTuner(Tuner):
     def lr_find(self, *args, **kwargs):
-        original_fit = self._trainer.fit
+        original_fit = self._trainer.strategy.load_checkpoint
 
         @functools.wraps(original_fit)
         def new_fit(*load_args, **load_kwargs):
