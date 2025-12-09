@@ -11,9 +11,11 @@ from typing import Any, Union
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.trainer import Trainer
 from lightning.pytorch.tuner import Tuner
 import numpy as np
 import scipy._lib._util
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 from torch.utils.data import DataLoader
 
@@ -26,21 +28,22 @@ optuna_logger = logging.getLogger("optuna")
 
 
 # todo: Remove this class once lightning allows the pass of weights_only to tuner
-class NewTuner(Tuner):
+class _NewTuner(Tuner):
     def lr_find(self, *args, **kwargs):
-        original_load = torch.load
+        original_fit = self._trainer.fit
 
-        @functools.wraps(original_load)
-        def new_load(*load_args, **load_kwargs):
+        @functools.wraps(original_fit)
+        def new_fit(*load_args, **load_kwargs):
             load_kwargs["weights_only"] = False
-            return original_load(*load_args, **load_kwargs)
+            return original_fit(*load_args, **load_kwargs)
 
-        torch.load = new_load
+        if not _check_soft_dependencies("lightning<2.6"):
+            self._trainer.fit = new_fit
 
         try:
             return super().lr_find(*args, **kwargs)
         finally:
-            torch.load = original_load
+            self._trainer.fit = original_fit
 
 
 # ToDo: remove this once statsmodels release a version compatible with latest
@@ -229,7 +232,7 @@ def optimize_hyperparameters(
                 enable_progress_bar=False,
                 enable_model_summary=False,
             )
-            tuner = NewTuner(lr_trainer)
+            tuner = _NewTuner(lr_trainer)
             res = tuner.lr_find(
                 model,
                 train_dataloaders=train_dataloaders,
