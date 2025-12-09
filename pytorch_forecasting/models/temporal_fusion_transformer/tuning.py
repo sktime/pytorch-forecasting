@@ -38,7 +38,8 @@ class _NewTuner(Tuner):
             ckpt_kwargs["weights_only"] = False
             return original_load_checkpoint(*ckpt_args, **ckpt_kwargs)
 
-        strategy.load_checkpoint = new_load_checkpoint
+        if not _check_soft_dependencies("lightning<2.6", severity="none"):
+            strategy.load_checkpoint = new_load_checkpoint
 
         try:
             return super().lr_find(*args, **kwargs)
