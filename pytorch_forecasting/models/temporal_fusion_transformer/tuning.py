@@ -30,19 +30,20 @@ optuna_logger = logging.getLogger("optuna")
 # todo: Remove this class once lightning allows the pass of weights_only to tuner
 class _NewTuner(Tuner):
     def lr_find(self, *args, **kwargs):
-        original_fit = self._trainer.strategy.load_checkpoint
+        strategy = self._trainer.strategy
+        original_load_checkpoint = strategy.load_checkpoint
 
-        @functools.wraps(original_fit)
-        def new_fit(*load_args, **load_kwargs):
-            load_kwargs["weights_only"] = False
-            return original_fit(*load_args, **load_kwargs)
+        @functools.wraps(original_load_checkpoint)
+        def new_load_checkpoint(*ckpt_args, **ckpt_kwargs):
+            ckpt_kwargs["weights_only"] = False
+            return original_load_checkpoint(*ckpt_args, **ckpt_kwargs)
 
-        self._trainer.fit = new_fit
+        strategy.load_checkpoint = new_load_checkpoint
 
         try:
             return super().lr_find(*args, **kwargs)
         finally:
-            self._trainer.fit = original_fit
+            strategy.load_checkpoint = original_load_checkpoint
 
 
 # ToDo: remove this once statsmodels release a version compatible with latest
