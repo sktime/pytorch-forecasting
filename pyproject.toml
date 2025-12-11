@@ -28,7 +28,7 @@ description = "Forecasting timeseries with PyTorch - dataloaders, normalizers, m
 dependencies = [
   "numpy<=3.0.0",
   "torch >=2.0.0,!=2.0.1,<3.0.0",
-  "lightning >=2.0.0,<3.0.0",
+  "lightning >=2.0.0,<2.6.0",
   "scipy >=1.8,<2.0",
   "pandas >=1.3.0,<3.0.0",
   "scikit-learn >=1.2,<2.0",
