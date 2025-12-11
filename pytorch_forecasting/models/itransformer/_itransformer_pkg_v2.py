@@ -101,7 +101,8 @@ class iTransformer_pkg_v2(_BasePtForecasterV2):
     @classmethod
     def get_test_train_params(cls):
         """Get test train params."""
-        # todo: expand test parameters
+        from pytorch_forecasting.metrics import QuantileLoss
+
         return [
             {},
             dict(d_model=16, n_heads=2, e_layers=2, d_ff=64),
@@ -114,5 +115,19 @@ class iTransformer_pkg_v2(_BasePtForecasterV2):
                 data_loader_kwargs=dict(
                     batch_size=4, context_length=8, prediction_length=4
                 ),
+            ),
+            dict(
+                hidden_size=32,
+                n_heads=2,
+                e_layers=1,
+                d_ff=64,
+                factor=2,
+                activation="relu",
+                dropout=0.05,
+                data_loader_kwargs=dict(
+                    context_length=16,
+                    prediction_length=4,
+                ),
+                loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
             ),
         ]

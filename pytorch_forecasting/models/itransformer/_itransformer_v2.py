@@ -126,11 +126,9 @@ class iTransformer(TslibBaseModel):
         from pytorch_forecasting.layers import (
             AttentionLayer,
             DataEmbedding_inverted,
-            FullAttention,
-        )
-        from pytorch_forecasting.models.itransformer.submodules import (
             Encoder,
             EncoderLayer,
+            FullAttention,
         )
 
         self.enc_embedding = DataEmbedding_inverted(
@@ -145,7 +143,7 @@ class iTransformer(TslibBaseModel):
         self.encoder = Encoder(
             [
                 EncoderLayer(
-                    AttentionLayer(
+                    self_attention=AttentionLayer(
                         FullAttention(
                             False,
                             self.factor,
@@ -155,8 +153,8 @@ class iTransformer(TslibBaseModel):
                         self.d_model,
                         self.n_heads,
                     ),
-                    self.d_model,
-                    self.d_ff,
+                    d_model=self.d_model,
+                    d_ff=self.d_ff,
                     dropout=self.dropout,
                     activation=self.activation,
                 )
@@ -188,14 +186,15 @@ class iTransformer(TslibBaseModel):
         enc_out = self.enc_embedding(x_enc, x_mark_enc)  # covariates (e.g timestamp)
         # B N E -> B N E
         # the dimensions of embedded time series has been inverted
-        enc_out, attns = self.encoder(enc_out, attn_mask=None)
+        enc_out, attns = self.encoder(enc_out, x_mask=None)
 
         # B N E -> B N S -> B S N
         dec_out = self.projector(enc_out).permute(0, 2, 1)[
             :, :, :N
         ]  # filter covariates
-
-        return dec_out, attns
+        if self.output_attention:
+            return dec_out, attns
+        return dec_out
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
@@ -219,6 +218,5 @@ class iTransformer(TslibBaseModel):
             prediction = self.transform_output(prediction, x["target_scale"])
 
         if self.output_attention:
-            return {"prediction": prediction, "attention_weights": attns}
-        else:
-            return {"prediction": prediction}
+            return {"prediction": prediction, "attention": attns}
+        return {"prediction": prediction}
