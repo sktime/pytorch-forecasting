@@ -194,8 +194,8 @@ def basic_metadata(basic_tslib_data_module):
     return basic_tslib_data_module.metadata
 
 
-@pytest.fixture
-def model(basic_metadata):
+@pytest.fixture(params=[False, True], ids=["einsum_attn", "efficient_attn"])
+def model(request, basic_metadata):
     """Initialize a TimeXer model for testing."""
     return TimeXer(
         loss=MAE(),
@@ -215,6 +215,7 @@ def model(basic_metadata):
             "patience": 5,
         },
         metadata=basic_metadata,
+        use_efficient_attention=request.param,
     )
 
 
