@@ -57,6 +57,13 @@ class TimeXer(TslibBaseModel):
         Factor for the attention mechanism, controlling the number of keys and values.
     activation: str, default='relu'
         Activation function to use in the feed-forward network. Common choices are 'relu', 'gelu', etc.
+    use_efficient_attention: bool, default=False
+        If set to True, will use PyTorch's native, optimized Scaled Dot Product
+        Attention implementation which can reduce computation time and memory
+        consumption for longer sequences. PyTorch automatically selects the
+        optimal backend (FlashAttention-2, Memory-Efficient Attention, or their
+        own C++ implementation) based on user's input properties, hardware
+        capabilities, and build configuration.
     endogenous_vars: Optional[list[str]], default=None
         List of endogenous variable names to be used in the model. If None, all historical values
         for the target variable are used.
@@ -110,6 +117,7 @@ class TimeXer(TslibBaseModel):
         patch_length: int = 4,
         factor: int = 5,
         activation: str = "relu",
+        use_efficient_attention: bool = False,
         endogenous_vars: Optional[list[str]] = None,
         exogenous_vars: Optional[list[str]] = None,
         logging_metrics: Optional[list[nn.Module]] = None,
@@ -146,6 +154,7 @@ class TimeXer(TslibBaseModel):
         self.dropout = dropout
         self.patch_length = patch_length
         self.activation = activation
+        self.use_efficient_attention = use_efficient_attention
         self.factor = factor
         self.endogenous_vars = endogenous_vars
         self.exogenous_vars = exogenous_vars
@@ -225,6 +234,7 @@ class TimeXer(TslibBaseModel):
                             self.factor,
                             attention_dropout=self.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.use_efficient_attention,
                         ),
                         self.hidden_size,
                         self.n_heads,
@@ -235,6 +245,7 @@ class TimeXer(TslibBaseModel):
                             self.factor,
                             attention_dropout=self.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.use_efficient_attention,
                         ),
                         self.hidden_size,
                         self.n_heads,
