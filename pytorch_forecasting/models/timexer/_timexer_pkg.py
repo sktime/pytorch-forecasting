@@ -79,6 +79,15 @@ class TimeXer_pkg(_BasePtForecaster):
                     ),
                 ),
             },
+            {
+                "hidden_size": 32,
+                "patch_length": 1,
+                "n_heads": 4,
+                "e_layers": 1,
+                "d_ff": 32,
+                "dropout": 0.1,
+                "use_efficient_attention": True,
+            },
         ]
 
     @classmethod

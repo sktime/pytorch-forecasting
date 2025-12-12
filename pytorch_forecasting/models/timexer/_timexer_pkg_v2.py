@@ -96,6 +96,15 @@ class TimeXer_pkg_v2(Base_pkg):
                 ),
                 loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
             ),
+            dict(
+                hidden_size=32,
+                patch_length=1,
+                n_heads=4,
+                e_layers=1,
+                d_ff=32,
+                dropout=0.1,
+                use_efficient_attention=True,
+            ),
         ]
         default_dm_cfg = {"context_length": 12, "prediction_length": 4}
 
