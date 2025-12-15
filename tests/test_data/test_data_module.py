@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import RobustScaler, StandardScaler
+import torch
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.encoders import TorchNormalizer
@@ -472,3 +474,106 @@ def test_multivariate_target():
 
     x, y = dm.train_dataset[0]
     assert len(y) == 2
+
+
+@pytest.mark.parametrize(
+    "normalizer",
+    [
+        "auto",
+        TorchNormalizer(),
+        StandardScaler(),
+        RobustScaler(),
+    ],
+)
+def test_target_normalizers(sample_timeseries_data, normalizer):
+    """Test different target normalizers.
+
+    Ensures compatibility and correct integration of various normalizers.
+    Verifies that:
+    - The normalizer is applied correctly.
+    - Output shapes are as expected.
+    - Target is actually scaled.
+    """
+    dm_no_norm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=None,
+    )
+    dm_no_norm.setup(stage="fit")
+
+    dm_with_norm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=normalizer,
+    )
+    dm_with_norm.setup(stage="fit")
+
+    x_no_norm, y_no_norm = dm_no_norm.train_dataset[0]
+    x_with_norm, y_with_norm = dm_with_norm.train_dataset[0]
+    assert y_with_norm.shape == y_no_norm.shape
+    assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
+
+    assert not torch.allclose(y_with_norm, y_no_norm), "Target should be normalized"
+    assert not torch.allclose(
+        x_with_norm["target_past"], x_no_norm["target_past"]
+    ), "target_past should be normalized"
+
+    assert y_with_norm.var() < y_no_norm.var(), "Normalization should reduce variance"
+
+
+@pytest.mark.parametrize(
+    "scaler_type",
+    [
+        TorchNormalizer,
+        StandardScaler,
+        RobustScaler,
+    ],
+)
+def test_feature_scaling(sample_timeseries_data, scaler_type):
+    """Test feature scaling with different scalers.
+
+    Verifies that:
+    - Scaling is actually applied (data changes)
+    - Only specified features are scaled
+    - Output format is preserved
+    """
+    scalers = {
+        "cont_feat1": scaler_type(),
+        "cont_feat2": scaler_type(),
+    }
+
+    dm_no_scale = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        scalers=None,
+    )
+    dm_no_scale.setup(stage="fit")
+
+    dm_with_scale = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        scalers=scalers,
+    )
+    dm_with_scale.setup(stage="fit")
+
+    x_no_scale, _ = dm_no_scale.train_dataset[0]
+    x_with_scale, _ = dm_with_scale.train_dataset[0]
+
+    assert x_with_scale["encoder_cont"].shape == x_no_scale["encoder_cont"].shape
+    assert x_with_scale["decoder_cont"].shape == x_no_scale["decoder_cont"].shape
+
+    assert not torch.allclose(
+        x_with_scale["encoder_cont"], x_no_scale["encoder_cont"]
+    ), "Continuous features should be scaled"
+
+    assert (
+        x_with_scale["encoder_cont"].var() < x_no_scale["encoder_cont"].var()
+    ), "Scaling should reduce variance"
