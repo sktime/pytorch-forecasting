@@ -501,8 +501,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         Parameters
         ----------
-        dataset : TimeSeries
-            The base time series dataset that provides access to raw data and metadata.
         data_module : EncoderDecoderTimeSeriesDataModule
             The data module handling preprocessing and metadata configuration.
         windows : List[Tuple[int, int, int, int]]
@@ -516,13 +514,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         def __init__(
             self,
-            dataset: TimeSeries,
             data_module: "EncoderDecoderTimeSeriesDataModule",
             windows: list[tuple[int, int, int, int]],
             preprocessed_data: dict[int, dict[str, Any]],
             add_relative_time_idx: bool = False,
         ):
-            self.dataset = dataset
             self.data_module = data_module
             self.windows = windows
             self.preprocessed_data = preprocessed_data
@@ -813,14 +809,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.val_windows = self._create_windows(self._val_indices)
 
                 self.train_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.time_series_dataset,
                     self,
                     self.train_windows,
                     self._train_preprocessed,
                     self.add_relative_time_idx,
                 )
                 self.val_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.time_series_dataset,
                     self,
                     self.val_windows,
                     self._val_preprocessed,
@@ -832,7 +826,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self._test_preprocessed = self._preprocess_all_data(self._test_indices)
                 self.test_windows = self._create_windows(self._test_indices)
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.time_series_dataset,
                     self,
                     self.test_windows,
                     self._test_preprocessed,
@@ -843,7 +836,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._predict_preprocessed = self._preprocess_all_data(predict_indices)
             self.predict_windows = self._create_windows(predict_indices)
             self.predict_dataset = self._ProcessedEncoderDecoderDataset(
-                self.time_series_dataset,
                 self,
                 self.predict_windows,
                 self._predict_preprocessed,
