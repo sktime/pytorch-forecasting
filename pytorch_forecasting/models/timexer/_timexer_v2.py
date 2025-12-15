@@ -324,6 +324,8 @@ class TimeXer(TslibBaseModel):
 
         return dec_out
 
+
+
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TimeXer model.
