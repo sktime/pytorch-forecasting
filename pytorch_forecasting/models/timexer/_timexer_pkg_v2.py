@@ -2,7 +2,10 @@
 Metadata container for TimeXer v2.
 """
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.models.base._base_object import (
+    _BasePtForecasterV2,
+    _TSlibConfigBase,
+)
 
 
 class TimeXer_pkg_v2(_BasePtForecasterV2):
@@ -172,3 +175,9 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
                 use_efficient_attention=True,
             ),
         ]
+
+
+class TimeXer_pkg_v2_metadata(_TSlibConfigBase):
+    @classmethod
+    def _check_metadata_timexer(self, metadata):
+        super()._check_metadata(metadata)

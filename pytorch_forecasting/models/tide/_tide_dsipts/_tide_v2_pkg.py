@@ -1,6 +1,9 @@
 """TIDE package container."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.models.base._base_object import (
+    _BasePtForecasterV2,
+    _EncoderDecoderConfigBase,
+)
 
 
 class TIDE_pkg_v2(_BasePtForecasterV2):
@@ -138,3 +141,9 @@ class TIDE_pkg_v2(_BasePtForecasterV2):
                 loss=MAPE(),
             ),
         ]
+
+
+class TIDE_pkg_v2_metadata(_EncoderDecoderConfigBase):
+    @classmethod
+    def _check_metadata_tide(self, metadata):
+        super()._check_metadata(metadata)

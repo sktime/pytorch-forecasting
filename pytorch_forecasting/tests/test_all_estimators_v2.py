@@ -135,3 +135,18 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
             f"{object_class.__name__}_pkg."
         )
         assert object_pkg.__name__ == object_class.__name__ + "_pkg_v2", msg
+
+    def test_d2_metadata(self, object_pkg, trainer_kwargs):
+        object_class = object_pkg.get_cls()
+        dataloaders = object_pkg._get_test_datamodule_from(trainer_kwargs)
+        data_module = dataloaders.get("data_module")
+        metadata = data_module.metadata
+
+        model_kwargs = dict(trainer_kwargs)
+        model_kwargs.pop("data_loader_kwargs", None)
+
+        model_name = object_class.__name__
+
+        check_method_name = f"_check_metadata_{model_name.lower()}"
+        if hasattr(object_pkg, check_method_name):
+            getattr(object_pkg, check_method_name)(metadata)
