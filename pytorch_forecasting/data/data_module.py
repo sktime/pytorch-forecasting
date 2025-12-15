@@ -330,6 +330,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         # TODO: add scalers, target normalizers etc.
 
+        # target is always made into 2D tensor before normalizing.
+        # helps in generalizing to all cases - single and multi target.
+        if target.ndim == 1:
+            target = target.unsqueeze(-1)
+
         categorical = (
             features[:, self.categorical_indices]
             if self.categorical_indices
@@ -345,8 +350,17 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         if self._target_normalizer is not None and self._target_normalizer_fitted:
             normalized_target = target.clone()
-            if isinstance(self._target_normalizer, TorchNormalizer):
+            if isinstance(self._target_normalizer, list):
+                for i, normalizer in enumerate(self._target_normalizer):
+                    normalized_target[:, i] = normalizer.transform(target[:, i])
+            elif isinstance(self._target_normalizer, TorchNormalizer):
+                if target.shape[1] == 1:
+                    target = target.squeeze(-1)
                 normalized_target = self._target_normalizer.transform(target)
+            elif isinstance(self._target_normalizer, (StandardScaler, RobustScaler)):
+                target_np = target.detach().numpy()
+                target_np = self._target_normalizer.transform(target_np)
+                normalized_target = torch.tensor(target_np, dtype=torch.float32)
             target = normalized_target
 
         # applying feature scalers.
@@ -364,7 +378,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
                     if isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
                         normalized_cont[:, feat_idx] = scaler.transform(feature_data)
-
+                    elif isinstance(scaler, (StandardScaler, RobustScaler)):
+                        feature_np = feature_data.numpy()
+                        feature_np = scaler.transform(
+                            feature_np.reshape(-1, 1)
+                        ).reshape(-1)  # noqa: E501
+                        normalized_cont[:, feat_idx] = torch.tensor(
+                            feature_np, dtype=torch.float32
+                        )  # noqa: E501
             continuous = normalized_cont
 
         return {
@@ -399,11 +420,25 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         all_targets = torch.cat(all_targets, dim=0)
 
-        if all_targets.ndim > 1 and all_targets.shape[1] == 1:
-            all_targets = all_targets.squeeze(-1)
-
         if isinstance(self._target_normalizer, TorchNormalizer):
-            self._target_normalizer.fit(all_targets)
+            # handle multiple targets (in case).
+            if all_targets.ndim > 1 and all_targets.shape[1] > 1:
+                self._target_normalizer = [
+                    TorchNormalizer() for _ in range(all_targets.shape[1])
+                ]
+                for i, normalizer in enumerate(self._target_normalizer):
+                    normalizer.fit(all_targets[:, i])
+            else:
+                if all_targets.ndim > 1 and all_targets.shape[1] == 1:
+                    all_targets = all_targets.squeeze(-1)
+                self._target_normalizer.fit(all_targets)
+        elif isinstance(self._target_normalizer, (StandardScaler, RobustScaler)):
+            all_targets_np = all_targets.detach().numpy()
+            if all_targets_np.ndim == 1:
+                all_targets_np = all_targets_np.reshape(-1, 1)
+            self._target_normalizer.fit(all_targets_np)
+
+        self._target_normalizer_fitted = True
 
     def _fit_scalers(self, train_indices):
         """Fit scalers on continuous features in the training data."""
@@ -434,7 +469,30 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             if isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
                 scaler.fit(feat_data)
+            elif isinstance(scaler, (StandardScaler, RobustScaler)):
+                feat_data_np = feat_data.detach().numpy()
+                scaler.fit(feat_data_np.reshape(-1, 1))
         self._feature_scalers_fitted = True
+
+    def _preprocess_all_data(self, indices: torch.Tensor) -> dict[dict[str, Any]]:
+        """Preprocess all data samples for given indices.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            Tensor of indices specifying which samples to preprocess.
+
+        Returns
+        -------
+        dict[int, dict[str, Any]]
+            A dictionary mapping series indices to dictionaries containing preprocessed
+            data for each sample.
+        """
+        preprocessed_data = {}
+        for idx in indices:
+            series_idx = idx.item()
+            preprocessed_data[series_idx] = self._preprocess_data(series_idx)
+        return preprocessed_data
 
     class _ProcessedEncoderDecoderDataset(Dataset):
         """PyTorch Dataset for processed encoder-decoder time series data.
@@ -450,6 +508,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             (series_idx, start_idx, enc_length, pred_length).
         add_relative_time_idx : bool, default=False
             Whether to include relative time indices.
+        preprocessed_data : Optional[dict[int, dict[str, Any]]], default=None
+            Preprocessed data for all time series indices on input dataset.
         """
 
         def __init__(
@@ -457,11 +517,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             dataset: TimeSeries,
             data_module: "EncoderDecoderTimeSeriesDataModule",
             windows: list[tuple[int, int, int, int]],
+            preprocessed_data: dict[int, dict[str, Any]],
             add_relative_time_idx: bool = False,
         ):
             self.dataset = dataset
             self.data_module = data_module
             self.windows = windows
+            self.preprocessed_data = preprocessed_data
             self.add_relative_time_idx = add_relative_time_idx
 
         def __len__(self):
@@ -523,7 +585,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 is returned. Otherwise, a tensor of shape (pred_length,) is returned.
             """
             series_idx, start_idx, enc_length, pred_length = self.windows[idx]
-            data = self.data_module._preprocess_data(series_idx)
+            data = self.preprocessed_data[series_idx]
 
             end_idx = start_idx + enc_length + pred_length
             encoder_indices = slice(start_idx, start_idx + enc_length)
@@ -741,6 +803,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._fit_target_normalizer(self._train_indices)
             self._fit_scalers(self._train_indices)
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
+                self._train_preprocessed = self._preprocess_all_data(
+                    self._train_indices
+                )
+                self._val_preprocessed = self._preprocess_all_data(self._val_indices)
+
                 self.train_windows = self._create_windows(self._train_indices)
                 self.val_windows = self._create_windows(self._val_indices)
 
@@ -748,31 +815,37 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self.time_series_dataset,
                     self,
                     self.train_windows,
+                    self._train_preprocessed,
                     self.add_relative_time_idx,
                 )
                 self.val_dataset = self._ProcessedEncoderDecoderDataset(
                     self.time_series_dataset,
                     self,
                     self.val_windows,
+                    self._val_preprocessed,
                     self.add_relative_time_idx,
                 )
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
+                self._test_preprocessed = self._preprocess_all_data(self._test_indices)
                 self.test_windows = self._create_windows(self._test_indices)
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
                     self.time_series_dataset,
                     self,
                     self.test_windows,
+                    self._test_preprocessed,
                     self.add_relative_time_idx,
                 )
         elif stage == "predict":
             predict_indices = torch.arange(len(self.time_series_dataset))
+            self._predict_preprocessed = self._preprocess_all_data(predict_indices)
             self.predict_windows = self._create_windows(predict_indices)
             self.predict_dataset = self._ProcessedEncoderDecoderDataset(
                 self.time_series_dataset,
                 self,
                 self.predict_windows,
+                self._predict_preprocessed,
                 self.add_relative_time_idx,
             )
 

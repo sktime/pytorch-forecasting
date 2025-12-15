@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+from pytorch_forecasting.data.encoders import TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -464,6 +465,7 @@ def test_multivariate_target():
         max_encoder_length=10,
         max_prediction_length=5,
         batch_size=4,
+        target_normalizer=TorchNormalizer(),
     )
 
     dm.setup()
