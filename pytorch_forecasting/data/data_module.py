@@ -354,9 +354,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 for i, normalizer in enumerate(self._target_normalizer):
                     normalized_target[:, i] = normalizer.transform(target[:, i])
             elif isinstance(self._target_normalizer, TorchNormalizer):
-                if target.shape[1] == 1:
-                    target = target.squeeze(-1)
-                normalized_target = self._target_normalizer.transform(target)
+                # single target with n_targets = 1 as the second dimension.
+                target = target.squeeze(-1)
+                normalized_target = self._target_normalizer.transform(target).unsqueeze(
+                    -1
+                )  # noqa: E501
             elif isinstance(self._target_normalizer, (StandardScaler, RobustScaler)):
                 target_np = target.detach().numpy()
                 target_np = self._target_normalizer.transform(target_np)
@@ -713,11 +715,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
 
-            if self.data_module.n_targets > 1:
-                y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
+            if y.shape[-1] > 1:
+                y = [y[:, i] for i in range(y.shape[-1])]
             else:
                 y = y.squeeze(-1)
-
             return x, y
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
