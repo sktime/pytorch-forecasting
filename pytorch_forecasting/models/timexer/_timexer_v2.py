@@ -292,22 +292,11 @@ class TimeXer(TslibBaseModel):
             # change [batch_size, time_steps] to [batch_size, time_steps, features]
             history_time_idx = history_time_idx.unsqueeze(-1)
 
-        # explicitly set endogenous and exogenous variables
+        # v2 convention:
+        # - endogenous information comes from the target history
+        # - exogenous information comes from all continuous covariates
         endogenous_cont = history_target
-        if self.endogenous_vars:
-            endogenous_indices = [
-                self.feature_names["continuous"].index(var)
-                for var in self.endogenous_vars  # noqa: E501
-            ]
-            endogenous_cont = history_cont[..., endogenous_indices]
-
         exogenous_cont = history_cont
-        if self.exogenous_vars:
-            exogenous_indices = [
-                self.feature_names["continuous"].index(var)
-                for var in self.exogenous_vars  # noqa: E501
-            ]
-            exogenous_cont = history_cont[..., exogenous_indices]
 
         en_embed, n_vars = self.en_embedding(endogenous_cont)
         ex_embed = self.ex_embedding(exogenous_cont, history_time_idx)
