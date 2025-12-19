@@ -64,12 +64,6 @@ class TimeXer(TslibBaseModel):
         optimal backend (FlashAttention-2, Memory-Efficient Attention, or their
         own C++ implementation) based on user's input properties, hardware
         capabilities, and build configuration.
-    endogenous_vars: Optional[list[str]], default=None
-        List of endogenous variable names to be used in the model. If None, all historical values
-        for the target variable are used.
-    exogenous_vars: Optional[list[str]], default=None
-        List of exogenous variable names to be used in the model. If None, all historical values
-        for continuous variables are used.
     logging_metrics: Optional[list[nn.Module]], default=None
         List of metrics to log during training, validation, and testing.
     optimizer: Optional[Union[Optimizer, str]], default='adam'
@@ -83,7 +77,8 @@ class TimeXer(TslibBaseModel):
     metadata: Optional[dict], default=None
         Metadata for the model from TslibDataModule. This can include information about the dataset,
         such as the number of time steps, number of features, etc. It is used to initialize the model
-        and ensure it is compatible with the data being used.
+        and ensure it is compatible with the data being used, including the split between endogenous
+        (target) and exogenous covariates.
 
     References
     ----------
@@ -118,8 +113,6 @@ class TimeXer(TslibBaseModel):
         factor: int = 5,
         activation: str = "relu",
         use_efficient_attention: bool = False,
-        endogenous_vars: Optional[list[str]] = None,
-        exogenous_vars: Optional[list[str]] = None,
         logging_metrics: Optional[list[nn.Module]] = None,
         optimizer: Optional[Union[Optimizer, str]] = "adam",
         optimizer_params: Optional[dict] = None,
@@ -156,8 +149,6 @@ class TimeXer(TslibBaseModel):
         self.activation = activation
         self.use_efficient_attention = use_efficient_attention
         self.factor = factor
-        self.endogenous_vars = endogenous_vars
-        self.exogenous_vars = exogenous_vars
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self._init_network()
