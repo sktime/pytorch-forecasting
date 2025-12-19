@@ -342,8 +342,6 @@ def test_endogenous_exogenous_variable_selection(basic_metadata):
         loss=MAE(),
         hidden_size=64,
         n_heads=8,
-        endogenous_vars=[endo_names],
-        exogenous_vars=[exog_names],
         e_layers=2,
         metadata=basic_metadata,
     )
