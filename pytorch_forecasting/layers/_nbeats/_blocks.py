@@ -31,9 +31,7 @@ class SeasonalMixin:
         Forecast side of the seasonality basis matrix.
     """
 
-    def _init_seasonal(
-        self, backcast_length, forecast_length, thetas_dim, min_period
-    ):
+    def _init_seasonal(self, backcast_length, forecast_length, thetas_dim, min_period):
         """
         Initialize seasonal backcast and forecast coefficients.
         """
@@ -322,9 +320,7 @@ class NBEATSBlockKAN(nn.Module):
         for _ in range(num_block_layers - 1):
             if self.dropout > 0:
                 layers.append(nn.Dropout(p=self.dropout))
-            layers.append(
-                KANLayer(in_dim=units, out_dim=units, **self.kan_params)
-            )
+            layers.append(KANLayer(in_dim=units, out_dim=units, **self.kan_params))
         self.fc = nn.Sequential(*layers)
 
         # theta layers used by subclasses

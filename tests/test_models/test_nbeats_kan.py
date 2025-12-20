@@ -1,12 +1,13 @@
-
-import pytest
 import shutil
+
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
+import pytest
 
 from pytorch_forecasting.models.nbeats._nbeatskan import NBeatsKAN
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
+
 
 def test_nbeats_kan_integration(dataloaders_fixed_window_without_covariates, tmp_path):
     train_dataloader = dataloaders_fixed_window_without_covariates["train"]
@@ -39,8 +40,8 @@ def test_nbeats_kan_integration(dataloaders_fixed_window_without_covariates, tmp
         widths=[4, 4, 4],
         log_interval=1000,
         backcast_loss_ratio=1.0,
-        num=test_kan_num, 
-        k=3
+        num=test_kan_num,
+        k=3,
     )
     net.size()
     try:
@@ -51,9 +52,11 @@ def test_nbeats_kan_integration(dataloaders_fixed_window_without_covariates, tmp
         )
         test_outputs = trainer.test(net, dataloaders=test_dataloader)
         assert len(test_outputs) > 0
-        
+
         # check loading
-        net = NBeatsKAN.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        net = NBeatsKAN.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path
+        )
 
         # check prediction
         net.predict(
