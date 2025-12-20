@@ -11,218 +11,35 @@ from pytorch_forecasting.layers._kan._kan_layer import KANLayer
 from pytorch_forecasting.layers._nbeats._utils import linear, linspace
 
 
-class NBEATSBlock(nn.Module):
+class SeasonalMixin:
     """
-    Initialize an N-BEATS block using either MLP or KAN layers.
+    Mixin for Seasonal N-BEATS blocks.
+    This mixin provides the mechanism to initialize and compute the seasonal component
+    using Fourier basis functions.
 
-    Parameters
+    Attributes
     ----------
-    units : int
-        Number of units in each layer.
-    thetas_dim : int
-        Output dimension of the theta layers.
-    num_block_layers : int
-        Number of hidden layers in the block. Default is 4.
     backcast_length : int
-        Length of the input (past) sequence. Default is 10.
+        Length of the input (past) sequence.
     forecast_length : int
-        Length of the output (future) sequence. Default is 5.
-    dropout : float
-        Dropout rate for regularization. Default is 0.1.
-    kan_params : dict
-        Dictionary of parameters for KAN layers. Only required if `use_kan=True`.
-        Default values will be used if not provided. Includes:
-            - num : int, default=5
-                Number of grid intervals.
-            - k : int, default=3
-                Order of piecewise polynomial.
-            - noise_scale : float, default=0.5
-                Initialization noise scale.
-            - scale_base_mu : float, default=0.0
-                Mean for residual function initialization.
-            - scale_base_sigma : float, default=1.0
-                Std deviation for residual function initialization.
-            - scale_sp : float, default=1.0
-                Scale for the spline function.
-            - base_fun : nn.Module, default=torch.nn.SiLU()
-                Base function module.
-            - grid_eps : float, default=0.02
-                Determines grid spacing (0 for quantile, 1 for uniform).
-            - grid_range : list of float, default=[-1, 1]
-                Range of the spline grid.
-            - sp_trainable : bool, default=True
-                Whether scale_sp is trainable.
-            - sb_trainable : bool, default=True
-                Whether scale_base is trainable.
-            - sparse_init : bool, default=False
-                Whether to apply sparse initialization.
-    use_kan : bool
-        If True, uses KAN layers instead of MLP. Default is False.
+        Length of the output (future) sequence.
+    min_period : int
+        Minimum period for seasonality.
+    S_backcast : torch.Tensor
+        Backcast side of the seasonality basis matrix.
+    S_forecast : torch.Tensor
+        Forecast side of the seasonality basis matrix.
     """
 
-    def __init__(
-        self,
-        units,
-        thetas_dim,
-        num_block_layers=4,
-        backcast_length=10,
-        forecast_length=5,
-        dropout=0.1,
-        kan_params=None,
-        use_kan=False,
+    def _init_seasonal(
+        self, backcast_length, forecast_length, thetas_dim, min_period
     ):
-        super().__init__()
-
-        if use_kan and kan_params is None:
-            # Define default parameters for KAN if not provided
-            kan_params = dict(
-                num=5,
-                k=3,
-                noise_scale=0.5,
-                scale_base_mu=0.0,
-                scale_base_sigma=1.0,
-                scale_sp=1.0,
-                base_fun=torch.nn.SiLU(),
-                grid_eps=0.02,
-                grid_range=[-1, 1],
-                sp_trainable=True,
-                sb_trainable=True,
-                sparse_init=False,
-            )
-
-        self.units = units
-        self.thetas_dim = thetas_dim
+        """
+        Initialize seasonal backcast and forecast coefficients.
+        """
         self.backcast_length = backcast_length
         self.forecast_length = forecast_length
-        self.kan_params = kan_params
-        self.use_kan = use_kan
-
-        if self.use_kan:
-            layers = [
-                KANLayer(
-                    in_dim=backcast_length,
-                    out_dim=units,
-                    **self.kan_params,
-                )
-            ]
-
-            # Add additional layers for deeper structure
-            for _ in range(num_block_layers - 1):
-                layers.append(
-                    KANLayer(
-                        in_dim=units,
-                        out_dim=units,
-                        **self.kan_params,
-                    )
-                )
-
-            # Define the fully connected layers
-            self.fc = nn.Sequential(*layers)
-
-            # Define the theta layers
-            self.theta_f_fc = self.theta_b_fc = KANLayer(
-                in_dim=units,
-                out_dim=thetas_dim,
-                **self.kan_params,
-            )
-
-        else:
-            fc_stack = [
-                nn.Linear(backcast_length, units),
-                nn.ReLU(),
-            ]
-            for _ in range(num_block_layers - 1):
-                fc_stack.extend([linear(units, units, dropout=dropout), nn.ReLU()])
-            self.fc = nn.Sequential(*fc_stack)
-            self.theta_f_fc = self.theta_b_fc = nn.Linear(units, thetas_dim, bias=False)
-
-    def forward(self, x):
-        """
-        Forward pass through the block using either MLP or KAN layers.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Input tensor.
-
-        Returns
-        -------
-        torch.Tensor
-            Output tensor after processing through the block.
-        """
-        if self.use_kan:
-            # save outputs to be used in updating grid in kan layers during training
-            # outputs logic taken from
-            # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
-            self.outputs = []
-            self.outputs.append(x.clone().detach())
-            for layer in self.fc:
-                x = layer(x)  # Pass data through the current layer
-                # storing outputs for updating grids of self.fc when using KAN
-                self.outputs.append(x.clone().detach())
-            # storing for updating grids of theta_b_fc and theta_f_fc when using KAN
-            self.outputs.append(x.clone().detach())
-            return x  # Return final output
-        return self.fc(x)
-
-
-class NBEATSSeasonalBlock(NBEATSBlock):
-    """
-    Initialize a Seasonal N-BEATS block with Fourier-based seasonality modeling.
-
-    Parameters
-    ----------
-    units : int
-        Number of units in each hidden layer.
-    thetas_dim : int
-        Output dimension of theta layers. Inferred from harmonics if not provided.
-    num_block_layers : int
-        Number of layers in the block. Default is 4.
-    backcast_length : int
-        Length of the input (past) sequence. Default is 10.
-    forecast_length : int
-        Length of the output (future) sequence. Default is 5.
-    nb_harmonics : int
-        Number of harmonics for Fourier features. Default is None.
-    min_period : int
-        Minimum period for seasonality. Default is 1.
-    dropout : float
-        Dropout rate. Default is 0.1.
-    kan_params : dict
-        Dictionary of KAN layer parameters. See NBEATSBlock for details.
-    use_kan : bool
-        If True, uses KAN instead of MLP. Default is False.
-    """
-
-    def __init__(
-        self,
-        units,
-        thetas_dim=None,
-        num_block_layers=4,
-        backcast_length=10,
-        forecast_length=5,
-        nb_harmonics=None,
-        min_period=1,
-        dropout=0.1,
-        kan_params=None,
-        use_kan=False,
-    ):
-        if nb_harmonics:
-            thetas_dim = nb_harmonics
-        else:
-            thetas_dim = forecast_length
         self.min_period = min_period
-
-        super().__init__(
-            units=units,
-            thetas_dim=thetas_dim,
-            num_block_layers=num_block_layers,
-            backcast_length=backcast_length,
-            forecast_length=forecast_length,
-            dropout=dropout,
-            kan_params=kan_params,
-            use_kan=use_kan,
-        )
 
         backcast_linspace, forecast_linspace = linspace(
             backcast_length, forecast_length, centered=False
@@ -253,29 +70,31 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         )
         self.register_buffer("S_forecast", torch.cat([s1_f, s2_f]))
 
-    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
+    def seasonal_forward(self, x, theta_b_layer, theta_f_layer):
         """
-        Compute seasonal backcast and forecast outputs using input tensor.
+        Compute seasonal backcast and forecast.
 
         Parameters
         ----------
         x : torch.Tensor
-            Input tensor of shape (batch_size, backcast_length).
+            Input tensor.
+        theta_b_layer : nn.Module
+            Layer to compute backcast theta coefficients.
+        theta_f_layer : nn.Module
+            Layer to compute forecast theta coefficients.
 
         Returns
         -------
-        tuple of torch.Tensor
-            Tuple (backcast, forecast), each of shape (batch_size, time_steps).
+        tuple[torch.Tensor, torch.Tensor]
+            Backcast and forecast tensors.
         """
-        x = super().forward(x)
-        amplitudes_backward = self.theta_b_fc(x)
+        amplitudes_backward = theta_b_layer(x)
         backcast = amplitudes_backward.mm(self.S_backcast)
-        amplitudes_forward = self.theta_f_fc(x)
+        amplitudes_forward = theta_f_layer(x)
         forecast = amplitudes_forward.mm(self.S_forecast)
-
         return backcast, forecast
 
-    def get_frequencies(self, n):
+    def get_frequencies(self, n: int) -> np.ndarray:
         """
         Generates frequency values based on the backcast and forecast lengths.
         """
@@ -284,52 +103,24 @@ class NBEATSSeasonalBlock(NBEATSBlock):
         )
 
 
-class NBEATSTrendBlock(NBEATSBlock):
+class TrendMixin:
     """
-    Initialize a Trend N-BEATS block using polynomial basis functions.
+    Mixin for Trend N-BEATS blocks.
+    This mixin provides the mechanism to initialize and compute the trend component
+    using polynomial basis functions.
 
-    Parameters
+    Attributes
     ----------
-    units : int
-        Number of units in each hidden layer.
-    thetas_dim : int
-        Output dimension of theta layers (number of polynomial terms).
-    num_block_layers : int
-        Number of hidden layers. Default is 4.
-    backcast_length : int
-        Length of input sequence. Default is 10.
-    forecast_length : int
-        Length of output sequence. Default is 5.
-    dropout : float
-        Dropout rate. Default is 0.1.
-    kan_params : dict
-        KAN layer parameters. See NBEATSBlock for details.
-    use_kan : bool
-        If True, uses KAN instead of MLP. Default is False.
+    T_backcast : torch.Tensor
+        Backcast side of the trend polynomial basis matrix.
+    T_forecast : torch.Tensor
+        Forecast side of the trend polynomial basis matrix.
     """
 
-    def __init__(
-        self,
-        units,
-        thetas_dim,
-        num_block_layers=4,
-        backcast_length=10,
-        forecast_length=5,
-        dropout=0.1,
-        kan_params=None,
-        use_kan=False,
-    ):
-        super().__init__(
-            units=units,
-            thetas_dim=thetas_dim,
-            num_block_layers=num_block_layers,
-            backcast_length=backcast_length,
-            forecast_length=forecast_length,
-            dropout=dropout,
-            kan_params=kan_params,
-            use_kan=use_kan,
-        )
-
+    def _init_trend(self, backcast_length, forecast_length, thetas_dim):
+        """
+        Initialize trend polynomial coefficients.
+        """
         backcast_linspace, forecast_linspace = linspace(
             backcast_length, forecast_length, centered=True
         )
@@ -348,7 +139,419 @@ class NBEATSTrendBlock(NBEATSBlock):
         )
         self.register_buffer("T_forecast", coefficients * norm)
 
-    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
+    def trend_forward(self, x, theta_b_layer, theta_f_layer):
+        """
+        Compute trend backcast and forecast.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor.
+        theta_b_layer : nn.Module
+            Layer to compute backcast theta coefficients.
+        theta_f_layer : nn.Module
+            Layer to compute forecast theta coefficients.
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor]
+            Backcast and forecast tensors.
+        """
+        backcast = theta_b_layer(x).mm(self.T_backcast)
+        forecast = theta_f_layer(x).mm(self.T_forecast)
+        return backcast, forecast
+
+
+class NBEATSBlock(nn.Module):
+    """
+    Initialize an N-BEATS block using MLP layers.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each layer.
+    thetas_dim : int
+        Output dimension of the theta layers.
+    num_block_layers : int
+        Number of hidden layers in the block. Default is 4.
+    backcast_length : int
+        Length of the input (past) sequence. Default is 10.
+    forecast_length : int
+        Length of the output (future) sequence. Default is 5.
+    dropout : float
+        Dropout rate for regularization. Default is 0.1.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        thetas_dim: int,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+
+        self.units = units
+        self.thetas_dim = thetas_dim
+        self.backcast_length = backcast_length
+        self.forecast_length = forecast_length
+
+        fc_stack = [
+            nn.Linear(backcast_length, units),
+            nn.ReLU(),
+        ]
+        for _ in range(num_block_layers - 1):
+            fc_stack.extend([linear(units, units, dropout=dropout), nn.ReLU()])
+        self.fc = nn.Sequential(*fc_stack)
+        self.theta_f_fc = self.theta_b_fc = nn.Linear(units, thetas_dim, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the block using MLP layers.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after processing through the block.
+        """
+        return self.fc(x)
+
+
+class NBEATSBlockKAN(nn.Module):
+    """
+    Initialize an N-BEATS block using KAN layers.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each layer.
+    thetas_dim : int
+        Output dimension of the theta layers.
+    num_block_layers : int
+        Number of hidden layers in the block. Default is 4.
+    backcast_length : int
+        Length of the input (past) sequence. Default is 10.
+    forecast_length : int
+        Length of the output (future) sequence. Default is 5.
+    num : int
+        Number of grid intervals. Default: 5.
+    k : int
+        Order of piecewise polynomial. Default: 3.
+    noise_scale : float
+        Initialization noise scale. Default: 0.5.
+    scale_base_mu : float
+        Mean for residual function initialization. Default: 0.0.
+    scale_base_sigma : float
+        Std deviation for residual function initialization. Default: 1.0.
+    scale_sp : float
+        Scale for the spline function. Default: 1.0.
+    base_fun : nn.Module
+        Base function module. Default: torch.nn.SiLU().
+    grid_eps : float
+        Determines grid spacing (0 for quantile, 1 for uniform). Default: 0.02.
+    grid_range : list of float
+        Range of the spline grid. Default: [-1, 1].
+    sp_trainable : bool
+        Whether scale_sp is trainable. Default: True.
+    sb_trainable : bool
+        Whether scale_base is trainable. Default: True.
+    sparse_init : bool
+        Whether to apply sparse initialization. Default: False.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        thetas_dim: int,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        num: int = 5,
+        k: int = 3,
+        noise_scale: float = 0.5,
+        scale_base_mu: float = 0.0,
+        scale_base_sigma: float = 1.0,
+        scale_sp: float = 1.0,
+        base_fun: nn.Module = None,
+        grid_eps: float = 0.02,
+        grid_range: list[float] = None,
+        sp_trainable: bool = True,
+        sb_trainable: bool = True,
+        sparse_init: bool = False,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+
+        if base_fun is None:
+            base_fun = torch.nn.SiLU()
+        if grid_range is None:
+            grid_range = [-1, 1]
+
+        self.units = units
+        self.thetas_dim = thetas_dim
+        self.backcast_length = backcast_length
+        self.forecast_length = forecast_length
+        self.dropout = dropout
+
+        # store KAN params for reuse
+        self.kan_params = dict(
+            num=num,
+            k=k,
+            noise_scale=noise_scale,
+            scale_base_mu=scale_base_mu,
+            scale_base_sigma=scale_base_sigma,
+            scale_sp=scale_sp,
+            base_fun=base_fun,
+            grid_eps=grid_eps,
+            grid_range=grid_range,
+            sp_trainable=sp_trainable,
+            sb_trainable=sb_trainable,
+            sparse_init=sparse_init,
+        )
+
+        layers = [KANLayer(in_dim=backcast_length, out_dim=units, **self.kan_params)]
+
+        # additional layers
+        for _ in range(num_block_layers - 1):
+            if self.dropout > 0:
+                layers.append(nn.Dropout(p=self.dropout))
+            layers.append(
+                KANLayer(in_dim=units, out_dim=units, **self.kan_params)
+            )
+        self.fc = nn.Sequential(*layers)
+
+        # theta layers used by subclasses
+        self.theta_f_fc = self.theta_b_fc = KANLayer(
+            in_dim=units,
+            out_dim=thetas_dim,
+            **self.kan_params,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the block using KAN layers.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor after processing through the block.
+        """
+        # save outputs to be used in updating grid in kan layers during training
+        # outputs logic taken from
+        # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682
+        self.outputs = []
+        self.outputs.append(x.clone().detach())
+        for layer in self.fc:
+            x = layer(x)  # Pass data through the current layer
+            # storing outputs for updating grids of self.fc when using KAN
+            self.outputs.append(x.clone().detach())
+        # storing for updating grids of theta_b_fc and theta_f_fc when using KAN
+        self.outputs.append(x.clone().detach())
+        return x  # Return final output
+
+
+class NBEATSSeasonalBlock(NBEATSBlock, SeasonalMixin):
+    """
+    Initialize a Seasonal N-BEATS block with Fourier-based seasonality modeling.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Output dimension of theta layers. Inferred from harmonics if not provided.
+    num_block_layers : int
+        Number of layers in the block. Default is 4.
+    backcast_length : int
+        Length of the input (past) sequence. Default is 10.
+    forecast_length : int
+        Length of the output (future) sequence. Default is 5.
+    nb_harmonics : int
+        Number of harmonics for Fourier features. Default is None.
+    min_period : int
+        Minimum period for seasonality. Default is 1.
+    dropout : float
+        Dropout rate. Default is 0.1.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        thetas_dim: int = None,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        nb_harmonics: int = None,
+        min_period: int = 1,
+        dropout: float = 0.1,
+    ):
+        if nb_harmonics:
+            thetas_dim = nb_harmonics
+        else:
+            thetas_dim = forecast_length
+
+        super().__init__(
+            units=units,
+            thetas_dim=thetas_dim,
+            num_block_layers=num_block_layers,
+            backcast_length=backcast_length,
+            forecast_length=forecast_length,
+            dropout=dropout,
+        )
+        self._init_seasonal(backcast_length, forecast_length, thetas_dim, min_period)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute seasonal backcast and forecast outputs using input tensor.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, backcast_length).
+
+        Returns
+        -------
+        tuple of torch.Tensor
+            Tuple (backcast, forecast), each of shape (batch_size, time_steps).
+        """
+        x = super().forward(x)
+        return self.seasonal_forward(x, self.theta_b_fc, self.theta_f_fc)
+
+
+class NBEATSSeasonalBlockKAN(NBEATSBlockKAN, SeasonalMixin):
+    """
+    Initialize a Seasonal N-BEATS block using KAN layers.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Output dimension of theta layers. Inferred from harmonics if not provided.
+    num_block_layers : int
+        Number of layers in the block. Default is 4.
+    backcast_length : int
+        Length of the input (past) sequence. Default is 10.
+    forecast_length : int
+        Length of the output (future) sequence. Default is 5.
+    nb_harmonics : int
+        Number of harmonics for Fourier features. Default is None.
+    min_period : int
+        Minimum period for seasonality. Default is 1.
+    num : int
+        Number of grid intervals. Default: 5.
+    k : int
+        Order of piecewise polynomial. Default: 3.
+    noise_scale : float
+        Initialization noise scale.
+    scale_base_mu : float
+        Mean for residual function initialization.
+    scale_base_sigma : float
+        Std deviation for residual function initialization.
+    scale_sp : float
+        Scale for the spline function.
+    base_fun : nn.Module
+        Base function module.
+    grid_eps : float
+        Determines grid spacing.
+    grid_range : list of float
+        Range of the spline grid.
+    sp_trainable : bool
+        Whether scale_sp is trainable.
+    sb_trainable : bool
+        Whether scale_base is trainable.
+    sparse_init : bool
+        Whether to apply sparse initialization.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        thetas_dim: int = None,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        nb_harmonics: int = None,
+        min_period: int = 1,
+        dropout: float = 0.1,
+        **kan_kwargs,
+    ):
+        if nb_harmonics:
+            thetas_dim = nb_harmonics
+        else:
+            thetas_dim = forecast_length
+
+        super().__init__(
+            units=units,
+            thetas_dim=thetas_dim,
+            num_block_layers=num_block_layers,
+            backcast_length=backcast_length,
+            forecast_length=forecast_length,
+            dropout=dropout,
+            **kan_kwargs,
+        )
+        self._init_seasonal(backcast_length, forecast_length, thetas_dim, min_period)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute seasonal backcast and forecast outputs using input tensor.
+        """
+        x = super().forward(x)
+        return self.seasonal_forward(x, self.theta_b_fc, self.theta_f_fc)
+
+
+class NBEATSTrendBlock(NBEATSBlock, TrendMixin):
+    """
+    Initialize a Trend N-BEATS block using polynomial basis functions.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Output dimension of theta layers (number of polynomial terms).
+    num_block_layers : int
+        Number of hidden layers. Default is 4.
+    backcast_length : int
+        Length of input sequence. Default is 10.
+    forecast_length : int
+        Length of output sequence. Default is 5.
+    dropout : float
+        Dropout rate. Default is 0.1.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        thetas_dim: int,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        dropout: float = 0.1,
+    ):
+        super().__init__(
+            units=units,
+            thetas_dim=thetas_dim,
+            num_block_layers=num_block_layers,
+            backcast_length=backcast_length,
+            forecast_length=forecast_length,
+            dropout=dropout,
+        )
+        self._init_trend(backcast_length, forecast_length, thetas_dim)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Compute backcast and forecast outputs using input tensor.
 
@@ -364,9 +567,78 @@ class NBEATSTrendBlock(NBEATSBlock):
         """
 
         x = super().forward(x)
-        backcast = self.theta_b_fc(x).mm(self.T_backcast)
-        forecast = self.theta_f_fc(x).mm(self.T_forecast)
-        return backcast, forecast
+        return self.trend_forward(x, self.theta_b_fc, self.theta_f_fc)
+
+
+class NBEATSTrendBlockKAN(NBEATSBlockKAN, TrendMixin):
+    """
+    Initialize a Trend N-BEATS block using KAN layers.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Output dimension of theta layers (number of polynomial terms).
+    num_block_layers : int
+        Number of hidden layers. Default is 4.
+    backcast_length : int
+        Length of input sequence. Default is 10.
+    forecast_length : int
+        Length of output sequence. Default is 5.
+    num : int
+        Number of grid intervals. Default: 5.
+    k : int
+        Order of piecewise polynomial. Default: 3.
+    noise_scale : float
+        Initialization noise scale.
+    scale_base_mu : float
+        Mean for residual function initialization.
+    scale_base_sigma : float
+        Std deviation for residual function initialization.
+    scale_sp : float
+        Scale for the spline function.
+    base_fun : nn.Module
+        Base function module.
+    grid_eps : float
+        Determines grid spacing.
+    grid_range : list of float
+        Range of the spline grid.
+    sp_trainable : bool
+        Whether scale_sp is trainable.
+    sb_trainable : bool
+        Whether scale_base is trainable.
+    sparse_init : bool
+        Whether to apply sparse initialization.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        thetas_dim: int,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        dropout: float = 0.1,
+        **kan_kwargs,
+    ):
+        super().__init__(
+            units=units,
+            thetas_dim=thetas_dim,
+            num_block_layers=num_block_layers,
+            backcast_length=backcast_length,
+            forecast_length=forecast_length,
+            dropout=dropout,
+            **kan_kwargs,
+        )
+        self._init_trend(backcast_length, forecast_length, thetas_dim)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute backcast and forecast outputs using input tensor.
+        """
+        x = super().forward(x)
+        return self.trend_forward(x, self.theta_b_fc, self.theta_f_fc)
 
 
 class NBEATSGenericBlock(NBEATSBlock):
@@ -387,22 +659,16 @@ class NBEATSGenericBlock(NBEATSBlock):
         Length of future prediction. Default is 5.
     dropout : float
         Dropout rate. Default is 0.1.
-    kan_params : dict
-        KAN layer parameters. See NBEATSBlock for details.
-    use_kan : bool
-        If True, uses KAN instead of MLP. Default is False.
     """
 
     def __init__(
         self,
-        units,
-        thetas_dim,
-        num_block_layers=4,
-        backcast_length=10,
-        forecast_length=5,
-        dropout=0.1,
-        kan_params=None,
-        use_kan=False,
+        units: int,
+        thetas_dim: int,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        dropout: float = 0.1,
     ):
         super().__init__(
             units=units,
@@ -411,14 +677,12 @@ class NBEATSGenericBlock(NBEATSBlock):
             backcast_length=backcast_length,
             forecast_length=forecast_length,
             dropout=dropout,
-            kan_params=kan_params,
-            use_kan=use_kan,
         )
 
         self.backcast_fc = nn.Linear(thetas_dim, backcast_length)
         self.forecast_fc = nn.Linear(thetas_dim, forecast_length)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Compute backcast and forecast using using input tensor.
 
@@ -431,6 +695,81 @@ class NBEATSGenericBlock(NBEATSBlock):
         -------
         tuple of torch.Tensor
             Tuple (backcast, forecast).
+        """
+        x = super().forward(x)
+        theta_b = F.relu(self.theta_b_fc(x))
+        theta_f = F.relu(self.theta_f_fc(x))
+        return self.backcast_fc(theta_b), self.forecast_fc(theta_f)
+
+
+class NBEATSGenericBlockKAN(NBEATSBlockKAN):
+    """
+    Initialize a Generic N-BEATS block using KAN layers.
+
+    Parameters
+    ----------
+    units : int
+        Number of units in each hidden layer.
+    thetas_dim : int
+        Dimension of the theta parameter.
+    num_block_layers : int
+        Number of hidden layers. Default is 4.
+    backcast_length : int
+        Length of past input. Default is 10.
+    forecast_length : int
+        Length of future prediction. Default is 5.
+    num : int
+        Number of grid intervals. Default: 5.
+    k : int
+        Order of piecewise polynomial. Default: 3.
+    noise_scale : float
+        Initialization noise scale.
+    scale_base_mu : float
+        Mean for residual function initialization.
+    scale_base_sigma : float
+        Std deviation for residual function initialization.
+    scale_sp : float
+        Scale for the spline function.
+    base_fun : nn.Module
+        Base function module.
+    grid_eps : float
+        Determines grid spacing.
+    grid_range : list of float
+        Range of the spline grid.
+    sp_trainable : bool
+        Whether scale_sp is trainable.
+    sb_trainable : bool
+        Whether scale_base is trainable.
+    sparse_init : bool
+        Whether to apply sparse initialization.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        thetas_dim: int,
+        num_block_layers: int = 4,
+        backcast_length: int = 10,
+        forecast_length: int = 5,
+        dropout: float = 0.1,
+        **kan_kwargs,
+    ):
+        super().__init__(
+            units=units,
+            thetas_dim=thetas_dim,
+            num_block_layers=num_block_layers,
+            backcast_length=backcast_length,
+            forecast_length=forecast_length,
+            dropout=dropout,
+            **kan_kwargs,
+        )
+
+        self.backcast_fc = nn.Linear(thetas_dim, backcast_length)
+        self.forecast_fc = nn.Linear(thetas_dim, forecast_length)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute backcast and forecast using using input tensor.
         """
         x = super().forward(x)
         theta_b = F.relu(self.theta_b_fc(x))
