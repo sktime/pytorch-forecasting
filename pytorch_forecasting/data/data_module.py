@@ -164,7 +164,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self.categorical_indices.append(idx)
             else:
                 self.continuous_indices.append(idx)
-                
+
     def _fit_preprocessors(self):
         """Fit preprocessing components on training data.
 
@@ -181,37 +181,39 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         ``self._train_indices``.
         """
         if self._preprocessors_fitted:
-            return 
-        
+            return
+
         for col_name, encoder in self.categorical_encoders.items():
             if col_name not in self.time_series_metadata["cols"]["x"]:
                 continue
 
-            col_idx= self.time_series_metadata["cols"]["x"].index(col_name)
-            values=[]
-            
+            col_idx = self.time_series_metadata["cols"]["x"].index(col_name)
+            values = []
+
             for col_idx in self._train_indices:
                 sample = self.time_series_dataset[col_idx.item()]
-                values.append(torch.tensor(sample["x"][:,col_idx]).numpy())
-                
-            values=torch.cat(values).numpy()
+                values.append(torch.tensor(sample["x"][:, col_idx]).numpy())
+
+            values = torch.cat(values).numpy()
             encoder.fit(values)
-            
+
         for col_name, scaler in self.scalers.items():
             if col_name not in self.time_series_metadata["cols"]["x"]:
                 continue
-            
-            col_idx =self.time_series_metadata["cols"]["x"].index(col_name)
-            values= []
-            
+
+            col_idx = self.time_series_metadata["cols"]["x"].index(col_name)
+            values = []
+
             for col_idx in self._train_indices:
                 sample = self.time_series_dataset[col_idx.item()]
-                values.append(torch.tensor(sample["x"][:,col_idx]).numpy().reshape(-1,1))
-                
-            values=torch.cat(values).numpy()
+                values.append(
+                    torch.tensor(sample["x"][:, col_idx]).numpy().reshape(-1, 1)
+                )
+
+            values = torch.cat(values).numpy()
             scaler.fit(values)
-        
-        self._preprocessors_fitted= True
+
+        self._preprocessors_fitted = True
 
     def _prepare_metadata(self):
         """Prepare metadata for model initialisation.
@@ -358,7 +360,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         TODO: add scalers, target normalizers etc.
         """
-        
+
         sample = self.time_series_dataset[series_idx]
 
         target = sample["y"]
@@ -379,8 +381,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             features = torch.tensor(features, dtype=torch.float32)
 
         # TODO: add scalers, target normalizers etc.
-        static =sample.get("st", None)
-        
+        static = sample.get("st", None)
+
         if static is not None and self._categorical_encoders:
             static = torch.as_tensor(static, dtype=torch.float32)
 
@@ -392,19 +394,23 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     val = static[col_idx].cpu().numpy()
                     encoded = encoder.transform([val])[0]
                     static[col_idx] = torch.as_tensor(encoded, dtype=torch.float32)
-        
+
         if self._categorical_encoders:
-            for col_name,encoder in self._categorical_encoders.items():
+            for col_name, encoder in self._categorical_encoders.items():
                 if col_name in self.time_series_metadata["cols"]["x"]:
-                    col_idx=self.time_series_metadata["cols"]["x"].index(col_name)
-                    features[:,col_idx]=torch.tensor(encoder.transform(features[:,col_idx].numpy()))
-                    
+                    col_idx = self.time_series_metadata["cols"]["x"].index(col_name)
+                    features[:, col_idx] = torch.tensor(
+                        encoder.transform(features[:, col_idx].numpy())
+                    )
+
         if self._scalers:
             for col_name, scaler in self._scalers.items():
                 if col_name in self.time_series_metadata["cols"]["x"]:
                     col_idx = self.time_series_metadata["cols"]["x"].index(col_name)
-                    vals= features[:, col_idx].numpy().reshape(-1, 1)
-                    features[:, col_idx] = torch.tensor(scaler.transform(vals).squeeze(), dtype=torch.float32)
+                    vals = features[:, col_idx].numpy().reshape(-1, 1)
+                    features[:, col_idx] = torch.tensor(
+                        scaler.transform(vals).squeeze(), dtype=torch.float32
+                    )
 
         categorical = (
             features[:, self.categorical_indices]
@@ -727,9 +733,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         if stage is None or stage == "fit":
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
-                
                 self._fit_preprocessors()
-                
+
                 self.train_windows = self._create_windows(self._train_indices)
                 self.val_windows = self._create_windows(self._val_indices)
 
