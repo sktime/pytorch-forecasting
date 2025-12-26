@@ -66,9 +66,7 @@ def _integration(dataloader, tmp_path, trainer_kwargs=None, **kwargs):
             test_outputs = trainer.test(net, dataloaders=test_dataloader)
             assert len(test_outputs) > 0
         # check loading
-        net = NHiTS.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path, weights_only=False
-        )
+        net = NHiTS.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         # check prediction
         net.predict(
