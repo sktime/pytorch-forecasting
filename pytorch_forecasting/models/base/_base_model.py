@@ -8,7 +8,7 @@ from copy import deepcopy
 import inspect
 import logging
 import os
-from typing import IO, Any, Callable, Literal, Optional, Self, Union
+from typing import IO, Any, Callable, Literal, Optional, Union
 import warnings
 
 from lightning.fabric.utilities.types import _MAP_LOCATION_TYPE, _PATH
@@ -832,6 +832,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             checkpoint_path,
             map_location=map_location,
             hparams_file=hparams_file,
+            strict=strict,
             **kwargs,
         )
 
