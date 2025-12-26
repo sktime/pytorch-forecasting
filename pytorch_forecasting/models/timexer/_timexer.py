@@ -60,6 +60,7 @@ class TimeXer(BaseModelWithCovariates):
         d_ff: int = 1024,
         dropout: float = 0.2,
         activation: str = "relu",
+        use_efficient_attention: bool = False,
         patch_length: int = 16,
         factor: int = 5,
         embed_type: str = "fixed",
@@ -118,6 +119,13 @@ class TimeXer(BaseModelWithCovariates):
             regularization.
         activation (str, optional): Activation function used in feedforward networks
             ('relu' or 'gelu').
+        use_efficient_attention (bool, optional): If set to True, will use
+            PyTorch's native, optimized Scaled Dot Product Attention
+            implementation which can reduce computation time and memory
+            consumption for longer sequences. PyTorch automatically selects the
+            optimal backend (FlashAttention-2, Memory-Efficient Attention, or
+            their own C++ implementation) based on user's input properties,
+            hardware capabilities, and build configuration.
         patch_length (int, optional): Length of each non-overlapping patch for
             endogenous variable tokenization.
         use_norm (bool, optional): Whether to apply normalization to input data.
@@ -263,6 +271,7 @@ class TimeXer(BaseModelWithCovariates):
                             self.hparams.factor,
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.hparams.use_efficient_attention,
                         ),
                         self.hparams.hidden_size,
                         self.hparams.n_heads,
@@ -273,6 +282,7 @@ class TimeXer(BaseModelWithCovariates):
                             self.hparams.factor,
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.hparams.use_efficient_attention,
                         ),
                         self.hparams.hidden_size,
                         self.hparams.n_heads,
