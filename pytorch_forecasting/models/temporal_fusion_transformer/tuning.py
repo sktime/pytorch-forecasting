@@ -27,7 +27,7 @@ from pytorch_forecasting.utils._dependencies import _get_installed_packages
 optuna_logger = logging.getLogger("optuna")
 
 
-# todo: Remove this class once lightning allows the pass of weights_only to tuner
+# TODO v1.6.0: Remove this class once lightning allows the pass of weights_only to tuner
 class _NewTuner(Tuner):
     def lr_find(self, *args, **kwargs):
         strategy = self._trainer.strategy
