@@ -2,10 +2,10 @@
 Packages container for DLinear model.
 """
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class DLinear_pkg_v2(_BasePtForecasterV2):
+class DLinear_pkg_v2(Base_pkg):
     """DLinear package container."""
 
     _tags = {
@@ -25,6 +25,13 @@ class DLinear_pkg_v2(_BasePtForecasterV2):
         from pytorch_forecasting.models.dlinear._dlinear_v2 import DLinear
 
         return DLinear
+
+    @classmethod
+    def get_datamodule_cls(cls):
+        """Get the underlying DataModule class."""
+        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+
+        return TslibDataModule
 
     @classmethod
     def _get_test_datamodule_from(cls, trainer_kwargs):
@@ -112,7 +119,7 @@ class DLinear_pkg_v2(_BasePtForecasterV2):
 
         from pytorch_forecasting.metrics import MAE, MAPE, SMAPE, QuantileLoss
 
-        return [
+        params = [
             {},
             dict(moving_avg=25, individual=False, logging_metrics=[SMAPE()]),
             dict(
@@ -125,3 +132,13 @@ class DLinear_pkg_v2(_BasePtForecasterV2):
                 logging_metrics=[SMAPE()],
             ),
         ]
+
+        default_dm_cfg = {"context_length": 8, "prediction_length": 2}
+
+        for param in params:
+            current_dm_cfg = param.get("datamodule_cfg", {})
+            default_dm_cfg.update(current_dm_cfg)
+
+            param["datamodule_cfg"] = default_dm_cfg
+
+        return params

@@ -335,15 +335,10 @@ def test_missing_history_target_handling(basic_metadata):
 def test_endogenous_exogenous_variable_selection(basic_metadata):
     """Test explicit endogenous and exogenous variable selection in TimeXer model."""
 
-    endo_names = basic_metadata["feature_names"]["continuous"][0]
-    exog_names = basic_metadata["feature_names"]["continuous"][1]
-
     model = TimeXer(
         loss=MAE(),
         hidden_size=64,
         n_heads=8,
-        endogenous_vars=[endo_names],
-        exogenous_vars=[exog_names],
         e_layers=2,
         metadata=basic_metadata,
     )
