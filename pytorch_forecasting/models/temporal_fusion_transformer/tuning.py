@@ -3,6 +3,7 @@ Hyperparameters can be efficiently tuned with `optuna <https://optuna.readthedoc
 """
 
 import copy
+import functools
 import logging
 import os
 from typing import Any, Union
@@ -10,9 +11,12 @@ from typing import Any, Union
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.trainer import Trainer
 from lightning.pytorch.tuner import Tuner
 import numpy as np
 import scipy._lib._util
+from skbase.utils.dependencies import _check_soft_dependencies
+import torch
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
@@ -21,6 +25,26 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 optuna_logger = logging.getLogger("optuna")
+
+
+# TODO v1.6.0: Remove this class once lightning allows the pass of weights_only to tuner
+class _NewTuner(Tuner):
+    def lr_find(self, *args, **kwargs):
+        strategy = self._trainer.strategy
+        original_load_checkpoint = strategy.load_checkpoint
+
+        @functools.wraps(original_load_checkpoint)
+        def new_load_checkpoint(*ckpt_args, **ckpt_kwargs):
+            ckpt_kwargs["weights_only"] = False
+            return original_load_checkpoint(*ckpt_args, **ckpt_kwargs)
+
+        if not _check_soft_dependencies("lightning<2.6", severity="none"):
+            strategy.load_checkpoint = new_load_checkpoint
+
+        try:
+            return super().lr_find(*args, **kwargs)
+        finally:
+            strategy.load_checkpoint = original_load_checkpoint
 
 
 # ToDo: remove this once statsmodels release a version compatible with latest
@@ -209,7 +233,7 @@ def optimize_hyperparameters(
                 enable_progress_bar=False,
                 enable_model_summary=False,
             )
-            tuner = Tuner(lr_trainer)
+            tuner = _NewTuner(lr_trainer)
             res = tuner.lr_find(
                 model,
                 train_dataloaders=train_dataloaders,
