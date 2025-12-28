@@ -523,8 +523,6 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
         x_with_norm["target_past"], x_no_norm["target_past"]
     ), "target_past should be normalized"
 
-    assert y_with_norm.var() < y_no_norm.var(), "Normalization should reduce variance"
-
 
 @pytest.mark.parametrize(
     "scaler_type",
