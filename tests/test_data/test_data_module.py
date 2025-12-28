@@ -5,7 +5,7 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
-from pytorch_forecasting.data.encoders import TorchNormalizer
+from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -483,6 +483,7 @@ def test_multivariate_target():
         TorchNormalizer(),
         StandardScaler(),
         RobustScaler(),
+        EncoderNormalizer(),
     ],
 )
 def test_target_normalizers(sample_timeseries_data, normalizer):
@@ -531,6 +532,7 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
         TorchNormalizer,
         StandardScaler,
         RobustScaler,
+        EncoderNormalizer,
     ],
 )
 def test_feature_scaling(sample_timeseries_data, scaler_type):

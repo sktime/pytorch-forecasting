@@ -403,9 +403,13 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         }
 
     def _fit_target_normalizer(self, train_indices):
-        """Fit scalers on the training data."""
+        """Fit target normalizer on the target variable's training data."""
 
         if self._target_normalizer is None:
+            return
+
+        if isinstance(self._target_normalizer, EncoderNormalizer):
+            # Encoder normalizer does not need fitting on global data
             return
 
         all_targets = []
@@ -469,12 +473,87 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 feat_data.append(feature_data)
             feat_data = torch.cat(feat_data, dim=0)
 
-            if isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
+            if isinstance(scaler, (TorchNormalizer)):
                 scaler.fit(feat_data)
             elif isinstance(scaler, (StandardScaler, RobustScaler)):
                 feat_data_np = feat_data.detach().numpy()
                 scaler.fit(feat_data_np.reshape(-1, 1))
         self._feature_scalers_fitted = True
+
+    def _apply_encoder_normalizer_on_target(self, encoder_target: torch.Tensor):
+        """Apply encoder normalizer on the target variable's
+        current encoding sequence.
+
+        This function fits and transforms the current target encoding
+        sequence using the EncoderNormalizer (if applicable). EncoderNormalizers
+        are expected to be fitted on-the-fly for each sequence, not on the whole data.
+
+        Parameters
+        ----------
+        encoder_target : torch.Tensor
+            The target values for the encoder sequence.
+
+        Returns
+        -------
+        torch.Tensor
+            The normalized target values for the encoder sequence.
+        """
+
+        if isinstance(self._target_normalizer, EncoderNormalizer):
+            encoder_normalizer = self._target_normalizer
+            if encoder_target.ndim == 2 and encoder_target.shape[1] == 1:
+                encoder_target = encoder_target.squeeze(-1)
+                encoder_normalizer.fit(encoder_target)
+                normalized_target = encoder_normalizer.transform(encoder_target)
+                encoder_target = normalized_target.unsqueeze(-1)
+            else:
+                encoder_normalizer.fit(encoder_target)
+                encoder_target = encoder_normalizer.transform(encoder_target)
+
+        elif isinstance(self._target_normalizer, list):
+            # Handle list of normalizers (one per target)
+            for i, normalizer in enumerate(self._target_normalizer):
+                if isinstance(normalizer, EncoderNormalizer):
+                    target_col = encoder_target[:, i]
+                    normalizer.fit(target_col)
+                encoder_target[:, i] = normalizer.transform(target_col)
+
+        self._target_normalizer_fitted = True
+        return encoder_target
+
+    def _apply_encoder_normalizer_on_feat(
+        self,
+        encoder_cont: torch.Tensor,
+    ):
+        """
+        Apply encoder normalizers on continuous features of the current
+        encoding sequence (if applicable to the feature).
+
+        Parameters
+        ----------
+        encoder_cont : torch.Tensor
+            Continuous features for the encoder sequence.
+
+        Returns
+        -------
+        torch.Tensor
+            Normalized continuous features for the encoder sequence.
+        """
+
+        feature_names = [
+            self.time_series_metadata["cols"]["x"][idx]
+            for idx in self.continuous_indices
+        ]
+
+        for feat_idx, feat_name in enumerate(feature_names):
+            if feat_name in self._scalers:
+                scaler = self._scalers[feat_name]
+                if isinstance(scaler, EncoderNormalizer):
+                    feature_data = encoder_cont[:, feat_idx]
+                    scaler.fit(feature_data)
+                    encoder_cont[:, feat_idx] = scaler.transform(feature_data)
+
+        return encoder_cont
 
     def _preprocess_all_data(self, indices: torch.Tensor) -> dict[dict[str, Any]]:
         """Preprocess all data samples for given indices.
@@ -591,6 +670,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             target_past = data["target"][encoder_indices]
 
+            # apply encoder normalizer on target_past.
+            if not self.data_module._target_normalizer_fitted:
+                target_past = self.data_module._apply_encoder_normalizer_on_target(
+                    target_past
+                )
+
             target_original_past = data["target_original"][encoder_indices]
             target_scale = (
                 target_original_past[~torch.isnan(target_original_past)].abs().mean()
@@ -610,7 +695,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             )
 
             encoder_cat = data["features"]["categorical"][encoder_indices]
+
             encoder_cont = data["features"]["continuous"][encoder_indices]
+
+            # apply encoder normalizer on cont features (assuming the presence of
+            # EncoderNormalizer)
+            encoder_cont = self.data_module._apply_encoder_normalizer_on_feat(
+                encoder_cont
+            )
 
             features = data["features"]
             metadata = self.data_module.time_series_metadata
