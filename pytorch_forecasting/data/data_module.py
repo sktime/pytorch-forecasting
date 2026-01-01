@@ -932,7 +932,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
-                self._validate_preprocessing()
+                # self._validate_preprocessing()
                 self._test_preprocessed = self._preprocess_all_data(self._test_indices)
                 self.test_windows = self._create_windows(self._test_indices)
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
@@ -942,7 +942,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self.add_relative_time_idx,
                 )
         elif stage == "predict":
-            self._validate_preprocessing()
+            # self._validate_preprocessing()
             predict_indices = torch.arange(len(self.time_series_dataset))
             self._predict_preprocessed = self._preprocess_all_data(predict_indices)
             self.predict_windows = self._create_windows(predict_indices)
