@@ -305,9 +305,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         * Masks time points that are at or before the cutoff time.
         * Splits features into categorical and continuous subsets based on
             predefined indices.
-
-
-        TODO: add scalers, target normalizers etc.
+        * Normalizes the target variable using the specified target normalizer.
+        * Normalizes continuous features using the specified feature scalers.
         """
         sample = self.time_series_dataset[series_idx]
 
@@ -327,8 +326,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             features = features.float()
         else:
             features = torch.tensor(features, dtype=torch.float32)
-
-        # TODO: add scalers, target normalizers etc.
 
         # target is always made into 2D tensor before normalizing.
         # helps in generalizing to all cases - single and multi target.
@@ -574,6 +571,26 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             series_idx = idx.item()
             preprocessed_data[series_idx] = self._preprocess_data(series_idx)
         return preprocessed_data
+
+    def _validate_preprocessing(self):
+        """Validate preprocessing by checking if scalers and normalizers are fitted
+        on training data."""
+
+        if self._target_normalizer is not None and not self._target_normalizer_fitted:  # noqa: E501
+            raise RuntimeError(
+                "Cannot setup test stage: target_normalizer is configured "
+                "but not fitted. You must call setup('fit') first on this"
+                " DataModule instance or use the same DataModule instance "
+                "that was used for training."
+            )
+
+        if self._scaler is not None and not self._feature_scalers_fitted:  # noqa: E501
+            raise RuntimeError(
+                "Cannot setup test stage: feature scalers are configured "
+                "but not fitted. You must call setup('fit') first on this "
+                "DataModule instance or use the same DataModule instance "
+                "that was used for training."
+            )
 
     class _ProcessedEncoderDecoderDataset(Dataset):
         """PyTorch Dataset for processed encoder-decoder time series data.
@@ -915,6 +932,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
+                self._validate_preprocessing()
                 self._test_preprocessed = self._preprocess_all_data(self._test_indices)
                 self.test_windows = self._create_windows(self._test_indices)
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
@@ -924,6 +942,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self.add_relative_time_idx,
                 )
         elif stage == "predict":
+            self._validate_preprocessing()
             predict_indices = torch.arange(len(self.time_series_dataset))
             self._predict_preprocessed = self._preprocess_all_data(predict_indices)
             self.predict_windows = self._create_windows(predict_indices)
