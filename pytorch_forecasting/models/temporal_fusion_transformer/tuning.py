@@ -10,10 +10,8 @@ from typing import Any, Union
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.trainer import Trainer
 import numpy as np
 import scipy._lib._util
-import torch
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer
