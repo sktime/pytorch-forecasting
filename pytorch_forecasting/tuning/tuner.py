@@ -4,8 +4,8 @@ from lightning.pytorch import tuner
 from skbase.utils.dependencies import _check_soft_dependencies
 
 
-# TODO v1.6.0: Remove this class once lightning.pytorch.tuner allows the
-# pass of weights_only param to Tuner
+# TODO v1.6.0: Check if we can remove/change this class once lightning.pytorch.tuner
+# allows the pass of weights_only param to Tuner.lr_find
 class Tuner(tuner.Tuner):
     def lr_find(self, *args, **kwargs):
         strategy = self._trainer.strategy
