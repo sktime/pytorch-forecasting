@@ -227,7 +227,8 @@ class TransformMixIn:
         else:
             # convert first to tensor, then transform and then convert to numpy array
             if isinstance(y, (pd.Series, pd.DataFrame)):
-                y = y.to_numpy()
+                # PyTorch wants writeable arrays
+                y = y.to_numpy(copy=True)
             y = torch.as_tensor(y)
             y = self.get_transform(self.transformation)["forward"](y)
             y = np.asarray(y)
@@ -713,7 +714,8 @@ class TorchNormalizer(
             if isinstance(y, (pd.Series)):
                 index = y.index
                 pandas_dtype = y.dtype
-                y = y.values
+                # PyTorch wants writeable arrays
+                y = y.to_numpy(copy=True)
                 y_was = "pandas"
                 y = torch.as_tensor(y)
             elif isinstance(y, np.ndarray):
