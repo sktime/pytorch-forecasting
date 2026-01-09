@@ -8,9 +8,10 @@ from copy import deepcopy
 import inspect
 import logging
 import os
-from typing import Any, Callable, Literal, Optional, Union
+from typing import IO, Any, Callable, Literal, Optional, Union
 import warnings
 
+from lightning.fabric.utilities.types import _MAP_LOCATION_TYPE, _PATH
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import BasePredictionWriter, LearningRateFinder
@@ -810,6 +811,30 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 quantiles_kwargs=quantiles_kwargs,
             )
         return {}
+
+    @classmethod
+    def load_from_checkpoint(
+        cls,
+        checkpoint_path: Union[_PATH, IO],
+        map_location: _MAP_LOCATION_TYPE = None,
+        hparams_file: Optional[_PATH] = None,
+        strict: Optional[bool] = None,
+        **kwargs: Any,
+    ):
+        from skbase.utils.dependencies import _check_soft_dependencies
+
+        if not _check_soft_dependencies("lightning<2.6", severity="none"):
+            if "weights_only" not in kwargs:
+                kwargs["weights_only"] = False
+        else:
+            kwargs.pop("weights_only")
+        return super().load_from_checkpoint(
+            checkpoint_path,
+            map_location=map_location,
+            hparams_file=hparams_file,
+            strict=strict,
+            **kwargs,
+        )
 
     def step(
         self,

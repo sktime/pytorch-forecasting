@@ -79,7 +79,7 @@ class TIDE(BaseModel):
         """
 
         super().__init__(loss=loss)
-        self.save_hyperparameters(logger=False)
+        self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.dropout = dropout_rate
         self.persistence_weight = persistence_weight
