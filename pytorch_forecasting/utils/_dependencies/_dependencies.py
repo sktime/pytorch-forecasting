@@ -3,7 +3,7 @@
 Copied from sktime/skbase.
 """
 
-from skbase.utils.dependencies._dependencies import _check_soft_dependencies
+from skbase.utils.dependencies import _check_soft_dependencies
 
 __all__ = ["_check_soft_dependencies", "_check_matplotlib"]
 

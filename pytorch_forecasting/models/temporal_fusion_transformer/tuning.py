@@ -12,7 +12,7 @@ from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import scipy._lib._util
-from skbase.utils.dependencies._dependencies import _check_soft_dependencies
+from skbase.utils.dependencies import _check_soft_dependencies
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting import TemporalFusionTransformer

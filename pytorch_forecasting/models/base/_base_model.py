@@ -21,7 +21,7 @@ import numpy as np
 from numpy import iterable
 import pandas as pd
 import scipy.stats
-from skbase.utils.dependencies._dependencies import _check_soft_dependencies
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 import torch.nn as nn
 from torch.nn.utils import rnn
