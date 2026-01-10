@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from skbase.utils.dependencies import _safe_import
 import torch
 from torch.distributions import (
     AffineTransform,
@@ -11,7 +12,6 @@ from torch.distributions import (
 )
 import torch.nn.functional as F
 
-from pytorch_forecasting.utils._dependencies import _safe_import
 
 DeepConvexFlow = _safe_import("cpflows.flows.DeepConvexFlow")
 SequentialFlow = _safe_import("cpflows.flows.SequentialFlow")

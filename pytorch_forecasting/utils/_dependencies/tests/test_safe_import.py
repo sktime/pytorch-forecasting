@@ -1,6 +1,6 @@
 __author__ = ["jgyasu", "fkiraly"]
 
-from pytorch_forecasting.utils._dependencies import _safe_import
+from skbase.utils.dependencies import _safe_import
 
 
 def test_import_missing_module():
