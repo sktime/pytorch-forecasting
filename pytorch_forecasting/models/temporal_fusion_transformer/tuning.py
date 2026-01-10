@@ -10,7 +10,6 @@ from typing import Any, Union
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.tuner import Tuner
 import numpy as np
 import scipy._lib._util
 from skbase.utils.dependencies._dependencies import _check_soft_dependencies
@@ -19,6 +18,7 @@ from torch.utils.data import DataLoader
 from pytorch_forecasting import TemporalFusionTransformer
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.metrics import QuantileLoss
+from pytorch_forecasting.tuning.tuner import Tuner
 
 optuna_logger = logging.getLogger("optuna")
 

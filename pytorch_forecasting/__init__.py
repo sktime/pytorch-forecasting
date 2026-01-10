@@ -2,7 +2,7 @@
 PyTorch Forecasting package for timeseries forecasting with PyTorch.
 """
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 from pytorch_forecasting.data import (
     EncoderNormalizer,
@@ -43,6 +43,7 @@ from pytorch_forecasting.models import (
     DeepAR,
     MultiEmbedding,
     NBeats,
+    NBeatsKAN,
     NHiTS,
     RecurrentNetwork,
     TemporalFusionTransformer,
@@ -73,6 +74,7 @@ __all__ = [
     "TemporalFusionTransformer",
     "TiDEModel",
     "NBeats",
+    "NBeatsKAN",
     "NHiTS",
     "Baseline",
     "DeepAR",

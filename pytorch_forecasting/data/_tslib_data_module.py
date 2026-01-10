@@ -1,5 +1,5 @@
 """
-Experimmental data module for integrating `tslib` time series deep learning library.
+Experimental data module for integrating `tslib` time series deep learning library.
 """
 
 from typing import Any, Optional, Union
@@ -70,17 +70,72 @@ class _TslibDataset(Dataset):
 
         Returns
         -------
-        x: dict[str, torch.Tensor]
-            A dictionary containing the processed data.
-        y: torch.Tensor
-            The target variable.
+        x : dict[str, torch.Tensor]
+            Dict containing processed inputs for the model, with the following keys:
+
+            * ``history_cont`` : torch.Tensor of shape
+                                    (context_length, n_history_cont_features)
+                Continuous features for the encoder (historical data).
+            * ``history_cat`` : torch.Tensor of shape
+                                    (context_length, n_history_cat_features)
+                Categorical features for the encoder (historical data).
+            * ``future_cont`` : torch.Tensor of shape
+                                    (prediction_length, n_future_cont_features)
+                Known continuous features for the decoder (future data).
+            * ``future_cat`` : torch.Tensor of shape
+                                    (prediction_length, n_future_cat_features)
+                Known categorical features for the decoder (future data).
+            * ``history_length`` : torch.Tensor of shape (1,)
+                Length of the encoder sequence.
+            * ``future_length`` : torch.Tensor of shape (1,)
+                Length of the decoder sequence.
+            * ``history_mask`` : torch.Tensor of shape (context_length,)
+                Boolean mask indicating valid encoder time points.
+            * ``future_mask`` : torch.Tensor of shape (prediction_length,)
+                Boolean mask indicating valid decoder time points.
+            * ``groups`` : torch.Tensor of shape (1,)
+                Group identifier for the time series instance.
+            * ``history_time_idx`` : torch.Tensor of shape (context_length,)
+                Time indices for the encoder sequence.
+            * ``future_time_idx`` : torch.Tensor of shape (prediction_length,)
+                Time indices for the decoder sequence.
+            * ``history_target`` : torch.Tensor of shape (context_length,)
+                Historical target values for the encoder sequence.
+            * ``future_target`` : torch.Tensor of shape (prediction_length,)
+                Target values for the decoder sequence.
+            * ``future_target_len`` : torch.Tensor of shape (1,)
+                Length of the decoder target sequence.
+
+            Optional fields, depending on dataset configuration:
+
+            * ``history_relative_time_idx`` : torch.Tensor of shape (context_length,),
+                                                optional
+                Relative time indices for the encoder sequence, present if
+                `add_relative_time_idx` is True.
+            * ``future_relative_time_idx`` : torch.Tensor of shape (prediction_length,),
+                                                optional
+                Relative time indices for the decoder sequence, present if
+                `add_relative_time_idx` is True.
+            * ``static_categorical_features`` : torch.Tensor of shape
+                                                (1, n_static_features), optional
+                Static categorical features if available.
+            * ``static_continuous_features`` : torch.Tensor of shape
+                                                (1, n_static_features), optional
+                Static continuous features if available.
+            * ``target_scale`` : torch.Tensor of shape (1,), optional
+                Scaling factor for the target values if provided by the dataset.
+
+        y : torch.Tensor or list of torch.Tensor
+            Target values for the decoder sequence.
+            If ``n_targets`` > 1, a list of tensors each of shape (prediction_length,)
+            is returned. Otherwise, a tensor of shape (prediction_length,) is returned.
         """
 
         series_idx, start_idx, context_length, prediction_length = self.windows[idx]
 
         processed_data = self.data_module._preprocess_data(series_idx)
 
-        continous_features = processed_data["features"]["continuous"]
+        continuous_features = processed_data["features"]["continuous"]
         categorical_features = processed_data["features"]["categorical"]
 
         end_idx = start_idx + context_length + prediction_length
@@ -89,17 +144,17 @@ class _TslibDataset(Dataset):
 
         metadata = self.data_module.metadata
 
-        history_cont = continous_features[history_indices]
+        history_cont = continuous_features[history_indices]
         history_cat = categorical_features[history_indices]
 
-        future_cont = continous_features[future_indices]
+        future_cont = continuous_features[future_indices]
         future_cat = categorical_features[future_indices]
 
         known_features = set(metadata["feature_names"]["known"])
         continuous_feature_names = metadata["feature_names"]["continuous"]
         categorical_feature_names = metadata["feature_names"]["categorical"]
 
-        # use masking to filter out known and unknow features.
+        # use masking to filter out known and unknown features.
         cont_known_mask = torch.tensor(
             [feat in known_features for feat in continuous_feature_names],
             dtype=torch.bool,
@@ -170,6 +225,10 @@ class _TslibDataset(Dataset):
             x["target_scale"] = processed_data["target_scale"]
 
         y = processed_data["target"][future_indices]
+        if self.data_module.n_targets > 1:
+            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
+        else:
+            y = y.squeeze(-1)
 
         return x, y
 
@@ -294,6 +353,7 @@ class TslibDataModule(LightningDataModule):
         self.window_stride = window_stride
 
         self.time_series_metadata = time_series_dataset.get_metadata()
+        self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
             if self.time_series_metadata["col_type"].get(col) == "C":
@@ -330,8 +390,8 @@ class TslibDataModule(LightningDataModule):
         if not has_continuous:
             warnings.warn(
                 "No continuous features found in the dataset. "
-                "Some models (TimeXer) requires continous features. "
-                "Consider adding continous featuresinto the dataset.",
+                "Some models (TimeXer) requires continuous features. "
+                "Consider adding continuous featuresinto the dataset.",
                 UserWarning,
             )
 
@@ -495,7 +555,7 @@ class TslibDataModule(LightningDataModule):
         -----
         - The target data `y` and features `x` are converted to torch.float32 tensors.
         - The timepoints before the cutoff time are masked off.
-        - Splits data into categorical and continous features, which are grouped based on the indices.
+        - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
 
         series = self.time_series_dataset[idx]
@@ -518,7 +578,7 @@ class TslibDataModule(LightningDataModule):
         else:
             features = torch.tensor(features, dtype=torch.float32)
 
-        # scaling and normlization
+        # scaling and normalization
         target_scale = {}
 
         categorical_features = (
@@ -774,8 +834,11 @@ class TslibDataModule(LightningDataModule):
 
         Returns
         -------
-        tuple[dict[str, torch.Tensor], torch.Tensor]
+        tuple[dict[str, torch.Tensor], torch.Tensor or list of torch.Tensor]
             A tuple containing the collated data and the target variable.
+            If the dataset has multiple targets, a list of tensors each of shape
+            (batch_size, prediction_length,). Otherwise, a single tensor of shape
+            (batch_size, prediction_length).
         """
 
         x_batch = {
@@ -816,5 +879,13 @@ class TslibDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        y_batch = torch.stack([y for _, y in batch])
+        if isinstance(batch[0][1], (list, tuple)):
+            num_targets = len(batch[0][1])
+            y_batch = []
+            for i in range(num_targets):
+                target_tensors = [sample_y[i] for _, sample_y in batch]
+                stacked_target = torch.stack(target_tensors)
+                y_batch.append(stacked_target)
+        else:
+            y_batch = torch.stack([y for _, y in batch])
         return x_batch, y_batch

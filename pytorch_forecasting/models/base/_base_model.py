@@ -8,9 +8,10 @@ from copy import deepcopy
 import inspect
 import logging
 import os
-from typing import Any, Callable, Literal, Optional, Union
+from typing import IO, Any, Callable, Literal, Optional, Union
 import warnings
 
+from lightning.fabric.utilities.types import _MAP_LOCATION_TYPE, _PATH
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import BasePredictionWriter, LearningRateFinder
@@ -449,7 +450,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
           need to pass additional arguments to ``forward`` by default.
 
     To implement your own architecture, it is best to
-    go throught the :ref:`Using custom data and implementing custom models <new-model-tutorial>` and
+    go through the :ref:`Using custom data and implementing custom models <new-model-tutorial>` and
     to look at existing ones to understand what might be a good approach.
 
     Example:
@@ -506,7 +507,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
             reduce_on_plateau_reduction (float): reduction in learning rate when encountering plateau. Defaults to 2.0.
-            reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
+            reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateau learning rate scheduler.
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
             optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
@@ -695,7 +696,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if default_loss is None:
             default_loss = MAE()
         loss = kwargs.get("loss", default_loss)
-        if n_targets > 1:  # try to infer number of ouput sizes
+        if n_targets > 1:  # try to infer number of output sizes
             if not isinstance(loss, MultiLoss):
                 loss = MultiLoss([deepcopy(loss)] * n_targets)
                 new_kwargs["loss"] = loss
@@ -777,9 +778,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): batch number
             prediction_kwargs (Dict[str, Any], optional): arguments to pass to
-                :py:meth:`~pytorch_forcasting.models.base_model.BaseModel.to_prediction`. Defaults to {}.
+                :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_prediction`. Defaults to {}.
             quantiles_kwargs (Dict[str, Any], optional):
-                :py:meth:`~pytorch_forcasting.models.base_model.BaseModel.to_quantiles`. Defaults to {}.
+                :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_quantiles`. Defaults to {}.
 
         Returns:
             Dict[str, Any]: log dictionary to be returned by training and validation steps
@@ -808,6 +809,30 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 quantiles_kwargs=quantiles_kwargs,
             )
         return {}
+
+    @classmethod
+    def load_from_checkpoint(
+        cls,
+        checkpoint_path: Union[_PATH, IO],
+        map_location: _MAP_LOCATION_TYPE = None,
+        hparams_file: Optional[_PATH] = None,
+        strict: Optional[bool] = None,
+        **kwargs: Any,
+    ):
+        from skbase.utils.dependencies import _check_soft_dependencies
+
+        if not _check_soft_dependencies("lightning<2.6", severity="none"):
+            if "weights_only" not in kwargs:
+                kwargs["weights_only"] = False
+        else:
+            kwargs.pop("weights_only")
+        return super().load_from_checkpoint(
+            checkpoint_path,
+            map_location=map_location,
+            hparams_file=hparams_file,
+            strict=strict,
+            **kwargs,
+        )
 
     def step(
         self,
@@ -857,7 +882,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
 
         if self.training and len(self.hparams.monotone_constraints) > 0:
-            # calculate gradient with respect to continous decoder features
+            # calculate gradient with respect to continuous decoder features
             x["decoder_cont"].requires_grad_(True)
             assert not torch._C._get_cudnn_enabled(), (
                 "To use monotone constraints, wrap model and training in context "
@@ -1048,7 +1073,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def on_epoch_end(self, outputs):
         """
-        Run at epoch end for training or validation. Can be overriden in models.
+        Run at epoch end for training or validation. Can be overridden in models.
         """
         pass
 
@@ -1090,7 +1115,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): current batch index
-            **kwargs: paramters to pass to ``plot_prediction``
+            **kwargs: parameters to pass to ``plot_prediction``
         """
         # log single prediction figure
         if (
@@ -1157,7 +1182,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             idx: index of prediction to plot
             add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
                 bool indicating if to use loss metric or tensor which contains losses for all samples.
-                Calcualted losses are determined without weights. Default to False.
+                Calculated losses are determined without weights. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
             quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
@@ -1276,7 +1301,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     loss = add_loss_to_title
                 else:
                     raise ValueError(
-                        f"add_loss_to_title '{add_loss_to_title}'' is unkown"
+                        f"add_loss_to_title '{add_loss_to_title}'' is unknown"
                     )
                 if isinstance(loss, MASE):
                     loss_value = loss(
@@ -1392,7 +1417,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         elif self.hparams.optimizer == "ranger":
             if not ptopt_in_env:
                 raise ImportError(
-                    "optimizer 'ranger' requires pytorch_optimizer in the evironment. "
+                    "optimizer 'ranger' requires pytorch_optimizer in the environment. "
                     "Please install pytorch_optimizer with"
                     "`pip install pytorch_optimizer`."
                 )
@@ -1756,7 +1781,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 * "series": values are average prediction and index are probed values
                 * "dataframe": columns are as obtained by the `dataset.x_to_index()` method,
                     prediction (which is the mean prediction over the time horizon),
-                    normalized_prediction (which are predictions devided by the prediction for the first probed value)
+                    normalized_prediction (which are predictions divided by the prediction for the first probed value)
                     the variable name for the probed values
                 * "raw": outputs a tensor of shape len(values) x prediction_shape
 
@@ -1940,7 +1965,7 @@ class BaseModelWithCovariates(BaseModel):
         """Mapping of categorical variables to categorical groups"""
         groups = {}
         for group_name, sublist in self.hparams.categorical_groups.items():
-            groups.update({name: group_name for name in sublist})
+            groups.update(dict.fromkeys(sublist, group_name))
         return groups
 
     @classmethod
@@ -2201,7 +2226,7 @@ class BaseModelWithCovariates(BaseModel):
                 Defaults to None.
 
         Raises:
-            ValueError: if the variable name is unkown
+            ValueError: if the variable name is unknown
 
         Returns:
             Union[Dict[str, plt.Figure], plt.Figure]: matplotlib figure
@@ -2634,7 +2659,7 @@ class AutoRegressiveBaseModel(BaseModel):
             idx: index of prediction to plot
             add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
                 bool indicating if to use loss metric or tensor which contains losses for all samples.
-                Calcualted losses are determined without weights. Default to False.
+                Calculated losses are determined without weights. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
             quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.

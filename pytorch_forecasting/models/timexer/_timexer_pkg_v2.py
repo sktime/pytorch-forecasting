@@ -2,10 +2,10 @@
 Metadata container for TimeXer v2.
 """
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class TimeXer_pkg_v2(_BasePtForecasterV2):
+class TimeXer_pkg_v2(Base_pkg):
     """TimeXer metadata container."""
 
     _tags = {
@@ -25,77 +25,11 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
         return TimeXer
 
     @classmethod
-    def _get_test_datamodule_from(cls, trainer_kwargs):
-        """Create test dataloaders from trainer_kwargs - following v1 pattern."""
+    def get_datamodule_cls(cls):
+        """Get the underlying DataModule class."""
         from pytorch_forecasting.data._tslib_data_module import TslibDataModule
-        from pytorch_forecasting.tests._data_scenarios import (
-            data_with_covariates_v2,
-            make_datasets_v2,
-        )
 
-        data_with_covariates = data_with_covariates_v2()
-
-        data_loader_default_kwargs = dict(
-            target="target",
-            group_ids=["agency_encoded", "sku_encoded"],
-            add_relative_time_idx=True,
-        )
-
-        data_loader_kwargs = trainer_kwargs.get("data_loader_kwargs", {})
-        data_loader_default_kwargs.update(data_loader_kwargs)
-
-        datasets_info = make_datasets_v2(
-            data_with_covariates, **data_loader_default_kwargs
-        )
-
-        training_dataset = datasets_info["training_dataset"]
-        validation_dataset = datasets_info["validation_dataset"]
-
-        context_length = data_loader_kwargs.get("context_length", 12)
-        prediction_length = data_loader_kwargs.get("prediction_length", 4)
-        batch_size = data_loader_kwargs.get("batch_size", 2)
-
-        train_datamodule = TslibDataModule(
-            time_series_dataset=training_dataset,
-            context_length=context_length,
-            prediction_length=prediction_length,
-            add_relative_time_idx=data_loader_kwargs.get("add_relative_time_idx", True),
-            batch_size=batch_size,
-            train_val_test_split=(0.8, 0.2, 0.0),
-        )
-
-        val_datamodule = TslibDataModule(
-            time_series_dataset=validation_dataset,
-            context_length=context_length,
-            prediction_length=prediction_length,
-            add_relative_time_idx=data_loader_kwargs.get("add_relative_time_idx", True),
-            batch_size=batch_size,
-            train_val_test_split=(0.0, 1.0, 0.0),
-        )
-
-        test_datamodule = TslibDataModule(
-            time_series_dataset=validation_dataset,
-            context_length=context_length,
-            prediction_length=prediction_length,
-            add_relative_time_idx=data_loader_kwargs.get("add_relative_time_idx", True),
-            batch_size=1,
-            train_val_test_split=(0.0, 0.0, 1.0),
-        )
-
-        train_datamodule.setup("fit")
-        val_datamodule.setup("fit")
-        test_datamodule.setup("test")
-
-        train_dataloader = train_datamodule.train_dataloader()
-        val_dataloader = val_datamodule.val_dataloader()
-        test_dataloader = test_datamodule.test_dataloader()
-
-        return {
-            "train": train_dataloader,
-            "val": val_dataloader,
-            "test": test_dataloader,
-            "data_module": train_datamodule,
-        }
+        return TslibDataModule
 
     @classmethod
     def get_test_train_params(cls):
@@ -109,17 +43,19 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        return [
+        from pytorch_forecasting.metrics import QuantileLoss
+
+        params = [
             {},
             dict(
                 hidden_size=64,
                 n_heads=4,
             ),
-            dict(data_loader_kwargs=dict(context_length=12, prediction_length=3)),
+            dict(datamodule_cfg=dict(context_length=12, prediction_length=3)),
             dict(
                 hidden_size=32,
                 n_heads=2,
-                data_loader_kwargs=dict(
+                datamodule_cfg=dict(
                     context_length=12,
                     prediction_length=3,
                     add_relative_time_idx=False,
@@ -128,7 +64,7 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
             dict(
                 hidden_size=128,
                 patch_length=12,
-                data_loader_kwargs=dict(context_length=16, prediction_length=4),
+                datamodule_cfg=dict(context_length=16, prediction_length=4),
             ),
             dict(
                 n_heads=2,
@@ -154,9 +90,28 @@ class TimeXer_pkg_v2(_BasePtForecasterV2):
                 factor=2,
                 activation="relu",
                 dropout=0.05,
-                data_loader_kwargs=dict(
+                datamodule_cfg=dict(
                     context_length=16,
                     prediction_length=4,
                 ),
+                loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+            ),
+            dict(
+                hidden_size=32,
+                patch_length=1,
+                n_heads=4,
+                e_layers=1,
+                d_ff=32,
+                dropout=0.1,
+                use_efficient_attention=True,
             ),
         ]
+        default_dm_cfg = {"context_length": 12, "prediction_length": 4}
+
+        for param in params:
+            current_dm_cfg = param.get("datamodule_cfg", {})
+            default_dm_cfg.update(current_dm_cfg)
+
+            param["datamodule_cfg"] = default_dm_cfg
+
+        return params

@@ -1,5 +1,5 @@
 """
-Basic test frameowrk for TimeXer v2 model.
+Basic test framework for TimeXer v2 model.
 TODO:
 - Add tests for testing the scaling of features, once that is implemented in the D1/D2
   level.
@@ -194,8 +194,8 @@ def basic_metadata(basic_tslib_data_module):
     return basic_tslib_data_module.metadata
 
 
-@pytest.fixture
-def model(basic_metadata):
+@pytest.fixture(params=[False, True], ids=["einsum_attn", "efficient_attn"])
+def model(request, basic_metadata):
     """Initialize a TimeXer model for testing."""
     return TimeXer(
         loss=MAE(),
@@ -215,6 +215,7 @@ def model(basic_metadata):
             "patience": 5,
         },
         metadata=basic_metadata,
+        use_efficient_attention=request.param,
     )
 
 
@@ -297,7 +298,7 @@ def test_quantile_predictions(basic_metadata):
         output = model(sample_input_data)
 
     predictions = output["prediction"]
-    assert predictions.shape == (batch_size, 8, 1, 3)
+    assert predictions.shape == (batch_size, 8, 3)
 
 
 def test_missing_history_target_handling(basic_metadata):
@@ -334,15 +335,10 @@ def test_missing_history_target_handling(basic_metadata):
 def test_endogenous_exogenous_variable_selection(basic_metadata):
     """Test explicit endogenous and exogenous variable selection in TimeXer model."""
 
-    endo_names = basic_metadata["feature_names"]["continuous"][0]
-    exog_names = basic_metadata["feature_names"]["continuous"][1]
-
     model = TimeXer(
         loss=MAE(),
         hidden_size=64,
         n_heads=8,
-        endogenous_vars=[endo_names],
-        exogenous_vars=[exog_names],
         e_layers=2,
         metadata=basic_metadata,
     )
