@@ -12,7 +12,6 @@ from torch.distributions import (
 )
 import torch.nn.functional as F
 
-
 DeepConvexFlow = _safe_import("cpflows.flows.DeepConvexFlow")
 SequentialFlow = _safe_import("cpflows.flows.SequentialFlow")
 
