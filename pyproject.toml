@@ -166,6 +166,7 @@ extend-ignore = [
   "C409", # Unnecessary list passed to tuple() - rewrite as a tuple literal.
   "F401", # unused imports
   "S101", # use of assert
+  "UP038", # isinstance(x, (a, b)) is not allowed
 ]
 
 [tool.ruff.lint.isort]

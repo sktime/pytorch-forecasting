@@ -60,7 +60,7 @@ def optimize_hyperparameters(
     trainer_kwargs: dict[str, Any] = {},
     log_dir: str = "lightning_logs",
     study=None,
-    verbose: Union[int, bool] = None,
+    verbose: int | bool = None,
     pruner=None,
     **kwargs,
 ):
