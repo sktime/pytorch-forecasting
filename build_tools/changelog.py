@@ -153,8 +153,8 @@ def render_row(pr):
     print(
         "*",
         pr["title"],
-        f"([#{pr['number']}]({pr['html_url']}))",
-        f"[@{pr['user']['login']}]({pr['user']['html_url']})",
+        f"(#{pr['number']})",
+        f"@{pr['user']['login']}",
     )
 
 
