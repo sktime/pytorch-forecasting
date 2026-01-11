@@ -166,7 +166,7 @@ def render_changelog(prs, assigned):
     for title, _ in assigned.items():
         pr_group = [prs[i] for i in assigned[title]]
         if pr_group:
-            print(f"\n##{title}\n")
+            print(f"\n## {title}\n")
 
             for pr in sorted(pr_group, key=lambda x: parser.parse(x["merged_at"])):
                 render_row(pr)
