@@ -3,12 +3,12 @@ Timeseries models share a number of common characteristics. This module implemen
 """  # noqa: E501
 
 from collections import namedtuple
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from copy import deepcopy
 import inspect
 import logging
 import os
-from typing import IO, Any, Callable, Literal, Optional, Union
+from typing import IO, Any, Literal, Optional, Union
 import warnings
 
 from lightning.fabric.utilities.types import _MAP_LOCATION_TYPE, _PATH
@@ -134,12 +134,10 @@ def _concatenate_output(
     output: list[
         dict[
             str,
-            list[Union[list[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]],
+            list[list[torch.Tensor] | torch.Tensor | bool | int | str | np.ndarray],
         ]
     ],
-) -> dict[
-    str, Union[torch.Tensor, np.ndarray, list[Union[torch.Tensor, int, bool, str]]]
-]:
+) -> dict[str, torch.Tensor | np.ndarray | list[torch.Tensor | int | bool | str]]:
     """
     Concatenate multiple batches of output dictionary.
 
@@ -217,14 +215,14 @@ class PredictCallback(BasePredictionWriter):
     # see base class predict function for documentation of parameters
     def __init__(
         self,
-        mode: Union[str, tuple[str, str]] = "prediction",
+        mode: str | tuple[str, str] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         return_y: bool = False,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         return_x: bool = False,
         mode_kwargs: dict[str, Any] = None,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         predict_kwargs: dict[str, Any] = None,
     ) -> None:
         super().__init__(write_interval=write_interval)
@@ -475,9 +473,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
     def __init__(
         self,
         dataset_parameters: dict[str, Any] = None,
-        log_interval: Union[int, float] = -1,
-        log_val_interval: Union[int, float] = None,
-        learning_rate: Union[float, list[float]] = 1e-3,
+        log_interval: int | float = -1,
+        log_val_interval: int | float = None,
+        learning_rate: float | list[float] = 1e-3,
         log_gradient_flow: bool = False,
         loss: Metric = SMAPE(),
         logging_metrics: nn.ModuleList = nn.ModuleList([]),
@@ -629,9 +627,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def transform_output(
         self,
-        prediction: Union[torch.Tensor, list[torch.Tensor]],
-        target_scale: Union[torch.Tensor, list[torch.Tensor]],
-        loss: Optional[Metric] = None,
+        prediction: torch.Tensor | list[torch.Tensor],
+        target_scale: torch.Tensor | list[torch.Tensor],
+        loss: Metric | None = None,
     ) -> torch.Tensor:
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
@@ -766,8 +764,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         y: tuple[torch.Tensor, torch.Tensor],
         out: dict[str, torch.Tensor],
         batch_idx: int,
-        prediction_kwargs: Optional[dict[str, Any]] = None,
-        quantiles_kwargs: Optional[dict[str, Any]] = None,
+        prediction_kwargs: dict[str, Any] | None = None,
+        quantiles_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Create the log used in the training and validation step.
@@ -813,10 +811,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
     @classmethod
     def load_from_checkpoint(
         cls,
-        checkpoint_path: Union[_PATH, IO],
+        checkpoint_path: _PATH | IO,
         map_location: _MAP_LOCATION_TYPE = None,
-        hparams_file: Optional[_PATH] = None,
-        strict: Optional[bool] = None,
+        hparams_file: _PATH | None = None,
+        strict: bool | None = None,
         **kwargs: Any,
     ):
         from skbase.utils.dependencies import _check_soft_dependencies
@@ -1025,8 +1023,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
 
     def forward(
-        self, x: dict[str, Union[torch.Tensor, list[torch.Tensor]]]
-    ) -> dict[str, Union[torch.Tensor, list[torch.Tensor]]]:
+        self, x: dict[str, torch.Tensor | list[torch.Tensor]]
+    ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
         """
         Network forward pass.
 
@@ -1167,11 +1165,11 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         x: dict[str, torch.Tensor],
         out: dict[str, torch.Tensor],
         idx: int = 0,
-        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
+        add_loss_to_title: Metric | torch.Tensor | bool = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Optional[dict[str, Any]] = None,
-        prediction_kwargs: Optional[dict[str, Any]] = None,
+        quantiles_kwargs: dict[str, Any] | None = None,
+        prediction_kwargs: dict[str, Any] | None = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -1661,8 +1659,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def predict(
         self,
-        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
-        mode: Union[str, tuple[str, str]] = "prediction",
+        data: DataLoader | pd.DataFrame | TimeSeriesDataSet,
+        mode: str | tuple[str, str] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         batch_size: int = 64,
@@ -1671,9 +1669,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         return_x: bool = False,
         return_y: bool = False,
         mode_kwargs: dict[str, Any] = None,
-        trainer_kwargs: Optional[dict[str, Any]] = None,
+        trainer_kwargs: dict[str, Any] | None = None,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         **kwargs,
     ) -> Prediction:
         """
@@ -1761,14 +1759,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def predict_dependency(
         self,
-        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
+        data: DataLoader | pd.DataFrame | TimeSeriesDataSet,
         variable: str,
         values: Iterable,
         mode: str = "dataframe",
         target="decoder",
         show_progress_bar: bool = False,
         **kwargs,
-    ) -> Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]:
+    ) -> np.ndarray | torch.Tensor | pd.Series | pd.DataFrame:
         """
         Predict partial dependency.
 
@@ -2406,10 +2404,10 @@ class AutoRegressiveBaseModel(BaseModel):
     def output_to_prediction(
         self,
         normalized_prediction_parameters: torch.Tensor,
-        target_scale: Union[list[torch.Tensor], torch.Tensor],
+        target_scale: list[torch.Tensor] | torch.Tensor,
         n_samples: int = 1,
         **kwargs,
-    ) -> tuple[Union[list[torch.Tensor], torch.Tensor], torch.Tensor]:
+    ) -> tuple[list[torch.Tensor] | torch.Tensor, torch.Tensor]:
         """
         Convert network output to rescaled and normalized prediction.
 
@@ -2477,13 +2475,13 @@ class AutoRegressiveBaseModel(BaseModel):
     def decode_autoregressive(
         self,
         decode_one: Callable,
-        first_target: Union[list[torch.Tensor], torch.Tensor],
+        first_target: list[torch.Tensor] | torch.Tensor,
         first_hidden_state: Any,
-        target_scale: Union[list[torch.Tensor], torch.Tensor],
+        target_scale: list[torch.Tensor] | torch.Tensor,
         n_decoder_steps: int,
         n_samples: int = 1,
         **kwargs,
-    ) -> Union[list[torch.Tensor], torch.Tensor]:
+    ) -> list[torch.Tensor] | torch.Tensor:
         """
         Make predictions in auto-regressive manner.
 
@@ -2644,11 +2642,11 @@ class AutoRegressiveBaseModel(BaseModel):
         x: dict[str, torch.Tensor],
         out: dict[str, torch.Tensor],
         idx: int = 0,
-        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
+        add_loss_to_title: Metric | torch.Tensor | bool = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Optional[dict[str, Any]] = None,
-        prediction_kwargs: Optional[dict[str, Any]] = None,
+        quantiles_kwargs: dict[str, Any] | None = None,
+        prediction_kwargs: dict[str, Any] | None = None,
     ):
         """
         Plot prediction of prediction vs actuals
