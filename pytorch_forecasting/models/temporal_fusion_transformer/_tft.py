@@ -141,30 +141,30 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         hidden_size: int = 16,
         lstm_layers: int = 1,
         dropout: float = 0.1,
-        output_size: Union[int, list[int]] = 7,
+        output_size: int | list[int] = 7,
         loss: MultiHorizonMetric = None,
         attention_head_size: int = 4,
         max_encoder_length: int = 10,
-        static_categoricals: Optional[list[str]] = None,
-        static_reals: Optional[list[str]] = None,
-        time_varying_categoricals_encoder: Optional[list[str]] = None,
-        time_varying_categoricals_decoder: Optional[list[str]] = None,
-        categorical_groups: Optional[Union[dict, list[str]]] = None,
-        time_varying_reals_encoder: Optional[list[str]] = None,
-        time_varying_reals_decoder: Optional[list[str]] = None,
-        x_reals: Optional[list[str]] = None,
-        x_categoricals: Optional[list[str]] = None,
+        static_categoricals: list[str] | None = None,
+        static_reals: list[str] | None = None,
+        time_varying_categoricals_encoder: list[str] | None = None,
+        time_varying_categoricals_decoder: list[str] | None = None,
+        categorical_groups: dict | list[str] | None = None,
+        time_varying_reals_encoder: list[str] | None = None,
+        time_varying_reals_decoder: list[str] | None = None,
+        x_reals: list[str] | None = None,
+        x_categoricals: list[str] | None = None,
         hidden_continuous_size: int = 8,
-        hidden_continuous_sizes: Optional[dict[str, int]] = None,
-        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
-        embedding_paddings: Optional[list[str]] = None,
-        embedding_labels: Optional[dict[str, np.ndarray]] = None,
+        hidden_continuous_sizes: dict[str, int] | None = None,
+        embedding_sizes: dict[str, tuple[int, int]] | None = None,
+        embedding_paddings: list[str] | None = None,
+        embedding_labels: dict[str, np.ndarray] | None = None,
         learning_rate: float = 1e-3,
-        log_interval: Union[int, float] = -1,
-        log_val_interval: Union[int, float] = None,
+        log_interval: int | float = -1,
+        log_val_interval: int | float = None,
         log_gradient_flow: bool = False,
         reduce_on_plateau_patience: int = 1000,
-        monotone_constraints: Optional[dict[str, int]] = None,
+        monotone_constraints: dict[str, int] | None = None,
         share_single_variable_networks: bool = False,
         causal_attention: bool = True,
         logging_metrics: nn.ModuleList = None,
@@ -723,7 +723,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         """  # noqa: E501
         # take attention and concatenate if a list to proper attention object
         batch_size = len(out["decoder_attention"])
-        if isinstance(out["decoder_attention"], (list, tuple)):
+        if isinstance(out["decoder_attention"], list | tuple):
             # start with decoder attention
             # assume issue is in last dimension, we need to find max
             max_last_dimension = max(x.size(-1) for x in out["decoder_attention"])
@@ -748,7 +748,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
                 decoder_mask[..., None, None].expand_as(decoder_attention)
             ] = float("nan")
 
-        if isinstance(out["encoder_attention"], (list, tuple)):
+        if isinstance(out["encoder_attention"], tuple | list):
             # same game for encoder attention
             # create new attention tensor into which we will scatter
             first_elm = out["encoder_attention"][0]

@@ -50,22 +50,22 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         hidden_size: int = 10,
         rnn_layers: int = 2,
         dropout: float = 0.1,
-        static_categoricals: Optional[list[str]] = None,
-        static_reals: Optional[list[str]] = None,
-        time_varying_categoricals_encoder: Optional[list[str]] = None,
-        time_varying_categoricals_decoder: Optional[list[str]] = None,
-        categorical_groups: Optional[dict[str, list[str]]] = None,
-        time_varying_reals_encoder: Optional[list[str]] = None,
-        time_varying_reals_decoder: Optional[list[str]] = None,
-        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
-        embedding_paddings: Optional[list[str]] = None,
-        embedding_labels: Optional[dict[str, np.ndarray]] = None,
-        x_reals: Optional[list[str]] = None,
-        x_categoricals: Optional[list[str]] = None,
+        static_categoricals: list[str] | None = None,
+        static_reals: list[str] | None = None,
+        time_varying_categoricals_encoder: list[str] | None = None,
+        time_varying_categoricals_decoder: list[str] | None = None,
+        categorical_groups: dict[str, list[str]] | None = None,
+        time_varying_reals_encoder: list[str] | None = None,
+        time_varying_reals_decoder: list[str] | None = None,
+        embedding_sizes: dict[str, tuple[int, int]] | None = None,
+        embedding_paddings: list[str] | None = None,
+        embedding_labels: dict[str, np.ndarray] | None = None,
+        x_reals: list[str] | None = None,
+        x_categoricals: list[str] | None = None,
         n_validation_samples: int = None,
         n_plotting_samples: int = None,
-        target: Union[str, list[str]] = None,
-        target_lags: Optional[dict[str, list[int]]] = None,
+        target: str | list[str] = None,
+        target_lags: dict[str, list[int]] | None = None,
         loss: DistributionLoss = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -176,7 +176,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 targeti in time_varying_reals_encoder
             ), f"target {targeti} has to be real"  # todo: remove this restriction
         assert (isinstance(target, str) and isinstance(loss, DistributionLoss)) or (
-            isinstance(target, (list, tuple))
+            isinstance(target, tuple | list)
             and isinstance(loss, MultiLoss)
             and len(loss) == len(target)
         ), "number of targets should be equivalent to number of loss metrics"
@@ -436,8 +436,8 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
 
     def predict(
         self,
-        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
-        mode: Union[str, tuple[str, str]] = "prediction",
+        data: DataLoader | pd.DataFrame | TimeSeriesDataSet,
+        mode: str | tuple[str, str] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         batch_size: int = 64,
@@ -446,9 +446,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         return_x: bool = False,
         return_y: bool = False,
         mode_kwargs: dict[str, Any] = None,
-        trainer_kwargs: Optional[dict[str, Any]] = None,
+        trainer_kwargs: dict[str, Any] | None = None,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         n_samples: int = 100,
         **kwargs,
     ) -> Prediction:

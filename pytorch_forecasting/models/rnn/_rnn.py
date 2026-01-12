@@ -42,21 +42,21 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         hidden_size: int = 10,
         rnn_layers: int = 2,
         dropout: float = 0.1,
-        static_categoricals: Optional[list[str]] = None,
-        static_reals: Optional[list[str]] = None,
-        time_varying_categoricals_encoder: Optional[list[str]] = None,
-        time_varying_categoricals_decoder: Optional[list[str]] = None,
-        categorical_groups: Optional[dict[str, list[str]]] = None,
-        time_varying_reals_encoder: Optional[list[str]] = None,
-        time_varying_reals_decoder: Optional[list[str]] = None,
-        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
-        embedding_paddings: Optional[list[str]] = None,
-        embedding_labels: Optional[dict[str, np.ndarray]] = None,
-        x_reals: Optional[list[str]] = None,
-        x_categoricals: Optional[list[str]] = None,
-        output_size: Union[int, list[int]] = 1,
-        target: Union[str, list[str]] = None,
-        target_lags: Optional[dict[str, list[int]]] = None,
+        static_categoricals: list[str] | None = None,
+        static_reals: list[str] | None = None,
+        time_varying_categoricals_encoder: list[str] | None = None,
+        time_varying_categoricals_decoder: list[str] | None = None,
+        categorical_groups: dict[str, list[str]] | None = None,
+        time_varying_reals_encoder: list[str] | None = None,
+        time_varying_reals_decoder: list[str] | None = None,
+        embedding_sizes: dict[str, tuple[int, int]] | None = None,
+        embedding_paddings: list[str] | None = None,
+        embedding_labels: dict[str, np.ndarray] | None = None,
+        x_reals: list[str] | None = None,
+        x_categoricals: list[str] | None = None,
+        output_size: int | list[int] = 1,
+        target: str | list[str] = None,
+        target_lags: dict[str, list[int]] | None = None,
         loss: MultiHorizonMetric = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
@@ -152,7 +152,7 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
                 targeti in time_varying_reals_encoder
             ), f"target {targeti} has to be real"  # todo: remove this restriction
         assert (isinstance(target, str) and isinstance(loss, MultiHorizonMetric)) or (
-            isinstance(target, (list, tuple))
+            isinstance(target, tuple | list)
             and isinstance(loss, MultiLoss)
             and len(loss) == len(target)
         ), "number of targets should be equivalent to number of loss metrics"

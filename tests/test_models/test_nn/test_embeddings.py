@@ -31,7 +31,7 @@ def test_MultiEmbedding(kwargs):
                 o.size(1) == embedding.output_size[name]
             ), "Output size should be equal to number of embedding dimensions"
     elif isinstance(out, torch.Tensor):
-        assert isinstance(kwargs["embedding_sizes"], (tuple, list))
+        assert isinstance(kwargs["embedding_sizes"], tuple | list)
         assert (
             out.size(1) == embedding.output_size
         ), "Output size should be equal to number of summed embedding dimensions"

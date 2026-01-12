@@ -124,7 +124,7 @@ class TimeXer_pkg(_BasePtForecaster):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
 
         dwc = dwc.copy()
-        if isinstance(loss, (TweedieLoss, PoissonLoss)):
+        if isinstance(loss, TweedieLoss | PoissonLoss):
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
         else:
             dwc["target"] = dwc["volume"]

@@ -16,7 +16,7 @@ class QuantileLoss(MultiHorizonMetric):
 
     def __init__(
         self,
-        quantiles: Optional[list[float]] = None,
+        quantiles: list[float] | None = None,
         **kwargs,
     ):
         """
