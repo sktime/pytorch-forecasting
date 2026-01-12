@@ -2,7 +2,8 @@
 Experimental data module for integrating `tslib` time series deep learning library.
 """
 
-from typing import Any, Optional, Union
+from collections.abc import Callable
+from typing import Any, Optional
 import warnings
 
 from lightning.pytorch import LightningDataModule
@@ -308,7 +309,7 @@ class TslibDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
-        collate_fn: callable | None = None,
+        collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
