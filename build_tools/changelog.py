@@ -10,7 +10,7 @@ HEADERS = {
 if os.getenv("GITHUB_TOKEN") is not None:
     HEADERS["Authorization"] = f"token {os.getenv('GITHUB_TOKEN')}"
 
-OWNER = "jdb78"
+OWNER = "sktime"
 REPO = "pytorch-forecasting"
 GITHUB_REPOS = "https://api.github.com/repos"
 
@@ -118,7 +118,7 @@ def render_contributors(prs: list, fmt: str = "rst"):
     """Find unique authors and print a list in  given format."""
     authors = sorted({pr["user"]["login"] for pr in prs}, key=lambda x: x.lower())
 
-    header = "Contributors"
+    header = "All Contributors"
     if fmt == "github":
         print(f"### {header}")
         print(", ".join(f"@{user}" for user in authors))
@@ -152,9 +152,9 @@ def render_row(pr):
     """Render a single row with PR in restructuredText format."""
     print(
         "*",
-        pr["title"].replace("`", "``"),
-        f"(:pr:`{pr['number']}`)",
-        f":user:`{pr['user']['login']}`",
+        pr["title"],
+        f"(#{pr['number']})",
+        f"@{pr['user']['login']}",
     )
 
 
@@ -166,8 +166,7 @@ def render_changelog(prs, assigned):
     for title, _ in assigned.items():
         pr_group = [prs[i] for i in assigned[title]]
         if pr_group:
-            print(f"\n{title}")
-            print("~" * len(title), end="\n\n")
+            print(f"\n### {title}\n")
 
             for pr in sorted(pr_group, key=lambda x: parser.parse(x["merged_at"])):
                 render_row(pr)
@@ -187,7 +186,7 @@ if __name__ == "__main__":
     assigned = assign_prs(pulls, categories)
     render_changelog(pulls, assigned)
     print()
-    render_contributors(pulls)
+    render_contributors(pulls, fmt="github")
 
     release = fetch_latest_release()
     diff = github_compare_tags(release["tag_name"])
