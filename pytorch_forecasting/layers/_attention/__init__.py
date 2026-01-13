@@ -7,5 +7,6 @@ from pytorch_forecasting.layers._attention._full_attention import (
     FullAttention,
     TriangularCausalMask,
 )
+from pytorch_forecasting.layers._attention._auto_correlation import AutoCorrelation
 
-__all__ = ["AttentionLayer", "FullAttention", "TriangularCausalMask"]
+__all__ = ["AttentionLayer", "FullAttention", "TriangularCausalMask", "AutoCorrelation"]
