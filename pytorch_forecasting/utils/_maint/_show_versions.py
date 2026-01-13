@@ -82,7 +82,7 @@ def _get_deps_info(deps=None, source="distributions"):
         deps = ["pytorch-forecasting"]
 
     if source == "distributions":
-        from pytorch_forecasting.utils._dependencies import _get_installed_packages
+        from skbase.utils.dependencies._dependencies import _get_installed_packages
 
         KEY_ALIAS = {"sklearn": "scikit-learn", "skbase": "scikit-base"}
 

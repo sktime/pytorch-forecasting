@@ -21,6 +21,7 @@ import numpy as np
 from numpy import iterable
 import pandas as pd
 import scipy.stats
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 import torch.nn as nn
 from torch.nn.utils import rnn
@@ -62,10 +63,7 @@ from pytorch_forecasting.utils import (
     to_list,
 )
 from pytorch_forecasting.utils._classproperty import classproperty
-from pytorch_forecasting.utils._dependencies import (
-    _check_matplotlib,
-    _get_installed_packages,
-)
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 # todo: compile models
 
@@ -1378,7 +1376,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Tuple[List]: first entry is list of optimizers and second is list of schedulers
         """  # noqa: E501
-        ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
+        ptopt_in_env = _check_soft_dependencies("pytorch_optimizer", severity="none")
         # either set a schedule of lrs or find it dynamically
         if self.hparams.optimizer_params is None:
             optimizer_params = {}
