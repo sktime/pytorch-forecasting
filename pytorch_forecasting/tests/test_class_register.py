@@ -53,7 +53,7 @@ def get_test_classes_for_obj(obj):
 
     if hasattr(obj, "get_class_tag"):
         obj_scitypes = obj.get_class_tag("object_type")
-        if not isinstance(obj_scitypes, (list, tuple, set)):
+        if not isinstance(obj_scitypes, list | tuple | set):
             obj_scitypes = [obj_scitypes]
     else:
         obj_scitypes = []

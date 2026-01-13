@@ -201,7 +201,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
 
             # check that output is of correct shape
             def check(x):
-                if isinstance(x, (tuple, list)):
+                if isinstance(x, tuple | list):
                     for xi in x:
                         check(xi)
                 elif isinstance(x, dict):

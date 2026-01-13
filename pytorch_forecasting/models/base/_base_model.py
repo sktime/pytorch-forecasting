@@ -156,7 +156,7 @@ def _concatenate_output(
         if isinstance(v0, torch.Tensor):
             output_cat[name] = _torch_cat_na([out[name] for out in output])
         # concatenate list of tensors
-        elif isinstance(v0, (tuple, list)) and len(v0) > 0:
+        elif isinstance(v0, tuple | list) and len(v0) > 0:
             output_cat[name] = []
             for target_id in range(len(v0)):
                 if isinstance(v0[target_id], torch.Tensor):
@@ -262,7 +262,7 @@ class PredictCallback(BasePredictionWriter):
         lengths = x["decoder_lengths"]
 
         nan_mask = create_mask(lengths.max(), lengths)
-        if isinstance(self.mode, (tuple, list)):
+        if isinstance(self.mode, tuple | list):
             if self.mode[0] == "raw":
                 out = out[self.mode[1]]
             else:
@@ -273,7 +273,7 @@ class PredictCallback(BasePredictionWriter):
         elif self.mode == "prediction":
             out = pl_module.to_prediction(out, **self.mode_kwargs)
             # mask non-predictions
-            if isinstance(out, (list, tuple)):
+            if isinstance(out, list | tuple):
                 out = [
                     (
                         o.masked_fill(nan_mask, torch.tensor(float("nan")))
@@ -287,7 +287,7 @@ class PredictCallback(BasePredictionWriter):
         elif self.mode == "quantiles":
             out = pl_module.to_quantiles(out, **self.mode_kwargs)
             # mask non-predictions
-            if isinstance(out, (list, tuple)):
+            if isinstance(out, list | tuple):
                 out = [
                     (
                         o.masked_fill(
@@ -357,9 +357,9 @@ class PredictCallback(BasePredictionWriter):
         output = self._output
         if len(output) > 0:
             # concatenate output (of different batches)
-            if isinstance(self.mode, (tuple, list)) or self.mode != "raw":
+            if isinstance(self.mode, tuple | list) or self.mode != "raw":
                 if (
-                    isinstance(output[0], (tuple, list))
+                    isinstance(output[0], tuple | list)
                     and len(output[0]) > 0
                     and isinstance(output[0][0], torch.Tensor)
                 ):
@@ -541,7 +541,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             self.hparams.log_val_interval = self.hparams.log_interval
 
         if not hasattr(self, "loss"):
-            if isinstance(loss, (tuple, list)):
+            if isinstance(loss, tuple | list):
                 self.loss = MultiLoss(
                     metrics=[
                         convert_torchmetric_to_pytorch_forecasting_metric(l)
@@ -855,7 +855,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """  # noqa: E501
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
-            if isinstance(y[0], (list, tuple)):
+            if isinstance(y[0], list | tuple):
                 y = (
                     [
                         rnn.pack_padded_sequence(
@@ -925,7 +925,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
             if not self.predicting:
-                if isinstance(self.loss, (MASE, MultiLoss)):
+                if isinstance(self.loss, MASE | MultiLoss):
                     loss = self.loss(
                         prediction,
                         y,
@@ -944,7 +944,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # calculate loss
             prediction = out["prediction"]
             if not self.predicting:
-                if isinstance(self.loss, (MASE, MultiLoss)):
+                if isinstance(self.loss, MASE | MultiLoss):
                     mase_kwargs = dict(
                         encoder_target=x["encoder_target"],
                         encoder_lengths=x["encoder_lengths"],
@@ -1146,7 +1146,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     tag += f" of item {idx} in global batch {self.global_step}"
                 else:
                     tag += f" of item {idx} in batch {batch_idx}"
-                if isinstance(fig, (list, tuple)):
+                if isinstance(fig, list | tuple):
                     for idx, f in enumerate(fig):
                         self.logger.experiment.add_figure(
                             f"{self.target_names[idx]} {tag}",
@@ -1318,7 +1318,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             figs.append(fig)
 
         # return multiple of target is a list, otherwise return single figure
-        if isinstance(x["encoder_target"], (tuple, list)):
+        if isinstance(x["encoder_target"], tuple | list):
             return figs
         else:
             return fig
@@ -1384,7 +1384,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             optimizer_params = self.hparams.optimizer_params
         # set optimizer
         lrs = self.hparams.learning_rate
-        if isinstance(lrs, (list, tuple)):
+        if isinstance(lrs, list | tuple):
             lr = lrs[0]
         else:
             lr = lrs
@@ -1493,7 +1493,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             )
 
         # set scheduler
-        if isinstance(lrs, (list, tuple)):  # change for each epoch
+        if isinstance(lrs, tuple | list):  # change for each epoch
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             scheduler_config = {
@@ -2290,7 +2290,7 @@ class BaseModelWithCovariates(BaseModel):
                 x = np.linspace(-data["std"], data["std"], bins)
                 # reversing normalization for group normalizer
                 # is not possible without sample level information
-                if not isinstance(scaler, (GroupNormalizer, EncoderNormalizer)):
+                if not isinstance(scaler, GroupNormalizer | EncoderNormalizer):
                     x = scaler.inverse_transform(x.reshape(-1, 1)).reshape(-1)
                     ax.set_xlabel(f"Normalized {name}")
 

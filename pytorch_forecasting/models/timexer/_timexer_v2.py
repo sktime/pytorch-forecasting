@@ -113,12 +113,12 @@ class TimeXer(TslibBaseModel):
         factor: int = 5,
         activation: str = "relu",
         use_efficient_attention: bool = False,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
         **kwargs: Any,
     ):
         super().__init__(

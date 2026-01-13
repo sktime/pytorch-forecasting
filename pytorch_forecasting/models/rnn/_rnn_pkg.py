@@ -83,7 +83,7 @@ class RecurrentNetwork_pkg(_BasePtForecaster):
 
         dwc = data_with_covariates()
 
-        if isinstance(loss, (TweedieLoss, PoissonLoss)):
+        if isinstance(loss, TweedieLoss | PoissonLoss):
             clip_target = True
 
         dwc = dwc.copy()

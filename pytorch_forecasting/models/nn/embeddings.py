@@ -37,12 +37,13 @@ class MultiEmbedding(nn.Module):
 
     def __init__(
         self,
-        embedding_sizes: Union[
-            dict[str, tuple[int, int]], dict[str, int], list[int], list[tuple[int, int]]
-        ],
+        embedding_sizes: dict[str, tuple[int, int]]
+        | dict[str, int]
+        | list[int]
+        | list[tuple[int, int]],
         x_categoricals: list[str] = None,
-        categorical_groups: Optional[dict[str, list[str]]] = None,
-        embedding_paddings: Optional[list[str]] = None,
+        categorical_groups: dict[str, list[str]] | None = None,
+        embedding_paddings: list[str] | None = None,
         max_embedding_size: int = None,
     ):
         """Embedding layer for categorical variables including groups of categorical variables.
@@ -179,7 +180,7 @@ class MultiEmbedding(nn.Module):
         return len(self.x_categoricals)
 
     @property
-    def output_size(self) -> Union[dict[str, int], int]:
+    def output_size(self) -> dict[str, int] | int:
         if self.concat_output:
             return sum([s[1] for s in self.embedding_sizes.values()])
         else:
