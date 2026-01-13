@@ -9,6 +9,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import numpy as np
 import pandas as pd
 import pytest
+from skbase.utils.dependencies import _check_soft_dependencies
 from test_models.conftest import make_dataloaders
 import torch
 
@@ -29,7 +30,6 @@ from pytorch_forecasting.models import TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
     optimize_hyperparameters,
 )
-from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def test_integration(multiple_dataloaders_with_covariates, tmp_path):
@@ -71,7 +71,7 @@ def test_distribution_loss(data_with_covariates, tmp_path):
 
 
 @pytest.mark.skipif(
-    "cpflows" not in _get_installed_packages(),
+    not _check_soft_dependencies("cpflows", severity="none"),
     reason="Test skipped if required package cpflows not available",
 )
 def test_mqf2_loss(data_with_covariates, tmp_path):
@@ -331,7 +331,7 @@ def test_predict_dependency(
 
 
 @pytest.mark.skipif(
-    "matplotlib" not in _get_installed_packages(),
+    not _check_soft_dependencies("matplotlib", severity="none"),
     reason="skip test if required package matplotlib not installed",
 )
 def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
@@ -424,8 +424,7 @@ def test_prediction_with_dataframe(model, data_with_covariates):
 SKIP_HYPEPARAM_TEST = (
     sys.platform.startswith("win")
     # Test skipped on Windows OS due to issues with ddp, see #1632"
-    or "optuna" not in _get_installed_packages()
-    or "statsmodels" not in _get_installed_packages()
+    or not _check_soft_dependencies(["optuna", "statsmodels"], severity="none")
     # Test skipped if required package optuna or statsmodels not available
 )
 
