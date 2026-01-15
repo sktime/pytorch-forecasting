@@ -80,7 +80,7 @@ class _BasePtForecaster_Common(_BaseObject):
             param_list = cls.get_test_params()
 
         objs = []
-        if not isinstance(param_list, (dict, list)):
+        if not isinstance(param_list, dict | list):
             raise RuntimeError(
                 f"Error in {cls.__name__}.get_test_params, "
                 "return must be param dict for class, or list thereof"

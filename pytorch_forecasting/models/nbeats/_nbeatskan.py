@@ -156,12 +156,12 @@ class NBeatsKAN(NBeatsAdapter):
 
     def __init__(
         self,
-        stack_types: Optional[list[str]] = None,
-        num_blocks: Optional[list[int]] = None,
-        num_block_layers: Optional[list[int]] = None,
-        widths: Optional[list[int]] = None,
-        sharing: Optional[list[bool]] = None,
-        expansion_coefficient_lengths: Optional[list[int]] = None,
+        stack_types: list[str] | None = None,
+        num_blocks: list[int] | None = None,
+        num_block_layers: list[int] | None = None,
+        widths: list[int] | None = None,
+        sharing: list[bool] | None = None,
+        expansion_coefficient_lengths: list[int] | None = None,
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,

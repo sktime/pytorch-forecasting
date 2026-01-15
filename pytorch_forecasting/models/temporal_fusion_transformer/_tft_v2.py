@@ -25,16 +25,16 @@ class TFT(BaseModel):
     def __init__(
         self,
         loss: nn.Module,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
         hidden_size: int = 64,
         num_layers: int = 2,
         attention_head_size: int = 4,
         dropout: float = 0.1,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         output_size: int = 1,
     ):
         super().__init__(

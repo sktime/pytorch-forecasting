@@ -79,16 +79,16 @@ class TimeSeries(Dataset):
     def __init__(
         self,
         data: pd.DataFrame,
-        data_future: Optional[pd.DataFrame] = None,
-        time: Optional[str] = None,
-        target: Optional[Union[str, list[str]]] = None,
-        group: Optional[list[str]] = None,
-        weight: Optional[str] = None,
-        num: Optional[list[Union[str, list[str]]]] = None,
-        cat: Optional[list[Union[str, list[str]]]] = None,
-        known: Optional[list[Union[str, list[str]]]] = None,
-        unknown: Optional[list[Union[str, list[str]]]] = None,
-        static: Optional[list[Union[str, list[str]]]] = None,
+        data_future: pd.DataFrame | None = None,
+        time: str | None = None,
+        target: str | list[str] | None = None,
+        group: list[str] | None = None,
+        weight: str | None = None,
+        num: list[str | list[str]] | None = None,
+        cat: list[str | list[str]] | None = None,
+        known: list[str | list[str]] | None = None,
+        unknown: list[str | list[str]] | None = None,
+        static: list[str | list[str]] | None = None,
     ):
         self.data = data
         self.data_future = data_future

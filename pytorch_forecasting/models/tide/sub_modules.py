@@ -223,7 +223,7 @@ class _TideModule(nn.Module):
         )
 
     def forward(
-        self, x_in: tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]
+        self, x_in: tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]
     ) -> torch.Tensor:
         """TiDE model forward pass.
 
