@@ -55,7 +55,7 @@ Release focusing on:
 * [DOC] add `CODE_OF_CONDUCT.md` and `GOVERNANCE.md` (#2014) @phoeenniixx
 
 ### All Contributors
-@ahmedkansulum, @anasashb, @dependabot[bot], @fkiraly, @khenm, @phoeenniixx, @PranavBhatP, @szepeviktor
+@ahmedkansulum, @anasashb, @dependabot[bot], @fkiraly, @khenm, @phoeenniixx, @PranavBhatP, @szepeviktor, @agobbifbk
 
 ## v1.5.0
 Release focusing on:
