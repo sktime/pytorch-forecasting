@@ -11,7 +11,8 @@ Release focusing on:
 #### `pytorch-forecasting` ***v1.6.0***
 
 * Solved the issue of unpickling error in weight loading intorduced after `lighning 2.6` release by @phoeenniixx in #2000.
-      * To use `Tuner` with `pytorch-forecasting>1.5.0` and `lightning>2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`, where you can pass `weights_only` arg to the `Tuner.lr_find()`. For more info please look at #2000
+
+  * To use `Tuner` with `pytorch-forecasting>1.5.0` and `lightning>2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`, where you can pass `weights_only` arg to the `Tuner.lr_find()`. For more info please look at #2000
 * Refactor N-BEATS blocks to separate KAN logic by @khenm in #2012
 * Efficient Attention Backend for TimeXer @anasashbin #1997
 
