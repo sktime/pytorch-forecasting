@@ -5,7 +5,7 @@ Release focusing on:
 
 * python 3.14 support
 * Solving the unpickling error in weight loading
-* Deduplicating utilities with `scikit-base`
+* Deduplicating utilities with `scikit-base` and adding it as a core dependency
 
 ### Highlights
 #### `pytorch-forecasting` ***v1.6.0***
