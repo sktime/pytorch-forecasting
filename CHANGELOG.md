@@ -6,13 +6,13 @@ Release focusing on:
 * python 3.14 support
 * Solving the unpickling error in weight loading
 * Deduplicating utilities with `scikit-base` and adding it as a core dependency
+* Addition of new `predict` interface for **Beta v2**
+* Improvements to model backends
+
 
 ### Highlights
 #### `pytorch-forecasting` ***v1.6.0***
 
-* Fixed the issue of unpickling error in weight loading introduced in `lighning 2.6` release by @phoeenniixx in #2000.
-
-  * When using `pytorch-forecasting > 1.5.0` with `lightning > 2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`. This allows passing the `weights_only` argument to `Tuner.lr_find()`. See #2000 for details.
 * Refactor N-BEATS blocks to separate KAN logic by @khenm in #2012
 * Efficient Attention Backend for TimeXer @anasashbin #1997
 
@@ -21,6 +21,12 @@ Release focusing on:
 * New `predict` interface for v2 models by @phoeenniixx in #1984
 * Efficient Attention Backend for TimeXer @anasashbin #1997
 
+### API Changes
+
+* Tuner import change due to a Lightning breaking change. Lightning v2.6 introduced a breaking change in its checkpoint loading behavior, which caused unpickling errors during weight loading in `pytorch-forecasting` (see #2000).
+To address this, `pytorch-forecasting` now provides its own `Tuner` wrapper that exposes the required `weights_only` argument when calling `lr_find()`.
+
+  * When using `pytorch-forecasting > 1.5.0` with `lightning > 2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`. See #2000 for details.
 ### Maintenance
 
 * [MNT] [Dependabot](deps): Bump actions/upload-artifact from 4 to 5 (#1986) @dependabot[bot]
