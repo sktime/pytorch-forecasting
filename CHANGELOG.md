@@ -27,6 +27,7 @@ Release focusing on:
 To address this, `pytorch-forecasting` now provides its own `Tuner` wrapper that exposes the required `weights_only` argument when calling `lr_find()`.
 
   * When using `pytorch-forecasting > 1.5.0` with `lightning > 2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`. See #2000 for details.
+
 ### Maintenance
 
 * [MNT] [Dependabot](deps): Bump actions/upload-artifact from 4 to 5 (#1986) @dependabot[bot]
