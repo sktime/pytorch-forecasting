@@ -6,9 +6,14 @@ from pytorch_forecasting.layers._attention import (
     AttentionLayer,
     FullAttention,
     TriangularCausalMask,
+    AutoCorrelation,
 )
 from pytorch_forecasting.layers._blocks import ResidualBlock
-from pytorch_forecasting.layers._decomposition import SeriesDecomposition
+from pytorch_forecasting.layers._decomposition import (
+    SeriesDecomposition,
+    AutoformerDecomposition,
+)
+
 from pytorch_forecasting.layers._embeddings import (
     DataEmbedding_inverted,
     EnEmbedding,
@@ -34,6 +39,7 @@ from pytorch_forecasting.layers._recurrent._slstm import (
     sLSTMNetwork,
 )
 
+
 __all__ = [
     "FullAttention",
     "AttentionLayer",
@@ -54,4 +60,6 @@ __all__ = [
     "RevIN",
     "ResidualBlock",
     "embedding_cat_variables",
+    "AutoformerDecomposition",
+    "AutoCorrelation",
 ]
