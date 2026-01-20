@@ -1,8 +1,9 @@
 """
-Experimmental data module for integrating `tslib` time series deep learning library.
+Experimental data module for integrating `tslib` time series deep learning library.
 """
 
-from typing import Any, Optional, Union
+from collections.abc import Callable
+from typing import Any, Optional
 import warnings
 
 from lightning.pytorch import LightningDataModule
@@ -20,7 +21,7 @@ from pytorch_forecasting.data.encoders import (
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
-NORMALIZER = Union[TorchNormalizer, EncoderNormalizer, NaNLabelEncoder]
+NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
 class _TslibDataset(Dataset):
@@ -135,7 +136,7 @@ class _TslibDataset(Dataset):
 
         processed_data = self.data_module._preprocess_data(series_idx)
 
-        continous_features = processed_data["features"]["continuous"]
+        continuous_features = processed_data["features"]["continuous"]
         categorical_features = processed_data["features"]["categorical"]
 
         end_idx = start_idx + context_length + prediction_length
@@ -144,17 +145,17 @@ class _TslibDataset(Dataset):
 
         metadata = self.data_module.metadata
 
-        history_cont = continous_features[history_indices]
+        history_cont = continuous_features[history_indices]
         history_cat = categorical_features[history_indices]
 
-        future_cont = continous_features[future_indices]
+        future_cont = continuous_features[future_indices]
         future_cat = categorical_features[future_indices]
 
         known_features = set(metadata["feature_names"]["known"])
         continuous_feature_names = metadata["feature_names"]["continuous"]
         categorical_feature_names = metadata["feature_names"]["categorical"]
 
-        # use masking to filter out known and unknow features.
+        # use masking to filter out known and unknown features.
         cont_known_mask = torch.tensor(
             [feat in known_features for feat in continuous_feature_names],
             dtype=torch.bool,
@@ -294,21 +295,21 @@ class TslibDataModule(LightningDataModule):
         freq: str = "h",
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
-        target_normalizer: Union[
-            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
-        ] = "auto",  # noqa: E501
-        scalers: Optional[
-            dict[
-                str,
-                Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
-            ]
-        ] = None,  # noqa: E501
+        target_normalizer: NORMALIZER
+        | str
+        | list[NORMALIZER]
+        | tuple[NORMALIZER]
+        | None = "auto",  # noqa: E501
+        scalers: dict[
+            str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
+        ]
+        | None = None,  # noqa: E501
         shuffle: bool = True,
         window_stride: int = 1,
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
-        collate_fn: Optional[callable] = None,
+        collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -390,8 +391,8 @@ class TslibDataModule(LightningDataModule):
         if not has_continuous:
             warnings.warn(
                 "No continuous features found in the dataset. "
-                "Some models (TimeXer) requires continous features. "
-                "Consider adding continous featuresinto the dataset.",
+                "Some models (TimeXer) requires continuous features. "
+                "Consider adding continuous featuresinto the dataset.",
                 UserWarning,
             )
 
@@ -555,7 +556,7 @@ class TslibDataModule(LightningDataModule):
         -----
         - The target data `y` and features `x` are converted to torch.float32 tensors.
         - The timepoints before the cutoff time are masked off.
-        - Splits data into categorical and continous features, which are grouped based on the indices.
+        - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
 
         series = self.time_series_dataset[idx]
@@ -578,7 +579,7 @@ class TslibDataModule(LightningDataModule):
         else:
             features = torch.tensor(features, dtype=torch.float32)
 
-        # scaling and normlization
+        # scaling and normalization
         target_scale = {}
 
         categorical_features = (
@@ -670,7 +671,7 @@ class TslibDataModule(LightningDataModule):
 
         return windows
 
-    def setup(self, stage: Optional[str] = None) -> None:
+    def setup(self, stage: str | None = None) -> None:
         """
         Setup the data module by preparing the datasets for training,
         testing and validation.
@@ -879,7 +880,7 @@ class TslibDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        if isinstance(batch[0][1], (list, tuple)):
+        if isinstance(batch[0][1], list | tuple):
             num_targets = len(batch[0][1])
             y_batch = []
             for i in range(num_targets):

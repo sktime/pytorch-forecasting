@@ -1,5 +1,69 @@
 # Release Notes
 
+## v1.6.0
+Release focusing on:
+
+* python 3.14 support
+* Solving the unpickling error in weight loading
+* Deduplicating utilities with `scikit-base` and adding it as a core dependency
+* Addition of new `predict` interface for **Beta v2**
+* Improvements to model backends
+
+
+### Highlights
+#### `pytorch-forecasting` ***v1.6.0***
+
+* Refactor N-BEATS blocks to separate KAN logic by @khenm in #2012
+* Efficient Attention Backend for TimeXer @anasashbin #1997
+
+### `pytorch-forecasting` ***Beta v2***
+
+* New `predict` interface for v2 models by @phoeenniixx in #1984
+* Efficient Attention Backend for TimeXer @anasashbin #1997
+
+### API Changes
+
+* Tuner import change due to a Lightning breaking change. Lightning v2.6 introduced a breaking change in its checkpoint loading behavior, which caused unpickling errors during weight loading in `pytorch-forecasting` (see #2000).
+To address this, `pytorch-forecasting` now provides its own `Tuner` wrapper that exposes the required `weights_only` argument when calling `lr_find()`.
+
+  * When using `pytorch-forecasting > 1.5.0` with `lightning > 2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`. See #2000 for details.
+
+### Maintenance
+
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 4 to 5 (#1986) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 5 to 6 (#1985) @dependabot[bot]
+* [MNT] Fix typos (#1988) @szepeviktor
+* [MNT] [Dependabot](deps): Bump actions/checkout from 5 to 6 (#1991) @dependabot[bot]
+* [MNT] Add version bound for `lightning` (#2001) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 5 to 6 (#2005) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 6 to 7 (#2006) @dependabot[bot]
+* [MNT] [Dependabot](deps): Update sphinx requirement from <8.2.4,>3.2 to >3.2,<9.1.1 (#2013) @dependabot[bot]
+* [MNT] [Dependabot](deps): Update lightning requirement from <2.6.0,>=2.0.0 to >=2.0.0,<2.7.0 (#2002) @dependabot[bot]
+* [MNT] Add python 3.14 support (#2015) @phoeenniixx
+* [MNT] Update changelog generator script to return markdown files (#2016) @phoeenniixx
+* [MNT] deduplicating utilities with `scikit-base` (#1929) @fkiraly
+* [MNT] Update `ruff` linting target version to `python 3.10` (#2017) @phoeenniixx
+
+### Enhancements
+
+* [ENH] Consistent 3D output for single-target point predictions in `TimeXer`  v1. (#1936) @PranavBhatP
+* [ENH] Efficient Attention Backend for TimeXer (#1997) @anasashb
+* [ENH] Add `predict` to v2 models (#1984) @phoeenniixx
+* [ENH] Refactor N-BEATS blocks to separate KAN logic (#2012) @khenm
+* [MNT] deduplicating utilities with `scikit-base` (#1929) @fkiraly
+
+### Fixes
+
+* [BUG] Align TimeXer v2 endogenous/exogenous usage with tslib metadata (#2009) @ahmedkansulum
+* [BUG] Solve the unpickling error in weight Loading (#2000) @phoeenniixx
+
+### Documentation
+
+* [DOC] add `CODE_OF_CONDUCT.md` and `GOVERNANCE.md` (#2014) @phoeenniixx
+
+### All Contributors
+@ahmedkansulum, @anasashb, @dependabot[bot], @fkiraly, @khenm, @phoeenniixx, @PranavBhatP, @szepeviktor, @agobbifbk
+
 ## v1.5.0
 Release focusing on:
 
@@ -45,12 +109,12 @@ Release focusing on:
 * [BUG] Fix issue with `EncodeNormalizer(method='standard', center=False)` for scale value by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1902
 * [BUG] fixed memory leak in `TimeSeriesDataset` by using `@cached_property` and clean-up of index construction by @Vishnu-Rangiah in https://github.com/sktime/pytorch-forecasting/pull/1905
 * [BUG] Fix issue with `plot_prediction_actual_by_variable`  unsupported operand type(s) for *: 'numpy.ndarray' and 'Tensor' by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1903
-* [BUG] Correcly set lagged variables to known when lag >= horizon by @hubkrieb in https://github.com/sktime/pytorch-forecasting/pull/1910
+* [BUG] Correctly set lagged variables to known when lag >= horizon by @hubkrieb in https://github.com/sktime/pytorch-forecasting/pull/1910
 * [BUG] Updated base_model.py to account for importing error by @Himanshu-Verma-ds in https://github.com/sktime/pytorch-forecasting/pull/1488
 * [BUG][DOC] Fix documentation: pass loss argument to BaseModel in custom models tutorial example by @PranavBhatP in https://github.com/sktime/pytorch-forecasting/pull/1931
 * [BUG] fix broken version inspection if package distribution has `None` name by @lohraspco in https://github.com/sktime/pytorch-forecasting/pull/1926
 * [BUG] fix sporadic `tkinter` failures in CI by @fkiraly in https://github.com/sktime/pytorch-forecasting/pull/1937
-* [BUG] Device inconstency in `MQF2DistributionLoss` raising: RuntimeError: Expected all tensors to be on the same device by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1916
+* [BUG] Device inconsistency in `MQF2DistributionLoss` raising: RuntimeError: Expected all tensors to be on the same device by @fnhirwa in https://github.com/sktime/pytorch-forecasting/pull/1916
 * [BUG] fixed memory leak in BaseModel by detach some tensor by @zju-ys in https://github.com/sktime/pytorch-forecasting/pull/1924
 * [BUG] Fix `TimeSeriesDataSet` wrong inferred `tensor` `dtype` when `time_idx` is included in features by @cngmid in https://github.com/sktime/pytorch-forecasting/pull/1950
 * [BUG] standardize output format of xLSTMTime estimator for point predictions by @sanskarmodi8 in https://github.com/sktime/pytorch-forecasting/pull/1978
@@ -381,7 +445,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Changed
 
-- Dropping Python 3.6 suppport, adding 3.10 support (#479)
+- Dropping Python 3.6 support, adding 3.10 support (#479)
 - Refactored dataloader sampling - moved samplers to pytorch_forecasting.data.samplers module (#479)
 - Changed transformation format for Encoders to dict from tuple (#949)
 
@@ -408,7 +472,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 - Allow using [torchmetrics](https://torchmetrics.readthedocs.io/) as loss metrics (#776)
 - Enable fitting `EncoderNormalizer()` with limited data history using `max_length` argument (#782)
 - More flexible `MultiEmbedding()` with convenience `output_size` and `input_size` properties (#829)
-- Fix concatentation of attention (#902)
+- Fix concatenation of attention (#902)
 
 ### Fixed
 
@@ -430,7 +494,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Fixed
 
 - Fix inattention mutation to `x_cont` (#732).
-- Compatability with pytorch-lightning 1.5 (#758)
+- Compatibility with pytorch-lightning 1.5 (#758)
 
 ### Contributors
 
@@ -517,7 +581,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 
 ### Added
 
-- Adding a filter functionality to the timeseries datasset (#329)
+- Adding a filter functionality to the timeseries dataset (#329)
 - Add simple models such as LSTM, GRU and a MLP on the decoder (#380)
 - Allow usage of any torch optimizer such as SGD (#380)
 
@@ -586,7 +650,7 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
 ### Added
 
 - Adding support for multiple targets in the TimeSeriesDataSet (#199) and amended tutorials.
-- Temporal fusion transformer and DeepAR with support for multiple tagets (#199)
+- Temporal fusion transformer and DeepAR with support for multiple targets (#199)
 - Check for non-finite values in TimeSeriesDataSet and better validate scaler argument (#220)
 - LSTM and GRU implementations that can handle zero-length sequences (#235)
 - Helpers for implementing auto-regressive models (#236)

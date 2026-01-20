@@ -5,7 +5,7 @@ class ResidualBlock(nn.Module):
     def __init__(
         self, in_size: int, out_size: int, dropout_rate: float, activation_fun: str = ""
     ):
-        """Residual Block as basic layer of the archetecture.
+        """Residual Block as basic layer of the architecture.
 
         MLP with one hidden layer, activation and skip connection
         Basically dimension d_model, but better if input_dim and output_dim are explicit

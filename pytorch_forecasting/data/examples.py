@@ -76,7 +76,7 @@ def generate_ar_data(
             Defaults to 3.0.
         trend (float, optional): Trend multiplier (seasonality is multiplied with 1.0). Defaults to 3.0.
         noise (float, optional): Level of gaussian noise. Defaults to 0.1.
-        level (float, optional): Level multiplier (level is a constant to be aded to timeseries). Defaults to 1.0.
+        level (float, optional): Level multiplier (level is a constant to be added to timeseries). Defaults to 1.0.
         exp (bool, optional): If to return exponential of timeseries values. Defaults to False.
         seed (int, optional): Random seed. Defaults to 213.
 

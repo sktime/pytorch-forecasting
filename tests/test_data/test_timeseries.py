@@ -255,7 +255,7 @@ def test_from_dataset_equivalence(test_data):
         iter(validation2.to_dataloader(train=False)),
     ):
         for k in v1[0].keys():
-            if isinstance(v1[0][k], (tuple, list)):
+            if isinstance(v1[0][k], tuple | list):
                 assert len(v1[0][k]) == len(v2[0][k])
                 for idx in range(len(v1[0][k])):
                     assert torch.isclose(v1[0][k][idx], v2[0][k][idx]).all()

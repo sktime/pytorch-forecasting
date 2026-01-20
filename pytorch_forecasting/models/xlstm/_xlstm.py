@@ -37,7 +37,7 @@ class xLSTMTime(AutoRegressiveBaseModel):
         xlstm_type: Literal["slstm", "mlstm"] = "slstm",
         num_layers: int = 1,
         decomposition_kernel: int = 25,
-        input_projection_size: Optional[int] = None,
+        input_projection_size: int | None = None,
         dropout: float = 0.1,
         loss: Metric = SMAPE(),
         **kwargs,
@@ -111,12 +111,9 @@ class xLSTMTime(AutoRegressiveBaseModel):
     def forward(
         self,
         x: dict[str, torch.Tensor],
-        hidden_states: Optional[
-            Union[
-                tuple[torch.Tensor, torch.Tensor],
-                tuple[torch.Tensor, torch.Tensor, torch.Tensor],
-            ]
-        ] = None,
+        hidden_states: tuple[torch.Tensor, torch.Tensor]
+        | tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        | None = None,
     ) -> dict[str, torch.Tensor]:
         """Forward Pass for the model."""
         encoder_cont = x["encoder_cont"]

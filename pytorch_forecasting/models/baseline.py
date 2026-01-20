@@ -39,9 +39,9 @@ class Baseline(BaseModel):
             x (Dict[str, torch.Tensor]): network input
 
         Returns:
-            Dict[str, torch.Tensor]: netowrk outputs
+            Dict[str, torch.Tensor]: network outputs
         """
-        if isinstance(x["encoder_target"], (list, tuple)):  # multiple targets
+        if isinstance(x["encoder_target"], tuple | list):  # multiple targets
             prediction = [
                 self.forward_one_target(
                     encoder_lengths=x["encoder_lengths"],

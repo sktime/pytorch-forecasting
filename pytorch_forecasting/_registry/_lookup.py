@@ -160,7 +160,7 @@ def all_objects(
     ROOT = str(Path(__file__).parent.parent)  # package root directory
 
     def _coerce_to_str(obj):
-        if isinstance(obj, (list, tuple)):
+        if isinstance(obj, list | tuple):
             return [_coerce_to_str(o) for o in obj]
         if isclass(obj):
             obj = obj.get_tag("object_type")

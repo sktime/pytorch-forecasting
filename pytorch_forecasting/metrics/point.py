@@ -191,7 +191,7 @@ class MASE(MultiHorizonMetric):
             torch.Tensor: loss as a single number for backpropagation
         """  # noqa: E501
         # unpack weight
-        if isinstance(target, (list, tuple)):
+        if isinstance(target, list | tuple):
             weight = target[1]
             target = target[0]
         else:
@@ -232,7 +232,7 @@ class MASE(MultiHorizonMetric):
 
     @staticmethod
     def calculate_scaling(target, lengths, encoder_target, encoder_lengths):
-        # calcualte mean(abs(diff(targets)))
+        # calculate mean(abs(diff(targets)))
         eps = 1e-6
         batch_size = target.size(0)
         total_lengths = lengths + encoder_lengths

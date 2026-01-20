@@ -70,7 +70,7 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
     def __init__(
         self,
         name: str = None,
-        quantiles: Optional[list[float]] = None,
+        quantiles: list[float] | None = None,
         reduction: str = "mean",
         rank: int = 10,
         sigma_init: float = 1.0,
@@ -351,8 +351,8 @@ class MQF2DistributionLoss(DistributionLoss):
     def __init__(
         self,
         prediction_length: int,
-        quantiles: Optional[list[float]] = None,
-        hidden_size: Optional[int] = 4,
+        quantiles: list[float] | None = None,
+        hidden_size: int | None = 4,
         es_num_samples: int = 50,
         beta: float = 1.0,
         icnn_hidden_size: int = 20,
@@ -366,7 +366,7 @@ class MQF2DistributionLoss(DistributionLoss):
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
             hidden_size (int, optional): hidden size per prediction length. Defaults to 4.
             es_num_samples (int, optional): Number of samples to calculate energy score.
-                If None, maximum liklihood is used as opposed to energy score for optimization.
+                If None, maximum likelihood is used as opposed to energy score for optimization.
                 Defaults to 50.
             beta (float, optional): between 0 and 1.0 to control how scale sensitive metric is (1=fully sensitive).
                 Defaults to 1.0.
@@ -566,10 +566,10 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
 
     def __init__(
         self,
-        quantiles: Optional[list[float]] = None,
-        input_size: Optional[int] = 16,
-        hidden_size: Optional[int] = 32,
-        n_loss_samples: Optional[int] = 64,
+        quantiles: list[float] | None = None,
+        input_size: int | None = 16,
+        hidden_size: int | None = 32,
+        n_loss_samples: int | None = 64,
     ) -> None:
         """
         Args:

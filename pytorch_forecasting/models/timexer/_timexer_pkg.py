@@ -79,6 +79,15 @@ class TimeXer_pkg(_BasePtForecaster):
                     ),
                 ),
             },
+            {
+                "hidden_size": 32,
+                "patch_length": 1,
+                "n_heads": 4,
+                "e_layers": 1,
+                "d_ff": 32,
+                "dropout": 0.1,
+                "use_efficient_attention": True,
+            },
         ]
 
     @classmethod
@@ -115,7 +124,7 @@ class TimeXer_pkg(_BasePtForecaster):
             dwc = dwc.assign(volume=lambda x: x.volume.round())
 
         dwc = dwc.copy()
-        if isinstance(loss, (TweedieLoss, PoissonLoss)):
+        if isinstance(loss, TweedieLoss | PoissonLoss):
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
         else:
             dwc["target"] = dwc["volume"]

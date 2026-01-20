@@ -35,9 +35,9 @@ class TIDE(BaseModel):
         activation: str = "",
         embs: list[int] = [],
         persistence_weight: float = 0.0,
-        optim: Union[str, None] = None,
-        optim_config: Union[dict, None] = None,
-        scheduler_config: Union[dict, None] = None,
+        optim: str | None = None,
+        optim_config: dict | None = None,
+        scheduler_config: dict | None = None,
         **kwargs,
     ) -> None:
         """Initialise the model.
@@ -79,7 +79,7 @@ class TIDE(BaseModel):
         """
 
         super().__init__(loss=loss)
-        self.save_hyperparameters(logger=False)
+        self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.dropout = dropout_rate
         self.persistence_weight = persistence_weight
@@ -89,7 +89,7 @@ class TIDE(BaseModel):
         self.loss = loss
 
         self.hidden_size = hidden_size  # r
-        self.d_model = d_model  # r^tilda
+        self.d_model = d_model  # r^tilde
         self.past_steps = metadata["max_encoder_length"]  # lookback size
         self.future_steps = metadata["max_prediction_length"]  # horizon size
         self.past_channels = metadata["encoder_cont"]  # psat_vars
@@ -217,7 +217,7 @@ class TIDE(BaseModel):
         emb_cat_fut = torch.mean(emb_cat_fut, dim=2)
 
         ### LOADING PAST AND FUTURE NUMERICAL VARIABLES
-        # load in the model auxiliar numerical variables
+        # load in the model auxiliary numerical variables
 
         if self.aux_past_channels > 0:  # if we have more numerical variables about past
             aux_num_past = batch["encoder_cont"]
@@ -252,26 +252,26 @@ class TIDE(BaseModel):
         else:
             aux_emb_num_fut = None  # non available vars
 
-        # past^tilda
+        # past^tilde
         if self.aux_past_channels > 0:
             emb_past = torch.cat(
                 (emb_cat_past, aux_emb_num_past), dim=2
             )  # [B, L, 2R] #
-            proj_past = self.feat_proj_past(emb_past, True)  # [B, L, R^tilda] #
+            proj_past = self.feat_proj_past(emb_past, True)  # [B, L, R^tilde] #
         else:
-            proj_past = self.feat_proj_past(emb_cat_past, True)  # [B, L, R^tilda] #
+            proj_past = self.feat_proj_past(emb_cat_past, True)  # [B, L, R^tilde] #
 
-        # fut^tilda
+        # fut^tilde
         if self.aux_fut_channels > 0:
             emb_fut = torch.cat((emb_cat_fut, aux_emb_num_fut), dim=2)
             # [B, H, 2R] #
-            proj_fut = self.feat_proj_fut(emb_fut, True)  # [B, H, R^tilda] #
+            proj_fut = self.feat_proj_fut(emb_fut, True)  # [B, H, R^tilde] #
         else:
-            proj_fut = self.feat_proj_fut(emb_cat_fut, True)  # [B, H, R^tilda] #
+            proj_fut = self.feat_proj_fut(emb_cat_fut, True)  # [B, H, R^tilde] #
 
         concat = torch.cat(
             (y_past.view(B, -1), proj_past.view(B, -1), proj_fut.view(B, -1)), dim=1
-        )  # [B, L*self.mul + (L+H)*R^tilda] #
+        )  # [B, L*self.mul + (L+H)*R^tilde] #
         dense_enc = self.first_encoder(concat)
         for lay_enc in self.aux_encoder:
             dense_enc = lay_enc(dense_enc)

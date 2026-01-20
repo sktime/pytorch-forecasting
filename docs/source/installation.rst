@@ -3,7 +3,7 @@ Installation
 
 ``pytorch-forecasting`` currently supports:
 
-* Python versions 3.10, 3.11, 3.12 and 3.13.
+* Python versions 3.10, 3.11, 3.12, 3.13 and 3.14.
 * Operating systems : Linux, macOS, and Windows
 
 Installing pytorch-forecasting
@@ -81,7 +81,7 @@ Contributing to ``pytorch-forecasting``
 Contributions to PyTorch Forecasting are very welcome! You do not have to be an expert in deep learning
 to contribute. If you find a bug - fix it! If you miss a feature - propose it!
 
-To obtain an editible version ``pytorch-forecasting`` for development or contributions,
+To obtain an editable version ``pytorch-forecasting`` for development or contributions,
 you will need to set up:
 
 * a local clone of the ``pytorch-forecasting`` repository.
@@ -128,7 +128,7 @@ Creating a fork and cloning the repository
       > upstream  https://github.com/sktime/pytorch-forecasting.git (fetch)
       > upstream  https://github.com/sktime/pytorch-forecasting.git (push)
 
-Setting up an editible virtual environment
+Setting up an editable virtual environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. Set up a new virtual environment. Our instructions will go through the commands to set up a ``conda`` environment which is recommended for ``pytorch-forecasting`` development.
@@ -183,13 +183,13 @@ Technical Design Principles
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When writing code for your new feature, it is recommended to follow these
-technical design principles to ensure compatability between the feature and the library.
+technical design principles to ensure compatibility between the feature and the library.
 
 * Backward compatible API if possible to prevent breaking code.
 * Powerful abstractions to enable quick experimentation. At the same time, the abstractions should
   allow the user to still take full control.
 * Intuitive default values that do not need changing in most cases.
-* Focus on forecasting time-related data - specificially timeseries regression and classificiation.
+* Focus on forecasting time-related data - specifically timeseries regression and classification.
   Contributions not directly related to this topic might not be merged. We want to keep the library as
   crisp as possible.
 * Install ``pre-commit`` and have it run on every commit that you make on your feature branches.

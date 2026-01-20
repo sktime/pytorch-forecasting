@@ -521,7 +521,7 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
 
         metric, y_pred, y = prepared_data
 
-        if isinstance(y, (list, tuple)) and not isinstance(y, rnn.PackedSequence):
+        if isinstance(y, list | tuple) and not isinstance(y, rnn.PackedSequence):
             y, _ = y
 
         # unpack target

@@ -57,12 +57,13 @@ class TimeXer(TslibBaseModel):
         Factor for the attention mechanism, controlling the number of keys and values.
     activation: str, default='relu'
         Activation function to use in the feed-forward network. Common choices are 'relu', 'gelu', etc.
-    endogenous_vars: Optional[list[str]], default=None
-        List of endogenous variable names to be used in the model. If None, all historical values
-        for the target variable are used.
-    exogenous_vars: Optional[list[str]], default=None
-        List of exogenous variable names to be used in the model. If None, all historical values
-        for continous variables are used.
+    use_efficient_attention: bool, default=False
+        If set to True, will use PyTorch's native, optimized Scaled Dot Product
+        Attention implementation which can reduce computation time and memory
+        consumption for longer sequences. PyTorch automatically selects the
+        optimal backend (FlashAttention-2, Memory-Efficient Attention, or their
+        own C++ implementation) based on user's input properties, hardware
+        capabilities, and build configuration.
     logging_metrics: Optional[list[nn.Module]], default=None
         List of metrics to log during training, validation, and testing.
     optimizer: Optional[Union[Optimizer, str]], default='adam'
@@ -76,7 +77,8 @@ class TimeXer(TslibBaseModel):
     metadata: Optional[dict], default=None
         Metadata for the model from TslibDataModule. This can include information about the dataset,
         such as the number of time steps, number of features, etc. It is used to initialize the model
-        and ensure it is compatible with the data being used.
+        and ensure it is compatible with the data being used, including the split between endogenous
+        (target) and exogenous covariates.
 
     References
     ----------
@@ -85,7 +87,7 @@ class TimeXer(TslibBaseModel):
 
     Notes
     -----
-    [1] This implementation handles only continous variables in the context length. Categorical variables
+    [1] This implementation handles only continuous variables in the context length. Categorical variables
         support will be added in the future.
     [2] The `TimeXer` model obtains many of its attributes from the `TslibBaseModel` class, which is a base class
         where a lot of the boiler plate code for metadata handling and model initialization is implemented.
@@ -110,14 +112,13 @@ class TimeXer(TslibBaseModel):
         patch_length: int = 4,
         factor: int = 5,
         activation: str = "relu",
-        endogenous_vars: Optional[list[str]] = None,
-        exogenous_vars: Optional[list[str]] = None,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        use_efficient_attention: bool = False,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -146,9 +147,8 @@ class TimeXer(TslibBaseModel):
         self.dropout = dropout
         self.patch_length = patch_length
         self.activation = activation
+        self.use_efficient_attention = use_efficient_attention
         self.factor = factor
-        self.endogenous_vars = endogenous_vars
-        self.exogenous_vars = exogenous_vars
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self._init_network()
@@ -225,6 +225,7 @@ class TimeXer(TslibBaseModel):
                             self.factor,
                             attention_dropout=self.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.use_efficient_attention,
                         ),
                         self.hidden_size,
                         self.n_heads,
@@ -235,6 +236,7 @@ class TimeXer(TslibBaseModel):
                             self.factor,
                             attention_dropout=self.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.use_efficient_attention,
                         ),
                         self.hidden_size,
                         self.n_heads,
@@ -281,22 +283,11 @@ class TimeXer(TslibBaseModel):
             # change [batch_size, time_steps] to [batch_size, time_steps, features]
             history_time_idx = history_time_idx.unsqueeze(-1)
 
-        # explicitly set endogenous and exogenous variables
+        # v2 convention:
+        # - endogenous information comes from the target history
+        # - exogenous information comes from all continuous covariates
         endogenous_cont = history_target
-        if self.endogenous_vars:
-            endogenous_indices = [
-                self.feature_names["continuous"].index(var)
-                for var in self.endogenous_vars  # noqa: E501
-            ]
-            endogenous_cont = history_cont[..., endogenous_indices]
-
         exogenous_cont = history_cont
-        if self.exogenous_vars:
-            exogenous_indices = [
-                self.feature_names["continuous"].index(var)
-                for var in self.exogenous_vars  # noqa: E501
-            ]
-            exogenous_cont = history_cont[..., exogenous_indices]
 
         en_embed, n_vars = self.en_embedding(endogenous_cont)
         ex_embed = self.ex_embedding(exogenous_cont, history_time_idx)

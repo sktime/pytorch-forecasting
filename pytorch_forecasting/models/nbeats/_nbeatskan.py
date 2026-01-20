@@ -8,9 +8,9 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.layers._nbeats._blocks import (
-    NBEATSGenericBlock,
-    NBEATSSeasonalBlock,
-    NBEATSTrendBlock,
+    NBEATSGenericBlockKAN,
+    NBEATSSeasonalBlockKAN,
+    NBEATSTrendBlockKAN,
 )
 from pytorch_forecasting.metrics import MAE, MAPE, MASE, RMSE, SMAPE, MultiHorizonMetric
 from pytorch_forecasting.models.nbeats._nbeats_adapter import NBeatsAdapter
@@ -93,19 +93,19 @@ class NBeatsKAN(NBeatsAdapter):
         Parameter for KAN layer. the scale of noise injected at initialization.
         Default: 0.1.
     scale_base_mu : float
-        Parameter for KAN layer. the scale of the residual function b(x) is intialized
-        to be N(scale_base_mu, scale_base_sigma^2). Deafult: 0.0.
+        Parameter for KAN layer. the scale of the residual function b(x) is initialized
+        to be N(scale_base_mu, scale_base_sigma^2). Default: 0.0.
     scale_base_sigma : float
-        Parameter for KAN layer. the scale of the residual function b(x) is intialized
-        to be N(scale_base_mu, scale_base_sigma^2). Deafult: 1.0.
+        Parameter for KAN layer. the scale of the residual function b(x) is initialized
+        to be N(scale_base_mu, scale_base_sigma^2). Default: 1.0.
     scale_sp : float
-        Parameter for KAN layer. the scale of the base function spline(x). Deafult: 1.0.
+        Parameter for KAN layer. the scale of the base function spline(x). Default: 1.0.
     base_fun : callable
         Parameter for KAN layer. residual function b(x). Default: None.
     grid_eps : float
         Parameter for KAN layer. When grid_eps = 1, the grid is uniform;
         when grid_eps = 0, the grid is partitioned using percentiles of samples.
-        0 < grid_eps < 1 interpolates between the two extremes. Deafult: 0.02.
+        0 < grid_eps < 1 interpolates between the two extremes. Default: 0.02.
     grid_range : list of int
         Parameter for KAN layer. list/np.array of shape (2,). setting the range of grids.
         Default: None.
@@ -156,12 +156,12 @@ class NBeatsKAN(NBeatsAdapter):
 
     def __init__(
         self,
-        stack_types: Optional[list[str]] = None,
-        num_blocks: Optional[list[int]] = None,
-        num_block_layers: Optional[list[int]] = None,
-        widths: Optional[list[int]] = None,
-        sharing: Optional[list[bool]] = None,
-        expansion_coefficient_lengths: Optional[list[int]] = None,
+        stack_types: list[str] | None = None,
+        num_blocks: list[int] | None = None,
+        num_block_layers: list[int] | None = None,
+        widths: list[int] | None = None,
+        sharing: list[bool] | None = None,
+        expansion_coefficient_lengths: list[int] | None = None,
         prediction_length: int = 1,
         context_length: int = 1,
         dropout: float = 0.1,
@@ -233,37 +233,34 @@ class NBeatsKAN(NBeatsAdapter):
         for stack_id, stack_type in enumerate(stack_types):
             for _ in range(num_blocks[stack_id]):
                 if stack_type == "generic":
-                    net_block = NBEATSGenericBlock(
+                    net_block = NBEATSGenericBlockKAN(
                         units=self.hparams.widths[stack_id],
                         thetas_dim=self.hparams.expansion_coefficient_lengths[stack_id],
                         num_block_layers=self.hparams.num_block_layers[stack_id],
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=dropout,
-                        kan_params=self.kan_params,
-                        use_kan=True,
+                        **self.kan_params,
                     )
                 elif stack_type == "seasonality":
-                    net_block = NBEATSSeasonalBlock(
+                    net_block = NBEATSSeasonalBlockKAN(
                         units=self.hparams.widths[stack_id],
                         num_block_layers=self.hparams.num_block_layers[stack_id],
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         min_period=expansion_coefficient_lengths[stack_id],
                         dropout=dropout,
-                        kan_params=self.kan_params,
-                        use_kan=True,
+                        **self.kan_params,
                     )
                 elif stack_type == "trend":
-                    net_block = NBEATSTrendBlock(
+                    net_block = NBEATSTrendBlockKAN(
                         units=self.hparams.widths[stack_id],
                         thetas_dim=self.hparams.expansion_coefficient_lengths[stack_id],
                         num_block_layers=self.hparams.num_block_layers[stack_id],
                         backcast_length=context_length,
                         forecast_length=prediction_length,
                         dropout=dropout,
-                        kan_params=self.kan_params,
-                        use_kan=True,
+                        **self.kan_params,
                     )
                 else:
                     raise ValueError(f"Unknown stack type {stack_type}")
@@ -273,12 +270,12 @@ class NBeatsKAN(NBeatsAdapter):
     def update_kan_grid(self):
         """
         Updates grid of KAN layers when using KAN layers in NBEATSBlock.
-
-        Examples
-        --------
-        See the full example in:
-        `examples/nbeats_with_kan.py`
+        WARNING: This relies on 'self.outputs' stored during the last forward pass.
+        Ensure this is called immediately after a TRAINING forward pass.
         """
+        if not self.training:
+            return
+
         for block in self.net_blocks:
             # updation logic taken from
             # https://github.com/KindXiaoming/pykan/blob/master/kan/MultKAN.py#L2682

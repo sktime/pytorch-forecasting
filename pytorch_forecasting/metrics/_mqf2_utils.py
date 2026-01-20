@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from skbase.utils.dependencies import _safe_import
 import torch
 from torch.distributions import (
     AffineTransform,
@@ -10,8 +11,6 @@ from torch.distributions import (
     TransformedDistribution,
 )
 import torch.nn.functional as F
-
-from pytorch_forecasting.utils._dependencies import _safe_import
 
 DeepConvexFlow = _safe_import("cpflows.flows.DeepConvexFlow")
 SequentialFlow = _safe_import("cpflows.flows.SequentialFlow")
@@ -59,7 +58,7 @@ class DeepConvexNet(DeepConvexFlow):
         is_energy_score: bool = False,
         estimate_logdet: bool = False,
         m1: int = 10,
-        m2: Optional[int] = None,
+        m2: int | None = None,
         rtol: float = 0.0,
         atol: float = 1e-3,
     ) -> None:
@@ -77,7 +76,7 @@ class DeepConvexNet(DeepConvexFlow):
         self.estimate_logdet = estimate_logdet
 
     def get_potential(
-        self, x: torch.Tensor, context: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, context: torch.Tensor | None = None
     ) -> torch.Tensor:
         n = x.size(0)
         output = self.picnn(x, context)
@@ -93,9 +92,9 @@ class DeepConvexNet(DeepConvexFlow):
     def forward_transform(
         self,
         x: torch.Tensor,
-        logdet: Optional[torch.Tensor] = 0,
-        context: Optional[torch.Tensor] = None,
-        extra: Optional[torch.Tensor] = None,
+        logdet: torch.Tensor | None = 0,
+        context: torch.Tensor | None = None,
+        extra: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if self.estimate_logdet:
             return self.forward_transform_stochastic(
@@ -123,7 +122,7 @@ class SequentialNet(SequentialFlow):
         self.networks = self.flows
 
     def forward(
-        self, x: torch.Tensor, context: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, context: torch.Tensor | None = None
     ) -> torch.Tensor:
         for network in self.networks:
             if isinstance(network, DeepConvexNet):
@@ -352,7 +351,7 @@ class MQF2Distribution(Distribution):
         ----------
         z
             A batch of time series with shape
-            (batch_size, context_length + prediciton_length - 1)
+            (batch_size, context_length + prediction_length - 1)
         Returns
         -------
         loss
@@ -446,7 +445,7 @@ class MQF2Distribution(Distribution):
         return samples
 
     def quantile(
-        self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None
+        self, alpha: torch.Tensor, hidden_state: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Generates the predicted paths associated with the quantile levels alpha
@@ -549,7 +548,7 @@ class TransformedMQF2Distribution(TransformedDistribution):
         return loss * (repeated_scale**beta)
 
     def quantile(
-        self, alpha: torch.Tensor, hidden_state: Optional[torch.Tensor] = None
+        self, alpha: torch.Tensor, hidden_state: torch.Tensor | None = None
     ) -> torch.Tensor:
         result = self.base_dist.quantile(alpha, hidden_state=hidden_state)
         result = result.reshape(

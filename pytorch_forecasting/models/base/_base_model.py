@@ -3,14 +3,15 @@ Timeseries models share a number of common characteristics. This module implemen
 """  # noqa: E501
 
 from collections import namedtuple
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from copy import deepcopy
 import inspect
 import logging
 import os
-from typing import Any, Callable, Literal, Optional, Union
+from typing import IO, Any, Literal, Optional, Union
 import warnings
 
+from lightning.fabric.utilities.types import _MAP_LOCATION_TYPE, _PATH
 import lightning.pytorch as pl
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import BasePredictionWriter, LearningRateFinder
@@ -20,6 +21,7 @@ import numpy as np
 from numpy import iterable
 import pandas as pd
 import scipy.stats
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 import torch.nn as nn
 from torch.nn.utils import rnn
@@ -61,10 +63,7 @@ from pytorch_forecasting.utils import (
     to_list,
 )
 from pytorch_forecasting.utils._classproperty import classproperty
-from pytorch_forecasting.utils._dependencies import (
-    _check_matplotlib,
-    _get_installed_packages,
-)
+from pytorch_forecasting.utils._dependencies import _check_matplotlib
 
 # todo: compile models
 
@@ -135,12 +134,10 @@ def _concatenate_output(
     output: list[
         dict[
             str,
-            list[Union[list[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]],
+            list[list[torch.Tensor] | torch.Tensor | bool | int | str | np.ndarray],
         ]
     ],
-) -> dict[
-    str, Union[torch.Tensor, np.ndarray, list[Union[torch.Tensor, int, bool, str]]]
-]:
+) -> dict[str, torch.Tensor | np.ndarray | list[torch.Tensor | int | bool | str]]:
     """
     Concatenate multiple batches of output dictionary.
 
@@ -159,7 +156,7 @@ def _concatenate_output(
         if isinstance(v0, torch.Tensor):
             output_cat[name] = _torch_cat_na([out[name] for out in output])
         # concatenate list of tensors
-        elif isinstance(v0, (tuple, list)) and len(v0) > 0:
+        elif isinstance(v0, tuple | list) and len(v0) > 0:
             output_cat[name] = []
             for target_id in range(len(v0)):
                 if isinstance(v0[target_id], torch.Tensor):
@@ -218,14 +215,14 @@ class PredictCallback(BasePredictionWriter):
     # see base class predict function for documentation of parameters
     def __init__(
         self,
-        mode: Union[str, tuple[str, str]] = "prediction",
+        mode: str | tuple[str, str] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         return_y: bool = False,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
         return_x: bool = False,
         mode_kwargs: dict[str, Any] = None,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         predict_kwargs: dict[str, Any] = None,
     ) -> None:
         super().__init__(write_interval=write_interval)
@@ -265,7 +262,7 @@ class PredictCallback(BasePredictionWriter):
         lengths = x["decoder_lengths"]
 
         nan_mask = create_mask(lengths.max(), lengths)
-        if isinstance(self.mode, (tuple, list)):
+        if isinstance(self.mode, tuple | list):
             if self.mode[0] == "raw":
                 out = out[self.mode[1]]
             else:
@@ -276,7 +273,7 @@ class PredictCallback(BasePredictionWriter):
         elif self.mode == "prediction":
             out = pl_module.to_prediction(out, **self.mode_kwargs)
             # mask non-predictions
-            if isinstance(out, (list, tuple)):
+            if isinstance(out, list | tuple):
                 out = [
                     (
                         o.masked_fill(nan_mask, torch.tensor(float("nan")))
@@ -290,7 +287,7 @@ class PredictCallback(BasePredictionWriter):
         elif self.mode == "quantiles":
             out = pl_module.to_quantiles(out, **self.mode_kwargs)
             # mask non-predictions
-            if isinstance(out, (list, tuple)):
+            if isinstance(out, list | tuple):
                 out = [
                     (
                         o.masked_fill(
@@ -360,9 +357,9 @@ class PredictCallback(BasePredictionWriter):
         output = self._output
         if len(output) > 0:
             # concatenate output (of different batches)
-            if isinstance(self.mode, (tuple, list)) or self.mode != "raw":
+            if isinstance(self.mode, tuple | list) or self.mode != "raw":
                 if (
-                    isinstance(output[0], (tuple, list))
+                    isinstance(output[0], tuple | list)
                     and len(output[0]) > 0
                     and isinstance(output[0][0], torch.Tensor)
                 ):
@@ -451,7 +448,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
           need to pass additional arguments to ``forward`` by default.
 
     To implement your own architecture, it is best to
-    go throught the :ref:`Using custom data and implementing custom models <new-model-tutorial>` and
+    go through the :ref:`Using custom data and implementing custom models <new-model-tutorial>` and
     to look at existing ones to understand what might be a good approach.
 
     Example:
@@ -476,9 +473,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
     def __init__(
         self,
         dataset_parameters: dict[str, Any] = None,
-        log_interval: Union[int, float] = -1,
-        log_val_interval: Union[int, float] = None,
-        learning_rate: Union[float, list[float]] = 1e-3,
+        log_interval: int | float = -1,
+        log_val_interval: int | float = None,
+        learning_rate: float | list[float] = 1e-3,
         log_gradient_flow: bool = False,
         loss: Metric = SMAPE(),
         logging_metrics: nn.ModuleList = nn.ModuleList([]),
@@ -508,7 +505,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
             reduce_on_plateau_reduction (float): reduction in learning rate when encountering plateau. Defaults to 2.0.
-            reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateua learning rate scheduler.
+            reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateau learning rate scheduler.
                 Defaults to 1e-5
             weight_decay (float): weight decay. Defaults to 0.0.
             optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
@@ -544,7 +541,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             self.hparams.log_val_interval = self.hparams.log_interval
 
         if not hasattr(self, "loss"):
-            if isinstance(loss, (tuple, list)):
+            if isinstance(loss, tuple | list):
                 self.loss = MultiLoss(
                     metrics=[
                         convert_torchmetric_to_pytorch_forecasting_metric(l)
@@ -630,9 +627,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def transform_output(
         self,
-        prediction: Union[torch.Tensor, list[torch.Tensor]],
-        target_scale: Union[torch.Tensor, list[torch.Tensor]],
-        loss: Optional[Metric] = None,
+        prediction: torch.Tensor | list[torch.Tensor],
+        target_scale: torch.Tensor | list[torch.Tensor],
+        loss: Metric | None = None,
     ) -> torch.Tensor:
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
@@ -697,7 +694,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if default_loss is None:
             default_loss = MAE()
         loss = kwargs.get("loss", default_loss)
-        if n_targets > 1:  # try to infer number of ouput sizes
+        if n_targets > 1:  # try to infer number of output sizes
             if not isinstance(loss, MultiLoss):
                 loss = MultiLoss([deepcopy(loss)] * n_targets)
                 new_kwargs["loss"] = loss
@@ -767,8 +764,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         y: tuple[torch.Tensor, torch.Tensor],
         out: dict[str, torch.Tensor],
         batch_idx: int,
-        prediction_kwargs: Optional[dict[str, Any]] = None,
-        quantiles_kwargs: Optional[dict[str, Any]] = None,
+        prediction_kwargs: dict[str, Any] | None = None,
+        quantiles_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Create the log used in the training and validation step.
@@ -779,9 +776,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): batch number
             prediction_kwargs (Dict[str, Any], optional): arguments to pass to
-                :py:meth:`~pytorch_forcasting.models.base_model.BaseModel.to_prediction`. Defaults to {}.
+                :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_prediction`. Defaults to {}.
             quantiles_kwargs (Dict[str, Any], optional):
-                :py:meth:`~pytorch_forcasting.models.base_model.BaseModel.to_quantiles`. Defaults to {}.
+                :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_quantiles`. Defaults to {}.
 
         Returns:
             Dict[str, Any]: log dictionary to be returned by training and validation steps
@@ -811,6 +808,30 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             )
         return {}
 
+    @classmethod
+    def load_from_checkpoint(
+        cls,
+        checkpoint_path: _PATH | IO,
+        map_location: _MAP_LOCATION_TYPE = None,
+        hparams_file: _PATH | None = None,
+        strict: bool | None = None,
+        **kwargs: Any,
+    ):
+        from skbase.utils.dependencies import _check_soft_dependencies
+
+        if not _check_soft_dependencies("lightning<2.6", severity="none"):
+            if "weights_only" not in kwargs:
+                kwargs["weights_only"] = False
+        else:
+            kwargs.pop("weights_only")
+        return super().load_from_checkpoint(
+            checkpoint_path,
+            map_location=map_location,
+            hparams_file=hparams_file,
+            strict=strict,
+            **kwargs,
+        )
+
     def step(
         self,
         x: dict[str, torch.Tensor],
@@ -834,7 +855,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """  # noqa: E501
         # pack y sequence if different encoder lengths exist
         if (x["decoder_lengths"] < x["decoder_lengths"].max()).any():
-            if isinstance(y[0], (list, tuple)):
+            if isinstance(y[0], list | tuple):
                 y = (
                     [
                         rnn.pack_padded_sequence(
@@ -859,7 +880,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
 
         if self.training and len(self.hparams.monotone_constraints) > 0:
-            # calculate gradient with respect to continous decoder features
+            # calculate gradient with respect to continuous decoder features
             x["decoder_cont"].requires_grad_(True)
             assert not torch._C._get_cudnn_enabled(), (
                 "To use monotone constraints, wrap model and training in context "
@@ -904,7 +925,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
             if not self.predicting:
-                if isinstance(self.loss, (MASE, MultiLoss)):
+                if isinstance(self.loss, MASE | MultiLoss):
                     loss = self.loss(
                         prediction,
                         y,
@@ -923,7 +944,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # calculate loss
             prediction = out["prediction"]
             if not self.predicting:
-                if isinstance(self.loss, (MASE, MultiLoss)):
+                if isinstance(self.loss, MASE | MultiLoss):
                     mase_kwargs = dict(
                         encoder_target=x["encoder_target"],
                         encoder_lengths=x["encoder_lengths"],
@@ -1002,8 +1023,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 )
 
     def forward(
-        self, x: dict[str, Union[torch.Tensor, list[torch.Tensor]]]
-    ) -> dict[str, Union[torch.Tensor, list[torch.Tensor]]]:
+        self, x: dict[str, torch.Tensor | list[torch.Tensor]]
+    ) -> dict[str, torch.Tensor | list[torch.Tensor]]:
         """
         Network forward pass.
 
@@ -1050,7 +1071,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def on_epoch_end(self, outputs):
         """
-        Run at epoch end for training or validation. Can be overriden in models.
+        Run at epoch end for training or validation. Can be overridden in models.
         """
         pass
 
@@ -1092,7 +1113,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
             out (Dict[str, torch.Tensor]): output of the network
             batch_idx (int): current batch index
-            **kwargs: paramters to pass to ``plot_prediction``
+            **kwargs: parameters to pass to ``plot_prediction``
         """
         # log single prediction figure
         if (
@@ -1125,7 +1146,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     tag += f" of item {idx} in global batch {self.global_step}"
                 else:
                     tag += f" of item {idx} in batch {batch_idx}"
-                if isinstance(fig, (list, tuple)):
+                if isinstance(fig, list | tuple):
                     for idx, f in enumerate(fig):
                         self.logger.experiment.add_figure(
                             f"{self.target_names[idx]} {tag}",
@@ -1144,11 +1165,11 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         x: dict[str, torch.Tensor],
         out: dict[str, torch.Tensor],
         idx: int = 0,
-        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
+        add_loss_to_title: Metric | torch.Tensor | bool = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Optional[dict[str, Any]] = None,
-        prediction_kwargs: Optional[dict[str, Any]] = None,
+        quantiles_kwargs: dict[str, Any] | None = None,
+        prediction_kwargs: dict[str, Any] | None = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -1159,7 +1180,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             idx: index of prediction to plot
             add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
                 bool indicating if to use loss metric or tensor which contains losses for all samples.
-                Calcualted losses are determined without weights. Default to False.
+                Calculated losses are determined without weights. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
             quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
@@ -1278,7 +1299,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     loss = add_loss_to_title
                 else:
                     raise ValueError(
-                        f"add_loss_to_title '{add_loss_to_title}'' is unkown"
+                        f"add_loss_to_title '{add_loss_to_title}'' is unknown"
                     )
                 if isinstance(loss, MASE):
                     loss_value = loss(
@@ -1297,7 +1318,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             figs.append(fig)
 
         # return multiple of target is a list, otherwise return single figure
-        if isinstance(x["encoder_target"], (tuple, list)):
+        if isinstance(x["encoder_target"], tuple | list):
             return figs
         else:
             return fig
@@ -1355,7 +1376,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Returns:
             Tuple[List]: first entry is list of optimizers and second is list of schedulers
         """  # noqa: E501
-        ptopt_in_env = "pytorch_optimizer" in _get_installed_packages()
+        ptopt_in_env = _check_soft_dependencies("pytorch_optimizer", severity="none")
         # either set a schedule of lrs or find it dynamically
         if self.hparams.optimizer_params is None:
             optimizer_params = {}
@@ -1363,7 +1384,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             optimizer_params = self.hparams.optimizer_params
         # set optimizer
         lrs = self.hparams.learning_rate
-        if isinstance(lrs, (list, tuple)):
+        if isinstance(lrs, list | tuple):
             lr = lrs[0]
         else:
             lr = lrs
@@ -1394,7 +1415,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         elif self.hparams.optimizer == "ranger":
             if not ptopt_in_env:
                 raise ImportError(
-                    "optimizer 'ranger' requires pytorch_optimizer in the evironment. "
+                    "optimizer 'ranger' requires pytorch_optimizer in the environment. "
                     "Please install pytorch_optimizer with"
                     "`pip install pytorch_optimizer`."
                 )
@@ -1472,7 +1493,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             )
 
         # set scheduler
-        if isinstance(lrs, (list, tuple)):  # change for each epoch
+        if isinstance(lrs, tuple | list):  # change for each epoch
             # normalize lrs
             lrs = np.array(lrs) / lrs[0]
             scheduler_config = {
@@ -1638,8 +1659,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def predict(
         self,
-        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
-        mode: Union[str, tuple[str, str]] = "prediction",
+        data: DataLoader | pd.DataFrame | TimeSeriesDataSet,
+        mode: str | tuple[str, str] = "prediction",
         return_index: bool = False,
         return_decoder_lengths: bool = False,
         batch_size: int = 64,
@@ -1648,9 +1669,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         return_x: bool = False,
         return_y: bool = False,
         mode_kwargs: dict[str, Any] = None,
-        trainer_kwargs: Optional[dict[str, Any]] = None,
+        trainer_kwargs: dict[str, Any] | None = None,
         write_interval: Literal["batch", "epoch", "batch_and_epoch"] = "batch",
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         **kwargs,
     ) -> Prediction:
         """
@@ -1738,14 +1759,14 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def predict_dependency(
         self,
-        data: Union[DataLoader, pd.DataFrame, TimeSeriesDataSet],
+        data: DataLoader | pd.DataFrame | TimeSeriesDataSet,
         variable: str,
         values: Iterable,
         mode: str = "dataframe",
         target="decoder",
         show_progress_bar: bool = False,
         **kwargs,
-    ) -> Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]:
+    ) -> np.ndarray | torch.Tensor | pd.Series | pd.DataFrame:
         """
         Predict partial dependency.
 
@@ -1758,7 +1779,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 * "series": values are average prediction and index are probed values
                 * "dataframe": columns are as obtained by the `dataset.x_to_index()` method,
                     prediction (which is the mean prediction over the time horizon),
-                    normalized_prediction (which are predictions devided by the prediction for the first probed value)
+                    normalized_prediction (which are predictions divided by the prediction for the first probed value)
                     the variable name for the probed values
                 * "raw": outputs a tensor of shape len(values) x prediction_shape
 
@@ -1942,7 +1963,7 @@ class BaseModelWithCovariates(BaseModel):
         """Mapping of categorical variables to categorical groups"""
         groups = {}
         for group_name, sublist in self.hparams.categorical_groups.items():
-            groups.update({name: group_name for name in sublist})
+            groups.update(dict.fromkeys(sublist, group_name))
         return groups
 
     @classmethod
@@ -2203,7 +2224,7 @@ class BaseModelWithCovariates(BaseModel):
                 Defaults to None.
 
         Raises:
-            ValueError: if the variable name is unkown
+            ValueError: if the variable name is unknown
 
         Returns:
             Union[Dict[str, plt.Figure], plt.Figure]: matplotlib figure
@@ -2269,7 +2290,7 @@ class BaseModelWithCovariates(BaseModel):
                 x = np.linspace(-data["std"], data["std"], bins)
                 # reversing normalization for group normalizer
                 # is not possible without sample level information
-                if not isinstance(scaler, (GroupNormalizer, EncoderNormalizer)):
+                if not isinstance(scaler, GroupNormalizer | EncoderNormalizer):
                     x = scaler.inverse_transform(x.reshape(-1, 1)).reshape(-1)
                     ax.set_xlabel(f"Normalized {name}")
 
@@ -2383,10 +2404,10 @@ class AutoRegressiveBaseModel(BaseModel):
     def output_to_prediction(
         self,
         normalized_prediction_parameters: torch.Tensor,
-        target_scale: Union[list[torch.Tensor], torch.Tensor],
+        target_scale: list[torch.Tensor] | torch.Tensor,
         n_samples: int = 1,
         **kwargs,
-    ) -> tuple[Union[list[torch.Tensor], torch.Tensor], torch.Tensor]:
+    ) -> tuple[list[torch.Tensor] | torch.Tensor, torch.Tensor]:
         """
         Convert network output to rescaled and normalized prediction.
 
@@ -2454,13 +2475,13 @@ class AutoRegressiveBaseModel(BaseModel):
     def decode_autoregressive(
         self,
         decode_one: Callable,
-        first_target: Union[list[torch.Tensor], torch.Tensor],
+        first_target: list[torch.Tensor] | torch.Tensor,
         first_hidden_state: Any,
-        target_scale: Union[list[torch.Tensor], torch.Tensor],
+        target_scale: list[torch.Tensor] | torch.Tensor,
         n_decoder_steps: int,
         n_samples: int = 1,
         **kwargs,
-    ) -> Union[list[torch.Tensor], torch.Tensor]:
+    ) -> list[torch.Tensor] | torch.Tensor:
         """
         Make predictions in auto-regressive manner.
 
@@ -2621,11 +2642,11 @@ class AutoRegressiveBaseModel(BaseModel):
         x: dict[str, torch.Tensor],
         out: dict[str, torch.Tensor],
         idx: int = 0,
-        add_loss_to_title: Union[Metric, torch.Tensor, bool] = False,
+        add_loss_to_title: Metric | torch.Tensor | bool = False,
         show_future_observed: bool = True,
         ax=None,
-        quantiles_kwargs: Optional[dict[str, Any]] = None,
-        prediction_kwargs: Optional[dict[str, Any]] = None,
+        quantiles_kwargs: dict[str, Any] | None = None,
+        prediction_kwargs: dict[str, Any] | None = None,
     ):
         """
         Plot prediction of prediction vs actuals
@@ -2636,7 +2657,7 @@ class AutoRegressiveBaseModel(BaseModel):
             idx: index of prediction to plot
             add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
                 bool indicating if to use loss metric or tensor which contains losses for all samples.
-                Calcualted losses are determined without weights. Default to False.
+                Calculated losses are determined without weights. Default to False.
             show_future_observed: if to show actuals for future. Defaults to True.
             ax: matplotlib axes to plot on
             quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
