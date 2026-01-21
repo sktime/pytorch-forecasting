@@ -1,5 +1,6 @@
 from copy import deepcopy
 import pickle
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -716,3 +717,56 @@ def test_correct_dtype_inference():
     x, y = next(iter(dataloader))
     # real features must be real
     assert x["encoder_cont"].dtype is torch.float
+
+
+def test_pytorch_unwriteable_data():
+    """
+    -- Ensures that PyTorch doesn't throw a warning on non-writeable
+        arrays extracted from pandas objects.
+    This is a weak test, since the warning is only issued once and might
+    already have been issued.
+    """
+    # save current mode
+    copy_on_write = pd.options.mode.copy_on_write
+    pd.options.mode.copy_on_write = True
+
+    # Create a small dataset
+    data = pd.DataFrame(
+        {
+            "time_idx": np.arange(30),
+            "value": np.sin(np.arange(30) / 5) + np.random.normal(scale=0.1, size=30),
+            "feature": np.cos(np.arange(30) / 5) + np.random.normal(scale=0.1, size=30),
+            "group": ["A"] * 30,
+        }
+    )
+
+    with warnings.catch_warnings(record=True) as w:
+        # catch all warnings
+        warnings.simplefilter("always")
+
+        # Define the dataset
+        dataset = TimeSeriesDataSet(
+            data,
+            time_idx="time_idx",
+            target="value",
+            group_ids=["group"],
+            static_categoricals=["group"],
+            max_encoder_length=4,
+            max_prediction_length=2,
+            time_varying_known_reals=["time_idx"],
+            time_varying_unknown_reals=["value", "feature"],
+            target_normalizer=None,
+            scalers={"feature": StandardScaler()},
+        )
+
+        next(iter(dataset))
+
+        # reset original mode
+        pd.options.mode.copy_on_write = copy_on_write
+
+        # Check if the specific warning was triggered
+        to_catch = "The given NumPy array is not writable, and PyTorch"
+        to_catch += " does not support non-writable tensors."
+        for warning in w:
+            if to_catch in str(warning.message):
+                assert False, "Non-writable NumPy array passed to torch.as_tensor"
