@@ -87,12 +87,12 @@ class iTransformer(TslibBaseModel):
         dropout: float = 0.1,
         n_heads: int = 8,
         e_layers: int = 3,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -162,7 +162,7 @@ class iTransformer(TslibBaseModel):
                 for _ in range(self.e_layers)
             ],
             norm_layer=torch.nn.LayerNorm(self.d_model),
-            output_attention = True
+            output_attention=True,
         )
         if self.n_quantiles is not None:
             self.projector = nn.Linear(

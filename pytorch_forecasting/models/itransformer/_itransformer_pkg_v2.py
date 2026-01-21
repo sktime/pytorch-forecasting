@@ -2,6 +2,7 @@
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
+
 class iTransformer_pkg_v2(Base_pkg):
     """iTransformer metadata container."""
 
@@ -36,7 +37,7 @@ class iTransformer_pkg_v2(Base_pkg):
         """Get test train params."""
         from pytorch_forecasting.metrics import QuantileLoss
 
-        params =  [
+        params = [
             {},
             dict(d_model=16, n_heads=2, e_layers=2, d_ff=64),
             dict(
@@ -46,7 +47,8 @@ class iTransformer_pkg_v2(Base_pkg):
                 d_ff=128,
                 dropout=0.1,
                 datamodule_cfg=dict(
-                    batch_size=4,context_length=12, prediction_length=3)
+                    batch_size=4, context_length=12, prediction_length=3
+                ),
             ),
             dict(
                 hidden_size=32,

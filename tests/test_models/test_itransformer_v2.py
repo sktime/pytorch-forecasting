@@ -241,8 +241,16 @@ def test_quantile_prediction(basic_metadata):
     )
     batch_size = 4
     sample_input = {
-        "history_cont": torch.randn(batch_size, basic_metadata["context_length"], basic_metadata["n_features"]["continuous"]),
-        "history_target": torch.randn(batch_size, basic_metadata["context_length"], basic_metadata["n_features"]["target"]),
+        "history_cont": torch.randn(
+            batch_size,
+            basic_metadata["context_length"],
+            basic_metadata["n_features"]["continuous"],
+        ),
+        "history_target": torch.randn(
+            batch_size,
+            basic_metadata["context_length"],
+            basic_metadata["n_features"]["target"],
+        ),
     }
     model.eval()
     with torch.no_grad():
@@ -284,7 +292,7 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
 
 
 def test_attention_output_shape(basic_metadata):
-    """Test that attention output is present and has correct shape when output_attention=True."""
+    """Test that attention output is present when output_attention=True."""
     model = iTransformer(
         loss=MAE(),
         d_model=16,
@@ -297,8 +305,16 @@ def test_attention_output_shape(basic_metadata):
     )
     batch_size = 2
     sample_input = {
-        "history_cont": torch.randn(batch_size, basic_metadata["context_length"], basic_metadata["n_features"]["continuous"]),
-        "history_target": torch.randn(batch_size, basic_metadata["context_length"], basic_metadata["n_features"]["target"]),
+        "history_cont": torch.randn(
+            batch_size,
+            basic_metadata["context_length"],
+            basic_metadata["n_features"]["continuous"],
+        ),
+        "history_target": torch.randn(
+            batch_size,
+            basic_metadata["context_length"],
+            basic_metadata["n_features"]["target"],
+        ),
     }
     model.eval()
     with torch.no_grad():
@@ -327,7 +343,9 @@ def test_arbitrary_num_variables(basic_metadata):
         batch_size = 2
         sample_input = {
             "history_cont": torch.randn(batch_size, meta["context_length"], n_vars),
-            "history_target": torch.randn(batch_size, meta["context_length"], meta["n_features"]["target"]),
+            "history_target": torch.randn(
+                batch_size, meta["context_length"], meta["n_features"]["target"]
+            ),
         }
         model.eval()
         with torch.no_grad():
@@ -356,12 +374,20 @@ def test_multivariate_benchmark_like(basic_metadata):
     )
     batch_size = 3
     sample_input = {
-        "history_cont": torch.randn(batch_size, meta["context_length"], meta["n_features"]["continuous"]),
-        "history_target": torch.randn(batch_size, meta["context_length"], meta["n_features"]["target"]),
+        "history_cont": torch.randn(
+            batch_size, meta["context_length"], meta["n_features"]["continuous"]
+        ),
+        "history_target": torch.randn(
+            batch_size, meta["context_length"], meta["n_features"]["target"]
+        ),
     }
     model.eval()
     with torch.no_grad():
         output = model(sample_input)
     prediction = output["prediction"]
-    assert prediction.shape == (batch_size, meta["prediction_length"], meta["n_features"]["target"])
+    assert prediction.shape == (
+        batch_size,
+        meta["prediction_length"],
+        meta["n_features"]["target"],
+    )
     assert not torch.isnan(prediction).any()
