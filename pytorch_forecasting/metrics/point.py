@@ -191,7 +191,7 @@ class MASE(MultiHorizonMetric):
             torch.Tensor: loss as a single number for backpropagation
         """  # noqa: E501
         # unpack weight
-        if isinstance(target, (list, tuple)):
+        if isinstance(target, list | tuple):
             weight = target[1]
             target = target[0]
         else:

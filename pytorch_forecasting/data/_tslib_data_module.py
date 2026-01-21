@@ -2,7 +2,8 @@
 Experimental data module for integrating `tslib` time series deep learning library.
 """
 
-from typing import Any, Optional, Union
+from collections.abc import Callable
+from typing import Any, Optional
 import warnings
 
 from lightning.pytorch import LightningDataModule
@@ -20,7 +21,7 @@ from pytorch_forecasting.data.encoders import (
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
-NORMALIZER = Union[TorchNormalizer, EncoderNormalizer, NaNLabelEncoder]
+NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
 class _TslibDataset(Dataset):
@@ -294,21 +295,21 @@ class TslibDataModule(LightningDataModule):
         freq: str = "h",
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
-        target_normalizer: Union[
-            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
-        ] = "auto",  # noqa: E501
-        scalers: Optional[
-            dict[
-                str,
-                Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
-            ]
-        ] = None,  # noqa: E501
+        target_normalizer: NORMALIZER
+        | str
+        | list[NORMALIZER]
+        | tuple[NORMALIZER]
+        | None = "auto",  # noqa: E501
+        scalers: dict[
+            str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
+        ]
+        | None = None,  # noqa: E501
         shuffle: bool = True,
         window_stride: int = 1,
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
-        collate_fn: Optional[callable] = None,
+        collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -670,7 +671,7 @@ class TslibDataModule(LightningDataModule):
 
         return windows
 
-    def setup(self, stage: Optional[str] = None) -> None:
+    def setup(self, stage: str | None = None) -> None:
         """
         Setup the data module by preparing the datasets for training,
         testing and validation.
@@ -879,7 +880,7 @@ class TslibDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        if isinstance(batch[0][1], (list, tuple)):
+        if isinstance(batch[0][1], list | tuple):
             num_targets = len(batch[0][1])
             y_batch = []
             for i in range(num_targets):

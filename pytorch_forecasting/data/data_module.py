@@ -23,7 +23,7 @@ from pytorch_forecasting.data.encoders import (
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
-NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
+NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
 class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
@@ -85,25 +85,25 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self,
         time_series_dataset: TimeSeries,
         max_encoder_length: int = 30,
-        min_encoder_length: Optional[int] = None,
+        min_encoder_length: int | None = None,
         max_prediction_length: int = 1,
-        min_prediction_length: Optional[int] = None,
-        min_prediction_idx: Optional[int] = None,
+        min_prediction_length: int | None = None,
+        min_prediction_idx: int | None = None,
         allow_missing_timesteps: bool = False,
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
-        add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[
-            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
-        ] = "auto",
-        categorical_encoders: Optional[dict[str, NaNLabelEncoder]] = None,
-        scalers: Optional[
-            dict[
-                str,
-                Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
-            ]
-        ] = None,
-        randomize_length: Union[None, tuple[float, float], bool] = False,
+        add_encoder_length: bool | str = "auto",
+        target_normalizer: NORMALIZER
+        | str
+        | list[NORMALIZER]
+        | tuple[NORMALIZER]
+        | None = "auto",
+        categorical_encoders: dict[str, NaNLabelEncoder] | None = None,
+        scalers: dict[
+            str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
+        ]
+        | None = None,
+        randomize_length: None | tuple[float, float] | bool = False,
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
@@ -881,7 +881,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         return windows
 
-    def setup(self, stage: Optional[str] = None):
+    def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
 
         Parameters
@@ -1015,7 +1015,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        if isinstance(batch[0][1], (list, tuple)):
+        if isinstance(batch[0][1], list | tuple):
             num_targets = len(batch[0][1])
             y_batch = []
             for i in range(num_targets):

@@ -1,5 +1,69 @@
 # Release Notes
 
+## v1.6.0
+Release focusing on:
+
+* python 3.14 support
+* Solving the unpickling error in weight loading
+* Deduplicating utilities with `scikit-base` and adding it as a core dependency
+* Addition of new `predict` interface for **Beta v2**
+* Improvements to model backends
+
+
+### Highlights
+#### `pytorch-forecasting` ***v1.6.0***
+
+* Refactor N-BEATS blocks to separate KAN logic by @khenm in #2012
+* Efficient Attention Backend for TimeXer @anasashbin #1997
+
+### `pytorch-forecasting` ***Beta v2***
+
+* New `predict` interface for v2 models by @phoeenniixx in #1984
+* Efficient Attention Backend for TimeXer @anasashbin #1997
+
+### API Changes
+
+* Tuner import change due to a Lightning breaking change. Lightning v2.6 introduced a breaking change in its checkpoint loading behavior, which caused unpickling errors during weight loading in `pytorch-forecasting` (see #2000).
+To address this, `pytorch-forecasting` now provides its own `Tuner` wrapper that exposes the required `weights_only` argument when calling `lr_find()`.
+
+  * When using `pytorch-forecasting > 1.5.0` with `lightning > 2.5`, please use `pytorch_forecasting.tuning.Tuner` in place of `lightning.pytorch.tuner.Tuner`. See #2000 for details.
+
+### Maintenance
+
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 4 to 5 (#1986) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 5 to 6 (#1985) @dependabot[bot]
+* [MNT] Fix typos (#1988) @szepeviktor
+* [MNT] [Dependabot](deps): Bump actions/checkout from 5 to 6 (#1991) @dependabot[bot]
+* [MNT] Add version bound for `lightning` (#2001) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 5 to 6 (#2005) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 6 to 7 (#2006) @dependabot[bot]
+* [MNT] [Dependabot](deps): Update sphinx requirement from <8.2.4,>3.2 to >3.2,<9.1.1 (#2013) @dependabot[bot]
+* [MNT] [Dependabot](deps): Update lightning requirement from <2.6.0,>=2.0.0 to >=2.0.0,<2.7.0 (#2002) @dependabot[bot]
+* [MNT] Add python 3.14 support (#2015) @phoeenniixx
+* [MNT] Update changelog generator script to return markdown files (#2016) @phoeenniixx
+* [MNT] deduplicating utilities with `scikit-base` (#1929) @fkiraly
+* [MNT] Update `ruff` linting target version to `python 3.10` (#2017) @phoeenniixx
+
+### Enhancements
+
+* [ENH] Consistent 3D output for single-target point predictions in `TimeXer`  v1. (#1936) @PranavBhatP
+* [ENH] Efficient Attention Backend for TimeXer (#1997) @anasashb
+* [ENH] Add `predict` to v2 models (#1984) @phoeenniixx
+* [ENH] Refactor N-BEATS blocks to separate KAN logic (#2012) @khenm
+* [MNT] deduplicating utilities with `scikit-base` (#1929) @fkiraly
+
+### Fixes
+
+* [BUG] Align TimeXer v2 endogenous/exogenous usage with tslib metadata (#2009) @ahmedkansulum
+* [BUG] Solve the unpickling error in weight Loading (#2000) @phoeenniixx
+
+### Documentation
+
+* [DOC] add `CODE_OF_CONDUCT.md` and `GOVERNANCE.md` (#2014) @phoeenniixx
+
+### All Contributors
+@ahmedkansulum, @anasashb, @dependabot[bot], @fkiraly, @khenm, @phoeenniixx, @PranavBhatP, @szepeviktor, @agobbifbk
+
 ## v1.5.0
 Release focusing on:
 

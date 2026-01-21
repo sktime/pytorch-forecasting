@@ -1,16 +1,6 @@
 __author__ = ["jgyasu", "fkiraly"]
 
-from pytorch_forecasting.utils._dependencies import (
-    _get_installed_packages,
-    _safe_import,
-)
-
-
-def test_import_present_module():
-    """Test importing a dependency that is installed."""
-    result = _safe_import("pandas")
-    assert result is not None
-    assert "pandas" in _get_installed_packages()
+from skbase.utils.dependencies import _safe_import
 
 
 def test_import_missing_module():

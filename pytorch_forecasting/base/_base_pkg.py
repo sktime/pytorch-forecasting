@@ -42,10 +42,10 @@ class Base_pkg(_BasePtForecasterV2):
 
     def __init__(
         self,
-        model_cfg: Optional[Union[dict[str, Any], str, Path]] = None,
-        trainer_cfg: Optional[Union[dict[str, Any], str, Path]] = None,
-        datamodule_cfg: Optional[Union[dict[str, Any], str, Path]] = None,
-        ckpt_path: Optional[Union[str, Path]] = None,
+        model_cfg: dict[str, Any] | str | Path | None = None,
+        trainer_cfg: dict[str, Any] | str | Path | None = None,
+        datamodule_cfg: dict[str, Any] | str | Path | None = None,
+        ckpt_path: str | Path | None = None,
     ):
         self.ckpt_path = Path(ckpt_path) if ckpt_path else None
         self.model_cfg = self._load_config(
@@ -74,9 +74,9 @@ class Base_pkg(_BasePtForecasterV2):
 
     @staticmethod
     def _load_config(
-        config: Union[dict, str, Path, None],
-        ckpt_path: Optional[Union[str, Path]] = None,
-        auto_file_name: Optional[str] = None,
+        config: dict | str | Path | None,
+        ckpt_path: str | Path | None = None,
+        auto_file_name: str | None = None,
     ) -> dict:
         """
         Loads configuration from a dictionary, YAML file, or Pickle file.
@@ -157,7 +157,7 @@ class Base_pkg(_BasePtForecasterV2):
         return datamodule_cls(data, **self.datamodule_cfg)
 
     def _load_dataloader(
-        self, data: Union[TimeSeries, LightningDataModule, DataLoader]
+        self, data: TimeSeries | LightningDataModule | DataLoader
     ) -> DataLoader:
         """Converts various data input types into a DataLoader for prediction."""
         if isinstance(data, TimeSeries):  # D1 Layer
@@ -191,11 +191,11 @@ class Base_pkg(_BasePtForecasterV2):
 
     def fit(
         self,
-        data: Union[TimeSeries, LightningDataModule],
+        data: TimeSeries | LightningDataModule,
         # todo: we should create a base data_module for different data_modules
         save_ckpt: bool = True,
-        ckpt_dir: Union[str, Path] = "checkpoints",
-        ckpt_kwargs: Optional[dict[str, Any]] = None,
+        ckpt_dir: str | Path = "checkpoints",
+        ckpt_kwargs: dict[str, Any] | None = None,
         **trainer_fit_kwargs,
     ):
         """
@@ -265,10 +265,10 @@ class Base_pkg(_BasePtForecasterV2):
 
     def predict(
         self,
-        data: Union[TimeSeries, LightningDataModule, DataLoader],
-        output_dir: Optional[Union[str, Path]] = None,
+        data: TimeSeries | LightningDataModule | DataLoader,
+        output_dir: str | Path | None = None,
         **kwargs,
-    ) -> Union[dict[str, torch.Tensor], None]:
+    ) -> dict[str, torch.Tensor] | None:
         """
         Generate predictions by wrapping the model's predict method.
 

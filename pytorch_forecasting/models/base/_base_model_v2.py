@@ -45,11 +45,11 @@ class BaseModel(LightningModule):
     def __init__(
         self,
         loss: Metric,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
     ):
         super().__init__()
         self.loss = loss
@@ -98,7 +98,7 @@ class BaseModel(LightningModule):
         self,
         dataloader: DataLoader,
         mode: str = "prediction",
-        return_info: Optional[list[str]] = None,
+        return_info: list[str] | None = None,
         mode_kwargs: dict[str, Any] = None,
         trainer_kwargs: dict[str, Any] = None,
     ) -> dict[str, torch.Tensor]:

@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torch.nn.utils import rnn
 
-HiddenState = Union[tuple[torch.Tensor, torch.Tensor], torch.Tensor]
+HiddenState = tuple[torch.Tensor, torch.Tensor] | torch.Tensor
 
 
 class RNN(ABC, nn.RNNBase):
@@ -70,11 +70,11 @@ class RNN(ABC, nn.RNNBase):
 
     def forward(
         self,
-        x: Union[rnn.PackedSequence, torch.Tensor],
+        x: rnn.PackedSequence | torch.Tensor,
         hx: HiddenState = None,
         lengths: torch.LongTensor = None,
         enforce_sorted: bool = True,
-    ) -> tuple[Union[rnn.PackedSequence, torch.Tensor], HiddenState]:
+    ) -> tuple[rnn.PackedSequence | torch.Tensor, HiddenState]:
         """
         Forward function of rnn that allows zero-length sequences.
 
@@ -226,7 +226,7 @@ class GRU(RNN, nn.GRU):
         return hidden_state.repeat_interleave(n_samples, 1)
 
 
-def get_rnn(cell_type: Union[type[RNN], str]) -> type[RNN]:
+def get_rnn(cell_type: type[RNN] | str) -> type[RNN]:
     """
     Get LSTM or GRU.
 

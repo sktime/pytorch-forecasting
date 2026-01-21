@@ -3,7 +3,7 @@ Installation
 
 ``pytorch-forecasting`` currently supports:
 
-* Python versions 3.10, 3.11, 3.12 and 3.13.
+* Python versions 3.10, 3.11, 3.12, 3.13 and 3.14.
 * Operating systems : Linux, macOS, and Windows
 
 Installing pytorch-forecasting

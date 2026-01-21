@@ -29,7 +29,7 @@ class PredictCallback(BasePredictionWriter):
     def __init__(
         self,
         mode: str = "prediction",
-        return_info: Optional[list[str]] = None,
+        return_info: list[str] | None = None,
         mode_kwargs: dict[str, Any] = None,
     ):
         super().__init__(write_interval="epoch")

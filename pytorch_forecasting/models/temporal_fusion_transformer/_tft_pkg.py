@@ -92,7 +92,7 @@ class TemporalFusionTransformer_pkg(_BasePtForecaster):
         #     dwc = dwc.assign(volume=lambda x: x.volume.round())
         #     data_loader_kwargs["target"] = "volume"
         #     data_loader_kwargs["time_varying_unknown_reals"] = ["volume"]
-        elif isinstance(loss, (TweedieLoss, PoissonLoss)):
+        elif isinstance(loss, TweedieLoss | PoissonLoss):
             clip_target = True
         elif isinstance(loss, CrossEntropy):
             data_loader_kwargs["target"] = "agency"
