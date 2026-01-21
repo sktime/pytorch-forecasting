@@ -148,7 +148,7 @@ class iTransformer(TslibBaseModel):
                             False,
                             self.factor,
                             attention_dropout=self.dropout,
-                            output_attention=self.output_attention,
+                            output_attention=True,
                         ),
                         self.d_model,
                         self.n_heads,
@@ -157,10 +157,12 @@ class iTransformer(TslibBaseModel):
                     d_ff=self.d_ff,
                     dropout=self.dropout,
                     activation=self.activation,
+                    output_attention=True,
                 )
                 for _ in range(self.e_layers)
             ],
             norm_layer=torch.nn.LayerNorm(self.d_model),
+            output_attention = True
         )
         if self.n_quantiles is not None:
             self.projector = nn.Linear(
@@ -204,7 +206,10 @@ class iTransformer(TslibBaseModel):
         Returns:
             dict[str, torch.Tensor]: Model predictions.
         """
-        dec_out, attns = self._forecast(x)
+        if self.output_attention:
+            dec_out, attns = self._forecast(x)
+        else:
+            dec_out = self._forecast(x)
 
         if self.n_quantiles is not None:
             batch_size = dec_out.shape[0]
