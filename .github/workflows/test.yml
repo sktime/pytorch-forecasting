@@ -120,8 +120,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ubuntu-latest
-        python-version: 3.12
+        os: ["ubuntu-latest"]
+        python-version: ["3.12"]
 
     steps:
       - uses: actions/checkout@v6
