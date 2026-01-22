@@ -158,8 +158,8 @@ class RMSE(MultiHorizonMetric):
     the squared error.
     """
 
-    def _init_(self, reduction="sqrt-mean", **kwargs):
-        super()._init_(reduction=reduction, **kwargs)
+    def __init__(self, reduction="sqrt-mean", **kwargs):
+        super().__init__(reduction=reduction, **kwargs)
 
     def loss(self, y_pred: dict[str, torch.Tensor], target):
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
