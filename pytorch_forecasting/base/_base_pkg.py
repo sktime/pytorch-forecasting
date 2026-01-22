@@ -48,6 +48,7 @@ class Base_pkg(_BasePtForecasterV2):
         ckpt_path: str | Path | None = None,
     ):
         self.ckpt_path = Path(ckpt_path) if ckpt_path else None
+        self._scaler_path = None
         self.model_cfg = self._load_config(
             model_cfg, ckpt_path=self.ckpt_path, auto_file_name="model_cfg.pkl"
         )
@@ -162,6 +163,13 @@ class Base_pkg(_BasePtForecasterV2):
         """Converts various data input types into a DataLoader for prediction."""
         if isinstance(data, TimeSeries):  # D1 Layer
             dm = self._build_datamodule(data)
+            scaler_path = self._scaler_path or (
+                Path(self.ckpt_path).parent / "scalers.pkl" if self.ckpt_path else None
+            )
+            if scaler_path and scaler_path.exists():
+                dm.load_scalers(scaler_path)
+            elif scaler_path:
+                raise FileNotFoundError(f"Scaler file not found: {scaler_path}")
             dm.setup(stage="predict")
             return dm.predict_dataloader()
         elif isinstance(data, LightningDataModule):  # D2 Layer
@@ -259,6 +267,10 @@ class Base_pkg(_BasePtForecasterV2):
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             self._save_artifact(best_model_path.parent)
+            scaler_path = best_model_path.parent / "scalers.pkl"
+            self.datamodule.save_scalers(scaler_path)
+            self._scaler_path = scaler_path
+            print(f"Scalers saved in: {scaler_path}")
             print(f"Artifacts saved in: {best_model_path.parent}")
             return best_model_path
         return None
