@@ -928,6 +928,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "expects a fitted target normalizer when loading from a saved state."
             )
 
+        if self._target_normalizer is not None and loaded_target_normalizer is not None:
+            if not isinstance(
+                loaded_target_normalizer, self._target_normalizer.__class__
+            ):
+                raise TypeError(
+                    f"Loaded target normalizer type {type(loaded_target_normalizer).__name__} "  # noqa: E501
+                    f"does not match configured type {type(self._target_normalizer).__name__}."  # noqa: E501
+                )
+
         # filter unexpected features for scaling
         loaded_feature_scalers = load_state["feature_scalers"]
         unexpected_keys = set(loaded_feature_scalers.keys()) - set(self._scalers.keys())  # noqa: E501

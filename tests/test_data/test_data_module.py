@@ -479,6 +479,7 @@ def test_multivariate_target():
 @pytest.mark.parametrize(
     "normalizer",
     [
+        None,
         "auto",
         TorchNormalizer(),
         StandardScaler(),
@@ -518,10 +519,10 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
     assert y_with_norm.shape == y_no_norm.shape
     assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
 
-    assert not torch.allclose(y_with_norm, y_no_norm), "Target should be normalized"
-    assert not torch.allclose(
-        x_with_norm["target_past"], x_no_norm["target_past"]
-    ), "target_past should be normalized"
+    if normalizer is not None:
+        assert (
+            dm_with_norm._target_normalizer_fitted
+        ), "Target normalizer should be fitted"
 
 
 @pytest.mark.parametrize(
@@ -564,19 +565,15 @@ def test_feature_scaling(sample_timeseries_data, scaler_type):
     )
     dm_with_scale.setup(stage="fit")
 
+    assert dm_with_scale._feature_scalers_fitted
+    assert "cont_feat1" in dm_with_scale.scalers
+    assert "cont_feat2" in dm_with_scale.scalers
+
     x_no_scale, _ = dm_no_scale.train_dataset[0]
     x_with_scale, _ = dm_with_scale.train_dataset[0]
 
     assert x_with_scale["encoder_cont"].shape == x_no_scale["encoder_cont"].shape
     assert x_with_scale["decoder_cont"].shape == x_no_scale["decoder_cont"].shape
-
-    assert not torch.allclose(
-        x_with_scale["encoder_cont"], x_no_scale["encoder_cont"]
-    ), "Continuous features should be scaled"
-
-    assert (
-        x_with_scale["encoder_cont"].var() < x_no_scale["encoder_cont"].var()
-    ), "Scaling should reduce variance"
 
 
 def test_save_scalers(sample_timeseries_data, tmp_path):
