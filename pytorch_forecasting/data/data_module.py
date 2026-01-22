@@ -7,6 +7,8 @@
 # into the memory.
 #######################################################################################
 
+from pathlib import Path
+import pickle
 from typing import Any, Optional, Union
 from warnings import warn
 
@@ -576,7 +578,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         """Validate preprocessing by checking if scalers and normalizers are fitted
         on training data."""
 
-        if self._target_normalizer is not None and not self._target_normalizer_fitted:  # noqa: E501
+        if self._target_normalizer and not self._target_normalizer_fitted:  # noqa: E501
             raise RuntimeError(
                 "Cannot setup test stage: target_normalizer is configured "
                 "but not fitted. You must call setup('fit') first on this"
@@ -584,7 +586,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "that was used for training."
             )
 
-        if self._scaler is not None and not self._feature_scalers_fitted:  # noqa: E501
+        if self._scalers and not self._feature_scalers_fitted:  # noqa: E501
             raise RuntimeError(
                 "Cannot setup test stage: feature scalers are configured "
                 "but not fitted. You must call setup('fit') first on this "
@@ -881,6 +883,81 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         return windows
 
+    def save_scalers(self, path: str | Path):
+        """Save fitted scalers and normalizers to disk.
+
+        Parameters
+        ----------
+        path: str or Path
+            File path to save the scalers and normalizers.
+        """
+
+        save_state = {
+            "target_normalizer": self._target_normalizer,
+            "target_normalizer_fitted": self._target_normalizer_fitted,
+            "feature_scalers": self._scalers,
+            "feature_scalers_fitted": self._feature_scalers_fitted,
+        }
+
+        with open(path, "wb") as f:
+            pickle.dump(save_state, f)
+
+    def load_scalers(self, path: str | Path):
+        """Load fitted scalers and normalizers from disk.
+
+        Parameters
+        ----------
+        path: str or Path
+            File path to load the scalers and normalizers from.
+        """
+
+        with open(path, "rb") as f:
+            load_state = pickle.load(f)  # noqa: S301
+
+        loaded_target_normalizer = load_state["target_normalizer"]
+        # check if target normalizer matches
+        if self._target_normalizer is None and loaded_target_normalizer is not None:
+            raise ValueError(
+                "Loaded target normalizer is not None, but no target normalizer "
+                "is configured in this DataModule."
+            )
+
+        if self._target_normalizer is not None and loaded_target_normalizer is None:
+            raise ValueError(
+                "No target normalizer found in loaded state, but this DataModule "
+                "expects a fitted target normalizer when loading from a saved state."
+            )
+
+        # filter unexpected features for scaling
+        loaded_feature_scalers = load_state["feature_scalers"]
+        unexpected_keys = set(loaded_feature_scalers.keys()) - set(self._scalers.keys())  # noqa: E501
+        if unexpected_keys:
+            raise ValueError(
+                f"Loaded scalers contain unexpected feature keys: {unexpected_keys}. "
+                f"Expected keys: {set(self._scalers.keys())}"
+            )
+
+        # missing keys check
+        missing_keys = set(self._scalers.keys()) - set(loaded_feature_scalers.keys())
+        if missing_keys:
+            raise ValueError(
+                f"Loaded scalers are missing expected feature keys: {missing_keys}. "
+                f"Loaded keys: {set(loaded_feature_scalers.keys())}"
+            )
+
+        for key, loaded_scaler in loaded_feature_scalers.items():
+            if key in self._scalers and not isinstance(
+                loaded_scaler, self._scalers[key].__class__
+            ):
+                raise TypeError(
+                    f"Loaded scaler for '{key}' has type {type(loaded_scaler).__name__} "  # noqa: E501
+                    f"but configured scaler has type {type(self._scalers[key]).__name__}"  # noqa: E501
+                )
+        self._target_normalizer = load_state["target_normalizer"]
+        self._target_normalizer_fitted = load_state["target_normalizer_fitted"]
+        self._scalers = load_state["feature_scalers"]
+        self._feature_scalers_fitted = load_state["feature_scalers_fitted"]
+
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
 
@@ -906,8 +983,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._test_indices = self._split_indices[self._train_size + self._val_size :]
 
         if stage is None or stage == "fit":
-            self._fit_target_normalizer(self._train_indices)
-            self._fit_scalers(self._train_indices)
+            if not self._target_normalizer_fitted:
+                self._fit_target_normalizer(self._train_indices)
+            if not self._feature_scalers_fitted:
+                self._fit_scalers(self._train_indices)
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
                 self._train_preprocessed = self._preprocess_all_data(
                     self._train_indices
@@ -932,7 +1011,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
-                # self._validate_preprocessing()
+                self._validate_preprocessing()
                 self._test_preprocessed = self._preprocess_all_data(self._test_indices)
                 self.test_windows = self._create_windows(self._test_indices)
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
@@ -942,7 +1021,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self.add_relative_time_idx,
                 )
         elif stage == "predict":
-            # self._validate_preprocessing()
+            self._validate_preprocessing()
             predict_indices = torch.arange(len(self.time_series_dataset))
             self._predict_preprocessed = self._preprocess_all_data(predict_indices)
             self.predict_windows = self._create_windows(predict_indices)

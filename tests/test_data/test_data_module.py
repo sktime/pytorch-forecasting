@@ -577,3 +577,72 @@ def test_feature_scaling(sample_timeseries_data, scaler_type):
     assert (
         x_with_scale["encoder_cont"].var() < x_no_scale["encoder_cont"].var()
     ), "Scaling should reduce variance"
+
+
+def test_save_scalers(sample_timeseries_data, tmp_path):
+    """Test saving and loading of scalers.
+
+    Verifies if the test is able to save and load the correct
+    scalers and that the transformations remain consistent.
+    """
+
+    scalers = {
+        "cont_feat1": StandardScaler(),
+        "cont_feat2": RobustScaler(),
+    }
+
+    dm1 = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=RobustScaler(),
+        scalers=scalers,
+    )
+    dm1.setup("fit")
+
+    x1, y1 = dm1.train_dataset[0]
+
+    scaler_path = tmp_path / "scalers.pkl"
+    dm1.save_scalers(scaler_path)
+
+    assert scaler_path.exists(), "Scaler file not created!"
+
+
+def test_load_scalers_test_stage(sample_timeseries_data, tmp_path):
+    """Test that loading scalers allows running test stage without fitting."""
+
+    train_dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=RobustScaler(),
+        scalers={"cont_feat1": StandardScaler()},
+    )
+    train_dm.setup("fit")
+
+    scaler_path = tmp_path / "scalers.pkl"
+    train_dm.save_scalers(scaler_path)
+    test_dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=RobustScaler(),
+        scalers={"cont_feat1": StandardScaler()},
+    )
+    assert not test_dm._target_normalizer_fitted
+    assert not test_dm._feature_scalers_fitted
+
+    test_dm.load_scalers(scaler_path)
+
+    assert test_dm._target_normalizer_fitted
+    assert test_dm._feature_scalers_fitted
+
+    test_dm.setup("test")
+    test_loader = test_dm.test_dataloader()
+    batch = next(iter(test_loader))
+    x_batch, y_batch = batch
+    assert x_batch["encoder_cont"].shape[0] == test_dm.batch_size
+    assert y_batch.shape[0] == test_dm.batch_size
