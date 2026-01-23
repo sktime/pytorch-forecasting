@@ -130,8 +130,10 @@ class DeepAR(BaseModel):
             - prediction: Distribution parameters
         """
         encoder_input = torch.cat([x["encoder_cont"], x["encoder_cat"]], dim=2)
-        
-        _, (h_n, c_n) = self.rnn(encoder_input)
+        if self.cell_type == "LSTM":
+            _, (h_n, c_n) = self.rnn(encoder_input)
+        else:
+            _, h_n = self.rnn(encoder_input)
         
         decoder_input = torch.cat([x["decoder_cont"], x["decoder_cat"]], dim=2)
         
