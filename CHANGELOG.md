@@ -3,7 +3,7 @@
 ## v1.6.1
 Patch release focusing on:
 * Bug fix  to solve the persisting bug of passing `weights_only` in `load_from_checkpoint` for `lightning <2.6`.
-* Bug fix to non-writeable encoder issue.
+* Bug fix to non-writeable encoder issue caused by pandas copy-on-write behavior.
 
 ### Fixes
 
