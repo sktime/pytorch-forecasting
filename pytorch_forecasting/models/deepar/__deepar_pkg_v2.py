@@ -4,6 +4,7 @@ Packages container for DeepAR model.
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
+
 class DeepAR_pkg_v2(Base_pkg):
     """DeepAR package container."""
 
@@ -19,18 +20,19 @@ class DeepAR_pkg_v2(Base_pkg):
         "python_dependencies": ["cpflows"],
     }
 
-
     @classmethod
     def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.deepar._deepar_v2 import DeepAR
 
         return DeepAR
-    
+
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
+        )
 
         return EncoderDecoderTimeSeriesDataModule
 

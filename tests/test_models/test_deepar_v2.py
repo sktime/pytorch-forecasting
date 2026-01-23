@@ -1,10 +1,11 @@
+from typing import Literal
+
 import pytest
 import torch
 import torch.nn as nn
-from typing import Literal
 
+from pytorch_forecasting.metrics import MAE, SMAPE, NormalDistributionLoss
 from pytorch_forecasting.models.deepar._deepar_v2 import DeepAR as DeepAR_v2
-from pytorch_forecasting.metrics import NormalDistributionLoss, SMAPE, MAE
 
 BATCH_SIZE_TEST = 2
 MAX_ENCODER_LENGTH_TEST = 10
@@ -12,6 +13,7 @@ MAX_PREDICTION_LENGTH_TEST = 5
 HIDDEN_SIZE_TEST = 8
 RNN_LAYERS_TEST = 1
 DROPOUT_TEST = 0.1
+
 
 def get_default_test_metadata(
     enc_cont=2,
@@ -31,7 +33,10 @@ def get_default_test_metadata(
         "target_dim": target_dim,
     }
 
-def create_deepar_input_batch_for_test(metadata, batch_size=BATCH_SIZE_TEST, device="cpu"):
+
+def create_deepar_input_batch_for_test(
+    metadata, batch_size=BATCH_SIZE_TEST, device="cpu"
+):
     """Create a synthetic input batch dictionary for testing DeepAR forward passes."""
     x = {
         "encoder_cont": torch.randn(
@@ -73,6 +78,7 @@ def create_deepar_input_batch_for_test(metadata, batch_size=BATCH_SIZE_TEST, dev
     }
     return x
 
+
 @pytest.fixture
 def deepar_model_params_fixture():
     """Create basic model parameters for DeepAR."""
@@ -84,11 +90,12 @@ def deepar_model_params_fixture():
         "cell_type": "LSTM",
     }
 
+
 def test_deepar_v2_initialization(deepar_model_params_fixture):
     """Test basic initialization of the DeepAR V2 model."""
     metadata = get_default_test_metadata()
     model = DeepAR_v2(**deepar_model_params_fixture, metadata=metadata)
-    
+
     assert model.hidden_size == HIDDEN_SIZE_TEST
     assert model.rnn_layers == RNN_LAYERS_TEST
     assert model.max_encoder_length == MAX_ENCODER_LENGTH_TEST
@@ -96,22 +103,23 @@ def test_deepar_v2_initialization(deepar_model_params_fixture):
     assert model.encoder_cont_dim == metadata["encoder_cont"]
     assert model.target_dim == metadata["target_dim"]
 
+
 @pytest.mark.parametrize("cell_type", ["LSTM", "GRU"])
 def test_deepar_v2_forward_pass(deepar_model_params_fixture, cell_type):
     """Test DeepAR V2 forward pass with different cell types."""
     metadata = get_default_test_metadata()
     params = deepar_model_params_fixture.copy()
     params["cell_type"] = cell_type
-    
+
     model = DeepAR_v2(**params, metadata=metadata)
     model.eval()
-    
+
     x = create_deepar_input_batch_for_test(metadata)
     output = model(x)
-    
+
     assert "prediction" in output
     prediction = output["prediction"]
-    
+
     # Expected shape: (batch_size, prediction_length, target_dim * n_dist_params)
     # n_dist_params for NormalDistributionLoss is 2 (loc, scale)
     n_dist_params = len(params["loss"].distribution_arguments)
@@ -122,19 +130,20 @@ def test_deepar_v2_forward_pass(deepar_model_params_fixture, cell_type):
     )
     assert not torch.isnan(prediction).any()
 
+
 def test_deepar_v2_multi_target(deepar_model_params_fixture):
     """Test DeepAR V2 forward pass with multiple targets."""
     target_dim = 3
     metadata = get_default_test_metadata(target_dim=target_dim)
     model = DeepAR_v2(**deepar_model_params_fixture, metadata=metadata)
     model.eval()
-    
+
     x = create_deepar_input_batch_for_test(metadata)
     output = model(x)
-    
+
     prediction = output["prediction"]
     n_dist_params = len(deepar_model_params_fixture["loss"].distribution_arguments)
-    
+
     # Check shape: (batch_size, prediction_length, target_dim, n_dist_params)
     assert prediction.shape == (
         BATCH_SIZE_TEST,

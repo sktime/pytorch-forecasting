@@ -3,7 +3,7 @@
 # experimental, please use with care.
 ########################################################################################
 
-from typing import Any, Literal , Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -85,17 +85,17 @@ class DeepAR(BaseModel):
 
         self.max_encoder_length = self.metadata.get("max_encoder_length", 0)
         self.max_prediction_length = self.metadata.get("max_prediction_length", 0)
-        
+
         self.encoder_cont_dim = self.metadata.get("encoder_cont", 0)
         self.encoder_cat_dim = self.metadata.get("encoder_cat", 0)
         self.decoder_cont_dim = self.metadata.get("decoder_cont", 0)
         self.decoder_cat_dim = self.metadata.get("decoder_cat", 0)
-        
-        self.target_dim = self.metadata.get("target_dim", 1) 
+
+        self.target_dim = self.metadata.get("target_dim", 1)
 
         rnn_class = get_rnn(cell_type)
         input_size = self.encoder_cont_dim + self.encoder_cat_dim
-        
+
         self.rnn = rnn_class(
             input_size=input_size,
             hidden_size=hidden_size,
@@ -134,22 +134,22 @@ class DeepAR(BaseModel):
             _, (h_n, c_n) = self.rnn(encoder_input)
         else:
             _, h_n = self.rnn(encoder_input)
-        
+
         decoder_input = torch.cat([x["decoder_cont"], x["decoder_cat"]], dim=2)
-        
+
         if self.cell_type == "LSTM":
             decoder_output, _ = self.rnn(decoder_input, (h_n, c_n))
-        else: 
+        else:
             decoder_output, _ = self.rnn(decoder_input, h_n)
-            
+
         prediction = self.distribution_projector(decoder_output)
-        
+
         if self.target_dim > 1:
             prediction = prediction.view(
-                prediction.size(0), 
-                prediction.size(1), 
-                self.target_dim, 
-                len(self.loss.distribution_arguments)
+                prediction.size(0),
+                prediction.size(1),
+                self.target_dim,
+                len(self.loss.distribution_arguments),
             )
 
         return {"prediction": prediction}
