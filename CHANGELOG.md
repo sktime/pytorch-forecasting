@@ -1,5 +1,22 @@
 # Release Notes
 
+## v1.6.1
+Patch release focusing on:
+* Bug fix  to solve the persisting bug of passing `weights_only` in `load_from_checkpoint` for `lightning <2.6`.
+* Bug fix to non-writeable encoder issue caused by pandas copy-on-write behavior.
+
+### Fixes
+
+* [BUG] Torch doesn't support the conversion of non-writeable numpyFix non-writeable encoder issue and update tests (#1989) @cngmid
+* [BUG] Solve the persisting bug of passing `weights_only` in `load_from_checkpoint` (#2027) @phoeenniixx
+
+### Maintenance
+
+* [MNT] Add CI step with pinned dependencies as of Nov 2025 (#2029) @phoeenniixx
+
+### All Contributors
+@cngmid, @phoeenniixx
+
 ## v1.6.0
 Release focusing on:
 
