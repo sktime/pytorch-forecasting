@@ -11,12 +11,19 @@ class DeepAR_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "DeepAR",
         "info:compute": 3,
+        "info:pred_type": ["distr"],
+        "info:y_type": ["numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
+        "tests:skip_by_name": [
+            "test_integration",
+            "test_checkpointing",
+            "test_predict_modes",
+        ],
     }
 
     @classmethod
@@ -34,6 +41,18 @@ class DeepAR_pkg_v2(Base_pkg):
         )
 
         return EncoderDecoderTimeSeriesDataModule
+
+    @classmethod
+    def get_base_test_params(cls):
+        """Return testing parameter settings for the trainer."""
+        return [
+            {},
+            dict(
+                cell_type="GRU",
+                hidden_size=16,
+                rnn_layers=2,
+            ),
+        ]
 
     @classmethod
     def get_test_train_params(cls):

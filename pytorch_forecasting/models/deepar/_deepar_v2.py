@@ -152,6 +152,16 @@ class DeepAR(BaseModel):
 
         decoder_input = torch.cat([x["decoder_cont"], x["decoder_cat"]], dim=2)
 
+        if decoder_input.size(2) < encoder_input.size(2):
+            padding = torch.zeros(
+                decoder_input.size(0),
+                decoder_input.size(1),
+                encoder_input.size(2) - decoder_input.size(2),
+                device=decoder_input.device,
+                dtype=decoder_input.dtype,
+            )
+            decoder_input = torch.cat([decoder_input, padding], dim=2)
+
         if self.cell_type == "LSTM":
             decoder_output, _ = self.rnn(decoder_input, (h_n, c_n))
         else:
