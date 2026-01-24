@@ -578,7 +578,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         """Validate preprocessing by checking if scalers and normalizers are fitted
         on training data."""
 
-        if self._target_normalizer and not self._target_normalizer_fitted:  # noqa: E501
+        if self._target_normalizer is not None and not self._target_normalizer_fitted:  # noqa: E501
             raise RuntimeError(
                 "Cannot setup test stage: target_normalizer is configured "
                 "but not fitted. You must call setup('fit') first on this"

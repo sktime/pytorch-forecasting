@@ -46,9 +46,17 @@ class Base_pkg(_BasePtForecasterV2):
         trainer_cfg: dict[str, Any] | str | Path | None = None,
         datamodule_cfg: dict[str, Any] | str | Path | None = None,
         ckpt_path: str | Path | None = None,
+        scaler_path: str | Path | None = None,
     ):
         self.ckpt_path = Path(ckpt_path) if ckpt_path else None
-        self._scaler_path = None
+        if scaler_path:
+            self._scaler_path = Path(scaler_path)
+        elif self.ckpt_path:
+            # attempt automatic discovery of scaler path when ckpt path is specified.
+            potential_scaler = self.ckpt_path.parent / "scalers.pkl"
+            self._scaler_path = potential_scaler if potential_scaler.exists() else None
+        else:
+            self._scaler_path = None
         self.model_cfg = self._load_config(
             model_cfg, ckpt_path=self.ckpt_path, auto_file_name="model_cfg.pkl"
         )
@@ -160,12 +168,18 @@ class Base_pkg(_BasePtForecasterV2):
     def _load_dataloader(
         self, data: TimeSeries | LightningDataModule | DataLoader
     ) -> DataLoader:
-        """Converts various data input types into a DataLoader for prediction."""
+        """Converts various data input types into a DataLoader for prediction.
+
+        Reuses datamodules from fitting stage if already exists to persist scalers
+        across stages of fit->test/predict.
+        """
         if isinstance(data, TimeSeries):  # D1 Layer
+            if self.datamodule is not None:
+                self.datamodule.time_series_dataset = data
+                self.datamodule.setup(stage="predict")
+                return self.datamodule.predict_dataloader()
             dm = self._build_datamodule(data)
-            scaler_path = self._scaler_path or (
-                Path(self.ckpt_path).parent / "scalers.pkl" if self.ckpt_path else None
-            )
+            scaler_path = self._scaler_path
             if scaler_path and scaler_path.exists():
                 dm.load_scalers(scaler_path)
             elif scaler_path:
@@ -204,6 +218,8 @@ class Base_pkg(_BasePtForecasterV2):
         save_ckpt: bool = True,
         ckpt_dir: str | Path = "checkpoints",
         ckpt_kwargs: dict[str, Any] | None = None,
+        save_scalers: bool = True,
+        scaler_dir: str | Path = None,
         **trainer_fit_kwargs,
     ):
         """
@@ -220,6 +236,12 @@ class Base_pkg(_BasePtForecasterV2):
             Directory to save artifacts.
         ckpt_kwargs : dict, optional
             Keyword arguments passed to ``ModelCheckpoint``.
+        save_scalers : bool, default=True
+            If True, save the fitted scalers after training.
+            Necessary in order to use fitted scalers on new data, e.g.,
+            during prediction.
+        scaler_dir : Union[str, Path], default="fitted_scalers"
+            Directory to save fitted scalers.
         **trainer_fit_kwargs :
             Additional keyword arguments passed to `trainer.fit()`.
 
@@ -264,13 +286,19 @@ class Base_pkg(_BasePtForecasterV2):
         self.trainer = Trainer(**trainer_init_cfg, callbacks=callbacks)
 
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
+
+        if save_scalers:
+            if scaler_dir is None:
+                scaler_dir = Path(ckpt_dir) if save_ckpt else Path("fitted_scalers")
+            scaler_dir.mkdir(parents=True, exist_ok=True)
+            scaler_path = scaler_dir / "scalers.pkl"
+            self.datamodule.save_scalers(scaler_path)
+            self._scaler_path = scaler_path
+            print(f"Scalers saved to: {scaler_path}")
+
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             self._save_artifact(best_model_path.parent)
-            scaler_path = best_model_path.parent / "scalers.pkl"
-            self.datamodule.save_scalers(scaler_path)
-            self._scaler_path = scaler_path
-            print(f"Scalers saved in: {scaler_path}")
             print(f"Artifacts saved in: {best_model_path.parent}")
             return best_model_path
         return None
