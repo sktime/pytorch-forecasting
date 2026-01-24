@@ -181,7 +181,13 @@ class Base_pkg(_BasePtForecasterV2):
             dm = self._build_datamodule(data)
             scaler_path = self._scaler_path
             if scaler_path and scaler_path.exists():
-                dm.load_scalers(scaler_path)
+                if hasattr(dm, "load_scalers"):
+                    dm.load_scalers(scaler_path)
+                else:
+                    print(
+                        "Warning: Datamodule does not support scaler loading."
+                        "Proceeding without scalers."
+                    )
             elif scaler_path:
                 raise FileNotFoundError(f"Scaler file not found: {scaler_path}")
             dm.setup(stage="predict")
@@ -287,7 +293,7 @@ class Base_pkg(_BasePtForecasterV2):
 
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
 
-        if save_scalers:
+        if save_scalers and hasattr(self.datamodule, "save_scalers"):
             if scaler_dir is None:
                 scaler_dir = Path(ckpt_dir) if save_ckpt else Path("fitted_scalers")
             scaler_dir.mkdir(parents=True, exist_ok=True)
@@ -295,6 +301,11 @@ class Base_pkg(_BasePtForecasterV2):
             self.datamodule.save_scalers(scaler_path)
             self._scaler_path = scaler_path
             print(f"Scalers saved to: {scaler_path}")
+        elif save_scalers:
+            print(
+                "Warning: Datamodule does not support scaler persistence."
+                "Skipping scaler save."
+            )
 
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
