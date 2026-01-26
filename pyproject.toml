@@ -124,7 +124,7 @@ dependencies_2025 = [
   "scipy ==1.15.3",
   "pandas ==2.3.3",
   "scikit-learn ==1.7.2",
-  "scikit-base ==0.13.0",
+  "scikit-base ==0.13.1",
 ]
 
 github-actions = ["pytest-github-actions-annotate-failures"]
