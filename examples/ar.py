@@ -3,7 +3,7 @@ import warnings
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 import pandas as pd
-from pandas.core.common import SettingWithCopyWarning
+from pandas.errors import SettingWithCopyWarning
 import torch
 
 from pytorch_forecasting import GroupNormalizer, TimeSeriesDataSet
