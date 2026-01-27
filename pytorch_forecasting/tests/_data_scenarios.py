@@ -53,7 +53,7 @@ def data_with_covariates():
 
 
 def make_dataloaders(data_with_covariates, **kwargs):
-    training_cutoff = "2019-01-01" 
+    training_cutoff = "2019-01-01"
     max_encoder_length = 4
     max_prediction_length = 3
 
