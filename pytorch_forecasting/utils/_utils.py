@@ -3,10 +3,11 @@ Helper functions for PyTorch forecasting
 """
 
 from collections import namedtuple
+from collections.abc import Callable
 from contextlib import redirect_stdout
 import inspect
 import os
-from typing import Any, Callable, Union
+from typing import Any, Union
 
 import lightning.pytorch as pl
 import torch
@@ -17,7 +18,7 @@ from torch.nn.utils import rnn
 
 
 def integer_histogram(
-    data: torch.LongTensor, min: Union[None, int] = None, max: Union[None, int] = None
+    data: torch.LongTensor, min: None | int = None, max: None | int = None
 ) -> torch.Tensor:
     """
     Create histogram of integers in predefined range
@@ -47,7 +48,7 @@ def groupby_apply(
     bins: int = 95,
     reduction: str = "mean",
     return_histogram: bool = False,
-) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
     """
     Groupby apply for torch tensors
 
@@ -233,7 +234,7 @@ def autocorrelation(input, dim=0):
 
 
 def unpack_sequence(
-    sequence: Union[torch.Tensor, rnn.PackedSequence],
+    sequence: torch.Tensor | rnn.PackedSequence,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Unpack RNN sequence.
@@ -257,8 +258,8 @@ def unpack_sequence(
 
 
 def concat_sequences(
-    sequences: Union[list[torch.Tensor], list[rnn.PackedSequence]],
-) -> Union[torch.Tensor, rnn.PackedSequence]:
+    sequences: list[torch.Tensor] | list[rnn.PackedSequence],
+) -> torch.Tensor | rnn.PackedSequence:
     """
     Concatenate RNN sequences.
 
@@ -273,7 +274,7 @@ def concat_sequences(
         return rnn.pack_sequence(sequences, enforce_sorted=False)
     elif isinstance(sequences[0], torch.Tensor):
         return torch.cat(sequences, dim=0)
-    elif isinstance(sequences[0], (tuple, list)):
+    elif isinstance(sequences[0], tuple | list):
         return tuple(
             concat_sequences([sequences[ii][i] for ii in range(len(sequences))])
             for i in range(len(sequences[0]))
@@ -286,7 +287,7 @@ def padded_stack(
     tensors: list[torch.Tensor],
     side: str = "right",
     mode: str = "constant",
-    value: Union[int, float] = 0,
+    value: int | float = 0,
 ) -> torch.Tensor:
     """
     Stack tensors along first dimension and pad them along last dimension to ensure their size is equal.
@@ -335,7 +336,7 @@ def to_list(value: Any) -> list[Any]:
     Returns:
         List[Any]: list of values
     """
-    if isinstance(value, (tuple, list)) and not isinstance(value, rnn.PackedSequence):
+    if isinstance(value, tuple | list) and not isinstance(value, rnn.PackedSequence):
         return value
     else:
         return [value]
@@ -358,7 +359,7 @@ def unsqueeze_like(tensor: torch.Tensor, like: torch.Tensor):
         return tensor[(...,) + (None,) * n_unsqueezes]
 
 
-def apply_to_list(obj: Union[list[Any], Any], func: Callable) -> Union[list[Any], Any]:
+def apply_to_list(obj: list[Any] | Any, func: Callable) -> list[Any] | Any:
     """
     Apply function to a list of objects or directly if passed value is not a list.
 
@@ -374,7 +375,7 @@ def apply_to_list(obj: Union[list[Any], Any], func: Callable) -> Union[list[Any]
         Union[List[Any], Any]: list of objects or object depending on function output
             and if input ``obj`` is of type list/tuple
     """
-    if isinstance(obj, (list, tuple)) and not isinstance(obj, rnn.PackedSequence):
+    if isinstance(obj, tuple | list) and not isinstance(obj, rnn.PackedSequence):
         return [func(o) for o in obj]
     else:
         return func(obj)
@@ -400,7 +401,7 @@ class OutputMixIn:
     def keys(self):
         return self._fields
 
-    def iget(self, idx: Union[int, slice]):
+    def iget(self, idx: int | slice):
         """Select item(s) row-wise.
 
         Args:
@@ -438,19 +439,17 @@ class TupleOutputMixIn:
 
 
 def move_to_device(
-    x: Union[
-        dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
-        torch.Tensor,
-        list[torch.Tensor],
-        tuple[torch.Tensor],
-    ],
-    device: Union[str, torch.DeviceObjType],
-) -> Union[
-    dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
-    torch.Tensor,
-    list[torch.Tensor],
-    tuple[torch.Tensor],
-]:
+    x: dict[str, torch.Tensor | list[torch.Tensor] | tuple[torch.Tensor]]
+    | torch.Tensor
+    | list[torch.Tensor]
+    | tuple[torch.Tensor],
+    device: str | torch.DeviceObjType,
+) -> (
+    dict[str, torch.Tensor | list[torch.Tensor] | tuple[torch.Tensor]]
+    | torch.Tensor
+    | list[torch.Tensor]
+    | tuple[torch.Tensor]
+):
     """
     Move object to device.
 
@@ -479,24 +478,22 @@ def move_to_device(
         return x
     elif isinstance(x, torch.Tensor) and x.device != device:
         x = x.to(device)
-    elif isinstance(x, (list, tuple)) and x[0].device != device:
+    elif isinstance(x, tuple | list) and x[0].device != device:
         x = [move_to_device(xi, device=device) for xi in x]
     return x
 
 
 def detach(
-    x: Union[
-        dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
-        torch.Tensor,
-        list[torch.Tensor],
-        tuple[torch.Tensor],
-    ],
-) -> Union[
-    dict[str, Union[torch.Tensor, list[torch.Tensor], tuple[torch.Tensor]]],
-    torch.Tensor,
-    list[torch.Tensor],
-    tuple[torch.Tensor],
-]:
+    x: dict[str, torch.Tensor | list[torch.Tensor] | tuple[torch.Tensor]]
+    | torch.Tensor
+    | list[torch.Tensor]
+    | tuple[torch.Tensor],
+) -> (
+    dict[str, torch.Tensor | list[torch.Tensor] | tuple[torch.Tensor]]
+    | torch.Tensor
+    | list[torch.Tensor]
+    | tuple[torch.Tensor]
+):
     """
     Detach object
 
@@ -512,7 +509,7 @@ def detach(
         return {name: detach(xi) for name, xi in x.items()}
     elif isinstance(x, OutputMixIn):
         return x.__class__(**{name: detach(xi) for name, xi in x.items()})
-    elif isinstance(x, (list, tuple)):
+    elif isinstance(x, tuple | list):
         return [detach(xi) for xi in x]
     else:
         return x
@@ -547,7 +544,7 @@ def masked_op(
 
 def repr_class(
     obj,
-    attributes: Union[list[str], dict[str, Any]],
+    attributes: list[str] | dict[str, Any],
     max_characters_before_break: int = 100,
     extra_attributes: dict[str, Any] = None,
 ) -> str:
@@ -565,7 +562,7 @@ def repr_class(
     if extra_attributes is None:
         extra_attributes = {}
     # get attributes
-    if isinstance(attributes, (tuple, list)):
+    if isinstance(attributes, tuple | list):
         attributes = {
             name: getattr(obj, name) for name in attributes if hasattr(obj, name)
         }

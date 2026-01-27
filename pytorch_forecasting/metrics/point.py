@@ -149,9 +149,13 @@ class CrossEntropy(MultiHorizonMetric):
 
 class RMSE(MultiHorizonMetric):
     """
-    Root mean square error
+    Root mean square error.
 
-    Defined as ``(y_pred - target)**2``
+    Defined as `sqrt(mean((y_pred - target)**2))`.
+
+    Note: The square root is applied during the reduction step via
+    the `sqrt-mean` strategy, while the `loss` method calculates
+    the squared error.
     """
 
     def __init__(self, reduction="sqrt-mean", **kwargs):
@@ -191,7 +195,7 @@ class MASE(MultiHorizonMetric):
             torch.Tensor: loss as a single number for backpropagation
         """  # noqa: E501
         # unpack weight
-        if isinstance(target, (list, tuple)):
+        if isinstance(target, list | tuple):
             weight = target[1]
             target = target[0]
         else:

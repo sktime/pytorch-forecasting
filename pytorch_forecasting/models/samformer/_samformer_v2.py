@@ -48,14 +48,14 @@ class Samformer(BaseModel):
         hidden_size: int,
         use_revin: bool,
         # out_channels has to be 1, due to lack of MultiLoss support in v2.
-        out_channels: Optional[Union[int, list[int]]] = 1,
+        out_channels: int | list[int] | None = 1,
         persistence_weight: float = 0.0,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
         **kwargs,
     ):
         super().__init__(

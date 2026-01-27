@@ -6,10 +6,11 @@ This module defines TimeSeriesDataSet,
 a class that is able to handle a wide variety of timeseries data problems.
 """
 
+from collections.abc import Callable
 from copy import copy as _copy, deepcopy
 from functools import cached_property
 import inspect
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 import warnings
 
 import numpy as np
@@ -92,9 +93,7 @@ except ImportError:
     pass
 
 
-def check_for_nonfinite(
-    tensor: torch.Tensor, names: Union[str, list[str]]
-) -> torch.Tensor:
+def check_for_nonfinite(tensor: torch.Tensor, names: str | list[str]) -> torch.Tensor:
     """Check if tensor contains NAs or infinite values and has correct dimension.
 
     Checks:
@@ -146,14 +145,14 @@ def check_for_nonfinite(
     return tensor
 
 
-NORMALIZER = Union[TorchNormalizer, NaNLabelEncoder, EncoderNormalizer]
+NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 Columns = list[str]
 TargetType = list[str, str]
 TargetPositive = list[str, bool]
 TargetSkew = list[str, float]
 
-DataProperties = dict[str, Union[Columns, TargetType, TargetPositive, TargetSkew]]
+DataProperties = dict[str, Columns | TargetType | TargetPositive | TargetSkew]
 TimeSeriesDataType = TypeVar("TimeSeriesType", bound="TimeSeriesDataSet")
 
 
@@ -441,40 +440,38 @@ class TimeSeriesDataSet(Dataset):
         self,
         data: pd.DataFrame,
         time_idx: str,
-        target: Union[str, list[str]],
+        target: str | list[str],
         group_ids: list[str],
-        weight: Union[str, None] = None,
+        weight: str | None = None,
         max_encoder_length: int = 30,
         min_encoder_length: int = None,
         min_prediction_idx: int = None,
         min_prediction_length: int = None,
         max_prediction_length: int = 1,
-        static_categoricals: Optional[list[str]] = None,
-        static_reals: Optional[list[str]] = None,
-        time_varying_known_categoricals: Optional[list[str]] = None,
-        time_varying_known_reals: Optional[list[str]] = None,
-        time_varying_unknown_categoricals: Optional[list[str]] = None,
-        time_varying_unknown_reals: Optional[list[str]] = None,
-        variable_groups: Optional[dict[str, list[int]]] = None,
-        constant_fill_strategy: Optional[
-            dict[str, Union[str, float, int, bool]]
-        ] = None,
+        static_categoricals: list[str] | None = None,
+        static_reals: list[str] | None = None,
+        time_varying_known_categoricals: list[str] | None = None,
+        time_varying_known_reals: list[str] | None = None,
+        time_varying_unknown_categoricals: list[str] | None = None,
+        time_varying_unknown_reals: list[str] | None = None,
+        variable_groups: dict[str, list[int]] | None = None,
+        constant_fill_strategy: dict[str, str | float | int | bool] | None = None,
         allow_missing_timesteps: bool = False,
-        lags: Optional[dict[str, list[int]]] = None,
+        lags: dict[str, list[int]] | None = None,
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
-        add_encoder_length: Union[bool, str] = "auto",
-        target_normalizer: Union[
-            NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None
-        ] = "auto",
-        categorical_encoders: Optional[dict[str, NaNLabelEncoder]] = None,
-        scalers: Optional[
-            dict[
-                str,
-                Union[StandardScaler, RobustScaler, TorchNormalizer, EncoderNormalizer],
-            ]
-        ] = None,
-        randomize_length: Union[None, tuple[float, float], bool] = False,
+        add_encoder_length: bool | str = "auto",
+        target_normalizer: NORMALIZER
+        | str
+        | list[NORMALIZER]
+        | tuple[NORMALIZER]
+        | None = "auto",
+        categorical_encoders: dict[str, NaNLabelEncoder] | None = None,
+        scalers: dict[
+            str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
+        ]
+        | None = None,
+        randomize_length: None | tuple[float, float] | bool = False,
         predict_mode: bool = False,
     ):
         """Timeseries dataset holding data for models."""
@@ -879,7 +876,7 @@ class TimeSeriesDataSet(Dataset):
     def _set_target_normalizer(
         self,
         data_properties: DataProperties,
-        target_normalizer: Union[NORMALIZER, str, list, tuple],
+        target_normalizer: NORMALIZER | str | list | tuple,
     ) -> TorchNormalizer:
         """Determine target normalizer.
 
@@ -915,7 +912,7 @@ class TimeSeriesDataSet(Dataset):
         """
         if isinstance(target_normalizer, str) and target_normalizer == "auto":
             target_normalizer = self._get_auto_normalizer(data_properties)
-        elif isinstance(target_normalizer, (tuple, list)):
+        elif isinstance(target_normalizer, tuple | list):
             target_normalizer = MultiNormalizer(self.target_normalizer)
         elif target_normalizer is None:
             target_normalizer = TorchNormalizer(method="identity")
@@ -925,7 +922,7 @@ class TimeSeriesDataSet(Dataset):
             not isinstance(target_normalizer, EncoderNormalizer)
             or self.min_encoder_length >= target_normalizer.min_length
         ), "EncoderNormalizer is only allowed if min_encoder_length > 1"
-        assert isinstance(target_normalizer, (TorchNormalizer, NaNLabelEncoder)), (
+        assert isinstance(target_normalizer, TorchNormalizer | NaNLabelEncoder), (
             f"target_normalizer has to be either None or of "
             f"class TorchNormalizer but found {target_normalizer}"
         )
@@ -1104,7 +1101,7 @@ class TimeSeriesDataSet(Dataset):
         # encode categoricals first to ensure
         # that group normalizer relies on encoded categories
         if isinstance(
-            self.target_normalizer, (GroupNormalizer, MultiNormalizer)
+            self.target_normalizer, GroupNormalizer | MultiNormalizer
         ):  # if we use a group normalizer, group_ids must be encoded as well
             group_ids_to_encode = self.group_ids
         else:
@@ -1174,7 +1171,7 @@ class TimeSeriesDataSet(Dataset):
                 if isinstance(self.target_normalizer, EncoderNormalizer):
                     self.target_normalizer.fit(data[self.target])
                 elif isinstance(
-                    self.target_normalizer, (GroupNormalizer, MultiNormalizer)
+                    self.target_normalizer, GroupNormalizer | MultiNormalizer
                 ):
                     self.target_normalizer.fit(data[self.target], data)
                 else:
@@ -1311,7 +1308,7 @@ class TimeSeriesDataSet(Dataset):
 
     def get_transformer(
         self, name: str, group_id: bool = False
-    ) -> Union[NORMALIZER, Any, None]:
+    ) -> NORMALIZER | Any | None:
         """Get transformer for variable.
 
         Parameters
@@ -1357,7 +1354,7 @@ class TimeSeriesDataSet(Dataset):
     def transform_values(
         self,
         name: str,
-        values: Union[pd.Series, torch.Tensor, np.ndarray],
+        values: pd.Series | torch.Tensor | np.ndarray,
         data: pd.DataFrame = None,
         inverse=False,
         group_id: bool = False,
@@ -1456,13 +1453,25 @@ class TimeSeriesDataSet(Dataset):
             else:
                 dtypekind = data.dtypes[cols].kind
             if real:
-                return torch.tensor(data[cols].to_numpy(np.float64), dtype=torch.float)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.float64, copy=True), dtype=torch.float
+                )
             elif not long:
-                return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.int64)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.int64, copy=True), dtype=torch.int64
+                )
             elif dtypekind in "bi":
-                return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.long)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.int64, copy=True), dtype=torch.long
+                )
             else:
-                return torch.tensor(data[cols].to_numpy(np.float64), dtype=torch.float)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.float64, copy=True), dtype=torch.float
+                )
 
         index = _to_tensor(self._group_ids, long=False)
         time = _to_tensor("__time_idx__", long=False)
@@ -1593,7 +1602,7 @@ class TimeSeriesDataSet(Dataset):
         Returns:
             bool: true if multiple targets
         """
-        return isinstance(self.target, (list, tuple))
+        return isinstance(self.target, list | tuple)
 
     @property
     def target_normalizers(self) -> list[TorchNormalizer]:
@@ -2002,9 +2011,9 @@ class TimeSeriesDataSet(Dataset):
 
     def set_overwrite_values(
         self,
-        values: Union[float, torch.Tensor],
+        values: float | torch.Tensor,
         variable: str,
-        target: Union[str, slice] = "decoder",
+        target: str | slice = "decoder",
     ) -> None:
         """Overwrite values in decoder or encoder (or both) for a specific variable.
 
@@ -2060,9 +2069,9 @@ class TimeSeriesDataSet(Dataset):
 
     def calculate_decoder_length(
         self,
-        time_last: Union[int, pd.Series, np.ndarray],
-        sequence_length: Union[int, pd.Series, np.ndarray],
-    ) -> Union[int, pd.Series, np.ndarray]:
+        time_last: int | pd.Series | np.ndarray,
+        sequence_length: int | pd.Series | np.ndarray,
+    ) -> int | pd.Series | np.ndarray:
         """Calculate length of decoder.
 
         Parameters
@@ -2457,7 +2466,7 @@ class TimeSeriesDataSet(Dataset):
         # target scale
         if isinstance(batches[0][0]["target_scale"], torch.Tensor):  # stack tensor
             target_scale = torch.stack([batch[0]["target_scale"] for batch in batches])
-        elif isinstance(batches[0][0]["target_scale"], (list, tuple)):
+        elif isinstance(batches[0][0]["target_scale"], list | tuple):
             target_scale = []
             for idx in range(len(batches[0][0]["target_scale"])):
                 if isinstance(
@@ -2482,7 +2491,7 @@ class TimeSeriesDataSet(Dataset):
             )
 
         # target and weight
-        if isinstance(batches[0][1][0], (tuple, list)):
+        if isinstance(batches[0][1][0], tuple | list):
             target = [
                 rnn.pad_sequence(
                     [batch[1][0][idx] for batch in batches], batch_first=True
@@ -2532,7 +2541,7 @@ class TimeSeriesDataSet(Dataset):
         self,
         train: bool = True,
         batch_size: int = 64,
-        batch_sampler: Union[Sampler, str] = None,
+        batch_sampler: Sampler | str = None,
         **kwargs,
     ) -> DataLoader:
         """Construct dataloader from dataset, for use in models.

@@ -37,31 +37,31 @@ class NHiTS(BaseModelWithCovariates):
 
     def __init__(
         self,
-        output_size: Union[int, list[int]] = 1,
-        static_categoricals: Optional[list[str]] = None,
-        static_reals: Optional[list[str]] = None,
-        time_varying_categoricals_encoder: Optional[list[str]] = None,
-        time_varying_categoricals_decoder: Optional[list[str]] = None,
-        categorical_groups: Optional[dict[str, list[str]]] = None,
-        time_varying_reals_encoder: Optional[list[str]] = None,
-        time_varying_reals_decoder: Optional[list[str]] = None,
-        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
-        embedding_paddings: Optional[list[str]] = None,
-        embedding_labels: Optional[list[str]] = None,
-        x_reals: Optional[list[str]] = None,
-        x_categoricals: Optional[list[str]] = None,
+        output_size: int | list[int] = 1,
+        static_categoricals: list[str] | None = None,
+        static_reals: list[str] | None = None,
+        time_varying_categoricals_encoder: list[str] | None = None,
+        time_varying_categoricals_decoder: list[str] | None = None,
+        categorical_groups: dict[str, list[str]] | None = None,
+        time_varying_reals_encoder: list[str] | None = None,
+        time_varying_reals_decoder: list[str] | None = None,
+        embedding_sizes: dict[str, tuple[int, int]] | None = None,
+        embedding_paddings: list[str] | None = None,
+        embedding_labels: list[str] | None = None,
+        x_reals: list[str] | None = None,
+        x_categoricals: list[str] | None = None,
         context_length: int = 1,
         prediction_length: int = 1,
-        static_hidden_size: Optional[int] = None,
+        static_hidden_size: int | None = None,
         naive_level: bool = True,
         shared_weights: bool = True,
         activation: str = "ReLU",
         initialization: str = "lecun_normal",
-        n_blocks: Optional[list[str]] = None,
-        n_layers: Union[int, list[int]] = 2,
+        n_blocks: list[str] | None = None,
+        n_layers: int | list[int] = 2,
         hidden_size: int = 512,
-        pooling_sizes: Optional[list[int]] = None,
-        downsample_frequencies: Optional[list[int]] = None,
+        pooling_sizes: list[int] | None = None,
+        downsample_frequencies: list[int] | None = None,
         pooling_mode: str = "max",
         interpolation_mode: str = "linear",
         batch_normalization: bool = False,
@@ -359,7 +359,7 @@ class NHiTS(BaseModelWithCovariates):
         block_backcasts = block_backcasts.detach()
         block_forecasts = block_forecasts.detach()
 
-        if isinstance(self.hparams.output_size, (tuple, list)):
+        if isinstance(self.hparams.output_size, tuple | list):
             forecast = forecast.split(self.hparams.output_size, dim=2)
             backcast = backcast.split(1, dim=2)
             block_backcasts = tuple(
@@ -470,7 +470,7 @@ class NHiTS(BaseModelWithCovariates):
             )
             backcast_weight = backcast_weight / (backcast_weight + 1)  # normalize
             forecast_weight = 1 - backcast_weight
-            if isinstance(self.loss, (MultiLoss, MASE)):
+            if isinstance(self.loss, MultiLoss | MASE):
                 backcast_loss = (
                     self.loss(
                         backcast,
@@ -540,7 +540,7 @@ class NHiTS(BaseModelWithCovariates):
                 self.to_prediction(dict(prediction=block[[idx]].detach()))[0].cpu()
                 for block in output["block_forecasts"]
             ]
-        elif isinstance(output["prediction"], (tuple, list)):  # multi-target
+        elif isinstance(output["prediction"], tuple | list):  # multi-target
             figs = []
             # predictions and block forecasts need to be converted
             prediction = [
@@ -663,7 +663,7 @@ class NHiTS(BaseModelWithCovariates):
             else:
                 name += f"batch {batch_idx}"
             self.logger.experiment.add_figure(name, fig, global_step=self.global_step)
-            if isinstance(fig, (list, tuple)):
+            if isinstance(fig, tuple | list):
                 for idx, f in enumerate(fig):
                     self.logger.experiment.add_figure(
                         f"{self.target_names[idx]} {name}",

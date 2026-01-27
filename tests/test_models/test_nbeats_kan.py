@@ -3,10 +3,8 @@ import shutil
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
-import pytest
 
 from pytorch_forecasting.models.nbeats._nbeatskan import NBeatsKAN
-from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def test_nbeats_kan_integration(dataloaders_fixed_window_without_covariates, tmp_path):
