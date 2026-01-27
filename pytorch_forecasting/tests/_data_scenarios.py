@@ -53,7 +53,7 @@ def data_with_covariates():
 
 
 def make_dataloaders(data_with_covariates, **kwargs):
-    training_cutoff = "2016-09-01"
+    training_cutoff = "2019-01-01" 
     max_encoder_length = 4
     max_prediction_length = 3
 
@@ -87,7 +87,7 @@ def data_with_covariates_v2():
 
     start_date = datetime(2015, 1, 1)
     end_date = datetime(2017, 12, 31)
-    dates = pd.date_range(start_date, end_date, freq="M")
+    dates = pd.date_range(start_date, end_date, freq="ME")
 
     agencies = [0, 1]
     skus = [0, 1]

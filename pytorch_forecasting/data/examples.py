@@ -59,7 +59,7 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     """
     rng = np.random.default_rng(seed)
     n_series = 350
-    dates = pd.date_range("2018-01-01", periods=24, freq="M")
+    dates = pd.date_range("2018-01-01", periods=24, freq="ME")
     agency_list = [f"Agency_{i:02d}" for i in range(20)]
     sku_list = [f"SKU_{i:02d}" for i in range(25)]
     pairs = [(a, s) for a in agency_list for s in sku_list]
