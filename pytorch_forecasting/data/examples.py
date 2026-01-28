@@ -58,12 +58,101 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
         pd.DataFrame: data
     """
     rng = np.random.default_rng(seed)
-    n_series = 350
-    dates = pd.date_range("2018-01-01", periods=24, freq="ME")
-    agency_list = [f"Agency_{i:02d}" for i in range(20)]
-    sku_list = [f"SKU_{i:02d}" for i in range(25)]
+    dates = pd.date_range("2014-01-01", periods=48, freq="ME")
+
+    agency_list = [
+        "Agency_01",
+        "Agency_02",
+        "Agency_03",
+        "Agency_04",
+        "Agency_05",
+        "Agency_07",
+        "Agency_08",
+        "Agency_09",
+        "Agency_10",
+        "Agency_11",
+        "Agency_12",
+        "Agency_13",
+        "Agency_15",
+        "Agency_16",
+        "Agency_17",
+        "Agency_18",
+        "Agency_19",
+        "Agency_20",
+        "Agency_21",
+        "Agency_22",
+        "Agency_23",
+        "Agency_24",
+        "Agency_25",
+        "Agency_26",
+        "Agency_27",
+        "Agency_28",
+        "Agency_29",
+        "Agency_30",
+        "Agency_31",
+        "Agency_32",
+        "Agency_33",
+        "Agency_34",
+        "Agency_35",
+        "Agency_36",
+        "Agency_37",
+        "Agency_38",
+        "Agency_39",
+        "Agency_40",
+        "Agency_41",
+        "Agency_42",
+        "Agency_43",
+        "Agency_44",
+        "Agency_45",
+        "Agency_46",
+        "Agency_47",
+        "Agency_48",
+        "Agency_49",
+        "Agency_50",
+        "Agency_51",
+        "Agency_52",
+        "Agency_53",
+        "Agency_54",
+        "Agency_55",
+        "Agency_56",
+        "Agency_57",
+        "Agency_58",
+        "Agency_59",
+        "Agency_60",
+    ]
+    sku_list = [
+        "SKU_01",
+        "SKU_02",
+        "SKU_03",
+        "SKU_04",
+        "SKU_05",
+        "SKU_06",
+        "SKU_07",
+        "SKU_08",
+        "SKU_11",
+        "SKU_12",
+        "SKU_14",
+        "SKU_15",
+        "SKU_17",
+        "SKU_18",
+        "SKU_20",
+        "SKU_21",
+        "SKU_22",
+        "SKU_23",
+        "SKU_24",
+        "SKU_26",
+        "SKU_27",
+        "SKU_28",
+        "SKU_31",
+        "SKU_32",
+        "SKU_34",
+    ]
+
     pairs = [(a, s) for a in agency_list for s in sku_list]
-    selected_pairs = pairs[:n_series]
+    n_series = len(pairs)
+    pairs = [(a, s) for a in agency_list for s in sku_list]
+    n_series = len(pairs)
+    selected_pairs = pairs
     agencies = np.array([p[0] for p in selected_pairs])
     skus = np.array([p[1] for p in selected_pairs])
     n_rows = len(selected_pairs) * len(dates)
