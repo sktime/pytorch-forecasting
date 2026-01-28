@@ -102,6 +102,7 @@ __all__ = [
     "RMSE",
     "get_rnn",
     "LSTM",
+    "LSTMModel",
     "GRU",
     "MultiEmbedding",
     "apply_to_list",
