@@ -62,7 +62,7 @@ def test_raise_short_encoder_length(test_data):
     with pytest.warns(UserWarning):
         test_data = test_data[
             lambda x: ~(
-                (x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3)
+                (x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 2)
             )
         ]
         TimeSeriesDataSet(
@@ -292,8 +292,8 @@ def test_min_prediction_idx(test_dataset, test_data, min_prediction_idx):
         (1.0, "price_regular", "encoder"),
         (1.0, "price_regular", "all"),
         (1.0, "price_regular", "decoder"),
-        ("Agency_01", "agency", "all"),
-        ("Agency_01", "agency", "decoder"),
+        ("Agency_02", "agency", "all"),
+        ("Agency_02", "agency", "decoder"),
     ],
 )
 def test_overwrite_values(test_dataset, value, variable, target):
