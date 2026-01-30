@@ -15,7 +15,8 @@ from pytorch_forecasting.metrics import (
     NormalDistributionLoss,
 )
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
-from pytorch_forecasting.models.nn import get_rnn
+from pytorch_forecasting.models.nn import HiddenState, get_rnn
+from pytorch_forecasting.utils import apply_to_list
 
 
 class DeepAR(BaseModel):
@@ -123,59 +124,167 @@ class DeepAR(BaseModel):
 
         self.distribution_projector = nn.Linear(hidden_size, n_outputs)
 
-    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        self.target_positions = torch.tensor([0])
+        self.lagged_target_positions = {}
+        """In V2, we don't have separate reals/categoricals lists in metadata yet
+        so we rely on the dimensions"""
+        self.n_reals = self.encoder_cont_dim
+        self.n_categoricals = self.encoder_cat_dim
+
+    def construct_input_vector(
+        self,
+        x_cat: torch.Tensor,
+        x_cont: torch.Tensor,
+        one_off_target: torch.Tensor = None,
+    ) -> torch.Tensor:
         """
-        Forward pass of the DeepAR model.
-
-        Parameters
-        ----------
-        x : dict[str, torch.Tensor]
-            Dictionary containing input tensors:
-            - encoder_cont
-            - encoder_cat
-            - decoder_cont
-            - decoder_cat
-            - encoder_lengths
-            - decoder_lengths
-
-        Returns
-        -------
-        dict[str, torch.Tensor]
-            Dictionary containing output tensors:
-            - prediction: Distribution parameters
+        Create input vector into RNN network
         """
-        encoder_input = torch.cat([x["encoder_cont"], x["encoder_cat"]], dim=2)
-        if self.cell_type == "LSTM":
-            _, (h_n, c_n) = self.rnn(encoder_input)
+
+        if self.n_reals > 0 and self.n_categoricals > 0:
+            input_vector = torch.cat([x_cont, x_cat], dim=-1)
+        elif self.n_reals > 0:
+            input_vector = x_cont.clone()
+        elif self.n_categoricals > 0:
+            input_vector = x_cat.clone()
         else:
-            _, h_n = self.rnn(encoder_input)
+            raise ValueError("No features found in input")
 
-        decoder_input = torch.cat([x["decoder_cont"], x["decoder_cat"]], dim=2)
+        input_vector[..., self.target_positions] = torch.roll(
+            input_vector[..., self.target_positions], shifts=1, dims=1
+        )
 
-        if decoder_input.size(2) < encoder_input.size(2):
-            padding = torch.zeros(
-                decoder_input.size(0),
-                decoder_input.size(1),
-                encoder_input.size(2) - decoder_input.size(2),
-                device=decoder_input.device,
-                dtype=decoder_input.dtype,
+        if one_off_target is not None:
+            input_vector[:, 0, self.target_positions] = one_off_target.reshape(
+                input_vector.size(0), -1
             )
-            decoder_input = torch.cat([decoder_input, padding], dim=2)
-
-        if self.cell_type == "LSTM":
-            decoder_output, _ = self.rnn(decoder_input, (h_n, c_n))
         else:
-            decoder_output, _ = self.rnn(decoder_input, h_n)
+            input_vector = input_vector[:, 1:]
+        return input_vector
 
-        prediction = self.distribution_projector(decoder_output)
+    def encode(self, x: dict[str, torch.Tensor]) -> HiddenState:
+        """Encode sequence into hidden state."""
+        input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
+        _, hidden_state = self.rnn(input_vector)
+        return hidden_state
 
-        if self.target_dim > 1 and not isinstance(self.loss, MultiLoss):
-            n_dist_params = len(self.loss.distribution_arguments)
-            prediction = prediction.view(
-                prediction.size(0),
-                prediction.size(1),
-                self.target_dim,
-                n_dist_params,
+    def decode_all(
+        self,
+        x: torch.Tensor,
+        hidden_state: HiddenState,
+        lengths: torch.Tensor = None,
+    ):
+        decoder_output, hidden_state = self.rnn(x, hidden_state)
+        output = self.distribution_projector(decoder_output)
+        return output, hidden_state
+
+    def output_to_prediction(
+        self,
+        normalized_output: torch.Tensor,
+        target_scale: torch.Tensor,
+        n_samples: int = 1,
+    ):
+        """Convert network output to prediction and sample next target."""
+        if n_samples > 1:
+            prediction = self.loss.sample(normalized_output, n_samples)
+        else:
+            prediction = self.loss.sample(normalized_output, 1)
+
+        rescaled_prediction = prediction * target_scale.unsqueeze(-1)
+        return rescaled_prediction, prediction
+
+    def decode_autoregressive(
+        self,
+        decode_one: callable,
+        first_target: torch.Tensor,
+        first_hidden_state: Any,
+        target_scale: torch.Tensor,
+        n_decoder_steps: int,
+        n_samples: int = 1,
+    ) -> torch.Tensor:
+        """Make predictions in auto-regressive manner."""
+        output = []
+        current_hidden_state = first_hidden_state
+        normalized_output = [first_target.unsqueeze(1)]
+
+        for idx in range(n_decoder_steps):
+            prediction_params, current_hidden_state = decode_one(
+                idx,
+                lagged_targets=normalized_output,
+                hidden_state=current_hidden_state,
+            )
+            rescaled, normalized = self.output_to_prediction(
+                prediction_params, target_scale, n_samples=n_samples
+            )
+            normalized_output.append(normalized)
+            output.append(rescaled)
+
+        return torch.stack(output, dim=1).squeeze(-1)
+
+    def decode(
+        self,
+        input_vector: torch.Tensor,
+        target_scale: torch.Tensor,
+        decoder_lengths: torch.Tensor,
+        hidden_state: HiddenState,
+        n_samples: int = None,
+    ) -> torch.Tensor:
+        """Decode hidden state into prediction."""
+        if n_samples is None:
+            output, _ = self.decode_all(input_vector, hidden_state)
+            if self.target_dim > 1:
+                n_dist_params = output.size(-1) // self.target_dim
+                output = output.view(
+                    output.size(0), output.size(1), self.target_dim, n_dist_params
+                )
+                scale = target_scale.unsqueeze(1).unsqueeze(-1)
+            else:
+                scale = target_scale.unsqueeze(-1).unsqueeze(-1)
+
+            return output * scale
+        else:
+            target_pos = self.target_positions
+
+            def decode_one(idx, lagged_targets, hidden_state):
+                x = input_vector[:, [idx]]
+                x[:, 0, target_pos] = lagged_targets[-1].squeeze(1)
+                prediction_params, hidden_state = self.decode_all(x, hidden_state)
+                return prediction_params[:, 0], hidden_state
+
+            return self.decode_autoregressive(
+                decode_one,
+                first_target=input_vector[:, 0, target_pos],
+                first_hidden_state=hidden_state,
+                target_scale=target_scale,
+                n_decoder_steps=input_vector.size(1),
+                n_samples=n_samples,
             )
 
-        return {"prediction": prediction}
+    def forward(
+        self, x: dict[str, torch.Tensor], n_samples: int = None
+    ) -> dict[str, torch.Tensor]:
+        """Forward pass using V1 logic."""
+        hidden_state = self.encode(x)
+        target_pos = self.target_positions
+
+        last_encoder_target = x["encoder_cont"][
+            torch.arange(x["encoder_cont"].size(0)),
+            x["encoder_lengths"] - 1,
+            target_pos,
+        ]
+
+        input_vector = self.construct_input_vector(
+            x["decoder_cat"], x["decoder_cont"], one_off_target=last_encoder_target
+        )
+
+        if self.training:
+            assert n_samples is None
+
+        output = self.decode(
+            input_vector,
+            target_scale=x.get("target_scale", torch.ones(1)),
+            decoder_lengths=x["decoder_lengths"],
+            hidden_state=hidden_state,
+            n_samples=n_samples,
+        )
+        return {"prediction": output}

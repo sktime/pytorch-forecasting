@@ -22,7 +22,6 @@ def get_default_test_metadata(
     dec_cat=1,
     target_dim=1,
 ):
-    """Return a dict representing default metadata for DeepAR model initialization."""
     return {
         "max_encoder_length": MAX_ENCODER_LENGTH_TEST,
         "max_prediction_length": MAX_PREDICTION_LENGTH_TEST,
@@ -120,8 +119,6 @@ def test_deepar_v2_forward_pass(deepar_model_params_fixture, cell_type):
     assert "prediction" in output
     prediction = output["prediction"]
 
-    # Expected shape: (batch_size, prediction_length, target_dim * n_dist_params)
-    # n_dist_params for NormalDistributionLoss is 2 (loc, scale)
     n_dist_params = len(params["loss"].distribution_arguments)
     assert prediction.shape == (
         BATCH_SIZE_TEST,
@@ -144,10 +141,18 @@ def test_deepar_v2_multi_target(deepar_model_params_fixture):
     prediction = output["prediction"]
     n_dist_params = len(deepar_model_params_fixture["loss"].distribution_arguments)
 
-    # Check shape: (batch_size, prediction_length, target_dim, n_dist_params)
-    assert prediction.shape == (
-        BATCH_SIZE_TEST,
-        MAX_PREDICTION_LENGTH_TEST,
-        target_dim,
-        n_dist_params,
-    )
+    if isinstance(prediction, list):
+        assert len(prediction) == target_dim
+        for p in prediction:
+            assert p.shape == (
+                BATCH_SIZE_TEST,
+                MAX_PREDICTION_LENGTH_TEST,
+                n_dist_params,
+            )
+    else:
+        assert prediction.shape == (
+            BATCH_SIZE_TEST,
+            MAX_PREDICTION_LENGTH_TEST,
+            target_dim,
+            n_dist_params,
+        )
