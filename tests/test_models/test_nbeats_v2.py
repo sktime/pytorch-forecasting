@@ -65,7 +65,6 @@ def test_nbeats_v2_decomposition_outputs_exist():
     assert out["seasonality"].dim() == 3
 
 
-
 def test_nbeats_v2_training_step_and_backward():
     batch_size = 3
     context_length = 8
@@ -101,4 +100,3 @@ def test_nbeats_v2_pkg_test_params():
     assert isinstance(params, list)
     assert len(params) > 0
     assert all(isinstance(p, dict) for p in params)
-

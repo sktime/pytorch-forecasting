@@ -3,9 +3,9 @@ N-BEATS v2 model for time series forecasting without covariates.
 """
 
 from typing import Optional
+
 import torch
 import torch.nn as nn
-from pytorch_forecasting.metrics import MASE
 
 from pytorch_forecasting.layers._nbeats._blocks import (
     NBEATSGenericBlock,
@@ -96,21 +96,20 @@ class NBEATS_v2(TslibBaseModel):
         Additional arguments forwarded to :py:class:`~BaseModel`.
     """  # noqa: E501
 
-
     def __init__(
         self,
         *,
-        stack_types: Optional[list[str]] = None,
-        num_blocks: Optional[list[int]] = None,
-        num_block_layers: Optional[list[int]] = None,
-        widths: Optional[list[int]] = None,
-        sharing: Optional[list[bool]] = None,
-        expansion_coefficient_lengths: Optional[list[int]] = None,
+        stack_types: list[str] | None = None,
+        num_blocks: list[int] | None = None,
+        num_block_layers: list[int] | None = None,
+        widths: list[int] | None = None,
+        sharing: list[bool] | None = None,
+        expansion_coefficient_lengths: list[int] | None = None,
         dropout: float = 0.1,
         backcast_loss_ratio: float = 0.0,
-        loss: Optional[Metric] = None,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        metadata: Optional[dict] = None,
+        loss: Metric | None = None,
+        logging_metrics: list[nn.Module] | None = None,
+        metadata: dict | None = None,
         optimizer: str | None = "adam",
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
@@ -137,9 +136,7 @@ class NBEATS_v2(TslibBaseModel):
         self.num_block_layers = num_block_layers or [3, 3]
         self.widths = widths or [32, 512]
         self.sharing = sharing or [True, True]
-        self.expansion_coefficient_lengths = (
-            expansion_coefficient_lengths or [3, 7]
-        )
+        self.expansion_coefficient_lengths = expansion_coefficient_lengths or [3, 7]
 
         self.dropout = dropout
         self.backcast_loss_ratio = backcast_loss_ratio
@@ -233,9 +230,7 @@ class NBEATS_v2(TslibBaseModel):
         prediction = forecast.unsqueeze(-1)
 
         if "target_scale" in x:
-            prediction = self.transform_output(
-                prediction, x["target_scale"]
-            )
+            prediction = self.transform_output(prediction, x["target_scale"])
 
         out = {
             "prediction": prediction,
@@ -245,16 +240,12 @@ class NBEATS_v2(TslibBaseModel):
         if trend_parts:
             out["trend"] = torch.stack(trend_parts).sum(0).unsqueeze(-1)
         if seasonality_parts:
-            out["seasonality"] = (
-                torch.stack(seasonality_parts).sum(0).unsqueeze(-1)
-            )
+            out["seasonality"] = torch.stack(seasonality_parts).sum(0).unsqueeze(-1)
         if generic_parts:
-            out["generic"] = (
-                torch.stack(generic_parts).sum(0).unsqueeze(-1)
-            )
+            out["generic"] = torch.stack(generic_parts).sum(0).unsqueeze(-1)
 
         return out
-    
+
     def training_step(self, batch, batch_idx):
         """
         Custom training step to preserve v1 N-BEATS behavior.
