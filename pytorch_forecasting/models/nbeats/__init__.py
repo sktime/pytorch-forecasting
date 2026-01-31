@@ -17,6 +17,10 @@ from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
 from pytorch_forecasting.models.nbeats._nbeatskan import NBeatsKAN
 from pytorch_forecasting.models.nbeats._nbeatskan_pkg import NBeatsKAN_pkg
 
+# v2 imports
+from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS_v2
+from pytorch_forecasting.models.nbeats._nbeats_pkg_v2 import NBEATS_pkg_v2
+
 __all__ = [
     "NBeats",
     "NBeatsKAN",
@@ -27,4 +31,7 @@ __all__ = [
     "NBEATSTrendBlock",
     "NBeatsAdapter",
     "GridUpdateCallback",
+    # v2 exports
+    "NBEATS_v2",
+    "NBEATS_pkg_v2",
 ]
