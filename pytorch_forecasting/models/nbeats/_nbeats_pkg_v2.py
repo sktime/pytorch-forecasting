@@ -1,5 +1,6 @@
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
+
 class NBEATS_pkg_v2(_BasePtForecaster):
     """N-BEATS v2 package container."""
 
@@ -20,6 +21,7 @@ class NBEATS_pkg_v2(_BasePtForecaster):
     def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS_v2
+
         return NBEATS_v2
 
     @classmethod
