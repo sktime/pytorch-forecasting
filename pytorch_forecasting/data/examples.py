@@ -25,7 +25,6 @@ def _get_data_by_filename(fname: str) -> Path:
     """
     full_fname = DATA_PATH.joinpath(fname)
 
-    # check if file exists - download if necessary
     if not full_fname.exists():
         url = BASE_URL + fname
         urlretrieve(url, full_fname)  # noqa: S310
@@ -49,13 +48,12 @@ def get_stallion_data() -> pd.DataFrame:
     fname = _get_data_by_filename("stallion.parquet")
     return pd.read_parquet(fname)
 
-
 def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     """
     Small dummy dataset for testing.
 
     Returns:
-        pd.DataFrame: data
+        pd.DataFrame: data with same structure as stallion.parquet
     """
     rng = np.random.default_rng(seed)
     dates = pd.date_range("2014-01-01", periods=48, freq="ME")
@@ -63,7 +61,6 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     agency_list = [f"Agency_{i:02d}" for i in range(1, 61)]
     sku_list = [f"SKU_{j:02d}" for j in range(1, 36)]
 
-    pairs = [(a, s) for a in agency_list for s in sku_list]
     pairs = [(a, s) for a in agency_list for s in sku_list]
     selected_pairs = pairs
     agencies = np.array([p[0] for p in selected_pairs])
@@ -119,10 +116,13 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
 
     df["agency"] = df["agency"].astype("category")
     df["sku"] = df["sku"].astype("category")
+    df["volume"] = df["volume"].astype(np.float64) 
     df["avg_max_temp"] = df["avg_max_temp"].astype(np.float64)
     df["price_regular"] = df["price_regular"].astype(np.float64)
     df["price_actual"] = df["price_actual"].astype(np.float64)
     df["discount"] = df["discount"].astype(np.float64)
+    df["discount_in_percent"] = df["discount_in_percent"].astype(np.float64)
+    
     df = df.sort_values(["agency", "sku", "date"]).reset_index(drop=True)
 
     return df
