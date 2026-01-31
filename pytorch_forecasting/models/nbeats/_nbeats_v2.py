@@ -2,8 +2,6 @@
 N-BEATS v2 model for time series forecasting without covariates.
 """
 
-from typing import Optional
-
 import torch
 import torch.nn as nn
 
@@ -95,6 +93,12 @@ class NBEATS_v2(TslibBaseModel):
     **kwargs
         Additional arguments forwarded to :py:class:`~BaseModel`.
     """  # noqa: E501
+
+    @classmethod
+    def _pkg(cls):
+        from pytorch_forecasting.models.nbeats._nbeats_pkg_v2 import NBEATS_v2_pkg
+
+        return NBEATS_v2_pkg
 
     def __init__(
         self,
