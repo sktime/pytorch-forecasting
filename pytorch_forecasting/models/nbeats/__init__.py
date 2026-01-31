@@ -15,6 +15,7 @@ from pytorch_forecasting.models.nbeats._nbeats import NBeats
 from pytorch_forecasting.models.nbeats._nbeats_adapter import NBeatsAdapter
 from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
 from pytorch_forecasting.models.nbeats._nbeats_pkg_v2 import NBEATS_v2_pkg
+
 2
 
 from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS_v2
