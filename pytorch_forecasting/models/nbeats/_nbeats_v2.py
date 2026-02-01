@@ -5,6 +5,8 @@ N-BEATS v2 model for time series forecasting without covariates.
 import torch
 import torch.nn as nn
 
+from pytorch_forecasting.data import TimeSeriesDataSet
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.layers._nbeats._blocks import (
     NBEATSGenericBlock,
     NBEATSSeasonalBlock,
@@ -22,83 +24,13 @@ from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
 class NBEATS_v2(TslibBaseModel):
-    """
-    Initialize NBeats Model - use its :py:meth:`~from_dataset` method if possible.
-
-    Based on the article
-    `N-BEATS: Neural basis expansion analysis for interpretable time series
-        forecasting <http://arxiv.org/abs/1905.10437>`_. The network has (if
-    used as ensemble) outperformed all other methods including ensembles of
-    traditional statical methods in the M4 competition. The M4 competition is
-    arguably the most important benchmark for univariate time series forecasting.
-
-    The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently
-    shown to consistently outperform N-BEATS.
-
-    Parameters
-    ----------
-    stack_types : list of str
-        One of the following values “generic”, “seasonality” or “trend”.
-        A list of strings of length 1 or `num_stacks`. Default and recommended
-        value for generic mode is ["generic"]. Recommended value for interpretable
-        mode is ["trend","seasonality"].
-    num_blocks : list of int
-        The number of blocks per stack. Length 1 or `num_stacks`. Default for
-        generic mode is [1], interpretable mode is [3].
-    num_block_layers : list of int
-        Number of fully connected layers with ReLU activation per block. Length 1
-        or `num_stacks`. Default [4] for both modes.
-    width : list of int
-        Widths of fully connected layers with ReLU activation. List length 1 or
-        `num_stacks`. Default [512] for generic; [256, 2048] for interpretable.
-    sharing : list of bool
-        Whether weights are shared across blocks in a stack. List length 1 or
-        `num_stacks`. Default [False] for generic; [True] for interpretable.
-    expansion_coefficient_length : list of int
-        If type is "G", length of expansion coefficient; if "T", degree of
-        polynomial; if "S", minimum period (e.g., 2 for every timestep). List
-        length 1 or `num_stacks`. Default [32] for generic; [3] for interpretable.
-    prediction_length : int
-        Length of the forecast horizon.
-    context_length : int
-        Number of time units conditioning the predictions (lookback period).
-        Should be between 1-10x `prediction_length`.
-    dropout : float
-        Dropout probability applied in the network. Helps prevent overfitting.
-        Default is 0.1.
-    learning_rate : float
-        Learning rate used by the optimizer during training. Default is 1e-2.
-    log_interval : int
-        Interval (in steps) at which training logs are recorded. If -1, logging
-        is disabled. Default is -1.
-    log_gradient_flow : bool
-        Whether to log gradient flow during training. Useful for diagnosing
-        vanishing/exploding gradients. Default is False.
-    log_val_interval : int
-        Interval (in steps) at which validation metrics are logged. If None,
-        uses default logging behavior. Default is None.
-    weight_decay : float
-        Weight decay (L2 regularization) coefficient used by the optimizer to
-        reduce overfitting. Default is 1e-3.
-    loss
-        Loss to optimize. Defaults to `MASE()`.
-    reduce_on_plateau_patience : int
-        Patience after which learning rate is reduced by factor of 10.
-    backcast_loss_ratio : float
-        Weight of backcast loss relative to forecast loss. 1.0 gives equal weight;
-        default 0.0 means no backcast loss.
-    logging_metrics : nn.ModuleList of MultiHorizonMetric
-        List of metrics logged during training. Defaults to
-        nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
-    **kwargs
-        Additional arguments forwarded to :py:class:`~BaseModel`.
-    """  # noqa: E501
-
     @classmethod
     def _pkg(cls):
-        from pytorch_forecasting.models.nbeats._nbeats_pkg_v2 import NBEATS_v2_pkg
+        from pytorch_forecasting.models.nbeats._nbeats_v2_pkg import (
+            NBEATS_v2_pkg_v2,
+        )
 
-        return NBEATS_v2_pkg
+        return NBEATS_v2_pkg_v2
 
     def __init__(
         self,
@@ -118,6 +50,8 @@ class NBEATS_v2(TslibBaseModel):
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
+        context_length: int | None = None,
+        prediction_length: int | None = None,
     ):
         if loss is None:
             loss = MASE()
@@ -134,6 +68,23 @@ class NBEATS_v2(TslibBaseModel):
             lr_scheduler_params=lr_scheduler_params,
             metadata=metadata,
         )
+        self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
+
+        if context_length is not None:
+            assert (
+                context_length == self.metadata["context_length"]
+            ), "context_length argument must match metadata['context_length']"
+
+        if prediction_length is not None:
+            assert (
+                prediction_length == self.metadata["prediction_length"]
+            ), "prediction_length argument must match metadata['prediction_length']"
+
+        self.hparams.context_length = self.metadata["context_length"]
+        self.hparams.prediction_length = self.metadata["prediction_length"]
+
+        self.context_length = self.hparams.context_length
+        self.prediction_length = self.hparams.prediction_length
 
         self.stack_types = stack_types or ["trend", "seasonality"]
         self.num_blocks = num_blocks or [3, 3]
@@ -147,55 +98,97 @@ class NBEATS_v2(TslibBaseModel):
 
         self._init_network()
 
+    @classmethod
+    def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
+        assert isinstance(dataset, TimeSeriesDataSet)
+
+        assert isinstance(dataset.target, str), "N-BEATS supports exactly one target."
+
+        assert not isinstance(
+            dataset.target_normalizer, NaNLabelEncoder
+        ), "Only regression targets are supported."
+
+        assert (
+            dataset.min_encoder_length == dataset.max_encoder_length
+        ), "Encoder length must be fixed."
+
+        assert (
+            dataset.min_prediction_length == dataset.max_prediction_length
+        ), "Prediction length must be fixed."
+
+        assert (
+            dataset.randomize_length is None
+        ), "Randomized sequence length is not supported."
+
+        assert (
+            not dataset.add_relative_time_idx
+        ), "Relative time index is not supported."
+
+        assert (
+            len(dataset.flat_categoricals) == 0
+            and len(dataset.reals) == 1
+            and dataset._time_varying_unknown_reals == [dataset.target]
+        ), "Target must be the only input variable."
+
+        kwargs.setdefault("context_length", dataset.max_encoder_length)
+        kwargs.setdefault("prediction_length", dataset.max_prediction_length)
+
+        return cls(**kwargs)
+
+    def _make_block(self, stack_id: int, stack_type: str) -> nn.Module:
+        if stack_type == "generic":
+            return NBEATSGenericBlock(
+                units=self.widths[stack_id],
+                thetas_dim=self.expansion_coefficient_lengths[stack_id],
+                num_block_layers=self.num_block_layers[stack_id],
+                backcast_length=self.context_length,
+                forecast_length=self.prediction_length,
+                dropout=self.dropout,
+            )
+        if stack_type == "seasonality":
+            return NBEATSSeasonalBlock(
+                units=self.widths[stack_id],
+                num_block_layers=self.num_block_layers[stack_id],
+                backcast_length=self.context_length,
+                forecast_length=self.prediction_length,
+                min_period=self.expansion_coefficient_lengths[stack_id],
+                dropout=self.dropout,
+            )
+        if stack_type == "trend":
+            return NBEATSTrendBlock(
+                units=self.widths[stack_id],
+                thetas_dim=self.expansion_coefficient_lengths[stack_id],
+                num_block_layers=self.num_block_layers[stack_id],
+                backcast_length=self.context_length,
+                forecast_length=self.prediction_length,
+                dropout=self.dropout,
+            )
+        raise ValueError(f"Unknown stack type: {stack_type}")
+
     def _init_network(self) -> None:
-        # N-BEATS is composed of multiple stacks, each containing multiple blocks
         self.net_blocks = nn.ModuleList()
+        self._stack_blocks = []
 
         for stack_id, stack_type in enumerate(self.stack_types):
-            for _ in range(self.num_blocks[stack_id]):
-                # Select block type based on stack configuration
-                if stack_type == "generic":
-                    block = NBEATSGenericBlock(
-                        units=self.widths[stack_id],
-                        thetas_dim=self.expansion_coefficient_lengths[stack_id],
-                        num_block_layers=self.num_block_layers[stack_id],
-                        backcast_length=self.context_length,
-                        forecast_length=self.prediction_length,
-                        dropout=self.dropout,
-                    )
-                elif stack_type == "seasonality":
-                    block = NBEATSSeasonalBlock(
-                        units=self.widths[stack_id],
-                        num_block_layers=self.num_block_layers[stack_id],
-                        backcast_length=self.context_length,
-                        forecast_length=self.prediction_length,
-                        min_period=self.expansion_coefficient_lengths[stack_id],
-                        dropout=self.dropout,
-                    )
-                elif stack_type == "trend":
-                    block = NBEATSTrendBlock(
-                        units=self.widths[stack_id],
-                        thetas_dim=self.expansion_coefficient_lengths[stack_id],
-                        num_block_layers=self.num_block_layers[stack_id],
-                        backcast_length=self.context_length,
-                        forecast_length=self.prediction_length,
-                        dropout=self.dropout,
-                    )
-                else:
-                    raise ValueError(f"Unknown stack type: {stack_type}")
+            stack_blocks = nn.ModuleList()
 
-                self.net_blocks.append(block)
+            if self.sharing[stack_id]:
+                shared_block = self._make_block(stack_id, stack_type)
+                for _ in range(self.num_blocks[stack_id]):
+                    stack_blocks.append(shared_block)
+            else:
+                for _ in range(self.num_blocks[stack_id]):
+                    stack_blocks.append(self._make_block(stack_id, stack_type))
+
+            self._stack_blocks.append(stack_blocks)
+            self.net_blocks.extend(stack_blocks)
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """
-        Forward pass of the N-BEATS model.
+        assert "history_target" in x
+        target = x["history_target"].squeeze(-1)
 
-        Each block produces a backcast component that explains part of the history
-        and a forecast component that contributes to the final prediction.
-        Forecasts from all blocks are accumulated, while backcasts are iteratively
-        subtracted from the input.
-        """
-        target = x["target"]
+        assert target.shape[1] == self.context_length
+
         batch_size = target.size(0)
 
         forecast = torch.zeros(
@@ -211,13 +204,9 @@ class NBEATS_v2(TslibBaseModel):
         generic_parts = []
 
         for block in self.net_blocks:
-            # Each block produces a backcast and forecast component
             backcast_block, forecast_block = block(backcast)
 
-            full = torch.cat(
-                [backcast_block.detach(), forecast_block.detach()],
-                dim=1,
-            )
+            full = torch.cat([backcast_block.detach(), forecast_block.detach()], dim=1)
 
             if isinstance(block, NBEATSTrendBlock):
                 trend_parts.append(full)
@@ -226,59 +215,125 @@ class NBEATS_v2(TslibBaseModel):
             else:
                 generic_parts.append(full)
 
-            # Update backcast by removing the explained component
             backcast = backcast - backcast_block
-            # Accumulate forecast contributions from all blocks
             forecast = forecast + forecast_block
 
         prediction = forecast.unsqueeze(-1)
+        explained_backcast = (target - backcast).unsqueeze(-1)
+
+        def _empty_component():
+            return torch.zeros(
+                batch_size,
+                self.context_length + self.prediction_length,
+                1,
+                device=target.device,
+            )
+
+        trend = (
+            torch.stack(trend_parts).sum(0).unsqueeze(-1)
+            if trend_parts
+            else _empty_component()
+        )
+        seasonality = (
+            torch.stack(seasonality_parts).sum(0).unsqueeze(-1)
+            if seasonality_parts
+            else _empty_component()
+        )
+        generic = (
+            torch.stack(generic_parts).sum(0).unsqueeze(-1)
+            if generic_parts
+            else _empty_component()
+        )
 
         if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])
+            explained_backcast = self.transform_output(
+                explained_backcast, x["target_scale"]
+            )
+            trend = self.transform_output(trend, x["target_scale"])
+            seasonality = self.transform_output(seasonality, x["target_scale"])
+            generic = self.transform_output(generic, x["target_scale"])
 
-        out = {
+        return {
             "prediction": prediction,
-            "backcast": backcast.unsqueeze(-1),
+            "backcast": explained_backcast,
+            "trend": trend,
+            "seasonality": seasonality,
+            "generic": generic,
+            "_residual_backcast": backcast,
         }
 
-        if trend_parts:
-            out["trend"] = torch.stack(trend_parts).sum(0).unsqueeze(-1)
-        if seasonality_parts:
-            out["seasonality"] = torch.stack(seasonality_parts).sum(0).unsqueeze(-1)
-        if generic_parts:
-            out["generic"] = torch.stack(generic_parts).sum(0).unsqueeze(-1)
+    def _forecast_loss(self, out, y, x):
+        if isinstance(self.loss, MASE):
+            return self.loss(
+                out["prediction"].squeeze(-1),
+                y.squeeze(-1),
+                x["history_target"].squeeze(-1),
+            )
+        return self.loss(out["prediction"], y)
 
-        return out
-
-    def training_step(self, batch, batch_idx):
-        """
-        Custom training step to preserve v1 N-BEATS behavior.
-
-        Losses such as MASE require access to the encoder target to compute
-        scaling factors. The generic v2 BaseModel assumes two-argument losses,
-        so this method explicitly passes encoder_target when required.
-        """
-        x, y = batch
-        out = self(x)
-        y_hat = out["prediction"]
+    def _backcast_loss(self, explained_backcast, x):
+        backcast = explained_backcast.squeeze(-1)
+        target = x["history_target"].squeeze(-1)
 
         if isinstance(self.loss, MASE):
-            loss = self.loss(
-                y_hat.squeeze(-1),
-                y.squeeze(-1),
-                x["target"],
+            return self.loss(backcast, target, target)
+
+        return self.loss(backcast, target)
+
+    def _step(self, batch, stage: str):
+        x, y = batch
+        out = self(x)
+
+        forecast_loss = self._forecast_loss(out, y, x)
+        loss = forecast_loss
+
+        if self.backcast_loss_ratio > 0 and self._supports_backcast_loss():
+            weight = (
+                self.backcast_loss_ratio * self.prediction_length / self.context_length
+            )
+            weight = weight / (weight + 1)
+
+            backcast_loss = self._backcast_loss(out["backcast"], x)
+
+            self.log(
+                f"{stage}_backcast_loss",
+                backcast_loss,
+                on_step=(stage == "train"),
+                on_epoch=True,
+                prog_bar=False,
+            )
+            self.log(
+                f"{stage}_forecast_loss",
+                forecast_loss,
+                on_step=(stage == "train"),
+                on_epoch=True,
+                prog_bar=False,
             )
 
-        else:
-            loss = self.loss(y_hat, y)
+            loss = forecast_loss * (1 - weight) + backcast_loss * weight
 
         self.log(
-            "train_loss",
+            f"{stage}_loss",
             loss,
-            on_step=True,
+            on_step=(stage == "train"),
             on_epoch=True,
             prog_bar=True,
-            logger=True,
         )
 
         return loss
+
+    def _supports_backcast_loss(self) -> bool:
+        if not isinstance(self.loss, (MASE, MAE, RMSE)):
+            return False
+
+        return any(
+            isinstance(block, (NBEATSTrendBlock, NBEATSSeasonalBlock))
+            for block in self.net_blocks
+        )
+
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, stage="train")
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, stage="val")
