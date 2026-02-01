@@ -11,8 +11,6 @@ class DeepAR_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "DeepAR",
         "info:compute": 3,
-        "info:pred_type": ["distr"],
-        "info:y_type": ["numeric"],
         "authors": ["jdb78"],
         "capability:exogenous": True,
         "capability:multivariate": True,
@@ -68,13 +66,17 @@ class DeepAR_pkg_v2(Base_pkg):
         )
 
         params = [
-            {},
             dict(
+                loss=NormalDistributionLoss(),
+            ),
+            dict(
+                loss=NormalDistributionLoss(),
                 cell_type="GRU",
                 hidden_size=16,
                 rnn_layers=2,
             ),
             dict(
+                loss=NormalDistributionLoss(),
                 hidden_size=32,
                 rnn_layers=3,
                 dropout=0.2,
@@ -91,6 +93,7 @@ class DeepAR_pkg_v2(Base_pkg):
                 dropout=0.15,
             ),
             dict(
+                loss=NormalDistributionLoss(),
                 hidden_size=20,
                 datamodule_cfg=dict(
                     max_encoder_length=7,
@@ -98,11 +101,13 @@ class DeepAR_pkg_v2(Base_pkg):
                 ),
             ),
             dict(
+                loss=NormalDistributionLoss(),
                 hidden_size=16,
                 n_validation_samples=50,
                 n_plotting_samples=25,
             ),
             dict(
+                loss=NormalDistributionLoss(),
                 hidden_size=10,
                 rnn_layers=1,
                 dropout=0.0,
