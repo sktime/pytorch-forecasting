@@ -1035,9 +1035,9 @@ class GroupNormalizer(TorchNormalizer):
         y = self.preprocess(y)
         eps = np.finfo(np.float16).eps
         if len(self._groups) == 0:
-            assert not self.scale_by_group, (
-                "No groups are defined, i.e. `scale_by_group=[]`"
-            )
+            assert (
+                not self.scale_by_group
+            ), "No groups are defined, i.e. `scale_by_group=[]`"
             if self.method == "standard":
                 self.norm_ = {
                     "center": np.mean(y),
@@ -1274,9 +1274,9 @@ class GroupNormalizer(TorchNormalizer):
         else:
             # filter group names
             group_names = [name for name in group_names if name in self._groups]
-        assert len(group_names) == len(self._groups), (
-            "Passed groups and fitted do not match"
-        )
+        assert len(group_names) == len(
+            self._groups
+        ), "Passed groups and fitted do not match"
 
         if len(self._groups) == 0:
             params = np.array([self.norm_["center"], self.norm_["scale"]])
@@ -1440,9 +1440,11 @@ class MultiNormalizer(TorchNormalizer):
                 List of scaled data, if ``return_norm=True``, returns also scales as second element
         """  # noqa: E501
         if isinstance(y, pd.DataFrame):
+
             def get_col(idx):
                 return y.iloc[:, idx].to_numpy()
         elif isinstance(y, list):
+
             def get_col(idx):
                 return y[idx]
         else:
