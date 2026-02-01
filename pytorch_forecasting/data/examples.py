@@ -48,6 +48,7 @@ def get_stallion_data() -> pd.DataFrame:
     fname = _get_data_by_filename("stallion.parquet")
     return pd.read_parquet(fname)
 
+
 def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     """
     Small dummy dataset for testing.
@@ -67,11 +68,17 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     skus = np.array([p[1] for p in selected_pairs])
     n_rows = len(selected_pairs) * len(dates)
 
+    # Use scale=0.5 so values naturally span (0, 1+) range
+    # This ensures when tests clip to [1e-3, 1.0], there's variance (not all 1.0)
+    volume = rng.exponential(scale=0.5, size=n_rows)
+    zero_mask = rng.random(n_rows) < 0.12
+    volume[zero_mask] = 0.0
+
     df = pd.DataFrame(
         {
             "agency": np.repeat(agencies, len(dates)),
             "sku": np.repeat(skus, len(dates)),
-            "volume": rng.lognormal(7.0, 0.8, n_rows),
+            "volume": volume,
             "date": np.tile(dates, len(selected_pairs)),
             "industry_volume": np.clip(
                 rng.normal(5.4e8, 6.3e7, n_rows), 4.0e8, None
@@ -116,13 +123,13 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
 
     df["agency"] = df["agency"].astype("category")
     df["sku"] = df["sku"].astype("category")
-    df["volume"] = df["volume"].astype(np.float64) 
+    df["volume"] = df["volume"].astype(np.float64)
     df["avg_max_temp"] = df["avg_max_temp"].astype(np.float64)
     df["price_regular"] = df["price_regular"].astype(np.float64)
     df["price_actual"] = df["price_actual"].astype(np.float64)
     df["discount"] = df["discount"].astype(np.float64)
     df["discount_in_percent"] = df["discount_in_percent"].astype(np.float64)
-    
+
     df = df.sort_values(["agency", "sku", "date"]).reset_index(drop=True)
 
     return df

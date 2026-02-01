@@ -1035,9 +1035,9 @@ class GroupNormalizer(TorchNormalizer):
         y = self.preprocess(y)
         eps = np.finfo(np.float16).eps
         if len(self._groups) == 0:
-            assert (
-                not self.scale_by_group
-            ), "No groups are defined, i.e. `scale_by_group=[]`"
+            assert not self.scale_by_group, (
+                "No groups are defined, i.e. `scale_by_group=[]`"
+            )
             if self.method == "standard":
                 self.norm_ = {
                     "center": np.mean(y),
@@ -1274,9 +1274,9 @@ class GroupNormalizer(TorchNormalizer):
         else:
             # filter group names
             group_names = [name for name in group_names if name in self._groups]
-        assert len(group_names) == len(
-            self._groups
-        ), "Passed groups and fitted do not match"
+        assert len(group_names) == len(self._groups), (
+            "Passed groups and fitted do not match"
+        )
 
         if len(self._groups) == 0:
             params = np.array([self.norm_["center"], self.norm_["scale"]])
@@ -1372,14 +1372,16 @@ class MultiNormalizer(TorchNormalizer):
         -------
         MultiNormalizer: self
         """
-        if isinstance(y, pd.DataFrame):
-            y = y.to_numpy()
-
         for idx, normalizer in enumerate(self.normalizers):
-            if isinstance(normalizer, GroupNormalizer):
-                normalizer.fit(y[:, idx], X)
+            if isinstance(y, pd.DataFrame):
+                col = y.iloc[:, idx].to_numpy()
             else:
-                normalizer.fit(y[:, idx])
+                col = y[:, idx]
+
+            if isinstance(normalizer, GroupNormalizer):
+                normalizer.fit(col, X)
+            else:
+                normalizer.fit(col)
 
         self.fitted_ = True
         return self
@@ -1438,7 +1440,16 @@ class MultiNormalizer(TorchNormalizer):
                 List of scaled data, if ``return_norm=True``, returns also scales as second element
         """  # noqa: E501
         if isinstance(y, pd.DataFrame):
-            y = y.to_numpy().transpose()
+            def get_col(idx):
+                return y.iloc[:, idx].to_numpy()
+        elif isinstance(y, list):
+            def get_col(idx):
+                return y[idx]
+        else:
+            y_t = y.transpose() if hasattr(y, "transpose") else y.T
+
+            def get_col(idx):
+                return y_t[idx]
 
         res = []
         for idx, normalizer in enumerate(self.normalizers):
@@ -1446,13 +1457,16 @@ class MultiNormalizer(TorchNormalizer):
                 scale = target_scale[idx]
             else:
                 scale = None
+
+            col = get_col(idx)
+
             if isinstance(normalizer, GroupNormalizer):
                 r = normalizer.transform(
-                    y[idx], X, return_norm=return_norm, target_scale=scale
+                    col, X, return_norm=return_norm, target_scale=scale
                 )
             else:
                 r = normalizer.transform(
-                    y[idx], return_norm=return_norm, target_scale=scale
+                    col, return_norm=return_norm, target_scale=scale
                 )
             res.append(r)
 
