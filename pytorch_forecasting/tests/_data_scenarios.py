@@ -92,9 +92,9 @@ def data_with_covariates_v2():
     # pandas 3 deprecated M freq and uses ME instead
     # lower versions can use M or both
     if _check_soft_dependencies("pandas<3", severity="none"):
-        freq="M"
+        freq = "M"
     else:
-        freq="ME"
+        freq = "ME"
     dates = pd.date_range(start_date, end_date, freq=freq)
 
     agencies = [0, 1]
