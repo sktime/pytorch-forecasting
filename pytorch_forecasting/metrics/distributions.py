@@ -250,9 +250,9 @@ class LogNormalDistributionLoss(DistributionLoss):
             f" `transformation={encoder.transform}`"
         )
 
-        assert encoder.transformation not in [
-            "logit"
-        ], "Cannot use bound transformation such as 'logit'"
+        assert encoder.transformation not in ["logit"], (
+            "Cannot use bound transformation such as 'logit'"
+        )
 
         scale = F.softplus(parameters[..., 1]) * target_scale[..., 1].unsqueeze(-1)
         loc = parameters[..., 0] * target_scale[..., 1].unsqueeze(-1) + target_scale[
@@ -277,8 +277,10 @@ class BetaDistributionLoss(DistributionLoss):
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Beta:
         mean = x[..., 0]
         shape = x[..., 1]
+        concentration0 = torch.clamp((1 - mean) * shape, min=self.eps)
+        concentration1 = torch.clamp(mean * shape, min=self.eps)
         return self.distribution_class(
-            concentration0=(1 - mean) * shape, concentration1=mean * shape
+            concentration0=concentration0, concentration1=concentration1
         )
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
@@ -303,9 +305,9 @@ class BetaDistributionLoss(DistributionLoss):
         target_scale: torch.Tensor,
         encoder: BaseEstimator,
     ) -> torch.Tensor:
-        assert encoder.transformation in [
-            "logit"
-        ], "Beta distribution is only compatible with logit transformation"
+        assert encoder.transformation in ["logit"], (
+            "Beta distribution is only compatible with logit transformation"
+        )
         assert encoder.center, "Beta distribution requires normalizer to center data"
 
         scaled_mean = encoder(
