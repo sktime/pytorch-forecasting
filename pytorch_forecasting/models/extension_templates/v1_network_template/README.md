@@ -9,11 +9,11 @@ infrastructure of pytorch-forecasting.
 
 ## Files
 
-- **`model.py`**  
-  Minimal model implementation that inherits from `BaseModel`.  
+- **`model.py`**
+  Minimal model implementation that inherits from `BaseModel`.
   Replace the placeholder logic with your own neural network.
 
-- **`package.py`**  
+- **`package.py`**
   Package container that exposes metadata (`_tags`) and links to your model
   via `get_cls()`. This is required for CI discovery and testing.
 
