@@ -1,46 +1,67 @@
-"""NBeats v2 package container."""
-
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class NBEATS_v2_pkg_v2(Base_pkg):
-    """NBeats v2 package container."""
-
+class NBEATS_pkg_v2(Base_pkg):
     _tags = {
-        "info:name": "NBEATS_v2",
-        "info:compute": 1,
-        "info:pred_type": ["point"],
-        "info:y_type": ["numeric"],
-        "authors": ["Palak Bakshi"],
-        "capability:exogenous": False,
-        "capability:multivariate": False,
-        "capability:pred_int": False,
-        "capability:flexible_history_length": False,
-        "capability:cold_start": False,
+        "info:name": "NBEATS",
+        "authors": ["PalakB09"],
     }
 
     @classmethod
     def get_cls(cls):
-        from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS_v2
+        from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS
 
-        return NBEATS_v2
+        return NBEATS
 
     @classmethod
     def get_datamodule_cls(cls):
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
+        )
 
-        return TslibDataModule
+        return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
-    def get_base_test_params(cls):
+    def get_test_train_params(cls):
+        from pytorch_forecasting.metrics import QuantileLoss
+
         params = [
-            {},
-            {"backcast_loss_ratio": 1.0},
+            {
+                "stack_types": ["trend", "seasonality"],
+                "num_blocks": [2, 2],
+                "num_block_layers": [2, 2],
+                "widths": [16, 32],
+                "sharing": [True, True],
+                "expansion_coefficient_lengths": [3, 7],
+            },
+            {
+                "stack_types": ["generic"],
+                "num_blocks": [2],
+                "num_block_layers": [2],
+                "widths": [32],
+                "sharing": [False],
+                "expansion_coefficient_lengths": [16],
+            },
+            {
+                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+                "stack_types": ["trend", "seasonality"],
+                "num_blocks": [2, 2],
+                "num_block_layers": [2, 2],
+                "widths": [16, 32],
+                "sharing": [True, True],
+                "expansion_coefficient_lengths": [3, 7],
+            },
         ]
 
+        default_dm_cfg = {
+            "max_encoder_length": 6,
+            "max_prediction_length": 4,
+        }
+
         for param in params:
-            dm_cfg = {"context_length": 4, "prediction_length": 3}
-            dm_cfg.update(param.get("datamodule_cfg", {}))
+            current_dm_cfg = param.get("datamodule_cfg", {})
+            dm_cfg = default_dm_cfg.copy()
+            dm_cfg.update(current_dm_cfg)
             param["datamodule_cfg"] = dm_cfg
 
         return params
