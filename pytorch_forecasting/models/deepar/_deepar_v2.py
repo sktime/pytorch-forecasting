@@ -108,10 +108,16 @@ class DeepAR(BaseModel):
         self.target_dim = self.metadata.get("target_dim", 1)
 
         rnn_class = get_rnn(cell_type)
-        input_size = self.encoder_cont_dim + self.encoder_cat_dim
+        encoder_input_size = self.encoder_cont_dim + self.encoder_cat_dim
+        decoder_input_size = self.decoder_cont_dim + self.decoder_cat_dim
+        
+        rnn_input_size = hidden_size
+
+        self.encoder_projector = nn.Linear(encoder_input_size, rnn_input_size)
+        self.decoder_projector = nn.Linear(decoder_input_size, rnn_input_size)
 
         self.rnn = rnn_class(
-            input_size=input_size,
+            input_size= rnn_input_size,
             hidden_size=hidden_size,
             num_layers=rnn_layers,
             dropout=dropout if rnn_layers > 1 else 0,
@@ -136,11 +142,12 @@ class DeepAR(BaseModel):
         x_cat: torch.Tensor,
         x_cont: torch.Tensor,
         one_off_target: torch.Tensor = None,
+        is_encoder: bool = True,
     ) -> torch.Tensor:
         """
         Create input vector into RNN network
         """
-
+    
         if self.n_reals > 0 and self.n_categoricals > 0:
             input_vector = torch.cat([x_cont, x_cat], dim=-1)
         elif self.n_reals > 0:
@@ -149,22 +156,28 @@ class DeepAR(BaseModel):
             input_vector = x_cat.clone()
         else:
             raise ValueError("No features found in input")
-
+    
         input_vector[..., self.target_positions] = torch.roll(
             input_vector[..., self.target_positions], shifts=1, dims=1
         )
-
+    
         if one_off_target is not None:
             input_vector[:, 0, self.target_positions] = one_off_target.reshape(
                 input_vector.size(0), -1
             )
         else:
             input_vector = input_vector[:, 1:]
+        
+        if is_encoder:
+            input_vector = self.encoder_projector(input_vector)
+        else:
+            input_vector = self.decoder_projector(input_vector)
+        
         return input_vector
 
     def encode(self, x: dict[str, torch.Tensor]) -> HiddenState:
         """Encode sequence into hidden state."""
-        input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"])
+        input_vector = self.construct_input_vector(x["encoder_cat"], x["encoder_cont"], is_encoder=True)
         _, hidden_state = self.rnn(input_vector)
         return hidden_state
 
@@ -266,20 +279,20 @@ class DeepAR(BaseModel):
         """Forward pass using V1 logic."""
         hidden_state = self.encode(x)
         target_pos = self.target_positions
-
+    
         last_encoder_target = x["encoder_cont"][
             torch.arange(x["encoder_cont"].size(0)),
             x["encoder_lengths"] - 1,
             target_pos,
         ]
-
+    
         input_vector = self.construct_input_vector(
-            x["decoder_cat"], x["decoder_cont"], one_off_target=last_encoder_target
+            x["decoder_cat"], x["decoder_cont"], one_off_target=last_encoder_target, is_encoder=False
         )
-
+    
         if self.training:
             assert n_samples is None
-
+    
         output = self.decode(
             input_vector,
             target_scale=x.get("target_scale", torch.ones(1)),
