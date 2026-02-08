@@ -115,13 +115,6 @@ class NBEATS(BaseModel):
                 for _ in range(self.num_blocks[stack_id]):
                     self.net_blocks.append(self._make_block(stack_id, stack_type))
 
-    def _expand_for_quantiles(self, prediction: torch.Tensor) -> torch.Tensor:
-        quantiles = getattr(self.loss, "quantiles", None)
-        if not quantiles:
-            return prediction
-
-        return prediction.repeat(1, 1, len(quantiles))
-
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         target = x["target_past"].squeeze(-1)
         batch_size = target.size(0)
@@ -151,7 +144,6 @@ class NBEATS(BaseModel):
             forecast = forecast + forecast_block
 
         prediction = forecast.unsqueeze(-1)
-        prediction = self._expand_for_quantiles(prediction)
 
         explained_backcast = (target - backcast).unsqueeze(-1)
 
