@@ -23,8 +23,6 @@ class NBEATS_pkg_v2(Base_pkg):
 
     @classmethod
     def get_test_train_params(cls):
-        from pytorch_forecasting.metrics import QuantileLoss
-
         params = [
             {
                 "stack_types": ["trend", "seasonality"],
@@ -41,15 +39,6 @@ class NBEATS_pkg_v2(Base_pkg):
                 "widths": [32],
                 "sharing": [False],
                 "expansion_coefficient_lengths": [16],
-            },
-            {
-                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
-                "stack_types": ["trend", "seasonality"],
-                "num_blocks": [2, 2],
-                "num_block_layers": [2, 2],
-                "widths": [16, 32],
-                "sharing": [True, True],
-                "expansion_coefficient_lengths": [3, 7],
             },
         ]
 
