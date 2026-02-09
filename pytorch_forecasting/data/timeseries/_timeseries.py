@@ -1453,13 +1453,25 @@ class TimeSeriesDataSet(Dataset):
             else:
                 dtypekind = data.dtypes[cols].kind
             if real:
-                return torch.tensor(data[cols].to_numpy(np.float64), dtype=torch.float)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.float64, copy=True), dtype=torch.float
+                )
             elif not long:
-                return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.int64)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.int64, copy=True), dtype=torch.int64
+                )
             elif dtypekind in "bi":
-                return torch.tensor(data[cols].to_numpy(np.int64), dtype=torch.long)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.int64, copy=True), dtype=torch.long
+                )
             else:
-                return torch.tensor(data[cols].to_numpy(np.float64), dtype=torch.float)
+                # PyTorch wants writeable arrays
+                return torch.tensor(
+                    data[cols].to_numpy(np.float64, copy=True), dtype=torch.float
+                )
 
         index = _to_tensor(self._group_ids, long=False)
         time = _to_tensor("__time_idx__", long=False)
