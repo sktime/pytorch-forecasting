@@ -88,9 +88,6 @@ def data_with_covariates_v2():
 
     start_date = datetime(2015, 1, 1)
     end_date = datetime(2017, 12, 31)
-<<<<<<< stallion-data-gen
-    dates = pd.date_range(start_date, end_date, freq="ME")
-=======
 
     # pandas 3 deprecated M freq and uses ME instead
     # lower versions can use M or both
@@ -99,7 +96,6 @@ def data_with_covariates_v2():
     else:
         freq = "ME"
     dates = pd.date_range(start_date, end_date, freq=freq)
->>>>>>> main
 
     agencies = [0, 1]
     skus = [0, 1]
