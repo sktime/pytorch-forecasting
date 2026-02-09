@@ -2,6 +2,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
@@ -87,7 +88,18 @@ def data_with_covariates_v2():
 
     start_date = datetime(2015, 1, 1)
     end_date = datetime(2017, 12, 31)
+<<<<<<< stallion-data-gen
     dates = pd.date_range(start_date, end_date, freq="ME")
+=======
+
+    # pandas 3 deprecated M freq and uses ME instead
+    # lower versions can use M or both
+    if _check_soft_dependencies("pandas<3", severity="none"):
+        freq = "M"
+    else:
+        freq = "ME"
+    dates = pd.date_range(start_date, end_date, freq=freq)
+>>>>>>> main
 
     agencies = [0, 1]
     skus = [0, 1]
