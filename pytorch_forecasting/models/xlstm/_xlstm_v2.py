@@ -3,13 +3,6 @@ xLSTM Time Series Forecasting Model - v2 Implementation
 --------------------------------------------------------
 """
 
-################################################################
-# NOTE: This implementation of xLSTM derives from the v1     #
-# implementation. It is experimental and seeks to align with  #
-# the v2 design of PTF using TslibBaseModel.                  #
-# IT IS STRICTLY A PART OF THE v2 design of PTF.              #
-################################################################
-
 from typing import Any, Literal, Optional, Union
 import warnings as warn
 
@@ -143,11 +136,6 @@ class xLSTMTime(BaseModel):
             sLSTMNetwork,
         )
 
-        # Check for quantile loss
-        # self.n_quantiles = None
-        # if hasattr(self.loss, "quantiles") and self.loss.quantiles is not None:
-        #     self.n_quantiles = len(self.loss.quantiles)
-
         self.decomposition = SeriesDecomposition(self.decomposition_kernel)
         self.batch_norm = nn.BatchNorm1d(self.hidden_size)
 
@@ -171,8 +159,6 @@ class xLSTMTime(BaseModel):
             )
 
         self.output_size = self.prediction_length * self.target_dim
-        # if self.n_quantiles is not None:
-        #     output_dim = self.prediction_length * self.target_dim * self.n_quantiles
 
         self.output_linear = nn.Linear(self.hidden_size, self.output_size)
 

@@ -35,7 +35,6 @@ for i in range(num_series):
             }
         )
 data_df = pd.DataFrame(data_list)
-# data_df.head()
 
 dataset = TimeSeries(
     data=data_df,
