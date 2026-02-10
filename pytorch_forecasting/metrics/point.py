@@ -149,9 +149,13 @@ class CrossEntropy(MultiHorizonMetric):
 
 class RMSE(MultiHorizonMetric):
     """
-    Root mean square error
+    Root mean square error.
 
-    Defined as ``(y_pred - target)**2``
+    Defined as `sqrt(mean((y_pred - target)**2))`.
+
+    Note: The square root is applied during the reduction step via
+    the `sqrt-mean` strategy, while the `loss` method calculates
+    the squared error.
     """
 
     def __init__(self, reduction="sqrt-mean", **kwargs):
