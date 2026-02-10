@@ -5,7 +5,7 @@ Metadata container for xLSTMTime v2.
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class xLSTMTime_v2_pkg_v2(Base_pkg):
+class xLSTMTime_pkg_v2(Base_pkg):
     """xLSTMTime metadata container."""
 
     _tags = {
@@ -20,14 +20,14 @@ class xLSTMTime_v2_pkg_v2(Base_pkg):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.xlstm._xlstm_v2 import xLSTMTime_v2
+        from pytorch_forecasting.models.xlstm._xlstm_v2 import xLSTMTime
 
-        return xLSTMTime_v2
+        return xLSTMTime
 
     @classmethod
     def name(cls):
         """Return the name of the model."""
-        return "xLSTMTime_v2"
+        return "xLSTMTime"
 
     @classmethod
     def get_datamodule_cls(cls):

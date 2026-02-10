@@ -11,7 +11,7 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.metrics import MAE, SMAPE
-from pytorch_forecasting.models.xlstm import xLSTMTime_v2
+from pytorch_forecasting.models.xlstm import xLSTMTime
 
 num_series = 100
 seq_length = 50
@@ -68,7 +68,7 @@ data_module = TslibDataModule(
 )
 
 
-model1 = xLSTMTime_v2(
+model1 = xLSTMTime(
     loss=MAE(),
     hidden_size=128,
     xlstm_type="slstm",  # or "mlstm" for matrix LSTM variant
