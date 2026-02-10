@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import torch
 
-from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.encoders import (
     NaNLabelEncoder,
     TorchNormalizer,
@@ -49,10 +49,10 @@ dataset = TimeSeries(
     static=["static_feature", "static_feature_cat"],
 )
 
-data_module = TslibDataModule(
+data_module = EncoderDecoderTimeSeriesDataModule(
     time_series_dataset=dataset,
-    context_length=30,
-    prediction_length=1,
+    max_encoder_length=30,
+    max_prediction_length=1,
     add_relative_time_idx=True,
     target_normalizer=TorchNormalizer(),
     categorical_encoders={
@@ -95,9 +95,9 @@ trainer1 = Trainer(
     enable_model_summary=True,
 )
 
+
 data_module.setup(stage="fit")
 trainer1.fit(model1, data_module)
-
 train_loader = data_module.train_dataloader()
 x_batch, y_batch = next(iter(train_loader))
 print("Input batch keys:", x_batch.keys())
@@ -106,7 +106,7 @@ print(
     y_batch.shape if isinstance(y_batch, torch.Tensor) else [t.shape for t in y_batch],
 )
 
-print(f"Shape of x_batch['history_cont'] is {x_batch['history_cont'].shape}")
+print(f"Shape of x_batch['encoder_cont'] is {x_batch['encoder_cont'].shape}")
 
 model1.eval()
 

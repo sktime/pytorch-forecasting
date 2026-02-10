@@ -32,9 +32,11 @@ class xLSTMTime_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
+        )
 
-        return TslibDataModule
+        return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
     def get_test_train_params(cls):
@@ -56,7 +58,7 @@ class xLSTMTime_pkg_v2(Base_pkg):
                 hidden_size=64,
                 xlstm_type="slstm",
             ),
-            dict(datamodule_cfg=dict(context_length=12, prediction_length=3)),
+            dict(datamodule_cfg=dict(max_encoder_length=12, max_prediction_length=3)),
             dict(
                 xlstm_type="slstm",
                 num_layers=1,
@@ -77,7 +79,7 @@ class xLSTMTime_pkg_v2(Base_pkg):
             ),
         ]
 
-        default_dm_cfg = {"context_length": 12, "prediction_length": 4}
+        default_dm_cfg = {"max_encoder_length": 12, "max_prediction_length": 4}
         for param in params:
             current_dm_cfg = param.get("datamodule_cfg", {})
             default_dm_cfg.update(current_dm_cfg)

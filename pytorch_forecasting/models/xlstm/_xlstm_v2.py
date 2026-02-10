@@ -17,10 +17,10 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class xLSTMTime(TslibBaseModel):
+class xLSTMTime(BaseModel):
     """
     An implementation of xLSTMTime model for v2 of pytorch-forecasting.
 
@@ -113,8 +113,11 @@ class xLSTMTime(TslibBaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
-            metadata=metadata,
         )
+        self.metadata = metadata
+        self.target_dim = self.metadata["target"]
+        self.cont_dim = self.metadata["encoder_cont"]
+        self.prediction_length = self.metadata["max_prediction_length"]
 
         self.input_size = input_size or self.cont_dim
         self.hidden_size = hidden_size
@@ -185,11 +188,11 @@ class xLSTMTime(TslibBaseModel):
         Returns:
             torch.Tensor: Model predictions.
         """
-        history_cont = x["history_cont"]
+        encoder_cont = x["encoder_cont"]
 
-        batch_size, seq_len, n_features = history_cont.shape
+        batch_size, seq_len, n_features = encoder_cont.shape
 
-        seasonal, trend = self.decomposition(history_cont)
+        seasonal, trend = self.decomposition(encoder_cont)
 
         decomposed = torch.cat([trend, seasonal], dim=-1)
 
@@ -232,9 +235,4 @@ class xLSTMTime(TslibBaseModel):
         """
         out = self._forecast(x)
         prediction = out[:, : self.prediction_length, :]
-
-        # Apply inverse transformation if target_scale is provided
-        if "target_scale" in x:
-            prediction = self.transform_output(prediction, x["target_scale"])
-
         return {"prediction": prediction}
