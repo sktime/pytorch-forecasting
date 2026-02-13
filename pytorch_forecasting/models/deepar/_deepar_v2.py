@@ -131,7 +131,7 @@ class DeepAR(BaseModel):
 
         self.distribution_projector = nn.Linear(hidden_size, n_outputs)
 
-        self.target_positions = torch.tensor([0])
+        self.target_positions = torch.arange(self.target_dim)
         self.lagged_target_positions = {}
         self.n_reals = self.encoder_cont_dim
         self.n_categoricals = self.encoder_cat_dim
@@ -178,6 +178,32 @@ class DeepAR(BaseModel):
         encoder = self.output_transformer
         if encoder is None or isinstance(encoder, str):
             encoder = DummyEncoder()
+
+        if not isinstance(self.loss, MultiLoss) and self.target_dim > 1:
+            n_params = prediction.size(-1) // self.target_dim
+            batch_size, time_steps, _ = prediction.shape
+
+            prediction = prediction.view(
+                batch_size, time_steps, self.target_dim, n_params
+            )
+            prediction_flat = prediction.permute(0, 2, 1, 3).reshape(
+                -1, time_steps, n_params
+            )
+
+            if target_scale.ndim == 2:
+                target_scale = target_scale.unsqueeze(1)
+            target_scale_flat = target_scale.reshape(-1, 2)
+
+            rescaled_flat = self.loss.rescale_parameters(
+                prediction_flat, target_scale=target_scale_flat, encoder=encoder
+            )
+
+            new_n_params = rescaled_flat.size(-1)
+            rescaled = rescaled_flat.view(
+                batch_size, self.target_dim, time_steps, new_n_params
+            )
+            rescaled = rescaled.permute(0, 2, 1, 3)
+            return rescaled.reshape(batch_size, time_steps, -1)
 
         return self.loss.rescale_parameters(
             prediction, target_scale=target_scale, encoder=encoder
@@ -336,24 +362,50 @@ class DeepAR(BaseModel):
         self, x: dict[str, torch.Tensor], n_samples: int = None
     ) -> dict[str, torch.Tensor]:
         """Forward pass using V1 logic."""
-        target_scale = x.get(
-            "target_scale",
-            torch.ones((x["encoder_cont"].size(0), 1), device=x["encoder_cont"].device),
-        )
+        target_scale = x.get("target_scale")
+        if target_scale is None:
+            if self.target_dim > 1:
+                shape = (x["encoder_cont"].size(0), self.target_dim, 2)
+            else:
+                shape = (x["encoder_cont"].size(0), 2)
+
+            target_scale = torch.zeros(shape, device=x["encoder_cont"].device)
+            target_scale[..., 1] = 1.0
+
         if target_scale.ndim == 1:
             target_scale = target_scale.unsqueeze(-1)
-        if target_scale.shape[-1] == 1:
-            target_scale = torch.cat(
-                [torch.zeros_like(target_scale), target_scale], dim=-1
-            )
+
+        if target_scale.ndim == 2:
+            if target_scale.shape[-1] == 2:
+                if self.target_dim > 1:
+                    target_scale = target_scale.unsqueeze(1).expand(
+                        -1, self.target_dim, -1
+                    )
+            elif target_scale.shape[-1] == self.target_dim * 2:
+                target_scale = target_scale.view(
+                    target_scale.size(0), self.target_dim, 2
+                )
+            elif target_scale.shape[-1] == self.target_dim:
+                target_scale = torch.stack(
+                    [torch.zeros_like(target_scale), target_scale], dim=-1
+                )
+
+        if (
+            self.target_dim == 1
+            and target_scale.ndim == 3
+            and target_scale.shape[1] == 1
+        ):
+            target_scale = target_scale.squeeze(1)
+
+        if target_scale.ndim == 3 and target_scale.size(1) == 1 and self.target_dim > 1:
+            target_scale = target_scale.expand(-1, self.target_dim, -1)
 
         hidden_state = self.encode(x)
-        target_pos = self.target_positions
 
         last_encoder_target = x["encoder_cont"][
-            torch.arange(x["encoder_cont"].size(0)),
-            x["encoder_lengths"] - 1,
-            target_pos,
+            torch.arange(x["encoder_cont"].size(0)).unsqueeze(-1),
+            (x["encoder_lengths"] - 1).unsqueeze(-1),
+            self.target_positions,
         ]
 
         input_vector = self.construct_input_vector(

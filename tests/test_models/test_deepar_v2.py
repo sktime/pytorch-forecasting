@@ -120,10 +120,11 @@ def test_deepar_v2_forward_pass(deepar_model_params_fixture, cell_type):
     prediction = output["prediction"]
 
     n_dist_params = len(params["loss"].distribution_arguments)
+    expected_params = n_dist_params + 2
     assert prediction.shape == (
         BATCH_SIZE_TEST,
         MAX_PREDICTION_LENGTH_TEST,
-        metadata["target_dim"] * n_dist_params,
+        metadata["target_dim"] * expected_params,
     )
     assert not torch.isnan(prediction).any()
 
@@ -131,7 +132,7 @@ def test_deepar_v2_forward_pass(deepar_model_params_fixture, cell_type):
 def test_deepar_v2_multi_target(deepar_model_params_fixture):
     """Test DeepAR V2 forward pass with multiple targets."""
     target_dim = 3
-    metadata = get_default_test_metadata(target_dim=target_dim)
+    metadata = get_default_test_metadata(target_dim=target_dim, enc_cont=target_dim)
     model = DeepAR_v2(**deepar_model_params_fixture, metadata=metadata)
     model.eval()
 
@@ -147,12 +148,11 @@ def test_deepar_v2_multi_target(deepar_model_params_fixture):
             assert p.shape == (
                 BATCH_SIZE_TEST,
                 MAX_PREDICTION_LENGTH_TEST,
-                n_dist_params,
+                n_dist_params + 2,
             )
     else:
         assert prediction.shape == (
             BATCH_SIZE_TEST,
             MAX_PREDICTION_LENGTH_TEST,
-            target_dim,
-            n_dist_params,
+            target_dim * (n_dist_params + 2),
         )
