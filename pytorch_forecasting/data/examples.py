@@ -72,9 +72,6 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     agencies = np.array([p[0] for p in selected_pairs])
     skus = np.array([p[1] for p in selected_pairs])
     n_rows = len(selected_pairs) * len(dates)
-    agencies = np.array([p[0] for p in selected_pairs])
-    skus = np.array([p[1] for p in selected_pairs])
-    n_rows = len(selected_pairs) * len(dates)
 
     volume = rng.exponential(scale=0.5, size=n_rows)
     zero_mask = rng.random(n_rows) < 0.12
@@ -135,8 +132,6 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     df["price_actual"] = df["price_actual"].astype(np.float64)
     df["discount"] = df["discount"].astype(np.float64)
     df["discount_in_percent"] = df["discount_in_percent"].astype(np.float64)
-
-
 
     return df
 
