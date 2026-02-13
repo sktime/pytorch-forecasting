@@ -845,7 +845,7 @@ class MultiHorizonMetric(Metric):
 
         Args:
             y_pred: network output
-            y_actual: actual values
+            target: actual values
 
         Returns:
             torch.Tensor: loss/metric as a single number for backpropagation
@@ -1021,7 +1021,7 @@ class DistributionLoss(MultiHorizonMetric):
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
         """
-        Map the a tensor of parameters to a probability distribution.
+        Map the tensor of parameters to a probability distribution.
 
         Args:
             x (torch.Tensor): parameters for probability distribution. Last dimension will index the parameters
