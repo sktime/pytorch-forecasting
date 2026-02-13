@@ -61,15 +61,21 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
 
     agency_list = [f"Agency_{i:02d}" for i in range(1, 61)]
     sku_list = [f"SKU_{j:02d}" for j in range(1, 36)]
+    selected_pairs = [(a, s) for a in agency_list for s in sku_list]
+    rng.shuffle(selected_pairs)
 
-    pairs = [(a, s) for a in agency_list for s in sku_list]
-    selected_pairs = pairs
+    first_pair_batch = [p for p in selected_pairs if p[0] == "Agency_01"]
+    other_pairs = [p for p in selected_pairs if p[0] != "Agency_01"]
+    selected_pairs = first_pair_batch[:2] + other_pairs
+    rng.shuffle(selected_pairs)
+
+    agencies = np.array([p[0] for p in selected_pairs])
+    skus = np.array([p[1] for p in selected_pairs])
+    n_rows = len(selected_pairs) * len(dates)
     agencies = np.array([p[0] for p in selected_pairs])
     skus = np.array([p[1] for p in selected_pairs])
     n_rows = len(selected_pairs) * len(dates)
 
-    # Use scale=0.5 so values naturally span (0, 1+) range
-    # This ensures when tests clip to [1e-3, 1.0], there's variance (not all 1.0)
     volume = rng.exponential(scale=0.5, size=n_rows)
     zero_mask = rng.random(n_rows) < 0.12
     volume[zero_mask] = 0.0
@@ -130,7 +136,7 @@ def get_stallion_dummy_data(seed: int | None = 0) -> pd.DataFrame:
     df["discount"] = df["discount"].astype(np.float64)
     df["discount_in_percent"] = df["discount_in_percent"].astype(np.float64)
 
-    df = df.sort_values(["agency", "sku", "date"]).reset_index(drop=True)
+
 
     return df
 
