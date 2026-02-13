@@ -277,10 +277,8 @@ class BetaDistributionLoss(DistributionLoss):
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Beta:
         mean = x[..., 0]
         shape = x[..., 1]
-        concentration0 = torch.clamp((1 - mean) * shape, min=self.eps)
-        concentration1 = torch.clamp(mean * shape, min=self.eps)
         return self.distribution_class(
-            concentration0=concentration0, concentration1=concentration1
+            concentration0=(1 - mean) * shape, concentration1=mean * shape
         )
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:

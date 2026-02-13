@@ -1372,16 +1372,14 @@ class MultiNormalizer(TorchNormalizer):
         -------
         MultiNormalizer: self
         """
-        for idx, normalizer in enumerate(self.normalizers):
-            if isinstance(y, pd.DataFrame):
-                col = y.iloc[:, idx].to_numpy()
-            else:
-                col = y[:, idx]
+        if isinstance(y, pd.DataFrame):
+            y = y.to_numpy()
 
+        for idx, normalizer in enumerate(self.normalizers):
             if isinstance(normalizer, GroupNormalizer):
-                normalizer.fit(col, X)
+                normalizer.fit(y[:, idx], X)
             else:
-                normalizer.fit(col)
+                normalizer.fit(y[:, idx])
 
         self.fitted_ = True
         return self
@@ -1440,18 +1438,7 @@ class MultiNormalizer(TorchNormalizer):
                 List of scaled data, if ``return_norm=True``, returns also scales as second element
         """  # noqa: E501
         if isinstance(y, pd.DataFrame):
-
-            def get_col(idx):
-                return y.iloc[:, idx].to_numpy()
-        elif isinstance(y, list):
-
-            def get_col(idx):
-                return y[idx]
-        else:
-            y_t = y.transpose() if hasattr(y, "transpose") else y.T
-
-            def get_col(idx):
-                return y_t[idx]
+            y = y.to_numpy().transpose()
 
         res = []
         for idx, normalizer in enumerate(self.normalizers):
@@ -1459,16 +1446,13 @@ class MultiNormalizer(TorchNormalizer):
                 scale = target_scale[idx]
             else:
                 scale = None
-
-            col = get_col(idx)
-
             if isinstance(normalizer, GroupNormalizer):
                 r = normalizer.transform(
-                    col, X, return_norm=return_norm, target_scale=scale
+                    y[idx], X, return_norm=return_norm, target_scale=scale
                 )
             else:
                 r = normalizer.transform(
-                    col, return_norm=return_norm, target_scale=scale
+                    y[idx], return_norm=return_norm, target_scale=scale
                 )
             res.append(r)
 
