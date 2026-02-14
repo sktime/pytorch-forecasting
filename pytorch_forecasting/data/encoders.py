@@ -1301,7 +1301,7 @@ class GroupNormalizer(TorchNormalizer):
                 ):
                     indexer = groups[0]
                 params = self.norm_.loc[indexer].to_numpy()
-            except (KeyError, TypeError):
+            except (KeyError, TypeError, ValueError):
                 params = np.asarray([self.missing_[name] for name in self.names])
         return params
 
