@@ -1293,9 +1293,14 @@ class GroupNormalizer(TorchNormalizer):
             params = norm
         else:
             try:
-                params = self.norm_.loc[list(groups)].to_numpy()
-                if params.ndim == 2:
-                    params = params.squeeze(0)
+                indexer = groups
+                if (
+                    isinstance(groups, tuple)
+                    and len(groups) == 1
+                    and not isinstance(self.norm_.index, pd.MultiIndex)
+                ):
+                    indexer = groups[0]
+                params = self.norm_.loc[indexer].to_numpy()
             except (KeyError, TypeError):
                 params = np.asarray([self.missing_[name] for name in self.names])
         return params
