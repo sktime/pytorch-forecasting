@@ -56,3 +56,81 @@ span.highlighted {
 .highlight > pre > .s2 {
   color: #647db6 !important;
 }
+
+/* Model overview table styling */
+.model-overview-table {
+  width: 100%;
+  font-size: 0.9em;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+
+.model-overview-table th {
+  background-color: #f0f0f0;
+  font-weight: bold;
+  padding: 12px;
+  text-align: left;
+  border-bottom: 2px solid #ddd;
+}
+
+.model-overview-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+.model-overview-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.model-overview-table a {
+  color: #647db6;
+  text-decoration: none;
+}
+
+.model-overview-table a:hover {
+  text-decoration: underline;
+  color: #ee4c2c;
+}
+
+#model-overview-container {
+  margin: 20px 0;
+}
+
+#model-filters {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+#model-filters label {
+  margin-right: 15px;
+  font-weight: 500;
+}
+
+#model-filters select {
+  margin-left: 5px;
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+}
+
+/* DataTables styling overrides */
+#model-table_wrapper {
+  margin-top: 20px;
+}
+
+#model-table_wrapper .dataTables_filter input {
+  margin-left: 10px;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#model-table_wrapper .dataTables_length select {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 0 5px;
+}
