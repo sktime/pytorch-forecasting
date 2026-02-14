@@ -1293,7 +1293,9 @@ class GroupNormalizer(TorchNormalizer):
             params = norm
         else:
             try:
-                params = self.norm_.loc[groups].to_numpy()
+                params = self.norm_.loc[list(groups)].to_numpy()
+                if params.ndim == 2:
+                    params = params.squeeze(0)
             except (KeyError, TypeError):
                 params = np.asarray([self.missing_[name] for name in self.names])
         return params
