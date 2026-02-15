@@ -1,7 +1,7 @@
 [project]
 name = "pytorch-forecasting"
 readme = "README.md"         # Markdown files are supported
-version = "1.6.0"            # is being replaced automatically
+version = "1.6.1"            # is being replaced automatically
 
 authors = [
   {name = "Jan Beitner"},
@@ -114,6 +114,17 @@ docs = [
   "nbconvert",
   "recommonmark",
   "docutils",
+]
+
+# Core Dep set just before the lightning 2.6 release
+dependencies_2025 = [
+  "numpy==2.2.6",
+  "torch ==2.9.1",
+  "lightning ==2.5.6",
+  "scipy ==1.15.3",
+  "pandas ==2.3.3",
+  "scikit-learn ==1.7.2",
+  "scikit-base ==0.13.0",
 ]
 
 github-actions = ["pytest-github-actions-annotate-failures"]
