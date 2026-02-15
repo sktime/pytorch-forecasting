@@ -174,10 +174,6 @@ class Base_pkg(_BasePtForecasterV2):
         across stages of fit->test/predict.
         """
         if isinstance(data, TimeSeries):  # D1 Layer
-            if self.datamodule is not None:
-                self.datamodule.time_series_dataset = data
-                self.datamodule.setup(stage="predict")
-                return self.datamodule.predict_dataloader()
             dm = self._build_datamodule(data)
             scaler_path = self._scaler_path
             if scaler_path and scaler_path.exists():
