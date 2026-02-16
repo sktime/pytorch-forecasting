@@ -65,5 +65,36 @@ class DecoderMLP(BaseModel):
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
         self.metadata = metadata
 
+        # Extract dimensions from metadata
+        self.prediction_length = metadata["max_prediction_length"]
+        self.decoder_cont_dim = metadata.get("decoder_cont", 0)
+        self.decoder_cat_dim = metadata.get("decoder_cat", 0)
+        self.target_dim = metadata.get("target", 1)
+
+        # Determine quantile count from loss
+        self.n_quantiles = 1
+        if hasattr(loss, "quantiles") and loss.quantiles is not None:
+            self.n_quantiles = len(loss.quantiles)
+
+        # Compute input/output sizes
+        input_size = self.decoder_cont_dim + self.decoder_cat_dim
+        if input_size == 0:
+            # Fallback: use encoder_cont as input dimension if no decoder
+            # features are available (the model still needs some input)
+            input_size = metadata.get("encoder_cont", 1)
+
+        output_size = self.target_dim * self.n_quantiles
+
+        # Build MLP network
+        self.mlp = FullyConnectedModule(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_size=hidden_size,
+            n_hidden_layers=n_hidden_layers,
+            activation_class=getattr(nn, activation_class),
+            dropout=dropout,
+            norm=norm,
+        )
+
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         raise NotImplementedError
