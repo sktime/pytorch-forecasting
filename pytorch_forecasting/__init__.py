@@ -41,6 +41,7 @@ from pytorch_forecasting.models import (
     BaseModelWithCovariates,
     DecoderMLP,
     DeepAR,
+    LSTMModel,
     MultiEmbedding,
     NBeats,
     NBeatsKAN,

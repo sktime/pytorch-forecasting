@@ -64,6 +64,27 @@ def test_baseline_lstm_univariate_forward():
     assert out.shape[-1] == 1
 
 
+def test_baseline_lstm_univariate_eval_forward():
+    dataset = make_dataset(n_targets=1)
+
+    model = LSTMModel.from_dataset(
+        dataset,
+        hidden_size=8,
+        n_layers=1,
+    )
+    model.eval()
+
+    loader = dataset.to_dataloader(train=False, batch_size=4)
+    x, y = next(iter(loader))
+
+    with torch.no_grad():
+        out = model(x)["prediction"]
+
+    assert out.ndim == 3
+    assert out.shape[1] == dataset.max_prediction_length
+    assert out.shape[-1] == 1
+
+
 def test_baseline_lstm_multitarget_forward():
     dataset = make_dataset(n_targets=2)
 
@@ -127,11 +148,13 @@ def test_prediction_length():
     dataset = make_dataset(n_targets=2)
 
     model = LSTMModel.from_dataset(dataset)
+    model.eval()
 
     loader = dataset.to_dataloader(train=False, batch_size=4)
     x, y = next(iter(loader))
 
-    out = model(x)["prediction"]
+    with torch.no_grad():
+        out = model(x)["prediction"]
     # Multi-target returns list of tensors; use first for time dim
     out_t = out[0] if isinstance(out, list) else out
     assert out_t.shape[1] == dataset.max_prediction_length

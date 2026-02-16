@@ -32,6 +32,13 @@ class LSTMModel(AutoRegressiveBaseModel):
         **kwargs: Additional arguments passed to BaseModel.
     """
 
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.lstm._lstm_pkg import LSTMModel_pkg
+
+        return LSTMModel_pkg
+
     def __init__(
         self,
         target: str | list[str],
@@ -182,8 +189,12 @@ class LSTMModel(AutoRegressiveBaseModel):
                     for i, target_pos in enumerate(target_positions):
                         x_step[:, 0, target_pos] = lagged_targets[-1][:, i]
                 else:
-                    # Single target: lagged_targets is tensor
-                    x_step[:, 0, target_positions[0]] = lagged_targets[-1]
+                    # Keep single-target lagged values as (batch, 1) for
+                    # consistent autoregressive updates across decoding steps.
+                    lagged_target = lagged_targets[-1]
+                    if lagged_target.ndim == 1:
+                        lagged_target = lagged_target.unsqueeze(-1)
+                    x_step[:, 0, target_positions] = lagged_target
 
                 # Forward through LSTM
                 lstm_output, hidden_state = self.lstm(x_step, hidden_state)
@@ -198,8 +209,6 @@ class LSTMModel(AutoRegressiveBaseModel):
                 return output, hidden_state
 
             first_target = input_vector[:, 0, target_positions]
-            if self.n_targets == 1:
-                first_target = first_target.squeeze(-1)
 
             output = self.decode_autoregressive(
                 decode_one,
