@@ -5,7 +5,6 @@ MLP that predicts output only based on information available in the decoder
 (known future covariates).
 """
 
-from typing import Any
 
 import torch
 import torch.nn as nn
@@ -96,9 +95,14 @@ class DecoderMLP(BaseModel):
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
-        metadata: dict | None = None,
-        **kwargs: Any,
+        metadata: dict = None,
     ):
+        if metadata is None:
+            raise ValueError(
+                "metadata is required for DecoderMLP. "
+                "It is automatically provided by the DataModule."
+            )
+
         if loss is None:
             loss = MAE()
 
@@ -128,9 +132,11 @@ class DecoderMLP(BaseModel):
         # Compute input/output sizes
         input_size = self.decoder_cont_dim + self.decoder_cat_dim
         if input_size == 0:
-            # Fallback: use encoder_cont as input dimension if no decoder
-            # features are available (the model still needs some input)
-            input_size = metadata.get("encoder_cont", 1)
+            raise ValueError(
+                "DecoderMLP requires at least one decoder feature "
+                "(decoder_cont or decoder_cat). No decoder features found "
+                "in metadata. Ensure the dataset has known future covariates."
+            )
 
         output_size = self.target_dim * self.n_quantiles
 
@@ -172,11 +178,13 @@ class DecoderMLP(BaseModel):
         if decoder_cat is not None and decoder_cat.shape[-1] > 0:
             inputs.append(decoder_cat)
 
-        if inputs:
-            network_input = torch.cat(inputs, dim=-1)
-        else:
-            # Fallback: use encoder_cont if no decoder features are available
-            network_input = x["encoder_cont"]
+        if not inputs:
+            raise ValueError(
+                "No decoder features found in input batch. "
+                "DecoderMLP requires known future covariates."
+            )
+
+        network_input = torch.cat(inputs, dim=-1)
 
         # network_input shape: (batch_size, prediction_length, input_size)
         batch_size = network_input.size(0)
