@@ -147,7 +147,7 @@ jobs:
           uv pip install ".[dev, github-actions]"
         env:
           UV_SYSTEM_PYTHON: 1
-          UV_EXCLUDE_NEWER: "2025-01-01"
+          UV_EXCLUDE_NEWER: "2025-10-10"
 
       - name: Show dependencies
         run: python -m pip list
