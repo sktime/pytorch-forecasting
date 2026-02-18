@@ -25,11 +25,6 @@ class xLSTMTime_pkg_v2(Base_pkg):
         return xLSTMTime
 
     @classmethod
-    def name(cls):
-        """Return the name of the model."""
-        return "xLSTMTime"
-
-    @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
         from pytorch_forecasting.data.data_module import (

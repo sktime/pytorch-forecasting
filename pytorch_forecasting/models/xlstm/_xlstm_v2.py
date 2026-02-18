@@ -168,11 +168,15 @@ class xLSTMTime(BaseModel):
         """
         Forward pass of the xLSTMTime model.
 
-        Args:
-            x (dict[str, torch.Tensor]): Input data.
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Input data.
 
-        Returns:
-            torch.Tensor: Model predictions.
+        Returns
+        -------
+        torch.Tensor
+            Model predictions.
         """
         encoder_cont = x["encoder_cont"]
 
@@ -213,11 +217,15 @@ class xLSTMTime(BaseModel):
         """
         Forward pass of the xLSTMTime model.
 
-        Args:
-            x (dict[str, torch.Tensor]): Input data.
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Input data.
 
-        Returns:
-            dict[str, torch.Tensor]: Model predictions.
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Model predictions.
         """
         out = self._forecast(x)
         prediction = out[:, : self.prediction_length, :]
