@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import torch
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 
