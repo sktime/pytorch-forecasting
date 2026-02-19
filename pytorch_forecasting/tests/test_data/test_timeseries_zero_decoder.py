@@ -83,7 +83,7 @@ def test_timeseries_dataset_predict_mode_zero_prediction_length():
         assert x["encoder_time_idx_start"] + x["encoder_length"] - 1 == 14
 
 def test_timeseries_dataset_mixed_prediction_length_including_zero():
-    """Test TimeSeriesDataSet with min_prediction_length=0 and max_prediction_length > 0."""
+    """Test TimeSeriesDataSet with min_prediction_length=0 and max > 0."""
     data = pd.DataFrame(
         dict(
             value=np.random.rand(30),

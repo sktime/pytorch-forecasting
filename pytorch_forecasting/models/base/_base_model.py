@@ -1196,7 +1196,8 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         if x["decoder_lengths"][idx] == 0:
             warnings.warn(
-                f"Zero decoder length detected for sample {idx}. Predictions will not be plotted.",
+                f"Zero decoder length detected for sample {idx}. "
+                "Predictions will not be plotted.",
                 UserWarning,
             )
 
