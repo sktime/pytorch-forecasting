@@ -1194,6 +1194,12 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if prediction_kwargs is None:
             prediction_kwargs = {}
 
+        if x["decoder_lengths"][idx] == 0:
+            warnings.warn(
+                f"Zero decoder length detected for sample {idx}. Predictions will not be plotted.",
+                UserWarning,
+            )
+
         _check_matplotlib("plot_prediction")
 
         from matplotlib import pyplot as plt
@@ -2109,6 +2115,15 @@ class BaseModelWithCovariates(BaseModel):
 
         # mask values and transform to log space
         max_encoder_length = x["decoder_lengths"].max()
+        if max_encoder_length == 0:
+            return {
+                "support": support,
+                "average": {
+                    "actual": averages_actual,
+                    "prediction": averages_prediction,
+                },
+                "std": std,
+            }
         mask = create_mask(max_encoder_length, x["decoder_lengths"], inverse=True)
         # select valid y values
         y_flat = x["decoder_target"][mask]
