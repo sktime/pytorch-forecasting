@@ -2,19 +2,28 @@ from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
 class NBEATS_pkg_v2(Base_pkg):
+    """NBEATS v2 package container."""
+
     _tags = {
         "info:name": "NBEATS",
         "authors": ["PalakB09"],
+        "capability:exogenous": False,
+        "capability:multivariate": False,
+        "capability:pred_int": False,
+        "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
     def get_cls(cls):
+        """Get model class."""
         from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS
 
         return NBEATS
 
     @classmethod
     def get_datamodule_cls(cls):
+        """Get datamodule class used for training."""
         from pytorch_forecasting.data.data_module import (
             EncoderDecoderTimeSeriesDataModule,
         )
@@ -23,6 +32,13 @@ class NBEATS_pkg_v2(Base_pkg):
 
     @classmethod
     def get_test_train_params(cls):
+        """Return testing parameter settings for the trainer.
+
+        Returns
+        -------
+        params : list of dict
+            Parameters to create testing instances of the class.
+        """
         params = [
             {
                 "stack_types": ["trend", "seasonality"],
