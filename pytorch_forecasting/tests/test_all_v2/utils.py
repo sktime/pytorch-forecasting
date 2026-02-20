@@ -29,7 +29,9 @@ def _setup_pkg_and_data(
     model_cfg = params_copy
 
     if "loss" not in model_cfg:
-        model_cfg["loss"] = SMAPE()
+        pred_types = estimator_cls.get_class_tag("info:pred_type", [])
+        if "distr" not in pred_types:
+            model_cfg["loss"] = SMAPE()
 
     default_datamodule_cfg = {
         "train_val_test_split": (0.8, 0.2),
