@@ -1,5 +1,3 @@
-from typing import List, Optional, Tuple, Union
-
 import torch
 import torch.nn as nn
 
@@ -21,23 +19,27 @@ class NNLossAdapter(nn.Module):
 
     def forward(
         self,
-        y_pred: Union[torch.Tensor, List[torch.Tensor]],
-        y_actual: Union[torch.Tensor, Tuple[Union[torch.Tensor, List[torch.Tensor]], torch.Tensor]],
+        y_pred: torch.Tensor | list[torch.Tensor],
+        y_actual: torch.Tensor | tuple[torch.Tensor | list[torch.Tensor], torch.Tensor],
     ) -> torch.Tensor:
         """
         Forward pass of the adapter.
 
         Args:
-            y_pred (Union[torch.Tensor, List[torch.Tensor]]): Model predictions.
-                Expected to be [B, T, N] for multi-target or [B, T, 1] / [B, T] for single target.
-            y_actual (Union[torch.Tensor, Tuple]): Actual values and optionally weights.
-                Can be a tensor, or a tuple (target, weight), where target can be a list of tensors.
+            y_pred (torch.Tensor | list[torch.Tensor]): Model predictions.
+                Expected to be [B, T, N] for multi-target or
+                [B, T, 1] / [B, T] for single target.
+            y_actual (torch.Tensor | tuple): Actual values and optionally weights.
+                Can be a tensor, or a tuple (target, weight), where target
+                can be a list of tensors.
 
         Returns:
             torch.Tensor: The computed and reduced loss.
         """
         # Handle y_actual as (target, weight) or just target
-        if isinstance(y_actual, (list, tuple)) and not isinstance(y_actual, torch.Tensor):
+        if isinstance(y_actual, (list, tuple)) and not isinstance(
+            y_actual, torch.Tensor
+        ):
             if len(y_actual) == 2:
                 target, weight = y_actual
             else:
@@ -50,9 +52,9 @@ class NNLossAdapter(nn.Module):
             # Multi-target scenario
             if not isinstance(y_pred, torch.Tensor):
                 raise ValueError(
-                    f"NNLossAdapter expected y_pred to be a torch.Tensor for multi-target, "
-                    f"but got {type(y_pred)}. Standard multi-target in ptf-v2 expects "
-                    f"y_pred of shape [B, T, N]."
+                    f"NNLossAdapter expected y_pred to be a torch.Tensor for "
+                    f"multi-target, but got {type(y_pred)}. Standard multi-target "
+                    f"in ptf-v2 expects y_pred of shape [B, T, N]."
                 )
 
             # y_pred is [B, T, N], split along last dimension
@@ -74,14 +76,16 @@ class NNLossAdapter(nn.Module):
             if isinstance(y_pred, list):
                 # Error if list of predictions but single tensor target
                 raise ValueError(
-                    "NNLossAdapter does not support list of predictions with single target tensor."
+                    "NNLossAdapter does not support list of predictions "
+                    "with single target tensor."
                 )
 
             if y_pred.ndim == 3:
                 if y_pred.size(-1) != 1:
                     raise ValueError(
                         f"NNLossAdapter only supports point predictions (H=1). "
-                        f"Got y_pred shape {list(y_pred.shape)} with H={y_pred.size(-1)}. "
+                        f"Got y_pred shape {list(y_pred.shape)} with "
+                        f"H={y_pred.size(-1)}. "
                         "For multi-horizon losses, use a ptf metrics loss instead."
                     )
                 y_pred = y_pred.squeeze(-1)
@@ -89,7 +93,7 @@ class NNLossAdapter(nn.Module):
             return self._compute_loss(y_pred, target, weight)
 
     def _compute_loss(
-        self, y_pred: torch.Tensor, target: torch.Tensor, weight: Optional[torch.Tensor]
+        self, y_pred: torch.Tensor, target: torch.Tensor, weight: torch.Tensor | None
     ) -> torch.Tensor:
         """
         Compute the loss for a single target, applying weights if provided.
