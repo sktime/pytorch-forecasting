@@ -8,7 +8,18 @@ import pytest
 from test_models.conftest import make_dataloaders
 from torchmetrics import MeanSquaredError
 
-from pytorch_forecasting.metrics import MAE, CrossEntropy, MultiLoss, QuantileLoss
+from pytorch_forecasting.metrics import (
+    MAE,
+    CrossEntropy,
+    MultiLoss,
+    QuantileLoss,
+    NormalDistributionLoss,
+    NegativeBinomialDistributionLoss,
+    MultivariateNormalDistributionLoss,
+    LogNormalDistributionLoss,
+    BetaDistributionLoss,
+    ImplicitQuantileNetworkDistributionLoss,
+)
 from pytorch_forecasting.models import DecoderMLP
 
 
@@ -142,3 +153,38 @@ def model(dataloaders_with_covariates):
 def test_pickle(model):
     pkl = pickle.dumps(model)
     pickle.loads(pkl)  # noqa: S301
+
+
+@pytest.mark.parametrize(
+    "loss_cls, target, data_loader_kwargs",
+    [
+        (NormalDistributionLoss, "volume", {}),
+        (NegativeBinomialDistributionLoss, "volume", {}),
+        (MultivariateNormalDistributionLoss, "volume", {}),
+        (LogNormalDistributionLoss, "volume", {}),
+        (BetaDistributionLoss, "volume", {}),
+        (ImplicitQuantileNetworkDistributionLoss, "volume", {}),
+    ],
+)
+def test_decoder_mlp_supported_losses(data_with_covariates, tmp_path, loss_cls, target, data_loader_kwargs):
+    data_loader_kwargs = dict(data_loader_kwargs)
+    data_loader_kwargs["target"] = target
+    dataloaders = make_dataloaders(data_with_covariates, **data_loader_kwargs)
+    train_dataloader = dataloaders["train"]
+    val_dataloader = dataloaders["val"]
+    net = DecoderMLP.from_dataset(
+        train_dataloader.dataset,
+        loss=loss_cls(),
+        learning_rate=0.01,
+        hidden_size=8,
+    )
+    trainer = pl.Trainer(
+        max_epochs=1,
+        enable_checkpointing=False,
+        logger=False,
+        limit_train_batches=1,
+        limit_val_batches=1,
+    )
+    trainer.fit(net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+    preds = net.predict(val_dataloader, fast_dev_run=True)
+    assert preds is not None
