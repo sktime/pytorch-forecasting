@@ -51,7 +51,8 @@ class DeepAR(BaseModel):
 
     @classmethod
     def _pkg(cls):
-        """Package containing the model."""
+        """Link to the package container which holds metadata and test
+        configurations."""
         from pytorch_forecasting.models.deepar.__deepar_pkg_v2 import (
             DeepAR_pkg_v2,
         )
@@ -76,6 +77,7 @@ class DeepAR(BaseModel):
     ):
         if loss is None:
             loss = NormalDistributionLoss()
+
         if not isinstance(loss, (DistributionLoss, MultiLoss)):
             raise ValueError(
                 f"DeepAR requires a 'DistributionLoss', but got {type(loss).__name__}. "
@@ -124,6 +126,7 @@ class DeepAR(BaseModel):
             dropout=dropout if rnn_layers > 1 else 0,
             batch_first=True,
         )
+
         if isinstance(self.loss, MultiLoss):
             n_outputs = sum(len(l.distribution_arguments) for l in self.loss)
         else:
@@ -147,7 +150,7 @@ class DeepAR(BaseModel):
         self._output_transformer = value
 
     def on_fit_start(self):
-        """Set output transformer from datamodule if available."""
+        """Auto-detect the normalizer from the DataModule when training starts."""
         if self.output_transformer is None:
             if (
                 hasattr(self.trainer, "datamodule")
@@ -164,6 +167,8 @@ class DeepAR(BaseModel):
         prediction: torch.Tensor,
         target_scale: torch.Tensor,
     ) -> torch.Tensor:
+        """Apply scaling (from target_scale) back to the predicted parameters."""
+
         class DummyEncoder:
             transformation = None
             center = False
@@ -216,7 +221,8 @@ class DeepAR(BaseModel):
         one_off_target: torch.Tensor = None,
         is_encoder: bool = True,
     ) -> torch.Tensor:
-        """Create input vector into RNN network"""
+        """Merges categoricals and continuous variables into a single vector
+        for the RNN."""
 
         if self.n_reals > 0 and self.n_categoricals > 0:
             input_vector = torch.cat([x_cont, x_cat], dim=-1)
@@ -246,7 +252,8 @@ class DeepAR(BaseModel):
         return input_vector
 
     def encode(self, x: dict[str, torch.Tensor]) -> HiddenState:
-        """Encode sequence into hidden state."""
+        """Pass the encoder sequence through the RNN to get the initial hidden
+        state for decoding."""
         input_vector = self.construct_input_vector(
             x["encoder_cat"], x["encoder_cont"], is_encoder=True
         )
@@ -259,6 +266,7 @@ class DeepAR(BaseModel):
         hidden_state: HiddenState,
         lengths: torch.Tensor = None,
     ):
+        """One-shot decoding pass through the RNN."""
         decoder_output, hidden_state = self.rnn(x, hidden_state)
         output = self.distribution_projector(decoder_output)
         return output, hidden_state
@@ -269,7 +277,8 @@ class DeepAR(BaseModel):
         target_scale: torch.Tensor,
         n_samples: int = 1,
     ):
-        """Convert network output to prediction and sample next target."""
+        """Converts raw distribution params to actual predictions by sampling
+        or scaling."""
         rescaled_params = self.transform_output(
             prediction_params, target_scale=target_scale
         )
@@ -306,7 +315,8 @@ class DeepAR(BaseModel):
         n_decoder_steps: int,
         n_samples: int = 1,
     ) -> torch.Tensor:
-        """Make predictions in auto-regressive manner."""
+        """Loop through steps one by one, feeding previous prediction to the
+        next step."""
         output = []
         current_hidden_state = first_hidden_state
         normalized_output = [first_target.unsqueeze(1)]
@@ -334,7 +344,8 @@ class DeepAR(BaseModel):
         hidden_state: HiddenState,
         n_samples: int = None,
     ) -> torch.Tensor:
-        """Decode hidden state into prediction."""
+        """Interface for decoding, choosing between one-shot (training) and
+        AR (inference)."""
         if n_samples is None:
             output, _ = self.decode_all(input_vector, hidden_state)
             output = self.transform_output(output, target_scale)
@@ -361,7 +372,8 @@ class DeepAR(BaseModel):
     def forward(
         self, x: dict[str, torch.Tensor], n_samples: int = None
     ) -> dict[str, torch.Tensor]:
-        """Forward pass using V1 logic."""
+        """The main entry point for a forward pass (Batch -> Prediction)."""
+
         target_scale = x.get("target_scale")
         if target_scale is None:
             if self.target_dim > 1:
