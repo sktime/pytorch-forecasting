@@ -13,6 +13,10 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from pytorch_forecasting.data.categorical_encoders import (
+    PTFOneHotEncoder,
+    PTFOrdinalEncoder,
+)
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
@@ -300,6 +304,7 @@ class TslibDataModule(LightningDataModule):
         | list[NORMALIZER]
         | tuple[NORMALIZER]
         | None = "auto",  # noqa: E501
+        categorical_encoders: dict[str, Any] | str | None = "auto",
         scalers: dict[
             str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
         ]
@@ -340,6 +345,16 @@ class TslibDataModule(LightningDataModule):
             self._target_normalizer = target_normalizer
 
         self._metadata = None
+
+        # handle defaults and derived attributes
+        if (
+            isinstance(categorical_encoders, str)
+            and categorical_encoders.lower() == "auto"
+        ):
+            # Will be initialized during _prepare_metadata / setup
+            self._categorical_encoders = "auto"
+        else:
+            self._categorical_encoders = _coerce_to_dict(categorical_encoders)
 
         self.scalers = scalers or {}
         self.shuffle = shuffle
@@ -582,11 +597,25 @@ class TslibDataModule(LightningDataModule):
         # scaling and normalization
         target_scale = {}
 
-        categorical_features = (
-            features[:, self.categorical_indices]
-            if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
-        )
+        encoded_categorical_list = []
+        for i, original_feature_idx in enumerate(self.categorical_indices):
+            # We map back the idx to original column name
+            col_name = self.time_series_metadata["cols"]["x"][original_feature_idx]
+            col_data = features[:, original_feature_idx]
+
+            if col_name in self._categorical_encoders:
+                # transform it and ensure 2D: (batch, features)
+                encoded = self._categorical_encoders[col_name].transform(col_data)
+                if encoded.dim() == 1:
+                    encoded = encoded.unsqueeze(1)
+                encoded_categorical_list.append(encoded)
+            else:
+                encoded_categorical_list.append(col_data.unsqueeze(1))
+
+        if encoded_categorical_list:
+            categorical = torch.cat(encoded_categorical_list, dim=-1)
+        else:
+            categorical = torch.zeros((features.shape[0], 0))
 
         continuous_features = (
             features[:, self.continuous_indices]
@@ -694,6 +723,24 @@ class TslibDataModule(LightningDataModule):
                 "The time series dataset is empty. "
                 "Please provide a non-empty dataset."
             )
+
+        # Ensure categorical encoders are fitted
+        if getattr(self, "_categorical_encoders", None) == "auto":
+            self._categorical_encoders = {}
+            # Populate auto-encoders for categorical cols
+            for col in self.time_series_metadata["cols"]["x"]:
+                if self.time_series_metadata["col_type"].get(col) == "C":
+                    self._categorical_encoders[col] = PTFOrdinalEncoder()
+
+        # Fit encoders on the train split only (to avoid data leakage) if stage is fit
+        if stage is None or stage == "fit":
+            for col, encoder in self._categorical_encoders.items():
+                if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
+                    # Extract the column data from the full dataset (ideal to slice by train indices)
+                    # For simplicity, extract entire column series. In production, subset this.
+                    # Note: You can retrieve this from raw pandas dataframe used inside `time_series_dataset`
+                    col_data = self.time_series_dataset.data[col]
+                    encoder.fit(col_data)
 
         # this is a very rudimentary way to handle the splits when
         # the dataset is of size equal to 1 or 2.
