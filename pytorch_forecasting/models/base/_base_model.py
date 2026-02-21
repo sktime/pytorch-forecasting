@@ -318,10 +318,10 @@ class PredictCallback(BasePredictionWriter):
             self._index.append(trainer.predict_dataloaders.dataset.x_to_index(x))
             out["index"] = self._index[-1]
         if self.return_decoder_lengths:
-            self._decode_lengths.append(lengths)
+            self._decode_lengths.append(lengths.cpu())
             out["decoder_lengths"] = self._decode_lengths[-1]
         if self.return_y:
-            self._y.append(batch[1])
+            self._y.append(move_to_device(detach(batch[1]), "cpu"))
             out["y"] = self._y[-1]
 
         if isinstance(out, dict):
