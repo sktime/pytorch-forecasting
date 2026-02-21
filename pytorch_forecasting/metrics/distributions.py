@@ -232,9 +232,15 @@ class LogNormalDistributionLoss(DistributionLoss):
 
     distribution_class = distributions.LogNormal
     distribution_arguments = ["loc", "scale"]
+    eps = 1e-4
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.LogNormal:
-        return self.distribution_class(loc=x[..., 0], scale=x[..., 1])
+        return self.distribution_class(loc=x[..., 0], scale=x[..., 1], validate_args=False)
+
+    def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        distribution = self.map_x_to_distribution(y_pred)
+        loss = -distribution.log_prob(y_actual.clip(min=self.eps))
+        return loss
 
     def rescale_parameters(
         self,

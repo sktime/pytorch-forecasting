@@ -1,6 +1,8 @@
 """Tests for the _coerce utility functions."""
 import pytest
-from pytorch_forecasting.utils._coerce import _coerce_to_list, _coerce_to_dict
+
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
+
 
 def test_coerce_to_list_none():
     assert _coerce_to_list(None) == []
@@ -51,7 +53,7 @@ def test_coerce_to_list_type_assertions():
     assert isinstance(_coerce_to_list([1, 2]), list)
     assert isinstance(_coerce_to_list((1, 2)), list)
     assert isinstance(_coerce_to_list({1, 2}), list)
-    assert isinstance(_coerce_to_list((x for x in range(2))), list)
+    assert isinstance(_coerce_to_list(x for x in range(2)), list)
 
 def test_coerce_to_dict_type_assertions():
     assert isinstance(_coerce_to_dict(None), dict)

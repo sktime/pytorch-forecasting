@@ -1,0 +1,681 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- /Users/admin/Desktop/open-source/pytorch-forecasting/.venv/bin/python
+cachedir: .cache
+rootdir: /Users/admin/Desktop/open-source/pytorch-forecasting
+configfile: pyproject.toml
+plugins: cov-7.0.0
+collecting ... collected 13 items / 11 deselected / 2 selected
+run-last-failure: rerun previous 2 failures
+
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1] FAILED [ 50%]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3] FAILED [100%]
+
+=================================== FAILURES ===================================
+_ test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1] _
+
+data_with_covariates =          agency     sku    volume  ...     weight  time_idx  target
+0     Agency_22  SKU_01   52.2720  ...   8.229938 ...1.963758        59   1.000
+6772  Agency_22  SKU_04   72.0153  ...   9.486183        59   1.000
+
+[180 rows x 31 columns]
+tmp_path = PosixPath('/private/var/folders/99/j2sfgnsj2kzf8t0bg8850j5w0000gn/T/pytest-of-admin/pytest-29/test_decoder_mlp_supported_los0')
+loss_cls = <class 'pytorch_forecasting.metrics.distributions.NegativeBinomialDistributionLoss'>
+target = 'volume'
+data_loader_kwargs = {'target': 'volume', 'target_normalizer': GroupNormalizer(
+	method='identity',
+	groups=None,
+	center=False,
+	scale_by_group=False,
+	transformation=None,
+	method_kwargs={}
+)}
+normalizer = GroupNormalizer(
+	method='identity',
+	groups=None,
+	center=False,
+	scale_by_group=False,
+	transformation=None,
+	method_kwargs={}
+)
+
+    @pytest.mark.parametrize(
+        "loss_cls, target, data_loader_kwargs, normalizer",
+        [
+            (NormalDistributionLoss, "volume", {}, None),
+            (NegativeBinomialDistributionLoss, "volume", {}, GroupNormalizer(method="identity", center=False)),
+            (MultivariateNormalDistributionLoss, "volume", {}, None),
+            (LogNormalDistributionLoss, "volume", {}, GroupNormalizer(center=False, transformation="log")),
+            (BetaDistributionLoss, "volume", {}, GroupNormalizer(center=True, transformation="logit")),
+            (ImplicitQuantileNetworkDistributionLoss, "volume", {}, None),
+        ],
+    )
+    def test_decoder_mlp_supported_losses(
+        data_with_covariates,
+        tmp_path,
+        loss_cls,
+        target,
+        data_loader_kwargs,
+        normalizer,
+    ):
+    
+        data_loader_kwargs = dict(data_loader_kwargs)
+        data_loader_kwargs["target"] = target
+        if normalizer is not None:
+            data_loader_kwargs["target_normalizer"] = normalizer
+    
+        # Always copy data to avoid accidental overwrite
+        data = data_with_covariates.copy()
+    
+        def int_target_collate(batch):
+            # Handle both lists and tuples, filter out None
+            filtered_batch = [item for item in batch if item is not None]
+            if not filtered_batch:
+                return {}, ()
+    
+            from torch.utils.data._utils.collate import default_collate
+            collated = default_collate(filtered_batch)
+    
+            # collated should be (x, y) where x is a dict and y is a tuple (target, weight)
+            if isinstance(collated, tuple | list) and len(collated) >= 2:
+                x, y = collated
+                if isinstance(y, tuple | list) and len(y) >= 1:
+                    # y is (target, weight)
+                    target = y[0]
+                    if isinstance(target, torch.Tensor):
+                        # NegativeBinomial requires integers
+                        y = (target.long(), *y[1:])
+                    collated = (x, y)
+            return collated
+    
+        # Preprocess target for distribution requirements
+        if loss_cls.__name__ == "NegativeBinomialDistributionLoss":
+            # Targets must be strictly non-negative integers (>=0)
+            data["target"] = data["target"].apply(lambda x: max(0, int(round(x))))
+            # After normalization, cast to int again to ensure integer type
+            def to_int_if_possible(x):
+                try:
+                    return int(round(x))
+                except Exception:
+                    return 0
+            data["target"] = data["target"].apply(to_int_if_possible)
+        elif loss_cls.__name__ == "LogNormalDistributionLoss":
+            # Targets must be strictly positive (>0)
+            data["target"] = data["target"].apply(lambda x: max(1e-3, float(x)))
+            # Ensure no zero or negative values after normalization
+            data["target"] = data["target"].apply(lambda x: x if x > 0 else 1e-3)
+        elif loss_cls.__name__ == "BetaDistributionLoss":
+            # Targets must be strictly between 0 and 1 (not including endpoints)
+            data["target"] = data["target"].apply(lambda x: min(max(x, 1e-3), 1-1e-3))
+    
+        dataloaders = make_dataloaders(
+            data, **data_loader_kwargs
+        )
+        train_dataloader = dataloaders["train"]
+        val_dataloader = dataloaders["val"]
+    
+        if loss_cls.__name__ == "NegativeBinomialDistributionLoss":
+            train_dataloader.collate_fn = int_target_collate
+            val_dataloader.collate_fn = int_target_collate
+        net = DecoderMLP.from_dataset(
+            train_dataloader.dataset,
+            loss=loss_cls(),
+            learning_rate=0.01,
+            hidden_size=8,
+        )
+        trainer = pl.Trainer(
+            max_epochs=1,
+            enable_checkpointing=False,
+            logger=False,
+            limit_train_batches=1,
+            limit_val_batches=1,
+        )
+    
+    
+>       trainer.fit(
+            net,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader,
+        )
+
+tests/test_models/test_mlp.py:252: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:584: in fit
+    call._call_and_handle_interrupt(
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/call.py:49: in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:630: in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:1079: in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:1121: in _run_stage
+    self._run_sanity_check()
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:1150: in _run_sanity_check
+    val_loop.run()
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/utilities.py:179: in _decorator
+    return loop_run(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/evaluation_loop.py:139: in run
+    batch, batch_idx, dataloader_idx = next(data_fetcher)
+                                       ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/fetchers.py:134: in __next__
+    batch = super().__next__()
+            ^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/fetchers.py:61: in __next__
+    batch = next(self.iterator)
+            ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/utilities/combined_loader.py:341: in __next__
+    out = next(self._iterator)
+          ^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/utilities/combined_loader.py:142: in __next__
+    out = next(self.iterators[0])
+          ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py:741: in __next__
+    data = self._next_data()
+           ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py:801: in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/utils/data/_utils/fetch.py:57: in fetch
+    return self.collate_fn(data)
+           ^^^^^^^^^^^^^^^^^^^^^
+tests/test_models/test_mlp.py:194: in int_target_collate
+    collated = default_collate(filtered_batch)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/utils/data/_utils/collate.py:401: in default_collate
+    return collate(batch, collate_fn_map=default_collate_fn_map)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/utils/data/_utils/collate.py:215: in collate
+    collate(samples, collate_fn_map=collate_fn_map)
+.venv/lib/python3.14/site-packages/torch/utils/data/_utils/collate.py:215: in collate
+    collate(samples, collate_fn_map=collate_fn_map)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+batch = (None, None)
+
+    def collate(
+        batch,
+        *,
+        collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
+    ):
+        r"""
+        General collate function that handles collection type of element within each batch.
+    
+        The function also opens function registry to deal with specific element types. `default_collate_fn_map`
+        provides default collate functions for tensors, numpy arrays, numbers and strings.
+    
+        Args:
+            batch: a single batch to be collated
+            collate_fn_map: Optional dictionary mapping from element type to the corresponding collate function.
+                If the element type isn't present in this dictionary,
+                this function will go through each key of the dictionary in the insertion order to
+                invoke the corresponding collate function if the element type is a subclass of the key.
+    
+        Examples:
+            >>> def collate_tensor_fn(batch, *, collate_fn_map):
+            ...     # Extend this function to handle batch of tensors
+            ...     return torch.stack(batch, 0)
+            >>> def custom_collate(batch):
+            ...     collate_map = {torch.Tensor: collate_tensor_fn}
+            ...     return collate(batch, collate_fn_map=collate_map)
+            >>> # Extend `default_collate` by in-place modifying `default_collate_fn_map`
+            >>> default_collate_fn_map.update({torch.Tensor: collate_tensor_fn})
+    
+        Note:
+            Each collate function requires a positional argument for batch and a keyword argument
+            for the dictionary of collate functions as `collate_fn_map`.
+        """
+        elem = batch[0]
+        elem_type = type(elem)
+    
+        if collate_fn_map is not None:
+            if elem_type in collate_fn_map:
+                return collate_fn_map[elem_type](batch, collate_fn_map=collate_fn_map)
+    
+            for collate_type in collate_fn_map:
+                if isinstance(elem, collate_type):
+                    return collate_fn_map[collate_type](
+                        batch, collate_fn_map=collate_fn_map
+                    )
+    
+        if isinstance(elem, collections.abc.Mapping):
+            try:
+                if isinstance(elem, collections.abc.MutableMapping):
+                    # The mapping type may have extra properties, so we can't just
+                    # use `type(data)(...)` to create the new mapping.
+                    # Create a clone and update it if the mapping type is mutable.
+                    clone = copy.copy(elem)
+                    clone.update(
+                        {
+                            key: collate(
+                                [d[key] for d in batch], collate_fn_map=collate_fn_map
+                            )
+                            for key in elem
+                        }
+                    )
+                    return clone
+                else:
+                    return elem_type(
+                        {
+                            key: collate(
+                                [d[key] for d in batch], collate_fn_map=collate_fn_map
+                            )
+                            for key in elem
+                        }
+                    )
+            except TypeError:
+                # The mapping type may not support `copy()` / `update(mapping)`
+                # or `__init__(iterable)`.
+                return {
+                    key: collate([d[key] for d in batch], collate_fn_map=collate_fn_map)
+                    for key in elem
+                }
+        elif isinstance(elem, tuple) and hasattr(elem, "_fields"):  # namedtuple
+            return elem_type(
+                *(
+                    collate(samples, collate_fn_map=collate_fn_map)
+                    for samples in zip(*batch, strict=False)
+                )
+            )
+        elif isinstance(elem, collections.abc.Sequence):
+            # check to make sure that the elements in batch have consistent size
+            it = iter(batch)
+            elem_size = len(next(it))
+            # pyrefly: ignore [not-iterable]
+            if not all(len(elem) == elem_size for elem in it):
+                raise RuntimeError("each element in list of batch should be of equal size")
+            transposed = list(
+                zip(*batch, strict=False)
+            )  # It may be accessed twice, so we use a list.
+    
+            if isinstance(elem, tuple):
+                return [
+                    collate(samples, collate_fn_map=collate_fn_map)
+                    for samples in transposed
+                ]  # Backwards compatibility.
+            else:
+                try:
+                    if isinstance(elem, collections.abc.MutableSequence):
+                        # The sequence type may have extra properties, so we can't just
+                        # use `type(data)(...)` to create the new sequence.
+                        # Create a clone and update it if the sequence type is mutable.
+                        clone = copy.copy(elem)  # type: ignore[arg-type]
+                        for i, samples in enumerate(transposed):
+                            clone[i] = collate(samples, collate_fn_map=collate_fn_map)
+                        return clone
+                    else:
+                        return elem_type(
+                            [
+                                collate(samples, collate_fn_map=collate_fn_map)
+                                for samples in transposed
+                            ]
+                        )
+                except TypeError:
+                    # The sequence type may not support `copy()` / `__setitem__(index, item)`
+                    # or `__init__(iterable)` (e.g., `range`).
+                    return [
+                        collate(samples, collate_fn_map=collate_fn_map)
+                        for samples in transposed
+                    ]
+    
+>       raise TypeError(default_collate_err_msg_format.format(elem_type))
+E       TypeError: default_collate: batch must contain tensors, numpy arrays, numbers, dicts or lists; found <class 'NoneType'>
+
+.venv/lib/python3.14/site-packages/torch/utils/data/_utils/collate.py:243: TypeError
+----------------------------- Captured stdout call -----------------------------
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]
+----------------------------- Captured stderr call -----------------------------
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+`Trainer(limit_train_batches=1)` was configured so 1 batch per epoch will be used.
+`Trainer(limit_val_batches=1)` was configured so 1 batch will be used.
+
+  | Name             | Type                             | Params | Mode  | FLOPs
+--------------------------------------------------------------------------------------
+0 | loss             | NegativeBinomialDistributionLoss | 0      | train | 0    
+1 | logging_metrics  | ModuleList                       | 0      | train | 0    
+2 | input_embeddings | MultiEmbedding                   | 0      | train | 0    
+3 | mlp              | FullyConnectedModule             | 314    | train | 0    
+--------------------------------------------------------------------------------------
+314       Trainable params
+0         Non-trainable params
+314       Total params
+0.001     Total estimated model params size (MB)
+28        Modules in train mode
+0         Modules in eval mode
+0         Total Flops
+_ test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3] _
+
+data_with_covariates =          agency     sku    volume  ...     weight  time_idx  target
+0     Agency_22  SKU_01   52.2720  ...   8.229938 ...1.963758        59   1.000
+6772  Agency_22  SKU_04   72.0153  ...   9.486183        59   1.000
+
+[180 rows x 31 columns]
+tmp_path = PosixPath('/private/var/folders/99/j2sfgnsj2kzf8t0bg8850j5w0000gn/T/pytest-of-admin/pytest-29/test_decoder_mlp_supported_los1')
+loss_cls = <class 'pytorch_forecasting.metrics.distributions.LogNormalDistributionLoss'>
+target = 'volume'
+data_loader_kwargs = {'target': 'volume', 'target_normalizer': GroupNormalizer(
+	method='standard',
+	groups=None,
+	center=False,
+	scale_by_group=False,
+	transformation='log',
+	method_kwargs={}
+)}
+normalizer = GroupNormalizer(
+	method='standard',
+	groups=None,
+	center=False,
+	scale_by_group=False,
+	transformation='log',
+	method_kwargs={}
+)
+
+    @pytest.mark.parametrize(
+        "loss_cls, target, data_loader_kwargs, normalizer",
+        [
+            (NormalDistributionLoss, "volume", {}, None),
+            (NegativeBinomialDistributionLoss, "volume", {}, GroupNormalizer(method="identity", center=False)),
+            (MultivariateNormalDistributionLoss, "volume", {}, None),
+            (LogNormalDistributionLoss, "volume", {}, GroupNormalizer(center=False, transformation="log")),
+            (BetaDistributionLoss, "volume", {}, GroupNormalizer(center=True, transformation="logit")),
+            (ImplicitQuantileNetworkDistributionLoss, "volume", {}, None),
+        ],
+    )
+    def test_decoder_mlp_supported_losses(
+        data_with_covariates,
+        tmp_path,
+        loss_cls,
+        target,
+        data_loader_kwargs,
+        normalizer,
+    ):
+    
+        data_loader_kwargs = dict(data_loader_kwargs)
+        data_loader_kwargs["target"] = target
+        if normalizer is not None:
+            data_loader_kwargs["target_normalizer"] = normalizer
+    
+        # Always copy data to avoid accidental overwrite
+        data = data_with_covariates.copy()
+    
+        def int_target_collate(batch):
+            # Handle both lists and tuples, filter out None
+            filtered_batch = [item for item in batch if item is not None]
+            if not filtered_batch:
+                return {}, ()
+    
+            from torch.utils.data._utils.collate import default_collate
+            collated = default_collate(filtered_batch)
+    
+            # collated should be (x, y) where x is a dict and y is a tuple (target, weight)
+            if isinstance(collated, tuple | list) and len(collated) >= 2:
+                x, y = collated
+                if isinstance(y, tuple | list) and len(y) >= 1:
+                    # y is (target, weight)
+                    target = y[0]
+                    if isinstance(target, torch.Tensor):
+                        # NegativeBinomial requires integers
+                        y = (target.long(), *y[1:])
+                    collated = (x, y)
+            return collated
+    
+        # Preprocess target for distribution requirements
+        if loss_cls.__name__ == "NegativeBinomialDistributionLoss":
+            # Targets must be strictly non-negative integers (>=0)
+            data["target"] = data["target"].apply(lambda x: max(0, int(round(x))))
+            # After normalization, cast to int again to ensure integer type
+            def to_int_if_possible(x):
+                try:
+                    return int(round(x))
+                except Exception:
+                    return 0
+            data["target"] = data["target"].apply(to_int_if_possible)
+        elif loss_cls.__name__ == "LogNormalDistributionLoss":
+            # Targets must be strictly positive (>0)
+            data["target"] = data["target"].apply(lambda x: max(1e-3, float(x)))
+            # Ensure no zero or negative values after normalization
+            data["target"] = data["target"].apply(lambda x: x if x > 0 else 1e-3)
+        elif loss_cls.__name__ == "BetaDistributionLoss":
+            # Targets must be strictly between 0 and 1 (not including endpoints)
+            data["target"] = data["target"].apply(lambda x: min(max(x, 1e-3), 1-1e-3))
+    
+        dataloaders = make_dataloaders(
+            data, **data_loader_kwargs
+        )
+        train_dataloader = dataloaders["train"]
+        val_dataloader = dataloaders["val"]
+    
+        if loss_cls.__name__ == "NegativeBinomialDistributionLoss":
+            train_dataloader.collate_fn = int_target_collate
+            val_dataloader.collate_fn = int_target_collate
+        net = DecoderMLP.from_dataset(
+            train_dataloader.dataset,
+            loss=loss_cls(),
+            learning_rate=0.01,
+            hidden_size=8,
+        )
+        trainer = pl.Trainer(
+            max_epochs=1,
+            enable_checkpointing=False,
+            logger=False,
+            limit_train_batches=1,
+            limit_val_batches=1,
+        )
+    
+    
+>       trainer.fit(
+            net,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader,
+        )
+
+tests/test_models/test_mlp.py:252: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:584: in fit
+    call._call_and_handle_interrupt(
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/call.py:49: in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:630: in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:1079: in _run
+    results = self._run_stage()
+              ^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py:1123: in _run_stage
+    self.fit_loop.run()
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/fit_loop.py:217: in run
+    self.advance()
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/fit_loop.py:465: in advance
+    self.epoch_loop.run(self._data_fetcher)
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/training_epoch_loop.py:153: in run
+    self.advance(data_fetcher)
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/training_epoch_loop.py:352: in advance
+    batch_output = self.automatic_optimization.run(trainer.optimizers[0], batch_idx, kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/optimization/automatic.py:192: in run
+    self._optimizer_step(batch_idx, closure)
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/optimization/automatic.py:270: in _optimizer_step
+    call._call_lightning_module_hook(
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/call.py:177: in _call_lightning_module_hook
+    output = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/core/module.py:1368: in optimizer_step
+    optimizer.step(closure=optimizer_closure)
+.venv/lib/python3.14/site-packages/lightning/pytorch/core/optimizer.py:154: in step
+    step_output = self._strategy.optimizer_step(self._optimizer, closure, **kwargs)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/strategies/strategy.py:239: in optimizer_step
+    return self.precision_plugin.optimizer_step(optimizer, model=model, closure=closure, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/plugins/precision/precision.py:123: in optimizer_step
+    return optimizer.step(closure=closure, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/optim/optimizer.py:526: in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/optim/optimizer.py:81: in _use_grad
+    ret = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/optim/adam.py:227: in step
+    loss = closure()
+           ^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/plugins/precision/precision.py:109: in _wrap_closure
+    closure_result = closure()
+                     ^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/optimization/automatic.py:146: in __call__
+    self._result = self.closure(*args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/utils/_contextlib.py:124: in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/optimization/automatic.py:131: in closure
+    step_output = self._step_fn()
+                  ^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/loops/optimization/automatic.py:319: in _training_step
+    training_step_output = call._call_strategy_hook(trainer, "training_step", *kwargs.values())
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/trainer/call.py:329: in _call_strategy_hook
+    output = fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/lightning/pytorch/strategies/strategy.py:391: in training_step
+    return self.lightning_module.training_step(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pytorch_forecasting/models/base/_base_model.py:723: in training_step
+    log, out = self.step(x, y, batch_idx)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+pytorch_forecasting/models/base/_base_model.py:954: in step
+    loss = self.loss(prediction, y)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/nn/modules/module.py:1776: in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/nn/modules/module.py:1787: in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torchmetrics/metric.py:315: in forward
+    self._forward_cache = self._forward_reduce_state_update(*args, **kwargs)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torchmetrics/metric.py:384: in _forward_reduce_state_update
+    self.update(*args, **kwargs)
+.venv/lib/python3.14/site-packages/torchmetrics/metric.py:549: in wrapped_func
+    update(*args, **kwargs)
+pytorch_forecasting/metrics/base_metrics/_base_metrics.py:887: in update
+    losses = self.loss(y_pred, target)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+pytorch_forecasting/metrics/base_metrics/_base_metrics.py:1047: in loss
+    loss = -distribution.log_prob(y_actual)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.14/site-packages/torch/distributions/transformed_distribution.py:172: in log_prob
+    self._validate_sample(value)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LogNormal()
+value = tensor([[ 79.1640,  70.4160,  75.2760],
+        [  0.0000, 131.0589,   0.0000]])
+
+    def _validate_sample(self, value: Tensor) -> None:
+        """
+        Argument validation for distribution methods such as `log_prob`,
+        `cdf` and `icdf`. The rightmost dimensions of a value to be
+        scored via these methods must agree with the distribution's batch
+        and event shapes.
+    
+        Args:
+            value (Tensor): the tensor whose log probability is to be
+                computed by the `log_prob` method.
+        Raises
+            ValueError: when the rightmost dimensions of `value` do not match the
+                distribution's batch and event shapes.
+        """
+        if not isinstance(value, torch.Tensor):
+            raise ValueError("The value argument to log_prob must be a Tensor")
+    
+        event_dim_start = len(value.size()) - len(self._event_shape)
+        if value.size()[event_dim_start:] != self._event_shape:
+            raise ValueError(
+                f"The right-most size of value must match event_shape: {value.size()} vs {self._event_shape}."
+            )
+    
+        actual_shape = value.size()
+        expected_shape = self._batch_shape + self._event_shape
+        for i, j in zip(reversed(actual_shape), reversed(expected_shape)):
+            if i != 1 and j != 1 and i != j:
+                raise ValueError(
+                    f"Value is not broadcastable with batch_shape+event_shape: {actual_shape} vs {expected_shape}."
+                )
+        try:
+            support = self.support
+        except NotImplementedError:
+            warnings.warn(
+                f"{self.__class__} does not define `support` to enable "
+                + "sample validation. Please initialize the distribution with "
+                + "`validate_args=False` to turn off validation.",
+                stacklevel=2,
+            )
+            return
+        assert support is not None
+        valid = support.check(value)
+        if not torch._is_all_true(valid):
+>           raise ValueError(
+                "Expected value argument "
+                f"({type(value).__name__} of shape {tuple(value.shape)}) "
+                f"to be within the support ({repr(support)}) "
+                f"of the distribution {repr(self)}, "
+                f"but found invalid values:\n{value}"
+            )
+E           ValueError: Expected value argument (Tensor of shape (2, 3)) to be within the support (GreaterThan(lower_bound=0.0)) of the distribution LogNormal(), but found invalid values:
+E           tensor([[ 79.1640,  70.4160,  75.2760],
+E                   [  0.0000, 131.0589,   0.0000]])
+
+.venv/lib/python3.14/site-packages/torch/distributions/distribution.py:324: ValueError
+----------------------------- Captured stdout call -----------------------------
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]Sanity Checking: |          | 0/? [00:00<?, ?it/s]Sanity Checking DataLoader 0:   0%|          | 0/1 [00:00<?, ?it/s]Sanity Checking DataLoader 0: 100%|██████████| 1/1 [00:00<00:00, 46.36it/s]                                                                           Training: |          | 0/? [00:00<?, ?it/s]Training: |          | 0/? [00:00<?, ?it/s]Epoch 0:   0%|          | 0/1 [00:00<?, ?it/s]
+----------------------------- Captured stderr call -----------------------------
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+`Trainer(limit_train_batches=1)` was configured so 1 batch per epoch will be used.
+`Trainer(limit_val_batches=1)` was configured so 1 batch will be used.
+
+  | Name             | Type                      | Params | Mode  | FLOPs
+-------------------------------------------------------------------------------
+0 | loss             | LogNormalDistributionLoss | 0      | train | 0    
+1 | logging_metrics  | ModuleList                | 0      | train | 0    
+2 | input_embeddings | MultiEmbedding            | 0      | train | 0    
+3 | mlp              | FullyConnectedModule      | 314    | train | 0    
+-------------------------------------------------------------------------------
+314       Trainable params
+0         Non-trainable params
+314       Total params
+0.001     Total estimated model params size (MB)
+28        Modules in train mode
+0         Modules in eval mode
+0         Total Flops
+--------------------------- Captured stdout teardown ---------------------------
+                                                  
+=============================== warnings summary ===============================
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3]
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries.py:1006: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+  See https://pandas.pydata.org/docs/user_guide/migration-3-strings.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+    object_columns = data.head(1).select_dtypes(object).columns
+
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3]
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries.py:1885: Pandas4Warning: The copy keyword is deprecated and will be removed in a future version. Copy-on-Write is active in pandas since 3.0 which utilizes a lazy copy mechanism that defers copies until necessary. Use .copy() to make an eager copy if necessary.
+    df_index = df_index[minimal_columns].astype("int32", copy=False)
+
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3]
+  /Users/admin/Desktop/open-source/pytorch-forecasting/.venv/lib/python3.14/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================ 2 failed, 11 deselected, 11 warnings in 0.64s =================

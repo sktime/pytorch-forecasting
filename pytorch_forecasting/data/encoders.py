@@ -1057,7 +1057,7 @@ class GroupNormalizer(TorchNormalizer):
                     "scale": (quantiles[2] - quantiles[0]) / 2.0 + eps,
                 }  # center and scale
             if not self.center:
-                self.norm_["scale"] = self.norm_["center"] + eps
+                self.norm_["scale"] = np.abs(self.norm_["center"]) + eps
                 self.norm_["center"] = 0.0
 
         elif self.scale_by_group:
@@ -1098,7 +1098,7 @@ class GroupNormalizer(TorchNormalizer):
             if not self.center:  # swap center and scale
 
                 def swap_parameters(norm):
-                    norm["scale"] = norm["center"] + eps
+                    norm["scale"] = norm["center"].abs() + eps
                     norm["center"] = 0.0
                     return norm
 
@@ -1142,7 +1142,7 @@ class GroupNormalizer(TorchNormalizer):
                     )[["center", "scale"]]
                 )
             if not self.center:  # swap center and scale
-                self.norm_["scale"] = self.norm_["center"] + eps
+                self.norm_["scale"] = self.norm_["center"].abs() + eps
                 self.norm_["center"] = 0.0
             self.missing_ = self.norm_.median().to_dict()
 

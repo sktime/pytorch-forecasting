@@ -1,3 +1,4 @@
+import torch
 import pickle
 import shutil
 
@@ -10,16 +11,17 @@ from torchmetrics import MeanSquaredError
 
 from pytorch_forecasting.metrics import (
     MAE,
-    CrossEntropy,
-    MultiLoss,
-    QuantileLoss,
-    NormalDistributionLoss,
-    NegativeBinomialDistributionLoss,
-    MultivariateNormalDistributionLoss,
-    LogNormalDistributionLoss,
     BetaDistributionLoss,
+    CrossEntropy,
     ImplicitQuantileNetworkDistributionLoss,
+    LogNormalDistributionLoss,
+    MultiLoss,
+    MultivariateNormalDistributionLoss,
+    NegativeBinomialDistributionLoss,
+    NormalDistributionLoss,
+    QuantileLoss,
 )
+from pytorch_forecasting.data import GroupNormalizer
 from pytorch_forecasting.models import DecoderMLP
 
 
@@ -156,22 +158,73 @@ def test_pickle(model):
 
 
 @pytest.mark.parametrize(
-    "loss_cls, target, data_loader_kwargs",
+    "loss_cls, target, data_loader_kwargs, normalizer",
     [
-        (NormalDistributionLoss, "volume", {}),
-        (NegativeBinomialDistributionLoss, "volume", {}),
-        (MultivariateNormalDistributionLoss, "volume", {}),
-        (LogNormalDistributionLoss, "volume", {}),
-        (BetaDistributionLoss, "volume", {}),
-        (ImplicitQuantileNetworkDistributionLoss, "volume", {}),
+        (NormalDistributionLoss, "volume", {}, None),
+        (NegativeBinomialDistributionLoss, "volume", {}, GroupNormalizer(method="identity", center=False)),
+        (MultivariateNormalDistributionLoss, "volume", {}, None),
+        (LogNormalDistributionLoss, "volume", {}, GroupNormalizer(center=False, transformation="log")),
+        (BetaDistributionLoss, "volume", {}, GroupNormalizer(center=True, transformation="logit")),
+        (ImplicitQuantileNetworkDistributionLoss, "volume", {}, None),
     ],
 )
-def test_decoder_mlp_supported_losses(data_with_covariates, tmp_path, loss_cls, target, data_loader_kwargs):
+def test_decoder_mlp_supported_losses(
+    data_with_covariates,
+    tmp_path,
+    loss_cls,
+    target,
+    data_loader_kwargs,
+    normalizer,
+):
+
     data_loader_kwargs = dict(data_loader_kwargs)
     data_loader_kwargs["target"] = target
-    dataloaders = make_dataloaders(data_with_covariates, **data_loader_kwargs)
+    if normalizer is not None:
+        data_loader_kwargs["target_normalizer"] = normalizer
+
+    # Always copy data to avoid accidental overwrite
+    data = data_with_covariates.copy()
+
+    # Preprocess target for distribution requirements
+    if loss_cls.__name__ == "NegativeBinomialDistributionLoss":
+        # Targets must be strictly non-negative integers (>=0)
+        data["target"] = data["target"].apply(lambda x: max(0, int(round(x))))
+        # After normalization, cast to int again to ensure integer type
+        def to_int_if_possible(x):
+            try:
+                return int(round(x))
+            except Exception:
+                return 0
+        data["target"] = data["target"].apply(to_int_if_possible)
+    elif loss_cls.__name__ == "LogNormalDistributionLoss":
+        # Targets must be strictly positive (>0)
+        data["target"] = data["target"].apply(lambda x: max(1e-3, float(x)))
+        # Ensure no zero or negative values after normalization
+        data["target"] = data["target"].apply(lambda x: x if x > 0 else 1e-3)
+    elif loss_cls.__name__ == "BetaDistributionLoss":
+        # Targets must be strictly between 0 and 1 (not including endpoints)
+        data["target"] = data["target"].apply(lambda x: min(max(x, 1e-3), 1-1e-3))
+
+    dataloaders = make_dataloaders(
+        data, **data_loader_kwargs
+    )
     train_dataloader = dataloaders["train"]
     val_dataloader = dataloaders["val"]
+
+    if loss_cls.__name__ == "NegativeBinomialDistributionLoss":
+        original_collate = train_dataloader.collate_fn
+
+        def int_target_collate(batch):
+            x, y = original_collate(batch)
+            target, weight = y
+            if isinstance(target, torch.Tensor):
+                y = (target.long(), weight)
+            elif isinstance(target, list | tuple):
+                y = ([t.long() for t in target], weight)
+            return x, y
+
+        train_dataloader.collate_fn = int_target_collate
+        val_dataloader.collate_fn = int_target_collate
     net = DecoderMLP.from_dataset(
         train_dataloader.dataset,
         loss=loss_cls(),
@@ -185,6 +238,12 @@ def test_decoder_mlp_supported_losses(data_with_covariates, tmp_path, loss_cls, 
         limit_train_batches=1,
         limit_val_batches=1,
     )
-    trainer.fit(net, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+
+
+    trainer.fit(
+        net,
+        train_dataloaders=train_dataloader,
+        val_dataloaders=val_dataloader,
+    )
     preds = net.predict(val_dataloader, fast_dev_run=True)
     assert preds is not None

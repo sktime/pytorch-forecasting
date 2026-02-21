@@ -1,0 +1,632 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- /Users/admin/Desktop/open-source/pytorch-forecasting/.venv/bin/python
+cachedir: .cache
+rootdir: /Users/admin/Desktop/open-source/pytorch-forecasting
+configfile: pyproject.toml
+plugins: cov-7.0.0
+collecting ... collected 409 items
+
+tests/test_data/test_d1.py::test_init_basic PASSED                       [  0%]
+tests/test_data/test_d1.py::test_init_with_groups PASSED                 [  0%]
+tests/test_data/test_d1.py::test_init_with_features_categorization PASSED [  0%]
+tests/test_data/test_d1.py::test_init_with_known_unknown PASSED          [  0%]
+tests/test_data/test_d1.py::test_init_with_weight PASSED                 [  1%]
+tests/test_data/test_d1.py::test_getitem_basic PASSED                    [  1%]
+tests/test_data/test_d1.py::test_getitem_with_groups PASSED              [  1%]
+tests/test_data/test_d1.py::test_getitem_with_static PASSED              [  1%]
+tests/test_data/test_d1.py::test_getitem_with_weight PASSED              [  2%]
+tests/test_data/test_d1.py::test_with_future_data PASSED                 [  2%]
+tests/test_data/test_d1.py::test_future_data_with_weights PASSED         [  2%]
+tests/test_data/test_d1.py::test_future_data_missing_columns PASSED      [  2%]
+tests/test_data/test_d1.py::test_different_future_groups PASSED          [  3%]
+tests/test_data/test_d1.py::test_multiple_targets PASSED                 [  3%]
+tests/test_data/test_d1.py::test_empty_groups PASSED                     [  3%]
+tests/test_data/test_d1.py::test_metadata_structure PASSED               [  3%]
+tests/test_data/test_data_module.py::test_init PASSED                    [  4%]
+tests/test_data/test_data_module.py::test_prepare_metadata PASSED        [  4%]
+tests/test_data/test_data_module.py::test_metadata_property PASSED       [  4%]
+tests/test_data/test_data_module.py::test_setup PASSED                   [  4%]
+tests/test_data/test_data_module.py::test_create_windows PASSED          [  5%]
+tests/test_data/test_data_module.py::test_dataloader_creation PASSED     [  5%]
+tests/test_data/test_data_module.py::test_processed_dataset PASSED       [  5%]
+tests/test_data/test_data_module.py::test_collate_fn PASSED              [  5%]
+tests/test_data/test_data_module.py::test_full_dataloader_iteration PASSED [  6%]
+tests/test_data/test_data_module.py::test_variable_encoder_lengths PASSED [  6%]
+tests/test_data/test_data_module.py::test_preprocess_data PASSED         [  6%]
+tests/test_data/test_data_module.py::test_with_static_features PASSED    [  6%]
+tests/test_data/test_data_module.py::test_different_train_val_test_split PASSED [  7%]
+tests/test_data/test_data_module.py::test_multivariate_target PASSED     [  7%]
+tests/test_data/test_encoders.py::test_NaNLabelEncoder[data0-True] PASSED [  7%]
+tests/test_data/test_encoders.py::test_NaNLabelEncoder[data1-False] PASSED [  7%]
+tests/test_data/test_encoders.py::test_NaNLabelEncoder[data2-True] PASSED [  8%]
+tests/test_data/test_encoders.py::test_NaNLabelEncoder[data3-False] PASSED [  8%]
+tests/test_data/test_encoders.py::test_NaNLabelEncoder_add PASSED        [  8%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs0] PASSED [  8%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs1] PASSED [  9%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs2] PASSED [  9%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs3] PASSED [  9%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs4] PASSED [  9%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs5] PASSED [ 10%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs6] PASSED [ 10%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs7] PASSED [ 10%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs8] PASSED [ 10%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs9] PASSED [ 11%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs10] PASSED [ 11%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[torch-kwargs11] PASSED [ 11%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs0] PASSED [ 11%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs1] PASSED [ 11%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs2] PASSED [ 12%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs3] PASSED [ 12%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs4] PASSED [ 12%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs5] PASSED [ 12%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs6] PASSED [ 13%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs7] PASSED [ 13%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs8] PASSED [ 13%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs9] PASSED [ 13%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs10] PASSED [ 14%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[numpy-kwargs11] PASSED [ 14%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs0] PASSED [ 14%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs1] PASSED [ 14%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs2] PASSED [ 15%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs3] PASSED [ 15%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs4] PASSED [ 15%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs5] PASSED [ 15%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs6] PASSED [ 16%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs7] PASSED [ 16%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs8] PASSED [ 16%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs9] PASSED [ 16%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs10] PASSED [ 17%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer[pandas-kwargs11] PASSED [ 17%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs0-groups0] PASSED [ 17%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs1-groups1] PASSED [ 17%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs2-groups2] PASSED [ 18%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs3-groups3] PASSED [ 18%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs4-groups4] PASSED [ 18%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs5-groups5] PASSED [ 18%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs6-groups6] PASSED [ 19%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs7-groups7] PASSED [ 19%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs8-groups8] PASSED [ 19%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs9-groups9] PASSED [ 19%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs10-groups10] PASSED [ 20%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs11-groups11] PASSED [ 20%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs12-groups12] PASSED [ 20%]
+tests/test_data/test_encoders.py::test_GroupNormalizer[kwargs13-groups13] PASSED [ 20%]
+tests/test_data/test_encoders.py::test_EncoderNormalizer_with_limited_history PASSED [ 21%]
+tests/test_data/test_encoders.py::test_MultiNormalizer_fitted PASSED     [ 21%]
+tests/test_data/test_encoders.py::test_TorchNormalizer_dtype_consistency PASSED [ 21%]
+tests/test_data/test_samplers.py::test_TimeSynchronizedBatchSampler[True-True-True-64] PASSED [ 21%]
+tests/test_data/test_samplers.py::test_TimeSynchronizedBatchSampler[False-False-False-64] PASSED [ 22%]
+tests/test_data/test_samplers.py::test_TimeSynchronizedBatchSampler[True-False-False-1000] PASSED [ 22%]
+tests/test_data/test_timeseries.py::test_find_end_indices PASSED         [ 22%]
+tests/test_data/test_timeseries.py::test_raise_short_encoder_length PASSED [ 22%]
+tests/test_data/test_timeseries.py::test_categorical_target PASSED       [ 22%]
+tests/test_data/test_timeseries.py::test_pickle PASSED                   [ 23%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs0] PASSED [ 23%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs1] PASSED [ 23%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs2] PASSED [ 23%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs3] PASSED [ 24%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs4] PASSED [ 24%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs5] PASSED [ 24%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs6] PASSED [ 24%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs7] PASSED [ 25%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs8] PASSED [ 25%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs9] PASSED [ 25%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs10] PASSED [ 25%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs11] PASSED [ 26%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs12] PASSED [ 26%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs13] PASSED [ 26%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs14] PASSED [ 26%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs15] PASSED [ 27%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs16] PASSED [ 27%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs17] PASSED [ 27%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs18] PASSED [ 27%]
+tests/test_data/test_timeseries.py::test_TimeSeriesDataSet[kwargs19] PASSED [ 28%]
+tests/test_data/test_timeseries.py::test_from_dataset PASSED             [ 28%]
+tests/test_data/test_timeseries.py::test_from_dataset_equivalence PASSED [ 28%]
+tests/test_data/test_timeseries.py::test_dataset_index PASSED            [ 28%]
+tests/test_data/test_timeseries.py::test_min_prediction_idx[0] PASSED    [ 29%]
+tests/test_data/test_timeseries.py::test_min_prediction_idx[1] PASSED    [ 29%]
+tests/test_data/test_timeseries.py::test_min_prediction_idx[3] PASSED    [ 29%]
+tests/test_data/test_timeseries.py::test_min_prediction_idx[7] PASSED    [ 29%]
+tests/test_data/test_timeseries.py::test_overwrite_values[1.0-price_regular-encoder] PASSED [ 30%]
+tests/test_data/test_timeseries.py::test_overwrite_values[1.0-price_regular-all] PASSED [ 30%]
+tests/test_data/test_timeseries.py::test_overwrite_values[1.0-price_regular-decoder] PASSED [ 30%]
+tests/test_data/test_timeseries.py::test_overwrite_values[Agency_01-agency-all] PASSED [ 30%]
+tests/test_data/test_timeseries.py::test_overwrite_values[Agency_01-agency-decoder] PASSED [ 31%]
+tests/test_data/test_timeseries.py::test_new_group_ids[kwargs0] PASSED   [ 31%]
+tests/test_data/test_timeseries.py::test_new_group_ids[kwargs1] PASSED   [ 31%]
+tests/test_data/test_timeseries.py::test_timeseries_columns_naming PASSED [ 31%]
+tests/test_data/test_timeseries.py::test_encoder_normalizer_for_covariates PASSED [ 32%]
+tests/test_data/test_timeseries.py::test_multitarget[kwargs0] PASSED     [ 32%]
+tests/test_data/test_timeseries.py::test_multitarget[kwargs1] PASSED     [ 32%]
+tests/test_data/test_timeseries.py::test_multitarget[kwargs2] PASSED     [ 32%]
+tests/test_data/test_timeseries.py::test_multitarget[kwargs3] PASSED     [ 33%]
+tests/test_data/test_timeseries.py::test_check_nas PASSED                [ 33%]
+tests/test_data/test_timeseries.py::test_lagged_variables[kwargs0] PASSED [ 33%]
+tests/test_data/test_timeseries.py::test_lagged_variables[kwargs1] PASSED [ 33%]
+tests/test_data/test_timeseries.py::test_lagged_variables[kwargs2] PASSED [ 33%]
+tests/test_data/test_timeseries.py::test_lagged_variables[kwargs3] PASSED [ 34%]
+tests/test_data/test_timeseries.py::test_lagged_variable_known_unknown_assignment PASSED [ 34%]
+tests/test_data/test_timeseries.py::test_filter_data[Agency_01-0-False] PASSED [ 34%]
+tests/test_data/test_timeseries.py::test_filter_data[xxxxx-0-True] PASSED [ 34%]
+tests/test_data/test_timeseries.py::test_filter_data[Agency_01-100-True] PASSED [ 35%]
+tests/test_data/test_timeseries.py::test_filter_data[Agency_01-4-False] PASSED [ 35%]
+tests/test_data/test_timeseries.py::test_graph_sampler PASSED            [ 35%]
+tests/test_data/test_timeseries.py::test_correct_dtype_inference PASSED  [ 35%]
+tests/test_data/test_timeseries.py::test_pytorch_unwriteable_data PASSED [ 36%]
+tests/test_metrics.py::test_composite_metric PASSED                      [ 36%]
+tests/test_metrics.py::test_aggregation_metric[decoder_lengths0-y0] PASSED [ 36%]
+tests/test_metrics.py::test_aggregation_metric[decoder_lengths1-y1] PASSED [ 36%]
+tests/test_metrics.py::test_aggregation_metric[decoder_lengths2-y2] PASSED [ 37%]
+tests/test_metrics.py::test_none_reduction PASSED                        [ 37%]
+tests/test_metrics.py::test_NormalDistributionLoss[True-log] PASSED      [ 37%]
+tests/test_metrics.py::test_NormalDistributionLoss[True-log1p] PASSED    [ 37%]
+tests/test_metrics.py::test_NormalDistributionLoss[True-softplus] PASSED [ 38%]
+tests/test_metrics.py::test_NormalDistributionLoss[True-relu] PASSED     [ 38%]
+tests/test_metrics.py::test_NormalDistributionLoss[True-logit] PASSED    [ 38%]
+tests/test_metrics.py::test_NormalDistributionLoss[True-None] PASSED     [ 38%]
+tests/test_metrics.py::test_NormalDistributionLoss[False-log] PASSED     [ 39%]
+tests/test_metrics.py::test_NormalDistributionLoss[False-log1p] PASSED   [ 39%]
+tests/test_metrics.py::test_NormalDistributionLoss[False-softplus] PASSED [ 39%]
+tests/test_metrics.py::test_NormalDistributionLoss[False-relu] PASSED    [ 39%]
+tests/test_metrics.py::test_NormalDistributionLoss[False-logit] PASSED   [ 40%]
+tests/test_metrics.py::test_NormalDistributionLoss[False-None] PASSED    [ 40%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[True-log] PASSED   [ 40%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[True-log1p] PASSED [ 40%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[True-softplus] PASSED [ 41%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[True-relu] PASSED  [ 41%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[True-logit] PASSED [ 41%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[True-None] PASSED  [ 41%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[False-log] PASSED  [ 42%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[False-log1p] PASSED [ 42%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[False-softplus] PASSED [ 42%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[False-relu] PASSED [ 42%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[False-logit] PASSED [ 43%]
+tests/test_metrics.py::test_LogNormalDistributionLoss[False-None] PASSED [ 43%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[True-log] PASSED [ 43%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[True-log1p] PASSED [ 43%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[True-softplus] PASSED [ 44%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[True-relu] PASSED [ 44%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[True-logit] PASSED [ 44%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[True-None] PASSED [ 44%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[False-log] PASSED [ 44%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[False-log1p] PASSED [ 45%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[False-softplus] PASSED [ 45%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[False-relu] PASSED [ 45%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[False-logit] PASSED [ 45%]
+tests/test_metrics.py::test_NegativeBinomialDistributionLoss[False-None] PASSED [ 46%]
+tests/test_metrics.py::test_BetaDistributionLoss[True-log] PASSED        [ 46%]
+tests/test_metrics.py::test_BetaDistributionLoss[True-log1p] PASSED      [ 46%]
+tests/test_metrics.py::test_BetaDistributionLoss[True-softplus] PASSED   [ 46%]
+tests/test_metrics.py::test_BetaDistributionLoss[True-relu] PASSED       [ 47%]
+tests/test_metrics.py::test_BetaDistributionLoss[True-logit] PASSED      [ 47%]
+tests/test_metrics.py::test_BetaDistributionLoss[True-None] PASSED       [ 47%]
+tests/test_metrics.py::test_BetaDistributionLoss[False-log] PASSED       [ 47%]
+tests/test_metrics.py::test_BetaDistributionLoss[False-log1p] PASSED     [ 48%]
+tests/test_metrics.py::test_BetaDistributionLoss[False-softplus] PASSED  [ 48%]
+tests/test_metrics.py::test_BetaDistributionLoss[False-relu] PASSED      [ 48%]
+tests/test_metrics.py::test_BetaDistributionLoss[False-logit] PASSED     [ 48%]
+tests/test_metrics.py::test_BetaDistributionLoss[False-None] PASSED      [ 49%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[True-log] PASSED [ 49%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[True-log1p] PASSED [ 49%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[True-softplus] PASSED [ 49%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[True-relu] PASSED [ 50%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[True-logit] PASSED [ 50%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[True-None] PASSED [ 50%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[False-log] PASSED [ 50%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[False-log1p] PASSED [ 51%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[False-softplus] PASSED [ 51%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[False-relu] PASSED [ 51%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[False-logit] PASSED [ 51%]
+tests/test_metrics.py::test_MultivariateNormalDistributionLoss[False-None] PASSED [ 52%]
+tests/test_metrics.py::test_ImplicitQuantileNetworkDistributionLoss PASSED [ 52%]
+tests/test_metrics.py::test_MQF2DistributionLoss_device_handling[cuda] SKIPPED [ 52%]
+tests/test_metrics.py::test_MQF2DistributionLoss_device_handling[cpu] SKIPPED [ 52%]
+tests/test_metrics.py::test_MQF2DistributionLoss_full_workflow[cuda] SKIPPED [ 53%]
+tests/test_metrics.py::test_MQF2DistributionLoss_full_workflow[cpu] SKIPPED [ 53%]
+tests/test_metrics.py::test_MQF2DistributionLoss_device_synchronization[cuda] SKIPPED [ 53%]
+tests/test_metrics.py::test_MQF2DistributionLoss_device_synchronization[cpu] SKIPPED [ 53%]
+tests/test_metrics.py::test_CrossEntropyLoss PASSED                      [ 54%]
+tests/test_metrics.py::test_MASE PASSED                                  [ 54%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates0] PASSED [ 54%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates0] PASSED [ 54%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates1] PASSED [ 55%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates1] PASSED [ 55%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates2] PASSED [ 55%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates2] PASSED [ 55%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates3] PASSED [ 55%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates3] PASSED [ 56%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates4] PASSED [ 56%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates4] PASSED [ 56%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates5] PASSED [ 56%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates5] PASSED [ 57%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates6] PASSED [ 57%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates6] PASSED [ 57%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates7] PASSED [ 57%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates7] PASSED [ 58%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates8] PASSED [ 58%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates8] PASSED [ 58%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates9] PASSED [ 58%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates9] PASSED [ 59%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates10] PASSED [ 59%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates10] PASSED [ 59%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates11] PASSED [ 59%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates11] PASSED [ 60%]
+tests/test_models/test_baseline.py::test_integration[multiple_dataloaders_with_covariates12] PASSED [ 60%]
+tests/test_models/test_temporal_fusion_transformer.py::test_integration[multiple_dataloaders_with_covariates12] PASSED [ 60%]
+tests/test_models/test_deepar.py::test_integration[kwargs0] PASSED       [ 60%]
+tests/test_models/test_deepar.py::test_integration[kwargs1] PASSED       [ 61%]
+tests/test_models/test_deepar.py::test_integration[kwargs2] PASSED       [ 61%]
+tests/test_models/test_deepar.py::test_integration[kwargs3] PASSED       [ 61%]
+tests/test_models/test_deepar.py::test_integration[kwargs4] PASSED       [ 61%]
+tests/test_models/test_deepar.py::test_integration[kwargs5] PASSED       [ 62%]
+tests/test_models/test_deepar.py::test_integration[kwargs6] PASSED       [ 62%]
+tests/test_models/test_deepar.py::test_integration[kwargs7] PASSED       [ 62%]
+tests/test_models/test_deepar.py::test_integration[kwargs8] PASSED       [ 62%]
+tests/test_models/test_deepar.py::test_integration[kwargs9] PASSED       [ 63%]
+tests/test_models/test_deepar.py::test_predict_average PASSED            [ 63%]
+tests/test_models/test_deepar.py::test_predict_samples PASSED            [ 63%]
+tests/test_models/test_deepar.py::test_pickle[loss0] PASSED              [ 63%]
+tests/test_models/test_deepar.py::test_pickle[loss1] PASSED              [ 64%]
+tests/test_models/test_dlinear_v2.py::test_dlinear_init[5-False] PASSED  [ 64%]
+tests/test_models/test_dlinear_v2.py::test_dlinear_init[25-True] PASSED  [ 64%]
+tests/test_models/test_dlinear_v2.py::test_dlinear_forward PASSED        [ 64%]
+tests/test_models/test_dlinear_v2.py::test_quantile_loss_output PASSED   [ 65%]
+tests/test_models/test_dlinear_v2.py::test_univariate_forecast PASSED    [ 65%]
+tests/test_models/test_mlp.py::test_integration[kwargs0] PASSED          [ 65%]
+tests/test_models/test_mlp.py::test_integration[kwargs1] PASSED          [ 65%]
+tests/test_models/test_mlp.py::test_integration[kwargs2] PASSED          [ 66%]
+tests/test_models/test_mlp.py::test_integration[kwargs3] PASSED          [ 66%]
+tests/test_models/test_mlp.py::test_integration[kwargs4] PASSED          [ 66%]
+tests/test_models/test_mlp.py::test_integration[kwargs5] PASSED          [ 66%]
+tests/test_models/test_mlp.py::test_pickle PASSED                        [ 66%]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NormalDistributionLoss-volume-data_loader_kwargs0-None] PASSED [ 67%]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[NegativeBinomialDistributionLoss-volume-data_loader_kwargs1-normalizer1] PASSED [ 67%]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[MultivariateNormalDistributionLoss-volume-data_loader_kwargs2-None] PASSED [ 67%]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[LogNormalDistributionLoss-volume-data_loader_kwargs3-normalizer3] PASSED [ 67%]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[BetaDistributionLoss-volume-data_loader_kwargs4-normalizer4] PASSED [ 68%]
+tests/test_models/test_mlp.py::test_decoder_mlp_supported_losses[ImplicitQuantileNetworkDistributionLoss-volume-data_loader_kwargs5-None] PASSED [ 68%]
+tests/test_models/test_nbeats.py::test_integration PASSED                [ 68%]
+tests/test_models/test_nbeats.py::test_pickle PASSED                     [ 68%]
+tests/test_models/test_nbeats.py::test_interpretation SKIPPED (skip test
+if required package matplotlib not installed)                            [ 69%]
+tests/test_models/test_nbeats_kan.py::test_nbeats_kan_integration PASSED [ 69%]
+tests/test_models/test_nhits.py::test_integration[with_covariates] PASSED [ 69%]
+tests/test_models/test_nhits.py::test_integration[different_encoder_decoder_size] PASSED [ 69%]
+tests/test_models/test_nhits.py::test_integration[fixed_window_without_covariates] PASSED [ 70%]
+tests/test_models/test_nhits.py::test_integration[multi_target] PASSED   [ 70%]
+tests/test_models/test_nhits.py::test_integration[quantiles] PASSED      [ 70%]
+tests/test_models/test_nhits.py::test_integration[implicit-quantiles] PASSED [ 70%]
+tests/test_models/test_nhits.py::test_pickle PASSED                      [ 71%]
+tests/test_models/test_nhits.py::test_interpretation SKIPPED (skip test
+if required package matplotlib not installed)                            [ 71%]
+tests/test_models/test_nhits.py::test_prediction_length[1] PASSED        [ 71%]
+tests/test_models/test_nhits.py::test_prediction_length[5] PASSED        [ 71%]
+tests/test_models/test_nn/test_embeddings.py::test_MultiEmbedding[kwargs0] PASSED [ 72%]
+tests/test_models/test_nn/test_embeddings.py::test_MultiEmbedding[kwargs1] PASSED [ 72%]
+tests/test_models/test_nn/test_embeddings.py::test_MultiEmbedding[kwargs2] PASSED [ 72%]
+tests/test_models/test_nn/test_embeddings.py::test_MultiEmbedding[kwargs3] PASSED [ 72%]
+tests/test_models/test_nn/test_rnn.py::test_get_lstm_cell PASSED         [ 73%]
+tests/test_models/test_nn/test_rnn.py::test_get_gru_cell PASSED          [ 73%]
+tests/test_models/test_nn/test_rnn.py::test_get_cell_raises_value_error PASSED [ 73%]
+tests/test_models/test_nn/test_rnn.py::test_zero_length_sequence[LSTM-rnn_kwargs0] PASSED [ 73%]
+tests/test_models/test_nn/test_rnn.py::test_zero_length_sequence[LSTM-rnn_kwargs1] PASSED [ 74%]
+tests/test_models/test_nn/test_rnn.py::test_zero_length_sequence[GRU-rnn_kwargs2] PASSED [ 74%]
+tests/test_models/test_nn/test_rnn.py::test_zero_length_sequence[GRU-rnn_kwargs3] PASSED [ 74%]
+tests/test_models/test_rnn_model.py::test_integration[kwargs0] PASSED    [ 74%]
+tests/test_models/test_rnn_model.py::test_integration[kwargs1] PASSED    [ 75%]
+tests/test_models/test_rnn_model.py::test_integration[kwargs2] PASSED    [ 75%]
+tests/test_models/test_rnn_model.py::test_integration[kwargs3] PASSED    [ 75%]
+tests/test_models/test_rnn_model.py::test_integration[kwargs4] PASSED    [ 75%]
+tests/test_models/test_rnn_model.py::test_pickle PASSED                  [ 76%]
+tests/test_models/test_temporal_fusion_transformer.py::test_non_causal_attention PASSED [ 76%]
+tests/test_models/test_temporal_fusion_transformer.py::test_distribution_loss PASSED [ 76%]
+tests/test_models/test_temporal_fusion_transformer.py::test_mqf2_loss SKIPPED [ 76%]
+tests/test_models/test_temporal_fusion_transformer.py::test_tensorboard_graph_log PASSED [ 77%]
+tests/test_models/test_temporal_fusion_transformer.py::test_init_shared_network PASSED [ 77%]
+tests/test_models/test_temporal_fusion_transformer.py::test_distribution[ddp] PASSED [ 77%]
+tests/test_models/test_temporal_fusion_transformer.py::test_pickle PASSED [ 77%]
+tests/test_models/test_temporal_fusion_transformer.py::test_predict_dependency[kwargs0] PASSED [ 77%]
+tests/test_models/test_temporal_fusion_transformer.py::test_predict_dependency[kwargs1] PASSED [ 78%]
+tests/test_models/test_temporal_fusion_transformer.py::test_predict_dependency[kwargs2] PASSED [ 78%]
+tests/test_models/test_temporal_fusion_transformer.py::test_actual_vs_predicted_plot SKIPPED [ 78%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataloder[kwargs0] PASSED [ 78%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataloder[kwargs1] PASSED [ 79%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataloder[kwargs2] PASSED [ 79%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataloder[kwargs3] PASSED [ 79%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataloder[kwargs4] PASSED [ 79%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataloder[kwargs5] PASSED [ 80%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataloder_raw PASSED [ 80%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataset PASSED [ 80%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_write_to_disk PASSED [ 80%]
+tests/test_models/test_temporal_fusion_transformer.py::test_prediction_with_dataframe PASSED [ 81%]
+tests/test_models/test_temporal_fusion_transformer.py::test_hyperparameter_optimization_integration[True] SKIPPED [ 81%]
+tests/test_models/test_temporal_fusion_transformer.py::test_hyperparameter_optimization_integration[False] SKIPPED [ 81%]
+tests/test_models/test_temporal_fusion_transformer.py::test_no_exogenous_variable PASSED [ 81%]
+tests/test_models/test_temporal_fusion_transformer.py::test_correct_prediction_concatenation PASSED [ 82%]
+tests/test_models/test_tft_v2.py::test_basic_initialization PASSED       [ 82%]
+tests/test_models/test_tft_v2.py::test_initialization_no_time_varying_features PASSED [ 82%]
+tests/test_models/test_tft_v2.py::test_initialization_no_static_features PASSED [ 82%]
+tests/test_models/test_tft_v2.py::test_forward_pass_configs[2-1-1-1-1-1] PASSED [ 83%]
+tests/test_models/test_tft_v2.py::test_forward_pass_configs[2-0-1-0-0-0] PASSED [ 83%]
+tests/test_models/test_tft_v2.py::test_forward_pass_configs[0-0-0-0-1-1] PASSED [ 83%]
+tests/test_models/test_tft_v2.py::test_forward_pass_configs[0-0-0-0-0-0] PASSED [ 83%]
+tests/test_models/test_tft_v2.py::test_forward_pass_configs[1-0-1-0-1-0] PASSED [ 84%]
+tests/test_models/test_tft_v2.py::test_forward_pass_configs[1-0-1-0-0-1] PASSED [ 84%]
+tests/test_models/test_tft_v2.py::test_model_with_datamodule_integration PASSED [ 84%]
+tests/test_models/test_tide.py::test_integration[kwargs0] PASSED         [ 84%]
+tests/test_models/test_tide.py::test_integration[kwargs1] PASSED         [ 85%]
+tests/test_models/test_tide.py::test_integration[kwargs2] PASSED         [ 85%]
+tests/test_models/test_tide.py::test_integration[kwargs3] PASSED         [ 85%]
+tests/test_models/test_tide.py::test_multi_target_integration[kwargs0] PASSED [ 85%]
+tests/test_models/test_tide.py::test_pickle PASSED                       [ 86%]
+tests/test_models/test_tide.py::test_prediction_visualization SKIPPED    [ 86%]
+tests/test_models/test_tide.py::test_prediction_with_kwargs PASSED       [ 86%]
+tests/test_models/test_tide.py::test_no_exogenous_variable PASSED        [ 86%]
+tests/test_models/test_timexer.py::test_integration[einsum_attn] PASSED  [ 87%]
+tests/test_models/test_timexer.py::test_integration[efficient_attn] PASSED [ 87%]
+tests/test_models/test_timexer.py::test_quantile_loss PASSED             [ 87%]
+tests/test_models/test_timexer.py::test_multiple_targets PASSED          [ 87%]
+tests/test_models/test_timexer.py::test_model_init PASSED                [ 88%]
+tests/test_models/test_timexer.py::test_prediction_with_dataloader[kwargs0] PASSED [ 88%]
+tests/test_models/test_timexer.py::test_prediction_with_dataloader[kwargs1] PASSED [ 88%]
+tests/test_models/test_timexer.py::test_prediction_with_dataloader[kwargs2] PASSED [ 88%]
+tests/test_models/test_timexer.py::test_prediction_with_dataloader[kwargs3] PASSED [ 88%]
+tests/test_models/test_timexer.py::test_prediction_with_dataset PASSED   [ 89%]
+tests/test_models/test_timexer.py::test_prediction_with_dataframe PASSED [ 89%]
+tests/test_models/test_timexer.py::test_no_exogenous_variables PASSED    [ 89%]
+tests/test_models/test_timexer.py::test_with_exogenous_variables PASSED  [ 89%]
+tests/test_models/test_timexer.py::test_model_forward_output SKIPPED     [ 90%]
+tests/test_models/test_timexer_v2.py::test_basic_model_initialization[einsum_attn] PASSED [ 90%]
+tests/test_models/test_timexer_v2.py::test_basic_model_initialization[efficient_attn] PASSED [ 90%]
+tests/test_models/test_timexer_v2.py::test_multivariate_single_series[einsum_attn] PASSED [ 90%]
+tests/test_models/test_timexer_v2.py::test_multivariate_single_series[efficient_attn] PASSED [ 91%]
+tests/test_models/test_timexer_v2.py::test_quantile_predictions PASSED   [ 91%]
+tests/test_models/test_timexer_v2.py::test_missing_history_target_handling PASSED [ 91%]
+tests/test_models/test_timexer_v2.py::test_endogenous_exogenous_variable_selection PASSED [ 91%]
+tests/test_models/test_timexer_v2.py::test_integration_with_datamodule[einsum_attn] PASSED [ 92%]
+tests/test_models/test_timexer_v2.py::test_integration_with_datamodule[efficient_attn] PASSED [ 92%]
+tests/test_models/test_x_lstm.py::test_integration[kwargs0] PASSED       [ 92%]
+tests/test_models/test_x_lstm.py::test_integration[kwargs1] PASSED       [ 92%]
+tests/test_models/test_x_lstm.py::test_integration[kwargs2] PASSED       [ 93%]
+tests/test_models/test_x_lstm.py::test_integration[kwargs3] PASSED       [ 93%]
+tests/test_models/test_x_lstm.py::test_integration[kwargs4] PASSED       [ 93%]
+tests/test_utils/test_autocorrelation.py::test_autocorrelation PASSED    [ 93%]
+tests/test_utils/test_coerce.py::test_coerce_to_list_none PASSED         [ 94%]
+tests/test_utils/test_coerce.py::test_coerce_to_list_str PASSED          [ 94%]
+tests/test_utils/test_coerce.py::test_coerce_to_list_list PASSED         [ 94%]
+tests/test_utils/test_coerce.py::test_coerce_to_list_tuple PASSED        [ 94%]
+tests/test_utils/test_coerce.py::test_coerce_to_list_set PASSED          [ 95%]
+tests/test_utils/test_coerce.py::test_coerce_to_list_generator PASSED    [ 95%]
+tests/test_utils/test_coerce.py::test_coerce_to_dict_none PASSED         [ 95%]
+tests/test_utils/test_coerce.py::test_coerce_to_dict_dict PASSED         [ 95%]
+tests/test_utils/test_coerce.py::test_coerce_to_dict_nested PASSED       [ 96%]
+tests/test_utils/test_coerce.py::test_coerce_to_dict_other PASSED        [ 96%]
+tests/test_utils/test_coerce.py::test_coerce_to_list_type_assertions PASSED [ 96%]
+tests/test_utils/test_coerce.py::test_coerce_to_dict_type_assertions PASSED [ 96%]
+tests/test_utils/test_safe_import.py::test_present_module PASSED         [ 97%]
+tests/test_utils/test_safe_import.py::test_import_missing_module PASSED  [ 97%]
+tests/test_utils/test_safe_import.py::test_import_without_pkg_name PASSED [ 97%]
+tests/test_utils/test_safe_import.py::test_import_with_different_pkg_name_1 PASSED [ 97%]
+tests/test_utils/test_safe_import.py::test_import_with_different_pkg_name_2 PASSED [ 98%]
+tests/test_utils/test_safe_import.py::test_import_submodule PASSED       [ 98%]
+tests/test_utils/test_safe_import.py::test_import_class PASSED           [ 98%]
+tests/test_utils/test_safe_import.py::test_import_existing_object PASSED [ 98%]
+tests/test_utils/test_safe_import.py::test_multiple_inheritance_from_mock PASSED [ 99%]
+tests/test_utils/test_show_versions.py::test_show_versions_runs PASSED   [ 99%]
+tests/test_utils/test_show_versions.py::test_show_versions_import_loc PASSED [ 99%]
+tests/test_utils/test_show_versions.py::test_deps_info PASSED            [ 99%]
+tests/test_utils/test_show_versions.py::test_deps_info_deps_missing_package_present_directory PASSED [100%]
+
+=============================== warnings summary ===============================
+tests/test_data/test_d1.py: 8 warnings
+tests/test_models/test_tft_v2.py: 1 warning
+tests/test_models/test_timexer_v2.py: 9 warnings
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries_v2.py:134: Pandas4Warning: In a future version, the keys of `groups` will be a tuple with a single element, e.g. (group_id,) , instead of a scalar, e.g. group_id, when grouping by a list with a single element. Use ``df.groupby(by='a').groups`` instead of ``df.groupby(by=['a']).groups`` to avoid this warning
+    self._groups = self.data.groupby(self._group).groups
+
+tests/test_data/test_d1.py::test_with_future_data
+tests/test_data/test_d1.py::test_future_data_with_weights
+tests/test_data/test_d1.py::test_future_data_missing_columns
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries_v2.py:258: Pandas4Warning: In a future version, the keys of `groups` will be a tuple with a single element, e.g. (group_id,) , instead of a scalar, e.g. group_id, when grouping by a list with a single element. Use ``df.groupby(by='a').groups`` instead of ``df.groupby(by=['a']).groups`` to avoid this warning
+    future_mask = self.data_future.groupby(_group).groups[group_id]
+
+tests/test_data/test_data_module.py: 14 warnings
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries_v2.py:134: Pandas4Warning: In a future version, the keys of `groups` will be a tuple with a single element, e.g. (group,) , instead of a scalar, e.g. group, when grouping by a list with a single element. Use ``df.groupby(by='a').groups`` instead of ``df.groupby(by=['a']).groups`` to avoid this warning
+    self._groups = self.data.groupby(self._group).groups
+
+tests/test_data/test_samplers.py: 1 warning
+tests/test_data/test_timeseries.py: 47 warnings
+tests/test_models/test_baseline.py: 26 warnings
+tests/test_models/test_deepar.py: 22 warnings
+tests/test_models/test_mlp.py: 24 warnings
+tests/test_models/test_nhits.py: 4 warnings
+tests/test_models/test_rnn_model.py: 10 warnings
+tests/test_models/test_temporal_fusion_transformer.py: 7 warnings
+tests/test_models/test_tide.py: 10 warnings
+tests/test_models/test_timexer.py: 9 warnings
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries.py:1006: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+  See https://pandas.pydata.org/docs/user_guide/migration-3-strings.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+    object_columns = data.head(1).select_dtypes(object).columns
+
+tests/test_data/test_samplers.py: 1 warning
+tests/test_data/test_timeseries.py: 46 warnings
+tests/test_models/test_baseline.py: 26 warnings
+tests/test_models/test_deepar.py: 22 warnings
+tests/test_models/test_mlp.py: 24 warnings
+tests/test_models/test_nbeats.py: 2 warnings
+tests/test_models/test_nhits.py: 8 warnings
+tests/test_models/test_rnn_model.py: 10 warnings
+tests/test_models/test_temporal_fusion_transformer.py: 10 warnings
+tests/test_models/test_tide.py: 12 warnings
+tests/test_models/test_timexer.py: 13 warnings
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries.py:1885: Pandas4Warning: The copy keyword is deprecated and will be removed in a future version. Copy-on-Write is active in pandas since 3.0 which utilizes a lazy copy mechanism that defers copies until necessary. Use .copy() to make an eager copy if necessary.
+    df_index = df_index[minimal_columns].astype("int32", copy=False)
+
+tests/test_data/test_timeseries.py::test_pytorch_unwriteable_data
+  /Users/admin/Desktop/open-source/pytorch-forecasting/tests/test_data/test_timeseries.py:730: Pandas4Warning: The 'mode.copy_on_write' option is deprecated. Copy-on-Write can no longer be disabled (it is always enabled with pandas >= 3.0), and setting the option has no impact. This option will be removed in pandas 4.0.
+    copy_on_write = pd.options.mode.copy_on_write
+
+tests/test_data/test_timeseries.py::test_pytorch_unwriteable_data
+  /Users/admin/Desktop/open-source/pytorch-forecasting/tests/test_data/test_timeseries.py:731: Pandas4Warning: The 'mode.copy_on_write' option is deprecated. Copy-on-Write can no longer be disabled (it is always enabled with pandas >= 3.0), and setting the option has no impact. This option will be removed in pandas 4.0.
+    pd.options.mode.copy_on_write = True
+
+tests/test_models/test_baseline.py: 13 warnings
+tests/test_models/test_temporal_fusion_transformer.py: 43 warnings
+tests/test_models/test_deepar.py: 26 warnings
+tests/test_models/test_mlp.py: 24 warnings
+tests/test_models/test_nbeats.py: 3 warnings
+tests/test_models/test_nbeats_kan.py: 1 warning
+tests/test_models/test_nhits.py: 16 warnings
+tests/test_models/test_rnn_model.py: 11 warnings
+tests/test_models/test_tide.py: 14 warnings
+tests/test_models/test_timexer.py: 24 warnings
+tests/test_models/test_x_lstm.py: 5 warnings
+  /Users/admin/Desktop/open-source/pytorch-forecasting/.venv/lib/python3.14/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+
+tests/test_models/test_dlinear_v2.py::test_dlinear_init[5-False]
+tests/test_models/test_dlinear_v2.py::test_dlinear_init[25-True]
+tests/test_models/test_dlinear_v2.py::test_dlinear_forward
+tests/test_models/test_dlinear_v2.py::test_quantile_loss_output
+tests/test_models/test_dlinear_v2.py::test_univariate_forecast
+  /Users/admin/Desktop/open-source/pytorch-forecasting/pytorch_forecasting/data/timeseries/_timeseries_v2.py:134: Pandas4Warning: In a future version, the keys of `groups` will be a tuple with a single element, e.g. (series_id,) , instead of a scalar, e.g. series_id, when grouping by a list with a single element. Use ``df.groupby(by='a').groups`` instead of ``df.groupby(by=['a']).groups`` to avoid this warning
+    self._groups = self.data.groupby(self._group).groups
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.14.3-final-0 _______________
+
+Name                                                                                                                            Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+pytorch_forecasting/_registry/__init__.py                                                                                           2      2     0%   3-5
+pytorch_forecasting/_registry/_lookup.py                                                                                           43     43     0%   11-242
+pytorch_forecasting/base/_base_pkg.py                                                                                             134    107    20%   50-73, 84-107, 114, 119, 126-135, 142-150, 154-157, 163-173, 180-190, 223-264, 293-310
+pytorch_forecasting/callbacks/predict.py                                                                                           56     43    23%   35-39, 43-46, 58-81, 85-105, 109-111
+pytorch_forecasting/data/_tslib_data_module.py                                                                                    258     39    85%   218-219, 226, 230, 340, 361, 377, 392, 460, 471-472, 487, 508-511, 564, 575, 580, 612, 646, 653, 693, 706-708, 751-755, 819, 865, 868-871, 884-889
+pytorch_forecasting/data/data_module.py                                                                                           196     12    94%   148, 322, 327, 449, 595, 606, 750-755
+pytorch_forecasting/data/encoders.py                                                                                              455     52    89%   29, 33, 52, 72, 78, 81, 105, 108, 111, 128, 131, 199, 261-263, 305-306, 426, 455, 621-622, 637, 674, 774, 798, 805, 908-909, 920, 1074, 1100-1105, 1167, 1213, 1243, 1304-1305, 1415, 1541-1576
+pytorch_forecasting/data/examples.py                                                                                               39     13    67%   30-31, 101, 115-135
+pytorch_forecasting/data/samplers.py                                                                                               58      3    95%   48, 53, 74
+pytorch_forecasting/data/tests/test_tslib_data_module.py                                                                          234    234     0%   1-530
+pytorch_forecasting/data/timeseries/_timeseries.py                                                                                789     45    94%   91, 763, 916, 957, 964, 970, 1009, 1017, 1047, 1060-1062, 1121-1122, 1404, 1413, 1457, 1917-1918, 1985-2001, 2047, 2049, 2054, 2090, 2155, 2177, 2183, 2239, 2248, 2286-2291, 2321, 2651
+pytorch_forecasting/data/timeseries/_timeseries_v2.py                                                                             112      1    99%   261
+pytorch_forecasting/layers/_attention/_attention_layer.py                                                                          29      2    93%   46-47
+pytorch_forecasting/layers/_attention/_full_attention.py                                                                           49      9    82%   19-21, 27, 60, 79, 91-93
+pytorch_forecasting/layers/_blocks/_residual_block_dsipts.py                                                                       20     16    20%   26-40, 43-50
+pytorch_forecasting/layers/_embeddings/_data_embedding.py                                                                          17      1    94%   34
+pytorch_forecasting/layers/_embeddings/_sub_nn.py                                                                                  44     34    23%   24-29, 50-67, 70-72, 75-82, 85-92, 95-99
+pytorch_forecasting/layers/_encoders/_encoder.py                                                                                   20      1    95%   39
+pytorch_forecasting/layers/_filter/_moving_avg_filter.py                                                                           21      2    90%   35-36
+pytorch_forecasting/layers/_kan/_kan_layer.py                                                                                      49     17    65%   94, 96, 119, 206-237
+pytorch_forecasting/layers/_kan/_utils.py                                                                                          45     13    71%   127-128, 174-186
+pytorch_forecasting/layers/_nbeats/_blocks.py                                                                                     136     18    87%   291, 293, 397, 488, 669-679, 695-698, 753-764, 770-773
+pytorch_forecasting/layers/_nbeats/_utils.py                                                                                       19      1    95%   17
+pytorch_forecasting/layers/_normalization/_revin.py                                                                                46     37    20%   26-33, 36-43, 47-48, 51-56, 61-69, 72-80
+pytorch_forecasting/layers/_recurrent/_mlstm/cell.py                                                                               58      1    98%   150
+pytorch_forecasting/layers/_recurrent/_mlstm/layer.py                                                                              44      3    93%   100, 114, 139
+pytorch_forecasting/layers/_recurrent/_mlstm/network.py                                                                            16      1    94%   98
+pytorch_forecasting/layers/_recurrent/_slstm/cell.py                                                                               61      3    95%   144-146
+pytorch_forecasting/layers/_recurrent/_slstm/layer.py                                                                              45      4    91%   58, 101, 114, 140
+pytorch_forecasting/layers/_recurrent/_slstm/network.py                                                                            21      1    95%   90
+pytorch_forecasting/metrics/_distributions_pkg/_beta/_beta_distribution_loss_pkg.py                                                11      3    73%   23-25, 32
+pytorch_forecasting/metrics/_distributions_pkg/_implicit_quantile_network/_implicit_quantile_network_distribution_loss_pkg.py      14      4    71%   25-29, 36, 46
+pytorch_forecasting/metrics/_distributions_pkg/_log_normal/_log_normal_distribution_loss_pkg.py                                    21     10    52%   25-27, 34, 39-50
+pytorch_forecasting/metrics/_distributions_pkg/_mqf2/_mqf2_distribution_loss_pkg.py                                                14      4    71%   25-27, 34, 42
+pytorch_forecasting/metrics/_distributions_pkg/_multivariate_normal/_multivariate_normal_distribution_loss_pkg.py                   7      2    71%   24-28
+pytorch_forecasting/metrics/_distributions_pkg/_negative_binomial/_negative_binomial_distribution_loss_pkg.py                      11      3    73%   23-27, 34
+pytorch_forecasting/metrics/_distributions_pkg/_normal/_normal_distribution_loss_pkg.py                                             7      2    71%   24-26
+pytorch_forecasting/metrics/_mqf2_utils.py                                                                                        150    150     0%   3-561
+pytorch_forecasting/metrics/_point_pkg/_cross_entropy/_cross_entropy_pkg.py                                                         7      2    71%   25-27
+pytorch_forecasting/metrics/_point_pkg/_mae/_mae_pkg.py                                                                             7      2    71%   23-25
+pytorch_forecasting/metrics/_point_pkg/_mape/_mape_pkg.py                                                                           7      2    71%   25-27
+pytorch_forecasting/metrics/_point_pkg/_mase/_mase_pkg.py                                                                           7      2    71%   21-23
+pytorch_forecasting/metrics/_point_pkg/_poisson/_poisson_loss_pkg.py                                                                7      2    71%   25-27
+pytorch_forecasting/metrics/_point_pkg/_rmse/_rmse_pkg.py                                                                           7      2    71%   23-25
+pytorch_forecasting/metrics/_point_pkg/_smape/_smape_pkg.py                                                                         7      2    71%   25-27
+pytorch_forecasting/metrics/_point_pkg/_tweedie/_tweedie_loss_pkg.py                                                                7      2    71%   23-25
+pytorch_forecasting/metrics/_quantile_pkg/_quantile_loss_pkg.py                                                                    10      3    70%   23-25, 29
+pytorch_forecasting/metrics/base_metrics/_base_metrics.py                                                                         414     91    78%   55, 70, 130-138, 143-145, 180, 185, 191, 194, 205, 229-232, 241-242, 333-344, 353-361, 392, 406, 409-410, 413-414, 450-456, 561, 563, 593-597, 606-614, 633-634, 637, 651, 654-655, 658-659, 734-736, 746, 764, 778, 805, 808, 811, 853, 897-898, 971, 1033, 1081-1082, 1100-1112
+pytorch_forecasting/metrics/base_metrics/_base_object.py                                                                           20      7    65%   20-21, 32, 53, 65, 78-80
+pytorch_forecasting/metrics/distributions.py                                                                                      216     46    79%   383-429, 433-434, 438, 441-459, 480-485, 493-494, 512-532
+pytorch_forecasting/metrics/point.py                                                                                               99      9    91%   36, 56, 155, 216, 240, 265-280, 291
+pytorch_forecasting/metrics/quantile.py                                                                                            22      1    95%   67
+pytorch_forecasting/models/base/_base_model.py                                                                                    900    297    67%   167-185, 269, 291, 308, 351-352, 404, 525, 545, 578, 599, 695, 826, 929, 940, 959, 989, 1070, 1086, 1099, 1123, 1137-1157, 1192-1324, 1346-1354, 1384, 1388, 1392-1400, 1408-1491, 1498-1499, 1508, 1582, 1638-1648, 1656-1657, 1797, 1801, 1867, 1964-1967, 2060-2068, 2105-2202, 2232-2349, 2454, 2634, 2670-2682, 2701
+pytorch_forecasting/models/base/_base_model_v2.py                                                                                 107     70    35%   79, 95, 126-140, 145-149, 154-158, 178-186, 206-214, 234-242, 267-269, 280-293, 304-314, 335-344, 361-363
+pytorch_forecasting/models/base/_base_object.py                                                                                    46     31    33%   17, 22-25, 42-56, 77-104
+pytorch_forecasting/models/base/_tslib_base_model_v2.py                                                                            51     17    67%   97, 117, 142-148, 179-192
+pytorch_forecasting/models/baseline.py                                                                                             19      1    95%   81
+pytorch_forecasting/models/deepar/_deepar.py                                                                                      147     19    87%   43-45, 129, 131, 133, 135, 137, 139, 141, 143, 145, 147, 149, 151, 153, 155, 363, 488-489
+pytorch_forecasting/models/deepar/_deepar_pkg.py                                                                                   36     27    25%   26-28, 42-57, 75-115
+pytorch_forecasting/models/dlinear/_dlinear_pkg_v2.py                                                                              45     34    24%   25-27, 32-34, 39-102, 120-144
+pytorch_forecasting/models/dlinear/_dlinear_v2.py                                                                                  98      4    96%   69-71, 276, 297
+pytorch_forecasting/models/mlp/_decodermlp.py                                                                                      70     14    80%   35-37, 100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 122
+pytorch_forecasting/models/mlp/_decodermlp_pkg.py                                                                                  27     18    33%   29-31, 46, 69-103
+pytorch_forecasting/models/nbeats/_grid_callback.py                                                                                 7      3    57%   21, 44-46
+pytorch_forecasting/models/nbeats/_nbeats.py                                                                                       40      5    88%   94-96, 125, 144, 171
+pytorch_forecasting/models/nbeats/_nbeats_adapter.py                                                                               97     35    64%   200, 233-241, 276-340
+pytorch_forecasting/models/nbeats/_nbeats_pkg.py                                                                                   23     14    39%   25-27, 41, 59-79
+pytorch_forecasting/models/nbeats/_nbeatskan.py                                                                                    55     12    78%   153-155, 200, 236, 266, 276-287
+pytorch_forecasting/models/nbeats/_nbeatskan_pkg.py                                                                                23     14    39%   25-27, 41, 63-83
+pytorch_forecasting/models/nbeats/sub_modules.py                                                                                    1      1     0%   8
+pytorch_forecasting/models/nhits/_nhits.py                                                                                        187     65    65%   34-36, 160, 162, 164, 166, 168, 170, 172, 174, 176, 178, 180, 182, 191, 484, 531-645, 657-674
+pytorch_forecasting/models/nhits/_nhits_pkg.py                                                                                     40     31    22%   31-33, 47, 69-135
+pytorch_forecasting/models/nhits/sub_modules.py                                                                                   169     26    85%   45-49, 56-67, 77, 79, 81, 83, 85, 89, 116, 123, 196-197, 363, 369, 430-432
+pytorch_forecasting/models/nn/embeddings.py                                                                                        84      5    94%   31, 164, 170, 173, 176
+pytorch_forecasting/models/nn/rnn.py                                                                                               79     10    87%   40, 53, 69, 107-124, 145, 240
+pytorch_forecasting/models/rnn/_rnn.py                                                                                            120     16    87%   33-37, 103, 105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 127, 332
+pytorch_forecasting/models/rnn/_rnn_pkg.py                                                                                         29     20    31%   28-30, 44, 73-103
+pytorch_forecasting/models/samformer/__init__.py                                                                                    3      3     0%   6-9
+pytorch_forecasting/models/samformer/_samformer_v2.py                                                                              79     79     0%   6-186
+pytorch_forecasting/models/samformer/_samformer_v2_pkg.py                                                                          22     22     0%   5-76
+pytorch_forecasting/models/temporal_fusion_transformer/_tft.py                                                                    275     68    75%   133-137, 177, 179, 181, 185, 187, 189, 191, 193, 195, 197, 199, 201, 297, 780, 893-918, 933-986, 1034-1069, 1082
+pytorch_forecasting/models/temporal_fusion_transformer/_tft_pkg.py                                                                 34     25    26%   26-28, 42, 70-114
+pytorch_forecasting/models/temporal_fusion_transformer/_tft_pkg_v2.py                                                              20     11    45%   21-23, 28-32, 46-77
+pytorch_forecasting/models/temporal_fusion_transformer/_tft_v2.py                                                                 101      5    95%   19-23, 177, 210, 225
+pytorch_forecasting/models/temporal_fusion_transformer/sub_modules.py                                                             302     44    85%   15-17, 20-37, 49-50, 54-58, 64, 84, 161, 166-167, 172, 175, 344, 348, 408, 416-427, 430-435, 455, 476
+pytorch_forecasting/models/temporal_fusion_transformer/tuning.py                                                                   73     54    26%   32-40, 111-257
+pytorch_forecasting/models/tide/_tide.py                                                                                           89     14    84%   26-28, 129, 131, 133, 135, 137, 139, 141, 143, 145, 147, 149, 151
+pytorch_forecasting/models/tide/_tide_dsipts/_tide_v2.py                                                                          126    113    10%   22-24, 81-177, 195-295, 311-334, 358-366
+pytorch_forecasting/models/tide/_tide_dsipts/_tide_v2_pkg.py                                                                       21     12    43%   17-19, 24-28, 42-79
+pytorch_forecasting/models/tide/_tide_pkg.py                                                                                       34     25    26%   25-27, 39-67, 85-118
+pytorch_forecasting/models/tide/sub_modules.py                                                                                     73      2    97%   154, 211
+pytorch_forecasting/models/timexer/_timexer.py                                                                                    137     25    82%   46-48, 168, 170, 172, 174, 176, 178, 180, 182, 184, 186, 188, 190, 195, 203, 210, 236, 257, 259, 421, 435, 449, 480, 496
+pytorch_forecasting/models/timexer/_timexer_pkg.py                                                                                 29     20    31%   25-27, 40-42, 110-140
+pytorch_forecasting/models/timexer/_timexer_pkg_v2.py                                                                              21     12    43%   23-25, 30-32, 46-117
+pytorch_forecasting/models/timexer/_timexer_v2.py                                                                                  72      7    90%   99-101, 172, 179, 188, 204, 320
+pytorch_forecasting/models/timexer/sub_modules.py                                                                                 172     11    94%   20-22, 28, 61, 80, 92-94, 191, 313
+pytorch_forecasting/models/xlstm/_xlstm.py                                                                                         62      4    94%   28-30, 80, 139
+pytorch_forecasting/models/xlstm/_xlstm_pkg.py                                                                                     18      9    50%   25-27, 40-54, 73-77
+pytorch_forecasting/tests/_config.py                                                                                                2      2     0%   5-13
+pytorch_forecasting/tests/_conftest.py                                                                                             47     12    74%   14-17, 22-26, 123, 128-132, 137, 150, 160-164
+pytorch_forecasting/tests/_data_scenarios.py                                                                                      122     67    45%   89-167, 173-267, 318, 330
+pytorch_forecasting/tests/_loss_mapping.py                                                                                         16     16     0%   1-124
+pytorch_forecasting/tests/test_all_estimators.py                                                                                  133    133     0%   3-411
+pytorch_forecasting/tests/test_all_v2/_test_integration.py                                                                         16     16     0%   1-32
+pytorch_forecasting/tests/test_all_v2/test_all_estimators_v2.py                                                                    58     58     0%   3-134
+pytorch_forecasting/tests/test_all_v2/utils.py                                                                                     18     18     0%   1-61
+pytorch_forecasting/tests/test_class_register.py                                                                                   22     22     0%   8-66
+pytorch_forecasting/tests/test_doctest.py                                                                                          31     31     0%   5-111
+pytorch_forecasting/tuning/tuner.py                                                                                                16     11    31%   11-25
+pytorch_forecasting/utils/_classproperty.py                                                                                         3      1    67%   6
+pytorch_forecasting/utils/_dependencies/_dependencies.py                                                                            7      1    86%   27
+pytorch_forecasting/utils/_dependencies/tests/test_safe_import.py                                                                  32     32     0%   1-66
+pytorch_forecasting/utils/_estimator_checks.py                                                                                     42     36    14%   110-156, 172-174, 190-198, 239-250
+pytorch_forecasting/utils/_maint/_show_versions.py                                                                                 43     13    70%   98-115
+pytorch_forecasting/utils/_utils.py                                                                                               211     44    79%   36, 38, 66-85, 100-116, 274, 283, 307-312, 355, 393, 396, 465-469, 480, 482, 542, 581, 612-613
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+TOTAL                                                                                                                            9594   2976    69%
+
+55 files skipped due to complete coverage.
+Coverage HTML written to dir htmlcov
+=========================== short test summary info ============================
+SKIPPED [2] tests/test_metrics.py:414: cpflows is not installed, skipping MQF2DistributionLoss tests
+SKIPPED [2] tests/test_metrics.py:446: cpflows is not installed, skipping MQF2DistributionLoss tests
+SKIPPED [2] tests/test_metrics.py:498: cpflows is not installed, skipping MQF2DistributionLoss tests
+SKIPPED [1] tests/test_models/test_nbeats.py:92: skip test if required package matplotlib not installed
+SKIPPED [1] tests/test_models/test_nhits.py:160: skip test if required package matplotlib not installed
+SKIPPED [1] tests/test_models/test_temporal_fusion_transformer.py:73: Test skipped if required package cpflows not available
+SKIPPED [1] tests/test_models/test_temporal_fusion_transformer.py:333: skip test if required package matplotlib not installed
+SKIPPED [2] tests/test_models/test_temporal_fusion_transformer.py:432: Test skipped on Win due to bug #1632, or if missing required packages
+SKIPPED [1] tests/test_models/test_tide.py:194: skip test if required package matplotlib not installed
+SKIPPED [1] tests/test_models/test_timexer.py:501: Skipping due to incompatibility with current model outputs.
+================ 395 passed, 14 skipped, 556 warnings in 36.45s ================
