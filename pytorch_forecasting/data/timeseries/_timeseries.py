@@ -1047,17 +1047,24 @@ class TimeSeriesDataSet(Dataset):
         torch.save(self, fname)
 
     @classmethod
-    def load(cls: type[TimeSeriesDataType], fname: str) -> TimeSeriesDataType:
+    def load(
+        cls: type[TimeSeriesDataType],
+        fname: str,
+        map_location: Optional[torch.device] = None,
+    ) -> TimeSeriesDataType:
         """
         Load dataset from disk
 
         Args:
             fname (str): filename to load from
+            map_location (torch.device, optional): device to load tensors to.
+                Defaults to None (load on original device).
+                Use torch.device('cpu') to force CPU loading.
 
         Returns:
             TimeSeriesDataSet
         """
-        obj = torch.load(fname)
+        obj = torch.load(fname, map_location=map_location)
         assert isinstance(obj, cls), f"Loaded file is not of class {cls}"
         return obj
 
