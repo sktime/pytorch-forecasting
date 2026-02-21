@@ -613,9 +613,9 @@ class TslibDataModule(LightningDataModule):
                 encoded_categorical_list.append(col_data.unsqueeze(1))
 
         if encoded_categorical_list:
-            categorical = torch.cat(encoded_categorical_list, dim=-1)
+            categorical_features = torch.cat(encoded_categorical_list, dim=-1)
         else:
-            categorical = torch.zeros((features.shape[0], 0))
+            categorical_features = torch.zeros((features.shape[0], 0))
 
         continuous_features = (
             features[:, self.continuous_indices]
@@ -736,9 +736,10 @@ class TslibDataModule(LightningDataModule):
         if stage is None or stage == "fit":
             for col, encoder in self._categorical_encoders.items():
                 if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
-                    # Extract the column data from the full dataset (ideal to slice by train indices)
-                    # For simplicity, extract entire column series. In production, subset this.
-                    # Note: You can retrieve this from raw pandas dataframe used inside `time_series_dataset`
+                    # Extract column data. For simplicity, we use the entire
+                    # column series. In production, subset this. Note: You can
+                    # retrieve this from raw pandas dataframe used inside
+                    # `time_series_dataset`.
                     col_data = self.time_series_dataset.data[col]
                     encoder.fit(col_data)
 
