@@ -124,6 +124,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         )
         assert object_pkg.name() == object_class.__name__, msg
 
+        # check naming convention
         class_name = object_class.__name__
 
         expected_names = {class_name + "_pkg_v2"}
