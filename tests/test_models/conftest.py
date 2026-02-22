@@ -1,4 +1,6 @@
+from collections.abc import Callable
 import os
+from typing import Union
 
 import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
@@ -6,6 +8,16 @@ import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    RMSE,
+    SMAPE,
+    Metric,
+    PoissonLoss,
+    QuantileLoss,
+    TweedieLoss,
+)
 
 # used to prevent tkinter related errors in CI, see #1937
 if _check_soft_dependencies("matplotlib", severity="none"):
@@ -171,3 +183,29 @@ def dataloaders_fixed_window_without_covariates():
     )
 
     return _dataloader()
+
+
+cpflows_available = _check_soft_dependencies("cpflows", severity="none")
+
+
+@pytest.fixture(scope="session")
+def dataloaders_for_mqf2(data_with_covariates):
+    """
+    Session-scoped dataloaders specifically for testing MQF2DistributionLoss.
+
+    HARD REQUIREMENT 1: The fixture must round target values to integers (for MQF2).
+    HARD REQUIREMENT 2: The fixture must use GroupNormalizer(transformation="log1p").
+    """
+    pytest.importorskip("cpflows")
+    data = data_with_covariates.assign(volume=lambda x: x.volume.round())
+    return make_dataloaders(
+        data,
+        target="volume",
+        time_varying_known_reals=["price_actual"],
+        time_varying_unknown_reals=["volume"],
+        static_categoricals=["agency"],
+        add_relative_time_idx=True,
+        target_normalizer=GroupNormalizer(
+            groups=["agency", "sku"], center=False, transformation="log1p"
+        ),
+    )
