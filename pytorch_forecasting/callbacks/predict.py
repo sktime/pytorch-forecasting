@@ -6,6 +6,8 @@ from lightning.pytorch import LightningModule
 from lightning.pytorch.callbacks import BasePredictionWriter
 import torch
 
+from pytorch_forecasting.utils import detach, move_to_device
+
 
 class PredictCallback(BasePredictionWriter):
     """
@@ -66,17 +68,17 @@ class PredictCallback(BasePredictionWriter):
         else:
             raise ValueError(f"Invalid prediction mode: {self.mode}")
 
-        self.predictions.append(processed_output)
+        self.predictions.append(move_to_device(detach(processed_output), "cpu"))
 
         for key in self.return_info:
             if key == "x":
-                self.info[key].append(x)
+                self.info[key].append(move_to_device(detach(x), "cpu"))
             elif key == "y":
-                self.info[key].append(y[0])
+                self.info[key].append(move_to_device(detach(y[0]), "cpu"))
             elif key == "index":
                 self.info[key].append(y[1])
             elif key == "decoder_lengths":
-                self.info[key].append(x["decoder_lengths"])
+                self.info[key].append(x["decoder_lengths"].detach().cpu())
             else:
                 warn(f"Unknown return_info key: {key}")
 
