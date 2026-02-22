@@ -13,7 +13,7 @@ from torch.optim import Optimizer
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class xLSTMTime(BaseModel):
+class xLSTM(BaseModel):
     """
     An implementation of xLSTMTime model for v2 of pytorch-forecasting.
 
@@ -77,9 +77,9 @@ class xLSTMTime(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.xlstm._xlstm_pkg_v2 import xLSTMTime_pkg_v2
+        from pytorch_forecasting.models.xlstm._xlstm_pkg_v2 import xLSTM_pkg_v2
 
-        return xLSTMTime_pkg_v2
+        return xLSTM_pkg_v2
 
     def __init__(
         self,

@@ -20,7 +20,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer import (
 )
 from pytorch_forecasting.models.tide import TiDEModel
 from pytorch_forecasting.models.timexer import TimeXer
-from pytorch_forecasting.models.xlstm import xLSTMTime
+from pytorch_forecasting.models.xlstm import xLSTM, xLSTMTime
 
 __all__ = [
     "NBeats",
@@ -41,5 +41,6 @@ __all__ = [
     "DecoderMLP",
     "TiDEModel",
     "TimeXer",
+    "xLSTM",
     "xLSTMTime",
 ]

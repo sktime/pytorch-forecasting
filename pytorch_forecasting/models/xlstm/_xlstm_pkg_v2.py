@@ -5,11 +5,11 @@ Metadata container for xLSTMTime v2.
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class xLSTMTime_pkg_v2(Base_pkg):
-    """xLSTMTime metadata container."""
+class xLSTM_pkg_v2(Base_pkg):
+    """xLSTM metadata container."""
 
     _tags = {
-        "info:name": "xLSTMTime",
+        "info:name": "xLSTM",
         "authors": ["lucifer4073"],
         "capability:exogenous": True,
         "capability:multivariate": True,
@@ -20,9 +20,9 @@ class xLSTMTime_pkg_v2(Base_pkg):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.xlstm._xlstm_v2 import xLSTMTime
+        from pytorch_forecasting.models.xlstm._xlstm_v2 import xLSTM
 
-        return xLSTMTime
+        return xLSTM
 
     @classmethod
     def get_datamodule_cls(cls):
