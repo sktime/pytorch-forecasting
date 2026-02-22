@@ -10,11 +10,11 @@
 from typing import Any, Optional, Union
 from warnings import warn
 
+from lightning.pytorch import LightningDataModule
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from pytorch_forecasting.base._base_datamodule import _BaseDataModule
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
@@ -26,7 +26,7 @@ from pytorch_forecasting.utils._coerce import _coerce_to_dict
 NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
-class EncoderDecoderTimeSeriesDataModule(_BaseDataModule):
+class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
     """
     Lightning DataModule for processing time series data in an encoder-decoder format.
 
