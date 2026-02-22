@@ -5,7 +5,6 @@ MLP that predicts output only based on information available in the decoder
 (known future covariates).
 """
 
-
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
@@ -191,8 +190,8 @@ class DecoderMLP(BaseModel):
         seq_len = network_input.size(1)
 
         # Run through MLP: flatten time steps, apply MLP, reshape
-        prediction = self.mlp(
-            network_input.reshape(-1, self.mlp.input_size)
-        ).reshape(batch_size, seq_len, -1)
+        prediction = self.mlp(network_input.reshape(-1, self.mlp.input_size)).reshape(
+            batch_size, seq_len, -1
+        )
 
         return {"prediction": prediction}

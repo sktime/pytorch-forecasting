@@ -11,4 +11,3 @@ __all__ = [
     "DecoderMLP_pkg_v2",
     "FullyConnectedModule",
 ]
-
