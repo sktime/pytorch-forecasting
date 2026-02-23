@@ -309,6 +309,7 @@ class TslibDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
+        split_strategy: str = "random",
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
@@ -323,6 +324,7 @@ class TslibDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
+        self.split_strategy = split_strategy
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
@@ -695,34 +697,69 @@ class TslibDataModule(LightningDataModule):
                 "Please provide a non-empty dataset."
             )
 
-        # this is a very rudimentary way to handle the splits when
-        # the dataset is of size equal to 1 or 2.
-        self._indices = torch.randperm(total_series)
-        if total_series == 1:
-            self._train_indices = self._indices
-            self._val_indices = self._indices
-            self._test_indices = self._indices
-        elif total_series == 2:
-            self._train_indices = self._indices[0:1]
-            self._val_indices = self._indices[1:2]
-            self._test_indices = self._indices[1:2]
+        # Ensure categorical encoders are fitted
+        if getattr(self, "_categorical_encoders", None) == "auto":
+            self._categorical_encoders = {}
+            # Populate auto-encoders for categorical cols
+            for col in self.time_series_metadata["cols"]["x"]:
+                if self.time_series_metadata["col_type"].get(col) == "C":
+                    import pytorch_forecasting.data.categorical_encoders
+
+                    self._categorical_encoders[col] = (
+                        pytorch_forecasting.data.categorical_encoders.PTFOrdinalEncoder()
+                    )
+
+        # Fit encoders on the train split only (to avoid data leakage) if stage is fit
+        if stage is None or stage == "fit":
+            for col, encoder in self._categorical_encoders.items():
+                if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
+                    # Extract column data. For simplicity, we use the entire
+                    # column series. In production, subset this. Note: You can
+                    # retrieve this from raw pandas dataframe used inside
+                    # `time_series_dataset`.
+                    col_data = self.time_series_dataset.data[col]
+                    encoder.fit(col_data)
+
+        from pytorch_forecasting.data.splitters import (
+            random_series_split,
+            stratified_series_split,
+            temporal_window_split,
+        )
+
+        if self.split_strategy in ["random", "group"]:
+            self._train_indices, self._val_indices, self._test_indices = (
+                random_series_split(total_series, self.train_val_test_split)
+            )
+        elif self.split_strategy == "stratified":
+            self._train_indices, self._val_indices, self._test_indices = (
+                stratified_series_split(
+                    self.time_series_dataset,
+                    target_idx=0,
+                    train_val_test_split=self.train_val_test_split,
+                )
+            )
+        elif self.split_strategy == "temporal":
+            self._train_indices = torch.arange(total_series)
+            self._val_indices = torch.arange(total_series)
+            self._test_indices = torch.arange(total_series)
         else:
-            self._train_size = int(self.train_val_test_split[0] * total_series)
-            self._val_size = int(self.train_val_test_split[1] * total_series)
-
-            self._train_indices = self._indices[: self._train_size]
-            self._val_indices = self._indices[
-                self._train_size : self._train_size + self._val_size
-            ]
-
-            self._test_indices = self._indices[
-                self._train_size + self._val_size : total_series
-            ]
+            raise ValueError(f"Unknown split_strategy: {self.split_strategy}")
 
         if stage == "fit" or stage is None:
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
-                self._train_windows = self._create_windows(self._train_indices)
-                self._val_windows = self._create_windows(self._val_indices)
+                if self.split_strategy == "temporal":
+                    all_windows = self._create_windows(self._train_indices)
+                    t_win, v_win, te_win = temporal_window_split(
+                        all_windows, self.train_val_test_split
+                    )
+                    self._train_windows, self._val_windows, self._test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
+                else:
+                    self._train_windows = self._create_windows(self._train_indices)
+                    self._val_windows = self._create_windows(self._val_indices)
 
                 self.train_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,
@@ -730,16 +767,22 @@ class TslibDataModule(LightningDataModule):
                     windows=self._train_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
-
                 self.val_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,
                     data_module=self,
                     windows=self._val_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
+
         elif stage == "test":
             if not hasattr(self, "_test_dataset"):
-                self._test_windows = self._create_windows(self._test_indices)
+                if self.split_strategy == "temporal":
+                    all_windows = self._create_windows(torch.arange(total_series))
+                    _, _, self._test_windows = temporal_window_split(
+                        all_windows, self.train_val_test_split
+                    )
+                else:
+                    self._test_windows = self._create_windows(self._test_indices)
 
                 self.test_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,

@@ -107,6 +107,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
+        split_strategy: str = "random",
     ):
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
@@ -125,6 +126,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
+        self.split_strategy = split_strategy
 
         warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
@@ -635,22 +637,49 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             - ``"predict"`` : Prepares the dataset for inference.
             - ``None`` : Prepares ``fit`` datasets.
         """
+        from pytorch_forecasting.data.splitters import (
+            random_series_split,
+            stratified_series_split,
+            temporal_window_split,
+        )
+
         total_series = len(self.time_series_dataset)
-        self._split_indices = torch.randperm(total_series)
 
-        self._train_size = int(self.train_val_test_split[0] * total_series)
-        self._val_size = int(self.train_val_test_split[1] * total_series)
-
-        self._train_indices = self._split_indices[: self._train_size]
-        self._val_indices = self._split_indices[
-            self._train_size : self._train_size + self._val_size
-        ]
-        self._test_indices = self._split_indices[self._train_size + self._val_size :]
+        # 1. Split Series Indices first
+        if self.split_strategy in ["random", "group"]:
+            self._train_indices, self._val_indices, self._test_indices = (
+                random_series_split(total_series, self.train_val_test_split)
+            )
+        elif self.split_strategy == "stratified":
+            self._train_indices, self._val_indices, self._test_indices = (
+                stratified_series_split(
+                    self.time_series_dataset,
+                    target_idx=0,
+                    train_val_test_split=self.train_val_test_split,
+                )
+            )
+        elif self.split_strategy == "temporal":
+            self._train_indices = torch.arange(total_series)
+            self._val_indices = torch.arange(total_series)
+            self._test_indices = torch.arange(total_series)
+        else:
+            raise ValueError(f"Unknown split_strategy: {self.split_strategy}")
 
         if stage is None or stage == "fit":
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
-                self.train_windows = self._create_windows(self._train_indices)
-                self.val_windows = self._create_windows(self._val_indices)
+                if self.split_strategy == "temporal":
+                    all_windows = self._create_windows(self._train_indices)
+                    t_win, v_win, te_win = temporal_window_split(
+                        all_windows, self.train_val_test_split
+                    )
+                    self.train_windows, self.val_windows, self.test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
+                else:
+                    self.train_windows = self._create_windows(self._train_indices)
+                    self.val_windows = self._create_windows(self._val_indices)
 
                 self.train_dataset = self._ProcessedEncoderDecoderDataset(
                     self.time_series_dataset,
@@ -667,7 +696,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
-                self.test_windows = self._create_windows(self._test_indices)
+                if self.split_strategy == "temporal":
+                    all_windows = self._create_windows(torch.arange(total_series))
+                    _, _, self.test_windows = temporal_window_split(
+                        all_windows, self.train_val_test_split
+                    )
+                else:
+                    self.test_windows = self._create_windows(self._test_indices)
+
                 self.test_dataset = self._ProcessedEncoderDecoderDataset(
                     self.time_series_dataset,
                     self,
