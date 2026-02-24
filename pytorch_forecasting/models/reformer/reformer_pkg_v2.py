@@ -15,6 +15,7 @@ class Reformer_pkg_v2(Base_pkg):
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
+        "python_dependencies": ["reformer-pytorch"],
     }
 
     @classmethod
