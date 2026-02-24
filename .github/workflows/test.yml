@@ -155,6 +155,8 @@ jobs:
       - name: Install latest scikit-base
         shell: bash
         run: uv pip install scikit-base
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Show scikit-base after upgrade
         run: python -c "import skbase; print(skbase.__version__)"
