@@ -149,17 +149,11 @@ jobs:
           UV_SYSTEM_PYTHON: 1
           UV_EXCLUDE_NEWER: "2025-01-01"
 
-      - name: Show scikit-base after capped install
-        run: python -c "import skbase; print(skbase.__version__)"
-
       - name: Install latest scikit-base
         shell: bash
-        run: uv pip install scikit-base
+        run: uv pip install --upgrade-package scikit-base ".[dev, github-actions]"
         env:
           UV_SYSTEM_PYTHON: 1
-
-      - name: Show scikit-base after upgrade
-        run: python -c "import skbase; print(skbase.__version__)"
 
       - name: Show dependencies
         run: python -m pip list
