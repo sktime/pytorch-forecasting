@@ -35,9 +35,9 @@ class TIDE(BaseModel):
         activation: str = "",
         embs: list[int] = [],
         persistence_weight: float = 0.0,
-        optim: Union[str, None] = None,
-        optim_config: Union[dict, None] = None,
-        scheduler_config: Union[dict, None] = None,
+        optim: str | None = None,
+        optim_config: dict | None = None,
+        scheduler_config: dict | None = None,
         **kwargs,
     ) -> None:
         """Initialise the model.
@@ -79,7 +79,7 @@ class TIDE(BaseModel):
         """
 
         super().__init__(loss=loss)
-        self.save_hyperparameters(logger=False)
+        self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.dropout = dropout_rate
         self.persistence_weight = persistence_weight

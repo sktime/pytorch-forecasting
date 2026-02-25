@@ -42,11 +42,13 @@ class PoissonLoss(MultiHorizonMetric):
             reduction="none",
         )
 
-    def to_prediction(self, out: dict[str, torch.Tensor]):
+    def to_prediction(self, out: dict[str, torch.Tensor]) -> torch.Tensor:
         rate = torch.exp(super().to_prediction(out))
         return rate
 
-    def to_quantiles(self, out: dict[str, torch.Tensor], quantiles=None):
+    def to_quantiles(
+        self, out: dict[str, torch.Tensor], quantiles: list[float] = None
+    ) -> torch.Tensor:
         if quantiles is None:
             if self.quantiles is None:
                 quantiles = [0.5]
@@ -75,7 +77,9 @@ class SMAPE(MultiHorizonMetric):
     Defined as ``2*(y - y_pred).abs() / (y.abs() + y_pred.abs())``
     """
 
-    def loss(self, y_pred, target):
+    def loss(
+        self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
+    ) -> torch.Tensor:
         y_pred = self.to_prediction(y_pred)
         loss = 2 * (y_pred - target).abs() / (y_pred.abs() + target.abs() + 1e-8)
         return loss
@@ -88,7 +92,9 @@ class MAPE(MultiHorizonMetric):
     Defined as ``(y - y_pred).abs() / y.abs()``
     """
 
-    def loss(self, y_pred, target):
+    def loss(
+        self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
+    ) -> torch.Tensor:
         loss = (self.to_prediction(y_pred) - target).abs() / (target.abs() + 1e-8)
         return loss
 
@@ -100,7 +106,9 @@ class MAE(MultiHorizonMetric):
     Defined as ``(y_pred - target).abs()``
     """
 
-    def loss(self, y_pred, target):
+    def loss(
+        self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
+    ) -> torch.Tensor:
         loss = (self.to_prediction(y_pred) - target).abs()
         return loss
 
@@ -110,7 +118,7 @@ class CrossEntropy(MultiHorizonMetric):
     Cross entropy loss for classification.
     """
 
-    def loss(self, y_pred, target):
+    def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         loss = F.cross_entropy(
             y_pred.view(-1, y_pred.size(-1)), target.view(-1), reduction="none"
         ).view(-1, target.size(-1))
@@ -123,7 +131,7 @@ class CrossEntropy(MultiHorizonMetric):
         Returns best label
 
         Args:
-            y_pred: prediction output of network
+            y_pred (torch.Tensor): prediction output of network
 
         Returns:
             torch.Tensor: point prediction
@@ -137,8 +145,8 @@ class CrossEntropy(MultiHorizonMetric):
         Convert network prediction into a quantile prediction.
 
         Args:
-            y_pred: prediction output of network
-            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+            y_pred (torch.Tensor): prediction output of network
+            quantiles (list[float], optional): quantiles for probability range. Defaults to quantiles as
                 as defined in the class initialization.
 
         Returns:
@@ -149,15 +157,21 @@ class CrossEntropy(MultiHorizonMetric):
 
 class RMSE(MultiHorizonMetric):
     """
-    Root mean square error
+    Root mean square error.
 
-    Defined as ``(y_pred - target)**2``
+    Defined as `sqrt(mean((y_pred - target)**2))`.
+
+    Note: The square root is applied during the reduction step via
+    the `sqrt-mean` strategy, while the `loss` method calculates
+    the squared error.
     """
 
     def __init__(self, reduction="sqrt-mean", **kwargs):
         super().__init__(reduction=reduction, **kwargs)
 
-    def loss(self, y_pred: dict[str, torch.Tensor], target):
+    def loss(
+        self, y_pred: dict[str, torch.Tensor], target: torch.Tensor
+    ) -> torch.Tensor:
         loss = torch.pow(self.to_prediction(y_pred) - target, 2)
         return loss
 
@@ -191,7 +205,7 @@ class MASE(MultiHorizonMetric):
             torch.Tensor: loss as a single number for backpropagation
         """  # noqa: E501
         # unpack weight
-        if isinstance(target, (list, tuple)):
+        if isinstance(target, list | tuple):
             weight = target[1]
             target = target[0]
         else:
@@ -227,7 +241,12 @@ class MASE(MultiHorizonMetric):
 
         self._update_losses_and_lengths(losses, lengths)
 
-    def loss(self, y_pred, target, scaling):
+    def loss(
+        self,
+        y_pred: dict[str, torch.Tensor],
+        target: torch.Tensor,
+        scaling: torch.Tensor,
+    ) -> torch.Tensor:
         return (self.to_prediction(y_pred) - target).abs() / scaling.unsqueeze(-1)
 
     @staticmethod
@@ -323,7 +342,9 @@ class TweedieLoss(MultiHorizonMetric):
         rate = torch.exp(super().to_prediction(out))
         return rate
 
-    def loss(self, y_pred, y_true):
+    def loss(
+        self, y_pred: dict[str, torch.Tensor], y_true: torch.Tensor
+    ) -> torch.Tensor:
         y_pred = super().to_prediction(y_pred)
         a = y_true * torch.exp(y_pred * (1 - self.p)) / (1 - self.p)
         b = torch.exp(y_pred * (2 - self.p)) / (2 - self.p)

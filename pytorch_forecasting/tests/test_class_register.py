@@ -20,7 +20,9 @@ def get_test_class_registry():
         keys are scitypes, values are test classes TestAll[Scitype]
     """
     from pytorch_forecasting.tests.test_all_estimators import TestAllPtForecasters
-    from pytorch_forecasting.tests.test_all_estimators_v2 import TestAllPtForecastersV2
+    from pytorch_forecasting.tests.test_all_v2.test_all_estimators_v2 import (
+        TestAllPtForecastersV2,
+    )
 
     testclass_dict = dict()
     testclass_dict["forecaster_pytorch_v1"] = TestAllPtForecasters
@@ -51,7 +53,7 @@ def get_test_classes_for_obj(obj):
 
     if hasattr(obj, "get_class_tag"):
         obj_scitypes = obj.get_class_tag("object_type")
-        if not isinstance(obj_scitypes, (list, tuple, set)):
+        if not isinstance(obj_scitypes, list | tuple | set):
             obj_scitypes = [obj_scitypes]
     else:
         obj_scitypes = []

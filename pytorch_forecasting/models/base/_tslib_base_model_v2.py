@@ -38,12 +38,12 @@ class TslibBaseModel(BaseModel):
     def __init__(
         self,
         loss: Metric,
-        logging_metrics: Optional[list[nn.Module]] = None,
-        optimizer: Optional[Union[Optimizer, str]] = "adam",
-        optimizer_params: Optional[dict] = None,
-        lr_scheduler: Optional[str] = None,
-        lr_scheduler_params: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
     ):
         super().__init__(
             loss=loss,
@@ -149,11 +149,12 @@ class TslibBaseModel(BaseModel):
 
     def transform_output(
         self,
-        y_hat: Union[
-            torch.Tensor, list[torch.Tensor]
+        y_hat: torch.Tensor
+        | list[
+            torch.Tensor
         ],  # evidenced from TimeXer implementation - in PR #1797  # noqa: E501
-        target_scale: Optional[dict[str, torch.Tensor]],
-    ) -> Union[torch.Tensor, list[torch.Tensor]]:
+        target_scale: dict[str, torch.Tensor] | None,
+    ) -> torch.Tensor | list[torch.Tensor]:
         """
         Transform the output of the model to the original scale.
 

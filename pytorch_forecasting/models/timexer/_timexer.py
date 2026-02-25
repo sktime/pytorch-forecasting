@@ -60,25 +60,26 @@ class TimeXer(BaseModelWithCovariates):
         d_ff: int = 1024,
         dropout: float = 0.2,
         activation: str = "relu",
+        use_efficient_attention: bool = False,
         patch_length: int = 16,
         factor: int = 5,
         embed_type: str = "fixed",
         freq: str = "h",
-        output_size: Union[int, list[int]] = 1,
+        output_size: int | list[int] = 1,
         loss: MultiHorizonMetric = None,
         learning_rate: float = 1e-3,
-        static_categoricals: Optional[list[str]] = None,
-        static_reals: Optional[list[str]] = None,
-        time_varying_categoricals_encoder: Optional[list[str]] = None,
-        time_varying_categoricals_decoder: Optional[list[str]] = None,
-        time_varying_reals_encoder: Optional[list[str]] = None,
-        time_varying_reals_decoder: Optional[list[str]] = None,
-        x_reals: Optional[list[str]] = None,
-        x_categoricals: Optional[list[str]] = None,
-        embedding_sizes: Optional[dict[str, tuple[int, int]]] = None,
-        embedding_labels: Optional[list[str]] = None,
-        embedding_paddings: Optional[list[str]] = None,
-        categorical_groups: Optional[dict[str, list[str]]] = None,
+        static_categoricals: list[str] | None = None,
+        static_reals: list[str] | None = None,
+        time_varying_categoricals_encoder: list[str] | None = None,
+        time_varying_categoricals_decoder: list[str] | None = None,
+        time_varying_reals_encoder: list[str] | None = None,
+        time_varying_reals_decoder: list[str] | None = None,
+        x_reals: list[str] | None = None,
+        x_categoricals: list[str] | None = None,
+        embedding_sizes: dict[str, tuple[int, int]] | None = None,
+        embedding_labels: list[str] | None = None,
+        embedding_paddings: list[str] | None = None,
+        categorical_groups: dict[str, list[str]] | None = None,
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
@@ -118,6 +119,13 @@ class TimeXer(BaseModelWithCovariates):
             regularization.
         activation (str, optional): Activation function used in feedforward networks
             ('relu' or 'gelu').
+        use_efficient_attention (bool, optional): If set to True, will use
+            PyTorch's native, optimized Scaled Dot Product Attention
+            implementation which can reduce computation time and memory
+            consumption for longer sequences. PyTorch automatically selects the
+            optimal backend (FlashAttention-2, Memory-Efficient Attention, or
+            their own C++ implementation) based on user's input properties,
+            hardware capabilities, and build configuration.
         patch_length (int, optional): Length of each non-overlapping patch for
             endogenous variable tokenization.
         use_norm (bool, optional): Whether to apply normalization to input data.
@@ -263,6 +271,7 @@ class TimeXer(BaseModelWithCovariates):
                             self.hparams.factor,
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.hparams.use_efficient_attention,
                         ),
                         self.hparams.hidden_size,
                         self.hparams.n_heads,
@@ -273,6 +282,7 @@ class TimeXer(BaseModelWithCovariates):
                             self.hparams.factor,
                             attention_dropout=self.hparams.dropout,
                             output_attention=False,
+                            use_efficient_attention=self.hparams.use_efficient_attention,
                         ),
                         self.hparams.hidden_size,
                         self.hparams.n_heads,

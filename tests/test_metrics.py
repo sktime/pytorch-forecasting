@@ -3,6 +3,7 @@ import itertools
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 from torch.nn.utils import rnn
 
@@ -23,7 +24,6 @@ from pytorch_forecasting.metrics.base_metrics import (
     AggregationMetric,
     CompositeMetric,
 )
-from pytorch_forecasting.utils._dependencies import _get_installed_packages
 
 
 def test_composite_metric():
@@ -393,7 +393,7 @@ def mock_device(request):
             patch(
                 "torch.Tensor.to",
                 new=lambda self, device, *args, **kwargs: self.clone()
-                if isinstance(device, (str, torch.device))
+                if isinstance(device, str | torch.device)
                 and str(device).startswith("cuda")
                 else self,
             ),
@@ -412,7 +412,7 @@ def mock_device(request):
 
 
 @pytest.mark.skipif(
-    "cpflows" not in _get_installed_packages(),
+    not _check_soft_dependencies("cpflows", severity="none"),
     reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
 )
 def test_MQF2DistributionLoss_device_handling(mock_device):
@@ -444,7 +444,7 @@ device_params = [
 
 
 @pytest.mark.skipif(
-    "cpflows" not in _get_installed_packages(),
+    not _check_soft_dependencies("cpflows", severity="none"),
     reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
 )
 @pytest.mark.parametrize("device", device_params)
@@ -496,7 +496,7 @@ def test_MQF2DistributionLoss_full_workflow(sample_dataset, device):
 
 
 @pytest.mark.skipif(
-    "cpflows" not in _get_installed_packages(),
+    not _check_soft_dependencies("cpflows", severity="none"),
     reason="cpflows is not installed, skipping MQF2DistributionLoss tests",
 )
 def test_MQF2DistributionLoss_device_synchronization(mock_device, sample_dataset):

@@ -2,8 +2,9 @@
 Base classes for metrics - only for inheritance.
 """
 
+from collections.abc import Callable
 import inspect
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 import warnings
 
 from sklearn.base import BaseEstimator
@@ -196,7 +197,7 @@ class TorchMetricWrapper(Metric):
         self, y_pred: torch.Tensor, target: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
         # unpack target into target and weights
-        if isinstance(target, (list, tuple)) and not isinstance(
+        if isinstance(target, list | tuple) and not isinstance(
             target, rnn.PackedSequence
         ):
             target, weight = target
@@ -257,7 +258,7 @@ def convert_torchmetric_to_pytorch_forecasting_metric(
     Returns:
         Metric: PyTorch Forecasting metric
     """
-    if not isinstance(metric, (Metric, MultiLoss, CompositeMetric)):
+    if not isinstance(metric, Metric | MultiLoss | CompositeMetric):
         return TorchMetricWrapper(metric)
     else:
         return metric
@@ -335,7 +336,7 @@ class MultiLoss(LightningMetric):
                     y_pred[idx],
                     (y_actual[0][idx], y_actual[1]),
                     **{
-                        name: value[idx] if isinstance(value, (list, tuple)) else value
+                        name: value[idx] if isinstance(value, list | tuple) else value
                         for name, value in kwargs.items()
                     },
                 )
@@ -379,7 +380,7 @@ class MultiLoss(LightningMetric):
                     y_pred[idx],
                     (y_actual[0][idx], y_actual[1]),
                     **{
-                        name: value[idx] if isinstance(value, (list, tuple)) else value
+                        name: value[idx] if isinstance(value, list | tuple) else value
                         for name, value in kwargs.items()
                     },
                 )
@@ -398,8 +399,8 @@ class MultiLoss(LightningMetric):
 
     def _sync_dist(
         self,
-        dist_sync_fn: Optional[Callable] = None,
-        process_group: Optional[Any] = None,
+        dist_sync_fn: Callable | None = None,
+        process_group: Any | None = None,
     ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
@@ -497,7 +498,7 @@ class MultiLoss(LightningMetric):
                             new_args = [
                                 (
                                     arg[idx]
-                                    if isinstance(arg, (list, tuple))
+                                    if isinstance(arg, list | tuple)
                                     and not isinstance(arg, rnn.PackedSequence)
                                     and len(arg) == n
                                     else arg
@@ -545,8 +546,8 @@ class CompositeMetric(LightningMetric):
 
     def __init__(
         self,
-        metrics: Optional[list[LightningMetric]] = None,
-        weights: Optional[list[float]] = None,
+        metrics: list[LightningMetric] | None = None,
+        weights: list[float] | None = None,
     ):
         """
         Args:
@@ -643,8 +644,8 @@ class CompositeMetric(LightningMetric):
 
     def _sync_dist(
         self,
-        dist_sync_fn: Optional[Callable] = None,
-        process_group: Optional[Any] = None,
+        dist_sync_fn: Callable | None = None,
+        process_group: Any | None = None,
     ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
@@ -739,7 +740,7 @@ class AggregationMetric(Metric):
         y_pred: torch.Tensor, y_actual: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
         # extract target and weight
-        if isinstance(y_actual, (tuple, list)) and not isinstance(
+        if isinstance(y_actual, tuple | list) and not isinstance(
             y_actual, rnn.PackedSequence
         ):
             target, weight = y_actual
@@ -797,8 +798,8 @@ class AggregationMetric(Metric):
 
     def _sync_dist(
         self,
-        dist_sync_fn: Optional[Callable] = None,
-        process_group: Optional[Any] = None,
+        dist_sync_fn: Callable | None = None,
+        process_group: Any | None = None,
     ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
@@ -844,7 +845,7 @@ class MultiHorizonMetric(Metric):
 
         Args:
             y_pred: network output
-            y_actual: actual values
+            target: actual values
 
         Returns:
             torch.Tensor: loss/metric as a single number for backpropagation
@@ -865,7 +866,7 @@ class MultiHorizonMetric(Metric):
             torch.Tensor: loss as a single number for backpropagation
         """
         # unpack weight
-        if isinstance(target, (list, tuple)) and not isinstance(
+        if isinstance(target, list | tuple) and not isinstance(
             target, rnn.PackedSequence
         ):
             target, weight = target
@@ -1002,7 +1003,7 @@ class DistributionLoss(MultiHorizonMetric):
     def __init__(
         self,
         name: str = None,
-        quantiles: Optional[list[float]] = None,
+        quantiles: list[float] | None = None,
         reduction="mean",
     ):
         """
@@ -1020,7 +1021,7 @@ class DistributionLoss(MultiHorizonMetric):
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
         """
-        Map the a tensor of parameters to a probability distribution.
+        Map the tensor of parameters to a probability distribution.
 
         Args:
             x (torch.Tensor): parameters for probability distribution. Last dimension will index the parameters
