@@ -293,19 +293,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, series_idx: torch.Tensor) -> list[dict[str, Any]]:
-        """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
+    def _preprocess_data(self, series_idx: torch.Tensor) -> dict[str, Any]:
+        """Preprocess data before feeding into the dataset.
 
-        Preprocessing steps
-        --------------------
-
-        * Converts target (`y`) and features (`x`) to `torch.float32`.
-        * Masks time points that are at or before the cutoff time.
-        * Splits features into categorical and continuous subsets based on
-            predefined indices.
-
-
-        TODO: add scalers, target normalizers etc.
+        Handles type conversion, masking, feature splitting, and optional
+        normalization/scaling of targets and continuous features.
         """
         sample = self.time_series_dataset[series_idx]
 
@@ -316,6 +308,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
 
+        # Convert to float32 tensors
         if isinstance(target, torch.Tensor):
             target = target.float()
         else:
@@ -326,8 +319,31 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         else:
             features = torch.tensor(features, dtype=torch.float32)
 
-        # TODO: add scalers, target normalizers etc.
+        # Normalize target if a normalizer is provided
+        target_scale = None
+        target_normalizer = (
+            getattr(self, "_target_normalizer", None) or self.target_normalizer
+        )
+        if target_normalizer is not None and target_normalizer != "auto":
+            if hasattr(target_normalizer, "get_parameters"):
+                needs_unsqueeze = target.ndim == 2 and target.shape[-1] == 1
+                target_1d = target.squeeze(-1) if needs_unsqueeze else target
 
+                if (
+                    not hasattr(target_normalizer, "center_")
+                    or target_normalizer.center_ is None
+                ):
+                    target_normalizer.fit(target_1d)
+
+                target_1d = target_normalizer.transform(target_1d)
+                target_scale = target_normalizer.get_parameters()
+
+                if needs_unsqueeze and isinstance(target_1d, torch.Tensor):
+                    target = target_1d.unsqueeze(-1)
+                else:
+                    target = target_1d
+
+        # Split into categorical and continuous features
         categorical = (
             features[:, self.categorical_indices]
             if self.categorical_indices
@@ -339,7 +355,64 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             else torch.zeros((features.shape[0], 0))
         )
 
-        return {
+        # Scale continuous features if scalers are provided
+        if (
+            self.scalers is not None
+            and len(self.scalers) > 0
+            and continuous.shape[1] > 0
+        ):
+            from sklearn.utils.validation import check_is_fitted
+
+            scaled_continuous = continuous.clone()
+            feature_names = self.time_series_metadata.get("cols", {}).get("x", [])
+
+            # Validate that all scaler keys correspond to known features
+            known_names = set(feature_names)
+            known_indices = {str(i) for i in self.continuous_indices}
+            for key in self.scalers:
+                if key not in known_names and key not in known_indices:
+                    raise ValueError(
+                        f"Scaler key '{key}' does not match any known feature. "
+                        f"Available features: {sorted(known_names)}, "
+                        f"available indices: {sorted(known_indices)}"
+                    )
+
+            for idx, feat_idx in enumerate(self.continuous_indices):
+                feature_name = None
+                scaler = None
+
+                if feat_idx < len(feature_names):
+                    feature_name = feature_names[feat_idx]
+
+                if feature_name and feature_name in self.scalers:
+                    scaler = self.scalers[feature_name]
+                elif str(feat_idx) in self.scalers:
+                    scaler = self.scalers[str(feat_idx)]
+
+                if scaler is not None:
+                    feature_col = continuous[:, idx : idx + 1]
+
+                    if isinstance(scaler, (StandardScaler, RobustScaler)):
+                        try:
+                            check_is_fitted(scaler)
+                        except Exception:
+                            scaler.fit(feature_col.numpy())
+
+                        scaled_col = scaler.transform(feature_col.numpy())
+                        scaled_continuous[:, idx : idx + 1] = torch.from_numpy(
+                            scaled_col
+                        ).float()
+
+                    elif isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
+                        if not hasattr(scaler, "center_") or scaler.center_ is None:
+                            scaler.fit(feature_col)
+
+                        scaled_col = scaler.transform(feature_col)
+                        scaled_continuous[:, idx : idx + 1] = scaled_col.float()
+
+            continuous = scaled_continuous
+
+        result = {
             "features": {"categorical": categorical, "continuous": continuous},
             "target": target,
             "static": sample.get("st", None),
@@ -349,6 +422,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "times": times,
             "cutoff_time": cutoff_time,
         }
+
+        # Store normalization params for inverse transform during prediction
+        if target_scale is not None:
+            result["target_scale"] = target_scale
+
+        return result
 
     class _ProcessedEncoderDecoderDataset(Dataset):
         """PyTorch Dataset for processed encoder-decoder time series data.
