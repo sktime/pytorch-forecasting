@@ -167,12 +167,9 @@ def test_continuous_feature_scaling_applied(deterministic_timeseries_data):
         feat2_scaled = continuous[:, 1].float()
 
         feat1_mean = feat1_scaled.mean().item()
-        feat1_std = feat1_scaled.std().item()
         feat2_mean = feat2_scaled.mean().item()
-        feat2_std = feat2_scaled.std().item()
 
-        # Note: For a single series, normalization may not be exactly 0/1, but should be scaled
-        # We check that values are in reasonable range (not original scale)
+        # Single series may not be exactly 0/1 normalized; check reasonable range.
         assert (
             abs(feat1_mean) < 10.0
         ), f"Scaled feature1 mean should be reasonable, got {feat1_mean}"
@@ -208,9 +205,10 @@ def test_scaling_parameters_stored_for_inverse(deterministic_timeseries_data):
     assert stored_params.shape == (
         2,
     ), f"target_scale should be (2,), got {stored_params.shape}"
-    assert torch.allclose(
-        stored_params.float(), expected_params.float(), atol=1e-4
-    ), f"Stored parameters should match normalizer parameters. Got {stored_params}, expected {expected_params}"
+    assert torch.allclose(stored_params.float(), expected_params.float(), atol=1e-4), (
+        "Stored parameters should match normalizer parameters. "
+        f"Got {stored_params}, expected {expected_params}"
+    )
 
 
 def test_preprocessing_is_deterministic(deterministic_timeseries_data):
@@ -296,7 +294,7 @@ def test_preprocessing_with_no_scalers_pass_through(deterministic_timeseries_dat
 
 
 def test_preprocessing_with_missing_feature_raises_error(deterministic_timeseries_data):
-    """Test that preprocessing raises appropriate error for missing features in scalers."""
+    """Test that preprocessing raises error for missing features in scalers."""
     # Create scaler for non-existent feature
     fake_scaler = StandardScaler()
     fake_scaler.fit(np.array([[1.0], [2.0], [3.0]]))
