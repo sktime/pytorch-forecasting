@@ -8,8 +8,8 @@ correctly applies target normalization and continuous feature scaling when provi
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
-from sklearn.preprocessing import StandardScaler, RobustScaler
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.encoders import TorchNormalizer
@@ -93,16 +93,26 @@ def test_target_normalization_applied(deterministic_timeseries_data):
     series_idx = dm._train_indices[0]
     processed = dm._preprocess_data(series_idx)
 
-    assert "target_scale" in processed, "target_scale should be stored when target_normalizer is provided"
-    assert isinstance(processed["target_scale"], torch.Tensor), "target_scale should be a torch.Tensor"
-    assert processed["target_scale"].shape == (2,), "target_scale should have shape [center, scale]"
+    assert (
+        "target_scale" in processed
+    ), "target_scale should be stored when target_normalizer is provided"
+    assert isinstance(
+        processed["target_scale"], torch.Tensor
+    ), "target_scale should be a torch.Tensor"
+    assert processed["target_scale"].shape == (
+        2,
+    ), "target_scale should have shape [center, scale]"
 
     normalized_target = processed["target"].float().squeeze(-1)
     target_mean = normalized_target.mean().item()
     target_std = normalized_target.std().item()
 
-    assert abs(target_mean) < 1e-4, f"Normalized target mean should be ~0, got {target_mean}"
-    assert abs(target_std - 1.0) < 0.15, f"Normalized target std should be ~1, got {target_std}"
+    assert (
+        abs(target_mean) < 1e-4
+    ), f"Normalized target mean should be ~0, got {target_mean}"
+    assert (
+        abs(target_std - 1.0) < 0.15
+    ), f"Normalized target std should be ~1, got {target_std}"
 
 
 def test_continuous_feature_scaling_applied(deterministic_timeseries_data):
@@ -147,7 +157,9 @@ def test_continuous_feature_scaling_applied(deterministic_timeseries_data):
 
     # Verify continuous features are scaled
     continuous = processed["features"]["continuous"]
-    assert isinstance(continuous, torch.Tensor), "Continuous features should be torch.Tensor"
+    assert isinstance(
+        continuous, torch.Tensor
+    ), "Continuous features should be torch.Tensor"
 
     # Check that features are normalized (mean ~0, std ~1 for each feature)
     if continuous.shape[1] >= 2:
@@ -161,8 +173,12 @@ def test_continuous_feature_scaling_applied(deterministic_timeseries_data):
 
         # Note: For a single series, normalization may not be exactly 0/1, but should be scaled
         # We check that values are in reasonable range (not original scale)
-        assert abs(feat1_mean) < 10.0, f"Scaled feature1 mean should be reasonable, got {feat1_mean}"
-        assert abs(feat2_mean) < 10.0, f"Scaled feature2 mean should be reasonable, got {feat2_mean}"
+        assert (
+            abs(feat1_mean) < 10.0
+        ), f"Scaled feature1 mean should be reasonable, got {feat1_mean}"
+        assert (
+            abs(feat2_mean) < 10.0
+        ), f"Scaled feature2 mean should be reasonable, got {feat2_mean}"
 
 
 def test_scaling_parameters_stored_for_inverse(deterministic_timeseries_data):
@@ -189,9 +205,12 @@ def test_scaling_parameters_stored_for_inverse(deterministic_timeseries_data):
 
     assert "target_scale" in processed
     stored_params = processed["target_scale"]
-    assert stored_params.shape == (2,), f"target_scale should be (2,), got {stored_params.shape}"
-    assert torch.allclose(stored_params.float(), expected_params.float(), atol=1e-4), \
-        f"Stored parameters should match normalizer parameters. Got {stored_params}, expected {expected_params}"
+    assert stored_params.shape == (
+        2,
+    ), f"target_scale should be (2,), got {stored_params.shape}"
+    assert torch.allclose(
+        stored_params.float(), expected_params.float(), atol=1e-4
+    ), f"Stored parameters should match normalizer parameters. Got {stored_params}, expected {expected_params}"
 
 
 def test_preprocessing_is_deterministic(deterministic_timeseries_data):
@@ -213,13 +232,16 @@ def test_preprocessing_is_deterministic(deterministic_timeseries_data):
     processed1 = dm._preprocess_data(series_idx)
     processed2 = dm._preprocess_data(series_idx)
 
-    assert torch.equal(processed1["target"], processed2["target"]), \
-        "Preprocessing should be deterministic - same input should produce same output"
-    assert torch.equal(processed1["features"]["continuous"], processed2["features"]["continuous"]), \
-        "Continuous features should be deterministic"
+    assert torch.equal(
+        processed1["target"], processed2["target"]
+    ), "Preprocessing should be deterministic - same input should produce same output"
+    assert torch.equal(
+        processed1["features"]["continuous"], processed2["features"]["continuous"]
+    ), "Continuous features should be deterministic"
     if "target_scale" in processed1:
-        assert torch.equal(processed1["target_scale"], processed2["target_scale"]), \
-            "Target scale should be deterministic"
+        assert torch.equal(
+            processed1["target_scale"], processed2["target_scale"]
+        ), "Target scale should be deterministic"
 
 
 def test_preprocessing_with_no_scalers_pass_through(deterministic_timeseries_data):
@@ -249,8 +271,9 @@ def test_preprocessing_with_no_scalers_pass_through(deterministic_timeseries_dat
 
     processed_target = processed["target"].float()
 
-    assert torch.allclose(original_target, processed_target, atol=1e-5), \
-        "Target should pass through unchanged when no normalizer is provided"
+    assert torch.allclose(
+        original_target, processed_target, atol=1e-5
+    ), "Target should pass through unchanged when no normalizer is provided"
 
     # Verify continuous features are unchanged (within float conversion)
     original_features = original_sample["x"]
@@ -267,8 +290,9 @@ def test_preprocessing_with_no_scalers_pass_through(deterministic_timeseries_dat
 
     processed_continuous = processed["features"]["continuous"].float()
 
-    assert torch.allclose(original_continuous, processed_continuous, atol=1e-5), \
-        "Continuous features should pass through unchanged when no scalers are provided"
+    assert torch.allclose(
+        original_continuous, processed_continuous, atol=1e-5
+    ), "Continuous features should pass through unchanged when no scalers are provided"
 
 
 def test_preprocessing_with_missing_feature_raises_error(deterministic_timeseries_data):
@@ -290,7 +314,9 @@ def test_preprocessing_with_missing_feature_raises_error(deterministic_timeserie
     series_idx = dm._train_indices[0]
 
     # Should raise ValueError when scaler is provided for feature that doesn't exist
-    with pytest.raises((ValueError, KeyError), match=".*feature.*|.*scaler.*|.*nonexistent.*"):
+    with pytest.raises(
+        (ValueError, KeyError), match=".*feature.*|.*scaler.*|.*nonexistent.*"
+    ):
         dm._preprocess_data(series_idx)
 
 
@@ -328,6 +354,7 @@ def test_preprocessing_with_robust_scaler(deterministic_timeseries_data):
 
     # Verify continuous features are processed
     continuous = processed["features"]["continuous"]
-    assert isinstance(continuous, torch.Tensor), "Continuous features should be torch.Tensor"
+    assert isinstance(
+        continuous, torch.Tensor
+    ), "Continuous features should be torch.Tensor"
     assert continuous.shape[1] >= 1, "Should have at least one continuous feature"
-
