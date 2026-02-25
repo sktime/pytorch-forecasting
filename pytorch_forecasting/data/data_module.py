@@ -321,22 +321,27 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         # Normalize target if a normalizer is provided
         target_scale = None
-        # Handle both target_normalizer and _target_normalizer (for "auto" case)
         target_normalizer = (
             getattr(self, "_target_normalizer", None) or self.target_normalizer
         )
         if target_normalizer is not None and target_normalizer != "auto":
-            # Only process TorchNormalizer instances (they have get_parameters)
             if hasattr(target_normalizer, "get_parameters"):
-                # Fit if not already fitted
+                needs_unsqueeze = target.ndim == 2 and target.shape[-1] == 1
+                target_1d = target.squeeze(-1) if needs_unsqueeze else target
+
                 if (
                     not hasattr(target_normalizer, "center_")
                     or target_normalizer.center_ is None
                 ):
-                    target_normalizer.fit(target)
+                    target_normalizer.fit(target_1d)
 
-                target = target_normalizer.transform(target)
+                target_1d = target_normalizer.transform(target_1d)
                 target_scale = target_normalizer.get_parameters()
+
+                if needs_unsqueeze and isinstance(target_1d, torch.Tensor):
+                    target = target_1d.unsqueeze(-1)
+                else:
+                    target = target_1d
 
         # Split into categorical and continuous features
         categorical = (
@@ -361,16 +366,24 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             scaled_continuous = continuous.clone()
             feature_names = self.time_series_metadata.get("cols", {}).get("x", [])
 
-            # Apply scaler to each continuous feature
+            # Validate that all scaler keys correspond to known features
+            known_names = set(feature_names)
+            known_indices = {str(i) for i in self.continuous_indices}
+            for key in self.scalers:
+                if key not in known_names and key not in known_indices:
+                    raise ValueError(
+                        f"Scaler key '{key}' does not match any known feature. "
+                        f"Available features: {sorted(known_names)}, "
+                        f"available indices: {sorted(known_indices)}"
+                    )
+
             for idx, feat_idx in enumerate(self.continuous_indices):
                 feature_name = None
                 scaler = None
 
-                # Get feature name from metadata if available
                 if feat_idx < len(feature_names):
                     feature_name = feature_names[feat_idx]
 
-                # Look up scaler by name or index
                 if feature_name and feature_name in self.scalers:
                     scaler = self.scalers[feature_name]
                 elif str(feat_idx) in self.scalers:
@@ -379,7 +392,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 if scaler is not None:
                     feature_col = continuous[:, idx : idx + 1]
 
-                    # sklearn scalers return numpy arrays
                     if isinstance(scaler, (StandardScaler, RobustScaler)):
                         try:
                             check_is_fitted(scaler)
@@ -391,7 +403,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                             scaled_col
                         ).float()
 
-                    # torch normalizers work directly with tensors
                     elif isinstance(scaler, (TorchNormalizer, EncoderNormalizer)):
                         if not hasattr(scaler, "center_") or scaler.center_ is None:
                             scaler.fit(feature_col)
