@@ -5,23 +5,61 @@ Utilities
 
 This module provides utility functions for data manipulation, preprocessing, and common operations.
 
-Package/Helper Functions
-------------------------
+Core Utilities
+---------------
 
 .. autosummary::
    :toctree: ../api
 
-   to_pandas
    create_mask
-   create_features
-   apply_scaling
-   inverse_scaling
+   apply_to_list
+   to_list
+   concat_sequences
+   unpack_sequence
+   unsqueeze_like
+   get_embedding_size
+   detach
+   masked_op
+   move_to_device
+   padded_stack
+   groupby_apply
+   integer_histogram
+   autocorrelation
 
-Configuration Utilities
+network Components:
+-------------------
+
+.. autosummary::
+   :toctree: ../api
+
+   RecurrentNetwork
+   DecoderMLP
+
+Mixins
+------
+
+.. autosummary::
+   :toctree: ../api
+
+   InitialParameterRepresenterMixIn
+   OutputMixIn
+   TupleOutputMixIn
+
+Development / Profiling
 -----------------------
 
 .. autosummary::
    :toctree: ../api
 
-   get_default_config
-   set_default_config
+   profile
+   redirect_stdout
+   repr_class
+
+Estimator Checks
+----------------
+
+.. autosummary::
+   :toctree: ../api
+
+   check_estimator
+   parametrize_with_checks

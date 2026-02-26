@@ -4,38 +4,46 @@ Models
 .. currentmodule:: pytorch_forecasting.models
 
 This module contains neural network architectures for time series forecasting.
-Models are organized by their type: standard architectures, ensemble methods, and experimental versions.
+Models are organized by their type: forecasting models, base classes, and building blocks.
 
-Neural Networks
----------------
+Forecasting Models
+------------------
 
 .. autosummary::
    :toctree: ../api
 
    TemporalFusionTransformer
    NBeats
+   NBeatsKAN
+   NHiTS
    DeepAR
-   Transformer
-   LSTM
+   DLinear
+   RecurrentNetwork
+   TiDEModel
+   TimeXer
+   xLSTMTime
+   Baseline
+   DecoderMLP
+   Samformer
 
-Package Containers
--------------------
+Base Classes
+------------
 
 .. autosummary::
    :toctree: ../api
 
    BaseModel
-   MultiHorizonMetricMixin
+   BaseModelWithCovariates
+   AutoRegressiveBaseModel
+   AutoRegressiveBaseModelWithCovariates
 
-V2 Objects (Beta)
-------------------
-
-.. note::
-   The following models are experimental and part of the v2 API.
-   Expect breaking changes in future releases.
+Building Blocks (NN)
+--------------------
 
 .. autosummary::
    :toctree: ../api
 
-   DeepARv2
-   TemporalFusionTransformerv2
+   get_rnn
+   LSTM
+   GRU
+   MultiEmbedding

@@ -3,31 +3,36 @@ Data
 
 .. currentmodule:: pytorch_forecasting.data
 
-This module provides data loading, preprocessing, and dataset utilities for time series pytorch_forecasting
+This module provides data loading, preprocessing, and dataset utilities for time series forecasting.
 Objects are organized by their primary use case.
 
-Neural Networks / Dataset Classes
----------------------------------
+Datasets
+--------
+.. note::
+
+   These classes form the core data handling API for PyTorch Forecasting.
 
 .. autosummary::
     :toctree: ../api
 
     TimeSeriesDataSet
-    NumpyDataset
 
-Package Containers
-------------------
-
-.. autosummary::
-    :toctree: ../api
-
-    DataLoader
-
-utilities
----------
+Encoders / Normalizers
+----------------------
 
 .. autosummary::
     :toctree: ../api
 
-    create_lagged_data
-    create_rolling_window
+    NaNLabelEncoder
+    TorchNormalizer
+    EncoderNormalizer
+    GroupNormalizer
+    MultiNormalizer
+
+Samplers
+--------
+
+.. autosummary::
+    :toctree: ../api
+
+    TimeSynchronizedBatchSampler
