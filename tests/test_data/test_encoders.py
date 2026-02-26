@@ -14,6 +14,7 @@ from pytorch_forecasting.data import (
     NaNLabelEncoder,
     TorchNormalizer,
 )
+from pytorch_forecasting.data.encoders import PTFOneHotEncoder, PTFOrdinalEncoder
 
 
 @pytest.mark.parametrize(
@@ -203,3 +204,25 @@ def test_TorchNormalizer_dtype_consistency():
         TorchNormalizer(method="identity").fit(y).get_parameters().dtype
         == torch.float32
     )
+
+
+def test_PTFOrdinalEncoder():
+    encoder = PTFOrdinalEncoder(add_unknown=True)
+    data = pd.Series(["a", "b", "a", np.nan])
+    encoder.fit(data)
+
+    assert len(encoder.mapping_) == 2  # 'a', 'b'
+    assert encoder.transform(pd.Series(["a", "c", np.nan])).tolist() == [1, 0, 0]
+
+
+def test_PTFOneHotEncoder():
+    encoder = PTFOneHotEncoder(add_unknown=True)
+    data = pd.Series(["a", "b", "a", np.nan])
+    encoder.fit(data)
+
+    assert encoder.num_classes_ == 2
+    transformed = encoder.transform(pd.Series(["a", "c", np.nan]))
+    assert transformed.shape == (3, 2)
+    # Unknown 'c' and NaN should get all zeros
+    assert transformed[1].tolist() == [0.0, 0.0]
+    assert transformed[2].tolist() == [0.0, 0.0]

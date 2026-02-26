@@ -377,3 +377,31 @@ def test_metadata_structure(sample_data):
 
     assert metadata["col_known"]["feature1"] == "K"
     assert metadata["col_known"]["feature2"] == "U"
+
+
+def test_timeseries_categorical_encoding():
+    """Test categorical encoding in TimeSeries."""
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=4, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0],
+            "group": ["Grp1", "Grp1", "Grp2", "Grp2"],
+            "cat_feature": ["red", "blue", "red", "green"],
+        }
+    )
+
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=["cat_feature", "group"],
+        categorical_encoders="auto",
+    )
+
+    # red, blue, green + unknown class
+    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == 4
+
+    item = ts[0]
+    # Assert D1 emits purely tensors, no strings!
+    assert isinstance(item["x"], torch.Tensor)

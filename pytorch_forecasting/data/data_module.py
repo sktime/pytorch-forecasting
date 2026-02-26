@@ -15,13 +15,11 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from pytorch_forecasting.data.categorical_encoders import (
-    PTFOneHotEncoder,
-    PTFOrdinalEncoder,
-)
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
+    PTFOneHotEncoder,
+    PTFOrdinalEncoder,
     TorchNormalizer,
 )
 from pytorch_forecasting.data.timeseries import TimeSeries
@@ -272,6 +270,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             }
         )
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
 
     @property
@@ -340,10 +342,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         # TODO: add scalers, target normalizers etc.
 
+        # Ensure categorical slices are purely
+        # long format integers for PyTorch Embeddings
         categorical = (
-            features[:, self.categorical_indices]
+            features[:, self.categorical_indices].long()
             if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
+            else torch.zeros((features.shape[0], 0), dtype=torch.long)
         )
         continuous = (
             features[:, self.continuous_indices]

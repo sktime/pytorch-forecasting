@@ -13,6 +13,8 @@ import torch
 from torch.utils.data import Dataset
 
 from pytorch_forecasting.utils._coerce import _coerce_to_list
+from pytorch_forecasting.data.encoders import PTFOrdinalEncoder
+from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
 #######################################################################################
 # Disclaimer: This dataset class is still work in progress and experimental, please
@@ -89,6 +91,7 @@ class TimeSeries(Dataset):
         known: list[str | list[str]] | None = None,
         unknown: list[str | list[str]] | None = None,
         static: list[str | list[str]] | None = None,
+        categorical_encoders: dict | str = "auto",
     ):
         self.data = data
         self.data_future = data_future
@@ -125,6 +128,37 @@ class TimeSeries(Dataset):
         self._unknown = _coerce_to_list(unknown)
         self._static = _coerce_to_list(static)
 
+        if isinstance(categorical_encoders, str) and categorical_encoders == "auto":
+            self.categorical_encoders = "auto"
+        else:
+            self.categorical_encoders = _coerce_to_dict(categorical_encoders)
+
+        # Initialize encoders if set to "auto"
+        if self.categorical_encoders == "auto":
+            self.categorical_encoders = {
+                col: PTFOrdinalEncoder(add_unknown=True) for col in self._cat
+            }
+        else:
+            # Ensure we have an encoder for every categorical column
+            for col in self._cat:
+                if col not in self.categorical_encoders:
+                    self.categorical_encoders[col] = PTFOrdinalEncoder(add_unknown=True)
+
+        # Fit and transform the data natively
+        for col, encoder in self.categorical_encoders.items():
+            # If the encoder is untrained (has no mapping)
+            if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
+                # Fit on training data
+                encoder.fit(self.data[col])
+                
+            # Transform both train and validation safely
+            encoded_tensor = encoder.transform(self.data[col])
+            # Assign back as numeric array so __getitem__ handles it natively!
+            self.data[col] = encoded_tensor.numpy()
+                
+            if self.data_future is not None and col in self.data_future.columns:
+                self.data_future[col] = encoder.transform(self.data_future[col]).numpy()
+        
         self.feature_cols = [
             col
             for col in data.columns
@@ -181,6 +215,16 @@ class TimeSeries(Dataset):
             self.metadata["col_type"][col] = "C" if col in self._cat else "F"
 
             self.metadata["col_known"][col] = "K" if col in self._known else "U"
+
+        # Expose cardinalities
+        self.metadata["categorical_cardinalities"] = {}
+        for col in self._cat:
+            encoder = getattr(self, "categorical_encoders", {}).get(col)
+            if encoder is not None:
+                # Length of mapping + 1 (for the unknown token)
+                self.metadata["categorical_cardinalities"][col] = len(getattr(encoder, "mapping_", {})) + 1
+            else:
+                self.metadata["categorical_cardinalities"][col] = 0
 
     def __len__(self) -> int:
         """Return number of time series in the dataset."""

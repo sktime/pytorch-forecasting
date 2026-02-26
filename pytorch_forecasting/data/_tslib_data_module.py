@@ -13,13 +13,11 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from pytorch_forecasting.data.categorical_encoders import (
-    PTFOneHotEncoder,
-    PTFOrdinalEncoder,
-)
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
+    PTFOneHotEncoder,
+    PTFOrdinalEncoder,
     TorchNormalizer,
 )
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
@@ -535,6 +533,10 @@ class TslibDataModule(LightningDataModule):
             "features": self.features,
         }
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
 
     @property
@@ -597,25 +599,13 @@ class TslibDataModule(LightningDataModule):
         # scaling and normalization
         target_scale = {}
 
-        encoded_categorical_list = []
-        for i, original_feature_idx in enumerate(self.categorical_indices):
-            # We map back the idx to original column name
-            col_name = self.time_series_metadata["cols"]["x"][original_feature_idx]
-            col_data = features[:, original_feature_idx]
-
-            if col_name in self._categorical_encoders:
-                # transform it and ensure 2D: (batch, features)
-                encoded = self._categorical_encoders[col_name].transform(col_data)
-                if encoded.dim() == 1:
-                    encoded = encoded.unsqueeze(1)
-                encoded_categorical_list.append(encoded)
-            else:
-                encoded_categorical_list.append(col_data.unsqueeze(1))
-
-        if encoded_categorical_list:
-            categorical_features = torch.cat(encoded_categorical_list, dim=-1)
-        else:
-            categorical_features = torch.zeros((features.shape[0], 0))
+        # Ensure categorical slices are purely
+        # long format integers for PyTorch Embeddings
+        categorical_features = (
+            features[:, self.categorical_indices].long()
+            if self.categorical_indices
+            else torch.zeros((features.shape[0], 0), dtype=torch.long)
+        )
 
         continuous_features = (
             features[:, self.continuous_indices]
@@ -723,25 +713,6 @@ class TslibDataModule(LightningDataModule):
                 "The time series dataset is empty. "
                 "Please provide a non-empty dataset."
             )
-
-        # Ensure categorical encoders are fitted
-        if getattr(self, "_categorical_encoders", None) == "auto":
-            self._categorical_encoders = {}
-            # Populate auto-encoders for categorical cols
-            for col in self.time_series_metadata["cols"]["x"]:
-                if self.time_series_metadata["col_type"].get(col) == "C":
-                    self._categorical_encoders[col] = PTFOrdinalEncoder()
-
-        # Fit encoders on the train split only (to avoid data leakage) if stage is fit
-        if stage is None or stage == "fit":
-            for col, encoder in self._categorical_encoders.items():
-                if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
-                    # Extract column data. For simplicity, we use the entire
-                    # column series. In production, subset this. Note: You can
-                    # retrieve this from raw pandas dataframe used inside
-                    # `time_series_dataset`.
-                    col_data = self.time_series_dataset.data[col]
-                    encoder.fit(col_data)
 
         # this is a very rudimentary way to handle the splits when
         # the dataset is of size equal to 1 or 2.
