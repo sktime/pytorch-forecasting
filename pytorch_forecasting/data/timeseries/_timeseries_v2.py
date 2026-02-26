@@ -12,9 +12,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from pytorch_forecasting.utils._coerce import _coerce_to_list
 from pytorch_forecasting.data.encoders import PTFOrdinalEncoder
-from pytorch_forecasting.utils._coerce import _coerce_to_dict
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 
 #######################################################################################
 # Disclaimer: This dataset class is still work in progress and experimental, please
@@ -150,15 +149,15 @@ class TimeSeries(Dataset):
             if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
                 # Fit on training data
                 encoder.fit(self.data[col])
-                
+
             # Transform both train and validation safely
             encoded_tensor = encoder.transform(self.data[col])
             # Assign back as numeric array so __getitem__ handles it natively!
             self.data[col] = encoded_tensor.numpy()
-                
+
             if self.data_future is not None and col in self.data_future.columns:
                 self.data_future[col] = encoder.transform(self.data_future[col]).numpy()
-        
+
         self.feature_cols = [
             col
             for col in data.columns
@@ -222,7 +221,9 @@ class TimeSeries(Dataset):
             encoder = getattr(self, "categorical_encoders", {}).get(col)
             if encoder is not None:
                 # Length of mapping + 1 (for the unknown token)
-                self.metadata["categorical_cardinalities"][col] = len(getattr(encoder, "mapping_", {})) + 1
+                self.metadata["categorical_cardinalities"][col] = (
+                    len(getattr(encoder, "mapping_", {})) + 1
+                )
             else:
                 self.metadata["categorical_cardinalities"][col] = 0
 
