@@ -8,10 +8,12 @@ from pytorch_forecasting.layers._reformer._encoder import (
     ReformerEncoder,
     ReformerEncoderLayer,
 )
+from pytorch_forecasting.layers._reformer._lsh_self_attention import LSHSelfAttention
 from pytorch_forecasting.layers._reformer._reformer_layer import ReformerLayer
 
 __all__ = [
     "ReformerEncoderLayer",
     "ReformerEncoder",
     "ReformerLayer",
+    "LSHSelfAttention",
 ]

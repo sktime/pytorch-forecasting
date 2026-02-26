@@ -15,7 +15,6 @@ class Reformer_pkg_v2(Base_pkg):
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
-        "python_dependencies": ["reformer-pytorch"],
     }
 
     @classmethod
@@ -44,7 +43,6 @@ class Reformer_pkg_v2(Base_pkg):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from pytorch_forecasting.metrics import QuantileLoss
 
         params = [
             {},

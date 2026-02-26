@@ -15,13 +15,7 @@ from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 class Reformer(TslibBaseModel):
     """
-    An implementation of the Reformer model for v2 of pytorch-forecasting.
-
-    The Reformer replaces standard dot-product attention with Locality-Sensitive
-    Hashing (LSH) attention, reducing the time and memory complexity of attention
-    from O(L^2) to O(L log L), making it practical for very long input sequences.
-    It also employs reversible residual layers to reduce memory consumption during
-    training.
+    An implementation of the Reformer model for pytorch-forecasting-v2.
 
     Parameters
     ----------
@@ -80,14 +74,11 @@ class Reformer(TslibBaseModel):
     ----------
     [1] Kitaev, N., Kaiser, Ł., & Levskaya, A. (2020). Reformer: The Efficient
         Transformer. https://arxiv.org/abs/2001.04451
-    [2] https://github.com/thuml/Time-Series-Library
+    [2] https://github.com/thuml/Time-Series-Library/blob/main/models/Reformer.py
 
     Notes
     -----
-    [1] This implementation handles only continuous variables. Support for
-        categorical variables will be added in the future.
-    [2] The ``Reformer`` class inherits shared boilerplate for metadata handling,
-        optimizer configuration, and training loops from ``TslibBaseModel``.
+    This implementation handles only continuous variables.
     """
 
     @classmethod
@@ -216,8 +207,6 @@ class Reformer(TslibBaseModel):
         - ``projection`` : :class:`torch.nn.Linear` that maps encoder outputs
           from ``d_model`` dimensions to ``target_dim`` output channels.
 
-        This method is called automatically at the end of ``__init__`` and should
-        not be invoked directly after the model has been constructed.
         """
         from pytorch_forecasting.layers import (
             DataEmbedding,
@@ -261,11 +250,6 @@ class Reformer(TslibBaseModel):
         """
         Perform long-term forecasting via encoder-only pass with a placeholder.
 
-        Concatenates the encoder input with a zero-padded placeholder taken from
-        the last ``prediction_length`` steps of the decoder input, embeds the
-        combined sequence, runs it through the Reformer encoder, and projects the
-        output to the target dimension.
-
         Parameters
         ----------
         x_enc : torch.Tensor
@@ -302,11 +286,6 @@ class Reformer(TslibBaseModel):
     def _short_forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
         """
         Perform short-term forecasting with instance normalization.
-
-        Normalizes the encoder input using per-instance statistics computed over
-        the full feature set, appends the future placeholder, encodes the sequence,
-        projects to target dimension, and finally denormalizes the output using the
-        statistics of the first target channel only.
 
         Parameters
         ----------
@@ -354,10 +333,6 @@ class Reformer(TslibBaseModel):
         """
         Route the input batch to the appropriate forecasting method.
 
-        Extracts encoder and decoder continuous tensors from the input dictionary,
-        pads or trims the decoder to match the encoder's feature dimension if they
-        differ.
-
         Parameters
         ----------
         x : dict[str, torch.Tensor]
@@ -403,12 +378,7 @@ class Reformer(TslibBaseModel):
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
-        Run a full forward pass and return scaled predictions.
-
-        Calls :meth:`_forecast` to obtain the raw encoder output, slices the last
-        ``prediction_length`` time steps to form the forecast window, and
-        optionally rescales the predictions using the ``'target_scale'`` provided
-        in the input batch.
+        Forward pass for Reformer model.
 
         Parameters
         ----------
@@ -420,7 +390,6 @@ class Reformer(TslibBaseModel):
         Returns
         -------
         dict[str, torch.Tensor]
-            A dictionary with a single key:
 
             - ``'prediction'`` : ``(batch, prediction_length, target_dim)`` –
               the model's forecast, optionally rescaled to the original target

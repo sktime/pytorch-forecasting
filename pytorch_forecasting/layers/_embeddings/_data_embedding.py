@@ -1,16 +1,4 @@
-"""Data embedding utilities used by sequence models.
-
-This module contains lightweight embedding modules used to construct the
-input embeddings for time series models:
-
-- `TimeFeatureEmbedding` converts numeric time features into a dense
-    `d_model`-dimensional representation using a linear layer.
-- `DataEmbedding` composes a value `TokenEmbedding`, a positional
-    `PositionalEmbedding`, and a temporal embedding (either fixed/learned
-    or the `TimeFeatureEmbedding`).
-- `DataEmbedding_inverted` is a small helper that maps input features
-    (with the time dimension last) into the model dimension.
-"""
+"""Data embedding utilities."""
 
 import math
 from math import sqrt

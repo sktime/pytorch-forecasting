@@ -1,9 +1,4 @@
-"""Token embedding module.
-
-Implements a token embedding via a 1D convolution over input features.
-The convolution uses circular padding so the receptive field wraps around
-the sequence dimension.
-"""
+"""Token embedding module."""
 
 import torch
 import torch.nn as nn
@@ -15,9 +10,6 @@ class TokenEmbedding(nn.Module):
     Args:
         c_in (int): number of input channels/features.
         d_model (int): output embedding dimension.
-
-    The convolution uses kernel size 3 and circular padding; weights are
-    initialized with Kaiming normal initialization.
     """
 
     def __init__(self, c_in, d_model):

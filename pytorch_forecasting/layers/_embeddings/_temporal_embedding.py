@@ -1,12 +1,4 @@
-"""Temporal embeddings for time features.
-
-This module provides FixedEmbedding, a sinusoidal (fixed) positional
-embedding implementation, and TemporalEmbedding, which composes embeddings
-for common time features (month, day, weekday, hour, minute).
-
-The embeddings are used to turn temporal indices or time features into
-dense vectors that can be added to value/token embeddings in sequence models.
-"""
+"""Temporal embeddings for time features."""
 
 import math
 
@@ -21,8 +13,6 @@ class FixedEmbedding(nn.Module):
         c_in (int): number of discrete positions (e.g., months, hours).
         d_model (int): embedding dimensionality.
 
-    The weights are initialized with sinusoidal encodings and are frozen
-    (non-trainable) to provide deterministic, non-learned positional signals.
     """
 
     def __init__(self, c_in, d_model):
@@ -57,11 +47,6 @@ class FixedEmbedding(nn.Module):
 
 class TemporalEmbedding(nn.Module):
     """Compose embeddings for temporal components.
-
-    Combines embeddings for month, day, weekday, hour and (optionally)
-    minute depending on the provided `freq`. Each component uses either
-    a fixed sinusoidal embedding or a learned `nn.Embedding` based on
-    `embed_type`.
 
     Args:
         d_model (int): embedding dimensionality.

@@ -1,11 +1,5 @@
 """Encoder layers for the Reformer-style attention modules.
 
-This module provides a transformer-style encoder layer (`ReformerEncoderLayer`)
-that composes an attention module with a feed-forward block implemented via
-1D convolutions, layer normalization and dropout. It also provides
-`ReformerEncoder`, which stacks multiple encoder layers and optional
-convolutional adapters.
-
 These building blocks are used by Reformer-based sequence models to
 process token embeddings into contextualized representations.
 """
@@ -66,12 +60,7 @@ class ReformerEncoderLayer(nn.Module):
 
 
 class ReformerEncoder(nn.Module):
-    """Stack multiple `ReformerEncoderLayer`s into a full encoder.
-
-    The encoder optionally interleaves convolutional layers between attention
-    layers (used as adapters). The `forward` method returns the final
-    encoded tensor and a list of attention diagnostics for each layer.
-    """
+    """Stack multiple `ReformerEncoderLayer`s into a full encoder."""
 
     def __init__(self, attn_layers, conv_layers=None, norm_layer=None):
         super().__init__()
