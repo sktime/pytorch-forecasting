@@ -65,9 +65,9 @@ class Baseline(BaseModel):
         encoder_target: torch.Tensor,
     ):
         max_prediction_length = decoder_lengths.max()
-        assert (
-            encoder_lengths.min() > 0
-        ), "Encoder lengths of at least 1 required to obtain last value"
+        assert encoder_lengths.min() > 0, (
+            "Encoder lengths of at least 1 required to obtain last value"
+        )
         last_values = encoder_target[
             torch.arange(encoder_target.size(0)), encoder_lengths - 1
         ]

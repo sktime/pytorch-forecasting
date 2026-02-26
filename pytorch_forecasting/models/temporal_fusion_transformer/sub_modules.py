@@ -414,9 +414,9 @@ class VariableSelectionNetwork(nn.Module):
 class PositionalEncoder(torch.nn.Module):
     def __init__(self, d_model, max_seq_len=160):
         super().__init__()
-        assert (
-            d_model % 2 == 0
-        ), "model dimension has to be multiple of 2 (encode sin(pos) and cos(pos))"
+        assert d_model % 2 == 0, (
+            "model dimension has to be multiple of 2 (encode sin(pos) and cos(pos))"
+        )
         self.d_model = d_model
         pe = torch.zeros(max_seq_len, d_model)
         for pos in range(max_seq_len):

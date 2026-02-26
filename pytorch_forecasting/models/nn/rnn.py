@@ -94,9 +94,9 @@ class RNN(ABC, nn.RNNBase):
                 Output is packed sequence if input has been a packed sequence.
         """  # noqa: E501
         if isinstance(x, rnn.PackedSequence) or lengths is None:
-            assert (
-                lengths is None
-            ), "cannot combine x of type PackedSequence with lengths argument"
+            assert lengths is None, (
+                "cannot combine x of type PackedSequence with lengths argument"
+            )
             return super().forward(x, hx=hx)
         else:
             min_length = lengths.min()

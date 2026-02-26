@@ -172,9 +172,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
             " the same apart from target variable"
         )
         for targeti in to_list(target):
-            assert (
-                targeti in time_varying_reals_encoder
-            ), f"target {targeti} has to be real"  # todo: remove this restriction
+            assert targeti in time_varying_reals_encoder, (
+                f"target {targeti} has to be real"
+            )  # todo: remove this restriction
         assert (isinstance(target, str) and isinstance(loss, DistributionLoss)) or (
             isinstance(target, tuple | list)
             and isinstance(loss, MultiLoss)
@@ -231,22 +231,19 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 MultiLoss([NormalDistributionLoss()] * len(dataset.target_names)),
             )
         new_kwargs.update(kwargs)
-        assert (
-            not isinstance(dataset.target_normalizer, NaNLabelEncoder)
-            and (
-                not isinstance(dataset.target_normalizer, MultiNormalizer)
-                or all(
-                    not isinstance(normalizer, NaNLabelEncoder)
-                    for normalizer in dataset.target_normalizer
-                )
+        assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
+            not isinstance(dataset.target_normalizer, MultiNormalizer)
+            or all(
+                not isinstance(normalizer, NaNLabelEncoder)
+                for normalizer in dataset.target_normalizer
             )
         ), (
             "target(s) should be continuous - categorical targets are not supported"
         )  # todo: remove this restriction # noqa: E501
         if isinstance(new_kwargs.get("loss", None), MultivariateDistributionLoss):
-            assert (
-                dataset.min_prediction_length == dataset.max_prediction_length
-            ), "Multivariate models require constant prediction lengths"
+            assert dataset.min_prediction_length == dataset.max_prediction_length, (
+                "Multivariate models require constant prediction lengths"
+            )
         return super().from_dataset(
             dataset,
             allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,

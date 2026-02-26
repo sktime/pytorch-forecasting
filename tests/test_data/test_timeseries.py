@@ -61,8 +61,8 @@ def test_find_end_indices():
 def test_raise_short_encoder_length(test_data):
     with pytest.warns(UserWarning):
         test_data = test_data[
-            lambda x: ~(
-                (x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3)
+            lambda x: (
+                ~((x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3))
             )
         ]
         TimeSeriesDataSet(
@@ -109,9 +109,9 @@ def check_dataloader_output(dataset: TimeSeriesDataSet, out: dict[str, torch.Ten
             assert not torch.isnan(vi).any(), f"Values for {k} should not be nan"
 
     # check weight
-    assert y[1] is None or isinstance(
-        y[1], torch.Tensor
-    ), "weights should be none or tensor"
+    assert y[1] is None or isinstance(y[1], torch.Tensor), (
+        "weights should be none or tensor"
+    )
     if isinstance(y[1], torch.Tensor):
         assert torch.isfinite(y[1]).all(), "Values for weight should be finite"
         assert not torch.isnan(y[1]).any(), "Values for weight should not be nan"
@@ -335,9 +335,9 @@ def test_overwrite_values(test_dataset, value, variable, target):
     for name in outputs[0].keys():
         changed = torch.isclose(outputs[0][name], control_outputs[0][name]).all()
         assert changed, f"Output {name} should be reset"
-    assert torch.isclose(
-        outputs[1][0], control_outputs[1][0]
-    ).all(), "Target should be reset"
+    assert torch.isclose(outputs[1][0], control_outputs[1][0]).all(), (
+        "Target should be reset"
+    )
 
 
 @pytest.mark.parametrize(
@@ -495,9 +495,9 @@ def test_lagged_variables(test_data, kwargs):
             lag_idx = vars.index(f"{name}_lagged_by_{lag}")
             target = x[..., target_idx][:, 0]
             lagged_target = torch.roll(x[..., lag_idx], -lag, dims=1)[:, 0]
-            assert torch.isclose(
-                target, lagged_target
-            ).all(), "lagged target must be the same as non-lagged target"
+            assert torch.isclose(target, lagged_target).all(), (
+                "lagged target must be the same as non-lagged target"
+            )
 
 
 def test_lagged_variable_known_unknown_assignment(test_data):
@@ -529,51 +529,51 @@ def test_lagged_variable_known_unknown_assignment(test_data):
         for lag in [1, 2, 3]:
             lagged_name = f"{var}_lagged_by_{lag}"
             if is_known:
-                assert (
-                    lagged_name in dataset._time_varying_known_reals
-                ), f"{lagged_name} should be known real (from known real)"
-                assert (
-                    lagged_name not in dataset._time_varying_unknown_reals
-                ), f"{lagged_name} should not be unknown real (from known real)"
+                assert lagged_name in dataset._time_varying_known_reals, (
+                    f"{lagged_name} should be known real (from known real)"
+                )
+                assert lagged_name not in dataset._time_varying_unknown_reals, (
+                    f"{lagged_name} should not be unknown real (from known real)"
+                )
             else:
                 if lag >= horizon:
-                    assert (
-                        lagged_name in dataset._time_varying_known_reals
-                    ), f"{lagged_name} should be known real (lag >= horizon)"
-                    assert (
-                        lagged_name not in dataset._time_varying_unknown_reals
-                    ), f"{lagged_name} should not be unknown real (lag >= horizon)"
+                    assert lagged_name in dataset._time_varying_known_reals, (
+                        f"{lagged_name} should be known real (lag >= horizon)"
+                    )
+                    assert lagged_name not in dataset._time_varying_unknown_reals, (
+                        f"{lagged_name} should not be unknown real (lag >= horizon)"
+                    )
                 else:
-                    assert (
-                        lagged_name in dataset._time_varying_unknown_reals
-                    ), f"{lagged_name} should be unknown real (lag < horizon)"
-                    assert (
-                        lagged_name not in dataset._time_varying_known_reals
-                    ), f"{lagged_name} should not be known real (lag < horizon)"
+                    assert lagged_name in dataset._time_varying_unknown_reals, (
+                        f"{lagged_name} should be unknown real (lag < horizon)"
+                    )
+                    assert lagged_name not in dataset._time_varying_known_reals, (
+                        f"{lagged_name} should not be known real (lag < horizon)"
+                    )
 
     for var in ["agency", "month"]:
         is_known = var in dataset._time_varying_known_categoricals
         for lag in [1, 2, 3]:
             lagged_name = f"{var}_lagged_by_{lag}"
             if is_known:
-                assert (
-                    lagged_name in dataset._time_varying_known_categoricals
-                ), f"{lagged_name} should be known cat (from known cat)"
-                assert (
-                    lagged_name not in dataset._time_varying_unknown_categoricals
-                ), f"{lagged_name} should not be unknown cat (from known cat)"
+                assert lagged_name in dataset._time_varying_known_categoricals, (
+                    f"{lagged_name} should be known cat (from known cat)"
+                )
+                assert lagged_name not in dataset._time_varying_unknown_categoricals, (
+                    f"{lagged_name} should not be unknown cat (from known cat)"
+                )
             else:
                 if lag >= horizon:
-                    assert (
-                        lagged_name in dataset._time_varying_known_categoricals
-                    ), f"{lagged_name} should be known cat (lag >= horizon)"
+                    assert lagged_name in dataset._time_varying_known_categoricals, (
+                        f"{lagged_name} should be known cat (lag >= horizon)"
+                    )
                     assert (
                         lagged_name not in dataset._time_varying_unknown_categoricals
                     ), f"{lagged_name} should not be unknown cat (lag >= horizon)"
                 else:
-                    assert (
-                        lagged_name in dataset._time_varying_unknown_categoricals
-                    ), f"{lagged_name} should be unknown cat (lag < horizon)"
+                    assert lagged_name in dataset._time_varying_unknown_categoricals, (
+                        f"{lagged_name} should be unknown cat (lag < horizon)"
+                    )
                     assert (
                         lagged_name not in dataset._time_varying_known_categoricals
                     ), f"{lagged_name} should not be known cat (lag < horizon)"
@@ -589,23 +589,23 @@ def test_lagged_variable_known_unknown_assignment(test_data):
     ],
 )
 def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
-    func = lambda x: (x.agency == agency) & (
-        x.time_idx_first_prediction >= first_prediction_idx
+    func = lambda x: (
+        (x.agency == agency) & (x.time_idx_first_prediction >= first_prediction_idx)
     )
     if should_raise:
         with pytest.raises(ValueError):
             test_dataset.filter(func)
     else:
         filtered_dataset = test_dataset.filter(func)
-        assert len(test_dataset.index) > len(
-            filtered_dataset.index
-        ), "filtered dataset should have less entries than original dataset"
+        assert len(test_dataset.index) > len(filtered_dataset.index), (
+            "filtered dataset should have less entries than original dataset"
+        )
         for x, _ in iter(filtered_dataset.to_dataloader()):
             index = test_dataset.x_to_index(x)
             assert (index["agency"] == agency).all(), "Agency filter has failed"
-            assert (
-                index["time_idx"].min() == first_prediction_idx
-            ), "First prediction filter has failed"
+            assert index["time_idx"].min() == first_prediction_idx, (
+                "First prediction filter has failed"
+            )
 
 
 def test_graph_sampler(test_dataset):
@@ -640,8 +640,9 @@ def test_graph_sampler(test_dataset):
                 selected_pos = indices["index_start"].iloc[sub_group_idx]
                 # remove selected sample
                 indices = indices[
-                    lambda x: x["sequence_id"]
-                    != indices["sequence_id"].iloc[sub_group_idx]
+                    lambda x: (
+                        x["sequence_id"] != indices["sequence_id"].iloc[sub_group_idx]
+                    )
                 ]
                 # filter duplicate timeseries
                 # indices = indices.sort_values("sequence_length").drop_duplicates("sequence_id", keep="last") # noqa : E501
