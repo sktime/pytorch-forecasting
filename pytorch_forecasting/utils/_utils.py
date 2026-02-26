@@ -68,10 +68,7 @@ def groupby_apply(
     elif reduction == "sum":
         reduce = torch.sum
     else:
-        raise ValueError(
-        f"Unknown reduction '{reduction}'. "
-        "Expected one of {'mean', 'sum'}."
-    )
+        raise ValueError(f"Unknown reduction '{reduction}'. " "Expected one of {'mean', 'sum'}.")
     uniques, counts = keys.unique(return_counts=True)
     groups = torch.stack(
         [reduce(item) for item in torch.split_with_sizes(values, tuple(counts))]
