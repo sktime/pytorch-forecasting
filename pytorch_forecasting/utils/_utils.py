@@ -21,15 +21,21 @@ def integer_histogram(
     data: torch.LongTensor, min: None | int = None, max: None | int = None
 ) -> torch.Tensor:
     """
-    Create histogram of integers in predefined range
+    Create histogram of integers in predefined range.
 
-    Args:
-        data: data for which to create histogram
-        min: minimum of histogram, is inferred from data by default
-        max: maximum of histogram, is inferred from data by default
+    Parameters
+    ----------
+    data : torch.LongTensor
+        Data for which to create histogram.
+    min : int, optional
+        Minimum of histogram, is inferred from data by default.
+    max : int, optional
+        Maximum of histogram, is inferred from data by default.
 
-    Returns:
-        histogram
+    Returns
+    -------
+    torch.Tensor
+        Histogram.
     """
     uniques, counts = torch.unique(data, return_counts=True)
     if min is None:
@@ -50,18 +56,26 @@ def groupby_apply(
     return_histogram: bool = False,
 ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
     """
-    Groupby apply for torch tensors
+    Groupby apply for torch tensors.
 
-    Args:
-        keys: tensor of groups (``0`` to ``bins``)
-        values: values to aggregate - same size as keys
-        bins: total number of groups
-        reduction: either "mean" or "sum"
-        return_histogram: if to return histogram on top
+    Parameters
+    ----------
+    keys : torch.Tensor
+        Tensor of groups (``0`` to ``bins``).
+    values : torch.Tensor
+        Values to aggregate - same size as keys.
+    bins : int, optional
+        Total number of groups. Defaults to 95.
+    reduction : str, optional
+        Either "mean" or "sum". Defaults to "mean".
+    return_histogram : bool, optional
+        If to return histogram on top. Defaults to False.
 
-    Returns:
-        tensor of size ``bins`` with aggregated values
-        and optionally with counts of values
+    Returns
+    -------
+    torch.Tensor or tuple of torch.Tensor
+        Tensor of size ``bins`` with aggregated values
+        and optionally with counts of values.
     """
     if reduction == "mean":
         reduce = torch.mean
@@ -91,11 +105,16 @@ def profile(
     """
     Profile a given function with ``vmprof``.
 
-    Args:
-        function (Callable): function to profile
-        profile_fname (str): path where to save profile (`.txt` file will be saved with line profile)
-        filter (str, optional): filter name (e.g. module name) to filter profile. Defaults to "".
-        period (float, optional): frequency of calling profiler in seconds. Defaults to 0.0001.
+    Parameters
+    ----------
+    function : Callable
+        Function to profile.
+    profile_fname : str
+        Path where to save profile (`.txt` file will be saved with line profile).
+    filter : str, optional
+        Filter name (e.g. module name) to filter profile. Defaults to "".
+    period : float, optional
+        Frequency of calling profiler in seconds. Defaults to 0.0001.
     """  # noqa : E501
     import vmprof
     from vmprof.show import LinesPrinter
@@ -120,12 +139,17 @@ def get_embedding_size(n: int, max_size: int = 100) -> int:
     """
     Determine empirically good embedding sizes (formula taken from fastai).
 
-    Args:
-        n (int): number of classes
-        max_size (int, optional): maximum embedding size. Defaults to 100.
+    Parameters
+    ----------
+    n : int
+        Number of classes.
+    max_size : int, optional
+        Maximum embedding size. Defaults to 100.
 
-    Returns:
-        int: embedding size
+    Returns
+    -------
+    int
+        Embedding size.
     """
     if n > 2:
         return min(round(1.6 * n**0.56), max_size)
@@ -141,13 +165,19 @@ def create_mask(
 
     An entry at (i, j) is True if lengths[i] > j.
 
-    Args:
-        size (int): size of second dimension
-        lengths (torch.LongTensor): tensor of lengths
-        inverse (bool, optional): If true, boolean mask is inverted. Defaults to False.
+    Parameters
+    ----------
+    size : int
+        Size of second dimension.
+    lengths : torch.LongTensor
+        Tensor of lengths.
+    inverse : bool, optional
+        If true, boolean mask is inverted. Defaults to False.
 
-    Returns:
-        torch.BoolTensor: mask
+    Returns
+    -------
+    torch.BoolTensor
+        Mask tensor.
     """
 
     if inverse:  # return where values are
@@ -169,11 +199,17 @@ def next_fast_len(size):
     2, 3, or 5. These sizes are efficient for fast fourier transforms.
     Equivalent to :func:`scipy.fftpack.next_fast_len`.
 
-    Implementation from pyro
+    Implementation from pyro.
 
-    :param int size: A positive number.
-    :returns: A possibly larger number.
-    :rtype int:
+    Parameters
+    ----------
+    size : int
+        A positive number.
+
+    Returns
+    -------
+    int
+        A possibly larger number.
     """
     try:
         return _NEXT_FAST_LEN[size]
@@ -199,11 +235,19 @@ def autocorrelation(input, dim=0):
 
     Reference: https://en.wikipedia.org/wiki/Autocorrelation#Efficient_computation
 
-    Implementation copied form `pyro <https://github.com/pyro-ppl/pyro/blob/dev/pyro/ops/stats.py>`_.
+    Implementation copied from `pyro <https://github.com/pyro-ppl/pyro/blob/dev/pyro/ops/stats.py>`_.
 
-    :param torch.Tensor input: the input tensor.
-    :param int dim: the dimension to calculate autocorrelation.
-    :returns torch.Tensor: autocorrelation of ``input``.
+    Parameters
+    ----------
+    input : torch.Tensor
+        The input tensor.
+    dim : int, optional
+        The dimension to calculate autocorrelation. Defaults to 0.
+
+    Returns
+    -------
+    torch.Tensor
+        Autocorrelation of ``input``.
     """
     # Adapted from Stan implementation
     # https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/autocorrelation.hpp
@@ -239,12 +283,16 @@ def unpack_sequence(
     """
     Unpack RNN sequence.
 
-    Args:
-        sequence (Union[torch.Tensor, rnn.PackedSequence]): RNN packed sequence or tensor of which
-            first index are samples and second are timesteps
+    Parameters
+    ----------
+    sequence : torch.Tensor or rnn.PackedSequence
+        RNN packed sequence or tensor of which first index are samples and
+        second are timesteps.
 
-    Returns:
-        Tuple[torch.Tensor, torch.Tensor]: tuple of unpacked sequence and length of samples
+    Returns
+    -------
+    tuple of torch.Tensor
+        Tuple of unpacked sequence and length of samples.
     """  # noqa : E501
     if isinstance(sequence, rnn.PackedSequence):
         sequence, lengths = rnn.pad_packed_sequence(sequence, batch_first=True)
@@ -263,12 +311,16 @@ def concat_sequences(
     """
     Concatenate RNN sequences.
 
-    Args:
-        sequences (Union[List[torch.Tensor], List[rnn.PackedSequence]): list of RNN packed sequences or tensors of which
-            first index are samples and second are timesteps
+    Parameters
+    ----------
+    sequences : list of torch.Tensor or list of rnn.PackedSequence
+        List of RNN packed sequences or tensors of which first index are samples
+        and second are timesteps.
 
-    Returns:
-        Union[torch.Tensor, rnn.PackedSequence]: concatenated sequence
+    Returns
+    -------
+    torch.Tensor or rnn.PackedSequence
+        Concatenated sequence.
     """  # noqa : E501
     if isinstance(sequences[0], rnn.PackedSequence):
         return rnn.pack_sequence(sequences, enforce_sorted=False)
@@ -292,14 +344,21 @@ def padded_stack(
     """
     Stack tensors along first dimension and pad them along last dimension to ensure their size is equal.
 
-    Args:
-        tensors (List[torch.Tensor]): list of tensors to stack
-        side (str): side on which to pad - "left" or "right". Defaults to "right".
-        mode (str): 'constant', 'reflect', 'replicate' or 'circular'. Default: 'constant'
-        value (Union[int, float]): value to use for constant padding
+    Parameters
+    ----------
+    tensors : list of torch.Tensor
+        List of tensors to stack.
+    side : str, optional
+        Side on which to pad - "left" or "right". Defaults to "right".
+    mode : str, optional
+        'constant', 'reflect', 'replicate' or 'circular'. Defaults to 'constant'.
+    value : int or float, optional
+        Value to use for constant padding. Defaults to 0.
 
-    Returns:
-        torch.Tensor: stacked tensor
+    Returns
+    -------
+    torch.Tensor
+        Stacked tensor.
     """  # noqa : E501
     full_size = max([x.size(-1) for x in tensors])
 
@@ -328,13 +387,17 @@ def padded_stack(
 def to_list(value: Any) -> list[Any]:
     """
     Convert value or list to list of values.
-    If already list, return object directly
+    If already list, return object directly.
 
-    Args:
-        value (Any): value to convert
+    Parameters
+    ----------
+    value : Any
+        Value to convert.
 
-    Returns:
-        List[Any]: list of values
+    Returns
+    -------
+    list of Any
+        List of values.
     """
     if isinstance(value, tuple | list) and not isinstance(value, rnn.PackedSequence):
         return value
@@ -346,9 +409,12 @@ def unsqueeze_like(tensor: torch.Tensor, like: torch.Tensor):
     """
     Unsqueeze last dimensions of tensor to match another tensor's number of dimensions.
 
-    Args:
-        tensor (torch.Tensor): tensor to unsqueeze
-        like (torch.Tensor): tensor whose dimensions to match
+    Parameters
+    ----------
+    tensor : torch.Tensor
+        Tensor to unsqueeze.
+    like : torch.Tensor
+        Tensor whose dimensions to match.
     """
     n_unsqueezes = like.ndim - tensor.ndim
     if n_unsqueezes < 0:
@@ -366,14 +432,19 @@ def apply_to_list(obj: list[Any] | Any, func: Callable) -> list[Any] | Any:
     This is useful if the passed object could be either a list to whose elements
     a function needs to be applied or just an object to which to apply the function.
 
-    Args:
-        obj (Union[List[Any], Any]): list/tuple on whose elements to apply function,
-            otherwise object to whom to apply function
-        func (Callable): function to apply
+    Parameters
+    ----------
+    obj : list of Any or Any
+        List/tuple on whose elements to apply function, otherwise
+        object to whom to apply function.
+    func : Callable
+        Function to apply.
 
-    Returns:
-        Union[List[Any], Any]: list of objects or object depending on function output
-            and if input ``obj`` is of type list/tuple
+    Returns
+    -------
+    list of Any or Any
+        List of objects or object depending on function output
+        and if input ``obj`` is of type list/tuple.
     """
     if isinstance(obj, tuple | list) and not isinstance(obj, rnn.PackedSequence):
         return [func(o) for o in obj]
@@ -383,7 +454,7 @@ def apply_to_list(obj: list[Any] | Any, func: Callable) -> list[Any] | Any:
 
 class OutputMixIn:
     """
-    MixIn to give namedtuple some access capabilities of a dictionary
+    MixIn to give namedtuple some access capabilities of a dictionary.
     """
 
     def __getitem__(self, k):
@@ -402,28 +473,35 @@ class OutputMixIn:
         return self._fields
 
     def iget(self, idx: int | slice):
-        """Select item(s) row-wise.
+        """
+        Select item(s) row-wise.
 
-        Args:
-            idx ([int, slice]): item to select
+        Parameters
+        ----------
+        idx : int or slice
+            Item to select.
 
-        Returns:
+        Returns
+        -------
+        Any
             Output of single item.
         """
         return self.__class__(*(x[idx] for x in self))
 
 
 class TupleOutputMixIn:
-    """MixIn to give output a namedtuple-like access capabilitieswith ``to_network_output() function``."""  # noqa : E501
+    """MixIn to give output a namedtuple-like access capabilities with ``to_network_output() function``."""  # noqa : E501
 
     def to_network_output(self, **results):
         """
-        Convert output into a named (and immuatable) tuple.
+        Convert output into a named (and immutable) tuple.
 
         This allows tracing the modules as graphs and prevents modifying the output.
 
-        Returns:
-            named tuple
+        Returns
+        -------
+        namedtuple
+            Network output as a named tuple.
         """
         if hasattr(self, "_output_class"):
             Output = self._output_class
@@ -453,12 +531,17 @@ def move_to_device(
     """
     Move object to device.
 
-    Args:
-        x (dictionary of list of tensors): object (e.g. dictionary) of tensors to move to device
-        device (Union[str, torch.DeviceObjType]): device, e.g. "cpu"
+    Parameters
+    ----------
+    x : dict, list, tuple, or torch.Tensor
+        Object (e.g. dictionary) of tensors to move to device.
+    device : str or torch.DeviceObjType
+        Device, e.g. "cpu".
 
-    Returns:
-        x on targeted device
+    Returns
+    -------
+    dict, list, tuple, or torch.Tensor
+        Input `x` on targeted device.
     """  # noqa: E501
     if isinstance(device, str):
         if device == "mps":
@@ -495,13 +578,17 @@ def detach(
     | tuple[torch.Tensor]
 ):
     """
-    Detach object
+    Detach object.
 
-    Args:
-        x: object to detach
+    Parameters
+    ----------
+    x : dict, list, tuple, or torch.Tensor
+        Object to detach.
 
-    Returns:
-        detached object
+    Returns
+    -------
+    dict, list, tuple, or torch.Tensor
+        Detached object.
     """
     if isinstance(x, torch.Tensor):
         return x.detach()
@@ -518,17 +605,25 @@ def detach(
 def masked_op(
     tensor: torch.Tensor, op: str = "mean", dim: int = 0, mask: torch.Tensor = None
 ) -> torch.Tensor:
-    """Calculate operation on masked tensor.
+    """
+    Calculate operation on masked tensor.
 
-    Args:
-        tensor (torch.Tensor): tensor to conduct operation over
-        op (str): operation to apply. One of ["mean", "sum"]. Defaults to "mean".
-        dim (int, optional): dimension to average over. Defaults to 0.
-        mask (torch.Tensor, optional): boolean mask to apply (True=will take mean, False=ignore).
-            Masks nan values by default.
+    Parameters
+    ----------
+    tensor : torch.Tensor
+        Tensor to conduct operation over.
+    op : str, optional
+        Operation to apply. One of ["mean", "sum"]. Defaults to "mean".
+    dim : int, optional
+        Dimension to average over. Defaults to 0.
+    mask : torch.Tensor, optional
+        Boolean mask to apply (True=will take mean, False=ignore).
+        Masks nan values by default.
 
-    Returns:
-        torch.Tensor: tensor with averaged out dimension
+    Returns
+    -------
+    torch.Tensor
+        Tensor with averaged out dimension.
     """  # noqa : E501
     if mask is None:
         mask = ~torch.isnan(tensor)
@@ -548,16 +643,24 @@ def repr_class(
     max_characters_before_break: int = 100,
     extra_attributes: dict[str, Any] = None,
 ) -> str:
-    """Print class name and parameters.
+    """
+    Print class name and parameters.
 
-    Args:
-        obj: class to format
-        attributes (Union[List[str], Dict[str]]): list of attributes to show or dictionary of attributes and values
-            to show max_characters_before_break (int): number of characters before breaking the into multiple lines
-        extra_attributes (Dict[str, Any]): extra attributes to show in angled brackets
+    Parameters
+    ----------
+    obj : Any
+        Class to format.
+    attributes : list of str or dict of str to Any
+        List of attributes to show or dictionary of attributes and values to show.
+    max_characters_before_break : int, optional
+        Number of characters before breaking into multiple lines. Defaults to 100.
+    extra_attributes : dict of str to Any, optional
+        Extra attributes to show in angled brackets.
 
-    Returns:
-        str
+    Returns
+    -------
+    str
+        Formatted string representation of the class.
     """  # noqa E501
     if extra_attributes is None:
         extra_attributes = {}
