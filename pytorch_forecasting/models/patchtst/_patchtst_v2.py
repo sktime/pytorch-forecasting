@@ -326,8 +326,7 @@ class PatchTST(TslibBaseModel):
         dec_out = dec_out.permute(0, 2, 1)
 
         # de-normalize
-        stdev = stdev.squeeze(-1).unsqueeze(1)
-        means = means.squeeze(-1).unsqueeze(1)
+        # stdev & means: (batch, 1, enc_in), dec_out: (batch, target_window, enc_in)
 
         dec_out = dec_out * stdev + means
 

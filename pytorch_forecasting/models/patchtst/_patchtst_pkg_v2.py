@@ -59,8 +59,8 @@ class PatchTST_pkg_v2(Base_pkg):
         training_dataset = datasets_info["training_dataset"]
         validation_dataset = datasets_info["validation_dataset"]
 
-        context_length = data_loader_kwargs.get("context_length", 24)
-        prediction_length = data_loader_kwargs.get("prediction_length", 4)
+        context_length = data_loader_kwargs.get("context_length", 16)
+        prediction_length = data_loader_kwargs.get("prediction_length", 2)
         batch_size = data_loader_kwargs.get("batch_size", 2)
 
         train_datamodule = TslibDataModule(
@@ -140,7 +140,7 @@ class PatchTST_pkg_v2(Base_pkg):
             ),
         ]
 
-        default_dm_cfg = {"context_length": 24, "prediction_length": 4}
+        default_dm_cfg = {"context_length": 16, "prediction_length": 2}
 
         for param in params:
             current_dm_cfg = param.get("datamodule_cfg", {})
