@@ -85,76 +85,112 @@ class NHiTS(BaseModelWithCovariates):
         The network has shown to increase accuracy by ~25% against
         :py:class:`~pytorch_forecasting.models.nbeats.NBeats` and also supports covariates.
 
-        Args:
-            hidden_size (int): size of hidden layers and can range from 8 to 1024 - use 32-128 if no
-                covariates are employed. Defaults to 512.
-            static_hidden_size (Optional[int], optional): size of hidden layers for static variables.
-                Defaults to hidden_size.
-            loss: loss to optimize. Defaults to MASE(). QuantileLoss is also supported
-            shared_weights (bool, optional): if True, weights of blocks are shared in each stack. Defaults to True.
-            naive_level (bool, optional): if True, native forecast of last observation is added at the beginning.
-                Defaults to True.
-            initialization (str, optional): Initialization method. One of ['orthogonal', 'he_uniform', 'glorot_uniform',
-                'glorot_normal', 'lecun_normal']. Defaults to "lecun_normal".
-            n_blocks (List[int], optional): list of blocks used in each stack (i.e. length of stacks).
-                Defaults to [1, 1, 1].
-            n_layers (Union[int, List[int]], optional): Number of layers per block or list of number of
-                layers used by blocks in each stack (i.e. length of stacks). Defaults to 2.
-            pooling_sizes (Optional[List[int]], optional): List of pooling sizes for input for each stack,
-                i.e. higher means more smoothing of input. Using an ordering of higher to lower in the list
-                improves results.
-                Defaults to a heuristic.
-            pooling_mode (str, optional): Pooling mode for summarizing input. One of ['max','average'].
-                Defaults to "max".
-            downsample_frequencies (Optional[List[int]], optional): Downsample multiplier of output for each stack, i.e.
-                higher means more interpolation at forecast time is required. Should be equal or higher
-                than pooling_sizes but smaller equal prediction_length.
-                Defaults to a heuristic to match pooling_sizes.
-            interpolation_mode (str, optional): Interpolation mode for forecasting. One of ['linear', 'nearest',
-                'cubic-x'] where 'x' is replaced by a batch size for the interpolation. Defaults to "linear".
-            batch_normalization (bool, optional): Whether carry out batch normalization. Defaults to False.
-            dropout (float, optional): dropout rate for hidden layers. Defaults to 0.0.
-            activation (str, optional): activation function. One of ['ReLU', 'Softplus', 'Tanh', 'SELU',
-                'LeakyReLU', 'PReLU', 'Sigmoid']. Defaults to "ReLU".
-            output_size: number of outputs (typically number of quantiles for QuantileLoss and one target or list
-                of output sizes but currently only point-forecasts allowed). Set automatically.
-            static_categoricals: names of static categorical variables
-            static_reals: names of static continuous variables
-            time_varying_categoricals_encoder: names of categorical variables for encoder
-            time_varying_categoricals_decoder: names of categorical variables for decoder
-            time_varying_reals_encoder: names of continuous variables for encoder
-            time_varying_reals_decoder: names of continuous variables for decoder
-            categorical_groups: dictionary where values
-                are list of categorical variables that are forming together a new categorical
-                variable which is the key in the dictionary
-            x_reals: order of continuous variables in tensor passed to forward function
-            x_categoricals: order of categorical variables in tensor passed to forward function
-            hidden_continuous_size: default for hidden size for processing continuous variables (similar to categorical
-                embedding size)
-            hidden_continuous_sizes: dictionary mapping continuous input indices to sizes for variable selection
-                (fallback to hidden_continuous_size if index is not in dictionary)
-            embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
-                embedding size
-            embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
-            embedding_labels: dictionary mapping (string) indices to list of categorical labels
-            learning_rate: learning rate
-            log_interval: log predictions every x batches, do not log if 0 or less, log interpretation if > 0. If < 1.0
-                , will log multiple entries per batch. Defaults to -1.
-            log_val_interval: frequency with which to log validation set metrics, defaults to log_interval
-            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
-                failures
-            prediction_length: Length of the prediction. Also known as 'horizon'.
-            context_length: Number of time units that condition the predictions. Also known as 'lookback period'.
-                Should be between 1-10 times the prediction length.
-            backcast_loss_ratio: weight of backcast in comparison to forecast when calculating the loss.
-                A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
-                forecast lengths). Defaults to 0.0, i.e. no weight.
-            log_gradient_flow: if to log gradient flow, this takes time and should be only done to diagnose training
-                failures
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10
-            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
-                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
-            **kwargs: additional arguments to :py:class:`~BaseModel`.
+        Parameters
+        ----------
+        hidden_size : int, default=512
+            size of hidden layers and can range from 8 to 1024 - use 32-128 if no
+            covariates are employed.
+        static_hidden_size : int, optional
+            size of hidden layers for static variables.
+            Defaults to hidden_size.
+        loss : MultiHorizonMetric, default=MASE()
+            loss to optimize. QuantileLoss is also supported.
+        shared_weights : bool, default=True
+            if True, weights of blocks are shared in each stack.
+        naive_level : bool, default=True
+            if True, native forecast of last observation is added at the beginning.
+        initialization : str, default="lecun_normal"
+            Initialization method. One of ['orthogonal', 'he_uniform', 'glorot_uniform',
+            'glorot_normal', 'lecun_normal'].
+        n_blocks : list of int, default=[1, 1, 1]
+            list of blocks used in each stack (i.e. length of stacks).
+        n_layers : int or list of int, default=2
+            Number of layers per block or list of number of
+            layers used by blocks in each stack (i.e. length of stacks).
+        pooling_sizes : list of int, optional
+            List of pooling sizes for input for each stack,
+            i.e. higher means more smoothing of input. Using an ordering of higher to lower in the list
+            improves results.
+            Defaults to a heuristic.
+        pooling_mode : str, default="max"
+            Pooling mode for summarizing input. One of ['max','average'].
+        downsample_frequencies : list of int, optional
+            Downsample multiplier of output for each stack, i.e.
+            higher means more interpolation at forecast time is required. Should be equal or higher
+            than pooling_sizes but smaller equal prediction_length.
+            Defaults to a heuristic to match pooling_sizes.
+        interpolation_mode : str, default="linear"
+            Interpolation mode for forecasting. One of ['linear', 'nearest',
+            'cubic-x'] where 'x' is replaced by a batch size for the interpolation.
+        batch_normalization : bool, default=False
+            Whether carry out batch normalization.
+        dropout : float, default=0.0
+            dropout rate for hidden layers.
+        activation : str, default="ReLU"
+            activation function. One of ['ReLU', 'Softplus', 'Tanh', 'SELU',
+            'LeakyReLU', 'PReLU', 'Sigmoid'].
+        output_size : int or list of int, default=1
+            number of outputs (typically number of quantiles for QuantileLoss and one target or list
+            of output sizes but currently only point-forecasts allowed). Set automatically.
+        static_categoricals : list of str, optional
+            names of static categorical variables
+        static_reals : list of str, optional
+            names of static continuous variables
+        time_varying_categoricals_encoder : list of str, optional
+            names of categorical variables for encoder
+        time_varying_categoricals_decoder : list of str, optional
+            names of categorical variables for decoder
+        time_varying_reals_encoder : list of str, optional
+            names of continuous variables for encoder
+        time_varying_reals_decoder : list of str, optional
+            names of continuous variables for decoder
+        categorical_groups : dict of {str : list of str}, optional
+            dictionary where values
+            are list of categorical variables that are forming together a new categorical
+            variable which is the key in the dictionary
+        x_reals : list of str, optional
+            order of continuous variables in tensor passed to forward function
+        x_categoricals : list of str, optional
+            order of categorical variables in tensor passed to forward function
+        hidden_continuous_size : int, optional
+            default for hidden size for processing continuous variables (similar to categorical
+            embedding size)
+        hidden_continuous_sizes : dict of {int : int}, optional
+            dictionary mapping continuous input indices to sizes for variable selection
+            (fallback to hidden_continuous_size if index is not in dictionary)
+        embedding_sizes : dict of {str : tuple of (int, int)}, optional
+            dictionary mapping (string) indices to tuple of number of categorical classes and
+            embedding size
+        embedding_paddings : list of str, optional
+            list of indices for embeddings which transform the zero's embedding to a zero vector
+        embedding_labels : dict of {str : list of str}, optional
+            dictionary mapping (string) indices to list of categorical labels
+        learning_rate : float, default=1e-2
+            learning rate
+        log_interval : int, default=-1
+            log predictions every x batches, do not log if 0 or less, log interpretation if > 0. If < 1.0
+            , will log multiple entries per batch.
+        log_val_interval : int, optional
+            frequency with which to log validation set metrics, defaults to log_interval
+        log_gradient_flow : bool, default=False
+            if to log gradient flow, this takes time and should be only done to diagnose training
+            failures
+        prediction_length : int, default=1
+            Length of the prediction. Also known as 'horizon'.
+        context_length : int, default=1
+            Number of time units that condition the predictions. Also known as 'lookback period'.
+            Should be between 1-10 times the prediction length.
+        backcast_loss_ratio : float, default=0.0
+            weight of backcast in comparison to forecast when calculating the loss.
+            A weight of 1.0 means that forecast and backcast loss is weighted the same (regardless of backcast and
+            forecast lengths). Defaults to 0.0, i.e. no weight.
+        reduce_on_plateau_patience : int, default=1000
+            patience after which learning rate is reduced by a factor of 10
+        logging_metrics : nn.ModuleList[MultiHorizonMetric], optional
+            list of metrics that are logged during training.
+            Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+        **kwargs
+            additional arguments to :py:class:`~BaseModel`.
         """  # noqa: E501
         if static_categoricals is None:
             static_categoricals = []
@@ -253,8 +289,10 @@ class NHiTS(BaseModelWithCovariates):
     def decoder_covariate_size(self) -> int:
         """Decoder covariates size.
 
-        Returns:
-            int: size of time-dependent covariates used by the decoder
+        Returns
+        -------
+        int
+            size of time-dependent covariates used by the decoder
         """
         return len(
             set(self.hparams.time_varying_reals_decoder) - set(self.target_names)
@@ -267,8 +305,10 @@ class NHiTS(BaseModelWithCovariates):
     def encoder_covariate_size(self) -> int:
         """Encoder covariate size.
 
-        Returns:
-            int: size of time-dependent covariates used by the encoder
+        Returns
+        -------
+        int
+            size of time-dependent covariates used by the encoder
         """
         return len(
             set(self.hparams.time_varying_reals_encoder) - set(self.target_names)
@@ -281,8 +321,10 @@ class NHiTS(BaseModelWithCovariates):
     def static_size(self) -> int:
         """Static covariate size.
 
-        Returns:
-            int: size of static covariates
+        Returns
+        -------
+        int
+            size of static covariates
         """
         return len(self.hparams.static_reals) + sum(
             self.embeddings.output_size[name]
@@ -293,8 +335,10 @@ class NHiTS(BaseModelWithCovariates):
     def n_stacks(self) -> int:
         """Number of stacks.
 
-        Returns:
-            int: number of stacks.
+        Returns
+        -------
+        int
+            number of stacks.
         """
         return len(self.hparams.n_blocks)
 
@@ -302,12 +346,16 @@ class NHiTS(BaseModelWithCovariates):
         """
         Pass forward of network.
 
-        Args:
-            x (Dict[str, torch.Tensor]): input from dataloader generated from
-                :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        Parameters
+        ----------
+        x : dict of {str : torch.Tensor}
+            input from dataloader generated from
+            :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
-        Returns:
-            Dict[str, torch.Tensor]: output of model
+        Returns
+        -------
+        dict of {str : torch.Tensor}
+            output of model
         """
         # covariates
         if self.encoder_covariate_size > 0:
@@ -405,12 +453,16 @@ class NHiTS(BaseModelWithCovariates):
         """
         Convenience function to create network from :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
-        Args:
-            dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
-            **kwargs: additional arguments to be passed to ``__init__`` method.
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            dataset where sole predictor is the target.
+        **kwargs
+            additional arguments to be passed to ``__init__`` method.
 
-        Returns:
-            NHiTS
+        Returns
+        -------
+        NHiTS
         """  # noqa: E501
         # validate arguments
         assert not isinstance(
@@ -518,15 +570,22 @@ class NHiTS(BaseModelWithCovariates):
         Plot two panels: prediction and backcast vs actuals and
         decomposition of prediction into different block predictions which capture different frequencies.
 
-        Args:
-            x (Dict[str, torch.Tensor]): network input
-            output (Dict[str, torch.Tensor]): network output
-            idx (int): index of sample for which to plot the interpretation.
-            ax (List[matplotlib axes], optional): list of two matplotlib axes onto which to plot the interpretation.
-                Defaults to None.
+        Parameters
+        ----------
+        x : dict of {str : torch.Tensor}
+            network input
+        output : dict of {str : torch.Tensor}
+            network output
+        idx : int
+            index of sample for which to plot the interpretation.
+        ax : list of matplotlib axes, optional
+            list of two matplotlib axes onto which to plot the interpretation.
+            Defaults to None.
 
-        Returns:
-            plt.Figure: matplotlib figure
+        Returns
+        -------
+        plt.Figure
+            matplotlib figure
         """  # noqa: E501
         _check_matplotlib("plot_interpretation")
 
