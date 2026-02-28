@@ -305,7 +305,7 @@ class TimeSeriesDataSet(Dataset):
         dictionary of variable names mapped to list of time steps by which the
         variable should be lagged.
         Lags can be useful to indicate seasonality to the models.
-        Useful to add if seasonality of the data are known.,
+        Useful to add if seasonalit(ies) of the data are known.,
         In this case, it is recommended to add the target variables
         with the corresponding lags to improve performance.
         Lags must be at not larger than the shortest time series as all time series
