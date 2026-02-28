@@ -133,7 +133,8 @@ class TFT(BaseModel):
         self.static_cat_dim = self.metadata.get("static_categorical_features", 0)
         self.static_input_dim = self.static_cont_dim + self.static_cat_dim
 
-        # Synthetic variable names for VariableSelectionNetwork since new datapipeline outputs 1d tensor.
+        # Synthetic variable names for VariableSelectionNetwork since
+        # new datapipeline outputs 1d tensor.
         """This is how metadata looks: {'encoder_cat': 2,
             'encoder_cont': 3,
             'decoder_cat': 0,
@@ -161,8 +162,9 @@ class TFT(BaseModel):
         # Categorical vars: nn.Linear(1, hidden_size) — acts as a learned
         #   pseudo-embedding since the v2 data pipeline only provides
         #   label-encoded integers (dim 1), not dense embedding vectors.
-        #   TODO: replace with proper nn.Embedding once metadata includes the new pipeline doesnot return the vacabulary size for categorical variables.
-        #   per-variable cardinality information.
+        #   TODO: replace with proper nn.Embedding once metadata includes
+        #   per-variable cardinality. The new pipeline does not currently
+        #   return the vocabulary size for categorical variables.
 
         all_continuous_names = (
             [f"static_cont_{i}" for i in range(self.static_cont_dim)]
