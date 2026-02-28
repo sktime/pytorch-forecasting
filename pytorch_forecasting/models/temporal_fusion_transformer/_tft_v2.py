@@ -273,7 +273,7 @@ class TFT(BaseModel):
 
         # 2. Encoder Variable Selection
         if self.encoder_input_dim > 0:
-            self.encoder_variable_selection = VariableSelectionNetwork(
+            self.encoder_var_selection = VariableSelectionNetwork(
                 input_sizes=enc_input_sizes,
                 hidden_size=self.hidden_size,
                 input_embedding_flags={
@@ -285,11 +285,11 @@ class TFT(BaseModel):
                 single_variable_grns=self.shared_single_variable_grns,
             )
         else:
-            self.encoder_variable_selection = None
+            self.encoder_var_selection = None
 
         # 3. Decoder Variable Selection
         if self.decoder_input_dim > 0:
-            self.decoder_variable_selection = VariableSelectionNetwork(
+            self.decoder_var_selection = VariableSelectionNetwork(
                 input_sizes=dec_input_sizes,
                 hidden_size=self.hidden_size,
                 input_embedding_flags={
@@ -301,7 +301,7 @@ class TFT(BaseModel):
                 single_variable_grns=self.shared_single_variable_grns,
             )
         else:
-            self.decoder_variable_selection = None
+            self.decoder_var_selection = None
 
         # 4. Static Context GRNs
         # (a) context for variable selection
@@ -504,7 +504,7 @@ class TFT(BaseModel):
         static_context_enrichment = self.static_context_enrichment(static_embedding)
 
         # 3. Encoder Variable Selection
-        if self.encoder_variable_selection is not None and self.encoder_input_dim > 0:
+        if self.encoder_var_selection is not None and self.encoder_input_dim > 0:
             encoder_dict = self._split_to_variable_dict(
                 encoder_cont,
                 encoder_cat,
@@ -512,7 +512,7 @@ class TFT(BaseModel):
                 [f"enc_cat_{i}" for i in range(self.encoder_cat)],
             )
             embeddings_varying_encoder, encoder_sparse_weights = (
-                self.encoder_variable_selection(
+                self.encoder_var_selection(
                     encoder_dict,
                     static_context_variable_selection[:, : self.max_encoder_length],
                 )
@@ -527,7 +527,7 @@ class TFT(BaseModel):
             )
 
         # 4. Decoder Variable Selection
-        if self.decoder_variable_selection is not None and self.decoder_input_dim > 0:
+        if self.decoder_var_selection is not None and self.decoder_input_dim > 0:
             decoder_dict = self._split_to_variable_dict(
                 decoder_cont,
                 decoder_cat,
@@ -535,7 +535,7 @@ class TFT(BaseModel):
                 [f"dec_cat_{i}" for i in range(self.decoder_cat)],
             )
             embeddings_varying_decoder, decoder_sparse_weights = (
-                self.decoder_variable_selection(
+                self.decoder_var_selection(
                     decoder_dict,
                     static_context_variable_selection[:, self.max_encoder_length :],
                 )
