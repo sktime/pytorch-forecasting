@@ -44,10 +44,7 @@ def future_data():
 
 
 def test_init_basic(sample_data):
-    """Test basic initialization of TimeSeries class.
-
-    Ensures that the class stores time, target, and correctly detects feature columns
-    when no group, known/unknown features, or static/weight features are specified."""
+    """Basic init stores time/target and detects feature columns correctly."""
     ts = TimeSeries(data=sample_data, time="timestamp", target="target_value")
 
     assert ts.time == "timestamp"
@@ -57,11 +54,7 @@ def test_init_basic(sample_data):
 
 
 def test_init_with_groups(sample_data):
-    """Test initialization with group parameter.
-
-    Verifies that data is grouped correctly and each group is handled as a
-    separate time series.
-    """
+    """Groups are stored and each group is treated as a separate time series."""
     ts = TimeSeries(
         data=sample_data, time="timestamp", target="target_value", group=["group_id"]
     )
@@ -72,10 +65,7 @@ def test_init_with_groups(sample_data):
 
 
 def test_init_with_features_categorization(sample_data):
-    """Test feature categorization.
-
-    Ensures that numeric, categorical, and static features are categorized and
-    stored correctly in metadata."""
+    """Numeric, categorical, and static features are categorized correctly."""
     ts = TimeSeries(
         data=sample_data,
         time="timestamp",
@@ -93,10 +83,7 @@ def test_init_with_features_categorization(sample_data):
 
 
 def test_init_with_known_unknown(sample_data):
-    """Test known and unknown features classification.
-
-    Checks if the known and unknown feature categorization is correctly set
-    and stored in metadata."""
+    """Known and unknown feature classification is stored correctly in metadata."""
     ts = TimeSeries(
         data=sample_data,
         time="timestamp",
@@ -112,10 +99,7 @@ def test_init_with_known_unknown(sample_data):
 
 
 def test_init_with_weight(sample_data):
-    """Test initialization with weight parameter.
-
-    Verifies that the weight column is stored correctly and excluded
-    from the feature columns."""
+    """Weight column is stored and excluded from feature columns."""
     ts = TimeSeries(
         data=sample_data, time="timestamp", target="target_value", weight="weight"
     )
@@ -125,10 +109,7 @@ def test_init_with_weight(sample_data):
 
 
 def test_getitem_basic(sample_data):
-    """Test __getitem__ with basic configuration.
-
-    Checks the output structure of a single time series without grouping,
-    ensuring x, y are tensors of correct shapes."""
+    """__getitem__ returns x and y tensors with correct shapes."""
     ts = TimeSeries(data=sample_data, time="timestamp", target="target_value")
 
     result = ts[0]
@@ -142,10 +123,7 @@ def test_getitem_basic(sample_data):
 
 
 def test_getitem_with_groups(sample_data):
-    """Test __getitem__ with groups parameter.
-
-    Verifies the per-group access using index and checks that each group
-    has the correct number of time steps."""
+    """Each group index returns only that group's time steps."""
     ts = TimeSeries(
         data=sample_data, time="timestamp", target="target_value", group=["group_id"]
     )
@@ -160,10 +138,7 @@ def test_getitem_with_groups(sample_data):
 
 
 def test_getitem_with_static(sample_data):
-    """Test __getitem__ with static features.
-
-    Ensures static features are included in the output and correctly
-    mapped per group."""
+    """Static features are returned per group with correct values."""
     ts = TimeSeries(
         data=sample_data,
         time="timestamp",
@@ -181,10 +156,7 @@ def test_getitem_with_static(sample_data):
 
 
 def test_getitem_with_weight(sample_data):
-    """Test __getitem__ with weight parameter.
-
-    Validates that weights are correctly returned in the output and have the
-    expected length and type."""
+    """Weights are returned as a tensor with the correct length."""
     ts = TimeSeries(
         data=sample_data, time="timestamp", target="target_value", weight="weight"
     )
@@ -196,10 +168,7 @@ def test_getitem_with_weight(sample_data):
 
 
 def test_with_future_data(sample_data, future_data):
-    """Test with future data provided.
-
-    Verifies that future time steps are appended to the end of each group,
-    especially for known features."""
+    """Future time steps are appended and known features are filled in."""
     ts = TimeSeries(
         data=sample_data,
         data_future=future_data,
@@ -220,10 +189,7 @@ def test_with_future_data(sample_data, future_data):
 
 
 def test_future_data_with_weights(sample_data, future_data):
-    """Test handling of weights with future data.
-
-    Ensures that weights from future data are combined properly and match the
-    time indices."""
+    """Weights from future data are merged and aligned with time indices."""
     ts = TimeSeries(
         data=sample_data,
         data_future=future_data,
@@ -240,10 +206,7 @@ def test_future_data_with_weights(sample_data, future_data):
 
 
 def test_future_data_missing_columns(sample_data):
-    """Test handling when future data is missing some columns.
-
-    Verifies the handling of missing feature columns in future data by
-    checking NaN padding."""
+    """Missing columns in future data are NaN-padded in the output tensor."""
     dates = pd.date_range(start="2023-01-11", periods=5, freq="D")
     incomplete_future = pd.DataFrame(
         {
@@ -274,10 +237,7 @@ def test_future_data_missing_columns(sample_data):
 
 
 def test_different_future_groups(sample_data):
-    """Test with future data that has different groups than original data.
-
-    Ensures that groups present only in future data are ignored if not
-    in the original dataset."""
+    """Groups only in future data are ignored; dataset length stays the same."""
     dates = pd.date_range(start="2023-01-11", periods=5, freq="D")
     future_with_new_group = pd.DataFrame(
         {
@@ -305,10 +265,7 @@ def test_different_future_groups(sample_data):
 
 
 def test_multiple_targets(sample_data):
-    """Test handling of multiple target variables.
-
-    Verifies that multiple target columns are handled and returned
-    as the correct shape in the output."""
+    """Multiple target columns produce a y tensor with the right shape."""
     sample_data["target_value2"] = np.cos(np.arange(10)) + 5
 
     ts = TimeSeries(
@@ -320,10 +277,7 @@ def test_multiple_targets(sample_data):
 
 
 def test_empty_groups():
-    """Test handling of empty groups.
-
-    Confirms that the class handles datasets with a single group and
-    no empty group errors occur."""
+    """Dataset with a single group works without errors."""
     data = pd.DataFrame(
         {
             "timestamp": pd.date_range(start="2023-01-01", periods=5, freq="D"),
@@ -340,10 +294,7 @@ def test_empty_groups():
 
 
 def test_metadata_structure(sample_data):
-    """Test the structure of metadata.
-
-    Ensures the metadata dictionary includes the expected keys and
-    correct mappings of feature roles."""
+    """Metadata has the right keys and correct col_type/col_known mappings."""
     ts = TimeSeries(
         data=sample_data,
         time="timestamp",
@@ -377,3 +328,150 @@ def test_metadata_structure(sample_data):
 
     assert metadata["col_known"]["feature1"] == "K"
     assert metadata["col_known"]["feature2"] == "U"
+
+
+# --- label encoder tests ---
+
+
+@pytest.fixture
+def cat_data():
+    """Create time series data with string categorical features."""
+    data = pd.DataFrame(
+        {
+            "time": list(range(10)) * 2,
+            "group": ["A"] * 10 + ["B"] * 10,
+            "target": np.random.randn(20),
+            "cat_color": ["red", "blue", "green", "red", "blue"] * 4,
+            "cat_size": ["small", "medium", "large", "small", "medium"] * 4,
+            "num_feat": np.random.randn(20),
+        }
+    )
+    return data
+
+
+def test_label_encoders_fitted_on_init(cat_data):
+    """Label encoders should be auto-fitted for all cat columns during __init__."""
+    ts = TimeSeries(
+        data=cat_data,
+        time="time",
+        target="target",
+        group=["group"],
+        cat=["cat_color", "cat_size"],
+        num=["num_feat"],
+    )
+
+    assert hasattr(ts, "label_encoders")
+    assert "cat_color" in ts.label_encoders
+    assert "cat_size" in ts.label_encoders
+    assert hasattr(ts.label_encoders["cat_color"], "classes_")
+    assert hasattr(ts.label_encoders["cat_size"], "classes_")
+
+
+def test_label_encoders_cover_all_cat_values(cat_data):
+    """Encoder classes_ should contain all unique values from the column."""
+    ts = TimeSeries(
+        data=cat_data,
+        time="time",
+        target="target",
+        group=["group"],
+        cat=["cat_color"],
+        num=["num_feat"],
+    )
+
+    enc = ts.label_encoders["cat_color"]
+    for val in cat_data["cat_color"].unique():
+        assert val in enc.classes_, f"'{val}' missing from encoder classes_"
+
+
+def test_getitem_cat_columns_are_numeric(cat_data):
+    """After encoding, x tensor must be fully numeric (no strings)."""
+    ts = TimeSeries(
+        data=cat_data,
+        time="time",
+        target="target",
+        group=["group"],
+        cat=["cat_color", "cat_size"],
+        num=["num_feat"],
+    )
+
+    result = ts[0]
+    assert torch.is_tensor(result["x"]), "x should be a tensor"
+    assert result["x"].dtype in (
+        torch.float32,
+        torch.float64,
+    ), "x should be float after encoding"
+    # no NaNs from failed conversion
+    assert not torch.isnan(result["x"]).all()
+
+
+def test_getitem_encoded_values_are_integers(cat_data):
+    """Encoded categorical columns should contain integer-like values."""
+    ts = TimeSeries(
+        data=cat_data,
+        time="time",
+        target="target",
+        group=["group"],
+        cat=["cat_color"],
+        num=["num_feat"],
+    )
+
+    cat_col_idx = ts.feature_cols.index("cat_color")
+    result = ts[0]
+    encoded_vals = result["x"][:, cat_col_idx]
+    # all values should be whole numbers (integers stored as float)
+    assert torch.all(encoded_vals == encoded_vals.floor()), (
+        "Encoded categorical values should be integer-valued"
+    )
+
+
+def test_no_label_encoders_for_numeric_only(sample_data):
+    """No label encoders should be created when there are no cat columns."""
+    ts = TimeSeries(
+        data=sample_data,
+        time="timestamp",
+        target="target_value",
+        num=["feature1", "feature2", "feature3"],
+        cat=[],
+    )
+
+    assert ts.label_encoders == {}
+
+
+def test_custom_label_encoder_is_used(cat_data):
+    """A pre-fitted encoder passed via label_encoders should be used as-is."""
+    from pytorch_forecasting.data.encoders import NaNLabelEncoder
+
+    custom_enc = NaNLabelEncoder(add_nan=False)
+    custom_enc.fit(cat_data["cat_color"])
+
+    ts = TimeSeries(
+        data=cat_data,
+        time="time",
+        target="target",
+        group=["group"],
+        cat=["cat_color"],
+        num=["num_feat"],
+        label_encoders={"cat_color": custom_enc},
+    )
+
+    assert ts.label_encoders["cat_color"] is custom_enc
+
+
+def test_label_encoder_inverse_transform(cat_data):
+    """Inverse transform should recover original category values."""
+    import numpy as np
+
+    ts = TimeSeries(
+        data=cat_data,
+        time="time",
+        target="target",
+        group=["group"],
+        cat=["cat_color"],
+        num=["num_feat"],
+    )
+
+    enc = ts.label_encoders["cat_color"]
+    original = cat_data["cat_color"].iloc[:5].values
+    encoded = enc.transform(original)
+    decoded = enc.inverse_transform(encoded)
+    np.testing.assert_array_equal(decoded, original)

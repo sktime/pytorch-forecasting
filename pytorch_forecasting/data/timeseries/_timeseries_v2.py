@@ -12,6 +12,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.utils._coerce import _coerce_to_list
 
 #######################################################################################
@@ -89,6 +90,7 @@ class TimeSeries(Dataset):
         known: list[str | list[str]] | None = None,
         unknown: list[str | list[str]] | None = None,
         static: list[str | list[str]] | None = None,
+        label_encoders: dict[str, NaNLabelEncoder] | None = None,
     ):
         self.data = data
         self.data_future = data_future
@@ -139,6 +141,9 @@ class TimeSeries(Dataset):
 
         self._prepare_metadata()
 
+        # fit label encoders for categorical columns
+        self.label_encoders = self._fit_label_encoders(label_encoders)
+
         # overwrite __init__ params for upwards compatibility with AS PRs
         # todo: should we avoid this and ensure classes are dataclass-like?
         self.group = self._group
@@ -148,6 +153,50 @@ class TimeSeries(Dataset):
         self.known = self._known
         self.unknown = self._unknown
         self.static = self._static
+
+    def _fit_label_encoders(
+        self, label_encoders: dict[str, NaNLabelEncoder] | None
+    ) -> dict[str, NaNLabelEncoder]:
+        """Fit label encoders for categorical columns.
+
+        Fits a NaNLabelEncoder for each column in ``cat``. Also auto-detects
+        object-dtype columns not listed in ``cat`` and encodes them with a warning.
+        Pre-fitted encoders can be passed in via ``label_encoders`` to skip refitting.
+        """
+        encoders = dict(label_encoders) if label_encoders else {}
+
+        # columns explicitly declared as categorical
+        declared_cat = set(self._cat)
+
+        # also auto-detect non-numeric columns not declared in cat
+        all_check_cols = [
+            col
+            for col in self.feature_cols + self._static
+            if col in self.data.columns
+        ]
+        for col in all_check_cols:
+            if col not in declared_cat and self.data[col].dtype == object:
+                warn(
+                    f"Column '{col}' has object dtype but is not listed in `cat`. "
+                    "It will be label-encoded automatically. "
+                    "Declare it in `cat` to suppress this warning.",
+                    UserWarning,
+                    stacklevel=4,
+                )
+                declared_cat.add(col)
+
+        for col in declared_cat:
+            if col not in self.data.columns:
+                continue
+            if col not in encoders:
+                enc = NaNLabelEncoder(add_nan=True)
+                enc.fit(self.data[col])
+                encoders[col] = enc
+            elif not hasattr(encoders[col], "classes_"):
+                # provided but not yet fitted
+                encoders[col].fit(self.data[col])
+
+        return encoders
 
     def _prepare_metadata(self):
         """Prepare metadata for the dataset.
@@ -239,7 +288,16 @@ class TimeSeries(Dataset):
         # PyTorch wants writeable arrays
         data_vals = data[time].to_numpy(copy=True)
         data_tgt_vals = data[_target].to_numpy(copy=True)
-        data_feat_vals = data[feature_cols].to_numpy(copy=True)
+
+        # apply label encoders to categorical feature columns before tensor conversion
+        data_feat = data[feature_cols].copy()
+        for col in feature_cols:
+            if col in self.label_encoders:
+                data_feat[col] = self.label_encoders[col].transform(data_feat[col])
+        # convert column-by-column to handle mixed types safely
+        data_feat_vals = np.column_stack(
+            [data_feat[col].to_numpy(dtype=float, copy=True) for col in feature_cols]
+        ) if feature_cols else np.empty((len(data), 0), dtype=float)
 
         result = {
             "t": data_vals,
