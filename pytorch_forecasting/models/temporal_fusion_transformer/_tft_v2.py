@@ -51,7 +51,7 @@ class TFT(BaseModel):
         Scheduler keyword arguments.
     hidden_size : int
         Main hidden size of the network (controls all internal dimensions).
-    lstm_layers : int
+    num_layers : int
         Number of LSTM layers.
     attention_head_size : int
         Number of attention heads. hidden_size must be divisible by this.
@@ -90,7 +90,7 @@ class TFT(BaseModel):
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
         hidden_size: int = 64,
-        lstm_layers: int = 1,
+        num_layers: int = 1,
         attention_head_size: int = 4,
         dropout: float = 0.1,
         hidden_continuous_size: int = 8,
@@ -99,6 +99,7 @@ class TFT(BaseModel):
         share_single_variable_networks: bool = False,
         causal_attention: bool = True,
         mask_bias: float = -1e9,
+        **kwargs,
     ):
         super().__init__(
             loss=loss,
@@ -111,7 +112,7 @@ class TFT(BaseModel):
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.hidden_size = hidden_size
-        self.lstm_layers = lstm_layers
+        self.num_layers = num_layers
         self.attention_head_size = attention_head_size
         self.dropout = dropout
         self.metadata = metadata or {}
@@ -163,6 +164,23 @@ class TFT(BaseModel):
         #   pseudo-embedding since the v2 data pipeline only provides
         #   label-encoded integers (dim 1), not dense embedding vectors.
         #   TODO: replace with proper nn.Embedding once metadata includes
+        #   per-variable cardinality. The new pipeline does not currently
+        #   return the vocabulary size for categorical variables.
+        #
+        # Example of how metadata looks:
+        # {
+        #     'encoder_cat': 2,
+        #     'encoder_cont': 3,
+        #     'decoder_cat': 0,
+        #     'decoder_cont': 1,
+        #     'target': 1,
+        #     'static_categorical_features': 1,
+        #     'static_continuous_features': 1,
+        #     'max_encoder_length': 30,
+        #     'max_prediction_length': 1,
+        #     'min_encoder_length': 30,
+        #     'min_prediction_length': 1,
+        # }
         #   per-variable cardinality. The new pipeline does not currently
         #   return the vocabulary size for categorical variables.
 
@@ -245,7 +263,7 @@ class TFT(BaseModel):
                 input_sizes=static_input_sizes,
                 hidden_size=self.hidden_size,
                 input_embedding_flags={
-                    f"static_cat_{i}": True for i in range(self.static_cat_dim)
+                    f"static_cat_{i}": False for i in range(self.static_cat_dim)
                 },
                 dropout=self.dropout,
                 prescalers=self.prescalers,
@@ -259,7 +277,7 @@ class TFT(BaseModel):
                 input_sizes=enc_input_sizes,
                 hidden_size=self.hidden_size,
                 input_embedding_flags={
-                    f"enc_cat_{i}": True for i in range(self.encoder_cat)
+                    f"enc_cat_{i}": False for i in range(self.encoder_cat)
                 },
                 dropout=self.dropout,
                 context_size=self.hidden_size,
@@ -275,7 +293,7 @@ class TFT(BaseModel):
                 input_sizes=dec_input_sizes,
                 hidden_size=self.hidden_size,
                 input_embedding_flags={
-                    f"dec_cat_{i}": True for i in range(self.decoder_cat)
+                    f"dec_cat_{i}": False for i in range(self.decoder_cat)
                 },
                 dropout=self.dropout,
                 context_size=self.hidden_size,
@@ -319,15 +337,15 @@ class TFT(BaseModel):
         self.lstm_encoder = LSTM(
             input_size=hidden_size,
             hidden_size=hidden_size,
-            num_layers=lstm_layers,
-            dropout=dropout if lstm_layers > 1 else 0,
+            num_layers=num_layers,
+            dropout=dropout if num_layers > 1 else 0,
             batch_first=True,
         )
         self.lstm_decoder = LSTM(
             input_size=hidden_size,
             hidden_size=hidden_size,
-            num_layers=lstm_layers,
-            dropout=dropout if lstm_layers > 1 else 0,
+            num_layers=num_layers,
+            dropout=dropout if num_layers > 1 else 0,
             batch_first=True,
         )
 
@@ -394,7 +412,7 @@ class TFT(BaseModel):
         if self.causal_attention:
             attend_step = torch.arange(dec_len, device=self.device)
             predict_step = torch.arange(dec_len, device=self.device)[:, None]
-            decoder_mask = attend_step >= predict_step
+            decoder_mask = attend_step > predict_step
         else:
             decoder_mask = torch.zeros(
                 dec_len, dec_len, dtype=torch.bool, device=self.device
@@ -532,8 +550,8 @@ class TFT(BaseModel):
             )
 
         # 5. LSTM (initialised from static context)
-        input_hidden = static_context_initial_hidden.expand(self.lstm_layers, -1, -1)
-        input_cell = static_context_initial_cell.expand(self.lstm_layers, -1, -1)
+        input_hidden = static_context_initial_hidden.expand(self.num_layers, -1, -1)
+        input_cell = static_context_initial_cell.expand(self.num_layers, -1, -1)
 
         encoder_output, (hidden, cell) = self.lstm_encoder(
             embeddings_varying_encoder, (input_hidden, input_cell)
@@ -584,7 +602,8 @@ class TFT(BaseModel):
 
         # 12. Output Projection
         if isinstance(self.output_layer, nn.ModuleList):
-            prediction = [layer(output) for layer in self.output_layer]
+            per_target_predictions = [layer(output) for layer in self.output_layer]
+            prediction = torch.cat(per_target_predictions, dim=-1)
         else:
             prediction = self.output_layer(output)
 
