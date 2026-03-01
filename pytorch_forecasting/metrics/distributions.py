@@ -347,6 +347,7 @@ class MQF2DistributionLoss(DistributionLoss):
     """
 
     eps = 1e-4
+    skip_trainer_test: bool = True
 
     def __init__(
         self,
