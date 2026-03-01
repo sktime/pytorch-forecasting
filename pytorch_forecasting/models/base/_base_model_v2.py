@@ -52,6 +52,8 @@ class BaseModel(LightningModule):
         lr_scheduler_params: dict | None = None,
     ):
         super().__init__()
+        if isinstance(loss, list):
+            loss = MultiLoss(loss)
         self.loss = loss
         self.logging_metrics = logging_metrics if logging_metrics is not None else []
         self.optimizer = optimizer
@@ -139,23 +141,23 @@ class BaseModel(LightningModule):
 
         return predict_callback.result
 
-    def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+    def to_prediction(
+        self, out: dict[str, Any], **kwargs
+    ) -> torch.Tensor | list[torch.Tensor]:
         """Converts raw model output to point forecasts."""
-        # todo: add MultiLoss support
         try:
-            out = self.loss.to_prediction(out["prediction"], **kwargs)
-        except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_prediction(out["prediction"])
-        return out
+            return self.loss.to_prediction(out["prediction"], **kwargs)
+        except TypeError:
+            return self.loss.to_prediction(out["prediction"])
 
-    def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+    def to_quantiles(
+        self, out: dict[str, Any], **kwargs
+    ) -> torch.Tensor | list[torch.Tensor]:
         """Converts raw model output to quantile forecasts."""
-        # todo: add MultiLoss support
         try:
-            out = self.loss.to_quantiles(out["prediction"], **kwargs)
-        except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_quantiles(out["prediction"])
-        return out
+            return self.loss.to_quantiles(out["prediction"], **kwargs)
+        except TypeError:
+            return self.loss.to_quantiles(out["prediction"])
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
