@@ -11,18 +11,19 @@ class MovingAvg(nn.Module):
     """
     Moving Average block for smoothing and trend extraction from time series data.
 
-    A moving average is a smoothing technique that creates a series of average from
+    A moving average is a smoothing technique that creates a series of averages from
     different subsets of a time series.
 
     For example: Given a time series ``x = [x_1, x_2, ..., x_n]``, the moving average
     with a kernel size of `k` calculates the average of each subset of `k` consecutive
     elements, resulting in a new series of averages.
 
-    Args:
-        kernel_size (int):
-            Size of the moving average kernel.
-        stride (int):
-            Stride for the moving average operation, typically set to 1.
+    Parameters
+    ----------
+    kernel_size : int
+        Size of the moving average kernel.
+    stride : int
+        Stride for the moving average operation, typically set to 1.
     """
 
     def __init__(self, kernel_size, stride):
