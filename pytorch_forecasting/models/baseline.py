@@ -35,11 +35,15 @@ class Baseline(BaseModel):
         """
         Network forward pass.
 
-        Args:
-            x (Dict[str, torch.Tensor]): network input
+        Parameters
+        ----------
+        x : dict of {str : torch.Tensor}
+            network input
 
-        Returns:
-            Dict[str, torch.Tensor]: network outputs
+        Returns
+        -------
+        dict of {str : torch.Tensor}
+            network outputs
         """
         if isinstance(x["encoder_target"], tuple | list):  # multiple targets
             prediction = [
