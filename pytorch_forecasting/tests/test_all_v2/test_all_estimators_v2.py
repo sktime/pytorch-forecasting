@@ -125,10 +125,17 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         assert object_pkg.name() == object_class.__name__, msg
 
         # check naming convention
+        class_name = object_class.__name__
+
+        expected_names = {class_name + "_pkg_v2"}
+
+        if class_name.endswith("_v2"):
+            expected_names.add(class_name[:-3] + "_pkg_v2")
+
         msg = (
-            f"Package {object_pkg.__name__} does not match class "
-            f"name {object_class.__name__}. "
-            "The expected package name is "
-            f"{object_class.__name__}_pkg."
+            f"Package class '{object_pkg.__name__}' does not follow the expected "
+            f"naming convention for estimator '{class_name}'. "
+            f"Expected one of: {sorted(expected_names)}."
         )
-        assert object_pkg.__name__ == object_class.__name__ + "_pkg_v2", msg
+
+        assert object_pkg.__name__ in expected_names, msg
