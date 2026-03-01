@@ -76,17 +76,23 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         sigma_init: float = 1.0,
         sigma_minimum: float = 1e-3,
     ):
-        """
-        Initialize metric
+        """Initialize metric.
 
-        Args:
-            name (str): metric name. Defaults to class name.
-            quantiles (List[float], optional): quantiles for probability range.
-                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
-            reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
-            rank (int): rank of low-rank approximation for covariance matrix. Defaults to 10.
-            sigma_init (float, optional): default value for diagonal covariance. Defaults to 1.0.
-            sigma_minimum (float, optional): minimum value for diagonal covariance. Defaults to 1e-3.
+        Parameters
+        ----------
+        name : str, optional
+            Metric name. Defaults to class name.
+        quantiles : list[float], optional
+            Quantiles for probability range.
+            Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
+        reduction : str, optional
+            Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
+        rank : int, optional
+            Rank of low-rank approximation for covariance matrix. Defaults to 10.
+        sigma_init : float, optional
+            Default value for diagonal covariance. Defaults to 1.0.
+        sigma_minimum : float, optional
+            Minimum value for diagonal covariance. Defaults to 1e-3.
         """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
@@ -208,16 +214,20 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
         return torch.stack([mean, shape], dim=-1)
 
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
-        """
-        Convert network prediction into a point prediction. In the case of this distribution prediction we
-        need to derive the mean (as a point prediction) from the distribution parameters
+        """Convert network prediction into a point prediction.
 
-        Args:
-            y_pred: prediction output of network
-            in this case the two parameters for the negative binomial
+        Derives the mean as a point prediction from the distribution parameters.
 
-        Returns:
-            torch.Tensor: mean prediction
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Prediction output of network — the two parameters
+            for the negative binomial distribution.
+
+        Returns
+        -------
+        torch.Tensor
+            Mean prediction.
         """  # noqa: E501
         return y_pred[..., 0]
 
@@ -282,15 +292,19 @@ class BetaDistributionLoss(DistributionLoss):
         )
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
-        """
-        Calculate negative likelihood
+        """Calculate negative likelihood.
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Network output.
+        y_actual : torch.Tensor
+            Actual values.
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+        torch.Tensor
+            Metric value on which backpropagation can be applied.
         """
         distribution = self.map_x_to_distribution(y_pred)
         # clip y_actual to avoid infinite losses
@@ -359,20 +373,28 @@ class MQF2DistributionLoss(DistributionLoss):
         icnn_num_layers: int = 2,
         estimate_logdet: bool = False,
     ) -> None:
-        """
-        Args:
-            prediction_length (int): maximum prediction length.
-            quantiles (List[float], optional): default quantiles to output.
-                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
-            hidden_size (int, optional): hidden size per prediction length. Defaults to 4.
-            es_num_samples (int, optional): Number of samples to calculate energy score.
-                If None, maximum likelihood is used as opposed to energy score for optimization.
-                Defaults to 50.
-            beta (float, optional): between 0 and 1.0 to control how scale sensitive metric is (1=fully sensitive).
-                Defaults to 1.0.
-            icnn_hidden_size (int, optional): hidden size of distribution estimating network. Defaults to 20.
-            icnn_num_layers (int, optional): number of hidden layers in distribution estimating network. Defaults to 2.
-            estimate_logdet (bool, optional): if to estimate log determinant. Defaults to False.
+        """Initialize MQF2 distribution loss.
+
+        Parameters
+        ----------
+        prediction_length : int
+            Maximum prediction length.
+        quantiles : list[float], optional
+            Default quantiles to output.
+            Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
+        hidden_size : int, optional
+            Hidden size per prediction length. Defaults to 4.
+        es_num_samples : int, optional
+            Number of samples to calculate energy score.
+            If None, maximum likelihood is used. Defaults to 50.
+        beta : float, optional
+            Controls scale sensitivity (1.0 = fully sensitive). Defaults to 1.0.
+        icnn_hidden_size : int, optional
+            Hidden size of distribution estimating network. Defaults to 20.
+        icnn_num_layers : int, optional
+            Number of hidden layers in distribution estimating network. Defaults to 2.
+        estimate_logdet : bool, optional
+            Whether to estimate log determinant. Defaults to False.
         """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
@@ -461,15 +483,19 @@ class MQF2DistributionLoss(DistributionLoss):
             )
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
-        """
-        Calculate negative likelihood
+        """Calculate negative likelihood.
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Network output.
+        y_actual : torch.Tensor
+            Actual values.
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+        torch.Tensor
+            Metric value on which backpropagation can be applied.
         """
         distribution = self.map_x_to_distribution(y_pred)
         if self.is_energy_score:
@@ -492,16 +518,20 @@ class MQF2DistributionLoss(DistributionLoss):
     def to_quantiles(
         self, y_pred: torch.Tensor, quantiles: list[float] = None
     ) -> torch.Tensor:
-        """
-        Convert network prediction into a quantile prediction.
+        """Convert network prediction into a quantile prediction.
 
-        Args:
-            y_pred: prediction output of network
-            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
-                as defined in the class initialization.
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Prediction output of network.
+        quantiles : list[float], optional
+            Quantiles for probability range. Defaults to quantiles as
+            defined in the class initialization.
 
-        Returns:
-            torch.Tensor: prediction quantiles (last dimension)
+        Returns
+        -------
+        torch.Tensor
+            Prediction quantiles (last dimension).
         """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
@@ -571,14 +601,19 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         hidden_size: int | None = 32,
         n_loss_samples: int | None = 64,
     ) -> None:
-        """
-        Args:
-            prediction_length (int): maximum prediction length.
-            quantiles (List[float], optional): default quantiles to output.
-                Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
-            input_size (int, optional): input size per prediction length. Defaults to 16.
-            hidden_size (int, optional): hidden size per prediction length. Defaults to 64.
-            n_loss_samples (int, optional): number of quantiles to sample to calculate loss.
+        """Initialize implicit quantile network distribution loss.
+
+        Parameters
+        ----------
+        quantiles : list[float], optional
+            Default quantiles to output.
+            Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
+        input_size : int, optional
+            Input size per prediction length. Defaults to 16.
+        hidden_size : int, optional
+            Hidden size per prediction length. Defaults to 32.
+        n_loss_samples : int, optional
+            Number of quantiles to sample to calculate loss.
         """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
@@ -601,15 +636,19 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
         return samples
 
     def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
-        """
-        Calculate negative likelihood
+        """Calculate negative likelihood.
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Network output.
+        y_actual : torch.Tensor
+            Actual values.
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+        torch.Tensor
+            Metric value on which backpropagation can be applied.
         """
         eps = 1e-3
         # for a couple of random quantiles
@@ -649,16 +688,20 @@ class ImplicitQuantileNetworkDistributionLoss(DistributionLoss):
     def to_quantiles(
         self, y_pred: torch.Tensor, quantiles: list[float] = None
     ) -> torch.Tensor:
-        """
-        Convert network prediction into a quantile prediction.
+        """Convert network prediction into a quantile prediction.
 
-        Args:
-            y_pred: prediction output of network
-            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
-                as defined in the class initialization.
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Prediction output of network.
+        quantiles : list[float], optional
+            Quantiles for probability range. Defaults to quantiles
+            defined in the class initialization.
 
-        Returns:
-            torch.Tensor: prediction quantiles (last dimension)
+        Returns
+        -------
+        torch.Tensor
+            Prediction quantiles (last dimension).
         """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
