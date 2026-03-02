@@ -358,6 +358,20 @@ def test_prediction_with_dataloder(model, dataloaders_with_covariates, kwargs):
     model.predict(val_dataloader, fast_dev_run=True, **kwargs)
 
 
+def test_prediction_with_dataloader_twice(model, dataloaders_with_covariates):
+    val_dataloader = dataloaders_with_covariates["val"]
+    first_prediction = model.predict(
+        val_dataloader, fast_dev_run=True, return_index=True
+    )
+    second_prediction = model.predict(
+        val_dataloader, fast_dev_run=True, return_index=True
+    )
+    
+    assert len(first_prediction.index) > 0
+    assert len(second_prediction.index) > 0
+
+
+
 def test_prediction_with_dataloder_raw(data_with_covariates, tmp_path):
     # tests correct concatenation of raw output
     test_data = data_with_covariates.copy()
