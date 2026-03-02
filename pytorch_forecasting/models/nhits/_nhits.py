@@ -144,7 +144,7 @@ class NHiTS(BaseModelWithCovariates):
             names of continuous variables for encoder
         time_varying_reals_decoder : list of str, optional
             names of continuous variables for decoder
-        categorical_groups : dict of {str : list of str}, optional
+        categorical_groups : Dict[str, list of str], optional
             dictionary where values
             are list of categorical variables that are forming together a new categorical
             variable which is the key in the dictionary
@@ -155,15 +155,15 @@ class NHiTS(BaseModelWithCovariates):
         hidden_continuous_size : int, optional
             default for hidden size for processing continuous variables (similar to categorical
             embedding size)
-        hidden_continuous_sizes : dict of {int : int}, optional
+        hidden_continuous_sizes : Dict[int, int], optional
             dictionary mapping continuous input indices to sizes for variable selection
             (fallback to hidden_continuous_size if index is not in dictionary)
-        embedding_sizes : dict of {str : tuple of (int, int)}, optional
+        embedding_sizes : Dict[str, tuple of (int, int)], optional
             dictionary mapping (string) indices to tuple of number of categorical classes and
             embedding size
         embedding_paddings : list of str, optional
             list of indices for embeddings which transform the zero's embedding to a zero vector
-        embedding_labels : dict of {str : list of str}, optional
+        embedding_labels : Dict[str, list of str], optional
             dictionary mapping (string) indices to list of categorical labels
         learning_rate : float, default=1e-2
             learning rate
@@ -348,13 +348,13 @@ class NHiTS(BaseModelWithCovariates):
 
         Parameters
         ----------
-        x : dict of {str : torch.Tensor}
+        x : Dict[str, torch.Tensor]
             input from dataloader generated from
             :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
         Returns
         -------
-        dict of {str : torch.Tensor}
+        Dict[str, torch.Tensor]
             output of model
         """
         # covariates
@@ -572,9 +572,9 @@ class NHiTS(BaseModelWithCovariates):
 
         Parameters
         ----------
-        x : dict of {str : torch.Tensor}
+        x : Dict[str, torch.Tensor]
             network input
-        output : dict of {str : torch.Tensor}
+        output : Dict[str, torch.Tensor]
             network output
         idx : int
             index of sample for which to plot the interpretation.
