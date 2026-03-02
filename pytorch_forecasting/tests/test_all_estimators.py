@@ -7,7 +7,9 @@ import shutil
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
+import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
+import torch
 
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
@@ -409,3 +411,152 @@ class TestAllPtForecasters(EstimatorPackageConfig, EstimatorFixtureGenerator):
             f"{object_class.__name__}_pkg."
         )
         assert object_pkg.__name__ == object_class.__name__ + "_pkg", msg
+
+    def test_pickle(self, object_instance):
+        """Test that the model can be pickled and unpickled."""
+        import pickle
+
+        pkl = pickle.dumps(object_instance)
+        pickle.loads(pkl)  # noqa: S301
+
+    def test_predict_untrained(
+        self,
+        object_pkg,
+        trainer_kwargs,
+    ):
+        """Test that predict works (without training)."""
+        object_class = object_pkg.get_cls()
+        dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
+        train_dataloader = dataloaders["train"]
+        val_dataloader = dataloaders["val"]
+
+        model_kwargs = trainer_kwargs.copy()
+        model_kwargs.pop("trainer_kwargs", None)
+        model_kwargs.pop("data_loader_kwargs", None)
+        model_kwargs.pop("clip_target", None)
+
+        model = object_class.from_dataset(
+            train_dataloader.dataset,
+            **model_kwargs,
+        )
+
+        model.predict(
+            val_dataloader,
+            fast_dev_run=True,
+            return_index=True,
+            return_decoder_lengths=True,
+            mode="prediction",
+        )
+
+    def test_predict_samples(self, object_pkg, trainer_kwargs):
+        """Test that predict works for samples (for probabilistic models)."""
+        object_class = object_pkg.get_cls()
+        dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
+        train_dataloader = dataloaders["train"]
+        val_dataloader = dataloaders["val"]
+
+        model_kwargs = trainer_kwargs.copy()
+        model_kwargs.pop("trainer_kwargs", None)
+        model_kwargs.pop("data_loader_kwargs", None)
+        model_kwargs.pop("clip_target", None)
+
+        model = object_class.from_dataset(
+            train_dataloader.dataset,
+            **model_kwargs,
+        )
+
+        # check if model supports samples
+        from pytorch_forecasting.metrics import DistributionLoss
+
+        if hasattr(model, "loss") and isinstance(model.loss, DistributionLoss):
+            try:
+                prediction = model.predict(
+                    val_dataloader,
+                    fast_dev_run=True,
+                    mode="samples",
+                    n_samples=10,
+                )
+                output = getattr(prediction, "output", prediction)
+                if isinstance(output, torch.Tensor):
+                    assert output.size()[-1] == 10, "expected raw samples"
+                elif isinstance(output, (list, tuple)):
+                    assert output[0].size()[-1] == 10, "expected raw samples"
+            except (ValueError, TypeError, NotImplementedError) as e:
+                # Some models might have DistributionLoss but not support
+                # samples mode or n_samples
+                if (
+                    "mode" in str(e).lower()
+                    or "n_samples" in str(e).lower()
+                    or "unexpected keyword" in str(e).lower()
+                ):
+                    pytest.skip(f"Model does not support samples mode: {e}")
+                else:
+                    raise e
+
+    def test_predict_variants(self, object_pkg, trainer_kwargs):
+        """Test that predict works with different return values (without training)."""
+        object_class = object_pkg.get_cls()
+        dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
+        train_dataloader = dataloaders["train"]
+        val_dataloader = dataloaders["val"]
+
+        model_kwargs = trainer_kwargs.copy()
+        model_kwargs.pop("trainer_kwargs", None)
+        model_kwargs.pop("data_loader_kwargs", None)
+        model_kwargs.pop("clip_target", None)
+
+        model = object_class.from_dataset(
+            train_dataloader.dataset,
+            **model_kwargs,
+        )
+
+        # Test return_x and return_y
+        res = model.predict(
+            val_dataloader,
+            fast_dev_run=True,
+            return_x=True,
+            return_y=True,
+        )
+        assert hasattr(res, "x"), "Result should have x"
+        assert hasattr(res, "y"), "Result should have y"
+
+    def test_interpretation(self, object_pkg, trainer_kwargs):
+        """Test that interpretation plots work."""
+
+        if not _check_soft_dependencies("matplotlib", severity="none"):
+            pytest.skip("matplotlib not installed")
+
+        object_class = object_pkg.get_cls()
+        dataloaders = object_pkg._get_test_dataloaders_from(trainer_kwargs)
+        train_dataloader = dataloaders["train"]
+        val_dataloader = dataloaders["val"]
+
+        model_kwargs = trainer_kwargs.copy()
+        model_kwargs.pop("trainer_kwargs", None)
+        model_kwargs.pop("data_loader_kwargs", None)
+        model_kwargs.pop("clip_target", None)
+
+        model = object_class.from_dataset(
+            train_dataloader.dataset,
+            **model_kwargs,
+        )
+
+        if hasattr(model, "plot_prediction") or hasattr(model, "plot_interpretation"):
+            raw_predictions = model.predict(
+                val_dataloader, mode="raw", return_x=True, fast_dev_run=True
+            )
+            if hasattr(model, "plot_prediction"):
+                x = getattr(raw_predictions, "x", None)
+                output = getattr(raw_predictions, "output", raw_predictions)
+                if x is not None:
+                    model.plot_prediction(
+                        x,
+                        output,
+                        idx=0,
+                        add_loss_to_title=True,
+                    )
+            if hasattr(model, "plot_interpretation"):
+                x = getattr(raw_predictions, "x", None)
+                output = getattr(raw_predictions, "output", raw_predictions)
+                if x is not None:
+                    model.plot_interpretation(x, output, idx=0)
