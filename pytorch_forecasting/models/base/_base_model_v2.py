@@ -146,19 +146,21 @@ class BaseModel(LightningModule):
     ) -> torch.Tensor | list[torch.Tensor]:
         """Converts raw model output to point forecasts."""
         try:
-            return self.loss.to_prediction(out["prediction"], **kwargs)
-        except TypeError:
-            return self.loss.to_prediction(out["prediction"])
+            out = self.loss.to_prediction(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self.loss.to_prediction(out["prediction"])
+        return out
 
     def to_quantiles(
         self, out: dict[str, Any], **kwargs
     ) -> torch.Tensor | list[torch.Tensor]:
         """Converts raw model output to quantile forecasts."""
         try:
-            return self.loss.to_quantiles(out["prediction"], **kwargs)
-        except TypeError:
-            return self.loss.to_quantiles(out["prediction"])
-
+            out = self.loss.to_quantiles(out["prediction"], **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            out = self.loss.to_quantiles(out["prediction"])
+        return out
+        
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
