@@ -708,7 +708,10 @@ class TslibDataModule(LightningDataModule):
                     self._categorical_encoders[col] = (
                         pytorch_forecasting.data.categorical_encoders.PTFOrdinalEncoder()
                     )
-        elif not hasattr(self, "_categorical_encoders") or self._categorical_encoders is None:
+        elif (
+            not hasattr(self, "_categorical_encoders")
+            or self._categorical_encoders is None
+        ):
             self._categorical_encoders = {}
 
         # Fit encoders on the train split only (to avoid data leakage) if stage is fit
