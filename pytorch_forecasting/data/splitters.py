@@ -13,8 +13,15 @@ def random_series_split(
     same fold.
     """
     split_indices = torch.randperm(total_series)
-    train_size = int(train_val_test_split[0] * total_series)
-    val_size = int(train_val_test_split[1] * total_series)
+
+    train_size = int(np.round(train_val_test_split[0] * total_series))
+    if train_size == 0 and train_val_test_split[0] > 0 and total_series > 0:
+        train_size = 1
+
+    val_size = int(np.round(train_val_test_split[1] * total_series))
+    # ensure we don't exceed total_series
+    if train_size + val_size > total_series:
+        val_size = total_series - train_size
 
     train_indices = split_indices[:train_size]
     val_indices = split_indices[train_size : train_size + val_size]
@@ -114,8 +121,13 @@ def temporal_window_split(
         sw.sort(key=lambda x: x[1])
         total_w = len(sw)
 
-        train_end = int(train_val_test_split[0] * total_w)
-        val_end = train_end + int(train_val_test_split[1] * total_w)
+        train_end = int(np.round(train_val_test_split[0] * total_w))
+        if train_end == 0 and train_val_test_split[0] > 0 and total_w > 0:
+            train_end = 1
+
+        val_end = train_end + int(np.round(train_val_test_split[1] * total_w))
+        if val_end > total_w:
+            val_end = total_w
 
         train_windows.extend(sw[:train_end])
         val_windows.extend(sw[train_end:val_end])
