@@ -698,7 +698,7 @@ class TslibDataModule(LightningDataModule):
             )
 
         # Ensure categorical encoders are fitted
-        if getattr(self, "_categorical_encoders", None) == "auto":
+        if getattr(self, "_categorical_encoders", "auto") == "auto":
             self._categorical_encoders = {}
             # Populate auto-encoders for categorical cols
             for col in self.time_series_metadata["cols"]["x"]:
@@ -708,6 +708,8 @@ class TslibDataModule(LightningDataModule):
                     self._categorical_encoders[col] = (
                         pytorch_forecasting.data.categorical_encoders.PTFOrdinalEncoder()
                     )
+        elif not hasattr(self, "_categorical_encoders") or self._categorical_encoders is None:
+            self._categorical_encoders = {}
 
         # Fit encoders on the train split only (to avoid data leakage) if stage is fit
         if stage is None or stage == "fit":
