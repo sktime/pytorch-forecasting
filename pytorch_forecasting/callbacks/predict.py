@@ -1,10 +1,75 @@
 from typing import Any, Optional
+import warnings
 from warnings import warn
 
 from lightning import Trainer
 from lightning.pytorch import LightningModule
 from lightning.pytorch.callbacks import BasePredictionWriter
 import torch
+
+
+def _torch_cat_na(x: list[torch.Tensor]) -> torch.Tensor:
+    """Concatenate tensors along dim=0, NaN-padding dim=1 if sizes differ.
+
+    Allows safe concatenation of prediction or target tensors from batches
+    where the sequence length (dim=1) may vary, e.g. due to per-batch
+    padding by ``rnn.pad_sequence``. Missing values are filled with ``nan``.
+
+    Parameters
+    ----------
+    x : list[torch.Tensor]
+        Tensors to concatenate. Must agree on all dims except 0 and 1.
+
+    Returns
+    -------
+    torch.Tensor
+        Concatenated tensor with dim=1 equal to the maximum across inputs.
+    """
+    if x[0].ndim > 1:
+        first_lens = [xi.shape[1] for xi in x]
+        max_first_len = max(first_lens)
+        if max_first_len > min(first_lens):
+            x = [
+                (
+                    xi
+                    if xi.shape[1] == max_first_len
+                    else torch.cat(
+                        [
+                            xi,
+                            torch.full(
+                                (
+                                    xi.shape[0],
+                                    max_first_len - xi.shape[1],
+                                    *xi.shape[2:],
+                                ),
+                                float("nan"),
+                                device=xi.device,
+                            ),
+                        ],
+                        dim=1,
+                    )
+                )
+                for xi in x
+            ]
+
+    # check if remaining dimensions are all equal
+    if x[0].ndim > 2:
+        remaining_dimensions_equal = all(
+            all(xi.size(i) == x[0].size(i) for xi in x) for i in range(2, x[0].ndim)
+        )
+    else:
+        remaining_dimensions_equal = True
+
+    if remaining_dimensions_equal:
+        return torch.cat(x, dim=0)
+    else:
+        warnings.warn(
+            "Not all dimensions are equal for tensors shapes."
+            f" Example tensor {x[0].shape}. "
+            "Returning list instead of torch.Tensor.",
+            UserWarning,
+        )
+        return [xii for xi in x for xii in xi]
 
 
 class PredictCallback(BasePredictionWriter):
@@ -85,20 +150,23 @@ class PredictCallback(BasePredictionWriter):
         if self.mode == "raw" and isinstance(self.predictions[0], dict):
             keys = self.predictions[0].keys()
             collated_preds = {
-                key: torch.cat([p[key] for p in self.predictions]) for key in keys
+                key: _torch_cat_na([p[key] for p in self.predictions]) for key in keys
             }
         else:
-            collated_preds = {"prediction": torch.cat(self.predictions)}
+            collated_preds = {
+                "prediction": _torch_cat_na(self.predictions),
+            }
 
         final_result = collated_preds
 
         for key, data_list in self.info.items():
             if isinstance(data_list[0], dict):
                 collated_info = {
-                    k: torch.cat([d[k] for d in data_list]) for k in data_list[0].keys()
+                    k: _torch_cat_na([d[k] for d in data_list])
+                    for k in data_list[0].keys()
                 }
             else:
-                collated_info = torch.cat(data_list)
+                collated_info = _torch_cat_na(data_list)
             final_result[key] = collated_info
 
         self._result = final_result
