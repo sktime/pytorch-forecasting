@@ -160,7 +160,7 @@ class BaseModel(LightningModule):
         except TypeError:  # in case passed kwargs do not exist
             out = self.loss.to_quantiles(out["prediction"])
         return out
-        
+
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
