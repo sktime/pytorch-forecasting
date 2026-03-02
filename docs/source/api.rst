@@ -3,12 +3,10 @@ API
 
 .. currentmodule:: pytorch_forecasting
 
-.. autosummary::
-   :toctree: api
-   :template: custom-module-template.rst
-   :recursive:
+.. toctree::
+   :maxdepth: 2
 
-   data
-   models
-   metrics
-   utils
+   api/data
+   api/models
+   api/metrics
+   api/utils
