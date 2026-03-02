@@ -902,20 +902,54 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         with open(path, "wb") as f:
             pickle.dump(save_state, f)
 
-    def load_scalers(self, path: str | Path):
-        """Load fitted scalers and normalizers from disk.
+    def get_scalers_state(self) -> dict:
+        """Get the current state of all scalers and normalizers for persistence.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - target_normalizer: The target normalizer instance(s)
+            - target_normalizer_fitted: Boolean indicating if fitted
+            - feature_scalers: Dictionary of feature scalers
+            - feature_scalers_fitted: Boolean indicating if fitted
+        """
+        return {
+            "target_normalizer": self._target_normalizer,
+            "target_normalizer_fitted": self._target_normalizer_fitted,
+            "feature_scalers": self._scalers,
+            "feature_scalers_fitted": self._feature_scalers_fitted,
+        }
+
+    def set_scalers_state(self, state: dict):
+        """Set the state of scalers and normalizers from loaded state.
+
+        This method receives scaler state from BasePkg and performs full validation
+        to ensure compatibility with the current DataModule configuration.
 
         Parameters
         ----------
-        path: str or Path
-            File path to load the scalers and normalizers from.
+        state : dict
+            Dictionary containing scaler state with keys:
+            - target_normalizer
+            - target_normalizer_fitted
+            - feature_scalers
+            - feature_scalers_fitted
         """
+        if not isinstance(state, dict):
+            raise TypeError(f"Expected dict, got {type(state).__name__}")
 
-        with open(path, "rb") as f:
-            load_state = pickle.load(f)  # noqa: S301
+        required_keys = {
+            "target_normalizer",
+            "target_normalizer_fitted",
+            "feature_scalers",
+            "feature_scalers_fitted",
+        }
 
-        loaded_target_normalizer = load_state["target_normalizer"]
-        # check if target normalizer matches
+        missing_keys = required_keys - set(state.keys())
+        if missing_keys:
+            raise ValueError(f"Missing required keys in scaler state: {missing_keys}")
+        loaded_target_normalizer = state["target_normalizer"]
         if self._target_normalizer is None and loaded_target_normalizer is not None:
             raise ValueError(
                 "Loaded target normalizer is not None, but no target normalizer "
@@ -925,28 +959,49 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         if self._target_normalizer is not None and loaded_target_normalizer is None:
             raise ValueError(
                 "No target normalizer found in loaded state, but this DataModule "
-                "expects a fitted target normalizer when loading from a saved state."
+                "expects a fitted target normalizer."
             )
 
         if self._target_normalizer is not None and loaded_target_normalizer is not None:
-            if not isinstance(
-                loaded_target_normalizer, self._target_normalizer.__class__
-            ):
-                raise TypeError(
-                    f"Loaded target normalizer type {type(loaded_target_normalizer).__name__} "  # noqa: E501
-                    f"does not match configured type {type(self._target_normalizer).__name__}."  # noqa: E501
-                )
+            if isinstance(loaded_target_normalizer, list):
+                if not isinstance(self._target_normalizer, list):
+                    raise TypeError(
+                        f"Loaded target normalizer is a list, but configured "
+                        f"normalizer is {type(self._target_normalizer).__name__}"
+                    )
+                if len(loaded_target_normalizer) != len(self._target_normalizer):
+                    raise ValueError(
+                        f"Number of loaded normalizers ({len(loaded_target_normalizer)}) "  # noqa: E501
+                        f"doesn't match expected ({len(self._target_normalizer)})"
+                    )
+            else:
+                # Single normalizer type check
+                if isinstance(self._target_normalizer, list):
+                    raise TypeError(
+                        f"Loaded target normalizer is {type(loaded_target_normalizer).__name__}, "  # noqa: E501
+                        f"but configured normalizer is a list"
+                    )
+                if not isinstance(
+                    loaded_target_normalizer, self._target_normalizer.__class__
+                ):
+                    raise TypeError(
+                        f"Loaded target normalizer type {type(loaded_target_normalizer).__name__} "  # noqa: E501
+                        f"does not match configured type {type(self._target_normalizer).__name__}."  # noqa: E501
+                    )
+        loaded_feature_scalers = state["feature_scalers"]
+        if not isinstance(loaded_feature_scalers, dict):
+            raise TypeError(
+                f"Expected feature_scalers to be dict, got {type(loaded_feature_scalers).__name__}"  # noqa: E501
+            )
 
-        # filter unexpected features for scaling
-        loaded_feature_scalers = load_state["feature_scalers"]
-        unexpected_keys = set(loaded_feature_scalers.keys()) - set(self._scalers.keys())  # noqa: E501
+        # Check for unexpected and missing features
+        unexpected_keys = set(loaded_feature_scalers.keys()) - set(self._scalers.keys())
         if unexpected_keys:
             raise ValueError(
                 f"Loaded scalers contain unexpected feature keys: {unexpected_keys}. "
                 f"Expected keys: {set(self._scalers.keys())}"
             )
 
-        # missing keys check
         missing_keys = set(self._scalers.keys()) - set(loaded_feature_scalers.keys())
         if missing_keys:
             raise ValueError(
@@ -954,6 +1009,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 f"Loaded keys: {set(loaded_feature_scalers.keys())}"
             )
 
+        # Validate scaler types for each feature
         for key, loaded_scaler in loaded_feature_scalers.items():
             if key in self._scalers and not isinstance(
                 loaded_scaler, self._scalers[key].__class__
@@ -962,10 +1018,29 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     f"Loaded scaler for '{key}' has type {type(loaded_scaler).__name__} "  # noqa: E501
                     f"but configured scaler has type {type(self._scalers[key]).__name__}"  # noqa: E501
                 )
-        self._target_normalizer = load_state["target_normalizer"]
-        self._target_normalizer_fitted = load_state["target_normalizer_fitted"]
-        self._scalers = load_state["feature_scalers"]
-        self._feature_scalers_fitted = load_state["feature_scalers_fitted"]
+        # Validation passed, set the state
+        self._target_normalizer = state["target_normalizer"]
+        self._target_normalizer_fitted = state["target_normalizer_fitted"]
+        self._scalers = state["feature_scalers"]
+        self._feature_scalers_fitted = state["feature_scalers_fitted"]
+
+    def load_scalers(self, path: str | Path):
+        """Load fitted scalers and normalizers from disk.
+
+        Parameters
+        ----------
+        path: str or Path
+            File path to load the scalers and normalizers from.
+        """
+
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Scaler file not found at path: {path}")
+
+        with open(path, "rb") as f:
+            loaded_state = pickle.load(f)  # noqa: S301
+
+        self.set_scalers_state(loaded_state)
 
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.

@@ -177,8 +177,25 @@ class Base_pkg(_BasePtForecasterV2):
             dm = self._build_datamodule(data)
             scaler_path = self._scaler_path
             if scaler_path and scaler_path.exists():
-                if hasattr(dm, "load_scalers"):
-                    dm.load_scalers(scaler_path)
+                if hasattr(dm, "set_scalers_state"):
+                    try:
+                        with open(scaler_path, "rb") as f:
+                            scaler_state = pickle.load(f)  # noqa: S301
+                        dm.set_scalers_state(scaler_state)
+                        print(f"Scalers loaded from: {scaler_path}")
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"Failed to load scalers from {scaler_path}: {e}"
+                        )  # noqa: E501
+                elif hasattr(dm, "load_scalers"):
+                    # fallback incase scaler state is not being updated.
+                    try:
+                        dm.load_scalers(self._scaler_path)
+                        print(f"Scalers loaded from : {self._scaler_path}")
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"Failed to load scalers from {self._scaler_path}: {e}"
+                        )  # noqa: E501
                 else:
                     print(
                         "Warning: Datamodule does not support scaler loading."
@@ -289,19 +306,27 @@ class Base_pkg(_BasePtForecasterV2):
 
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
 
-        if save_scalers and hasattr(self.datamodule, "save_scalers"):
+        if save_scalers and hasattr(self.datamodule, "get_scalers_state"):
             if scaler_dir is None:
                 scaler_dir = Path(ckpt_dir) if save_ckpt else Path("fitted_scalers")
+            scaler_dir.mkdir(parents=True, exist_ok=True)
+            scaler_path = scaler_dir / "scalers.pkl"
+            scaler_state = self.datamodule.get_scalers_state()
+            self._scaler_path = scaler_path
+            with open(scaler_path, "wb") as f:
+                pickle.dump(scaler_state, f)
+            print(f"Scalers saved to: {scaler_path}")
+        elif save_scalers and hasattr(self.datamodule, "save_scalers"):
+            if scaler_dir is None:
+                scaler_dir = Path(ckpt_dir) if save_ckpt else Path("fitted_scalers")
+            else:
+                scaler_dir = Path(scaler_dir)
+
             scaler_dir.mkdir(parents=True, exist_ok=True)
             scaler_path = scaler_dir / "scalers.pkl"
             self.datamodule.save_scalers(scaler_path)
             self._scaler_path = scaler_path
             print(f"Scalers saved to: {scaler_path}")
-        elif save_scalers:
-            print(
-                "Warning: Datamodule does not support scaler persistence."
-                "Skipping scaler save."
-            )
 
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
