@@ -226,8 +226,9 @@ class TransformMixIn:
             y = self.get_transform(self.transformation)["forward"](y)
         else:
             # convert first to tensor, then transform and then convert to numpy array
-            if isinstance(y, pd.Series | pd.DataFrame):
-                y = y.to_numpy()
+            if isinstance(y, (pd.Series, pd.DataFrame)):
+                # PyTorch wants writeable arrays
+                y = y.to_numpy(copy=True)
             y = torch.as_tensor(y)
             y = self.get_transform(self.transformation)["forward"](y)
             y = np.asarray(y)
@@ -710,7 +711,8 @@ class TorchNormalizer(
             if isinstance(y, (pd.Series)):
                 index = y.index
                 pandas_dtype = y.dtype
-                y = y.values
+                # PyTorch wants writeable arrays
+                y = y.to_numpy(copy=True)
                 y_was = "pandas"
                 y = torch.as_tensor(y)
             elif isinstance(y, np.ndarray):
@@ -1291,7 +1293,14 @@ class GroupNormalizer(TorchNormalizer):
             params = norm
         else:
             try:
-                params = self.norm_.loc[groups].to_numpy()
+                indexer = groups
+                if (
+                    isinstance(groups, tuple)
+                    and len(groups) == 1
+                    and not isinstance(self.norm_.index, pd.MultiIndex)
+                ):
+                    indexer = groups[0]
+                params = self.norm_.loc[indexer].to_numpy()
             except (KeyError, TypeError):
                 params = np.asarray([self.missing_[name] for name in self.names])
         return params

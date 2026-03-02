@@ -410,7 +410,7 @@ class NHiTS(BaseModelWithCovariates):
             **kwargs: additional arguments to be passed to ``__init__`` method.
 
         Returns:
-            NBeats
+            NHiTS
         """  # noqa: E501
         # validate arguments
         assert not isinstance(

@@ -18,7 +18,7 @@ from pytorch_forecasting.models.nbeats._nbeats_adapter import NBeatsAdapter
 
 class NBeatsKAN(NBeatsAdapter):
     """
-    Initialize NBeats Model - use its :py:meth:`~from_dataset` method if possible.
+    Initialize NBeatsKAN Model - use its :py:meth:`~from_dataset` method if possible.
 
     Based on the article
     `N-BEATS: Neural basis expansion analysis for interpretable time series

@@ -603,6 +603,9 @@ class InitialParameterRepresenterMixIn:
             return repr_class(self, attributes=attributes)
 
     def extra_repr(self) -> str:
+        """
+        Return extra information about parameters for representation/logging.
+        """
         if isinstance(self, pl.LightningModule):
             return "\t" + repr(self.hparams).replace("\n", "\n\t")
         else:

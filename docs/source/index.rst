@@ -22,8 +22,8 @@ Specifically, the package provides
 
 * A timeseries dataset class which abstracts handling variable transformations, missing values,
   randomized subsampling, multiple history lengths, etc.
-* A base model class which provides basic training of timeseries models along with logging in tensorboard
-  and generic visualizations such actual vs predictions and dependency plots
+* A base model class which provides basic training of timeseries models along with logging in TensorBoard
+  and generic visualizations such as actual vs predictions and dependency plots
 * Multiple neural network architectures for timeseries forecasting that have been enhanced
   for real-world deployment and come with in-built interpretation capabilities
 * Multi-horizon timeseries metrics
