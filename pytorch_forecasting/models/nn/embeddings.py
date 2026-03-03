@@ -50,8 +50,9 @@ class MultiEmbedding(nn.Module):
 
         Enabled for static and dynamic categories (i.e. 3 dimensions for batch x time x categories).
 
-        Args:
-            embedding_sizes (Union[Dict[str, Tuple[int, int]], Dict[str, int], List[int], List[Tuple[int, int]]]):
+        Parameters
+        ----------
+            embedding_sizes : Union[Dict[str, Tuple[int, int]], Dict[str, int], List[int], List[Tuple[int, int]]]
                 either
 
                 * dictionary of embedding sizes, e.g. ``{'cat1': (10, 3)}``
@@ -67,14 +68,18 @@ class MultiEmbedding(nn.Module):
 
                 If input is provided as list, output will be a single tensor of shape batch x (optional) time x
                 sum(embedding_sizes). Otherwise, output is a dictionary of embedding tensors.
-            x_categoricals (List[str]): list of categorical variables that are used as input.
-            categorical_groups (Dict[str, List[str]]): dictionary of categories that should be summed up in an
+            x_categoricals : List[str]
+                list of categorical variables that are used as input.
+            categorical_groups : Dict[str, List[str]]
+                dictionary of categories that should be summed up in an
                 embedding bag, e.g. ``{'cat1': ['cat2', 'cat3']}`` indicates that a new categorical variable ``'cat1'``
                 is mapped to an embedding bag containing the second and third categorical variables.
                 Defaults to empty dictionary.
-            embedding_paddings (List[str]): list of categorical variables for which the value 0 is mapped to a zero
+            embedding_paddings : List[str]
+                list of categorical variables for which the value 0 is mapped to a zero
                 embedding vector. Defaults to empty list.
-            max_embedding_size (int, optional): if embedding size defined by ``embedding_sizes`` is larger than
+            max_embedding_size : int, optional
+                if embedding size defined by ``embedding_sizes`` is larger than
                 ``max_embedding_size``, it will be constrained. Defaults to None.
         """  # noqa: E501
         if categorical_groups is None:
@@ -188,12 +193,16 @@ class MultiEmbedding(nn.Module):
 
     def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
         """
-        Args:
-            x (torch.Tensor): input tensor of shape batch x (optional) time x categoricals in the order of
+        Parameters
+        ----------
+            x : torch.Tensor
+                input tensor of shape batch x (optional) time x categoricals in the order of
                 ``x_categoricals``.
 
-        Returns:
-            Union[Dict[str, torch.Tensor], torch.Tensor]: dictionary of category names to embeddings
+        Returns
+        -------
+            Union[Dict[str, torch.Tensor], torch.Tensor]
+                dictionary of category names to embeddings
                 of shape batch x (optional) time x embedding_size if ``embedding_size`` is given as dictionary.
                 Otherwise, returns the embedding of shape batch x (optional) time x sum(embedding_sizes).
                 Query attribute ``output_size`` to get the size of the output(s).
