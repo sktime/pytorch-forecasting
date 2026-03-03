@@ -703,11 +703,7 @@ class TslibDataModule(LightningDataModule):
             # Populate auto-encoders for categorical cols
             for col in self.time_series_metadata["cols"]["x"]:
                 if self.time_series_metadata["col_type"].get(col) == "C":
-                    import pytorch_forecasting.data.categorical_encoders
-
-                    self._categorical_encoders[col] = (
-                        pytorch_forecasting.data.categorical_encoders.PTFOrdinalEncoder()
-                    )
+                    self._categorical_encoders[col] = NaNLabelEncoder()
         elif (
             not hasattr(self, "_categorical_encoders")
             or self._categorical_encoders is None
@@ -717,7 +713,15 @@ class TslibDataModule(LightningDataModule):
         # Fit encoders on the train split only (to avoid data leakage) if stage is fit
         if stage is None or stage == "fit":
             for col, encoder in self._categorical_encoders.items():
-                if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
+                is_unfitted = False
+                if hasattr(encoder, "classes_"):
+                    is_unfitted = len(encoder.classes_) == 0
+                elif hasattr(encoder, "mapping_"):
+                    is_unfitted = len(encoder.mapping_) == 0
+                else:
+                    is_unfitted = True
+                
+                if is_unfitted:
                     # Extract column data. For simplicity, we use the entire
                     # column series. In production, subset this. Note: You can
                     # retrieve this from raw pandas dataframe used inside
