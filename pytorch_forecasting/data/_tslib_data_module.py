@@ -720,7 +720,7 @@ class TslibDataModule(LightningDataModule):
                     is_unfitted = len(encoder.mapping_) == 0
                 else:
                     is_unfitted = True
-                
+
                 if is_unfitted:
                     # Extract column data. For simplicity, we use the entire
                     # column series. In production, subset this. Note: You can
