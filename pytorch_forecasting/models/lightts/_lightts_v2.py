@@ -88,7 +88,6 @@ class LightTS(TslibBaseModel):
             metadata=metadata,
         )
 
-
         self.d_model = d_model
         self.chunk_size = chunk_size
         self.dropout = dropout
@@ -101,9 +100,7 @@ class LightTS(TslibBaseModel):
     def _init_network(self) -> None:
         """Initialize LightTS submodules."""
         if self.context_length <= 0:
-            raise ValueError(
-                "context_length must be positive in metadata for LightTS."
-            )
+            raise ValueError("context_length must be positive in metadata for LightTS.")
         if self.prediction_length <= 0:
             raise ValueError(
                 "prediction_length must be positive in metadata for LightTS."
@@ -215,7 +212,12 @@ class LightTS(TslibBaseModel):
         if seq_len < self.padded_context_length:
             pad_len = self.padded_context_length - seq_len
             x = torch.cat(
-                [x, torch.zeros(batch_size, pad_len, n_features, dtype=x.dtype, device=x.device)],
+                [
+                    x,
+                    torch.zeros(
+                        batch_size, pad_len, n_features, dtype=x.dtype, device=x.device
+                    ),
+                ],
                 dim=1,
             )
 
