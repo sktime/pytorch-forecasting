@@ -163,7 +163,6 @@ class LightTS(TslibBaseModel):
         )
 
         self.ar = nn.Linear(self.padded_context_length, output_dim)
-        self.dropout_layer = nn.Dropout(self.dropout)
 
     def _prepare_input_data(
         self, x: dict[str, torch.Tensor]
@@ -216,7 +215,7 @@ class LightTS(TslibBaseModel):
         if seq_len < self.padded_context_length:
             pad_len = self.padded_context_length - seq_len
             x = torch.cat(
-                [x, torch.zeros(batch_size, pad_len, n_features, device=x.device)],
+                [x, torch.zeros(batch_size, pad_len, n_features, dtype=x.dtype, device=x.device)],
                 dim=1,
             )
 
@@ -235,7 +234,7 @@ class LightTS(TslibBaseModel):
         x2 = self.layer_2(x2)
         x2 = self.chunk_proj_2(x2).squeeze(dim=-1)
 
-        x3 = self.dropout_layer(torch.cat([x1, x2], dim=-1))
+        x3 = torch.cat([x1, x2], dim=-1)
         x3 = x3.reshape(batch_size, n_features, -1).permute(0, 2, 1)
 
         output = self.layer_3(x3) + highway
