@@ -1,8 +1,9 @@
 """
-Datasets, etc. for timeseries data.
+Utilities for time series dataset construction and preprocessing.
 
-Handling timeseries data is not trivial. It requires special treatment.
-This sub-package provides the necessary tools to abstracts the necessary work.
+This subpackage provides dataset classes, normalization and encoding
+utilities, and batching tools required to transform raw time series data
+into model-ready PyTorch datasets.
 """
 
 from pytorch_forecasting.data.encoders import (
