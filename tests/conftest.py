@@ -1,8 +1,11 @@
 import os
 import sys
 
+import matplotlib
 import numpy as np
 import pytest
+
+matplotlib.use("Agg")
 
 sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:skip
 
