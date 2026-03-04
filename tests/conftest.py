@@ -1,11 +1,11 @@
 import os
 import sys
 
-import matplotlib
 import numpy as np
 import pytest
 
 try:
+    import matplotlib
     matplotlib.use("Agg")
 except ImportError:
     pass
