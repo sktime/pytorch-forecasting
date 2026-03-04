@@ -5,7 +5,10 @@ import matplotlib
 import numpy as np
 import pytest
 
-matplotlib.use("Agg")
+try:
+    matplotlib.use("Agg")
+except ImportError:
+    pass
 
 sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:skip
 
