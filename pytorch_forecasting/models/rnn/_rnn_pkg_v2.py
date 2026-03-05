@@ -1,15 +1,15 @@
 """
-Package container for RecurrentNetwork v2 model.
+Package container for RNN v2 model.
 """
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class RecurrentNetwork_v2_pkg(Base_pkg):
-    """RecurrentNetwork v2 package container."""
+class RNN_pkg_v2(Base_pkg):
+    """RNN v2 package container."""
 
     _tags = {
-        "info:name": "RecurrentNetwork_v2",
+        "info:name": "RNN",
         "info:compute": 2,
         "authors": ["Meet-Ramjiyani-10"],
         "capability:exogenous": True,
@@ -22,9 +22,9 @@ class RecurrentNetwork_v2_pkg(Base_pkg):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.rnn._rnn_v2 import RecurrentNetwork_v2
+        from pytorch_forecasting.models.rnn._rnn_v2 import RNN
 
-        return RecurrentNetwork_v2
+        return RNN
 
     @classmethod
     def get_datamodule_cls(cls):

@@ -13,7 +13,7 @@ from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class RecurrentNetwork_v2(BaseModel):
+class RNN(BaseModel):
     """
     Recurrent Network model for time series forecasting.
 
@@ -50,9 +50,9 @@ class RecurrentNetwork_v2(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.rnn._rnn_pkg_v2 import RecurrentNetwork_v2_pkg
+        from pytorch_forecasting.models.rnn._rnn_pkg_v2 import RNN_pkg_v2
 
-        return RecurrentNetwork_v2_pkg
+        return RNN_pkg_v2
 
     def __init__(
         self,
@@ -131,7 +131,7 @@ class RecurrentNetwork_v2(BaseModel):
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
-        Forward pass of the RecurrentNetwork model.
+        Forward pass of the RNN model.
 
         Parameters
         ----------
