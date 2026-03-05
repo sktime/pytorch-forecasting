@@ -9,7 +9,7 @@ class RecurrentNetwork_v2_pkg(Base_pkg):
     """RecurrentNetwork v2 package container."""
 
     _tags = {
-        "info:name": "RecurrentNetwork_v2",
+        "info:name": "RecurrentNetwork",
         "info:compute": 2,
         "authors": ["Meet-Ramjiyani-10"],
         "capability:exogenous": True,
