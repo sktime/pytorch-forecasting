@@ -10,10 +10,10 @@ import torch.nn as nn
 from torch.optim import Optimizer
 
 from pytorch_forecasting.metrics import QuantileLoss
-from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class RecurrentNetwork_v2(TslibBaseModel):
+class RecurrentNetwork_v2(BaseModel):
     """
     Recurrent Network model for time series forecasting.
 
@@ -44,7 +44,7 @@ class RecurrentNetwork_v2(TslibBaseModel):
     lr_scheduler_params : dict, optional
         Parameters for the scheduler. Default is None.
     metadata : dict, optional
-        Metadata from TslibDataModule. Default is None.
+        Metadata from EncoderDecoderTimeSeriesDataModule. Default is None.
     """
 
     @classmethod
@@ -76,7 +76,6 @@ class RecurrentNetwork_v2(TslibBaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
-            metadata=metadata,
         )
 
         assert cell_type in (
@@ -88,8 +87,15 @@ class RecurrentNetwork_v2(TslibBaseModel):
         self.hidden_size = hidden_size
         self.rnn_layers = rnn_layers
         self.dropout = dropout
+        self.metadata = metadata
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
+
+        self.max_encoder_length = metadata["max_encoder_length"]
+        self.max_prediction_length = metadata["max_prediction_length"]
+        self.encoder_cont = metadata["encoder_cont"]
+        self.encoder_cat = metadata["encoder_cat"]
+        self.input_dim = self.encoder_cont + self.encoder_cat
 
         self.n_quantiles = None
         if isinstance(loss, QuantileLoss):
@@ -99,12 +105,9 @@ class RecurrentNetwork_v2(TslibBaseModel):
 
     def _init_network(self):
         """Initialize the RNN network layers."""
-
-        input_size = self.cont_dim + self.target_dim
-
         if self.cell_type == "LSTM":
             self.rnn = nn.LSTM(
-                input_size=input_size,
+                input_size=max(1, self.input_dim),
                 hidden_size=self.hidden_size,
                 num_layers=self.rnn_layers,
                 dropout=self.dropout if self.rnn_layers > 1 else 0,
@@ -112,7 +115,7 @@ class RecurrentNetwork_v2(TslibBaseModel):
             )
         else:
             self.rnn = nn.GRU(
-                input_size=input_size,
+                input_size=max(1, self.input_dim),
                 hidden_size=self.hidden_size,
                 num_layers=self.rnn_layers,
                 dropout=self.dropout if self.rnn_layers > 1 else 0,
@@ -120,9 +123,9 @@ class RecurrentNetwork_v2(TslibBaseModel):
             )
 
         if self.n_quantiles is not None:
-            output_size = self.prediction_length * self.n_quantiles
+            output_size = self.max_prediction_length * self.n_quantiles
         else:
-            output_size = self.prediction_length * self.target_dim
+            output_size = self.max_prediction_length
 
         self.output_projector = nn.Linear(self.hidden_size, output_size)
 
@@ -140,31 +143,31 @@ class RecurrentNetwork_v2(TslibBaseModel):
         dict[str, torch.Tensor]
             Dictionary containing output tensors with key "prediction".
         """
-        available_features = []
+        batch_size = x["encoder_cont"].shape[0]
 
-        if "history_cont" in x and x["history_cont"].size(-1) > 0:
-            available_features.append(x["history_cont"])
+        encoder_cont = x.get(
+            "encoder_cont",
+            torch.zeros(batch_size, self.max_encoder_length, 0, device=self.device),
+        )
+        encoder_cat = x.get(
+            "encoder_cat",
+            torch.zeros(batch_size, self.max_encoder_length, 0, device=self.device),
+        )
 
-        if "history_target" in x and x["history_target"].size(-1) > 0:
-            available_features.append(x["history_target"])
+        input_data = torch.cat([encoder_cont, encoder_cat], dim=-1)
 
-        if not available_features:
-            raise ValueError("No valid input features found in input dictionary.")
-
-        input_data = torch.cat(available_features, dim=-1)
+        if input_data.size(-1) == 0:
+            input_data = torch.zeros(
+                batch_size, self.max_encoder_length, 1, device=self.device
+            )
 
         rnn_out, _ = self.rnn(input_data)
-
         last_hidden = rnn_out[:, -1, :]
-
         output = self.output_projector(last_hidden)
 
         if self.n_quantiles is not None:
-            output = output.reshape(-1, self.prediction_length, self.n_quantiles)
+            output = output.reshape(-1, self.max_prediction_length, self.n_quantiles)
         else:
-            output = output.reshape(-1, self.prediction_length, self.target_dim)
-
-        if "target_scale" in x and hasattr(self, "transform_output"):
-            output = self.transform_output(output, x["target_scale"])
+            output = output.reshape(-1, self.max_prediction_length, 1)
 
         return {"prediction": output}
