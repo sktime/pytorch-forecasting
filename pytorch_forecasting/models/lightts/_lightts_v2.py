@@ -283,7 +283,6 @@ class LightTS(TslibBaseModel):
             )
 
         batch_size = output.shape[0]
-        output = output.squeeze(-1)
         return output.reshape(batch_size, self.prediction_length, self.n_quantiles)
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
