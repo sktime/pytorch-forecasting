@@ -16,7 +16,7 @@ class LightTS_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "LightTS",
         "info:compute": 2,
-        "authors": ["Sylver-Icy"],
+        "authors": ["wuhaixu2016", "Sylver-Icy"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
