@@ -9,7 +9,7 @@ class RecurrentNetwork_pkg_v2(Base_pkg):
     """RecurrentNetwork v2 package container."""
 
     _tags = {
-        "info:name": "RecurrentNetwork",
+        "info:name": "RecurrentNetwork_v2",
         "info:compute": 2,
         "authors": ["Meet-Ramjiyani-10"],
         "capability:exogenous": True,
@@ -29,9 +29,11 @@ class RecurrentNetwork_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data._encoder_decoder_data_module import (
+            EncoderDecoderDataModule,
+        )
 
-        return TslibDataModule
+        return EncoderDecoderDataModule
 
     @classmethod
     def get_test_train_params(cls):
