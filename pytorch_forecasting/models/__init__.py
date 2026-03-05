@@ -18,6 +18,7 @@ from pytorch_forecasting.models.rnn import RecurrentNetwork
 from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
+from pytorch_forecasting.models.segrnn import SegRNN
 from pytorch_forecasting.models.tide import TiDEModel
 from pytorch_forecasting.models.timexer import TimeXer
 from pytorch_forecasting.models.xlstm import xLSTMTime
@@ -42,4 +43,5 @@ __all__ = [
     "TiDEModel",
     "TimeXer",
     "xLSTMTime",
+    "SegRNN",
 ]
