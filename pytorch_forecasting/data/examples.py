@@ -49,8 +49,9 @@ def get_stallion_data() -> pd.DataFrame:
 
     Returns
     -------
-        pd.DataFrame
-            data
+    pd.DataFrame
+        DataFrame containing the Stallion demand dataset with columns such as
+        ``agency``, ``sku``, ``date`` and ``volume``.
     """
     fname = _get_data_by_filename("stallion.parquet")
     return pd.read_parquet(fname)
@@ -98,7 +99,7 @@ def generate_ar_data(
     Returns
     -------
         pd.DataFrame
-            data
+            generated autoregressive time series dataframe with columns ``series``, ``time_idx``, and ``value``.
     """  # noqa: E501
     # sample parameters
     np.random.seed(seed)
