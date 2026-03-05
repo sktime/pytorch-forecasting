@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers._blocks import _IEBlock
+from pytorch_forecasting.layers._blocks import IEBlock
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
@@ -20,6 +20,15 @@ class LightTS(TslibBaseModel):
 
     Implements the LightTS architecture with two sampling branches,
     information-exchange blocks, and an autoregressive highway layer.
+
+    References
+    ----------
+    Paper:
+        LightTS: Lightweight Time Series Forecasting with Sampling
+        https://arxiv.org/abs/2207.01186
+
+    Original implementation:
+        https://github.com/thuml/Time-Series-Library/blob/main/models/LightTS.py
     """
 
     @classmethod
@@ -132,7 +141,7 @@ class LightTS(TslibBaseModel):
         hidden_dim = max(4, self.d_model // 4)
         merged_dim = hidden_dim * 2
 
-        self.layer_1 = _IEBlock(
+        self.layer_1 = IEBlock(
             input_dim=self.chunk_size,
             hidden_dim=hidden_dim,
             output_dim=hidden_dim,
@@ -140,7 +149,7 @@ class LightTS(TslibBaseModel):
         )
         self.chunk_proj_1 = nn.Linear(self.num_chunks, 1)
 
-        self.layer_2 = _IEBlock(
+        self.layer_2 = IEBlock(
             input_dim=self.chunk_size,
             hidden_dim=hidden_dim,
             output_dim=hidden_dim,
@@ -148,7 +157,7 @@ class LightTS(TslibBaseModel):
         )
         self.chunk_proj_2 = nn.Linear(self.num_chunks, 1)
 
-        self.layer_3 = _IEBlock(
+        self.layer_3 = IEBlock(
             input_dim=merged_dim,
             hidden_dim=merged_dim,
             output_dim=output_dim,

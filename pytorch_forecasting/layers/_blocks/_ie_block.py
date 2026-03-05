@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class _IEBlock(nn.Module):
+class IEBlock(nn.Module):
     """
     Information Exchange block used by LightTS.
 
