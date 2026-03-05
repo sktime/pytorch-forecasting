@@ -14,19 +14,12 @@ import torch.nn.functional as F
 class DataEmbedding_inverted(nn.Module):
     """
     Data embedding module for time series data.
-
-    Parameters
-    ----------
-    c_in : int
-         Number of input features.
-    d_model : int
-        Dimension of the model.
-    embed_type : str
-        Type of embedding to use. Defaults to "fixed".
-    freq : str
-        Frequency of the time series data. Defaults to "h".
-    dropout : float
-        Dropout rate. Defaults to 0.1.
+    Args:
+        c_in (int): Number of input features.
+        d_model (int): Dimension of the model.
+        embed_type (str): Type of embedding to use. Defaults to "fixed".
+        freq (str): Frequency of the time series data. Defaults to "h".
+        dropout (float): Dropout rate. Defaults to 0.1.
     """
 
     def __init__(self, c_in, d_model, dropout=0.1):

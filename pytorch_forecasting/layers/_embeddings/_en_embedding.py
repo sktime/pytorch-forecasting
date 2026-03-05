@@ -19,17 +19,11 @@ class EnEmbedding(nn.Module):
     """
     Encoder embedding module for time series data. Handles endogenous feature
     embeddings in this case.
-
-    Parameters
-    ----------
-    n_vars : int
-        Number of input features.
-    d_model : int
-        Dimension of the model.
-    patch_len : int
-        Length of the patches.
-    dropout : float
-        Dropout rate. Defaults to 0.1.
+    Args:
+        n_vars (int): Number of input features.
+        d_model (int): Dimension of the model.
+        patch_len (int): Length of the patches.
+        dropout (float): Dropout rate. Defaults to 0.1.
     """
 
     def __init__(self, n_vars, d_model, patch_len, dropout):
