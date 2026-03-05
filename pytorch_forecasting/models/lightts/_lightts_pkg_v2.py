@@ -6,12 +6,17 @@ from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
 class LightTS_pkg_v2(Base_pkg):
-    """LightTS package container."""
+    """
+    Package container describing the LightTS model.
+
+    This class registers metadata, links the model implementation,
+    and provides helper utilities used during testing.
+    """
 
     _tags = {
         "info:name": "LightTS",
         "info:compute": 2,
-        "authors": ["Abhinav Singh"],
+        "authors": ["Sylver-Icy"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
@@ -21,21 +26,48 @@ class LightTS_pkg_v2(Base_pkg):
 
     @classmethod
     def get_cls(cls):
-        """Get model class."""
+        """
+        Return the LightTS model class.
+
+        Returns
+        -------
+        type
+            The LightTS model implementation.
+        """
         from pytorch_forecasting.models.lightts._lightts_v2 import LightTS
 
         return LightTS
 
     @classmethod
     def get_datamodule_cls(cls):
-        """Get the underlying DataModule class."""
+        """
+        Return the datamodule used for LightTS training and evaluation.
+
+        Returns
+        -------
+        type
+            The TslibDataModule class.
+        """
         from pytorch_forecasting.data._tslib_data_module import TslibDataModule
 
         return TslibDataModule
 
     @classmethod
     def _get_test_datamodule_from(cls, trainer_kwargs):
-        """Create test dataloaders from trainer_kwargs - following v1 pattern."""
+        """
+        Build test dataloaders from trainer configuration.
+
+        Parameters
+        ----------
+        trainer_kwargs : dict
+            Trainer configuration containing dataloader options.
+
+        Returns
+        -------
+        dict
+            Dictionary containing train, validation, and test dataloaders
+            along with the initialized datamodule.
+        """
         from pytorch_forecasting.data._tslib_data_module import TslibDataModule
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates_v2,
@@ -109,12 +141,12 @@ class LightTS_pkg_v2(Base_pkg):
     @classmethod
     def get_test_train_params(cls):
         """
-        Return testing parameter settings for the trainer.
+        Provide parameter configurations used for automated model tests.
 
-        Parameters
-        ----------
-        params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class
+        Returns
+        -------
+        list of dict
+            Different model parameter combinations used during testing.
         """
         from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 

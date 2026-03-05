@@ -14,11 +14,30 @@ from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
 class _IEBlock(nn.Module):
-    """Information Exchange block used by LightTS."""
+    """
+    Information Exchange block used by LightTS.
+
+    Applies spatial projection, channel mixing, and an output projection
+    to exchange information across time-series channels.
+    """
 
     def __init__(
         self, input_dim: int, hidden_dim: int, output_dim: int, num_nodes: int
     ) -> None:
+        """
+        Initialize the IEBlock.
+
+        Parameters
+        ----------
+        input_dim : int
+            Input feature dimension.
+        hidden_dim : int
+            Hidden projection size.
+        output_dim : int
+            Output feature dimension.
+        num_nodes : int
+            Number of channels mixed by the block.
+        """
         super().__init__()
 
         if input_dim <= 0:
@@ -46,6 +65,20 @@ class _IEBlock(nn.Module):
         self.output_proj = nn.Linear(reduced_dim, output_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the IEBlock.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape ``(batch_size, input_dim, num_nodes)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape ``(batch_size, output_dim, num_nodes)``.
+        """
+
         x = self.spatial_proj(x.permute(0, 2, 1))
         x = x.permute(0, 2, 1) + self.channel_proj(x.permute(0, 2, 1))
         x = self.output_proj(x.permute(0, 2, 1))
@@ -54,12 +87,17 @@ class _IEBlock(nn.Module):
 
 class LightTS(TslibBaseModel):
     """
-    LightTS for long-term time-series forecasting.
+    LightTS model for long-term time-series forecasting.
+
+    Implements the LightTS architecture with two sampling branches,
+    information-exchange blocks, and an autoregressive highway layer.
     """
 
     @classmethod
     def _pkg(cls):
-        """Package containing the model."""
+        """
+        Return the package container class associated with LightTS.
+        """
         from pytorch_forecasting.models.lightts._lightts_pkg_v2 import LightTS_pkg_v2
 
         return LightTS_pkg_v2
@@ -78,6 +116,33 @@ class LightTS(TslibBaseModel):
         metadata: dict | None = None,
         **kwargs: Any,
     ) -> None:
+        """
+        Initialize the LightTS forecasting model
+        Parameters
+        ----------
+        loss : nn.Module
+            Loss function used for training.
+        d_model : int, default=256
+            Base hidden dimension used to derive internal projection sizes.
+        chunk_size : int, default=24
+            Chunk size used by the sampling branches.
+        dropout : float, default=0.1
+            Dropout hyperparameter stored with model configuration.
+        logging_metrics : list[nn.Module] or None, default=None
+            Additional metrics logged during training/validation/testing.
+        optimizer : Optimizer or str or None, default="adam"
+            Optimizer instance or optimizer name.
+        optimizer_params : dict or None, default=None
+            Parameters passed to the optimizer.
+        lr_scheduler : str or None, default=None
+            Learning-rate scheduler name.
+        lr_scheduler_params : dict or None, default=None
+            Parameters passed to the learning-rate scheduler.
+        metadata : dict or None, default=None
+            Metadata from the datamodule (feature dimensions and sequence lengths).
+        **kwargs : Any
+            Extra keyword arguments accepted for API compatibility.
+        """
         super().__init__(
             loss=loss,
             logging_metrics=logging_metrics,
@@ -98,7 +163,9 @@ class LightTS(TslibBaseModel):
         self._init_network()
 
     def _init_network(self) -> None:
-        """Initialize LightTS submodules."""
+        """
+        Build LightTS layers and projections based on metadata and chunk settings.
+        """
         if self.context_length <= 0:
             raise ValueError("context_length must be positive in metadata for LightTS.")
         if self.prediction_length <= 0:
@@ -164,7 +231,20 @@ class LightTS(TslibBaseModel):
     def _prepare_input_data(
         self, x: dict[str, torch.Tensor]
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
-        """Prepare model inputs and target indices from v2 data dict."""
+        """
+        Prepare model inputs from the batch dictionary.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Input batch dictionary containing historical feature tensors.
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor | None]
+            Concatenated input tensor and optional target-channel indices.
+        """
+
         available_features = []
         target_indices = []
         current_idx = 0
@@ -194,14 +274,19 @@ class LightTS(TslibBaseModel):
         self, x: torch.Tensor, target_indices: torch.Tensor | None
     ) -> torch.Tensor:
         """
-        Run LightTS encoder and return shaped prediction tensor.
+        Run the LightTS encoder.
 
         Parameters
         ----------
         x : torch.Tensor
-            Input tensor of shape (batch, context_length, n_features).
-        target_indices : torch.Tensor | None
-            Target channel indices in the model input channels.
+            Input tensor (batch, context_length, features).
+        target_indices : torch.Tensor or None
+            Indices of target channels.
+
+        Returns
+        -------
+        torch.Tensor
+            Forecast tensor.
         """
         batch_size, seq_len, n_features = x.shape
 
@@ -247,7 +332,9 @@ class LightTS(TslibBaseModel):
         return self._reshape_output(output)
 
     def _reshape_output(self, output: torch.Tensor) -> torch.Tensor:
-        """Reshape output to match expected v2 prediction formats."""
+        """
+        Reshape model output to match v2 prediction format.
+        """
         if self.n_quantiles is None:
             return output
 
@@ -263,12 +350,12 @@ class LightTS(TslibBaseModel):
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
-        Forward pass of LightTS.
+        Forward pass of the LightTS model.
 
         Returns
         -------
         dict[str, torch.Tensor]
-            Output dictionary containing `"prediction"`.
+        Dictionary containing the prediction tensor under ``"prediction"``.
         """
         input_data, target_indices = self._prepare_input_data(x)
         prediction = self._encoder(input_data, target_indices)
