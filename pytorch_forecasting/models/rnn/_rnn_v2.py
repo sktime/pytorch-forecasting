@@ -50,9 +50,9 @@ class RecurrentNetwork_v2(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.rnn._rnn_pkg_v2 import RecurrentNetwork_pkg_v2
+        from pytorch_forecasting.models.rnn._rnn_pkg_v2 import RecurrentNetwork_v2_pkg
 
-        return RecurrentNetwork_pkg_v2
+        return RecurrentNetwork_v2_pkg
 
     def __init__(
         self,

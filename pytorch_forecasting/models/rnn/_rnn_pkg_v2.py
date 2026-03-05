@@ -5,7 +5,7 @@ Package container for RecurrentNetwork v2 model.
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class RecurrentNetwork_pkg_v2(Base_pkg):
+class RecurrentNetwork_v2_pkg(Base_pkg):
     """RecurrentNetwork v2 package container."""
 
     _tags = {
@@ -70,7 +70,7 @@ class RecurrentNetwork_pkg_v2(Base_pkg):
             ),
         ]
 
-        default_dm_cfg = {"context_length": 8, "prediction_length": 2}
+        default_dm_cfg = {"max_encoder_length": 8, "max_prediction_length": 2}
 
         for param in params:
             current_dm_cfg = param.get("datamodule_cfg", {})
