@@ -29,11 +29,11 @@ class RecurrentNetwork_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data._encoder_decoder_data_module import (
-            EncoderDecoderDataModule,
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
         )
 
-        return EncoderDecoderDataModule
+        return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
     def get_test_train_params(cls):
