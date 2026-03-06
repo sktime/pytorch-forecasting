@@ -114,6 +114,8 @@ docs = [
   "nbconvert",
   "recommonmark",
   "docutils",
+  "sphinx-rtd-theme",
+  "myst-parser",
 ]
 
 # Core Dep set just before the lightning 2.6 release
