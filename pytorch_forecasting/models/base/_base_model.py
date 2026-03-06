@@ -75,11 +75,15 @@ def _torch_cat_na(x: list[torch.Tensor]) -> torch.Tensor:
     Allows concatenation of tensors where ``dim=1`` are not equal.
     Missing values are filled up with ``nan``.
 
-    Args:
-        x (List[torch.Tensor]): list of tensors to concatenate along dimension 0
+    Parameters
+    ----------
+        x : List[torch.Tensor]
+            list of tensors to concatenate along dimension 0
 
-    Returns:
-        torch.Tensor: concatenated tensor
+    Returns
+    -------
+        torch.Tensor
+            concatenated tensor
     """
     if x[0].ndim > 1:
         first_lens = [xi.shape[1] for xi in x]
@@ -141,12 +145,14 @@ def _concatenate_output(
     """
     Concatenate multiple batches of output dictionary.
 
-    Args:
-        output (List[Dict[str, List[Union[List[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]]]]):
+    Parameters
+    ----------
+        output : List[Dict[str, List[Union[List[torch.Tensor], torch.Tensor, bool, int, str, np.ndarray]]]]
             list of outputs to concatenate. Each entry corresponds to a batch.
 
-    Returns:
-        Dict[str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]]:
+    Returns
+    -------
+        Dict[str, Union[torch.Tensor, np.ndarray, List[Union[torch.Tensor, int, bool, str]]]]
             concatenated output
     """  # noqa: E501
     output_cat = {}
@@ -491,32 +497,47 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         BaseModel for timeseries forecasting from which to inherit from
 
-        Args:
-            log_interval (Union[int, float], optional): Batches after which predictions are logged. If < 1.0, will log
+        Parameters
+        ----------
+            log_interval : Union[int, float], optional
+                Batches after which predictions are logged. If < 1.0, will log
                 multiple entries per batch. Defaults to -1.
-            log_val_interval (Union[int, float], optional): batches after which predictions for validation are
+            log_val_interval : Union[int, float], optional
+                batches after which predictions for validation are
                 logged. Defaults to None/log_interval.
-            learning_rate (float, optional): Learning rate. Defaults to 1e-3.
-            log_gradient_flow (bool): If to log gradient flow, this takes time and should be only done to diagnose
+            learning_rate : float, optional
+                Learning rate. Defaults to 1e-3.
+            log_gradient_flow : bool
+                If to log gradient flow, this takes time and should be only done to diagnose
                 training failures. Defaults to False.
-            loss (Metric, optional): metric to optimize, can also be list of metrics. Defaults to SMAPE().
-            logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
+            loss : Metric, optional
+                metric to optimize, can also be list of metrics. Defaults to SMAPE().
+            logging_metrics : nn.ModuleList[MultiHorizonMetric]
+                list of metrics that are logged during training.
                 Defaults to [].
-            reduce_on_plateau_patience (int): patience after which learning rate is reduced by a factor of 10. Defaults
+            reduce_on_plateau_patience : int
+                patience after which learning rate is reduced by a factor of 10. Defaults
                 to 1000
-            reduce_on_plateau_reduction (float): reduction in learning rate when encountering plateau. Defaults to 2.0.
-            reduce_on_plateau_min_lr (float): minimum learning rate for reduce on plateau learning rate scheduler.
+            reduce_on_plateau_reduction : float
+                reduction in learning rate when encountering plateau. Defaults to 2.0.
+            reduce_on_plateau_min_lr : float
+                minimum learning rate for reduce on plateau learning rate scheduler.
                 Defaults to 1e-5
-            weight_decay (float): weight decay. Defaults to 0.0.
-            optimizer_params (Dict[str, Any]): additional parameters for the optimizer. Defaults to {}.
-            monotone_constraints (Dict[str, int]): dictionary of monotonicity constraints for continuous decoder
+            weight_decay : float
+                weight decay. Defaults to 0.0.
+            optimizer_params : Dict[str, Any]
+                additional parameters for the optimizer. Defaults to {}.
+            monotone_constraints : Dict[str, int]
+                dictionary of monotonicity constraints for continuous decoder
                 variables mapping
                 position (e.g. ``"0"`` for first position) to constraint (``-1`` for negative and ``+1`` for positive,
                 larger numbers add more weight to the constraint vs. the loss but are usually not necessary).
                 This constraint significantly slows down training. Defaults to {}.
-            output_transformer (Callable): transformer that takes network output and transforms it to prediction space.
+            output_transformer : Callable
+                transformer that takes network output and transforms it to prediction space.
                 Defaults to None which is equivalent to ``lambda out: out["prediction"]``.
-            optimizer (str): Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``
+            optimizer : str
+                Optimizer, "ranger", "sgd", "adam", "adamw" or class name of optimizer in ``torch.optim``
                 or ``pytorch_optimizer``.
                 Alternatively, a class or function can be passed which takes parameters as first argument and
                 a `lr` argument (optionally also `weight_decay`). Defaults to "adam".
@@ -617,8 +638,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Based on loss function.
 
-        Returns:
-            int: number of targets
+        Returns
+        -------
+            int
+                number of targets
         """
         if isinstance(self.loss, MultiLoss):
             return len(self.loss.metrics)
@@ -634,13 +657,19 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Extract prediction from network output and rescale it to real space / de-normalize it.
 
-        Args:
-            prediction (Union[torch.Tensor, List[torch.Tensor]]): normalized prediction
-            target_scale (Union[torch.Tensor, List[torch.Tensor]]): scale to rescale prediction
-            loss (Optional[Metric]): metric to use for transform
+        Parameters
+        ----------
+            prediction : Union[torch.Tensor, List[torch.Tensor]]
+                normalized prediction
+            target_scale : Union[torch.Tensor, List[torch.Tensor]]
+                scale to rescale prediction
+            loss : Optional[Metric]
+                metric to use for transform
 
-        Returns:
-            torch.Tensor: rescaled prediction
+        Returns
+        -------
+            torch.Tensor
+                rescaled prediction
         """  # noqa: E501
         if loss is None:
             loss = self.loss
@@ -667,14 +696,20 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         Determines ``output_size`` and ``loss`` parameters.
 
-        Args:
-            dataset (TimeSeriesDataSet): timeseries dataset
-            kwargs (Dict[str, Any]): current hyperparameters
-            default_loss (MultiHorizonMetric, optional): default loss function.
+        Parameters
+        ----------
+            dataset : TimeSeriesDataSet
+                timeseries dataset
+            kwargs : Dict[str, Any]
+                current hyperparameters
+            default_loss : MultiHorizonMetric, optional
+                default loss function.
                 Defaults to :py:class:`~pytorch_forecasting.metrics.MAE`.
 
-        Returns:
-            Dict[str, Any]: dictionary with ``output_size`` and ``loss``.
+        Returns
+        -------
+            Dict[str, Any]
+                dictionary with ``output_size`` and ``loss``.
         """
 
         # infer output size
@@ -770,18 +805,26 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Create the log used in the training and validation step.
 
-        Args:
-            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
-            y (Tuple[torch.Tensor, torch.Tensor]): y as passed to the loss function by the dataloader
-            out (Dict[str, torch.Tensor]): output of the network
-            batch_idx (int): batch number
-            prediction_kwargs (Dict[str, Any], optional): arguments to pass to
+        Parameters
+        ----------
+            x : Dict[str, torch.Tensor]
+                x as passed to the network by the dataloader
+            y : Tuple[torch.Tensor, torch.Tensor]
+                y as passed to the loss function by the dataloader
+            out : Dict[str, torch.Tensor]
+                output of the network
+            batch_idx : int
+                batch number
+            prediction_kwargs : Dict[str, Any], optional
+                arguments to pass to
                 :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_prediction`. Defaults to {}.
-            quantiles_kwargs (Dict[str, Any], optional):
+            quantiles_kwargs : Dict[str, Any], optional
                 :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_quantiles`. Defaults to {}.
 
-        Returns:
-            Dict[str, Any]: log dictionary to be returned by training and validation steps
+        Returns
+        -------
+            Dict[str, Any]
+                log dictionary to be returned by training and validation steps
         """  # noqa: E501
 
         prediction_kwargs = (
@@ -842,14 +885,21 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Run for each train/val step.
 
-        Args:
-            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
-            y (Tuple[torch.Tensor, torch.Tensor]): y as passed to the loss function by the dataloader
-            batch_idx (int): batch number
-            **kwargs: additional arguments to pass to the network apart from ``x``
+        Parameters
+        ----------
+            x : Dict[str, torch.Tensor]
+                x as passed to the network by the dataloader
+            y : Tuple[torch.Tensor, torch.Tensor]
+                y as passed to the loss function by the dataloader
+            batch_idx : int
+                batch number
+            **kwargs : Any
+                additional arguments to pass to the network apart from ``x``
 
-        Returns:
-            Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]: tuple where the first
+        Returns
+        -------
+            Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]
+                tuple where the first
                 entry is a dictionary to which additional logging results can be added for consumption in the
                 ``on_epoch_end`` hook and the second entry is the model's output.
         """  # noqa: E501
@@ -978,11 +1028,16 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Log metrics every training/validation step.
 
-        Args:
-            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
-            y (torch.Tensor): y as passed to the loss function by the dataloader
-            out (Dict[str, torch.Tensor]): output of the network
-            prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
+        Parameters
+        ----------
+            x : Dict[str, torch.Tensor]
+                x as passed to the network by the dataloader
+            y : torch.Tensor
+                y as passed to the loss function by the dataloader
+            out : Dict[str, torch.Tensor]
+                output of the network
+            prediction_kwargs : Dict[str, Any]
+                parameters for ``to_prediction()`` of the loss metric.
         """  # noqa: E501
         # logging losses - for each target
         if prediction_kwargs is None:
@@ -1028,13 +1083,17 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Network forward pass.
 
-        Args:
-            x (Dict[str, Union[torch.Tensor, List[torch.Tensor]]]): network input (x as returned by the dataloader).
+        Parameters
+        ----------
+            x : Dict[str, Union[torch.Tensor, List[torch.Tensor]]]
+                network input (x as returned by the dataloader).
                 See :py:meth:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet.to_dataloader` method that
                 returns a tuple of ``x`` and ``y``. This function expects ``x``.
 
-        Returns:
-            NamedTuple[Union[torch.Tensor, List[torch.Tensor]]]: network outputs / dictionary of tensors or list
+        Returns
+        -------
+            NamedTuple[Union[torch.Tensor, List[torch.Tensor]]]
+                network outputs / dictionary of tensors or list
                 of tensors. Create it using the
                 :py:meth:`~pytorch_forecasting.models.base_model.BaseModel.to_network_output` method.
                 The minimal required entries in the dictionary are (and shapes in brackets):
@@ -1109,11 +1168,16 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Log metrics every training/validation step.
 
-        Args:
-            x (Dict[str, torch.Tensor]): x as passed to the network by the dataloader
-            out (Dict[str, torch.Tensor]): output of the network
-            batch_idx (int): current batch index
-            **kwargs: parameters to pass to ``plot_prediction``
+        Parameters
+        ----------
+            x : Dict[str, torch.Tensor]
+                x as passed to the network by the dataloader
+            out : Dict[str, torch.Tensor]
+                output of the network
+            batch_idx : int
+                current batch index
+            **kwargs : Any
+                parameters to pass to ``plot_prediction``
         """
         # log single prediction figure
         if (
@@ -1174,19 +1238,29 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Plot prediction of prediction vs actuals
 
-        Args:
-            x: network input
-            out: network output
-            idx: index of prediction to plot
-            add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
+        Parameters
+        ----------
+            x : dict[str, torch.Tensor]
+                network input
+            out : dict[str, torch.Tensor]
+                network output
+            idx : int
+                index of prediction to plot
+            add_loss_to_title : Metric | torch.Tensor | bool
+                if to add loss to title or loss function to calculate. Can be either metrics,
                 bool indicating if to use loss metric or tensor which contains losses for all samples.
                 Calculated losses are determined without weights. Default to False.
-            show_future_observed: if to show actuals for future. Defaults to True.
-            ax: matplotlib axes to plot on
-            quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
-            prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
+            show_future_observed : bool
+                if to show actuals for future. Defaults to True.
+            ax : Any
+                matplotlib axes to plot on
+            quantiles_kwargs : Dict[str, Any]
+                parameters for ``to_quantiles()`` of the loss metric.
+            prediction_kwargs : Dict[str, Any]
+                parameters for ``to_prediction()`` of the loss metric.
 
-        Returns:
+        Returns
+        -------
             matplotlib figure
         """  # noqa: E501
         if quantiles_kwargs is None:
@@ -1373,8 +1447,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         Uses single Ranger optimizer. Depending if learning rate is a list or a single float, implement dynamic
         learning rate scheduler or deterministic version
 
-        Returns:
-            Tuple[List]: first entry is list of optimizers and second is list of schedulers
+        Returns
+        -------
+            Tuple[List]
+                first entry is list of optimizers and second is list of schedulers
         """  # noqa: E501
         ptopt_in_env = _check_soft_dependencies("pytorch_optimizer", severity="none")
         # either set a schedule of lrs or find it dynamically
@@ -1531,11 +1607,15 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
         This function should be called as ``super().from_dataset()`` in a derived models that implement it
 
-        Args:
-            dataset (TimeSeriesDataSet): timeseries dataset
+        Parameters
+        ----------
+            dataset : TimeSeriesDataSet
+                timeseries dataset
 
-        Returns:
-            BaseModel: Model that can be trained
+        Returns
+        -------
+            BaseModel
+                Model that can be trained
         """  # noqa: E501
         if "output_transformer" not in kwargs:
             kwargs["output_transformer"] = dataset.target_normalizer
@@ -1573,8 +1653,10 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         List of targets that are predicted.
 
-        Returns:
-            List[str]: list of target names
+        Returns
+        -------
+            List[str]
+                list of target names
         """
         if hasattr(self, "dataset_parameters") and self.dataset_parameters is not None:
             return to_list(self.dataset_parameters["target"])
@@ -1591,15 +1673,21 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Convert output to prediction using the loss metric.
 
-        Args:
-            out (Dict[str, Any]): output of network where "prediction" has been
+        Parameters
+        ----------
+            out : Dict[str, Any]
+                output of network where "prediction" has been
                 transformed with :py:meth:`~transform_output`
-            use_metric (bool): if to use metric to convert for conversion, if False,
+            use_metric : bool
+                if to use metric to convert for conversion, if False,
                 simply take the average over ``out["prediction"]``
-            **kwargs: arguments to metric ``to_quantiles`` method
+            **kwargs : Any
+                arguments to metric ``to_quantiles`` method
 
-        Returns:
-            torch.Tensor: predictions of shape batch_size x timesteps
+        Returns
+        -------
+            torch.Tensor
+                predictions of shape batch_size x timesteps
         """
         if not use_metric:
             # if samples were already drawn directly take mean
@@ -1622,15 +1710,21 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Convert output to quantiles using the loss metric.
 
-        Args:
-            out (Dict[str, Any]): output of network where "prediction" has been
+        Parameters
+        ----------
+            out : Dict[str, Any]
+                output of network where "prediction" has been
                 transformed with :py:meth:`~transform_output`
-            use_metric (bool): if to use metric to convert for conversion, if False,
+            use_metric : bool
+                if to use metric to convert for conversion, if False,
                 simply take the quantiles over ``out["prediction"]``
-            **kwargs: arguments to metric ``to_quantiles`` method
+            **kwargs : Any
+                arguments to metric ``to_quantiles`` method
 
-        Returns:
-            torch.Tensor: quantiles of shape batch_size x timesteps x n_quantiles
+        Returns
+        -------
+            torch.Tensor
+                quantiles of shape batch_size x timesteps x n_quantiles
         """
         # if samples are output directly take quantiles
         if not use_metric:
@@ -1677,28 +1771,45 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Run inference / prediction.
 
-        Args:
-            dataloader: dataloader, dataframe or dataset
-            mode: one of "prediction", "quantiles", or "raw", or tuple ``("raw", output_name)`` where output_name is
+        Parameters
+        ----------
+            dataloader : Any
+                dataloader, dataframe or dataset
+            mode : str | tuple[str, str]
+                one of "prediction", "quantiles", or "raw", or tuple ``("raw", output_name)`` where output_name is
                 a name in the dictionary returned by ``forward()``
-            return_index: if to return the prediction index (in the same order as the output, i.e. the row of the
+            return_index : bool
+                if to return the prediction index (in the same order as the output, i.e. the row of the
                 dataframe corresponds to the first dimension of the output and the given time index is the time index
                 of the first prediction)
-            return_decoder_lengths: if to return decoder_lengths (in the same order as the output
-            batch_size: batch size for dataloader - only used if data is not a dataloader is passed
-            num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
-            fast_dev_run: if to only return results of first batch
-            return_x: if to return network inputs (in the same order as prediction output)
-            return_y: if to return network targets (in the same order as prediction output)
-            mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
+            return_decoder_lengths : bool
+                if to return decoder_lengths (in the same order as the output
+            batch_size : int
+                batch size for dataloader - only used if data is not a dataloader is passed
+            num_workers : int
+                number of workers for dataloader - only used if data is not a dataloader is passed
+            fast_dev_run : bool
+                if to only return results of first batch
+            return_x : bool
+                if to return network inputs (in the same order as prediction output)
+            return_y : bool
+                if to return network targets (in the same order as prediction output)
+            mode_kwargs : Dict[str, Any]
+                keyword arguments for ``to_prediction()`` or ``to_quantiles()``
                 for modes "prediction" and "quantiles"
-            trainer_kwargs (Dict[str, Any], optional): keyword arguments for the trainer
-            write_interval: interval to write predictions to disk
-            output_dir: directory to write predictions to. Defaults to None. If set function will return empty list
-            **kwargs: additional arguments to network's forward method
+            trainer_kwargs : Dict[str, Any], optional
+                keyword arguments for the trainer
+            write_interval : Literal["batch", "epoch", "batch_and_epoch"]
+                interval to write predictions to disk
+            output_dir : str | None
+                directory to write predictions to. Defaults to None. If set function will return empty list
+            **kwargs : Any
+                additional arguments to network's forward method
 
-        Returns:
-            Prediction: if one of the ```return`` arguments is present,
+        Returns
+        -------
+            Prediction
+                if one of the ```return`` arguments is present,
                 prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
         """  # noqa: E501
         # convert to dataloader
@@ -1770,11 +1881,16 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         """
         Predict partial dependency.
 
-        Args:
-            data (Union[DataLoader, pd.DataFrame, TimeSeriesDataSet]): data
-            variable (str): variable which to modify
-            values (Iterable): array of values to probe
-            mode (str, optional): Output mode. Defaults to "dataframe". Either
+        Parameters
+        ----------
+            data : Union[DataLoader, pd.DataFrame, TimeSeriesDataSet]
+                data
+            variable : str
+                variable which to modify
+            values : Iterable
+                array of values to probe
+            mode : str, optional
+                Output mode. Defaults to "dataframe". Either
 
                 * "series": values are average prediction and index are probed values
                 * "dataframe": columns are as obtained by the `dataset.x_to_index()` method,
@@ -1783,14 +1899,19 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                     the variable name for the probed values
                 * "raw": outputs a tensor of shape len(values) x prediction_shape
 
-            target: Defines which values are overwritten for making a prediction.
+            target : Any
+                Defines which values are overwritten for making a prediction.
                 Same as in :py:meth:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet.set_overwrite_values`.
                 Defaults to "decoder".
-            show_progress_bar: if to show progress bar. Defaults to False.
-            **kwargs: additional kwargs to :py:meth:`~predict` method
+            show_progress_bar : bool
+                if to show progress bar. Defaults to False.
+            **kwargs : Any
+                additional kwargs to :py:meth:`~predict` method
 
-        Returns:
-            Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]: output
+        Returns
+        -------
+            Union[np.ndarray, torch.Tensor, pd.Series, pd.DataFrame]
+                output
         """  # noqa: E501
         values = np.asarray(values)
         if isinstance(data, pd.DataFrame):  # convert to dataframe
@@ -1877,21 +1998,34 @@ class BaseModelWithCovariates(BaseModel):
 
     Assumes the following hyperparameters:
 
-    Args:
-        static_categoricals (List[str]): names of static categorical variables
-        static_reals (List[str]): names of static continuous variables
-        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
-        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
-        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
-        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
-        x_reals (List[str]): order of continuous variables in tensor passed to forward function
-        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
-        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
+    Parameters
+    ----------
+        static_categoricals : List[str]
+            names of static categorical variables
+        static_reals : List[str]
+            names of static continuous variables
+        time_varying_categoricals_encoder : List[str]
+            names of categorical variables for encoder
+        time_varying_categoricals_decoder : List[str]
+            names of categorical variables for decoder
+        time_varying_reals_encoder : List[str]
+            names of continuous variables for encoder
+        time_varying_reals_decoder : List[str]
+            names of continuous variables for decoder
+        x_reals : List[str]
+            order of continuous variables in tensor passed to forward function
+        x_categoricals : List[str]
+            order of categorical variables in tensor passed to forward function
+        embedding_sizes : Dict[str, Tuple[int, int]]
+            dictionary mapping categorical variables to tuple of integers
             where the first integer denotes the number of categorical classes and the second the embedding size
-        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
-        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
+        embedding_labels : Dict[str, List[str]]
+            dictionary mapping (string) indices to list of categorical labels
+        embedding_paddings : List[str]
+            names of categorical variables for which label 0 is always mapped to an
              embedding vector filled with zeros
-        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
+        categorical_groups : Dict[str, List[str]]
+            dictionary of categorical variables that are grouped together and
             can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
             as bag of embeddings
     """  # noqa: E501
@@ -1901,8 +2035,10 @@ class BaseModelWithCovariates(BaseModel):
         """
         Positions of target variable(s) in covariates.
 
-        Returns:
-            torch.LongTensor: tensor of positions.
+        Returns
+        -------
+            torch.LongTensor
+                tensor of positions.
         """
         # todo: expand for categorical targets
         if "target" in self.hparams:
@@ -1976,12 +2112,17 @@ class BaseModelWithCovariates(BaseModel):
         """
         Create model from dataset and set parameters related to covariates.
 
-        Args:
-            dataset: timeseries dataset
-            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all
-            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+        Parameters
+        ----------
+            dataset : TimeSeriesDataSet
+                timeseries dataset
+            allowed_encoder_known_variable_names : list[str]
+                List of known variables that are allowed in encoder, defaults to all
+            **kwargs : Any
+                additional arguments such as hyperparameters for model (see ``__init__()``)
 
-        Returns:
+        Returns
+        -------
             LightningModule
         """  # noqa: E501
         # assert fixed encoder and decoder length for the moment
@@ -2042,13 +2183,19 @@ class BaseModelWithCovariates(BaseModel):
         """
         Extract features
 
-        Args:
-            x (Dict[str, torch.Tensor]): input from the dataloader
-            embeddings (MultiEmbedding): embeddings for categorical variables
-            period (str, optional): One of "encoder", "decoder" or "all". Defaults to "all".
+        Parameters
+        ----------
+            x : Dict[str, torch.Tensor]
+                input from the dataloader
+            embeddings : MultiEmbedding
+                embeddings for categorical variables
+            period : str, optional
+                One of "encoder", "decoder" or "all". Defaults to "all".
 
-        Returns:
-            torch.Tensor: tensor with selected variables
+        Returns
+        -------
+            torch.Tensor
+                tensor with selected variables
         """  # noqa: E501
         # select period
         if period == "encoder":
@@ -2090,17 +2237,26 @@ class BaseModelWithCovariates(BaseModel):
         """
         Calculate predictions and actuals by variable averaged by ``bins`` bins spanning from ``-std`` to ``+std``
 
-        Args:
-            x: input as ``forward()``
-            y_pred: predictions obtained by ``self(x, **kwargs)``
-            normalize: if to return normalized averages, i.e. mean or sum of ``y``
-            bins: number of bins to calculate
-            std: number of standard deviations for standard scaled continuous variables
-            log_scale (str, optional): if to plot in log space. If None, determined based on skew of values.
+        Parameters
+        ----------
+            x : dict[str, torch.Tensor]
+                input as ``forward()``
+            y_pred : torch.Tensor
+                predictions obtained by ``self(x, **kwargs)``
+            normalize : bool
+                if to return normalized averages, i.e. mean or sum of ``y``
+            bins : int
+                number of bins to calculate
+            std : float
+                number of standard deviations for standard scaled continuous variables
+            log_scale : str, optional
+                if to plot in log space. If None, determined based on skew of values.
                 Defaults to None.
 
-        Returns:
-            dictionary that can be used to plot averages with :py:meth:`~plot_prediction_actual_by_variable`
+        Returns
+        -------
+            dictionary that can be used to plot averages with
+                :py:meth:`~plot_prediction_actual_by_variable`
         """  # noqa: E501
         support = {}  # histogram
         # averages
@@ -2215,19 +2371,27 @@ class BaseModelWithCovariates(BaseModel):
         """
         Plot predicions and actual averages by variables
 
-        Args:
-            data (Dict[str, Dict[str, torch.Tensor]]): data obtained from
+        Parameters
+        ----------
+            data : Dict[str, Dict[str, torch.Tensor]]
+                data obtained from
                 :py:meth:`~calculate_prediction_actual_by_variable`
-            name (str, optional): name of variable for which to plot actuals vs predictions. Defaults to None which
+            name : str, optional
+                name of variable for which to plot actuals vs predictions. Defaults to None which
                 means returning a dictionary of plots for all variables.
-            log_scale (str, optional): if to plot in log space. If None, determined based on skew of values.
+            log_scale : str, optional
+                if to plot in log space. If None, determined based on skew of values.
                 Defaults to None.
 
-        Raises:
-            ValueError: if the variable name is unknown
+        Raises
+        ------
+            ValueError
+                if the variable name is unknown
 
-        Returns:
-            Union[Dict[str, plt.Figure], plt.Figure]: matplotlib figure
+        Returns
+        -------
+            Union[Dict[str, plt.Figure], plt.Figure]
+                matplotlib figure
         """  # noqa: E501
         _check_matplotlib("plot_prediction_actual_by_variable")
 
@@ -2357,9 +2521,12 @@ class AutoRegressiveBaseModel(BaseModel):
 
     Assumes the following hyperparameters:
 
-    Args:
-        target (str): name of target variable
-        target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped each to a dictionary of corresponding
+    Parameters
+    ----------
+        target : str
+            name of target variable
+        target_lags : Dict[str, Dict[str, int]]
+            dictionary of target names mapped each to a dictionary of corresponding
             lagged variables and their lags.
             Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
             add at least the target variables with the corresponding lags to improve performance.
@@ -2375,11 +2542,15 @@ class AutoRegressiveBaseModel(BaseModel):
         """
         Create model from dataset.
 
-        Args:
-            dataset: timeseries dataset
-            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+        Parameters
+        ----------
+            dataset : TimeSeriesDataSet
+                timeseries dataset
+            **kwargs : Any
+                additional arguments such as hyperparameters for model (see ``__init__()``)
 
-        Returns:
+        Returns
+        -------
             LightningModule
         """  # noqa: E501
         kwargs.setdefault("target", dataset.target)
@@ -2413,14 +2584,21 @@ class AutoRegressiveBaseModel(BaseModel):
 
         Function is typically not called directly but via :py:meth:`~decode_autoregressive`.
 
-        Args:
-            normalized_prediction_parameters (torch.Tensor): network prediction output
-            target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale to rescale network output
-            n_samples (int, optional): Number of samples to draw independently. Defaults to 1.
-            **kwargs: extra arguments for dictionary passed to :py:meth:`~transform_output` method.
+        Parameters
+        ----------
+            normalized_prediction_parameters : torch.Tensor
+                network prediction output
+            target_scale : Union[List[torch.Tensor], torch.Tensor]
+                target scale to rescale network output
+            n_samples : int, optional
+                Number of samples to draw independently. Defaults to 1.
+            **kwargs : Any
+                extra arguments for dictionary passed to :py:meth:`~transform_output` method.
 
-        Returns:
-            Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]: tuple of rescaled prediction and
+        Returns
+        -------
+            Tuple[Union[List[torch.Tensor], torch.Tensor], torch.Tensor]
+                tuple of rescaled prediction and
                 normalized prediction (e.g. for input into next auto-regressive step)
         """  # noqa: E501
         single_prediction = to_list(normalized_prediction_parameters)[0].ndim == 2
@@ -2487,8 +2665,10 @@ class AutoRegressiveBaseModel(BaseModel):
 
         Supports only continuous targets.
 
-        Args:
-            decode_one (Callable): function that takes at least the following arguments:
+        Parameters
+        ----------
+            decode_one : Callable
+                function that takes at least the following arguments:
 
                 * ``idx`` (int): index of decoding step (from 0 to n_decoder_steps-1)
                 * ``lagged_targets`` (List[torch.Tensor]): list of normalized targets.
@@ -2501,16 +2681,24 @@ class AutoRegressiveBaseModel(BaseModel):
                 And returns tuple of (not rescaled) network prediction output and hidden state for next
                 auto-regressive step.
 
-            first_target (Union[List[torch.Tensor], torch.Tensor]): first target value to use for decoding
-            first_hidden_state (Any): first hidden state used for decoding
-            target_scale (Union[List[torch.Tensor], torch.Tensor]): target scale as in ``x``
-            n_decoder_steps (int): number of decoding/prediction steps
-            n_samples (int): number of independent samples to draw from the distribution -
+            first_target : Union[List[torch.Tensor], torch.Tensor]
+                first target value to use for decoding
+            first_hidden_state : Any
+                first hidden state used for decoding
+            target_scale : Union[List[torch.Tensor], torch.Tensor]
+                target scale as in ``x``
+            n_decoder_steps : int
+                number of decoding/prediction steps
+            n_samples : int
+                number of independent samples to draw from the distribution -
                 only relevant for multivariate models. Defaults to 1.
-            **kwargs: additional arguments that are passed to the decode_one function.
+            **kwargs : Any
+                additional arguments that are passed to the decode_one function.
 
-        Returns:
-            Union[List[torch.Tensor], torch.Tensor]: re-scaled prediction
+        Returns
+        -------
+            Union[List[torch.Tensor], torch.Tensor]
+                re-scaled prediction
 
         Example:
 
@@ -2627,8 +2815,10 @@ class AutoRegressiveBaseModel(BaseModel):
         """
         Positions of target variable(s) in covariates.
 
-        Returns:
-            torch.LongTensor: tensor of positions.
+        Returns
+        -------
+            torch.LongTensor
+                tensor of positions.
         """
         # todo: expand for categorical targets
         return torch.tensor(
@@ -2651,19 +2841,29 @@ class AutoRegressiveBaseModel(BaseModel):
         """
         Plot prediction of prediction vs actuals
 
-        Args:
-            x: network input
-            out: network output
-            idx: index of prediction to plot
-            add_loss_to_title: if to add loss to title or loss function to calculate. Can be either metrics,
+        Parameters
+        ----------
+            x : dict[str, torch.Tensor]
+                network input
+            out : dict[str, torch.Tensor]
+                network output
+            idx : int
+                index of prediction to plot
+            add_loss_to_title : Metric | torch.Tensor | bool
+                if to add loss to title or loss function to calculate. Can be either metrics,
                 bool indicating if to use loss metric or tensor which contains losses for all samples.
                 Calculated losses are determined without weights. Default to False.
-            show_future_observed: if to show actuals for future. Defaults to True.
-            ax: matplotlib axes to plot on
-            quantiles_kwargs (Dict[str, Any]): parameters for ``to_quantiles()`` of the loss metric.
-            prediction_kwargs (Dict[str, Any]): parameters for ``to_prediction()`` of the loss metric.
+            show_future_observed : bool
+                if to show actuals for future. Defaults to True.
+            ax : Any
+                matplotlib axes to plot on
+            quantiles_kwargs : Dict[str, Any]
+                parameters for ``to_quantiles()`` of the loss metric.
+            prediction_kwargs : Dict[str, Any]
+                parameters for ``to_prediction()`` of the loss metric.
 
-        Returns:
+        Returns
+        -------
             matplotlib figure
         """  # noqa: E501
 
@@ -2695,8 +2895,10 @@ class AutoRegressiveBaseModel(BaseModel):
         """
         Positions of lagged target variable(s) in covariates.
 
-        Returns:
-            Dict[int, torch.LongTensor]: dictionary mapping integer lags to tensor of variable positions.
+        Returns
+        -------
+            Dict[int, torch.LongTensor]
+                dictionary mapping integer lags to tensor of variable positions.
         """  # noqa: E501
         raise Exception(
             "lagged targets can only be used with class inheriting "
@@ -2713,27 +2915,42 @@ class AutoRegressiveBaseModelWithCovariates(
 
     Assumes the following hyperparameters:
 
-    Args:
-        target (str): name of target variable
-        target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped each to a dictionary of corresponding
+    Parameters
+    ----------
+        target : str
+            name of target variable
+        target_lags : Dict[str, Dict[str, int]]
+            dictionary of target names mapped each to a dictionary of corresponding
             lagged variables and their lags.
             Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
             add at least the target variables with the corresponding lags to improve performance.
             Defaults to no lags, i.e. an empty dictionary.
-        static_categoricals (List[str]): names of static categorical variables
-        static_reals (List[str]): names of static continuous variables
-        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
-        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
-        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
-        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
-        x_reals (List[str]): order of continuous variables in tensor passed to forward function
-        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
-        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
+        static_categoricals : List[str]
+            names of static categorical variables
+        static_reals : List[str]
+            names of static continuous variables
+        time_varying_categoricals_encoder : List[str]
+            names of categorical variables for encoder
+        time_varying_categoricals_decoder : List[str]
+            names of categorical variables for decoder
+        time_varying_reals_encoder : List[str]
+            names of continuous variables for encoder
+        time_varying_reals_decoder : List[str]
+            names of continuous variables for decoder
+        x_reals : List[str]
+            order of continuous variables in tensor passed to forward function
+        x_categoricals : List[str]
+            order of categorical variables in tensor passed to forward function
+        embedding_sizes : Dict[str, Tuple[int, int]]
+            dictionary mapping categorical variables to tuple of integers
             where the first integer denotes the number of categorical classes and the second the embedding size
-        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
-        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
+        embedding_labels : Dict[str, List[str]]
+            dictionary mapping (string) indices to list of categorical labels
+        embedding_paddings : List[str]
+            names of categorical variables for which label 0 is always mapped to an
              embedding vector filled with zeros
-        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
+        categorical_groups : Dict[str, List[str]]
+            dictionary of categorical variables that are grouped together and
             can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
             as bag of embeddings
     """  # noqa: E501
@@ -2743,8 +2960,10 @@ class AutoRegressiveBaseModelWithCovariates(
         """
         Positions of lagged target variable(s) in covariates.
 
-        Returns:
-            Dict[int, torch.LongTensor]: dictionary mapping integer lags to tensor of variable positions.
+        Returns
+        -------
+            Dict[int, torch.LongTensor]
+                dictionary mapping integer lags to tensor of variable positions.
         """  # noqa: E501
         # todo: expand for categorical targets
         if len(self.hparams.target_lags) == 0:
