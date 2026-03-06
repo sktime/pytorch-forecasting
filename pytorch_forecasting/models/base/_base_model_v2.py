@@ -80,6 +80,13 @@ class BaseModel(LightningModule):
         """Package class for the model."""
         return cls._pkg()
 
+    @property
+    def n_targets(self) -> int:
+        """Number of targets to forecast, based on the loss function."""
+        if isinstance(self.loss, MultiLoss):
+            return len(self.loss.metrics)
+        return 1
+
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the model.
@@ -182,9 +189,19 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        if isinstance(self.loss, MultiLoss):
+            if not isinstance(y_hat, list | tuple):
+                y_hat = [y_hat]
+            loss = self.loss(list(y_hat), y)
+        else:
+            loss = self.loss(y_hat, y)
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train_loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
         self.log_metrics(y_hat, y, prefix="train")
         return {"loss": loss}
@@ -210,7 +227,12 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        if isinstance(self.loss, MultiLoss):
+            if not isinstance(y_hat, list | tuple):
+                y_hat = [y_hat]
+            loss = self.loss(list(y_hat), y)
+        else:
+            loss = self.loss(y_hat, y)
         self.log(
             "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -238,7 +260,12 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        if isinstance(self.loss, MultiLoss):
+            if not isinstance(y_hat, list | tuple):
+                y_hat = [y_hat]
+            loss = self.loss(list(y_hat), y)
+        else:
+            loss = self.loss(y_hat, y)
         self.log(
             "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -348,20 +375,30 @@ class BaseModel(LightningModule):
             raise ValueError(f"Scheduler {self.lr_scheduler} not supported.")
 
     def log_metrics(
-        self, y_hat: torch.Tensor, y: torch.Tensor, prefix: str = "val"
+        self,
+        y_hat: torch.Tensor | list[torch.Tensor],
+        y: torch.Tensor | tuple,
+        prefix: str = "val",
     ) -> None:
         """
         Log additional metrics during training, validation, or testing.
 
         Parameters
         ----------
-        y_hat : torch.Tensor
-            Predicted output tensor.
-        y : torch.Tensor
-            Target output tensor.
+        y_hat : torch.Tensor or list of torch.Tensor
+            Predicted output tensor, or list of per-target tensors for MultiLoss.
+        y : torch.Tensor or tuple
+            Target output tensor, or ``(targets, weights)`` tuple for MultiLoss.
         prefix : str
             Prefix for the logged metrics (e.g., "train", "val", "test").
         """
+        if not self.logging_metrics:
+            return
+
+        if isinstance(self.loss, MultiLoss):
+            # Currently skipped to avoid type mismatch errors (list vs tensor).
+            return
+
         for metric in self.logging_metrics:
             metric_value = metric(y_hat, y)
             self.log(
