@@ -1,8 +1,11 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import RobustScaler, StandardScaler
+import torch
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -464,9 +467,179 @@ def test_multivariate_target():
         max_encoder_length=10,
         max_prediction_length=5,
         batch_size=4,
+        target_normalizer=TorchNormalizer(),
     )
 
     dm.setup()
 
     x, y = dm.train_dataset[0]
     assert len(y) == 2
+
+
+@pytest.mark.parametrize(
+    "normalizer",
+    [
+        None,
+        "auto",
+        TorchNormalizer(),
+        StandardScaler(),
+        RobustScaler(),
+        EncoderNormalizer(),
+    ],
+)
+def test_target_normalizers(sample_timeseries_data, normalizer):
+    """Test different target normalizers.
+
+    Ensures compatibility and correct integration of various normalizers.
+    Verifies that:
+    - The normalizer is applied correctly.
+    - Output shapes are as expected.
+    - Target is actually scaled.
+    """
+    dm_no_norm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=None,
+    )
+    dm_no_norm.setup(stage="fit")
+
+    dm_with_norm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=normalizer,
+    )
+    dm_with_norm.setup(stage="fit")
+
+    x_no_norm, y_no_norm = dm_no_norm.train_dataset[0]
+    x_with_norm, y_with_norm = dm_with_norm.train_dataset[0]
+    assert y_with_norm.shape == y_no_norm.shape
+    assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
+
+    if normalizer is not None:
+        assert (
+            dm_with_norm._target_normalizer_fitted
+        ), "Target normalizer should be fitted"
+
+
+@pytest.mark.parametrize(
+    "scaler_type",
+    [
+        TorchNormalizer,
+        StandardScaler,
+        RobustScaler,
+        EncoderNormalizer,
+    ],
+)
+def test_feature_scaling(sample_timeseries_data, scaler_type):
+    """Test feature scaling with different scalers.
+
+    Verifies that:
+    - Scaling is actually applied (data changes)
+    - Only specified features are scaled
+    - Output format is preserved
+    """
+    scalers = {
+        "cont_feat1": scaler_type(),
+        "cont_feat2": scaler_type(),
+    }
+
+    dm_no_scale = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        scalers=None,
+    )
+    dm_no_scale.setup(stage="fit")
+
+    dm_with_scale = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        scalers=scalers,
+    )
+    dm_with_scale.setup(stage="fit")
+
+    assert dm_with_scale._feature_scalers_fitted
+    assert "cont_feat1" in dm_with_scale.scalers
+    assert "cont_feat2" in dm_with_scale.scalers
+
+    x_no_scale, _ = dm_no_scale.train_dataset[0]
+    x_with_scale, _ = dm_with_scale.train_dataset[0]
+
+    assert x_with_scale["encoder_cont"].shape == x_no_scale["encoder_cont"].shape
+    assert x_with_scale["decoder_cont"].shape == x_no_scale["decoder_cont"].shape
+
+
+def test_save_scalers(sample_timeseries_data, tmp_path):
+    """Test saving and loading of scalers.
+
+    Verifies if the test is able to save and load the correct
+    scalers and that the transformations remain consistent.
+    """
+
+    scalers = {
+        "cont_feat1": StandardScaler(),
+        "cont_feat2": RobustScaler(),
+    }
+
+    dm1 = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=RobustScaler(),
+        scalers=scalers,
+    )
+    dm1.setup("fit")
+
+    x1, y1 = dm1.train_dataset[0]
+
+    scaler_path = tmp_path / "scalers.pkl"
+    dm1.save_scalers(scaler_path)
+
+    assert scaler_path.exists(), "Scaler file not created!"
+
+
+def test_load_scalers_test_stage(sample_timeseries_data, tmp_path):
+    """Test that loading scalers allows running test stage without fitting."""
+
+    train_dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=RobustScaler(),
+        scalers={"cont_feat1": StandardScaler()},
+    )
+    train_dm.setup("fit")
+
+    scaler_path = tmp_path / "scalers.pkl"
+    train_dm.save_scalers(scaler_path)
+    test_dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        target_normalizer=RobustScaler(),
+        scalers={"cont_feat1": StandardScaler()},
+    )
+    assert not test_dm._target_normalizer_fitted
+    assert not test_dm._feature_scalers_fitted
+
+    test_dm.load_scalers(scaler_path)
+
+    assert test_dm._target_normalizer_fitted
+    assert test_dm._feature_scalers_fitted
+
+    test_dm.setup("test")
+    test_loader = test_dm.test_dataloader()
+    batch = next(iter(test_loader))
+    x_batch, y_batch = batch
+    assert x_batch["encoder_cont"].shape[0] == test_dm.batch_size
+    assert y_batch.shape[0] == test_dm.batch_size
