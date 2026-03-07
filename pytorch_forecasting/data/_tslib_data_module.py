@@ -364,7 +364,7 @@ class TslibDataModule(LightningDataModule):
 
         self._validate_indices()
 
-    def _validate_indices(self):
+    def _validate_indices(self) -> None:
         """
         Validate that we have meaningful features for training.
         Raises warnings for missing features or indices.
@@ -524,20 +524,20 @@ class TslibDataModule(LightningDataModule):
 
     @property
     def metadata(self) -> dict[str, Any]:
-        """ "
-        Compute the metadata via the `_prepare_metadata` method.
-        This method is called when the `metadata` property is accessed for the first.
+        """
+        Metadata for the time series dataset.
+
         Returns
         -------
-        dict
-            Metadata for the data module. Refer to the `_prepare_metadata` method for
-            the keys and values in the metadata dictionary.
+        dict[str, Any]
+            Metadata for the data module. Refer to the `_prepare_metadata`
+            method for the keys and values in the metadata dictionary.
         """
         if self._metadata is None:
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
+    def _preprocess_data(self, idx: torch.Tensor) -> dict[str, Any]:
         """
         Process the the time series data at the given index, before feeding it
         to the `_TslibDataset` class.
@@ -824,7 +824,14 @@ class TslibDataModule(LightningDataModule):
         )
 
     @staticmethod
-    def collate_fn(batch):
+    def collate_fn(
+        batch: list[
+            tuple[
+                dict[str, Any],
+                torch.Tensor | list[torch.Tensor],
+            ]
+        ],
+    ) -> tuple[dict[str, torch.Tensor], torch.Tensor | list[torch.Tensor]]:
         """
         Custom collate function for the dataloader.
 
