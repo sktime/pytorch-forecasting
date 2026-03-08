@@ -15,10 +15,10 @@ from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
 from pytorch_forecasting.models.nhits import NHiTS
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.rnn import RecurrentNetwork
+from pytorch_forecasting.models.segrnn import SegRNN
 from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
-from pytorch_forecasting.models.segrnn import SegRNN
 from pytorch_forecasting.models.tide import TiDEModel
 from pytorch_forecasting.models.timexer import TimeXer
 from pytorch_forecasting.models.xlstm import xLSTMTime
