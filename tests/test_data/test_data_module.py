@@ -576,11 +576,11 @@ def test_feature_scaling(sample_timeseries_data, scaler_type):
     assert x_with_scale["decoder_cont"].shape == x_no_scale["decoder_cont"].shape
 
 
-def test_save_scalers(sample_timeseries_data, tmp_path):
-    """Test saving and loading of scalers.
+def test_get_scalers_state(sample_timeseries_data):
+    """Test getting scaler state from DataModule.
 
-    Verifies if the test is able to save and load the correct
-    scalers and that the transformations remain consistent.
+    Verifies that get_scalers_state() returns the correct structure
+    with all required keys and proper scaler instances.
     """
 
     scalers = {
@@ -599,15 +599,27 @@ def test_save_scalers(sample_timeseries_data, tmp_path):
     dm1.setup("fit")
 
     x1, y1 = dm1.train_dataset[0]
+    scaler_state = dm1.get_scalers_state()
 
-    scaler_path = tmp_path / "scalers.pkl"
-    dm1.save_scalers(scaler_path)
+    # Verify state structure
+    assert isinstance(scaler_state, dict)
+    assert "target_normalizer" in scaler_state
+    assert "target_normalizer_fitted" in scaler_state
+    assert "feature_scalers" in scaler_state
+    assert "feature_scalers_fitted" in scaler_state
 
-    assert scaler_path.exists(), "Scaler file not created!"
+    assert scaler_state["target_normalizer_fitted"] is True
+    assert scaler_state["feature_scalers_fitted"] is True
+
+    # Verify scaler instances
+    assert scaler_state["target_normalizer"] is not None
+    assert isinstance(scaler_state["feature_scalers"], dict)
+    assert "cont_feat1" in scaler_state["feature_scalers"]
+    assert "cont_feat2" in scaler_state["feature_scalers"]
 
 
-def test_load_scalers_test_stage(sample_timeseries_data, tmp_path):
-    """Test that loading scalers allows running test stage without fitting."""
+def test_set_scalers_state(sample_timeseries_data):
+    """Test that setting scaler state allows running test stage without fitting."""
 
     train_dm = EncoderDecoderTimeSeriesDataModule(
         time_series_dataset=sample_timeseries_data,
@@ -619,8 +631,10 @@ def test_load_scalers_test_stage(sample_timeseries_data, tmp_path):
     )
     train_dm.setup("fit")
 
-    scaler_path = tmp_path / "scalers.pkl"
-    train_dm.save_scalers(scaler_path)
+    # Get scaler state from fitted DataModule
+    scaler_state = train_dm.get_scalers_state()
+
+    # Create a new dm for testing.
     test_dm = EncoderDecoderTimeSeriesDataModule(
         time_series_dataset=sample_timeseries_data,
         max_encoder_length=24,
@@ -632,7 +646,7 @@ def test_load_scalers_test_stage(sample_timeseries_data, tmp_path):
     assert not test_dm._target_normalizer_fitted
     assert not test_dm._feature_scalers_fitted
 
-    test_dm.load_scalers(scaler_path)
+    test_dm.set_scalers_state(scaler_state)
 
     assert test_dm._target_normalizer_fitted
     assert test_dm._feature_scalers_fitted

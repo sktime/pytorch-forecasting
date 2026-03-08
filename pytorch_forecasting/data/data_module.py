@@ -883,25 +883,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         return windows
 
-    def save_scalers(self, path: str | Path):
-        """Save fitted scalers and normalizers to disk.
-
-        Parameters
-        ----------
-        path: str or Path
-            File path to save the scalers and normalizers.
-        """
-
-        save_state = {
-            "target_normalizer": self._target_normalizer,
-            "target_normalizer_fitted": self._target_normalizer_fitted,
-            "feature_scalers": self._scalers,
-            "feature_scalers_fitted": self._feature_scalers_fitted,
-        }
-
-        with open(path, "wb") as f:
-            pickle.dump(save_state, f)
-
     def get_scalers_state(self) -> dict:
         """Get the current state of all scalers and normalizers for persistence.
 
@@ -1023,24 +1004,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._target_normalizer_fitted = state["target_normalizer_fitted"]
         self._scalers = state["feature_scalers"]
         self._feature_scalers_fitted = state["feature_scalers_fitted"]
-
-    def load_scalers(self, path: str | Path):
-        """Load fitted scalers and normalizers from disk.
-
-        Parameters
-        ----------
-        path: str or Path
-            File path to load the scalers and normalizers from.
-        """
-
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Scaler file not found at path: {path}")
-
-        with open(path, "rb") as f:
-            loaded_state = pickle.load(f)  # noqa: S301
-
-        self.set_scalers_state(loaded_state)
 
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
