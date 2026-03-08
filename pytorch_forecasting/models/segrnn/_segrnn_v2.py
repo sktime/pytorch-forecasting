@@ -1,6 +1,5 @@
 """
 Segment Recurrent Neural Network (SegRNN)
------------------------------------------
 """
 
 from typing import Any
@@ -22,14 +21,7 @@ class SegRNN(TslibBaseModel):
     one time step per RNN step, the input sequence is divided into
     non-overlapping segments of length ``seg_len``; each segment is linearly
     projected to a ``d_model``-dimensional embedding and processed as a
-    single token. The decoder similarly predicts ``seg_num_y`` segments at
-    once, conditioned on learnable positional and channel embeddings that are
-    concatenated and fed as the initial hidden state.
-
-    This design drastically reduces the number of RNN recurrences
-    (from ``seq_len`` to ``seq_len // seg_len``) and allows the model to
-    scale to long prediction horizons without the vanishing-gradient issues
-    associated with long unrolled RNNs.
+    single token.
 
     Parameters
     ----------
@@ -70,10 +62,7 @@ class SegRNN(TslibBaseModel):
 
     Notes
     -----
-    [1] Only continuous variables are supported. 
-    [2] The model is channel-independent at the segment level: each channel
-        is processed independently by reshaping ``(B, C, seg_num_x, seg_len)``
-        to ``(B*C, seg_num_x, d_model)`` before the GRU forward pass.
+    [1] Only continuous variables are supported.
     """
 
     @classmethod
@@ -107,7 +96,6 @@ class SegRNN(TslibBaseModel):
             lr_scheduler_params=lr_scheduler_params,
             metadata=metadata,
         )
-
 
         self.enc_in = enc_in
         self.d_model = d_model
@@ -185,15 +173,8 @@ class SegRNN(TslibBaseModel):
             bidirectional=False,
         )
 
-        # Positional embedding  : (seg_num_y, d_model // 2)
-        # Channel embedding     : (enc_in,    d_model // 2)
-        # Both halves are concatenated to form a full d_model query vector.
-        self.pos_emb = nn.Parameter(
-            torch.randn(self.seg_num_y, self.d_model // 2)
-        )
-        self.channel_emb = nn.Parameter(
-            torch.randn(self.enc_in, self.d_model // 2)
-        )
+        self.pos_emb = nn.Parameter(torch.randn(self.seg_num_y, self.d_model // 2))
+        self.channel_emb = nn.Parameter(torch.randn(self.enc_in, self.d_model // 2))
 
         self.pred_nn = nn.Sequential(
             nn.Dropout(self.dropout),
@@ -218,64 +199,31 @@ class SegRNN(TslibBaseModel):
         """
         B = x.size(0)
 
-        # --- instance normalization (last-value subtraction) -----------------
-        # seq_last: (B, 1, enc_in) — anchor for reversible normalization.
         seq_last = x[:, -1:, :].detach()
         x = (x - seq_last).permute(0, 2, 1)  # (B, enc_in, context_length)
 
-        # --- segment embedding -----------------------------------------------
-        # (B, enc_in, context_length)
-        #   → (B*enc_in, seg_num_x, seg_len)
-        #   → (B*enc_in, seg_num_x, d_model)
-        x = self.valueEmbedding(
-            x.reshape(B * self.enc_in, self.seg_num_x, self.seg_len)
-        )
+        x = self.valueEmbedding(x.reshape(-1, self.seg_num_x, self.seg_len))
 
-        # --- encoder RNN pass ------------------------------------------------
-        # x    : (B*enc_in, seg_num_x, d_model)
-        # hn   : (1, B*enc_in, d_model)
         _, hn = self.rnn(x)
-
-        # --- build decoder queries -------------------------------------------
-        # pos_emb     : (seg_num_y, d_model//2)
-        #               → (enc_in, seg_num_y, d_model//2)
-        # channel_emb : (enc_in, d_model//2)
-        #               → (enc_in, seg_num_y, d_model//2)
-        # cat → (enc_in, seg_num_y, d_model)
-        #     → (enc_in * seg_num_y, 1, d_model)
-        #     → (B * enc_in * seg_num_y, 1, d_model)
-        pos_emb = torch.cat(
-            [
-                self.pos_emb.unsqueeze(0).repeat(self.enc_in, 1, 1),
-                self.channel_emb.unsqueeze(1).repeat(1, self.seg_num_y, 1),
-            ],
-            dim=-1,
-        ).view(-1, 1, self.d_model).repeat(B, 1, 1)
-        # pos_emb : (B * enc_in * seg_num_y, 1, d_model)
-
-        # Expand encoder hidden state to match decoder query batch size.
-        # hn : (1, B*enc_in, d_model)
-        #    → repeat seg_num_y times along the last dim
-        #    → (1, B*enc_in, d_model * seg_num_y)
-        #    → view → (1, B*enc_in*seg_num_y, d_model)
-        hn_expanded = (
-            hn.repeat(1, 1, self.seg_num_y)
-            .view(1, B * self.enc_in * self.seg_num_y, self.d_model)
+        pos_emb = (
+            torch.cat(
+                [
+                    self.pos_emb.unsqueeze(0).repeat(self.enc_in, 1, 1),
+                    self.channel_emb.unsqueeze(1).repeat(1, self.seg_num_y, 1),
+                ],
+                dim=-1,
+            )
+            .view(-1, 1, self.d_model)
+            .repeat(B, 1, 1)
         )
 
-        # --- decoder RNN pass ------------------------------------------------
-        # hy : (1, B*enc_in*seg_num_y, d_model)
+        hn_expanded = hn.repeat(1, 1, self.seg_num_y).view(1, -1, self.d_model)
+
         _, hy = self.rnn(pos_emb, hn_expanded)
 
-        # --- prediction head -------------------------------------------------
-        # hy  : (1, B*enc_in*seg_num_y, d_model)
-        #     → predict → (1, B*enc_in*seg_num_y, seg_len)
-        #     → view  → (B, enc_in, prediction_length)
-        #     → permute → (B, prediction_length, enc_in)
-        y = self.pred_nn(hy).view(B, self.enc_in, self.seg_num_y * self.seg_len)
+        y = self.pred_nn(hy).view(-1, self.enc_in, self.prediction_length)
         y = y.permute(0, 2, 1)
 
-        # --- reverse normalization -------------------------------------------
         return y + seq_last
 
     def _forecast(self, x: dict[str, torch.Tensor]) -> torch.Tensor:

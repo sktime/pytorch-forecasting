@@ -51,33 +51,21 @@ class SegRNN_pkg_v2(Base_pkg):
         during CI runs.
         """
         params = [
-            # Minimal default — seg_len=4 divides context=12, pred=4.
             dict(
                 seg_len=4,
                 d_model=32,
             ),
-            # Wider segments, larger model.
             dict(
                 seg_len=4,
                 d_model=64,
-                datamodule_cfg=dict(context_length=13, prediction_length=5),
+                datamodule_cfg=dict(context_length=12, prediction_length=8),
             ),
-            # Smaller d_model, more segments.
             dict(
                 seg_len=3,
                 d_model=16,
                 dropout=0.05,
                 datamodule_cfg=dict(context_length=12, prediction_length=6),
             ),
-            # seg_len=6 divides context=24, pred=12.
-            # dict(
-            #     seg_len=6,
-            #     d_model=64,
-            #     dropout=0.2,
-            #     datamodule_cfg=dict(context_length=14, prediction_length=4),
-            # ),
-        
-            # Stress test: large d_model, many small segments.
             dict(
                 seg_len=2,
                 d_model=256,
