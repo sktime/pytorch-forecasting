@@ -1,6 +1,7 @@
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
+import warnings
 
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -176,10 +177,14 @@ class Base_pkg(_BasePtForecasterV2):
             Path where scalers should be saved.
         """
         if not hasattr(self.datamodule, "get_scalers_state"):
-            raise AttributeError(
+            warnings.warn(
                 f"DataModule of type {type(self.datamodule).__name__} does not support "
-                "scaler operations. It must implement 'get_scalers_state()' method."
+                "scaler operations. It must implement 'get_scalers_state()' method. "
+                "Skipping scaler saving.",
+                UserWarning,
+                stacklevel=2,
             )
+            return
 
         scaler_state = self.datamodule.get_scalers_state()
 
@@ -203,10 +208,14 @@ class Base_pkg(_BasePtForecasterV2):
             Path to load scalers from.
         """
         if not hasattr(datamodule, "set_scalers_state"):
-            raise AttributeError(
+            warnings.warn(
                 f"DataModule of type {type(datamodule).__name__} does not support "
-                "scaler operations. It must implement 'set_scalers_state()' method."
+                "scaler operations. It must implement 'set_scalers_state()' method. "
+                "Skipping scaler loading.",
+                UserWarning,
+                stacklevel=2,
             )
+            return
 
         if not scaler_path.exists():
             raise FileNotFoundError(f"Scaler file not found: {scaler_path}")
@@ -309,11 +318,14 @@ class Base_pkg(_BasePtForecasterV2):
 
         # Validate datamodule supports scaling
         if save_scalers and not hasattr(self.datamodule, "get_scalers_state"):
-            raise AttributeError(
+            warnings.warn(
                 f"DataModule of type {type(self.datamodule).__name__} does not support "
-                "scaler operations. Set save_scalers=False or use a DataModule that "
-                "implements 'get_scalers_state()' method."
+                "scaler operations. Skipping scaler saving. Use a DataModule that "
+                "implements 'get_scalers_state()' method to enable this feature.",
+                UserWarning,
+                stacklevel=2,
             )
+            save_scalers = False
 
         self.datamodule.setup(stage="fit")
 
