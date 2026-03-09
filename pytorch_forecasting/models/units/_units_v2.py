@@ -3,8 +3,8 @@ UniTS: Unified Time Series Model for PyTorch Forecasting.
 """
 
 import math
-import warnings
 from typing import Any
+import warnings
 
 import torch
 import torch.nn as nn

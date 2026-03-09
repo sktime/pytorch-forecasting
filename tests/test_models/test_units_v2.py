@@ -88,15 +88,17 @@ class TestUniTSPkg:
             assert "prediction_length" in dm
             # patch_len must not exceed context_length
             patch_len = p.get("patch_len", 16)
-            assert patch_len <= dm["context_length"], (
-                f"patch_len={patch_len} exceeds context_length={dm['context_length']}"
-            )
+            assert (
+                patch_len <= dm["context_length"]
+            ), f"patch_len={patch_len} exceeds context_length={dm['context_length']}"
 
     def test_get_test_train_params_independent(self):
         """Each param dict must be independent — no shared mutable objects."""
         params = UniTS_pkg_v2.get_test_train_params()
         dm_ids = [id(p["datamodule_cfg"]) for p in params]
-        assert len(dm_ids) == len(set(dm_ids)), "datamodule_cfg dicts are shared objects"
+        assert len(dm_ids) == len(
+            set(dm_ids)
+        ), "datamodule_cfg dicts are shared objects"
 
 
 class TestUniTSForward:
@@ -159,7 +161,9 @@ class TestUniTSForward:
 
     def test_exogenous_features(self):
         """Model must accept and use continuous exogenous features."""
-        meta = _make_metadata(context_length=24, prediction_length=6, target_dim=2, cont_dim=3)
+        meta = _make_metadata(
+            context_length=24, prediction_length=6, target_dim=2, cont_dim=3
+        )
         model = _make_model(meta, d_model=32, n_heads=4, d_ff=64)
         model.eval()
         with torch.no_grad():
@@ -168,7 +172,9 @@ class TestUniTSForward:
 
     @pytest.mark.parametrize("pred_len", [1, 3, 12, 24])
     def test_prediction_lengths(self, pred_len):
-        meta = _make_metadata(context_length=48, prediction_length=pred_len, target_dim=2)
+        meta = _make_metadata(
+            context_length=48, prediction_length=pred_len, target_dim=2
+        )
         model = _make_model(meta, d_model=32, n_heads=4, d_ff=64)
         model.eval()
         with torch.no_grad():
@@ -177,7 +183,9 @@ class TestUniTSForward:
 
     @pytest.mark.parametrize("target_dim", [1, 4, 7])
     def test_target_dims(self, target_dim):
-        meta = _make_metadata(context_length=24, prediction_length=6, target_dim=target_dim)
+        meta = _make_metadata(
+            context_length=24, prediction_length=6, target_dim=target_dim
+        )
         model = _make_model(meta, d_model=32, n_heads=4, d_ff=64)
         model.eval()
         with torch.no_grad():
