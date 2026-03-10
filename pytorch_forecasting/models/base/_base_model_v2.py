@@ -55,7 +55,9 @@ class BaseModel(LightningModule):
         "reduce_lr_on_plateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
         "step_lr": torch.optim.lr_scheduler.StepLR,
         "cosine_annealing": torch.optim.lr_scheduler.CosineAnnealingLR,
-        "cosine_annealing_warm_restarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+        "cosine_annealing_warm_restarts": (
+            torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+        ),
     }
 
     def __init__(

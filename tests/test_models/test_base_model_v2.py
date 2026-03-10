@@ -44,9 +44,7 @@ def test_optimizer_generic_torch_optim_lookup():
 
 
 def test_optimizer_callable():
-    model = _make_model(
-        optimizer=torch.optim.AdamW, optimizer_params={"lr": 1e-3}
-    )
+    model = _make_model(optimizer=torch.optim.AdamW, optimizer_params={"lr": 1e-3})
     cfg = model.configure_optimizers()
     assert isinstance(cfg["optimizer"], torch.optim.AdamW)
 
