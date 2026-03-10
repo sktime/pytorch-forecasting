@@ -14,14 +14,42 @@ import torch.nn.functional as F
 class EncoderLayer(nn.Module):
     """
     Encoder layer for the TimeXer model.
-    Args:
-        self_attention (nn.Module): Self-attention mechanism.
-        cross_attention (nn.Module): Cross-attention mechanism.
-        d_model (int): Dimension of the model.
-        d_ff (int, optional):
-            Dimension of the feedforward layer. Defaults to 4 * d_model.
-        dropout (float): Dropout rate. Defaults to 0.1.
-        activation (str): Activation function. Defaults to "relu".
+
+    Parameters
+    ----------
+    self_attention : nn.Module
+        Self-attention mechanism.
+    cross_attention : nn.Module
+        Cross-attention mechanism.
+    d_model : int
+        Dimension of the model.
+    d_ff : int, optional
+        Dimension of the feedforward layer. Defaults to 4 * d_model.
+    dropout : float, default=0.1
+        Dropout rate.
+    activation : str, default="relu"
+        Activation function. Options are "relu" or "gelu".
+
+    Attributes
+    ----------
+    self_attention : nn.Module
+        Self-attention mechanism instance.
+    cross_attention : nn.Module
+        Cross-attention mechanism instance.
+    conv1 : nn.Conv1d
+        First 1D convolution layer (d_model -> d_ff).
+    conv2 : nn.Conv1d
+        Second 1D convolution layer (d_ff -> d_model).
+    norm1 : nn.LayerNorm
+        Layer normalization after self-attention.
+    norm2 : nn.LayerNorm
+        Layer normalization after cross-attention.
+    norm3 : nn.LayerNorm
+        Final layer normalization.
+    dropout : nn.Dropout
+        Dropout layer.
+    activation : callable
+        Activation function (ReLU or GELU).
     """
 
     def __init__(
@@ -46,6 +74,29 @@ class EncoderLayer(nn.Module):
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(self, x, cross, x_mask=None, cross_mask=None, tau=None, delta=None):
+        """
+        Forward pass of the encoder layer.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, sequence_length, d_model).
+        cross : torch.Tensor
+            Cross-attention input tensor of shape (batch_size, seq_len_cross, d_model).
+        x_mask : torch.Tensor, optional
+            Attention mask for self-attention. Default is None.
+        cross_mask : torch.Tensor, optional
+            Attention mask for cross-attention. Default is None.
+        tau : torch.Tensor, optional
+            Temporal parameter for attention mechanisms. Default is None.
+        delta : torch.Tensor, optional
+            Delta parameter for cross-attention. Default is None.
+
+        Returns
+        -------
+        torch.Tensor
+            Output tensor of shape (batch_size, sequence_length, d_model).
+        """
         B, L, D = cross.shape
         x = x + self.dropout(
             self.self_attention(x, x, x, attn_mask=x_mask, tau=tau, delta=None)[0]
