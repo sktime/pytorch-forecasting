@@ -131,7 +131,7 @@ class TimeSeries(Dataset):
             if col not in [self.time] + self._group + [self.weight] + self._target
         ]
         if self._group:
-            self._groups = self.data.groupby(self._group).groups
+            self._groups = self.data.groupby(self._group, observed=True).groups
             self._group_ids = list(self._groups.keys())
         else:
             self._groups = {"_single_group": self.data.index}
