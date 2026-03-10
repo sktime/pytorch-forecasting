@@ -22,8 +22,10 @@ class QuantileLoss(MultiHorizonMetric):
         """
         Quantile loss
 
-        Args:
-            quantiles: quantiles for metric
+        Parameters
+        ----------
+        quantiles : list of float, optional
+            quantiles for metric
         """
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
@@ -43,11 +45,15 @@ class QuantileLoss(MultiHorizonMetric):
         """
         Convert network prediction into a point prediction.
 
-        Args:
-            y_pred: prediction output of network
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            prediction output of network
 
-        Returns:
-            torch.Tensor: point prediction
+        Returns
+        -------
+        torch.Tensor
+            point prediction
         """
         if y_pred.ndim == 3:
             idx = self.quantiles.index(0.5)
@@ -58,10 +64,14 @@ class QuantileLoss(MultiHorizonMetric):
         """
         Convert network prediction into a quantile prediction.
 
-        Args:
-            y_pred: prediction output of network
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            prediction output of network
 
-        Returns:
-            torch.Tensor: prediction quantiles
+        Returns
+        -------
+        torch.Tensor
+            prediction quantiles
         """
         return y_pred
