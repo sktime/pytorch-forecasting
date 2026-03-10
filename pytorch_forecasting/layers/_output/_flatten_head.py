@@ -18,12 +18,13 @@ class FlattenHead(nn.Module):
         Number of input features.
     nf : int
         Number of features in the last layer.
-        target_window : int
+    target_window : int
         Target window size.
     head_dropout : float, optional
         Dropout rate for the head. Defaults to 0.
     n_quantiles : int, optional
-        Number of quantiles. Defaults to None."""
+        Number of quantiles. Defaults to None.
+    """
 
     def __init__(self, n_vars, nf, target_window, head_dropout=0, n_quantiles=None):
         super().__init__()
@@ -36,6 +37,7 @@ class FlattenHead(nn.Module):
             self.linear = nn.Linear(nf, target_window * n_quantiles)
         else:
             self.linear = nn.Linear(nf, target_window)
+
         self.dropout = nn.Dropout(head_dropout)
 
     def forward(self, x):
@@ -47,4 +49,5 @@ class FlattenHead(nn.Module):
         if self.n_quantiles is not None:
             batch_size = x.shape[0]
             x = x.reshape(batch_size, -1, self.n_quantiles)
+
         return x
