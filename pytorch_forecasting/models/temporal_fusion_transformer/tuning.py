@@ -65,48 +65,63 @@ def optimize_hyperparameters(
     **kwargs,
 ):
     """
-    Optimize Temporal Fusion Transformer hyperparameters.
+    Optimize hyperparameters of a Temporal Fusion Transformer model.
 
-    Run hyperparameter optimization. Learning rate for is determined with
-    the PyTorch Lightning learning rate finder.
+    Runs hyperparameter optimization using Optuna. The learning rate
+    can optionally be determined using the PyTorch Lightning learning
+    rate finder.
 
-    Args:
-        train_dataloaders (DataLoader): dataloader for training model
-        val_dataloaders (DataLoader): dataloader for validating model
-        model_path (str): folder to which model checkpoints are saved
-        max_epochs (int, optional): Maximum number of epochs to run training. Defaults to 20.
-        n_trials (int, optional): Number of hyperparameter trials to run. Defaults to 100.
-        timeout (float, optional): Time in seconds after which training is stopped regardless of number of epochs
-            or validation metric. Defaults to 3600*8.0.
-        hidden_size_range (Tuple[int, int], optional): Minimum and maximum of ``hidden_size`` hyperparameter. Defaults
-            to (16, 265).
-        hidden_continuous_size_range (Tuple[int, int], optional):  Minimum and maximum of ``hidden_continuous_size``
-            hyperparameter. Defaults to (8, 64).
-        attention_head_size_range (Tuple[int, int], optional):  Minimum and maximum of ``attention_head_size``
-            hyperparameter. Defaults to (1, 4).
-        dropout_range (Tuple[float, float], optional):  Minimum and maximum of ``dropout`` hyperparameter. Defaults to
-            (0.1, 0.3).
-        learning_rate_range (Tuple[float, float], optional): Learning rate range. Defaults to (1e-5, 1.0).
-        use_learning_rate_finder (bool): If to use learning rate finder or optimize as part of hyperparameters.
-            Defaults to True.
-        trainer_kwargs (Dict[str, Any], optional): Additional arguments to the
-            `PyTorch Lightning trainer <https://pytorch-lightning.readthedocs.io/en/latest/trainer.html>`_ such
-            as ``limit_train_batches``. Defaults to {}.
-        log_dir (str, optional): Folder into which to log results for tensorboard. Defaults to "lightning_logs".
-        study (optuna.Study, optional): study to resume. Will create new study by default.
-        verbose (Union[int, bool]): level of verbosity.
-            * None: no change in verbosity level (equivalent to verbose=1 by optuna-set default).
-            * 0 or False: log only warnings.
-            * 1 or True: log pruning events.
-            * 2: optuna logging level at debug level.
-            Defaults to None.
-        pruner (optuna.pruners.BasePruner, optional): The optuna pruner to use.
-            Defaults to optuna.pruners.SuccessiveHalvingPruner().
+    Parameters
+    ----------
+    train_dataloaders : DataLoader
+        Dataloader for training.
+    val_dataloaders : DataLoader
+        Dataloader for validation.
+    model_path : str
+        Directory where model checkpoints are saved.
+    max_epochs : int, optional
+        Maximum number of training epochs. Default is 20.
+    n_trials : int, optional
+        Number of hyperparameter trials. Default is 100.
+    timeout : float, optional
+        Maximum time in seconds for optimization. Default is 8 hours.
+    gradient_clip_val_range : tuple of float, optional
+        Range for gradient clipping values.
+    hidden_size_range : tuple of int, optional
+        Range for hidden size.
+    hidden_continuous_size_range : tuple of int, optional
+        Range for hidden continuous size.
+    attention_head_size_range : tuple of int, optional
+        Range for attention head size.
+    dropout_range : tuple of float, optional
+        Range for dropout values.
+    learning_rate_range : tuple of float, optional
+        Range for learning rate.
+    use_learning_rate_finder : bool, optional
+        Whether to use the Lightning learning rate finder.
+    trainer_kwargs : dict of str to Any, optional
+        Additional arguments passed to the PyTorch Lightning Trainer.
+    log_dir : str, optional
+        Directory for TensorBoard logs.
+    study : optuna.Study, optional
+        Existing Optuna study to resume.
+    verbose : int or bool, optional
+        Verbosity level.
+    pruner : optuna.pruners.BasePruner, optional
+        Optuna pruner to use.
+    **kwargs
+        Additional keyword arguments passed to
+        :class:`~pytorch_forecasting.TemporalFusionTransformer`.
 
-        **kwargs: Additional arguments for the :py:class:`~TemporalFusionTransformer`.
+    Returns
+    -------
+    optuna.Study
+        The resulting Optuna study.
 
-    Returns:
-        optuna.Study: optuna study results
+    Raises
+    ------
+    ImportError
+        If required optional dependencies are not installed.
     """  # noqa : E501
     if not _check_soft_dependencies(["optuna", "statsmodels"], severity="none"):
         raise ImportError(
