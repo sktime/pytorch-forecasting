@@ -6,7 +6,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from sklearn.utils import shuffle
+from sklearn.utils import sklearn_shuffle
 from torch.utils.data.sampler import Sampler
 
 
@@ -110,7 +110,7 @@ class GroupedSampler(Sampler):
 
     def __iter__(self):
         if self.shuffle:  # shuffle samples
-            groups = {name: shuffle(group) for name, group in self._groups.items()}
+            groups = {name: sklearn_shuffle(group) for name, group in self._groups.items()}
             batch_samples = np.random.permutation(len(self))
         else:
             groups = self._groups
