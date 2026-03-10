@@ -223,7 +223,7 @@ class DeepAR(BaseModel):
         elif self.n_categoricals > 0:
             input_vector = x_cat.clone()
         else:
-            raise ValueError("No features found in input")
+            raise ValueError("No continuous or categorical features found in input")
 
         input_vector[..., self.target_positions] = torch.roll(
             input_vector[..., self.target_positions], shifts=1, dims=1
