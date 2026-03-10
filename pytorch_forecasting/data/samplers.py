@@ -6,9 +6,9 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from sklearn.utils import sklearn_shuffle
+from sklearn.utils import shuffle as sklearn_shuffle
 from torch.utils.data.sampler import Sampler
-from pandas.core.groupby.generic import SeriesGroupBy
+# from pandas.core.groupby.generic import SeriesGroupBy
 
 
 class GroupedSampler(Sampler):
@@ -137,7 +137,7 @@ class TimeSynchronizedBatchSampler(GroupedSampler):
     This sampler does not support missing values in the dataset.
     """  # noqa: E501
 
-    def get_groups(self, sampler: Sampler) -> SeriesGroupBy:
+    def get_groups(self, sampler: Sampler) -> pd.core.groupby.generic.SeriesGroupBy:
         data_source = sampler.data_source
         index = data_source.index
         # get groups, i.e. group all samples by first predict time
