@@ -525,11 +525,13 @@ class TslibDataModule(LightningDataModule):
     @property
     def metadata(self) -> dict[str, Any]:
         """
-        Metadata for the time series dataset.
-
+        Compute the metadata via the `_prepare_metadata` method.
+        This method is called when the `metadata` property is accessed
+        for the first time.
+    
         Returns
         -------
-        dict[str, Any]
+        dict
             Metadata for the data module. Refer to the `_prepare_metadata`
             method for the keys and values in the metadata dictionary.
         """
