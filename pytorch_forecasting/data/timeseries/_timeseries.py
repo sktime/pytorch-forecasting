@@ -2410,6 +2410,16 @@ class TimeSeriesDataSet(Dataset):
             * weight: (batch_size, decoder_length),
                 weights for target variables
         """
+        # flatten batches if nested (can happen if batch_sampler is used with ddp)
+        if (
+            len(batches) > 0
+            and isinstance(batches[0], (tuple, list))
+            and len(batches[0]) > 0
+            and isinstance(batches[0][0], (tuple, list))
+            and isinstance(batches[0][0][0], dict)
+        ):
+            batches = [b for batch in batches for b in batch]
+
         # collate function for dataloader
         # lengths
         encoder_lengths = torch.tensor(
