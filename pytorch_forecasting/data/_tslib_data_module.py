@@ -528,7 +528,6 @@ class TslibDataModule(LightningDataModule):
         Compute the metadata via the `_prepare_metadata` method.
         This method is called when the `metadata` property is accessed
         for the first time.
-    
         Returns
         -------
         dict
