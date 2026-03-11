@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 
 from pytorch_forecasting.layers import RevIN
-from pytorch_forecasting.models.autoformer.layers import Decoder, Encoder
-from pytorch_forecasting.models.base._base_model_v2 import BaseModelV2
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
+
+from .layers import Decoder, Encoder
 
 
-class Autoformer(BaseModelV2):
+class Autoformer(BaseModel):
     """Autoformer is a transformer-based architecture designed specifically
     for long-horizon time series forecasting. Unlike standard transformers,
     it replaces self-attention with an Auto-Correlation mechanism and
