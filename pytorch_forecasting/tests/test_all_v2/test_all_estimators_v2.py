@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import shutil
 
+import pytest
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 
 from pytorch_forecasting.tests.test_all_estimators import (
@@ -16,6 +18,14 @@ from pytorch_forecasting.tests.test_all_v2.utils import _setup_pkg_and_data
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
 ONLY_CHANGED_MODULES = False
+
+
+def _skip_if_missing_dependencies(obj):
+    """Helper to skip test if soft dependencies defined in tags are missing."""
+    deps = obj.get_class_tag("python_dependencies", None)
+    if deps is not None:
+        if not _check_soft_dependencies(deps, severity="none"):
+            pytest.skip(f"Skipping test due to missing soft dependencies: {deps}")
 
 
 class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
@@ -35,6 +45,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         trainer_kwargs,
         tmp_path,
     ):
+        _skip_if_missing_dependencies(object_pkg)
         pkg, test_data, dm_cfg = _setup_pkg_and_data(
             object_pkg, trainer_kwargs, tmp_path
         )
@@ -45,6 +56,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
     def test_checkpointing(self, object_pkg, trainer_kwargs, tmp_path):
         """Test that the package can save a checkpoint and reload from it."""
+        _skip_if_missing_dependencies(object_pkg)
         pkg, test_data, _ = _setup_pkg_and_data(object_pkg, trainer_kwargs, tmp_path)
 
         ckpt_dir = Path(tmp_path) / "checkpoints"
@@ -73,6 +85,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
     def test_predict_modes(self, object_pkg, trainer_kwargs, tmp_path):
         """Test different prediction modes and return_info."""
+        _skip_if_missing_dependencies(object_pkg)
         pkg, test_data, _ = _setup_pkg_and_data(object_pkg, trainer_kwargs, tmp_path)
 
         pkg.fit(test_data["train"], save_ckpt=False)
@@ -116,6 +129,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
     def test_pkg_linkage(self, object_pkg, object_class):
         """Test that the package is linked correctly."""
         # check name method
+        _skip_if_missing_dependencies(object_pkg)
         msg = (
             f"Package {object_pkg}.name() does not match class "
             f"name {object_class.__name__}. "

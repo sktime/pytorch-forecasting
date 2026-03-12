@@ -60,6 +60,7 @@ all_extras = [
   "optuna-integration",
   "pytorch_optimizer >=2.5.1,<4.0.0",
   "statsmodels",
+  "transformers<=4.40.1",
 ]
 
 tuning = [
