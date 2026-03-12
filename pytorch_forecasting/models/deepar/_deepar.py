@@ -80,44 +80,62 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         :py:class:`~pytorch_forecasting.metrics.MultivariateNormalDistributionLoss`,
         the network is converted into a `DeepVAR network <http://arxiv.org/abs/1910.03002>`_.
 
-        Args:
-            cell_type (str, optional): Recurrent cell type ["LSTM", "GRU"]. Defaults to "LSTM".
-            hidden_size (int, optional): hidden recurrent size - the most important hyperparameter along with
-                ``rnn_layers``. Defaults to 10.
-            rnn_layers (int, optional): Number of RNN layers - important hyperparameter. Defaults to 2.
-            dropout (float, optional): Dropout in RNN layers. Defaults to 0.1.
-            static_categoricals: integer of positions of static categorical variables
-            static_reals: integer of positions of static continuous variables
-            time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
-            time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
-            time_varying_reals_encoder: integer of positions of continuous variables for encoder
-            time_varying_reals_decoder: integer of positions of continuous variables for decoder
-            categorical_groups: dictionary where values
-                are list of categorical variables that are forming together a new categorical
-                variable which is the key in the dictionary
-            x_reals: order of continuous variables in tensor passed to forward function
-            x_categoricals: order of categorical variables in tensor passed to forward function
-            embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
-                embedding size
-            embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
-            embedding_labels: dictionary mapping (string) indices to list of categorical labels
-            n_validation_samples (int, optional): Number of samples to use for calculating validation metrics.
-                Defaults to None, i.e. no sampling at validation stage and using "mean" of distribution for logging
-                metrics calculation.
-            n_plotting_samples (int, optional): Number of samples to generate for plotting predictions
-                during training. Defaults to ``n_validation_samples`` if not None or 100 otherwise.
-            target (str, optional): Target variable or list of target variables. Defaults to None.
-            target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped to list of time steps by
-                which the variable should be lagged.
-                Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
-                add at least the target variables with the corresponding lags to improve performance.
-                Defaults to no lags, i.e. an empty dictionary.
-            loss (DistributionLoss, optional): Distribution loss function. Keep in mind that each distribution
-                loss function might have specific requirements for target normalization.
-                Defaults to :py:class:`~pytorch_forecasting.metrics.NormalDistributionLoss`.
-            logging_metrics (nn.ModuleList, optional): Metrics to log during training.
-                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
+        Parameters
+        ----------
+        cell_type : str, optional
+            Recurrent cell type ["LSTM", "GRU"]. Defaults to "LSTM".
+        hidden_size : int, optional
+            hidden recurrent size - the most important hyperparameter along with
+            ``rnn_layers``. Defaults to 10.
+        rnn_layers : int, optional
+            Number of RNN layers - important hyperparameter. Defaults to 2.
+        dropout : float, optional
+            Dropout in RNN layers. Defaults to 0.1.
+        static_categoricals : list[str], optional
+            integer of positions of static categorical variables
+        static_reals : list[str], optional
+            integer of positions of static continuous variables
+        time_varying_categoricals_encoder : list[str], optional
+            integer of positions of categorical variables for encoder
+        time_varying_categoricals_decoder : list[str], optional
+            integer of positions of categorical variables for decoder
+        time_varying_reals_encoder : list[str], optional
+            integer of positions of continuous variables for encoder
+        time_varying_reals_decoder : list[str], optional
+            integer of positions of continuous variables for decoder
+        categorical_groups : dict[str, list[str]], optional
+            dictionary where values are list of categorical variables that are
+            forming together a new categorical variable which is the key in the dictionary
+        x_reals : list[str], optional
+            order of continuous variables in tensor passed to forward function
+        x_categoricals : list[str], optional
+            order of categorical variables in tensor passed to forward function
+        embedding_sizes : dict[str, tuple[int, int]], optional
+            dictionary mapping (string) indices to tuple of number of categorical classes and embedding size
+        embedding_paddings : list[str], optional
+            list of indices for embeddings which transform the zero's embedding to a zero vector
+        embedding_labels : dict[str, np.ndarray], optional
+            dictionary mapping (string) indices to list of categorical labels
+        n_validation_samples : int, optional
+            Number of samples to use for calculating validation metrics.
+            Defaults to None, i.e. no sampling at validation stage and using
+            "mean" of distribution for logging metrics calculation.
+        n_plotting_samples : int, optional
+            Number of samples to generate for plotting predictions during training.
+            Defaults to ``n_validation_samples`` if not None or 100 otherwise.
+        target : str or list[str], optional
+            Target variable or list of target variables. Defaults to None.
+        target_lags : dict[str, dict[str, int]], optional
+            dictionary of target names mapped to list of time steps by which the
+            variable should be lagged. Defaults to no lags, i.e. an empty dictionary.
+        loss : DistributionLoss, optional
+            Distribution loss function. Defaults to
+            :py:class:`~pytorch_forecasting.metrics.NormalDistributionLoss`.
+        logging_metrics : nn.ModuleList, optional
+            Metrics to log during training.
+            Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
         """  # noqa: E501
+
         if loss is None:
             loss = NormalDistributionLoss()
         if logging_metrics is None:
@@ -216,12 +234,18 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         Create model from dataset.
 
-        Args:
-            dataset: timeseries dataset
-            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all
-            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            timeseries dataset
+        allowed_encoder_known_variable_names : list[str], optional
+            List of known variables that are allowed in encoder, defaults to all
+        **kwargs
+            additional arguments such as hyperparameters for model (see ``__init__()``)
 
-        Returns:
+        Returns
+        -------
+        DeepAR
             DeepAR network
         """  # noqa: E501
         new_kwargs = {}
@@ -262,9 +286,20 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         Create input vector into RNN network
 
-        Args:
-            one_off_target: tensor to insert into first position of target.
-                If None (default), remove first time step.
+        Parameters
+        ----------
+        x_cat : torch.Tensor
+            Categorical input tensor.
+        x_cont : torch.Tensor
+            Continuous input tensor.
+        one_off_target : torch.Tensor, optional
+            tensor to insert into first position of target.
+            If None (default), remove first time step.
+
+        Returns
+        -------
+        torch.Tensor
+            Input vector for RNN.
         """
         # create input vector
         if len(self.categoricals) > 0:
@@ -333,6 +368,25 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         Decode hidden state of RNN into prediction. If n_samples is given,
         decode not by using actual values but rather by
         sampling new targets from past predictions iteratively
+
+        Parameters
+        ----------
+        input_vector : torch.Tensor
+            Input tensor for decoder.
+        target_scale : torch.Tensor
+            Scale of the target variable.
+        decoder_lengths : torch.Tensor
+            Lengths of decoder sequences.
+        hidden_state : HiddenState
+            Hidden state from encoder.
+        n_samples : int, optional
+            Number of samples to draw. If None, use mean of distribution.
+
+        Returns
+        -------
+        torch.Tensor
+            Decoded predictions.
+
         """
         if n_samples is None:
             output, _ = self.decode_all(
@@ -455,31 +509,50 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         """
         predict dataloader
 
-        Args:
-            dataloader: dataloader, dataframe or dataset
-            mode: one of "prediction", "quantiles", "samples" or "raw", or tuple ``("raw", output_name)`` where
-                output_name is a name in the dictionary returned by ``forward()``
-            return_index: if to return the prediction index (in the same order as the output, i.e. the row of the
-                dataframe corresponds to the first dimension of the output and the given time index is the time index
-                of the first prediction)
-            return_decoder_lengths: if to return decoder_lengths (in the same order as the output
-            batch_size: batch size for dataloader - only used if data is not a dataloader is passed
-            num_workers: number of workers for dataloader - only used if data is not a dataloader is passed
-            fast_dev_run: if to only return results of first batch
-            show_progress_bar: if to show progress bar. Defaults to False.
-            return_x: if to return network inputs (in the same order as prediction output)
-            return_y: if to return network targets (in the same order as prediction output)
-            mode_kwargs (Dict[str, Any]): keyword arguments for ``to_prediction()`` or ``to_quantiles()``
-                for modes "prediction" and "quantiles"
-            trainer_kwargs (Dict[str, Any], optional): keyword arguments for the trainer
-            write_interval: interval to write predictions to disk
-            output_dir: directory to write predictions to. Defaults to None. If set function will return empty list
-            n_samples: number of samples to draw. Defaults to 100.
+        Parameters
+        ----------
+        data : DataLoader or pd.DataFrame or TimeSeriesDataSet
+            dataloader, dataframe or dataset
+        mode : str or tuple[str, str]
+            one of "prediction", "quantiles", "samples" or "raw", or tuple
+            ``("raw", output_name)`` where output_name is a name in the dictionary
+            returned by ``forward()``
+        return_index : bool
+            if to return the prediction index (in the same order as the output,
+            i.e. the row of the dataframe corresponds to the first dimension of
+            the output and the given time index is the time index of the first prediction)
+        return_decoder_lengths : bool
+            if to return decoder_lengths (in the same order as the output)
+        batch_size : int
+            batch size for dataloader - only used if data is not a dataloader is passed
+        num_workers : int
+            number of workers for dataloader - only used if data is not a dataloader is passed
+        fast_dev_run : bool
+            if to only return results of first batch
+        return_x : bool
+            if to return network inputs (in the same order as prediction output)
+        return_y : bool
+            if to return network targets (in the same order as prediction output)
+        mode_kwargs : dict[str, Any]
+            keyword arguments for ``to_prediction()`` or ``to_quantiles()``
+            for modes "prediction" and "quantiles"
+        trainer_kwargs : dict[str, Any], optional
+            keyword arguments for the trainer
+        write_interval : {"batch", "epoch", "batch_and_epoch"}
+            interval to write predictions to disk
+        output_dir : str, optional
+            directory to write predictions to. Defaults to None. If set function
+            will return empty list
+        n_samples : int
+            number of samples to draw. Defaults to 100.
 
-        Returns:
-            Prediction: if one of the ```return`` arguments is present,
-                prediction tuple with fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
+        Returns
+        -------
+        Prediction
+            if one of the ``return`` arguments is present, prediction tuple with
+            fields ``prediction``, ``x``, ``y``, ``index`` and ``decoder_lengths``
         """  # noqa: E501
+
         if isinstance(mode, str):
             if mode in ["prediction", "quantiles"]:
                 if mode_kwargs is None:
