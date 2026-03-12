@@ -15,18 +15,18 @@ Our article on `Towards Data Science <https://towardsdatascience.com/introducing
 introduces the package and provides background information.
 
 PyTorch Forecasting aims to ease state-of-the-art
-timeseries forecasting with neural networks for both real-world cases and
+time series forecasting with neural networks for both real-world cases and
 research alike. The goal is to provide a high-level API with maximum flexibility for
 professionals and reasonable defaults for beginners.
 Specifically, the package provides
 
-* A timeseries dataset class which abstracts handling variable transformations, missing values,
+* A time series dataset class which abstracts handling variable transformations, missing values,
   randomized subsampling, multiple history lengths, etc.
-* A base model class which provides basic training of timeseries models along with logging in TensorBoard
+* A base model class which provides basic training of time series models along with logging in TensorBoard
   and generic visualizations such as actual vs predictions and dependency plots
-* Multiple neural network architectures for timeseries forecasting that have been enhanced
+* Multiple neural network architectures for time series forecasting that have been enhanced
   for real-world deployment and come with in-built interpretation capabilities
-* Multi-horizon timeseries metrics
+* Multi-horizon time series metrics
 * Hyperparameter tuning with `optuna <https://optuna.readthedocs.io/>`_
 
 The package is built on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ to allow
@@ -52,9 +52,40 @@ To use the MQF2 loss (multivariate quantile loss), also execute
 
    pip install pytorch-forecasting[mqf2]
 
-Visit :ref:`Getting started <getting-started>` to learn more about the package and detailed installation instruction.
+Visit :ref:`Getting started <getting-started>` to learn more about the package and detailed installation instructions.
 The :ref:`Tutorials <tutorials>` section provides guidance on how to use models and implement new ones.
 
+Key Features
+------------
+
+PyTorch Forecasting provides several tools for deep learning based time series forecasting:
+
+* Flexible ``TimeSeriesDataSet`` class for handling time series data
+* Built-in neural forecasting models such as Temporal Fusion Transformer
+* Multi-horizon forecasting metrics
+* Integrated hyperparameter tuning using `optuna <https://optuna.readthedocs.io/>`_
+* Visualization tools for predictions and model interpretation
+
+Quick Example
+-------------
+
+Below is a minimal example showing how to create a dataset and train a forecasting model.
+
+.. code-block:: python
+
+   from pytorch_forecasting import TimeSeriesDataSet
+   from pytorch_forecasting.models import TemporalFusionTransformer
+
+   # assume dataframe "data" contains time series data
+   dataset = TimeSeriesDataSet(
+       data,
+       time_idx="time_idx",
+       target="value",
+       group_ids=["series"]
+   )
+
+   model = TemporalFusionTransformer.from_dataset(dataset)
+   
 .. toctree::
    :titlesonly:
    :hidden:
