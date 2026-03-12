@@ -15,7 +15,7 @@ from pytorch_forecasting.metrics import MASE, Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class NBEATS(BaseModel):
+class NBEATS_v2(BaseModel):
     """
     Initialize NBEATS Model.
 
