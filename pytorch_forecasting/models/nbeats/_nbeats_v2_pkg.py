@@ -5,7 +5,7 @@ class NBEATS_pkg_v2(Base_pkg):
     """NBEATS v2 package container."""
 
     _tags = {
-        "info:name": "NBEATS",
+        "info:name": "NBEATS_v2",
         "authors": ["PalakB09"],
         "capability:exogenous": False,
         "capability:multivariate": False,
@@ -17,9 +17,9 @@ class NBEATS_pkg_v2(Base_pkg):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS
+        from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS_v2
 
-        return NBEATS
+        return NBEATS_v2
 
     @classmethod
     def get_datamodule_cls(cls):

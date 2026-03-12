@@ -1,7 +1,7 @@
 import torch
 
 from pytorch_forecasting.metrics import MAE
-from pytorch_forecasting.models.nbeats import NBEATS
+from pytorch_forecasting.models.nbeats._nbeats_v2 import NBEATS_v2
 from pytorch_forecasting.models.nbeats._nbeats_v2_pkg import NBEATS_pkg_v2
 
 
@@ -17,7 +17,7 @@ def test_nbeats_v2_forward_shapes():
     context_length = 10
     prediction_length = 5
 
-    model = NBEATS(metadata=_make_metadata(context_length, prediction_length))
+    model = NBEATS_v2(metadata=_make_metadata(context_length, prediction_length))
     model.eval()
 
     x = {
@@ -43,7 +43,7 @@ def test_nbeats_v2_forward_shapes():
 
 
 def test_nbeats_v2_decomposition_outputs_exist():
-    model = NBEATS(metadata=_make_metadata())
+    model = NBEATS_v2(metadata=_make_metadata())
     model.eval()
 
     batch_size = 2
@@ -64,7 +64,7 @@ def test_nbeats_v2_training_step_and_backward():
     context_length = 8
     prediction_length = 4
 
-    model = NBEATS(
+    model = NBEATS_v2(
         loss=MAE(),
         metadata=_make_metadata(context_length, prediction_length),
     )
@@ -88,9 +88,10 @@ def test_nbeats_v2_training_step_and_backward():
 
 def test_nbeats_v2_pkg_get_cls():
     cls = NBEATS_pkg_v2.get_cls()
-    assert cls is NBEATS
+    assert cls is NBEATS_v2
 
 
 def test_nbeats_v2_pkg_test_params():
-    params = NBEATS_pkg_v2.get_test_params()
-    assert isinstance(params, dict)
+    params = NBEATS_pkg_v2.get_test_train_params()
+    assert isinstance(params, list)
+    assert isinstance(params[0], dict)
