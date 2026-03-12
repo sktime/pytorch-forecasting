@@ -84,8 +84,6 @@ Below is a minimal example showing how to create a dataset and train a forecasti
        group_ids=["series"]
    )
 
-   model = TemporalFusionTransformer.from_dataset(dataset)
-   
 .. toctree::
    :titlesonly:
    :hidden:
