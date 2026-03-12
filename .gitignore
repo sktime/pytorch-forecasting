@@ -70,7 +70,6 @@ instance/
 
 # Sphinx documentation
 docs/_build/
-docs/source/api/
 docs/source/CHANGELOG.md
 
 # PyBuilder
