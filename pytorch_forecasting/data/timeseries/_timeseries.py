@@ -2656,6 +2656,11 @@ class TimeSeriesDataSet(Dataset):
             del kwargs["shuffle"]
             del kwargs["drop_last"]
 
+        # Use a dedicated generator so iterating the dataloader before training
+        # doesn't shift the global RNG and produce different results.
+        if kwargs.get("shuffle") and "generator" not in kwargs:
+            kwargs["generator"] = torch.Generator()
+
         return DataLoader(
             self,
             **kwargs,
