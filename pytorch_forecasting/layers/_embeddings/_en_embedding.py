@@ -18,7 +18,7 @@ from pytorch_forecasting.layers._embeddings._positional_embedding import (
 class EnEmbedding(nn.Module):
     """
     Encoder embedding module for time series data. Handles endogenous feature
-    embeddings in this case.
+
 
     Parameters
     ----------
