@@ -18,6 +18,8 @@ from torch.utils.data import DataLoader, Dataset
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
+    PTFOneHotEncoder,
+    PTFOrdinalEncoder,
     TorchNormalizer,
 )
 from pytorch_forecasting.data.timeseries import TimeSeries
@@ -98,7 +100,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         | list[NORMALIZER]
         | tuple[NORMALIZER]
         | None = "auto",
-        categorical_encoders: dict[str, NaNLabelEncoder] | None = None,
+        categorical_encoders: dict[str, Any] | str | None = "auto",
         scalers: dict[
             str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
         ]
@@ -150,7 +152,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.time_series_metadata = time_series_dataset.get_metadata()
         self._min_prediction_length = min_prediction_length or max_prediction_length
         self._min_encoder_length = min_encoder_length or max_encoder_length
-        self._categorical_encoders = _coerce_to_dict(categorical_encoders)
+        # handle defaults and derived attributes
+        if (
+            isinstance(categorical_encoders, str)
+            and categorical_encoders.lower() == "auto"
+        ):
+            # Will be initialized during _prepare_metadata / setup
+            self._categorical_encoders = "auto"
+        else:
+            self._categorical_encoders = _coerce_to_dict(categorical_encoders)
         self._scalers = _coerce_to_dict(scalers)
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
@@ -260,6 +270,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             }
         )
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
 
     @property
@@ -328,10 +342,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         # TODO: add scalers, target normalizers etc.
 
+        # Ensure categorical slices are purely
+        # long format integers for PyTorch Embeddings
         categorical = (
-            features[:, self.categorical_indices]
+            features[:, self.categorical_indices].long()
             if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
+            else torch.zeros((features.shape[0], 0), dtype=torch.long)
         )
         continuous = (
             features[:, self.continuous_indices]
