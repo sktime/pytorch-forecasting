@@ -29,13 +29,19 @@ class RNN(ABC, nn.RNNBase):
         """
         Mask the hidden_state where there is no encoding.
 
-        Args:
-            hidden_state (HiddenState): hidden state where some entries need replacement
-            no_encoding (torch.BoolTensor): positions that need replacement
-            initial_hidden_state (HiddenState): hidden state to use for replacement
+        Parameters
+        ----------
+            hidden_state : HiddenState
+                hidden state where some entries need replacement
+            no_encoding : torch.BoolTensor
+                positions that need replacement
+            initial_hidden_state : HiddenState
+                hidden state to use for replacement
 
-        Returns:
-            HiddenState: hidden state with propagated initial hidden state where appropriate
+        Returns
+        -------
+            HiddenState
+                hidden state with propagated initial hidden state where appropriate
         """  # noqa: E501
         pass
 
@@ -44,11 +50,15 @@ class RNN(ABC, nn.RNNBase):
         """
         Initialise a hidden_state.
 
-        Args:
-            x (torch.Tensor): network input
+        Parameters
+        ----------
+            x : torch.Tensor
+                network input
 
-        Returns:
-            HiddenState: default (zero-like) hidden state
+        Returns
+        -------
+            HiddenState
+                default (zero-like) hidden state
         """
         pass
 
@@ -59,12 +69,17 @@ class RNN(ABC, nn.RNNBase):
         """
         Duplicate the hidden_state n_samples times.
 
-        Args:
-            hidden_state (HiddenState): hidden state to repeat
-            n_samples (int): number of repetitions
+        Parameters
+        ----------
+            hidden_state : HiddenState
+                hidden state to repeat
+            n_samples : int
+                number of repetitions
 
-        Returns:
-            HiddenState: repeated hidden state
+        Returns
+        -------
+            HiddenState
+                repeated hidden state
         """
         pass
 
@@ -80,17 +95,24 @@ class RNN(ABC, nn.RNNBase):
 
         Functions as normal for RNN. Only changes output if lengths are defined.
 
-        Args:
-            x (Union[rnn.PackedSequence, torch.Tensor]): input to RNN. either packed sequence or tensor of
+        Parameters
+        ----------
+            x : Union[rnn.PackedSequence, torch.Tensor]
+                input to RNN. either packed sequence or tensor of
                 padded sequences
-            hx (HiddenState, optional): hidden state. Defaults to None.
-            lengths (torch.LongTensor, optional): lengths of sequences. If not None, used to determine correct returned
+            hx : HiddenState, optional
+                hidden state. Defaults to None.
+            lengths : torch.LongTensor, optional
+                lengths of sequences. If not None, used to determine correct returned
                 hidden state. Can contain zeros. Defaults to None.
-            enforce_sorted (bool, optional): if lengths are passed, determines if RNN expects them to be sorted.
+            enforce_sorted : bool, optional
+                if lengths are passed, determines if RNN expects them to be sorted.
                 Defaults to True.
 
-        Returns:
-            Tuple[Union[rnn.PackedSequence, torch.Tensor], HiddenState]: output and hidden state.
+        Returns
+        -------
+            Tuple[Union[rnn.PackedSequence, torch.Tensor], HiddenState]
+                output and hidden state.
                 Output is packed sequence if input has been a packed sequence.
         """  # noqa: E501
         if isinstance(x, rnn.PackedSequence) or lengths is None:
@@ -230,11 +252,15 @@ def get_rnn(cell_type: type[RNN] | str) -> type[RNN]:
     """
     Get LSTM or GRU.
 
-    Args:
-        cell_type (Union[RNN, str]): "LSTM" or "GRU"
+    Parameters
+    ----------
+        cell_type : Union[RNN, str]
+            "LSTM" or "GRU"
 
-    Returns:
-        Type[RNN]: returns GRU or LSTM RNN module
+    Returns
+    -------
+        Type[RNN]
+            returns GRU or LSTM RNN module
     """
     if isinstance(cell_type, RNN):
         rnn = cell_type
