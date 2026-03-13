@@ -132,11 +132,152 @@ class ModuleAutoSummary(Autosummary):
         return new_items
 
 
+def _make_estimator_overview(app):
+    """Make estimator/model overview table.
+    
+    This function generates a dynamic table of all models in pytorch-forecasting
+    by querying the registry system. The table is written as HTML and JSON files
+    for inclusion in the documentation.
+    """
+    try:
+        import pandas as pd
+        from pytorch_forecasting._registry import all_objects
+        
+        # Base classes to exclude from the overview
+        BASE_CLASSES = {
+            "BaseModel",
+            "BaseModelWithCovariates",
+            "AutoRegressiveBaseModel",
+            "AutoRegressiveBaseModelWithCovariates",
+            "_BaseObject",
+            "_BasePtForecaster",
+            "_BasePtForecasterV2",
+            "_BasePtForecaster_Common",
+        }
+        
+        # Get all objects from registry
+        all_objs = all_objects(return_names=True, suppress_import_stdout=True)
+        
+        records = []
+        
+        for obj_name, obj_class in all_objs:
+            # Skip base classes
+            if obj_name in BASE_CLASSES:
+                continue
+            
+            # Skip if it's not a model class (check if it has get_class_tag method)
+            if not hasattr(obj_class, "get_class_tag"):
+                continue
+            
+            try:
+                # Get model name from tags or use class name
+                model_name = obj_class.get_class_tag("info:name", obj_name)
+                
+                # Get authors
+                authors = obj_class.get_class_tag("authors", None)
+                if authors is None:
+                    authors = "pytorch-forecasting developers"
+                elif isinstance(authors, list):
+                    authors = ", ".join(authors)
+                
+                # Get object type
+                object_type = obj_class.get_class_tag("object_type", "model")
+                if isinstance(object_type, list):
+                    object_type = ", ".join(object_type)
+                
+                # Get capabilities
+                has_exogenous = obj_class.get_class_tag("capability:exogenous", False)
+                has_multivariate = obj_class.get_class_tag("capability:multivariate", False)
+                has_pred_int = obj_class.get_class_tag("capability:pred_int", False)
+                has_flexible_history = obj_class.get_class_tag("capability:flexible_history_length", False)
+                has_cold_start = obj_class.get_class_tag("capability:cold_start", False)
+                
+                # Get compute requirement
+                compute = obj_class.get_class_tag("info:compute", None)
+                
+                # Get module path for documentation link
+                module_path = obj_class.__module__
+                class_name = obj_class.__name__
+                
+                # Construct documentation link
+                # Convert module path to API documentation path
+                api_path = module_path.replace(".", "/")
+                doc_link = f"api/{api_path}.html#{module_path}.{class_name}"
+                
+                # Create model name with link
+                model_name_link = f'<a href="{doc_link}">{model_name}</a>'
+                
+                # Build capabilities string
+                capabilities = []
+                if has_exogenous:
+                    capabilities.append("Covariates")
+                if has_multivariate:
+                    capabilities.append("Multiple targets")
+                if has_pred_int:
+                    capabilities.append("Uncertainty")
+                if has_flexible_history:
+                    capabilities.append("Flexible history")
+                if has_cold_start:
+                    capabilities.append("Cold-start")
+                
+                capabilities_str = ", ".join(capabilities) if capabilities else ""
+                
+                records.append({
+                    "Model Name": model_name_link,
+                    "Type": object_type,
+                    "Authors": authors,
+                    "Covariates": "✓" if has_exogenous else "",
+                    "Multiple targets": "✓" if has_multivariate else "",
+                    "Uncertainty": "✓" if has_pred_int else "",
+                    "Flexible history": "✓" if has_flexible_history else "",
+                    "Cold-start": "✓" if has_cold_start else "",
+                    "Compute": str(compute) if compute is not None else "",
+                    "Capabilities": capabilities_str,
+                    "Module": module_path,
+                })
+            except Exception as e:
+                # Skip objects that can't be processed
+                print(f"Warning: Could not process {obj_name}: {e}")
+                continue
+        
+        if not records:
+            print("Warning: No models found in registry")
+            return
+        
+        # Create DataFrame
+        df = pd.DataFrame(records)
+        
+        # Ensure _static directory exists
+        static_dir = SOURCE_PATH.joinpath("_static")
+        static_dir.mkdir(exist_ok=True)
+        
+        # Write HTML table
+        html_file = static_dir.joinpath("model_overview_table.html")
+        html_content = df[["Model Name", "Type", "Covariates", "Multiple targets", 
+                           "Uncertainty", "Flexible history", "Cold-start", "Compute"]].to_html(
+            classes="model-overview-table", index=False, border=0, escape=False
+        )
+        html_file.write_text(html_content, encoding="utf-8")
+        print(f"Generated model overview table: {html_file}")
+        
+        # Write JSON database for interactive filtering (optional)
+        json_file = static_dir.joinpath("model_overview_db.json")
+        df.to_json(json_file, orient="records", indent=2)
+        print(f"Generated model overview JSON: {json_file}")
+        
+    except ImportError as e:
+        print(f"Warning: Could not generate model overview (missing dependency): {e}")
+    except Exception as e:
+        print(f"Warning: Error generating model overview: {e}")
+
+
 def setup(app: Sphinx):
     app.add_css_file("custom.css")
     app.connect("autodoc-skip-member", skip)
     app.add_directive("moduleautosummary", ModuleAutoSummary)
     app.add_js_file("https://buttons.github.io/buttons.js", **{"async": "async"})
+    # Connect model overview generator to builder-inited event
+    app.connect("builder-inited", _make_estimator_overview)
 
 
 # extension configuration
