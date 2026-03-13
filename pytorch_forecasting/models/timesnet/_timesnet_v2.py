@@ -9,33 +9,13 @@ from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 from pytorch_forecasting.models.timesnet._timesnet_layers import TimesBlock
 
 
-class TimesNetModel(BaseModel):
+class TimesNet_v2(BaseModel):
     """TimesNet: Temporal 2D-Variation Modelling for General Time Series Analysis.
 
     TimesNet converts a 1-D time series into a set of 2-D representations by
     detecting dominant periodicities via FFT, then applies multi-scale 2-D
     Inception convolutions (``TimesBlock``) to capture intra- and inter-period
     variations simultaneously.
-
-    Data flow
-    ---------
-    ::
-
-        encoder_cont  (B, T, n_cont)    ─┐
-        target_past   (B, T, n_targets) ─┼─► concat ► (B, T, past_channels)
-        encoder_cat   (B, T, n_cat)     ─┘   + cat embeddings
-                                             │
-                                    predict_linear  T → T+H  (per channel)
-                                             │  (B, T+H, C_in)
-                                          prepare   C_in → d_model
-                                             │  (B, T+H, d_model)
-                                      TimesBlock × e_layers
-                                             │  (B, T+H, d_model)
-                                        projection  d_model → n_targets
-                                             │  (B, T+H, n_targets)
-                                        slice [-H:]
-                                             │  (B, H, n_targets)
-                                        {"prediction": ...}
 
     Parameters
     ----------

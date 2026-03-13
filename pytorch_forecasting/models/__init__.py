@@ -19,7 +19,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
 from pytorch_forecasting.models.tide import TiDEModel
-from pytorch_forecasting.models.timesnet import TimesNet_pkg_v2, TimesNetModel
+from pytorch_forecasting.models.timesnet import TimesNet_v2
 from pytorch_forecasting.models.timexer import TimeXer
 from pytorch_forecasting.models.xlstm import xLSTMTime
 
@@ -41,8 +41,7 @@ __all__ = [
     "MultiEmbedding",
     "DecoderMLP",
     "TiDEModel",
-    "TimesNetModel",
-    "TimesNet_pkg_v2",
+    "TimesNet_v2",
     "TimeXer",
     "xLSTMTime",
 ]

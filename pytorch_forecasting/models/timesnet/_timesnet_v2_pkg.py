@@ -4,50 +4,19 @@ from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
 class TimesNet_pkg_v2(Base_pkg):
-    """Package-layer wrapper for TimesNetModel.
-
-    Usage
-    -----
-    .. code-block:: python
-
-        from pytorch_forecasting.models.timesnet import TimesNet_pkg_v2
-
-        pkg = TimesNet_pkg_v2(
-            model_cfg=dict(
-                e_layers=2,
-                d_model=64,
-                top_k=5,
-                d_ff=64,
-                num_kernels=6,
-                cat_cardinalities=[],   # no categorical features
-                cat_embedding_dim=16,
-            ),
-            datamodule_cfg=dict(
-                max_encoder_length=96,
-                max_prediction_length=24,
-                batch_size=32,
-            ),
-            trainer_cfg=dict(max_epochs=10),
-        )
-
-        # D1 TimeSeries object
-        best_ckpt = pkg.fit(time_series_dataset)
-
-        # predict from the same / new D1 object
-        predictions = pkg.predict(time_series_dataset)
-    """
+    """Package-layer wrapper for TimesNet_v2."""
 
     _tags = {
-        "info:name": "TimesNet",
+        "info:name": "TimesNet_v2",
         "authors": ["pytorch_forecasting_contributors"],
     }
 
     @classmethod
     def get_cls(cls):
-        """Return the underlying ``TimesNetModel`` class."""
-        from pytorch_forecasting.models.timesnet._timesnet_v2 import TimesNetModel
+        """Return the underlying ``TimesNet_v2`` model class."""
+        from pytorch_forecasting.models.timesnet._timesnet_v2 import TimesNet_v2
 
-        return TimesNetModel
+        return TimesNet_v2
 
     @classmethod
     def get_datamodule_cls(cls):

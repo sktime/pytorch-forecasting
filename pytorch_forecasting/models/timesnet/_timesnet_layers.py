@@ -103,9 +103,12 @@ def FFT_for_Period(x: torch.Tensor, k: int = 2):
     frequency_list = abs(xf).mean(dim=0).mean(dim=-1)
     frequency_list[0] = 0
 
+    k = min(k, frequency_list.shape[0] - 1)
+
     _, top_list = torch.topk(frequency_list, k)
     top_list = top_list.detach().cpu().numpy()
 
+    # frequency index → period length  (always >= 1 after the clamp above)
     period = x.shape[1] // top_list  # numpy array of shape (k,)
 
     period_weight = abs(xf).mean(dim=-1)[:, top_list]
@@ -190,8 +193,10 @@ class TimesBlock(nn.Module):
 
         period_list, period_weight = FFT_for_Period(x, self.k)
 
+        k_actual = len(period_list)
+
         res = []
-        for i in range(self.k):
+        for i in range(k_actual):
             period = period_list[i]
 
             if full_len % period != 0:
@@ -217,7 +222,9 @@ class TimesBlock(nn.Module):
         res = torch.stack(res, dim=-1)  # (B, full_len, N, k)
 
         period_weight = F.softmax(period_weight, dim=1)
-        period_weight = period_weight.unsqueeze(1).unsqueeze(1).expand(B, T, N, self.k)
+        period_weight = (
+            period_weight.unsqueeze(1).unsqueeze(1).expand(B, T, N, k_actual)
+        )
         res = torch.sum(res * period_weight, dim=-1)  # (B, full_len, N)
 
         res = res + x
