@@ -1,5 +1,4 @@
 from typing import Any
-import warnings
 
 import torch
 import torch.nn as nn
@@ -145,18 +144,13 @@ class TimesNetModel(BaseModel):
             lr_scheduler_params=lr_scheduler_params,
         )
 
-        # Persist hyper-parameters (Lightning checkpoint / hparam logging).
-        # We exclude loss / logging_metrics (not serialisable in general) and
-        # metadata (comes from the datamodule, re-injected on load).
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.metadata = metadata or {}
 
         self.past_steps: int = self.metadata["max_encoder_length"]  # T
         self.future_steps: int = self.metadata["max_prediction_length"]  # H
-        self.n_cont: int = self.metadata.get(
-            "encoder_cont", 0
-        )  # continuous past covariates
+        self.n_cont: int = self.metadata.get("encoder_cont", 0)  # cont past covariates
         self.n_targets: int = self.metadata.get("target", 1)  # target variable(s)
         n_cat: int = self.metadata.get("encoder_cat", 0)  # categorical past features
 
@@ -189,11 +183,7 @@ class TimesNetModel(BaseModel):
         the instance attributes set earlier in ``__init__``.
         """
 
-        # 1. Categorical embeddings
-        #    One nn.Embedding per categorical feature.
-        #    Each embedding maps a vocabulary index → a vector of size
-        #    cat_embedding_dim.  The total categorical contribution to the
-        #    input width is  n_cat * cat_embedding_dim  (= emb_out_dim).
+        # Categorical embeddings
         self.cat_embeddings = nn.ModuleList(
             [
                 nn.Embedding(cardinality, self.cat_embedding_dim)
@@ -201,9 +191,7 @@ class TimesNetModel(BaseModel):
             ]
         )
 
-        # 2. Compute combined input channel width C_in
-        #    Numeric channels:     n_targets  +  n_cont
-        #    Categorical channels: n_cat * cat_embedding_dim
+        # Compute combined input channel width C_in
         emb_out_dim: int = len(self.cat_cardinalities) * self.cat_embedding_dim
         past_channels: int = self.n_targets + self.n_cont  # pure numeric width
         C_in: int = past_channels + emb_out_dim  # total input width
@@ -212,28 +200,16 @@ class TimesNetModel(BaseModel):
         self._past_channels = past_channels
         self._C_in = C_in
 
-        # 3. Temporal extension: T → T+H
-        #    A single Linear applied *over the time axis* for every feature
-        #    channel simultaneously.
-        #
-        #    Usage inside forward():
-        #        enc_out: (B, T,   C_in)
-        #        permute: (B, C_in, T)
-        #        linear:  (B, C_in, T+H)
-        #        permute: (B, T+H, C_in)
+        # Temporal extension:
         self.predict_linear = nn.Linear(
             self.past_steps,
             self.past_steps + self.future_steps,
         )
 
-        # 4. Feature projection: C_in → d_model
-        #    Applied *after* temporal extension so every token (timestep) in the
-        #    (T+H)-length sequence is projected to the model hidden width.
+        # Feature projection
         self.prepare = nn.Linear(C_in, self.d_model)
 
-        # 5. Stack of TimesBlocks
-        #    Every block receives a sequence of length (T+H) — the temporal
-        #    extension has already been applied before the first block.
+        # Stack of TimesBlocks
         self.timesnet_blocks = nn.ModuleList(
             [
                 TimesBlock(
@@ -248,12 +224,10 @@ class TimesNetModel(BaseModel):
             ]
         )
 
-        # 6. Post-block layer normalisation
+        # Post-block layer normalisation
         self.layer_norm = nn.LayerNorm(self.d_model)
 
-        # 7. Output projection: d_model → n_targets
-        #    Produces one value per target variable for every timestep.
-        #    We then slice the last H steps to get the forecast.
+        # Output projection
         self.projection = nn.Linear(self.d_model, self.n_targets)
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -284,30 +258,21 @@ class TimesNetModel(BaseModel):
             ``(B, H, n_targets)``.
         """
 
-        # Step 1: Assemble numeric past input
-        target_past = x["target_past"]  # (B, T, n_targets)  [or (B, T)]
+        target_past = x["target_past"]  # (B, T, n_targets)
         encoder_cont = x["encoder_cont"]  # (B, T, n_cont)
 
-        # Guard: ensure target_past is always 3-D.
-        # The datamodule always produces (B, T, n_targets) but we protect
-        # against edge cases where a single-target batch arrives as (B, T).
         if target_past.dim() == 2:
             target_past = target_past.unsqueeze(-1)  # (B, T, 1)
 
-        # Concatenate numeric channels along the feature axis
-        # → (B, T, n_targets + n_cont)  ==  (B, T, past_channels)
         x_num = torch.cat([target_past, encoder_cont], dim=-1)
 
-        # Step 2: Embed categorical past features
-        encoder_cat = x.get("encoder_cat", None)  # (B, T, n_cat) or None
+        encoder_cat = x.get("encoder_cat", None)  # (B, T, n_cat)
 
         if (
             len(self.cat_embeddings) > 0
             and encoder_cat is not None
             and encoder_cat.shape[-1] > 0
         ):
-            # Embed each categorical feature independently, then concatenate.
-            # encoder_cat[:, :, i] : (B, T) long  →  embedding  →  (B, T, emb_dim)
             emb_list = [
                 self.cat_embeddings[i](encoder_cat[:, :, i].long())
                 for i in range(len(self.cat_embeddings))
@@ -315,39 +280,17 @@ class TimesNetModel(BaseModel):
             x_cat_emb = torch.cat(emb_list, dim=-1)  # (B, T, emb_out_dim)
             enc_out = torch.cat([x_num, x_cat_emb], dim=-1)  # (B, T, C_in)
         else:
-            enc_out = x_num  # (B, T, past_channels)  [C_in = past_channels]
+            enc_out = x_num  # (B, T, past_channels)
 
-        # Step 3: Temporal extension T → T+H
-        #
-        #   predict_linear is a Linear(T, T+H) applied along the time axis.
-        #   We expose the time axis as the last dim by permuting, apply the
-        #   linear, then permute back.
-        #
-        #   (B, T,   C_in)
-        #   ↓  permute(0, 2, 1)
-        #   (B, C_in, T)
-        #   ↓  predict_linear
-        #   (B, C_in, T+H)
-        #   ↓  permute(0, 2, 1)
-        #   (B, T+H, C_in)
         enc_out = self.predict_linear(enc_out.permute(0, 2, 1)).permute(0, 2, 1)
 
-        # Step 4: Feature projection C_in → d_model
         enc_out = self.prepare(enc_out)  # (B, T+H, d_model)
 
-        # Step 5: TimesBlock stack with layer normalisation
         for block in self.timesnet_blocks:
             enc_out = self.layer_norm(block(enc_out))
-        # → (B, T+H, d_model)
 
-        # Step 6: Output projection d_model → n_targets
         dec_out = self.projection(enc_out)  # (B, T+H, n_targets)
 
-        # Step 7: Slice the forecast window
-        # Keep only the last H time-steps — the model's prediction of the
-        # future.  The first T steps correspond to the reconstructed past and
-        # are discarded here (they could be used for auxiliary losses if
-        # needed in the future).
         out = dec_out[:, -self.future_steps :, :]  # (B, H, n_targets)
 
         return {"prediction": out}

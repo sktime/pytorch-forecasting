@@ -72,7 +72,6 @@ class Inception_Block_V1(nn.Module):
             Shape ``(B, out_channels, H, W)`` — average of all kernel outputs.
         """
         res_list = [kernel(x) for kernel in self.kernels]
-        # stack along a new trailing dim, then average → (B, out_channels, H, W)
         return torch.stack(res_list, dim=-1).mean(dim=-1)
 
 
@@ -99,21 +98,16 @@ def FFT_for_Period(x: torch.Tensor, k: int = 2):
         Tensor of shape ``(B, k)`` containing the mean amplitude across all
         channels for each of the top-k frequencies.
     """
-    # rfft along the time axis → (B, T//2+1, C)
     xf = torch.fft.rfft(x, dim=1)
 
-    # average amplitude across batch and channels → (T//2+1,)
     frequency_list = abs(xf).mean(dim=0).mean(dim=-1)
-    # zero out the DC component so it is never selected
     frequency_list[0] = 0
 
     _, top_list = torch.topk(frequency_list, k)
     top_list = top_list.detach().cpu().numpy()
 
-    # convert frequency indices to period lengths  (T // freq_idx)
     period = x.shape[1] // top_list  # numpy array of shape (k,)
 
-    # amplitude weight per sample and per selected frequency → (B, k)
     period_weight = abs(xf).mean(dim=-1)[:, top_list]
 
     return period, period_weight
@@ -172,7 +166,6 @@ class TimesBlock(nn.Module):
         self.pred_len = pred_len
         self.k = top_k
 
-        # Two Inception blocks with GELU non-linearity between them
         self.conv = nn.Sequential(
             Inception_Block_V1(d_model, d_ff, num_kernels=num_kernels),
             nn.GELU(),
@@ -210,9 +203,6 @@ class TimesBlock(nn.Module):
                 padded_len = full_len
                 out = x  # (B, full_len, N)
 
-            # (B, padded_len, N)
-            # → (B, padded_len//period, period, N)
-            # → (B, N, padded_len//period, period)   [channels-first for Conv2d]
             out = (
                 out.reshape(B, padded_len // period, period, N)
                 .permute(0, 3, 1, 2)
@@ -226,9 +216,7 @@ class TimesBlock(nn.Module):
 
         res = torch.stack(res, dim=-1)  # (B, full_len, N, k)
 
-        # softmax weights from FFT amplitudes → (B, k)
         period_weight = F.softmax(period_weight, dim=1)
-        # broadcast to (B, full_len, N, k)
         period_weight = period_weight.unsqueeze(1).unsqueeze(1).expand(B, T, N, self.k)
         res = torch.sum(res * period_weight, dim=-1)  # (B, full_len, N)
 
