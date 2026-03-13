@@ -2624,7 +2624,7 @@ class TimeSeriesDataSet(Dataset):
 
             # length of probabilities for sampler have to be equal
             # to the length of index
-            probabilities = np.sqrt(1 + data.loc[dataset.index, "target"])
+            probabilities = np.sqrt(1 + data.loc[data.index, "target"])
             sampler = WeightedRandomSampler(probabilities, len(probabilities))
             dataset.to_dataloader(train=True, sampler=sampler, shuffle=False)
         """
