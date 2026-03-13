@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
@@ -11,6 +12,8 @@ import yaml
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+
+logger = logging.getLogger(__name__)
 
 
 class Base_pkg(_BasePtForecasterV2):
@@ -51,7 +54,7 @@ class Base_pkg(_BasePtForecasterV2):
         self.model_cfg = self._load_config(
             model_cfg, ckpt_path=self.ckpt_path, auto_file_name="model_cfg.pkl"
         )
-        print(self.model_cfg)
+        logger.info(f"Model configuration: {self.model_cfg}")
 
         self.datamodule_cfg = self._load_config(
             datamodule_cfg,
@@ -67,7 +70,7 @@ class Base_pkg(_BasePtForecasterV2):
         self.trainer = None
         self.datamodule = None
         if self.ckpt_path:
-            print(self.metadata)
+            logger.info(f"Loading from checkpoint with metadata: {self.metadata}")
             self._build_model(metadata=self.metadata, **self.model_cfg)
         else:
             self.model = None
@@ -97,7 +100,7 @@ class Base_pkg(_BasePtForecasterV2):
             raise FileNotFoundError(f"Configuration file not found: {path}")
 
         suffix = path.suffix.lower()
-        print(suffix)
+        logger.debug(f"Loading config with suffix: {suffix}")
 
         if suffix in [".yaml", ".yml"]:
             with open(path) as f:
@@ -259,7 +262,7 @@ class Base_pkg(_BasePtForecasterV2):
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             self._save_artifact(best_model_path.parent)
-            print(f"Artifacts saved in: {best_model_path.parent}")
+            logger.info(f"Artifacts saved in: {best_model_path.parent}")
             return best_model_path
         return None
 
@@ -304,7 +307,7 @@ class Base_pkg(_BasePtForecasterV2):
             output_file = output_path / "predictions.pkl"
             with open(output_file, "wb") as f:
                 pickle.dump(predictions, f)
-            print(f"Predictions saved to {output_file}")
+            logger.info(f"Predictions saved to {output_file}")
             return None
 
         return predictions
