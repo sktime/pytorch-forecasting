@@ -189,3 +189,62 @@ def test_nhits_v2_pkg_test_train_params():
     for p in params:
         assert isinstance(p, dict)
         assert "datamodule_cfg" in p
+
+
+def test_nhits_v2_default_loss(sample_datamodule):
+    """Test that loss=None falls back to MASE as default.
+
+    Parameters
+    ----------
+    sample_datamodule : EncoderDecoderTimeSeriesDataModule
+        Fixture providing the data module.
+    """
+    from pytorch_forecasting.metrics import MASE
+
+    dm = sample_datamodule
+    model = NHiTS_v2(metadata=dm.metadata)
+    assert isinstance(model.loss, MASE)
+
+
+def test_nhits_v2_validation_step(sample_datamodule):
+    """Test that validation_step returns a scalar val_loss.
+
+    Parameters
+    ----------
+    sample_datamodule : EncoderDecoderTimeSeriesDataModule
+        Fixture providing the data module.
+    """
+    dm = sample_datamodule
+    model = NHiTS_v2(loss=MAE(), metadata=dm.metadata)
+
+    batch = next(iter(dm.train_dataloader()))
+    result = model.validation_step(batch, batch_idx=0)
+
+    assert "val_loss" in result
+    loss = result["val_loss"]
+    assert isinstance(loss, torch.Tensor)
+    assert loss.ndim == 0
+    assert not torch.isnan(loss)
+
+
+def test_nhits_v2_forward_with_2d_mask(sample_datamodule):
+    """Test forward pass when encoder_mask is already 2D.
+
+    Parameters
+    ----------
+    sample_datamodule : EncoderDecoderTimeSeriesDataModule
+        Fixture providing the data module.
+    """
+    dm = sample_datamodule
+    model = NHiTS_v2(loss=MAE(), metadata=dm.metadata)
+
+    batch_x, _ = next(iter(dm.train_dataloader()))
+
+    batch_x_2d_mask = dict(batch_x)
+    if batch_x_2d_mask["encoder_mask"].dim() == 3:
+        batch_x_2d_mask["encoder_mask"] = batch_x_2d_mask["encoder_mask"].squeeze(-1)
+
+    with torch.no_grad():
+        out = model(batch_x_2d_mask)
+
+    assert out["prediction"].shape[1] == PREDICTION_LENGTH
