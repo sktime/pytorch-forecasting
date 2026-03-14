@@ -191,7 +191,8 @@ class TimeXer(BaseModelWithCovariates):
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
         if loss is None:
-            if len(self.target_positions) > 1:
+            output_size = kwargs.get("output_size", 1)
+            if isinstance(output_size, (list, tuple)) and len(output_size) > 1:
                 loss = MultiLoss([MAE() for _ in range(len(self.target_positions))])
             else:
                 loss = MAE()
