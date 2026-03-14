@@ -2,6 +2,7 @@
 Example datasets for tutorials and testing.
 """
 
+import os
 from pathlib import Path
 from urllib.request import urlretrieve
 
@@ -10,7 +11,31 @@ import pandas as pd
 
 BASE_URL = "https://github.com/sktime/pytorch-forecasting/raw/main/examples/data/"
 
-DATA_PATH = Path(__file__).parent
+
+def _get_data_path() -> Path:
+    """
+    Get the data path for storing downloaded example datasets.
+
+    Uses a user-writable directory instead of the package installation directory.
+    The path can be customized via the PTF_DATA_DIR environment variable.
+
+    Returns:
+        Path: directory path for storing example data
+    """
+    # Allow user override via environment variable
+    env_path = os.environ.get("PTF_DATA_DIR")
+    if env_path:
+        data_path = Path(env_path)
+    else:
+        # Use ~/.pytorch-forecasting/data as default
+        data_path = Path.home() / ".pytorch-forecasting" / "data"
+
+    # Create directory if it doesn't exist
+    data_path.mkdir(parents=True, exist_ok=True)
+    return data_path
+
+
+DATA_PATH = _get_data_path()
 
 
 def _get_data_by_filename(fname: str) -> Path:
