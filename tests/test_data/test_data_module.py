@@ -88,6 +88,7 @@ def test_init(sample_timeseries_data):
     assert dm.max_prediction_length == 12
     assert dm._min_encoder_length == 24
     assert dm._min_prediction_length == 12
+    assert dm.window_stride == 1
     assert dm.batch_size == 8
     assert dm.train_val_test_split == (0.7, 0.15, 0.15)
 
@@ -160,6 +161,43 @@ def test_create_windows(data_module):
         assert len(window) == 4
         assert window[2] == data_module.max_encoder_length
         assert window[3] == data_module.max_prediction_length
+
+
+def test_window_stride_reduces_window_density(sample_timeseries_data):
+    """Test that window_stride keeps only every k-th valid window start."""
+    dense_dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        window_stride=1,
+    )
+    sparse_dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        window_stride=3,
+    )
+
+    dense_dm.setup()
+    indices = dense_dm._train_indices[:1]
+    dense_windows = dense_dm._create_windows(indices)
+    sparse_windows = sparse_dm._create_windows(indices)
+
+    assert len(dense_windows) > len(sparse_windows)
+    assert [window[1] for window in sparse_windows] == list(
+        range(0, len(dense_windows), 3)
+    )
+
+
+def test_invalid_window_stride_raises(sample_timeseries_data):
+    """Test that invalid stride values are rejected."""
+    with pytest.raises(ValueError, match="window_stride must be at least 1"):
+        EncoderDecoderTimeSeriesDataModule(
+            time_series_dataset=sample_timeseries_data,
+            max_encoder_length=24,
+            max_prediction_length=12,
+            window_stride=0,
+        )
 
 
 def test_dataloader_creation(data_module):
