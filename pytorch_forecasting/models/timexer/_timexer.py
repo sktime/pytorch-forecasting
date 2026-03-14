@@ -191,14 +191,17 @@ class TimeXer(BaseModelWithCovariates):
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
         if loss is None:
-            if features == "M":
-                loss = MultiLoss([MAE()] * len(self.target_positions))
+            output_size = kwargs.get("output_size", 1)
+            if isinstance(output_size, (list, tuple)) and len(output_size) > 1:
+                loss = MultiLoss([MAE() for _ in range(len(self.target_positions))])
             else:
                 loss = MAE()
+
         self.save_hyperparameters(ignore=["loss", "logging_metrics"])
-        # loss is a standalone module and is stored separately.
+
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
+        # safely accessing self.target_positions after parent init
         if self.hparams.context_length < self.hparams.patch_length:
             raise ValueError(
                 f"context_length ({context_length}) must be greater than or equal to"
@@ -484,10 +487,11 @@ class TimeXer(BaseModelWithCovariates):
             # which is the length of a list of float. In case of MAE, MSE, etc.
             # n_quantiles = 1 and it mimics the behavior of a point prediction.
             # for multi-target forecasting, the output is a list of tensors.
-            if len(target_positions) == 1:
-                prediction = prediction[..., 0, :]
-            else:
+            if len(target_positions) > 1:
                 prediction = [prediction[..., i, :] for i in target_indices]
+            else:
+                prediction = prediction[..., 0, :]
+
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )
