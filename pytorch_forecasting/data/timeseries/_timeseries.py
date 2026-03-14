@@ -669,8 +669,8 @@ class TimeSeriesDataSet(Dataset):
             self.min_prediction_length <= self.max_prediction_length
         ), "max prediction length has to be larger equals min prediction length"
         assert (
-            self.min_prediction_length > 0
-        ), "min prediction length must be larger than 0"
+            self.min_prediction_length >= 0
+        ), "min prediction length must be larger than or equal to 0"
         assert isinstance(
             self.min_prediction_length, int
         ), "min prediction length must be integer"
@@ -2253,7 +2253,7 @@ class TimeSeriesDataSet(Dataset):
                     ],
                 ] = 0  # zero is encoded nan
 
-        assert decoder_length > 0, "Decoder length should be greater than 0"
+        assert decoder_length >= 0, "Decoder length should be at least 0"
         assert encoder_length >= 0, "Encoder length should be at least 0"
 
         if self.add_relative_time_idx:
