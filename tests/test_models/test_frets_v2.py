@@ -6,8 +6,8 @@ import torch
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.metrics import MAE, SMAPE
-from pytorch_forecasting.models.FreTS._frets_pkg_v2 import FreTS_v2_pkg_v2
-from pytorch_forecasting.models.FreTS._frets_v2 import FreTS_v2
+from pytorch_forecasting.models.frets._frets_pkg_v2 import FreTS_v2_pkg_v2
+from pytorch_forecasting.models.frets._frets_v2 import FreTS_v2
 
 CONTEXT_LENGTH = 6
 PREDICTION_LENGTH = 3

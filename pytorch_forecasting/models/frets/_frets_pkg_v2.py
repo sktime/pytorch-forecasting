@@ -26,7 +26,7 @@ class FreTS_v2_pkg_v2(Base_pkg):
         FreTS_v2 : type
             The model class.
         """
-        from pytorch_forecasting.models.FreTS._frets_v2 import FreTS_v2
+        from pytorch_forecasting.models.frets._frets_v2 import FreTS_v2
 
         return FreTS_v2
 
