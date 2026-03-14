@@ -4,13 +4,12 @@ LTSF-NLinear model for PyTorch Forecasting.
 """
 
 from typing import Any
-import warnings
 
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.metrics import QuantileLoss
+from pytorch_forecasting.metrics import DistributionLoss, QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
@@ -22,12 +21,15 @@ class NLinear(TslibBaseModel):
     applies a linear projection from context length to prediction length,
     and then restores scale by adding the last observed value back.
 
+    This v2 implementation is intentionally narrow and follows the paper's
+    target-history-only formulation. It supports a single target variable with
+    a fixed context length and does not currently support exogenous,
+    categorical, static, or future-known features.
+
     Parameters
     ----------
     loss : nn.Module
         Loss function for training.
-    individual : bool, default=False
-        Whether to use one linear layer per input channel.
     logging_metrics : list[nn.Module] | None, default=None
         Metrics to log during train/validation/test.
     optimizer : Optimizer | str | None, default="adam"
@@ -52,7 +54,6 @@ class NLinear(TslibBaseModel):
     def __init__(
         self,
         loss: nn.Module,
-        individual: bool = False,
         logging_metrics: list[nn.Module] | None = None,
         optimizer: Optimizer | str | None = "adam",
         optimizer_params: dict | None = None,
@@ -71,23 +72,34 @@ class NLinear(TslibBaseModel):
             metadata=metadata,
         )
 
-        self.individual = individual
         self.n_quantiles: int | None = None
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
         self._init_network()
 
     def _init_network(self):
-        """Initialize NLinear network layers."""
-        self.enc_in = self.cont_dim + self.target_dim
+        """Initialize NLinear network layers for single-target input only."""
+        if not self.metadata:
+            raise ValueError(
+                "NLinear requires `metadata` from a fitted datamodule to initialize."
+            )
+        if self.context_length <= 0 or self.prediction_length <= 0:
+            raise ValueError(
+                "NLinear requires positive `context_length` and `prediction_length` "
+                "in `metadata`."
+            )
+        if self.target_dim != 1:
+            raise ValueError(
+                "NLinear v2 currently supports only a single target variable."
+            )
+        if isinstance(self.loss, DistributionLoss):
+            raise TypeError(
+                "NLinear v2 does not support DistributionLoss. "
+                "Use QuantileLoss for prediction intervals."
+            )
 
         if isinstance(self.loss, QuantileLoss):
             self.n_quantiles = len(self.loss.quantiles)
-            if self.target_dim != 1:
-                raise ValueError(
-                    "NLinear currently supports QuantileLoss only for single-target "
-                    "forecasting in v2."
-                )
 
         output_dim = self.prediction_length
         if self.n_quantiles is not None:
@@ -95,50 +107,31 @@ class NLinear(TslibBaseModel):
 
         self.output_dim = output_dim
 
-        if self.individual:
-            self.linear = nn.ModuleList(
-                [nn.Linear(self.context_length, output_dim) for _ in range(self.enc_in)]
-            )
-        else:
-            self.linear = nn.Linear(self.context_length, output_dim)
+        self.linear = nn.Linear(self.context_length, output_dim)
 
-    def _encoder(
-        self, x: torch.Tensor, target_indices: torch.Tensor | None
-    ) -> torch.Tensor:
+    def _encoder(self, x: torch.Tensor) -> torch.Tensor:
         """
         Encode input sequence and produce forecasts.
 
         Parameters
         ----------
         x : torch.Tensor
-            Input tensor of shape (batch_size, context_length, n_features).
-        target_indices : torch.Tensor | None
-            Target channel indices in the model input channels.
+            Input tensor of shape (batch_size, context_length, 1).
 
         Returns
         -------
         torch.Tensor
             Forecast tensor.
         """
+        # Detach to match the original NLinear reference implementation
+        # In this implementation history_target is a leaf tensor from the dataloader
+        # so this detach has no effect on gradient flow but preserves paper fidelity
         seq_last = x[:, -1:, :].detach()
         x = x - seq_last
 
-        if self.individual:
-            batch_size, _, n_features = x.shape
-            output = torch.zeros(
-                (batch_size, self.output_dim, n_features),
-                dtype=x.dtype,
-                device=x.device,
-            )
-            for i in range(n_features):
-                output[:, :, i] = self.linear[i](x[:, :, i])
-        else:
-            output = self.linear(x.permute(0, 2, 1)).permute(0, 2, 1)
+        output = self.linear(x.permute(0, 2, 1)).permute(0, 2, 1)
 
         output = output + seq_last.expand(-1, output.size(1), -1)
-
-        if target_indices is not None:
-            output = output[:, :, target_indices]
 
         return self._reshape_output(output)
 
@@ -182,37 +175,46 @@ class NLinear(TslibBaseModel):
         dict[str, torch.Tensor]
             Dictionary containing output prediction tensor.
         """
-        input_data, target_indices = self._prepare_input_data(x)
-        prediction = self._encoder(input_data, target_indices)
+        input_data = self._prepare_input_data(x)
+        prediction = self._encoder(input_data)
 
         if "target_scale" in x and hasattr(self, "transform_output"):
             prediction = self.transform_output(prediction, x["target_scale"])
 
         return {"prediction": prediction}
 
-    def _prepare_input_data(self, x: dict[str, torch.Tensor]):
-        """Prepare input data and target indices for model input."""
-        available_features = []
-        target_indices = []
-        current_idx = 0
+    def _prepare_input_data(self, x: dict[str, torch.Tensor]) -> torch.Tensor:
+        """Validate NLinear's narrow input contract and return history_target."""
+        unsupported_inputs = {
+            "history_cont": "historical continuous features",
+            "history_cat": "historical categorical features",
+            "future_cont": "future-known continuous features",
+            "future_cat": "future-known categorical features",
+            "static_categorical_features": "static categorical features",
+            "static_continuous_features": "static continuous features",
+        }
+        for key, description in unsupported_inputs.items():
+            value = x.get(key)
+            if isinstance(value, torch.Tensor) and value.numel() > 0:
+                raise ValueError(
+                    "NLinear v2 currently supports target-history-only input and does "
+                    f"not accept {description}."
+                )
 
-        if "history_cont" in x and x["history_cont"].size(-1) > 0:
-            available_features.append(x["history_cont"])
-            current_idx += x["history_cont"].size(-1)
+        history_target = x.get("history_target")
+        if history_target is None:
+            raise ValueError("NLinear requires `history_target` in the input batch.")
+        if history_target.ndim != 3:
+            raise ValueError(
+                "`history_target` must have shape [batch, context_length, 1]."
+            )
+        if history_target.size(1) != self.context_length:
+            raise ValueError(
+                "`history_target` length does not match the model context length."
+            )
+        if history_target.size(-1) != 1:
+            raise ValueError(
+                "NLinear v2 currently supports only a single target channel."
+            )
 
-        if "history_target" in x and x["history_target"].size(-1) > 0:
-            n_targets = x["history_target"].size(-1)
-            target_indices = list(range(current_idx, current_idx + n_targets))
-            available_features.append(x["history_target"])
-
-        if not available_features:
-            raise ValueError("No valid input features found in the input dictionary.")
-
-        input_data = torch.cat(available_features, dim=-1)
-        target_indices = (
-            torch.tensor(target_indices, dtype=torch.long, device=input_data.device)
-            if target_indices
-            else None
-        )
-
-        return input_data, target_indices
+        return history_target
