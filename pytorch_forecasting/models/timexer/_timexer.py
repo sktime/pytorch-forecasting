@@ -191,7 +191,10 @@ class TimeXer(BaseModelWithCovariates):
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE()])
         if loss is None:
-            loss = MAE()
+            if len(self.target_positions) > 1:
+                loss = MultiLoss([MAE() for _ in range(len(self.target_positions))])
+            else:
+                loss = MAE()
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics"])
 
@@ -484,18 +487,9 @@ class TimeXer(BaseModelWithCovariates):
             # n_quantiles = 1 and it mimics the behavior of a point prediction.
             # for multi-target forecasting, the output is a list of tensors.
             if len(target_positions) > 1:
-                prediction = torch.stack(
-                    [prediction[..., i, :] for i in target_indices], dim=-1
-                )
+                prediction = [prediction[..., i, :] for i in target_indices]
             else:
                 prediction = prediction[..., 0, :]
-
-            if type(self.loss).__name__ == "MultiLoss" and isinstance(
-                prediction, torch.Tensor
-            ):
-                prediction = tuple(
-                    prediction[..., i] for i in range(prediction.shape[-1])
-                )
 
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
