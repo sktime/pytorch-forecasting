@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.layers._timesnet import TimesBlock
 from pytorch_forecasting.metrics import MAE, Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
-from pytorch_forecasting.models.timesnet._timesnet_layers import TimesBlock
 
 
 class TimesNet_v2(BaseModel):
@@ -96,7 +96,7 @@ class TimesNet_v2(BaseModel):
 
     def __init__(
         self,
-        metadata: dict,
+        loss: Metric | None = None,
         cat_cardinalities: list[int] | None = None,
         cat_embedding_dim: int = 16,
         e_layers: int = 2,
@@ -104,12 +104,12 @@ class TimesNet_v2(BaseModel):
         top_k: int = 5,
         d_ff: int = 64,
         num_kernels: int = 6,
-        loss: Metric | None = None,
         logging_metrics: list[nn.Module] | None = None,
         optimizer: Optimizer | str | None = "adam",
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
         **kwargs: Any,
     ) -> None:
         if loss is None:

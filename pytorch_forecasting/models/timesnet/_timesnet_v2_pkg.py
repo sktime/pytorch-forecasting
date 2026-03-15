@@ -47,6 +47,7 @@ class TimesNet_pkg_v2(Base_pkg):
         from pytorch_forecasting.metrics import MAE, MAPE
 
         params = [
+            {},
             dict(
                 e_layers=1,
                 d_model=16,
