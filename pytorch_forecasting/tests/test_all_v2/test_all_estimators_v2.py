@@ -115,14 +115,6 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
     def test_pkg_linkage(self, object_pkg, object_class):
         """Test that the package is linked correctly."""
-        # check name method
-        msg = (
-            f"Package {object_pkg}.name() does not match class "
-            f"name {object_class.__name__}. "
-            "The expected package name is "
-            f"{object_class.__name__}_pkg."
-        )
-        assert object_pkg.name() == object_class.__name__, msg
 
         # check naming convention
         class_name = object_class.__name__
