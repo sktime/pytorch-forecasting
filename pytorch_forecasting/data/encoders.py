@@ -1617,6 +1617,21 @@ class PTFOrdinalEncoder(BaseEstimator, TransformerMixin, CategoricalEncoderMixin
         encoded = np.array([self.mapping_.get(val, self.unknown_idx) for val in y_np])
         return torch.tensor(encoded, dtype=torch.long)
 
+    def fit_transform(self, y: pd.Series | np.ndarray | torch.Tensor) -> torch.Tensor:
+        self.fit(y)
+        return self.transform(y)
+
+    def inverse_transform(self, y: torch.Tensor | np.ndarray) -> np.ndarray:
+        if isinstance(y, torch.Tensor):
+            y = y.detach().cpu().numpy()
+        return np.array([self.inverse_mapping_.get(idx, None) for idx in y])
+
+    @property
+    def n_classes(self) -> int:
+        if self.add_unknown:
+            return len(self.mapping_) + 1
+        return len(self.mapping_)
+
 
 class PTFOneHotEncoder(BaseEstimator, TransformerMixin, CategoricalEncoderMixin):
     """
@@ -1629,6 +1644,7 @@ class PTFOneHotEncoder(BaseEstimator, TransformerMixin, CategoricalEncoderMixin)
         self.mapping_ = {}
 
     def fit(self, y: pd.Series | np.ndarray | torch.Tensor) -> "PTFOneHotEncoder":
+        """Fit the encoder on training data."""
         y_np = self._to_numpy(y)
         self.unique_vals_ = np.unique(y_np[~pd.isna(y_np)])
         self.mapping_ = {val: idx for idx, val in enumerate(self.unique_vals_)}
@@ -1636,9 +1652,31 @@ class PTFOneHotEncoder(BaseEstimator, TransformerMixin, CategoricalEncoderMixin)
         return self
 
     def transform(self, y: pd.Series | np.ndarray | torch.Tensor) -> torch.Tensor:
+        """Transform categories to one-hot encoded vectors."""
         y_np = self._to_numpy(y)
         encoded = np.zeros((len(y_np), self.num_classes_), dtype=np.float32)
         for i, val in enumerate(y_np):
             if val in self.mapping_:
                 encoded[i, self.mapping_[val]] = 1.0
         return torch.tensor(encoded, dtype=torch.float32)
+
+    def fit_transform(self, y: pd.Series | np.ndarray | torch.Tensor) -> torch.Tensor:
+        self.fit(y)
+        return self.transform(y)
+
+    def inverse_transform(self, y: torch.Tensor | np.ndarray) -> np.ndarray:
+        """Decode one-hot vectors back to original category values."""
+        if isinstance(y, torch.Tensor):
+            y = y.detach().cpu().numpy()
+        result = []
+        for row in y:
+            idx = np.argmax(row)
+            if row[idx] == 0:
+                result.append(None)
+            else:
+                result.append(self.unique_vals_[idx])
+        return np.array(result)
+
+    @property
+    def n_classes(self) -> int:
+        return self.num_classes_

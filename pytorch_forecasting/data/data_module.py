@@ -274,7 +274,41 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "categorical_cardinalities", {}
         )
 
+        # Compute recommended embedding sizes for each categorical variable
+        # Rule of thumb: min(50, (n_categories + 1) // 2)
+        metadata["categorical_embedding_sizes"] = {}
+        for col, n_cats in metadata["categorical_cardinalities"].items():
+            emb_dim = min(50, (n_cats + 1) // 2) if n_cats > 0 else 0
+            metadata["categorical_embedding_sizes"][col] = (n_cats, emb_dim)
+
         return metadata
+
+    def _resolve_categorical_encoders(self):
+        """Resolve categorical encoders from D1 or user config.
+
+        If categorical_encoders="auto" (the default), this method pulls
+        the already-fitted encoders from the D1 TimeSeries dataset.
+        This ensures the same mappings are used during prediction.
+        """
+        if self._categorical_encoders == "auto":
+            self._categorical_encoders = (
+                self.time_series_dataset.categorical_encoders.copy()
+            )
+
+    def get_categorical_encoders(self) -> dict:
+        """Return the fitted categorical encoders.
+
+        These should be passed to a new TimeSeries instance when creating
+        prediction data, to ensure consistent encoding mappings.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping column names to fitted encoder objects.
+        """
+        if self._categorical_encoders == "auto":
+            self._resolve_categorical_encoders()
+        return self._categorical_encoders
 
     @property
     def metadata(self):
@@ -652,6 +686,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             - ``None`` : Prepares ``fit`` datasets.
         """
         total_series = len(self.time_series_dataset)
+        self._resolve_categorical_encoders()
         self._split_indices = torch.randperm(total_series)
 
         self._train_size = int(self.train_val_test_split[0] * total_series)
