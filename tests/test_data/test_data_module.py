@@ -472,6 +472,7 @@ def test_multivariate_target():
     x, y = dm.train_dataset[0]
     assert len(y) == 2
 
+
 def test_v2_categorical_with_ptf_ordinal_encoder():
     """Test D1 + D2 with PTFOrdinalEncoder instead of default NaNLabelEncoder."""
     from pytorch_forecasting.data.encoders import PTFOrdinalEncoder
