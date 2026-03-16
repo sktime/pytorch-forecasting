@@ -227,6 +227,7 @@ def test_PTFOneHotEncoder():
     assert transformed[1].tolist() == [0.0, 0.0]
     assert transformed[2].tolist() == [0.0, 0.0]
 
+
 def test_PTFOrdinalEncoder_fit_transform():
     """Test fit_transform convenience method."""
     encoder = PTFOrdinalEncoder(add_unknown=True)
