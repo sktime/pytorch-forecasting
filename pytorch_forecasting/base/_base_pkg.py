@@ -105,8 +105,7 @@ class Base_pkg(_BasePtForecasterV2):
 
         elif suffix == ".pkl":
             with open(path, "rb") as f:
-                return pickle.load(f)  
-
+                return pickle.load(f)  # noqa: S301
         else:
             raise ValueError(
                 f"Unsupported config format: {suffix}. Use .yaml, .yml, or .pkl"
