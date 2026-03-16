@@ -197,7 +197,12 @@ class TimeSeries(Dataset):
             if col not in [self.time] + self._group + [self.weight] + self._target
         ]
         if self._group:
-            self._groups = self.data.groupby(self._group).groups
+            group_arg = (
+                self._group[0]
+                if isinstance(self._group, (list, tuple)) and len(self._group) == 1
+                else self._group
+            )
+            self._groups = self.data.groupby(group_arg).groups
             self._group_ids = list(self._groups.keys())
         else:
             self._groups = {"_single_group": self.data.index}
@@ -339,7 +344,12 @@ class TimeSeries(Dataset):
 
         if data_future is not None:
             if _group:
-                future_mask = self.data_future.groupby(_group).groups[group_id]
+                group_arg = (
+                    self._group[0]
+                    if isinstance(self._group, (list, tuple)) and len(self._group) == 1
+                    else self._group
+                )
+                future_mask = self.data_future.groupby(group_arg).groups[group_id]
                 future_data = self.data_future.loc[future_mask]
             else:
                 future_data = self.data_future
