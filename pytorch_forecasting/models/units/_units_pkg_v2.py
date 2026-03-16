@@ -13,7 +13,7 @@ class UniTS_pkg_v2(Base_pkg):
 
     _tags = {
         "info:name": "UniTS",
-        "authors": ["Muhammad-Rebaal"],
+        "authors": ["Muhammad-Rebaal", "sohamukute"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": False,

@@ -21,6 +21,10 @@ class UniTS(TslibBaseModel):
     """
     UniTS: Unified Time Series Model.
 
+    GitHub Repository : https://github.com/mims-harvard/UniTS
+
+    Research Paper : https://arxiv.org/abs/2403.00131
+
     Patch-based transformer for multivariate time series forecasting.
     Implements a simplified version of the architecture from the paper, using
     channel-independent patching: each channel is projected separately with a
