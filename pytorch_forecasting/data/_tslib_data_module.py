@@ -287,6 +287,8 @@ class TslibDataModule(LightningDataModule):
         Custom collate function for the dataloader.
     """  # noqa: E501
 
+    _dataset_class = _TslibDataset  # subclasses override to use a custom dataset
+
     def __init__(
         self,
         time_series_dataset: TimeSeries,
@@ -724,14 +726,14 @@ class TslibDataModule(LightningDataModule):
                 self._train_windows = self._create_windows(self._train_indices)
                 self._val_windows = self._create_windows(self._val_indices)
 
-                self.train_dataset = _TslibDataset(
+                self.train_dataset = self._dataset_class(
                     dataset=self.time_series_dataset,
                     data_module=self,
                     windows=self._train_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
 
-                self.val_dataset = _TslibDataset(
+                self.val_dataset = self._dataset_class(
                     dataset=self.time_series_dataset,
                     data_module=self,
                     windows=self._val_windows,
@@ -741,7 +743,7 @@ class TslibDataModule(LightningDataModule):
             if not hasattr(self, "_test_dataset"):
                 self._test_windows = self._create_windows(self._test_indices)
 
-                self.test_dataset = _TslibDataset(
+                self.test_dataset = self._dataset_class(
                     dataset=self.time_series_dataset,
                     data_module=self,
                     windows=self._test_windows,
@@ -752,7 +754,7 @@ class TslibDataModule(LightningDataModule):
             predict_indices = torch.arange(len(self.time_series_dataset))
             self._predict_windows = self._create_windows(predict_indices)
 
-            self.predict_dataset = _TslibDataset(
+            self.predict_dataset = self._dataset_class(
                 dataset=self.time_series_dataset,
                 data_module=self,
                 windows=self._predict_windows,
