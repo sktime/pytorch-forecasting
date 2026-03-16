@@ -28,7 +28,7 @@ def _make_model(**kwargs):
 # --- optimizer tests ---
 
 
-@pytest.mark.parametrize("name", ["adam", "adamw", "sgd"])
+@pytest.mark.parametrize("name", ["adam", "adamw", "adagrad", "sgd"])
 def test_optimizer_registry_strings(name):
     model = _make_model(optimizer=name, optimizer_params={"lr": 1e-3})
     cfg = model.configure_optimizers()

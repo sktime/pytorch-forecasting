@@ -32,9 +32,9 @@ class BaseModel(LightningModule):
         List of metrics to log during training, validation, and testing.
     optimizer : Optional[Union[Optimizer, str, callable]], optional
         Optimizer to use for training.
-        Can be a string ("adam", "adamw", "sgd", or any ``torch.optim``
-        class name), a callable returning an optimizer, or an instance of
-        ``torch.optim.Optimizer``.
+        Can be a string ("adam", "adamw", "adagrad", "sgd", or any
+        ``torch.optim`` class name), a callable returning an optimizer,
+        or an instance of ``torch.optim.Optimizer``.
     optimizer_params : Optional[Dict], optional
         Parameters for the optimizer.
     lr_scheduler : Optional[str], optional
@@ -48,6 +48,7 @@ class BaseModel(LightningModule):
     _OPTIMIZER_REGISTRY = {
         "adam": torch.optim.Adam,
         "adamw": torch.optim.AdamW,
+        "adagrad": torch.optim.Adagrad,
         "sgd": torch.optim.SGD,
     }
 
