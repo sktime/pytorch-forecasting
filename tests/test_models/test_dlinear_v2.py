@@ -166,3 +166,56 @@ def test_univariate_forecast():
     assert "prediction" in output
     assert output["prediction"].shape[0] == dm.batch_size
     assert output["prediction"].shape[1] == metadata["prediction_length"]
+
+
+def test_logging_metrics_is_module_list(sample_dataset):
+    """Test that logging_metrics are stored as nn.ModuleList (#2197)."""
+    dm = sample_dataset["data_module"]
+    metadata = dm.metadata
+
+    metrics = [SMAPE(), MAE()]
+    model = DLinear(
+        loss=MAE(),
+        moving_avg=5,
+        individual=False,
+        logging_metrics=metrics,
+        metadata=metadata,
+    )
+
+    assert isinstance(model.logging_metrics, nn.ModuleList)
+
+    submodule_list = list(model.modules())
+    for m in metrics:
+        assert m in submodule_list
+
+
+def test_empty_logging_metrics_is_module_list(sample_dataset):
+    """Test that empty logging_metrics is also nn.ModuleList (#2197)."""
+    dm = sample_dataset["data_module"]
+    metadata = dm.metadata
+
+    model = DLinear(loss=MAE(), moving_avg=5, individual=False, metadata=metadata)
+
+    assert isinstance(model.logging_metrics, nn.ModuleList)
+    assert len(model.logging_metrics) == 0
+
+
+def test_logging_metrics_device_propagation(sample_dataset):
+    """Test that metric state tensors follow model device moves (#2197)."""
+    dm = sample_dataset["data_module"]
+    metadata = dm.metadata
+
+    model = DLinear(
+        loss=MAE(),
+        moving_avg=5,
+        individual=False,
+        logging_metrics=[SMAPE(), MAE()],
+        metadata=metadata,
+    )
+
+    model.to("meta")
+    for metric in model.logging_metrics:
+        for state_name in metric._defaults:
+            val = getattr(metric, state_name)
+            if isinstance(val, torch.Tensor):
+                assert val.device.type == "meta"
