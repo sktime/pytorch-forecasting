@@ -64,7 +64,7 @@ class UniTS_pkg_v2(Base_pkg):
             },
         ]
 
-        base_dm_cfg = {"context_length": 12, "prediction_length": 4}
+        base_dm_cfg = {"context_length": 16, "prediction_length": 4}
 
         for param in params:
             merged = base_dm_cfg.copy()
