@@ -64,12 +64,11 @@ class UniTS_pkg_v2(Base_pkg):
             },
         ]
 
-        default_dm_cfg = {"context_length": 12, "prediction_length": 4}
+        base_dm_cfg = {"context_length": 12, "prediction_length": 4}
 
         for param in params:
-            current_dm_cfg = param.get("datamodule_cfg", {})
-            default_dm_cfg.update(current_dm_cfg)
-
-            param["datamodule_cfg"] = default_dm_cfg
+            merged = base_dm_cfg.copy()
+            merged.update(param.get("datamodule_cfg", {}))
+            param["datamodule_cfg"] = merged
 
         return params
