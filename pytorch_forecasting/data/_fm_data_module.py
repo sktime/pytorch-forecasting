@@ -2,7 +2,7 @@
 Foundation model data modules for pytorch-forecasting.
 
 Provides ``TTMDataModule`` for IBM's TinyTimeMixer (TTM) and the backing
-``_TTMDataset``.  The pattern — subclassing ``TslibDataModule`` and setting
+``_TTMDataset``.  The pattern subclassing ``TslibDataModule`` and setting
 ``_dataset_class`` — is designed to be reused for other foundation models
 (Chronos, Moirai, etc.) with their own ``__getitem__`` overrides.
 """
@@ -76,7 +76,7 @@ class _TTMDataset(_TslibDataset):
         history_target = processed_data["target"][history_indices]
         future_target = processed_data["target"][future_indices]
 
-        # Continuous features: (total_len, n_cont) — targets already excluded by base
+        # Continuous features: (total_len, n_cont) targets already excluded by base
         cont_features = processed_data["features"]["continuous"]
         cont_names = self.data_module.metadata["feature_names"]["continuous"]
         cont_name_to_idx = {name: i for i, name in enumerate(cont_names)}
@@ -123,11 +123,11 @@ class _TTMDataset(_TslibDataset):
         }
 
         # Stage-aware: omit future_values during predict; include for all other stages
-        # (None is treated identically to "fit" — include future_values)
+        # (None is treated identically to "fit" and include future_values)
         if self._stage != "predict":
             x["future_values"] = future_known
 
-        # y — squeeze to (prediction_length,) for single target
+        # y, squeeze to (prediction_length,) for single target
         if self.data_module.n_targets > 1:
             y = [future_target[:, i] for i in range(self.data_module.n_targets)]
         else:
@@ -186,7 +186,7 @@ class TTMDataModule(TslibDataModule):
         n_targets = self.metadata["n_features"]["target"]
 
         # Ordering must match _TTMDataset.__getitem__ concatenation:
-        #   targets → past-only (cont_names order) → known-future (cont_names order)
+        #   targets -> past-only (cont_names order) -> known-future (cont_names order)
         past_only_cont = [n for n in cont_names if n not in known_names]
         known_future_cont = [n for n in cont_names if n in known_names]
 

@@ -65,7 +65,7 @@ def ttm_dm(fm_timeseries):
 
 
 # ---------------------------------------------------------------------------
-# Task 2 tests — skeleton wiring
+# Task 2 tests:- skeleton wiring
 # ---------------------------------------------------------------------------
 
 
@@ -77,7 +77,7 @@ def test_ttm_data_module_uses_ttm_dataset(ttm_dm):
     assert isinstance(ttm_dm.train_dataset, _TTMDataset)
     assert isinstance(ttm_dm.val_dataset, _TTMDataset)
 
-    # Also verify predict stage — uses a fresh ttm_dm (function-scoped fixture)
+    # Also verify predict stage uses a fresh ttm_dm (function-scoped fixture)
     # so calling setup("predict") here is safe and does not affect other tests.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -98,7 +98,7 @@ def test_channel_indices_derived(ttm_dm):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         ttm_dm.setup("fit")
-    # 1 target → prediction channels at index 0
+    # 1 target -> prediction channels at index 0
     assert ttm_dm._prediction_channel_indices == [0]
     # 2 non-target continuous channels at indices 1 and 2 in past_values
     # (index 0 = target, 1 = feature_2 past-only, 2 = feature_1 known-future)
@@ -106,7 +106,7 @@ def test_channel_indices_derived(ttm_dm):
 
 
 # ---------------------------------------------------------------------------
-# Task 3 tests — __getitem__ shapes and stage gating
+# Task 3 tests:- __getitem__ shapes and stage gating
 # ---------------------------------------------------------------------------
 
 
@@ -123,13 +123,13 @@ def test_batch_shapes(ttm_dm):
     # Fixture: 1 target + 1 past-only + 1 known-future = 3 channels
     assert x["past_values"].shape == (B, ctx, 3)
     assert x["past_observed_mask"].shape == (B, ctx, 3)
-    # Fixture has no NaN values — every position must be observed (all 1.0)
+    # Fixture has no NaN values, every position must be observed (all 1.0)
     assert x["past_observed_mask"].bool().all()
     # future_values: 1 known-future continuous covariate
     assert x["future_values"].shape == (B, pred, 1)
     # prediction_channel_indices: single list[int] after collate dedup
     assert x["prediction_channel_indices"] == [0]
-    # y: single target → 1-D per sample → (B, pred) after stack
+    # y: single target -> 1-D per sample -> (B, pred) after stack
     assert y.shape == (B, pred)
 
 
@@ -143,7 +143,7 @@ def test_no_future_values_in_predict(ttm_dm):
 
 
 # ---------------------------------------------------------------------------
-# Task 4 test — end-to-end forward pass with MockTTM
+# Task 4 test:- end-to-end forward pass with MockTTM
 # ---------------------------------------------------------------------------
 
 
@@ -151,7 +151,7 @@ def test_mock_ttm_forward(ttm_dm):
     """
     A minimal mock model can consume a TTMDataModule batch without error.
 
-    No tsfm_public import — MockTTM is a stand-in for the real TTM forward
+    No tsfm_public import as MockTTM is a stand-in for the real TTM forward
     signature: forward(past_values, past_observed_mask=None, **kwargs).
     """
     pred_len = ttm_dm.prediction_length  # bound from fixture
