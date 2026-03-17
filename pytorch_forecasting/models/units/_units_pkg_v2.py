@@ -34,19 +34,28 @@ class UniTS_pkg_v2(Base_pkg):
 
     @classmethod
     def get_test_train_params(cls):
-        """Define varied configurations for auto-testing."""
-        return [
+        """Return testing parameter settings for the trainer.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class.
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            ``MyClass(**params)`` or ``MyClass(**params[i])`` creates a valid test
+            instance. ``create_test_instance`` uses the first (or only) dictionary in
+            ``params``.
+        """
+        params = [
+            {},
             {
                 "patch_len": 8,
                 "stride": 4,
-                "datamodule_cfg": {"context_length": 12, "prediction_length": 4},
             },
             {
                 "d_model": 32,
                 "n_heads": 4,
                 "patch_len": 8,
                 "stride": 4,
-                "datamodule_cfg": {"context_length": 12, "prediction_length": 4},
             },
             {
                 "patch_len": 8,
@@ -54,3 +63,13 @@ class UniTS_pkg_v2(Base_pkg):
                 "datamodule_cfg": {"context_length": 16, "prediction_length": 4},
             },
         ]
+
+        default_dm_cfg = {"context_length": 12, "prediction_length": 4}
+
+        for param in params:
+            current_dm_cfg = param.get("datamodule_cfg", {})
+            default_dm_cfg.update(current_dm_cfg)
+
+            param["datamodule_cfg"] = default_dm_cfg
+
+        return params
