@@ -59,3 +59,33 @@ def test_only_categorical_columns_selected(sample_data):
     encoder.fit(sample_data)
 
     assert "num1" not in encoder.mapping_
+
+
+def test_unfitted_errors(sample_data):
+    """Ensures the encoder blocks transforms before fitting."""
+    encoder = D1CategoricalEncoder(columns=["cat1"])
+
+    with pytest.raises(RuntimeError, match="You must call fit"):
+        encoder.transform(sample_data)
+
+    with pytest.raises(RuntimeError, match="You must call fit"):
+        encoder.inverse_transform(sample_data)
+
+
+def test_missing_column_error(sample_data):
+    """Ensures fitting fails gracefully if asked to encode a non-existent column."""
+    encoder = D1CategoricalEncoder(columns=["phantom_column"])
+
+    with pytest.raises(ValueError, match="not found in dataframe"):
+        encoder.fit(sample_data)
+
+
+def test_invalid_handle_unknown_strategy(sample_data):
+    """Ensures unseen variables crash safely if the strategy isn't 'assign_new'."""
+    encoder = D1CategoricalEncoder(columns=["cat1"], handle_unknown="strict")
+    encoder.fit(sample_data)
+
+    new_data = pd.DataFrame({"cat1": ["unseen_string"]})
+
+    with pytest.raises(ValueError, match="handle_unknown!='assign_new'"):
+        encoder.transform(new_data)
