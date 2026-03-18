@@ -126,6 +126,7 @@ def _torch_cat_na(x: list[torch.Tensor]) -> torch.Tensor:
             f" Example tensor {x[0].shape}. "
             "Returning list instead of torch.Tensor.",
             UserWarning,
+            stacklevel=3,
         )
         return [xii for xi in x for xii in xi]
 
@@ -572,7 +573,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         for k, v in self.hparams.items():
             try:
                 yaml.dump(v)
-            except:  # noqa
+            except Exception:  # noqa
                 hparams_to_delete.append(k)
                 if not hasattr(self, k):
                     setattr(self, k, v)
@@ -917,13 +918,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 dtype=gradient.dtype,
                 device=gradient.device,
             )
-            # add additionl loss if gradient points in wrong direction
+            # add additional loss if gradient points in wrong direction
             gradient = gradient[..., indices] * monotonicity[None, None]
-            monotinicity_loss = gradient.clamp_max(0).mean()
-            # multiply monotinicity loss by large number
+            monotonicity_loss = gradient.clamp_max(0).mean()
+            # multiply monotonicity loss by large number
             # to ensure relevance and take to the power of 2
             # for smoothness of loss function
-            monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
+            monotonicity_loss = 10 * torch.pow(monotonicity_loss, 2)
             if not self.predicting:
                 if isinstance(self.loss, MASE | MultiLoss):
                     loss = self.loss(
@@ -935,7 +936,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
                 else:
                     loss = self.loss(prediction, y)
 
-                loss = loss * (1 + monotinicity_loss)
+                loss = loss * (1 + monotonicity_loss)
             else:
                 loss = None
         else:
