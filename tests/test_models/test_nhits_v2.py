@@ -6,7 +6,7 @@ import torch
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.metrics import MAE, SMAPE
-from pytorch_forecasting.models.nhits._nhits_pkg_v2 import NHiTS_v2_pkg_v2
+from pytorch_forecasting.models.nhits._nhits_pkg_v2 import NHiTS_pkg_v2
 from pytorch_forecasting.models.nhits._nhits_v2 import NHiTS_v2
 
 CONTEXT_LENGTH = 6
@@ -170,20 +170,18 @@ def test_nhits_v2_architecture_variants(sample_datamodule, n_blocks, hidden_size
 
 
 def test_nhits_v2_pkg_get_cls():
-    """Test that NHiTS_v2_pkg_v2.get_cls() returns NHiTS_v2."""
-    assert NHiTS_v2_pkg_v2.get_cls() is NHiTS_v2
+    """Test that NHiTS_pkg_v2.get_cls() returns NHiTS_v2."""
+    assert NHiTS_pkg_v2.get_cls() is NHiTS_v2
 
 
 def test_nhits_v2_pkg_naming_convention():
-    """Test that pkg class name follows the convention <model>_pkg_v2."""
-    model_cls = NHiTS_v2_pkg_v2.get_cls()
-    expected_pkg_name = model_cls.__name__ + "_pkg_v2"
-    assert NHiTS_v2_pkg_v2.__name__ == expected_pkg_name
+    """Test that pkg class name follows the convention NHiTS_pkg_v2."""
+    assert NHiTS_pkg_v2.__name__ == "NHiTS_pkg_v2"
 
 
 def test_nhits_v2_pkg_test_train_params():
     """Test that get_test_train_params returns a non-empty list of dicts."""
-    params = NHiTS_v2_pkg_v2.get_test_train_params()
+    params = NHiTS_pkg_v2.get_test_train_params()
     assert isinstance(params, list)
     assert len(params) > 0
     for p in params:

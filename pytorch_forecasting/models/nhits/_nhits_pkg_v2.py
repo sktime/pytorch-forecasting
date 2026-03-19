@@ -3,7 +3,7 @@
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class NHiTS_v2_pkg_v2(Base_pkg):
+class NHiTS_pkg_v2(Base_pkg):
     """NHiTS v2 package container."""
 
     _tags = {

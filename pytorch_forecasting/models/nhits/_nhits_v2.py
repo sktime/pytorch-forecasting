@@ -93,9 +93,9 @@ class NHiTS_v2(BaseModel):
         NHiTS_pkg_v2 : type
             Package class associated with this model.
         """
-        from pytorch_forecasting.models.nhits._nhits_pkg_v2 import NHiTS_v2_pkg_v2
+        from pytorch_forecasting.models.nhits._nhits_pkg_v2 import NHiTS_pkg_v2
 
-        return NHiTS_v2_pkg_v2
+        return NHiTS_pkg_v2
 
     def __init__(
         self,
@@ -165,17 +165,28 @@ class NHiTS_v2(BaseModel):
         self._n_stacks = n_stacks
         self._backcast_loss_ratio = backcast_loss_ratio
 
+        # NHiTSModule expects hidden_size as a nested list of shape
+        # [n_stacks, n_layers_per_block], where each value is the MLP layer width.
+        # This is different from the hidden_size parameter above, which is a single int.
+        hidden_size_per_stack = n_stacks * [2 * [hidden_size]]
+
         self.model = NHiTSModule(
             context_length=self.context_length,
             prediction_length=self.prediction_length,
-            output_size=[1],
-            static_size=0,
-            encoder_covariate_size=0,
-            decoder_covariate_size=0,
+            # NHiTSModule uses these sizes directly in MLP input dimension arithmetic,
+            # so None is not valid. Set to 0/[1] to indicate "not used".
+            # EncoderDecoderTimeSeriesDataModule does not yet provide covariates or
+            # static features, so encoder_x_t, decoder_x_t, and x_s are always None
+            # in the forward pass. These can be wired dynamically once the v2
+            # datamodule adds covariate support.
+            output_size=[1],  # univariate: single target output
+            static_size=0,  # no static features provided by v2 datamodule
+            encoder_covariate_size=0,  # no encoder covariates provided by v2 datamodule
+            decoder_covariate_size=0,  # no decoder covariates provided by v2 datamodule
             static_hidden_size=hidden_size,
             n_blocks=n_blocks,
             n_layers=n_layers,
-            hidden_size=n_stacks * [2 * [hidden_size]],
+            hidden_size=hidden_size_per_stack,
             pooling_sizes=pooling_sizes,
             downsample_frequencies=downsample_frequencies,
             pooling_mode=pooling_mode,
