@@ -24,10 +24,15 @@ class Samformer(BaseModel):
     ----------
     out_channels : int, optional
         Number of variables to be predicted. Default is 1.
-    hidden_size : int, optional
-        First embedding size of the model ('r' in the paper). Default is 512.
-    use_revin : bool, optional
-        Whether to use Reverse Instance Normalization. Default is True.
+    hidden_size : int
+        First embedding size of the model ('r' in the paper).
+    use_revin : bool
+        Whether to use Reverse Instance Normalization.
+    metadata : dict
+        Required dictionary containing sequence configuration. Must include:
+        - 'max_encoder_length' (int): Maximum length of the input sequence.
+        - 'max_prediction_length' (int): Maximum length of the prediction sequence.
+        - 'encoder_cont' (int): Number of continuous variables in the encoder.
     persistence_weight : float, optional
         Weight for persistence baseline. Default is 0.0.
     """
