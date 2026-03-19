@@ -68,6 +68,10 @@ class Samformer(BaseModel):
         )
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "optimizer"])
+        if metadata is None:
+            raise ValueError(
+                "Samformer requires 'metadata' dictionary to be provided."
+            )
         self.metadata = metadata
         self.n_quantiles = 1
 
