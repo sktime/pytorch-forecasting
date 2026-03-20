@@ -246,3 +246,32 @@ def test_nhits_v2_forward_with_2d_mask(sample_datamodule):
         out = model(batch_x_2d_mask)
 
     assert out["prediction"].shape[1] == PREDICTION_LENGTH
+
+
+def test_nhits_v2_forward_with_3d_mask(sample_datamodule):
+    """Test forward pass when encoder_mask is 3D — exercises the squeeze branch.
+
+    The model's forward() contains ``if encoder_mask.dim() == 3: squeeze(-1)``.
+    This test passes a 3D mask directly to ensure that branch is covered.
+
+    Parameters
+    ----------
+    sample_datamodule : EncoderDecoderTimeSeriesDataModule
+        Fixture providing the data module.
+    """
+    dm = sample_datamodule
+    model = NHiTS_v2(loss=MAE(), metadata=dm.metadata)
+
+    batch_x, _ = next(iter(dm.train_dataloader()))
+
+    batch_x_3d_mask = dict(batch_x)
+    mask = batch_x_3d_mask["encoder_mask"]
+    # Ensure mask is 3D: (batch, context_length, 1)
+    if mask.dim() == 2:
+        mask = mask.unsqueeze(-1)
+    batch_x_3d_mask["encoder_mask"] = mask
+
+    with torch.no_grad():
+        out = model(batch_x_3d_mask)
+
+    assert out["prediction"].shape[1] == PREDICTION_LENGTH
