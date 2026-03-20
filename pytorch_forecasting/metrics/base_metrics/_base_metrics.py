@@ -269,9 +269,7 @@ class NNLossWrapper(Metric):
             loss_fn (nn.Module): any PyTorch loss that accepts (input, target).
         """
         if not isinstance(loss_fn, torch.nn.Module):
-            raise TypeError(
-                f"loss_fn must be an nn.Module, got {type(loss_fn)}"
-            )
+            raise TypeError(f"loss_fn must be an nn.Module, got {type(loss_fn)}")
         super().__init__(**kwargs)
         self.loss_fn = loss_fn
 
