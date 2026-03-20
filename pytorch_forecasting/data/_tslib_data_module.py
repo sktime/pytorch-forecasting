@@ -691,8 +691,7 @@ class TslibDataModule(LightningDataModule):
 
         if total_series == 0:
             raise ValueError(
-                "The time series dataset is empty. "
-                "Please provide a non-empty dataset."
+                "The time series dataset is empty. Please provide a non-empty dataset."
             )
 
         # this is a very rudimentary way to handle the splits when
@@ -720,7 +719,7 @@ class TslibDataModule(LightningDataModule):
             ]
 
         if stage == "fit" or stage is None:
-            if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
+            if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
                 self._train_windows = self._create_windows(self._train_indices)
                 self._val_windows = self._create_windows(self._val_indices)
 
