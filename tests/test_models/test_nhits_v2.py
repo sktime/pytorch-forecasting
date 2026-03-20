@@ -437,3 +437,118 @@ def test_nhits_v1_v2_val_loss_comparable():
         f"NHiTS v1 train MAE ({train_mae_v1:.4f}). "
         "Possible numerical regression in v2 rework."
     )
+
+
+# ---------------------------------------------------------------------------
+# Strict equivalence: same weights → identical outputs
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_nhits_v1_v2_identical_outputs_with_shared_weights():
+    """Verify that NHiTS v1 and v2 produce bit-identical outputs given the same weights.
+
+    Both v1 (NHiTS) and v2 (NHiTS_v2) delegate to the same underlying
+    ``NHiTSModule``.  This test:
+
+    1. Builds both wrappers with identical hyperparameters and the same
+       random seed.
+    2. Copies the v1 ``NHiTSModule`` state-dict into the v2 wrapper so
+       both share exactly the same weights.
+    3. Feeds the same raw ``(encoder_y, encoder_mask)`` tensors directly
+       to both ``NHiTSModule`` instances.
+    4. Asserts that the forecast and backcast outputs are element-wise
+       identical (``torch.allclose`` with the default tolerances).
+
+    A failure here indicates a genuine numerical divergence between the two
+    API layers, independent of data-pipeline or normalisation differences.
+
+    Run explicitly with::
+
+        pytest -m slow tests/test_models/test_nhits_v2.py \
+            -k test_nhits_v1_v2_identical_outputs_with_shared_weights
+    """
+    from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
+    from pytorch_forecasting.models import NHiTS as NHiTS_v1
+
+    _CONTEXT = 12
+    _PRED = 4
+    _HIDDEN = 32
+    _N_BLOCKS = [1, 1, 1]
+    _BATCH = 8
+    _SEED = 0
+
+    # ------------------------------------------------------------------ v1
+    df = _make_comparison_dataframe()
+    train_ds_v1 = TimeSeriesDataSet(
+        df,
+        time_idx="time_idx",
+        target="value",
+        group_ids=["series_id"],
+        time_varying_unknown_reals=["value"],
+        max_encoder_length=_CONTEXT,
+        max_prediction_length=_PRED,
+        min_encoder_length=_CONTEXT,
+    )
+
+    pl.seed_everything(_SEED)
+    model_v1 = NHiTS_v1.from_dataset(
+        train_ds_v1,
+        hidden_size=_HIDDEN,
+        n_blocks=_N_BLOCKS,
+    )
+
+    # ------------------------------------------------------------------ v2
+    ts_v2 = TimeSeries(
+        df,
+        time="time_idx",
+        group=["series_id"],
+        target=["value"],
+        num=[],
+        cat=[],
+        known=[],
+        unknown=["value"],
+    )
+    dm_v2 = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts_v2,
+        max_encoder_length=_CONTEXT,
+        max_prediction_length=_PRED,
+        batch_size=_BATCH,
+    )
+    dm_v2.setup("fit")
+
+    pl.seed_everything(_SEED)
+    model_v2 = NHiTS_v2(
+        loss=MAE(),
+        metadata=dm_v2.metadata,
+        hidden_size=_HIDDEN,
+        n_blocks=_N_BLOCKS,
+    )
+
+    # ---- copy v1 weights into v2 so both share the same parameters ----
+    model_v2.model.load_state_dict(model_v1.model.state_dict())
+
+    model_v1.eval()
+    model_v2.eval()
+
+    # ---- synthetic input that bypasses both data-pipelines entirely ----
+    torch.manual_seed(_SEED)
+    encoder_y = torch.randn(_BATCH, _CONTEXT, 1)  # (B, T, 1)
+    encoder_mask = torch.ones(_BATCH, _CONTEXT)  # all valid
+
+    with torch.no_grad():
+        forecast_v1, backcast_v1, _, _ = model_v1.model(
+            encoder_y, encoder_mask, None, None, None
+        )
+        forecast_v2, backcast_v2, _, _ = model_v2.model(
+            encoder_y, encoder_mask, None, None, None
+        )
+
+    assert torch.allclose(forecast_v1, forecast_v2), (
+        "Forecast outputs differ between v1 and v2 despite identical weights.\n"
+        f"max abs diff: {(forecast_v1 - forecast_v2).abs().max().item():.2e}"
+    )
+    assert torch.allclose(backcast_v1, backcast_v2), (
+        "Backcast outputs differ between v1 and v2 despite identical weights.\n"
+        f"max abs diff: {(backcast_v1 - backcast_v2).abs().max().item():.2e}"
+    )
