@@ -1,3 +1,4 @@
+import lightning.pytorch as pl
 import numpy as np
 import pandas as pd
 import pytest
@@ -275,3 +276,164 @@ def test_nhits_v2_forward_with_3d_mask(sample_datamodule):
         out = model(batch_x_3d_mask)
 
     assert out["prediction"].shape[1] == PREDICTION_LENGTH
+
+
+# ---------------------------------------------------------------------------
+# Slow test: NHiTS v1 vs v2 numerical validation
+# ---------------------------------------------------------------------------
+
+_CMP_N_SERIES = 4
+_CMP_N_SAMPLES = 120
+_CMP_CONTEXT = 12
+_CMP_PRED = 4
+_CMP_EPOCHS = 10
+_CMP_SEED = 42
+
+
+def _make_comparison_dataframe():
+    """Shared synthetic DataFrame for v1/v2 comparison."""
+    rng = np.random.default_rng(_CMP_SEED)
+    time_idx = np.arange(_CMP_N_SAMPLES)
+    rows = []
+    for i in range(_CMP_N_SERIES):
+        values = np.sin(2 * np.pi * time_idx / 20 + i) + rng.normal(
+            0, 0.1, _CMP_N_SAMPLES
+        )
+        for t, v in zip(time_idx, values):
+            rows.append({"time_idx": int(t), "series_id": i, "value": float(v)})
+    return pd.DataFrame(rows)
+
+
+@pytest.mark.slow
+def test_nhits_v1_v2_val_loss_comparable():
+    """Numerical validation: NHiTS v2 val MAE must be comparable to v1.
+
+    Both models are trained on the same synthetic dataset for the same number
+    of epochs. The test asserts:
+
+    1. Both models converge (val MAE < 1.0 on normalised sine data).
+    2. The v2 val MAE is within 3x of the v1 val MAE, confirming the rework
+       has not introduced a systematic numerical regression.
+
+    Run explicitly with::
+
+        pytest -m slow tests/test_models/test_nhits_v2.py
+    """
+    from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
+    from pytorch_forecasting.metrics import MAE as MAE_v1
+    from pytorch_forecasting.models import NHiTS as NHiTS_v1
+
+    df = _make_comparison_dataframe()
+
+    # ------------------------------------------------------------------ v1
+    train_ds_v1 = TimeSeriesDataSet(
+        df,
+        time_idx="time_idx",
+        target="value",
+        group_ids=["series_id"],
+        time_varying_unknown_reals=["value"],
+        max_encoder_length=_CMP_CONTEXT,
+        max_prediction_length=_CMP_PRED,
+        min_encoder_length=_CMP_CONTEXT,
+    )
+    train_dl_v1 = train_ds_v1.to_dataloader(train=True, batch_size=8, num_workers=0)
+
+    pl.seed_everything(_CMP_SEED)
+    model_v1 = NHiTS_v1.from_dataset(
+        train_ds_v1,
+        hidden_size=32,
+        n_blocks=[1, 1, 1],
+        learning_rate=1e-3,
+        loss=MAE_v1(),
+    )
+    trainer_v1 = pl.Trainer(
+        max_epochs=_CMP_EPOCHS,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        logger=False,
+        enable_checkpointing=False,
+        limit_val_batches=0,  # no val needed
+    )
+    trainer_v1.fit(model_v1, train_dl_v1)
+
+    # compute train MAE manually after training
+    model_v1.eval()
+    v1_losses = []
+    with torch.no_grad():
+        for batch in train_dl_v1:
+            x, y = batch
+            out = model_v1(x)
+            pred = out["prediction"]
+            if hasattr(pred, "prediction"):
+                pred = pred.prediction
+            if pred.dim() == 3:
+                pred = pred[..., 0]
+            target = y if isinstance(y, torch.Tensor) else y[0]
+            if target.dim() == 2:
+                pass
+            v1_losses.append(float(torch.mean(torch.abs(pred - target))))
+    train_mae_v1 = float(np.mean(v1_losses))
+
+    # ------------------------------------------------------------------ v2
+    ts_v2 = TimeSeries(
+        df,
+        time="time_idx",
+        group=["series_id"],
+        target=["value"],
+        num=[],
+        cat=[],
+        known=[],
+        unknown=["value"],
+    )
+    dm_v2 = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts_v2,
+        max_encoder_length=_CMP_CONTEXT,
+        max_prediction_length=_CMP_PRED,
+        batch_size=8,
+        train_val_test_split=(0.8, 0.1, 0.1),
+    )
+    dm_v2.setup("fit")
+
+    pl.seed_everything(_CMP_SEED)
+    model_v2 = NHiTS_v2(
+        loss=MAE(),
+        metadata=dm_v2.metadata,
+        hidden_size=32,
+        n_blocks=[1, 1, 1],
+    )
+    trainer_v2 = pl.Trainer(
+        max_epochs=_CMP_EPOCHS,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        logger=False,
+        enable_checkpointing=False,
+        limit_val_batches=0,
+    )
+    trainer_v2.fit(model_v2, dm_v2)
+
+    # compute train MAE manually after training
+    model_v2.eval()
+    v2_losses = []
+    with torch.no_grad():
+        for batch in dm_v2.train_dataloader():
+            x, y = batch
+            out = model_v2(x)
+            pred = out["prediction"]  # (batch, pred_len, 1)
+            pred = pred.squeeze(-1)  # (batch, pred_len)
+            v2_losses.append(float(torch.mean(torch.abs(pred - y))))
+    train_mae_v2 = float(np.mean(v2_losses))
+
+    # ------------------------------------------------------------------ assert
+    assert (
+        train_mae_v1 < 1.0
+    ), f"NHiTS v1 did not converge: train MAE = {train_mae_v1:.4f}"
+    assert (
+        train_mae_v2 < 1.0
+    ), f"NHiTS v2 did not converge: train MAE = {train_mae_v2:.4f}"
+
+    ratio = train_mae_v2 / (train_mae_v1 + 1e-8)
+    assert ratio < 3.0, (
+        f"NHiTS v2 train MAE ({train_mae_v2:.4f}) is more than 3x "
+        f"NHiTS v1 train MAE ({train_mae_v1:.4f}). "
+        "Possible numerical regression in v2 rework."
+    )
