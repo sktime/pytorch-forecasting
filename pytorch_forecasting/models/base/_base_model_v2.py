@@ -40,6 +40,45 @@ class BaseModel(LightningModule):
         Supported values: "reduce_lr_on_plateau", "step_lr".
     lr_scheduler_params : Optional[Dict], optional
         Parameters for the learning rate scheduler.
+    fine_tune_strategy : str, optional (default="freeze_backbone")
+        Strategy used when fine-tuning a pretrained model:
+
+        * ``"freeze_backbone"`` — freeze backbone parameters via
+          :meth:`_freeze_backbone` so that only the head is updated.
+        * ``"full"`` — fine-tune all layers with the same learning rate.
+    pretrained_weights : str or None, optional
+        Path to pretrained weights to load at initialisation time.
+        Accepts a local ``.pt`` / ``.ckpt`` file path or a HuggingFace URI
+        of the form ``hf://<org>/<repo>/<filename>``.
+        Weights are loaded lazily: subclasses must call
+        :meth:`_post_init_load_pretrained` at the **end** of their own
+        ``__init__`` (after the architecture is fully built).
+
+    Examples
+    --------
+    **Mode 1 — pretrain on large corpus, then fine-tune on target dataset:**
+
+    >>> model = MyModel(loss=MAE(), metadata=dm_large.metadata)  # doctest: +SKIP
+    >>> model.pretrain(dm_large, trainer_kwargs={"max_epochs": 20})  # doctest: +SKIP
+    >>> from lightning import Trainer  # doctest: +SKIP
+    >>> trainer = Trainer(max_epochs=5)  # doctest: +SKIP
+    >>> trainer.fit(model, dm_target)  # backbone frozen automatically  # doctest: +SKIP
+
+    **Mode 2 — cold-start: load community pretrained weights, skip pretrain():**
+
+    >>> model = MyModel(  # doctest: +SKIP
+    ...     loss=MAE(),
+    ...     metadata=dm_target.metadata,
+    ...     pretrained_weights="hf://org/my-pretrained-model/weights.pt",
+    ... )
+    >>> trainer = Trainer(max_epochs=5)  # doctest: +SKIP
+    >>> trainer.fit(model, dm_target)  # fine-tunes from pretrained  # doctest: +SKIP
+
+    **Mode 3 — train from scratch (backward compatible, no pretrain):**
+
+    >>> model = MyModel(loss=MAE(), metadata=dm.metadata)  # doctest: +SKIP
+    >>> trainer = Trainer(max_epochs=20)  # doctest: +SKIP
+    >>> trainer.fit(model, dm)  # trains normally  # doctest: +SKIP
     """
 
     def __init__(
@@ -50,6 +89,8 @@ class BaseModel(LightningModule):
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
+        fine_tune_strategy: str = "freeze_backbone",
+        pretrained_weights: str | None = None,
     ):
         super().__init__()
         self.loss = loss
@@ -60,6 +101,8 @@ class BaseModel(LightningModule):
         self.lr_scheduler_params = (
             lr_scheduler_params if lr_scheduler_params is not None else {}
         )
+        self.fine_tune_strategy = fine_tune_strategy
+        self._pretrained_weights_path = pretrained_weights
         self.model_name = self.__class__.__name__
         warn(
             f"The Model '{self.model_name}' is part of an experimental rework"
@@ -342,6 +385,221 @@ class BaseModel(LightningModule):
             )
         else:
             raise ValueError(f"Scheduler {self.lr_scheduler} not supported.")
+
+    def pretrain(
+        self,
+        datamodule,
+        trainer_kwargs: dict[str, Any] | None = None,
+    ) -> "BaseModel":
+        """Pre-train the model on panel (global) data.
+
+        Trains the model on a large dataset to learn shared patterns
+        across multiple time series. After pretraining, calling
+        ``Trainer.fit()`` will fine-tune the model without resetting
+        the pretrained weights, as ``is_pretrained_`` is set to ``True``.
+
+        Subclasses with special pretraining logic (e.g., backcast loss)
+        should override ``_pretrain()`` instead of this method.
+
+        Parameters
+        ----------
+        datamodule : LightningDataModule
+            DataModule containing panel/global training data.
+            Typically ``EncoderDecoderTimeSeriesDataModule`` or
+            ``TslibDataModule`` with multiple time series instances.
+        trainer_kwargs : dict, optional
+            Additional keyword arguments passed to ``lightning.Trainer``.
+
+        Returns
+        -------
+        self : reference to self
+
+        Examples
+        --------
+        Three supported usage modes:
+
+        **Mode 1 — pretrain on global data, then fine-tune on local data:**
+
+        >>> model = NHiTS_v2(loss=MAE(), metadata=dm_large.metadata)  # doctest: +SKIP
+        >>> model.pretrain(                                            # doctest: +SKIP
+        ...     dm_large,                                              # doctest: +SKIP
+        ...     trainer_kwargs={"max_epochs": 20},                    # doctest: +SKIP
+        ... )
+        >>> assert model.is_pretrained_                               # doctest: +SKIP
+        >>> trainer = Trainer(max_epochs=10)                          # doctest: +SKIP
+        >>> trainer.fit(model, dm_small)  # backbone frozen by default # doctest: +SKIP
+
+        **Mode 2 — cold-start: load pretrained weights at init, skip pretrain():**
+
+        >>> model = NHiTS_v2(                                         # doctest: +SKIP
+        ...     loss=MAE(),                                           # doctest: +SKIP
+        ...     metadata=dm_small.metadata,                           # doctest: +SKIP
+        ...     pretrained_weights="pretrained.pt",                   # doctest: +SKIP
+        ... )
+        >>> assert model.is_pretrained_                               # doctest: +SKIP
+        >>> trainer = Trainer(max_epochs=10)                          # doctest: +SKIP
+        >>> trainer.fit(model, dm_small)  # fine-tune directly        # doctest: +SKIP
+
+        **Mode 3 — train from scratch (backward compatible, no pretrain):**
+
+        >>> model = NHiTS_v2(loss=MAE(), metadata=dm_small.metadata)  # doctest: +SKIP
+        >>> trainer = Trainer(max_epochs=30)                          # doctest: +SKIP
+        >>> trainer.fit(model, dm_small)                              # doctest: +SKIP
+        """
+        self._pretrain(datamodule, trainer_kwargs=trainer_kwargs)
+        self.is_pretrained_ = True
+        return self
+
+    def _pretrain(
+        self,
+        datamodule,
+        trainer_kwargs: dict[str, Any] | None = None,
+    ) -> None:
+        """Core pretraining logic, to be overridden by subclasses.
+
+        Default behaviour: run ``Trainer.fit()`` on the given datamodule.
+        Subclasses that need different loss weighting or freezing strategies
+        during pretraining should override this method.
+
+        Parameters
+        ----------
+        datamodule : LightningDataModule
+            DataModule for pretraining.
+        trainer_kwargs : dict, optional
+            Additional keyword arguments passed to ``lightning.Trainer``.
+        """
+        trainer_kwargs = trainer_kwargs or {}
+        trainer = Trainer(**trainer_kwargs)
+        trainer.fit(self, datamodule)
+
+    def on_fit_start(self) -> None:
+        """Lightning hook called at the start of ``Trainer.fit()``.
+
+        When the model has been pretrained (``is_pretrained_ is True``) and
+        ``fine_tune_strategy == "freeze_backbone"``, the backbone is frozen so
+        that only the head parameters are updated during fine-tuning.
+        """
+        if getattr(self, "is_pretrained_", False):
+            if self.fine_tune_strategy == "freeze_backbone":
+                self._freeze_backbone()
+
+    def _freeze_backbone(self) -> None:
+        """Freeze backbone parameters, leaving the head trainable.
+
+        Default behaviour: freeze all parameters in ``self.model`` if that
+        attribute exists; otherwise freeze every parameter in the module.
+
+        Subclasses with a clear backbone / head split should override this
+        method to freeze only the backbone, keeping the head trainable.
+        """
+        target = getattr(self, "model", self)
+        for param in target.parameters():
+            param.requires_grad_(False)
+
+    def _unfreeze_backbone(self) -> None:
+        """Unfreeze all model parameters.
+
+        Call this after fine-tuning if you want to continue training all
+        layers (e.g., for a second fine-tuning phase at a lower LR).
+        """
+        for param in self.parameters():
+            param.requires_grad_(True)
+
+    def _post_init_load_pretrained(self) -> None:
+        """Load pretrained weights stored by ``__init__`` if a path was given.
+
+        Subclasses must call this at the **end** of their own ``__init__``
+        (after the model architecture is fully built) to support the
+        ``pretrained_weights`` parameter inherited from :class:`BaseModel`.
+
+        Examples
+        --------
+        >>> class MyModel(BaseModel):  # doctest: +SKIP
+        ...     def __init__(self, ..., **kwargs):
+        ...         super().__init__(**kwargs)
+        ...         self.model = ...  # build architecture
+        ...         self._post_init_load_pretrained()  # load weights if provided
+        """
+        if self._pretrained_weights_path is not None:
+            self.load_pretrained_weights(self._pretrained_weights_path)
+
+    def load_pretrained_weights(
+        self,
+        path: str,
+        strict: bool = False,
+    ) -> "BaseModel":
+        """Load pretrained weights from a local checkpoint or HuggingFace hub.
+
+        Allows skipping the ``pretrain()`` step by loading previously
+        saved weights directly. Sets ``is_pretrained_`` to ``True``.
+
+        Parameters
+        ----------
+        path : str
+            Path to a checkpoint file (``.ckpt`` or ``.pt``), or a
+            HuggingFace repo ID prefixed with ``"hf://"``
+            (e.g., ``"hf://username/my-nhits-pretrained"``).
+        strict : bool, optional (default=False)
+            Whether to strictly enforce that the keys in ``state_dict``
+            match the keys returned by this module's ``state_dict()``.
+            ``False`` allows partial weight loading (useful when
+            fine-tuning with a modified head).
+
+        Returns
+        -------
+        self : reference to self
+
+        Examples
+        --------
+        >>> model = MyModel(...)  # doctest: +SKIP
+        >>> model.load_pretrained_weights("pretrained.ckpt")  # doctest: +SKIP
+        >>> assert model.is_pretrained_  # doctest: +SKIP
+        >>> model.load_pretrained_weights("hf://org/repo")  # doctest: +SKIP
+        """
+        resolved_path = self._resolve_checkpoint_path(path)
+        checkpoint = torch.load(resolved_path, map_location="cpu")
+        # lightning checkpoints store weights under "state_dict" key
+        state_dict = checkpoint.get("state_dict", checkpoint)
+        self.load_state_dict(state_dict, strict=strict)
+        self.is_pretrained_ = True
+        return self
+
+    @staticmethod
+    def _resolve_checkpoint_path(path: str) -> str:
+        """Resolve a checkpoint path, downloading from HuggingFace if needed.
+
+        Parameters
+        ----------
+        path : str
+            Local file path or ``"hf://<repo_id>/<filename>"`` URI.
+
+        Returns
+        -------
+        str
+            Local file path ready for ``torch.load``.
+        """
+        if not path.startswith("hf://"):
+            return path
+
+        try:
+            from huggingface_hub import hf_hub_download
+        except ImportError as exc:
+            raise ImportError(
+                "huggingface_hub is required to load weights from the Hub. "
+                "Install it with: pip install huggingface_hub"
+            ) from exc
+
+        # hf://<repo_id>/<filename>  e.g. hf://myorg/nhits-pretrained/model.pt
+        remainder = path[len("hf://") :]
+        parts = remainder.split("/", 2)
+        if len(parts) < 3:
+            raise ValueError(
+                "HuggingFace path must be 'hf://<owner>/<repo>/<filename>', "
+                f"got: {path!r}"
+            )
+        repo_id = f"{parts[0]}/{parts[1]}"
+        filename = parts[2]
+        return hf_hub_download(repo_id=repo_id, filename=filename)
 
     def log_metrics(
         self, y_hat: torch.Tensor, y: torch.Tensor, prefix: str = "val"
