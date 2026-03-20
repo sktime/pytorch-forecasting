@@ -244,6 +244,7 @@ class TorchMetricWrapper(Metric):
     def __repr__(self):
         return f"WrappedTorchmetric({repr(self.torchmetric)})"
 
+
 class NNLossWrapper(Metric):
     """
     Wrap a standard PyTorch nn.Module loss for use with pytorch-forecasting.
@@ -294,6 +295,7 @@ class NNLossWrapper(Metric):
 
     def __repr__(self):
         return f"NNLossWrapper({repr(self.loss_fn)})"
+
 
 def convert_torchmetric_to_pytorch_forecasting_metric(
     metric: LightningMetric,
