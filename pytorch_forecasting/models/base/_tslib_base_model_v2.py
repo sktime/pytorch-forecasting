@@ -58,12 +58,13 @@ class TslibBaseModel(BaseModel):
         self.model_name = self.__class__.__name__
 
         warn(
-            f"The Model '{self.model_name}' is part of an experimental implementation"
-            "of the pytorch-forecasting model layer for Time Series Library, scheduled"
-            "for release with v2.0.0. The API is not stable"
-            "and may change without prior warning. This class is intended for beta"
+            f"The Model '{self.model_name}' is part of an experimental implementation "
+            "of the pytorch-forecasting model layer for Time Series Library, scheduled "
+            "for release with v2.0.0. The API is not stable "
+            "and may change without prior warning. This class is intended for beta "
             "testing, not for stable production use.",
             UserWarning,
+            stacklevel=2,
         )
 
         self.context_length = self.metadata.get("context_length", 0)
