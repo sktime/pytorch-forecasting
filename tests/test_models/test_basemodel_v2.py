@@ -1,12 +1,17 @@
-"""Tests for pretrain hook in BaseModel v2.
+"""Tests for BaseModel v2.
 
 Covers:
 - pretrain() sets is_pretrained_ = True
 - _pretrain() is called by pretrain()
 - load_pretrained_weights() loads checkpoint and sets is_pretrained_
 - subclass can override _pretrain() for custom logic
+- on_fit_start() freezes backbone when is_pretrained_ is True
+- _freeze_backbone() and _unfreeze_backbone()
+- _post_init_load_pretrained() loads weights when path is given
+- _resolve_checkpoint_path() raises ValueError for invalid hf:// URI
 """
 
+import os
 import tempfile
 
 import numpy as np
@@ -178,21 +183,17 @@ def test_weights_preserved_after_pretrain(minimal_model, sample_datamodule):
 
 def test_load_pretrained_weights(minimal_model, sample_datamodule):
     """load_pretrained_weights() must restore weights and set is_pretrained_."""
-    # pretrain and save checkpoint
     minimal_model.pretrain(
         sample_datamodule,
         trainer_kwargs={"max_epochs": 1, "enable_progress_bar": False},
     )
     pretrained_state = {k: v.clone() for k, v in minimal_model.state_dict().items()}
 
-    import os
-
     with tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as f:
         ckpt_path = f.name
     try:
         torch.save(minimal_model.state_dict(), ckpt_path)
 
-        # load into fresh model
         fresh_model = _MinimalModel(
             input_size=1,
             prediction_length=MAX_PREDICTION_LENGTH,
@@ -219,10 +220,7 @@ def test_load_pretrained_weights_lightning_checkpoint(minimal_model, sample_data
         trainer_kwargs={"max_epochs": 1, "enable_progress_bar": False},
     )
 
-    # Simulate a lightning checkpoint format
     lightning_ckpt = {"state_dict": minimal_model.state_dict(), "epoch": 1}
-
-    import os
 
     with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as f:
         ckpt_path = f.name
@@ -240,3 +238,85 @@ def test_load_pretrained_weights_lightning_checkpoint(minimal_model, sample_data
         os.unlink(ckpt_path)
 
     assert fresh_model.is_pretrained_ is True
+
+
+def test_on_fit_start_freezes_backbone(minimal_model, sample_datamodule):
+    """on_fit_start() must freeze backbone when is_pretrained_ is True."""
+    minimal_model.pretrain(
+        sample_datamodule,
+        trainer_kwargs={"max_epochs": 1, "enable_progress_bar": False},
+    )
+    assert minimal_model.is_pretrained_ is True
+
+    minimal_model.fine_tune_strategy = "freeze_backbone"
+    minimal_model.on_fit_start()
+
+    for param in minimal_model.parameters():
+        assert not param.requires_grad, "Parameter should be frozen after on_fit_start"
+
+
+def test_on_fit_start_no_freeze_when_not_pretrained(minimal_model):
+    """on_fit_start() must not freeze params when model is not pretrained."""
+    assert not getattr(minimal_model, "is_pretrained_", False)
+    minimal_model.on_fit_start()
+
+    for param in minimal_model.parameters():
+        assert param.requires_grad, "Parameter should remain trainable"
+
+
+def test_freeze_and_unfreeze_backbone(minimal_model):
+    """_freeze_backbone() and _unfreeze_backbone() must toggle requires_grad."""
+    minimal_model._freeze_backbone()
+    for param in minimal_model.parameters():
+        assert not param.requires_grad
+
+    minimal_model._unfreeze_backbone()
+    for param in minimal_model.parameters():
+        assert param.requires_grad
+
+
+def test_post_init_load_pretrained(minimal_model, sample_datamodule):
+    """_post_init_load_pretrained() must load weights when path is set."""
+    minimal_model.pretrain(
+        sample_datamodule,
+        trainer_kwargs={"max_epochs": 1, "enable_progress_bar": False},
+    )
+    with tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as f:
+        ckpt_path = f.name
+    try:
+        torch.save(minimal_model.state_dict(), ckpt_path)
+
+        fresh_model = _MinimalModel(
+            input_size=1,
+            prediction_length=MAX_PREDICTION_LENGTH,
+            hidden_size=8,
+            loss=MAE(),
+        )
+        fresh_model._pretrained_weights_path = ckpt_path
+        fresh_model._post_init_load_pretrained()
+    finally:
+        os.unlink(ckpt_path)
+
+    assert fresh_model.is_pretrained_ is True
+
+
+def test_post_init_load_pretrained_no_path(minimal_model):
+    """_post_init_load_pretrained() must be a no-op when path is None."""
+    assert minimal_model._pretrained_weights_path is None
+    minimal_model._post_init_load_pretrained()  # must not raise
+    assert not hasattr(minimal_model, "is_pretrained_")
+
+
+def test_resolve_checkpoint_path_local(tmp_path):
+    """_resolve_checkpoint_path() must return local paths unchanged."""
+    local_path = str(tmp_path / "model.pt")
+    result = BaseModel._resolve_checkpoint_path(local_path)
+    assert result == local_path
+
+
+def test_resolve_checkpoint_path_hf_uri():
+    """_resolve_checkpoint_path() raises for hf:// URI (bad format or missing dep)."""
+    # Without huggingface_hub installed: ImportError
+    # With huggingface_hub installed but malformed path: ValueError
+    with pytest.raises((ImportError, ValueError)):
+        BaseModel._resolve_checkpoint_path("hf://only-one-part")
