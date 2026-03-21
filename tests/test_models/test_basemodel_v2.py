@@ -320,3 +320,29 @@ def test_resolve_checkpoint_path_hf_uri():
     # With huggingface_hub installed but malformed path: ValueError
     with pytest.raises((ImportError, ValueError)):
         BaseModel._resolve_checkpoint_path("hf://only-one-part")
+
+
+def test_resolve_checkpoint_path_hf_invalid_format_mocked():
+    """_resolve_checkpoint_path() raises ValueError for malformed hf:// URI."""
+    from unittest.mock import MagicMock, patch
+
+    mock_hub = MagicMock()
+    with patch.dict("sys.modules", {"huggingface_hub": mock_hub}):
+        with pytest.raises(ValueError, match="HuggingFace path must be"):
+            BaseModel._resolve_checkpoint_path("hf://only-one-part")
+
+
+def test_resolve_checkpoint_path_hf_valid_mocked():
+    """_resolve_checkpoint_path() calls hf_hub_download for valid hf:// URI."""
+    from unittest.mock import MagicMock, patch
+
+    fake_local_path = "/fake/local/model.pt"
+    mock_hub = MagicMock()
+    mock_hub.hf_hub_download.return_value = fake_local_path
+    with patch.dict("sys.modules", {"huggingface_hub": mock_hub}):
+        result = BaseModel._resolve_checkpoint_path("hf://myorg/myrepo/model.pt")
+
+    mock_hub.hf_hub_download.assert_called_once_with(
+        repo_id="myorg/myrepo", filename="model.pt"
+    )
+    assert result == fake_local_path
