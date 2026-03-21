@@ -185,8 +185,12 @@ def test_load_pretrained_weights(minimal_model, sample_datamodule):
     )
     pretrained_state = {k: v.clone() for k, v in minimal_model.state_dict().items()}
 
-    with tempfile.NamedTemporaryFile(suffix=".pt") as f:
-        torch.save(minimal_model.state_dict(), f.name)
+    import os
+
+    with tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as f:
+        ckpt_path = f.name
+    try:
+        torch.save(minimal_model.state_dict(), ckpt_path)
 
         # load into fresh model
         fresh_model = _MinimalModel(
@@ -197,7 +201,9 @@ def test_load_pretrained_weights(minimal_model, sample_datamodule):
         )
         assert not hasattr(fresh_model, "is_pretrained_")
 
-        fresh_model.load_pretrained_weights(f.name)
+        fresh_model.load_pretrained_weights(ckpt_path)
+    finally:
+        os.unlink(ckpt_path)
 
     assert fresh_model.is_pretrained_ is True
     for k in pretrained_state:
@@ -216,8 +222,12 @@ def test_load_pretrained_weights_lightning_checkpoint(minimal_model, sample_data
     # Simulate a lightning checkpoint format
     lightning_ckpt = {"state_dict": minimal_model.state_dict(), "epoch": 1}
 
-    with tempfile.NamedTemporaryFile(suffix=".ckpt") as f:
-        torch.save(lightning_ckpt, f.name)
+    import os
+
+    with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as f:
+        ckpt_path = f.name
+    try:
+        torch.save(lightning_ckpt, ckpt_path)
 
         fresh_model = _MinimalModel(
             input_size=1,
@@ -225,6 +235,8 @@ def test_load_pretrained_weights_lightning_checkpoint(minimal_model, sample_data
             hidden_size=8,
             loss=MAE(),
         )
-        fresh_model.load_pretrained_weights(f.name)
+        fresh_model.load_pretrained_weights(ckpt_path)
+    finally:
+        os.unlink(ckpt_path)
 
     assert fresh_model.is_pretrained_ is True
