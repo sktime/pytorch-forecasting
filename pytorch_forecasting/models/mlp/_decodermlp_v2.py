@@ -1,4 +1,4 @@
-﻿"""
+"""
 DecoderMLP v2 - MLP forecasting model for pytorch-forecasting v2 pipeline.
 """
 
@@ -20,6 +20,7 @@ class DecoderMLP(TslibBaseModel):
     @classmethod
     def _pkg(cls):
         from pytorch_forecasting.models.mlp._decodermlp_pkg import DecoderMLP_pkg
+
         return DecoderMLP_pkg
 
     def __init__(
@@ -97,7 +98,7 @@ class DecoderMLP(TslibBaseModel):
         if "future_cont" in x and x["future_cont"].size(-1) > 0:
             network_input = x["future_cont"]
         elif "history_target" in x and x["history_target"].size(-1) > 0:
-            network_input = x["history_target"][:, -self.prediction_length:, :]
+            network_input = x["history_target"][:, -self.prediction_length :, :]
         elif "future_target" in x and x["future_target"].size(-1) > 0:
             network_input = x["future_target"]
         else:
@@ -114,9 +115,13 @@ class DecoderMLP(TslibBaseModel):
         flat_output = self.mlp(flat_input)
 
         if self.n_quantiles is not None:
-            prediction = flat_output.reshape(batch_size, self.prediction_length, self.n_quantiles)
+            prediction = flat_output.reshape(
+                batch_size, self.prediction_length, self.n_quantiles
+            )
         else:
-            prediction = flat_output.reshape(batch_size, self.prediction_length, self.target_dim)
+            prediction = flat_output.reshape(
+                batch_size, self.prediction_length, self.target_dim
+            )
 
         if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])
