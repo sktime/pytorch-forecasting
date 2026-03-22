@@ -2,10 +2,13 @@
 
 import os
 from pathlib import Path
+import pickle
 import shutil
 
+import pytest
 import torch
 
+from pytorch_forecasting.base._base_pkg import Base_pkg
 from pytorch_forecasting.tests.test_all_estimators import (
     EstimatorFixtureGenerator,
     EstimatorPackageConfig,
@@ -16,6 +19,27 @@ from pytorch_forecasting.tests.test_all_v2.utils import _setup_pkg_and_data
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
 ONLY_CHANGED_MODULES = False
+
+
+def test_load_config_pkl_explicit(tmp_path):
+    """_load_config should load a .pkl path passed directly as config."""
+    cfg = {"batch_size": 32, "num_workers": 4}
+    pkl_path = tmp_path / "cfg.pkl"
+    with open(pkl_path, "wb") as f:
+        pickle.dump(cfg, f)
+
+    result = Base_pkg._load_config(config=pkl_path)
+
+    assert result == cfg
+
+
+def test_load_config_unsupported_format_raises(tmp_path):
+    """_load_config should raise ValueError for unsupported extensions."""
+    bad_path = tmp_path / "cfg.json"
+    bad_path.write_text("{}")
+
+    with pytest.raises(ValueError, match="Unsupported config format"):
+        Base_pkg._load_config(config=bad_path)
 
 
 class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):

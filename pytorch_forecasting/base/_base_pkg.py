@@ -97,15 +97,17 @@ class Base_pkg(_BasePtForecasterV2):
             raise FileNotFoundError(f"Configuration file not found: {path}")
 
         suffix = path.suffix.lower()
-        print(suffix)
 
         if suffix in [".yaml", ".yml"]:
             with open(path) as f:
                 return yaml.safe_load(f) or {}
-
+        elif suffix == ".pkl":
+            with open(path, "rb") as f:
+                return pickle.load(f)  # noqa: S301
         else:
             raise ValueError(
-                f"Unsupported config format: {suffix}. Use .yaml, .yml, or .pkl"
+                f"Unsupported config format: {suffix}. "
+                "Supported formats: .yaml, .yml, .pkl"
             )
 
     @classmethod
