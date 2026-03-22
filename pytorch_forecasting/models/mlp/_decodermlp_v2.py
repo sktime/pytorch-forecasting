@@ -1,4 +1,4 @@
-"""
+﻿"""
 DecoderMLP v2 - MLP forecasting model for pytorch-forecasting v2 pipeline.
 """
 
@@ -42,7 +42,9 @@ class DecoderMLP(TslibBaseModel):
         if loss is None:
             loss = QuantileLoss()
         if logging_metrics is None:
-            logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+            logging_metrics = nn.ModuleList(
+                [SMAPE(), MAE(), RMSE(), MAPE(), MASE()]
+            )
 
         super().__init__(
             loss=loss,
@@ -71,8 +73,7 @@ class DecoderMLP(TslibBaseModel):
         self._init_network()
 
     def _init_network(self):
-        # Input: history_target last prediction_length steps
-        # shape: (batch, prediction_length, target_dim) -> flatten to (batch, prediction_length * target_dim)
+        # Input: flatten (prediction_length, target_dim) to 1-D vector
         input_size = self.prediction_length * self.target_dim
 
         self.n_quantiles = None
@@ -92,9 +93,10 @@ class DecoderMLP(TslibBaseModel):
             activation_class=getattr(nn, self.activation_class),
         )
 
-    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        # Use future_cont if it has features, else fall back to last
-        # prediction_length steps of history_target
+    def forward(
+        self, x: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
+        """Forward pass of DecoderMLP v2."""
         if "future_cont" in x and x["future_cont"].size(-1) > 0:
             network_input = x["future_cont"]
         elif "history_target" in x and x["history_target"].size(-1) > 0:
@@ -108,10 +110,7 @@ class DecoderMLP(TslibBaseModel):
             )
 
         batch_size = network_input.size(0)
-
-        # Flatten (prediction_length, features) -> (input_size,) per sample
         flat_input = network_input.reshape(batch_size, -1)
-
         flat_output = self.mlp(flat_input)
 
         if self.n_quantiles is not None:
