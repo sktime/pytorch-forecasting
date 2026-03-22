@@ -24,20 +24,23 @@ class SeriesDecomposition(nn.Module):
         self.moving_avg = MovingAvg(kernel_size, stride=1)
 
     def forward(self, x):
-        """Forward pass for series decomposition.
+        """
+        Decompose input time series into trend and seasonal components.
 
         Parameters
         ----------
         x : torch.Tensor
-            Input time series tensor of shape (batch_size, seq_len, features).
+            Input tensor of shape (batch_size, seq_len, features) containing
+            the time series data.
 
         Returns
         -------
-        tuple
-            seasonal : torch.Tensor
-                Seasonal component of the time series.
-            trend : torch.Tensor
-                Trend component of the time series.
+        seasonal : torch.Tensor
+            Seasonal component (residual after trend removal) with same shape
+            as input.
+        trend : torch.Tensor
+            Trend component extracted via moving average with same shape as
+            input.
         """
         trend = self.moving_avg(x)
         seasonal = x - trend
