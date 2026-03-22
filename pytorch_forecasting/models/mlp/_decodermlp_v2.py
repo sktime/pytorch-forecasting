@@ -1,4 +1,4 @@
-﻿"""
+"""
 DecoderMLP v2 - MLP forecasting model for pytorch-forecasting v2 pipeline.
 """
 
@@ -42,9 +42,7 @@ class DecoderMLP(TslibBaseModel):
         if loss is None:
             loss = QuantileLoss()
         if logging_metrics is None:
-            logging_metrics = nn.ModuleList(
-                [SMAPE(), MAE(), RMSE(), MAPE(), MASE()]
-            )
+            logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
 
         super().__init__(
             loss=loss,
@@ -93,9 +91,7 @@ class DecoderMLP(TslibBaseModel):
             activation_class=getattr(nn, self.activation_class),
         )
 
-    def forward(
-        self, x: dict[str, torch.Tensor]
-    ) -> dict[str, torch.Tensor]:
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Forward pass of DecoderMLP v2."""
         if "future_cont" in x and x["future_cont"].size(-1) > 0:
             network_input = x["future_cont"]
