@@ -193,7 +193,7 @@ class TimeXer(BaseModelWithCovariates):
         if loss is None:
             output_size = kwargs.get("output_size", 1)
             if isinstance(output_size, (list, tuple)) and len(output_size) > 1:
-                loss = MultiLoss([MAE() for _ in range(len(self.target_positions))])
+                loss = MultiLoss([MAE() for _ in range(len(output_size))])
             else:
                 loss = MAE()
 
@@ -487,11 +487,10 @@ class TimeXer(BaseModelWithCovariates):
             # which is the length of a list of float. In case of MAE, MSE, etc.
             # n_quantiles = 1 and it mimics the behavior of a point prediction.
             # for multi-target forecasting, the output is a list of tensors.
-            if len(target_positions) > 1:
-                prediction = [prediction[..., i, :] for i in target_indices]
-            else:
+            if len(target_positions) == 1:
                 prediction = prediction[..., 0, :]
-
+            else:
+                prediction = [prediction[..., i, :] for i in target_indices]
             prediction = self.transform_output(
                 prediction=prediction, target_scale=x["target_scale"]
             )
