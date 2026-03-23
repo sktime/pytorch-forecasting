@@ -473,10 +473,8 @@ def test_multivariate_target():
     assert len(y) == 2
 
 
-def test_v2_categorical_with_ptf_ordinal_encoder():
-    """Test D1 + D2 with PTFOrdinalEncoder instead of default NaNLabelEncoder."""
-    from pytorch_forecasting.data.encoders import PTFOrdinalEncoder
-
+def test_v2_categorical_with_nan_label_encoder():
+    """Test D1 + D2 with default NaNLabelEncoder."""
     df = pd.DataFrame(
         {
             "time_idx": range(10),
@@ -487,9 +485,6 @@ def test_v2_categorical_with_ptf_ordinal_encoder():
         }
     )
 
-    # User provides a specific encoder
-    custom_encoders = {"color": PTFOrdinalEncoder(add_unknown=True)}
-
     ts = TimeSeries(
         data=df,
         time="time_idx",
@@ -497,13 +492,11 @@ def test_v2_categorical_with_ptf_ordinal_encoder():
         group=["group_id"],
         cat=["color"],
         num=["value"],
-        categorical_encoders=custom_encoders,
     )
 
-    # Verify the encoder was used
-    assert isinstance(ts.categorical_encoders["color"], PTFOrdinalEncoder)
-    # Verify cardinality is in metadata
-    assert ts.metadata["categorical_cardinalities"]["color"] == 4  # 3 + unknown
+    # Verify cardinality is in metadata (NaNLabelEncoder: 4 = NaN + 3 categories)
+    assert "color" in ts.metadata["categorical_cardinalities"]
+    assert ts.metadata["categorical_cardinalities"]["color"] == 4
 
     # D2 should work
     datamodule = EncoderDecoderTimeSeriesDataModule(
@@ -590,8 +583,8 @@ def test_predict_encoder_consistency():
     assert torch.is_tensor(sample["x"])
 
 
-def test_d2_metadata_has_embedding_sizes():
-    """Test that D2 metadata includes categorical_embedding_sizes."""
+def test_d2_metadata_has_cardinalities():
+    """Test that D2 metadata includes categorical_cardinalities."""
     df = pd.DataFrame(
         {
             "time_idx": range(10),
@@ -619,8 +612,8 @@ def test_d2_metadata_has_embedding_sizes():
     )
 
     metadata = dm.metadata
-    assert "categorical_embedding_sizes" in metadata
-    assert "color" in metadata["categorical_embedding_sizes"]
-    n_cats, emb_dim = metadata["categorical_embedding_sizes"]["color"]
-    assert n_cats > 0
-    assert emb_dim > 0
+    assert "categorical_cardinalities" in metadata
+    assert "color" in metadata["categorical_cardinalities"]
+    assert metadata["categorical_cardinalities"]["color"] > 0
+    # Embedding sizes should NOT be in D2 metadata anymore
+    assert "categorical_embedding_sizes" not in metadata

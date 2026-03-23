@@ -12,7 +12,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from pytorch_forecasting.data.encoders import PTFOrdinalEncoder
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 
 #######################################################################################
@@ -135,61 +135,35 @@ class TimeSeries(Dataset):
         # Initialize encoders if set to "auto"
         if self.categorical_encoders == "auto":
             self.categorical_encoders = {
-                col: PTFOrdinalEncoder(add_unknown=True) for col in self._cat
+                col: NaNLabelEncoder(add_nan=True) for col in self._cat
             }
         else:
             # Ensure we have an encoder for every categorical column
             for col in self._cat:
                 if col not in self.categorical_encoders:
-                    self.categorical_encoders[col] = PTFOrdinalEncoder(add_unknown=True)
+                    self.categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
 
         # Fit and transform the data natively
         for col, encoder in self.categorical_encoders.items():
-            # If the encoder is untrained (has no mapping)
-            if not hasattr(encoder, "mapping_") or len(encoder.mapping_) == 0:
+            # If the encoder is untrained (no classes_ attribute)
+            if not hasattr(encoder, "classes_") or len(encoder.classes_) == 0:
                 # Fit on training data
                 encoder.fit(self.data[col])
 
-            # Transform both train and validation safely
-            encoded_tensor = encoder.transform(self.data[col])
-
-            # PTFOneHotEncoder returns 2D (n_samples, n_classes).
-            # For D1 we convert to ordinal (argmax) to keep tensors
-            # 2D-compatible. One-hot expansion happens in D2/model.
-            if isinstance(encoded_tensor, torch.Tensor) and encoded_tensor.ndim == 2:
-                has_match = encoded_tensor.sum(dim=1) > 0
-                ordinal = encoded_tensor.argmax(dim=1)
-                # Shift by 1 to reserve 0 for unknown
-                ordinal = ordinal + 1
-                ordinal[~has_match] = 0
-                self.data[col] = ordinal.numpy()
+            # Transform the categorical column to integers
+            encoded = encoder.transform(self.data[col])
+            if isinstance(encoded, torch.Tensor):
+                self.data[col] = encoded.numpy()
             else:
-                # NaNLabelEncoder and PTFOrdinalEncoder return 1D
-                if isinstance(encoded_tensor, torch.Tensor):
-                    self.data[col] = encoded_tensor.numpy()
-                elif isinstance(encoded_tensor, np.ndarray):
-                    self.data[col] = encoded_tensor
-                else:
-                    self.data[col] = encoded_tensor
+                self.data[col] = encoded
 
             # Transform future data if present
             if self.data_future is not None and col in self.data_future.columns:
                 future_encoded = encoder.transform(self.data_future[col])
-                if (
-                    isinstance(future_encoded, torch.Tensor)
-                    and future_encoded.ndim == 2
-                ):
-                    has_match = future_encoded.sum(dim=1) > 0
-                    ordinal = future_encoded.argmax(dim=1) + 1
-                    ordinal[~has_match] = 0
-                    self.data_future[col] = ordinal.numpy()
+                if isinstance(future_encoded, torch.Tensor):
+                    self.data_future[col] = future_encoded.numpy()
                 else:
-                    if isinstance(future_encoded, torch.Tensor):
-                        self.data_future[col] = future_encoded.numpy()
-                    elif isinstance(future_encoded, np.ndarray):
-                        self.data_future[col] = future_encoded
-                    else:
-                        self.data_future[col] = future_encoded
+                    self.data_future[col] = future_encoded
 
         self.feature_cols = [
             col
@@ -253,21 +227,12 @@ class TimeSeries(Dataset):
 
             self.metadata["col_known"][col] = "K" if col in self._known else "U"
 
-        # Expose cardinalities
+        # Expose cardinalities for each categorical variable
         self.metadata["categorical_cardinalities"] = {}
         for col in self._cat:
             encoder = getattr(self, "categorical_encoders", {}).get(col)
-            if encoder is not None:
-                if hasattr(encoder, "n_classes"):
-                    # PTFOrdinalEncoder, PTFOneHotEncoder
-                    self.metadata["categorical_cardinalities"][col] = encoder.n_classes
-                elif hasattr(encoder, "classes_"):
-                    # NaNLabelEncoder
-                    self.metadata["categorical_cardinalities"][col] = len(
-                        encoder.classes_
-                    )
-                else:
-                    self.metadata["categorical_cardinalities"][col] = 0
+            if encoder is not None and hasattr(encoder, "classes_"):
+                self.metadata["categorical_cardinalities"][col] = len(encoder.classes_)
             else:
                 self.metadata["categorical_cardinalities"][col] = 0
 

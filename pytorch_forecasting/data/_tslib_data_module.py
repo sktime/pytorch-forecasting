@@ -16,8 +16,6 @@ from torch.utils.data import DataLoader, Dataset
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
-    PTFOneHotEncoder,
-    PTFOrdinalEncoder,
     TorchNormalizer,
 )
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
@@ -536,13 +534,6 @@ class TslibDataModule(LightningDataModule):
         metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
             "categorical_cardinalities", {}
         )
-
-        # Compute recommended embedding sizes for each categorical variable
-        # Rule of thumb: min(50, (n_categories + 1) // 2)
-        metadata["categorical_embedding_sizes"] = {}
-        for col, n_cats in metadata["categorical_cardinalities"].items():
-            emb_dim = min(50, (n_cats + 1) // 2) if n_cats > 0 else 0
-            metadata["categorical_embedding_sizes"][col] = (n_cats, emb_dim)
 
         return metadata
 

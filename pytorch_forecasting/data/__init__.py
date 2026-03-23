@@ -11,8 +11,6 @@ from pytorch_forecasting.data.encoders import (
     GroupNormalizer,
     MultiNormalizer,
     NaNLabelEncoder,
-    PTFOneHotEncoder,
-    PTFOrdinalEncoder,
     TorchNormalizer,
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
@@ -22,8 +20,6 @@ __all__ = [
     "TimeSeriesDataSet",
     "TimeSeries",
     "NaNLabelEncoder",
-    "PTFOrdinalEncoder",
-    "PTFOneHotEncoder",
     "GroupNormalizer",
     "TorchNormalizer",
     "EncoderNormalizer",
