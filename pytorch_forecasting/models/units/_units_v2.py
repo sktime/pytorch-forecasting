@@ -9,11 +9,8 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers._units import (
-    _PatchEmbedding,
-    _PositionalEncoding,
-    _TransformerBlock,
-)
+from pytorch_forecasting.layers._blocks import _TransformerBlock
+from pytorch_forecasting.layers._embeddings import _PatchEmbedding, _PositionalEmbedding
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
@@ -149,7 +146,7 @@ class UniTS(TslibBaseModel):
         self.prompt_tokens = nn.Parameter(torch.empty(1, self.prompt_len, self.d_model))
         nn.init.trunc_normal_(self.prompt_tokens, std=0.02)
 
-        self.pos_enc = _PositionalEncoding(
+        self.pos_enc = _PositionalEmbedding(
             d_model=self.d_model,
             max_len=self.prompt_len + self.num_patches + 16,
             dropout=self.dropout,
