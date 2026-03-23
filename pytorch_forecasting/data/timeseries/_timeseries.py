@@ -2193,27 +2193,44 @@ class TimeSeriesDataSet(Dataset):
                         # calculate interpolation
                         # repetition_indices is True for filled values
                         # we need to calculate the step for each gap
-                        # repetitions[i] is the number of steps including the original one
+                        # repetitions[i] is the number of steps including
+                        # the original one
                         # so if repetition is 3 (gap of 2), steps are 0, 1, 2.
                         # Weights are 0/3, 1/3, 2/3.
-                        # We can use cumsum on repetition_indices to get the step within each gap
-                        # but we need to reset it for each original index.
-                        
+                        # We can use cumsum on repetition_indices to get the step
+                        # within each gap but we need to reset it for
+                        # each original index.
+
                         # steps_within_gap: for [0, 0, 0, 1] it should be [0, 1, 2, 0]
-                        steps_within_gap = torch.arange(len(indices), device=indices.device) - torch.gather(
-                            torch.cat([torch.tensor([0], device=indices.device), torch.cumsum(repetitions[:-1], 0)]),
+                        steps_within_gap = torch.arange(
+                            len(indices), device=indices.device
+                        ) - torch.gather(
+                            torch.cat(
+                                [
+                                    torch.tensor([0], device=indices.device),
+                                    torch.cumsum(repetitions[:-1], 0),
+                                ]
+                            ),
                             0,
-                            indices
+                            indices,
                         )
-                        
+
                         # weights: steps_within_gap / repetitions[indices]
-                        weights = steps_within_gap.float() / torch.gather(repetitions, 0, indices).float()
-                        
+                        weights = (
+                            steps_within_gap.float()
+                            / torch.gather(repetitions, 0, indices).float()
+                        )
+
                         # interpolated values: V_i + diffs[i] * weight
-                        # for the last element, diffs[indices] will be out of bounds, but weights will be 0
+                        # for the last element, diffs[indices] will be out of bounds,
+                        # but weights will be 0
                         # so we can pad diffs
-                        padded_diffs = torch.cat([diffs, torch.tensor([0.0], device=diffs.device)])
-                        data_cont[:, name_idx] += torch.gather(padded_diffs, 0, indices) * weights
+                        padded_diffs = torch.cat(
+                            [diffs, torch.tensor([0.0], device=diffs.device)]
+                        )
+                        data_cont[:, name_idx] += (
+                            torch.gather(padded_diffs, 0, indices) * weights
+                        )
                 elif strategy == "zero":
                     data_cont[repetition_indices, name_idx] = 0.0
 
@@ -2227,15 +2244,29 @@ class TimeSeriesDataSet(Dataset):
                     if len(time) > 1:
                         original_values = self.data["target"][target_idx][idx_slice]
                         diffs = original_values[1:] - original_values[:-1]
-                        
-                        steps_within_gap = torch.arange(len(indices), device=indices.device) - torch.gather(
-                            torch.cat([torch.tensor([0], device=indices.device), torch.cumsum(repetitions[:-1], 0)]),
+
+                        steps_within_gap = torch.arange(
+                            len(indices), device=indices.device
+                        ) - torch.gather(
+                            torch.cat(
+                                [
+                                    torch.tensor([0], device=indices.device),
+                                    torch.cumsum(repetitions[:-1], 0),
+                                ]
+                            ),
                             0,
-                            indices
+                            indices,
                         )
-                        weights = steps_within_gap.float() / torch.gather(repetitions, 0, indices).float()
-                        padded_diffs = torch.cat([diffs, torch.tensor([0.0], device=diffs.device)])
-                        target[target_idx] += torch.gather(padded_diffs, 0, indices) * weights
+                        weights = (
+                            steps_within_gap.float()
+                            / torch.gather(repetitions, 0, indices).float()
+                        )
+                        padded_diffs = torch.cat(
+                            [diffs, torch.tensor([0.0], device=diffs.device)]
+                        )
+                        target[target_idx] += (
+                            torch.gather(padded_diffs, 0, indices) * weights
+                        )
                 elif strategy == "zero":
                     target[target_idx][repetition_indices] = 0.0
 
