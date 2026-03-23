@@ -301,6 +301,18 @@ class TimeSeriesDataSet(Dataset):
         Allow missing does not deal with ``NA`` values. You should fill NA values
         before passing the dataframe to the TimeSeriesDataSet.
 
+    interpolation_strategy : str or dict[str, str], optional, default="forward_fill"
+        Strategy to fill in missing values if there are gaps in the sequence.
+        Only used if ``allow_missing_timesteps=True``.
+
+        * "forward_fill": fill missing values with the last known value (default)
+        * "linear": linear interpolation for real-valued variables (uses forward fill
+          for categorical variables)
+        * "zero": fill missing values with 0.0
+
+        Can be a string (global strategy) or a dictionary mapping column names to
+        strategies.
+
     lags : dict[str, list[int]], optional, default=None
         dictionary of variable names mapped to list of time steps by which the
         variable should be lagged.
@@ -473,6 +485,7 @@ class TimeSeriesDataSet(Dataset):
         | None = None,
         randomize_length: None | tuple[float, float] | bool = False,
         predict_mode: bool = False,
+        interpolation_strategy: str | dict[str, str] = "forward_fill",
     ):
         """Timeseries dataset holding data for models."""
         super().__init__()
@@ -535,6 +548,7 @@ class TimeSeriesDataSet(Dataset):
 
         self.predict_mode = predict_mode
         self.allow_missing_timesteps = allow_missing_timesteps
+        self.interpolation_strategy = interpolation_strategy
         self.target_normalizer = target_normalizer
 
         self.categorical_encoders = categorical_encoders
@@ -2154,7 +2168,6 @@ class TimeSeriesDataSet(Dataset):
             if weight is not None:
                 weight = weight[indices]
 
-            # reset index
             if self.time_idx in self.reals:
                 time_idx = self.reals.index(self.time_idx)
                 data_cont[:, time_idx] = torch.linspace(
@@ -2163,6 +2176,68 @@ class TimeSeriesDataSet(Dataset):
                     len(target[0]),
                     dtype=data_cont.dtype,
                 )
+
+            # fill in missing values
+            for name_idx, name in enumerate(self.reals):
+                strategy = (
+                    self.interpolation_strategy.get(name, self.interpolation_strategy)
+                    if isinstance(self.interpolation_strategy, dict)
+                    else self.interpolation_strategy
+                )
+                if strategy == "linear":
+                    if len(time) > 1:
+                        # get original values
+                        original_values = self.data["reals"][idx_slice, name_idx]
+                        # calculate diffs
+                        diffs = original_values[1:] - original_values[:-1]
+                        # calculate interpolation
+                        # repetition_indices is True for filled values
+                        # we need to calculate the step for each gap
+                        # repetitions[i] is the number of steps including the original one
+                        # so if repetition is 3 (gap of 2), steps are 0, 1, 2.
+                        # Weights are 0/3, 1/3, 2/3.
+                        # We can use cumsum on repetition_indices to get the step within each gap
+                        # but we need to reset it for each original index.
+                        
+                        # steps_within_gap: for [0, 0, 0, 1] it should be [0, 1, 2, 0]
+                        steps_within_gap = torch.arange(len(indices), device=indices.device) - torch.gather(
+                            torch.cat([torch.tensor([0], device=indices.device), torch.cumsum(repetitions[:-1], 0)]),
+                            0,
+                            indices
+                        )
+                        
+                        # weights: steps_within_gap / repetitions[indices]
+                        weights = steps_within_gap.float() / torch.gather(repetitions, 0, indices).float()
+                        
+                        # interpolated values: V_i + diffs[i] * weight
+                        # for the last element, diffs[indices] will be out of bounds, but weights will be 0
+                        # so we can pad diffs
+                        padded_diffs = torch.cat([diffs, torch.tensor([0.0], device=diffs.device)])
+                        data_cont[:, name_idx] += torch.gather(padded_diffs, 0, indices) * weights
+                elif strategy == "zero":
+                    data_cont[repetition_indices, name_idx] = 0.0
+
+            for target_idx, name in enumerate(self.target_names):
+                strategy = (
+                    self.interpolation_strategy.get(name, self.interpolation_strategy)
+                    if isinstance(self.interpolation_strategy, dict)
+                    else self.interpolation_strategy
+                )
+                if strategy == "linear":
+                    if len(time) > 1:
+                        original_values = self.data["target"][target_idx][idx_slice]
+                        diffs = original_values[1:] - original_values[:-1]
+                        
+                        steps_within_gap = torch.arange(len(indices), device=indices.device) - torch.gather(
+                            torch.cat([torch.tensor([0], device=indices.device), torch.cumsum(repetitions[:-1], 0)]),
+                            0,
+                            indices
+                        )
+                        weights = steps_within_gap.float() / torch.gather(repetitions, 0, indices).float()
+                        padded_diffs = torch.cat([diffs, torch.tensor([0.0], device=diffs.device)])
+                        target[target_idx] += torch.gather(padded_diffs, 0, indices) * weights
+                elif strategy == "zero":
+                    target[target_idx][repetition_indices] = 0.0
 
             # make replacements to fill in categories
             for name, value in self.encoded_constant_fill_strategy.items():
