@@ -1,12 +1,10 @@
 from typing import Any, Optional
 from warnings import warn
 
-
 from lightning import Trainer
 from lightning.pytorch import LightningModule
 from lightning.pytorch.callbacks import BasePredictionWriter
 import torch
-
 
 
 class PredictCallback(BasePredictionWriter):
@@ -30,7 +28,6 @@ class PredictCallback(BasePredictionWriter):
         Additional keyword arguments for `to_prediction` or `to_quantiles`.
     """
 
-
     def __init__(
         self,
         mode: str = "prediction",
@@ -43,14 +40,12 @@ class PredictCallback(BasePredictionWriter):
         self.mode_kwargs = mode_kwargs or {}
         self._reset_data()
 
-
     def _reset_data(self, result: bool = True):
         """Clear collected data for a new prediction run."""
         self.predictions = []
         self.info = {key: [] for key in self.return_info}
         if result:
             self._result = None
-
 
     @staticmethod
     def _move_to_cpu(obj):
@@ -73,7 +68,6 @@ class PredictCallback(BasePredictionWriter):
             return type(obj)(PredictCallback._move_to_cpu(v) for v in obj)
         return obj
 
-
     def on_predict_batch_end(
         self,
         trainer: Trainer,
@@ -86,7 +80,6 @@ class PredictCallback(BasePredictionWriter):
         """Process and store predictions for a single batch."""
         x, y = batch
 
-
         if self.mode == "raw":
             processed_output = outputs
         elif self.mode == "prediction":
@@ -96,9 +89,7 @@ class PredictCallback(BasePredictionWriter):
         else:
             raise ValueError(f"Invalid prediction mode: {self.mode}")
 
-
         self.predictions.append(self._move_to_cpu(processed_output))
-
 
         for key in self.return_info:
             if key == "x":
@@ -112,7 +103,6 @@ class PredictCallback(BasePredictionWriter):
             else:
                 warn(f"Unknown return_info key: {key}")
 
-
     def on_predict_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         """Collate all batch results into final tensors."""
         if self.mode == "raw" and isinstance(self.predictions[0], dict):
@@ -123,9 +113,7 @@ class PredictCallback(BasePredictionWriter):
         else:
             collated_preds = {"prediction": torch.cat(self.predictions)}
 
-
         final_result = collated_preds
-
 
         for key, data_list in self.info.items():
             if isinstance(data_list[0], dict):
@@ -136,10 +124,8 @@ class PredictCallback(BasePredictionWriter):
                 collated_info = torch.cat(data_list)
             final_result[key] = collated_info
 
-
         self._result = final_result
         self._reset_data(result=False)
-
 
     @property
     def result(self) -> dict[str, torch.Tensor]:
