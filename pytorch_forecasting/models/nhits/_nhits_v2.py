@@ -140,6 +140,13 @@ class NHiTS_v2(BaseModel):
 
         self.context_length = metadata["max_encoder_length"]
         self.prediction_length = metadata["max_prediction_length"]
+        output_size = [metadata["target"]]
+        static_size = (
+            metadata["static_categorical_features"]
+            + metadata["static_continuous_features"]
+        )
+        encoder_covariate_size = metadata["encoder_cont"]
+        decoder_covariate_size = metadata["decoder_cont"]
 
         if n_blocks is None:
             n_blocks = [1, 1, 1]
@@ -173,16 +180,14 @@ class NHiTS_v2(BaseModel):
         self.model = NHiTSModule(
             context_length=self.context_length,
             prediction_length=self.prediction_length,
-            # NHiTSModule uses these sizes directly in MLP input dimension arithmetic,
-            # so None is not valid. Set to 0/[1] to indicate "not used".
-            # EncoderDecoderTimeSeriesDataModule does not yet provide covariates or
-            # static features, so encoder_x_t, decoder_x_t, and x_s are always None
-            # in the forward pass. These can be wired dynamically once the v2
-            # datamodule adds covariate support.
-            output_size=[1],  # univariate: single target output
-            static_size=0,  # no static features provided by v2 datamodule
-            encoder_covariate_size=0,  # no encoder covariates provided by v2 datamodule
-            decoder_covariate_size=0,  # no decoder covariates provided by v2 datamodule
+            # Sizes are derived from DataModule metadata so they automatically
+            # reflect the actual dataset configuration. When the v2 DataModule
+            # adds covariate or static feature support, these values will update
+            # without any changes required here.
+            output_size=output_size,
+            static_size=static_size,
+            encoder_covariate_size=encoder_covariate_size,
+            decoder_covariate_size=decoder_covariate_size,
             static_hidden_size=hidden_size,
             n_blocks=n_blocks,
             n_layers=n_layers,
