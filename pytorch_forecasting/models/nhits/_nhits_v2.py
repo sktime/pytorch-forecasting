@@ -217,6 +217,14 @@ class NHiTS_v2(BaseModel):
             * ``"encoder_mask"`` : tensor of shape
               ``(batch_size, context_length, 1)`` or
               ``(batch_size, context_length)``, 1 for valid, 0 for padded
+            * ``"encoder_cont"`` : tensor of shape
+              ``(batch_size, context_length, n_encoder_cont)``, optional
+            * ``"decoder_cont"`` : tensor of shape
+              ``(batch_size, prediction_length, n_decoder_cont)``, optional
+            * ``"static_categorical_features"`` : tensor of shape
+              ``(batch_size, 1, n_static_cat)``, optional
+            * ``"static_continuous_features"`` : tensor of shape
+              ``(batch_size, 1, n_static_cont)``, optional
 
         Returns
         -------
@@ -235,12 +243,33 @@ class NHiTS_v2(BaseModel):
         if encoder_mask.dim() == 3:
             encoder_mask = encoder_mask.squeeze(-1)  # [batch, context_length]
 
+        # Continuous covariates: (batch, seq_len, n_features) or None.
+        # NHiTSBlock guards with ``if self.encoder/decoder_covariate_size > 0``.
+        encoder_x_t = x.get("encoder_cont")  # (batch, context_length, n_enc_cont)
+        decoder_x_t = x.get(
+            "decoder_cont"
+        )  # (batch, prediction_length, n_decoder_cont)
+
+        # Static features: concatenate categorical and continuous into
+        # x_s of shape (batch, static_size).  DataModule stores them as
+        # (batch, 1, n_feats), so squeeze the middle dim before cat.
+        x_s = None
+        st_parts = []
+        for key in ("static_categorical_features", "static_continuous_features"):
+            feat = x.get(key)
+            if feat is not None:
+                feat = feat.squeeze(1).float()  # (batch, n_feats)
+                if feat.shape[-1] > 0:
+                    st_parts.append(feat)
+        if st_parts:
+            x_s = torch.cat(st_parts, dim=-1)  # (batch, static_size)
+
         forecast, backcast, block_forecasts, block_backcasts = self.model(
             encoder_y=target,
             encoder_mask=encoder_mask,
-            encoder_x_t=None,
-            decoder_x_t=None,
-            x_s=None,
+            encoder_x_t=encoder_x_t,
+            decoder_x_t=decoder_x_t,
+            x_s=x_s,
         )
 
         return {
