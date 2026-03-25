@@ -53,7 +53,9 @@ class BaseModel(LightningModule):
     ):
         super().__init__()
         self.loss = loss
-        self.logging_metrics = logging_metrics if logging_metrics is not None else []
+        self.logging_metrics = nn.ModuleList(
+            logging_metrics if logging_metrics is not None else []
+        )
         self.optimizer = optimizer
         self.optimizer_params = optimizer_params if optimizer_params is not None else {}
         self.lr_scheduler = lr_scheduler
