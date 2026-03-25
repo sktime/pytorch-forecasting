@@ -4,6 +4,7 @@ Packages container for SOFTS model.
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
+
 class Softs_pkg_v2(Base_pkg):
     """SOFTS package container."""
 
@@ -21,12 +22,14 @@ class Softs_pkg_v2(Base_pkg):
     def get_cls(cls):
         """Get model class."""
         from pytorch_forecasting.models.softs._softs_v2 import Softs
+
         return Softs
 
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
         from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+
         return TslibDataModule
 
     @classmethod
