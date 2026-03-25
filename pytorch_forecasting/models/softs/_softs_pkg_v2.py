@@ -6,11 +6,15 @@ from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
 class Softs_pkg_v2(Base_pkg):
-    """SOFTS package container."""
+    """
+    SOFTS package container.
+    Reference : https://arxiv.org/abs/2404.14197
+    """
 
     _tags = {
         "info:name": "SOFTS",
         "info:compute": 2,
+        "author": ["Muhammad-Rebaal"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
