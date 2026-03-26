@@ -9,11 +9,9 @@ the documentation always reflects the actual registered models.
 """
 
 from docutils import nodes
-from docutils.parsers.rst import Directive
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
 from sphinx.util.nodes import nested_parse_with_titles
-
 
 # Tag keys used to build the comparison table columns
 _CAPABILITY_TAGS = [
