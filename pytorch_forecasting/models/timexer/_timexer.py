@@ -209,8 +209,10 @@ class TimeXer(BaseModelWithCovariates):
         if self.hparams.context_length % self.hparams.patch_length != 0:
             warn.warn(
                 f"In the input sequence, the context_length ({context_length}) is not a"
-                f" multiple of the patch_length ({patch_length}). This may lead to some"
-                "patches being ignored during training."
+                f" multiple of the patch_length ({patch_length}). This may lead to"
+                " some patches being ignored during training.",
+                UserWarning,
+                stacklevel=2,
             )
 
         self.patch_num = max(
@@ -260,6 +262,7 @@ class TimeXer(BaseModelWithCovariates):
                 f"e_layers ({e_layers}) is quite high. This might lead to overfitting "
                 f"and high computational cost. Consider using 2-6 layers.",
                 UserWarning,
+                stacklevel=2,
             )
 
         self.encoder = Encoder(
