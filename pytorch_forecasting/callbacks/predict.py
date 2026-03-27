@@ -70,16 +70,19 @@ class PredictCallback(BasePredictionWriter):
 
         self.predictions.append(move_to_device(detach(processed_output), "cpu"))
 
-        # detach(x) copies the dict; move_to_device won't mutate the original batch
-        x_cpu = move_to_device(detach(x), "cpu")
+        # Only pay the detach+copy cost if x or decoder_lengths are actually requested
+        needs_x = any(k in ("x", "decoder_lengths") for k in self.return_info)
+        x_cpu = move_to_device(detach(x), "cpu") if needs_x else None
 
         for key in self.return_info:
             if key == "x":
                 self.info[key].append(x_cpu)
             elif key == "y":
-                self.info[key].append(move_to_device(detach(y[0]), "cpu"))
+                y_cpu = move_to_device(detach(y[0]), "cpu")
+                self.info[key].append(y_cpu)
             elif key == "index":
-                self.info[key].append(move_to_device(detach(y[1]), "cpu"))
+                index_cpu = move_to_device(detach(y[1]), "cpu")
+                self.info[key].append(index_cpu)
             elif key == "decoder_lengths":
                 self.info[key].append(x_cpu["decoder_lengths"])
             else:
