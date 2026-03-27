@@ -1,6 +1,7 @@
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
+import warnings
 
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -46,8 +47,17 @@ class Base_pkg(_BasePtForecasterV2):
         trainer_cfg: dict[str, Any] | str | Path | None = None,
         datamodule_cfg: dict[str, Any] | str | Path | None = None,
         ckpt_path: str | Path | None = None,
+        scaler_path: str | Path | None = None,
     ):
         self.ckpt_path = Path(ckpt_path) if ckpt_path else None
+        if scaler_path:
+            self._scaler_path = Path(scaler_path)
+        elif self.ckpt_path:
+            # attempt automatic discovery of scaler path when ckpt path is specified.
+            potential_scaler = self.ckpt_path.parent / "scalers.pkl"
+            self._scaler_path = potential_scaler if potential_scaler.exists() else None
+        else:
+            self._scaler_path = None
         self.model_cfg = self._load_config(
             model_cfg, ckpt_path=self.ckpt_path, auto_file_name="model_cfg.pkl"
         )
@@ -159,12 +169,85 @@ class Base_pkg(_BasePtForecasterV2):
         datamodule_cls = self.get_datamodule_cls()
         return datamodule_cls(data, **self.datamodule_cfg)
 
+    def _save_scalers(self, scaler_path: Path):
+        """Save scalers from DataModule to disk.
+
+        BasePkg acts as storage layer - gets state from DataModule and pickles it.
+
+        Parameters
+        ----------
+        scaler_path : Path
+            Path where scalers should be saved.
+        """
+        if not hasattr(self.datamodule, "get_scalers_state"):
+            warnings.warn(
+                f"DataModule of type {type(self.datamodule).__name__} does not support "
+                "scaler operations. It must implement 'get_scalers_state()' method. "
+                "Skipping scaler saving.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return
+
+        scaler_state = self.datamodule.get_scalers_state()
+
+        with open(scaler_path, "wb") as f:
+            pickle.dump(scaler_state, f)
+
+        self._scaler_path = scaler_path
+        print(f"Scalers saved to: {scaler_path}")
+
+    def _load_scalers(self, datamodule: LightningDataModule, scaler_path: Path):
+        """Load scalers from disk and set to DataModule.
+
+        BasePkg acts as delivery layer - unpickles state and passes to DataModule
+        for validation.
+
+        Parameters
+        ----------
+        datamodule : LightningDataModule
+            The datamodule to load scalers into.
+        scaler_path : Path
+            Path to load scalers from.
+        """
+        if not hasattr(datamodule, "set_scalers_state"):
+            warnings.warn(
+                f"DataModule of type {type(datamodule).__name__} does not support "
+                "scaler operations. It must implement 'set_scalers_state()' method. "
+                "Skipping scaler loading.",
+                UserWarning,
+                stacklevel=2,
+            )
+            return
+
+        if not scaler_path.exists():
+            raise FileNotFoundError(f"Scaler file not found: {scaler_path}")
+
+        try:
+            with open(scaler_path, "rb") as f:
+                scaler_state = pickle.load(f)  # noqa: S301
+            datamodule.set_scalers_state(scaler_state)
+            print(f"Scalers loaded from: {scaler_path}")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load or validate scalers from {scaler_path}: {e}"
+            )
+
     def _load_dataloader(
         self, data: TimeSeries | LightningDataModule | DataLoader
     ) -> DataLoader:
-        """Converts various data input types into a DataLoader for prediction."""
+        """Converts various data input types into a DataLoader for prediction.
+
+        Reuses datamodules from fitting stage if already exists to persist scalers
+        across stages of fit->test/predict.
+        """
         if isinstance(data, TimeSeries):  # D1 Layer
             dm = self._build_datamodule(data)
+
+            # BasePkg handles scaler loading
+            if self._scaler_path:
+                self._load_scalers(dm, self._scaler_path)
+
             dm.setup(stage="predict")
             return dm.predict_dataloader()
         elif isinstance(data, LightningDataModule):  # D2 Layer
@@ -199,6 +282,8 @@ class Base_pkg(_BasePtForecasterV2):
         save_ckpt: bool = True,
         ckpt_dir: str | Path = "checkpoints",
         ckpt_kwargs: dict[str, Any] | None = None,
+        save_scalers: bool = True,
+        scaler_dir: str | Path = None,
         **trainer_fit_kwargs,
     ):
         """
@@ -215,6 +300,12 @@ class Base_pkg(_BasePtForecasterV2):
             Directory to save artifacts.
         ckpt_kwargs : dict, optional
             Keyword arguments passed to ``ModelCheckpoint``.
+        save_scalers : bool, default=True
+            If True, save the fitted scalers after training.
+            Necessary in order to use fitted scalers on new data, e.g.,
+            during prediction.
+        scaler_dir : Union[str, Path], default="fitted_scalers"
+            Directory to save fitted scalers.
         **trainer_fit_kwargs :
             Additional keyword arguments passed to `trainer.fit()`.
 
@@ -227,6 +318,18 @@ class Base_pkg(_BasePtForecasterV2):
             self.datamodule = self._build_datamodule(data)
         else:
             self.datamodule = data
+
+        # Validate datamodule supports scaling
+        if save_scalers and not hasattr(self.datamodule, "get_scalers_state"):
+            warnings.warn(
+                f"DataModule of type {type(self.datamodule).__name__} does not support "
+                "scaler operations. Skipping scaler saving. Use a DataModule that "
+                "implements 'get_scalers_state()' method to enable this feature.",
+                UserWarning,
+                stacklevel=2,
+            )
+            save_scalers = False
+
         self.datamodule.setup(stage="fit")
 
         if self.model is None:
@@ -259,6 +362,18 @@ class Base_pkg(_BasePtForecasterV2):
         self.trainer = Trainer(**trainer_init_cfg, callbacks=callbacks)
 
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
+
+        # BasePkg handles all scaler persistence
+        if save_scalers:
+            if scaler_dir is None:
+                scaler_dir = Path(ckpt_dir) if save_ckpt else Path("fitted_scalers")
+            else:
+                scaler_dir = Path(scaler_dir)
+            scaler_dir.mkdir(parents=True, exist_ok=True)
+            scaler_path = scaler_dir / "scalers.pkl"
+
+            self._save_scalers(scaler_path)
+
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             self._save_artifact(best_model_path.parent)
