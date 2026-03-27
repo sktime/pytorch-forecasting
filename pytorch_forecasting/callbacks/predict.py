@@ -11,10 +11,12 @@ class PredictCallback(BasePredictionWriter):
     """
     Callback to capture predictions and related information internally.
 
+
     This callback is used by ``BaseModel.predict()`` to process raw model outputs
     into the desired format (``prediction``, ``quantiles``, or ``raw``) and collect
     any additional requested info (``x``, ``y``, ``index``, etc.). The results are
     collated and stored in memory, accessible via the ``.result`` property.
+
 
     Parameters
     ----------
@@ -45,6 +47,27 @@ class PredictCallback(BasePredictionWriter):
         if result:
             self._result = None
 
+    @staticmethod
+    def _move_to_cpu(obj):
+        """Recursively move tensors to CPU and detach from computation graph.
+
+        Parameters
+        ----------
+        obj : torch.Tensor, dict, list, tuple, or other
+            Object containing tensors to move to CPU.
+
+        Returns
+        -------
+        Same structure with all tensors detached and moved to CPU.
+        """
+        if isinstance(obj, torch.Tensor):
+            return obj.detach().cpu()
+        elif isinstance(obj, dict):
+            return {k: PredictCallback._move_to_cpu(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return type(obj)(PredictCallback._move_to_cpu(v) for v in obj)
+        return obj
+
     def on_predict_batch_end(
         self,
         trainer: Trainer,
@@ -66,17 +89,17 @@ class PredictCallback(BasePredictionWriter):
         else:
             raise ValueError(f"Invalid prediction mode: {self.mode}")
 
-        self.predictions.append(processed_output)
+        self.predictions.append(self._move_to_cpu(processed_output))
 
         for key in self.return_info:
             if key == "x":
-                self.info[key].append(x)
+                self.info[key].append(self._move_to_cpu(x))
             elif key == "y":
-                self.info[key].append(y[0])
+                self.info[key].append(self._move_to_cpu(y[0]))
             elif key == "index":
-                self.info[key].append(y[1])
+                self.info[key].append(self._move_to_cpu(y[1]))
             elif key == "decoder_lengths":
-                self.info[key].append(x["decoder_lengths"])
+                self.info[key].append(self._move_to_cpu(x["decoder_lengths"]))
             else:
                 warn(f"Unknown return_info key: {key}")
 
