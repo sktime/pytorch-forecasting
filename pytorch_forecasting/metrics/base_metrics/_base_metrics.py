@@ -245,6 +245,56 @@ class TorchMetricWrapper(Metric):
         return f"WrappedTorchmetric({repr(self.torchmetric)})"
 
 
+class NNLossWrapper(Metric):
+    """
+    Wrap a standard PyTorch nn.Module loss for use with pytorch-forecasting.
+
+    Allows losses like nn.HuberLoss, nn.MSELoss, nn.SmoothL1Loss to be
+    used directly in pytorch-forecasting models without any changes.
+
+    Does not support weighting of errors.
+
+    Example
+    -------
+    >>> from torch import nn
+    >>> from pytorch_forecasting.metrics import NNLossWrapper
+    >>>
+    >>> loss = NNLossWrapper(nn.HuberLoss(delta=1.5))
+    >>> combined = NNLossWrapper(nn.HuberLoss()) + MAE()
+    """
+
+    def __init__(self, loss_fn: torch.nn.Module, **kwargs):
+        """
+        Args:
+            loss_fn (nn.Module): any PyTorch loss that accepts (input, target).
+        """
+        if not isinstance(loss_fn, torch.nn.Module):
+            raise TypeError(f"loss_fn must be an nn.Module, got {type(loss_fn)}")
+        super().__init__(**kwargs)
+        self.loss_fn = loss_fn
+
+    def update(self, y_pred: torch.Tensor, y_actual) -> None:
+        if isinstance(y_actual, (list, tuple)) and not isinstance(
+            y_actual, rnn.PackedSequence
+        ):
+            target, _ = y_actual
+        else:
+            target = y_actual
+        y_pred = self.to_prediction(y_pred)
+        self._loss = self.loss_fn(y_pred, target)
+
+    def compute(self) -> torch.Tensor:
+        return self._loss
+
+    def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+        if y_pred.ndim == 3:
+            y_pred = y_pred[..., 0]
+        return y_pred
+
+    def __repr__(self):
+        return f"NNLossWrapper({repr(self.loss_fn)})"
+
+
 def convert_torchmetric_to_pytorch_forecasting_metric(
     metric: LightningMetric,
 ) -> Metric:
