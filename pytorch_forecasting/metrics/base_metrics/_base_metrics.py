@@ -999,6 +999,7 @@ class DistributionLoss(MultiHorizonMetric):
 
     distribution_class: distributions.Distribution
     distribution_arguments: list[str]
+    skip_trainer_test: bool = False
 
     def __init__(
         self,
