@@ -803,7 +803,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             out["encoder_lengths"], min=0, max=self.hparams.max_encoder_length
         )
         decoder_length_histogram = integer_histogram(
-            out["decoder_lengths"], min=1, max=out["decoder_variables"].size(1)
+            out["decoder_lengths"], min=0, max=out["decoder_variables"].size(1)
         )
 
         # mask where decoder and encoder where not applied
@@ -824,7 +824,11 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         decoder_variables = decoder_variables.masked_fill(
             decode_mask.unsqueeze(-1), 0.0
         ).sum(dim=1)
-        decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
+        decoder_variables /= (
+            out["decoder_lengths"]
+            .where(out["decoder_lengths"] > 0, torch.ones_like(out["decoder_lengths"]))
+            .unsqueeze(-1)
+        )
 
         # static variables need no masking
         static_variables = out["static_variables"].squeeze(1)
