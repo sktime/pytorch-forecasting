@@ -28,15 +28,21 @@ class GroupedSampler(Sampler):
         """
         Initialize.
 
-        Args:
-            sampler (Sampler or Iterable): Base sampler. Can be any iterable object
-            drop_last (bool): if to drop last mini-batch from a group if it is smaller than batch_size.
-                Defaults to False.
-            shuffle (bool): if to shuffle dataset. Defaults to False.
-            batch_size (int, optional): Number of samples in a mini-batch. This is rather the maximum number
-                of samples. Because mini-batches are grouped by prediction time, chances are that there
-                are multiple where batch size will be smaller than the maximum. Defaults to 64.
-        """  # noqa: E501
+        Parameters
+        ----------
+        sampler : Sampler or Iterable
+            Base sampler. Can be any iterable object.
+        drop_last : bool
+            If ``True``, drop last mini-batch from a group if it is smaller
+            than ``batch_size``. Default is ``False``.
+        shuffle : bool
+            If ``True``, shuffle dataset. Default is ``False``.
+        batch_size : int
+            Number of samples in a mini-batch. This is rather the maximum
+            number of samples. Because mini-batches are grouped by prediction
+            time, chances are that there are multiple where batch size will be
+            smaller than the maximum. Default is 64.
+        """
         # Since collections.abc.Iterable does not check for `__getitem__`, which
         # is one way for an object to be an iterable, we don't do an `isinstance`
         # check here.
@@ -65,12 +71,18 @@ class GroupedSampler(Sampler):
         """
         Create the groups which can be sampled.
 
-        Args:
-            sampler (Sampler): will have attribute data_source which is of type TimeSeriesDataSet.
+        Parameters
+        ----------
+        sampler : Sampler
+            Will have attribute ``data_source`` which is of type
+            ``TimeSeriesDataSet``.
 
-        Returns:
-            dict-like: dictionary-like object with data_source.index as values and group names as keys
-        """  # noqa: E501
+        Returns
+        -------
+        dict-like
+            Dictionary-like object with ``data_source.index`` as values and
+            group names as keys.
+        """
         raise NotImplementedError()
 
     def construct_batch_groups(self, groups):
