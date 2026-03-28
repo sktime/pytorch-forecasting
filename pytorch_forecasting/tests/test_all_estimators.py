@@ -340,9 +340,9 @@ def _integration(
 
         batch_size, prediction_length, n_features = output.shape
         assert batch_size > 0, f"Batch size must be positive, got {batch_size}"
-        assert (
-            prediction_length > 0
-        ), f"Prediction length must be positive, got {prediction_length}"
+        assert prediction_length > 0, (
+            f"Prediction length must be positive, got {prediction_length}"
+        )
         assert (
             # todo: compare n_features with expected 3rd dimension of the corresponding
             # loss function on which model is trained and

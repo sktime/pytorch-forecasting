@@ -167,9 +167,9 @@ class xLSTMTime(AutoRegressiveBaseModel):
         """
         from pytorch_forecasting.data.encoders import NaNLabelEncoder
 
-        assert not isinstance(
-            dataset.target_normalizer, NaNLabelEncoder
-        ), "only regression tasks are supported - target must not be categorical"
+        assert not isinstance(dataset.target_normalizer, NaNLabelEncoder), (
+            "only regression tasks are supported - target must not be categorical"
+        )
 
         new_kwargs = copy(kwargs)
         new_kwargs.update(

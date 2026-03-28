@@ -37,15 +37,15 @@ def test_NaNLabelEncoder(data, allow_nan):
         with pytest.raises(KeyError):
             encoder.transform(transform_data)
     else:
-        assert (
-            encoder.transform(transform_data)[0] == 0
-        ), "First value should be translated to 0 if nan"
-        assert (
-            encoder.transform(transform_data)[-1] == 0
-        ), "Last value should be translated to 0 if nan"
-        assert (
-            encoder.transform(fit_data)[0] > 0
-        ), "First value should not be 0 if not nan"
+        assert encoder.transform(transform_data)[0] == 0, (
+            "First value should be translated to 0 if nan"
+        )
+        assert encoder.transform(transform_data)[-1] == 0, (
+            "Last value should be translated to 0 if nan"
+        )
+        assert encoder.transform(fit_data)[0] > 0, (
+            "First value should not be 0 if not nan"
+        )
 
 
 def test_NaNLabelEncoder_add():
@@ -99,9 +99,9 @@ def test_EncoderNormalizer(kwargs, data_type):
     inverse = normalizer.inverse_transform(torch.as_tensor(transformed))
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p"]:
-        assert (
-            inverse >= 0
-        ).all(), "Inverse transform should yield only positive values"
+        assert (inverse >= 0).all(), (
+            "Inverse transform should yield only positive values"
+        )
     else:
         expected = torch.as_tensor(data)
         assert torch.isclose(
@@ -145,9 +145,9 @@ def test_GroupNormalizer(kwargs, groups):
     )
 
     if kwargs.get("transformation") in ["relu", "softplus", "log1p", "log"]:
-        assert (
-            normalizer(test_data) >= 0
-        ).all(), "Inverse transform should yield only positive values"
+        assert (normalizer(test_data) >= 0).all(), (
+            "Inverse transform should yield only positive values"
+        )
     else:
         assert torch.isclose(
             normalizer(test_data), torch.tensor(data.b.iloc[0]), atol=1e-5

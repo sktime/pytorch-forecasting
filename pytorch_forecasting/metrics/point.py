@@ -255,9 +255,9 @@ class MASE(MultiHorizonMetric):
         eps = 1e-6
         batch_size = target.size(0)
         total_lengths = lengths + encoder_lengths
-        assert (
-            total_lengths > 1
-        ).all(), "Need at least 2 target values to be able to calculate MASE"
+        assert (total_lengths > 1).all(), (
+            "Need at least 2 target values to be able to calculate MASE"
+        )
         max_length = target.size(1) + encoder_target.size(1)
         if (
             total_lengths != max_length

@@ -6,7 +6,6 @@ Samformer Model from DSIPTS for PyTorch Forecasting
 import math
 from typing import Optional, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer

@@ -1543,13 +1543,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             kwargs["dataset_parameters"] = dataset.get_parameters()
         net = cls(**kwargs)
         if dataset.multi_target:
-            assert isinstance(
-                net.loss, MultiLoss
-            ), f"multiple targets require loss to be MultiLoss but found {net.loss}"
+            assert isinstance(net.loss, MultiLoss), (
+                f"multiple targets require loss to be MultiLoss but found {net.loss}"
+            )
         else:
-            assert not isinstance(
-                net.loss, MultiLoss
-            ), "MultiLoss not compatible with single target"
+            assert not isinstance(net.loss, MultiLoss), (
+                "MultiLoss not compatible with single target"
+            )
 
         return net
 
@@ -1718,9 +1718,9 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             mode_kwargs = {}
 
         # ensure passed dataloader is correct
-        assert isinstance(
-            dataloader.dataset, TimeSeriesDataSet
-        ), "dataset behind dataloader mut be TimeSeriesDataSet"
+        assert isinstance(dataloader.dataset, TimeSeriesDataSet), (
+            "dataset behind dataloader mut be TimeSeriesDataSet"
+        )
 
         predict_callback = PredictCallback(
             mode=mode,
@@ -2392,9 +2392,9 @@ class AutoRegressiveBaseModel(BaseModel):
         target0 = dataset.target_names[0]
         lag = set(lags.get(target0, []))
         for target in dataset.target_names:
-            assert lag == set(
-                lags.get(target, [])
-            ), f"all target lags in dataset must be the same but found {lags}"
+            assert lag == set(lags.get(target, [])), (
+                f"all target lags in dataset must be the same but found {lags}"
+            )
 
         kwargs.setdefault(
             "target_lags", {name: dataset._get_lagged_names(name) for name in lags}

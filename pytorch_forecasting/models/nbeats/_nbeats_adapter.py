@@ -138,12 +138,12 @@ class NBeatsAdapter(BaseModel):
         new_kwargs.update(kwargs)
 
         # validate arguments
-        assert isinstance(
-            dataset.target, str
-        ), "only one target is allowed (passed as string to dataset)"
-        assert not isinstance(
-            dataset.target_normalizer, NaNLabelEncoder
-        ), "only regression tasks are supported - target must not be categorical"
+        assert isinstance(dataset.target, str), (
+            "only one target is allowed (passed as string to dataset)"
+        )
+        assert not isinstance(dataset.target_normalizer, NaNLabelEncoder), (
+            "only regression tasks are supported - target must not be categorical"
+        )
         assert dataset.min_encoder_length == dataset.max_encoder_length, (
             "only fixed encoder length is allowed,"
             " but min_encoder_length != max_encoder_length"
@@ -154,12 +154,12 @@ class NBeatsAdapter(BaseModel):
             " but max_prediction_length != min_prediction_length"
         )
 
-        assert (
-            dataset.randomize_length is None
-        ), "length has to be fixed, but randomize_length is not None"
-        assert (
-            not dataset.add_relative_time_idx
-        ), "add_relative_time_idx has to be False"
+        assert dataset.randomize_length is None, (
+            "length has to be fixed, but randomize_length is not None"
+        )
+        assert not dataset.add_relative_time_idx, (
+            "add_relative_time_idx has to be False"
+        )
 
         assert (
             len(dataset.flat_categoricals) == 0

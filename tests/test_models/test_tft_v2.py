@@ -336,24 +336,24 @@ def test_model_with_datamodule_integration(
     dm = data_module_for_test
     model_metadata_from_dm = dm.metadata
 
-    assert (
-        model_metadata_from_dm["encoder_cont"] == 6
-    ), f"Actual encoder_cont: {model_metadata_from_dm['encoder_cont']}"
-    assert (
-        model_metadata_from_dm["encoder_cat"] == 0
-    ), f"Actual encoder_cat: {model_metadata_from_dm['encoder_cat']}"
-    assert (
-        model_metadata_from_dm["decoder_cont"] == 2
-    ), f"Actual decoder_cont: {model_metadata_from_dm['decoder_cont']}"
-    assert (
-        model_metadata_from_dm["decoder_cat"] == 0
-    ), f"Actual decoder_cat: {model_metadata_from_dm['decoder_cat']}"
-    assert (
-        model_metadata_from_dm["static_categorical_features"] == 0
-    ), f"Actual static_cat: {model_metadata_from_dm['static_categorical_features']}"
-    assert (
-        model_metadata_from_dm["static_continuous_features"] == 2
-    ), f"Actual static_cont: {model_metadata_from_dm['static_continuous_features']}"
+    assert model_metadata_from_dm["encoder_cont"] == 6, (
+        f"Actual encoder_cont: {model_metadata_from_dm['encoder_cont']}"
+    )
+    assert model_metadata_from_dm["encoder_cat"] == 0, (
+        f"Actual encoder_cat: {model_metadata_from_dm['encoder_cat']}"
+    )
+    assert model_metadata_from_dm["decoder_cont"] == 2, (
+        f"Actual decoder_cont: {model_metadata_from_dm['decoder_cont']}"
+    )
+    assert model_metadata_from_dm["decoder_cat"] == 0, (
+        f"Actual decoder_cat: {model_metadata_from_dm['decoder_cat']}"
+    )
+    assert model_metadata_from_dm["static_categorical_features"] == 0, (
+        f"Actual static_cat: {model_metadata_from_dm['static_categorical_features']}"
+    )
+    assert model_metadata_from_dm["static_continuous_features"] == 2, (
+        f"Actual static_cont: {model_metadata_from_dm['static_continuous_features']}"
+    )
     assert model_metadata_from_dm["target"] == 1
 
     tft_init_args = tft_model_params_fixture_func.copy()

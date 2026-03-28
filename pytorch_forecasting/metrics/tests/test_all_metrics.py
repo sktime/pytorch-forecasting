@@ -359,9 +359,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             quantile_pred = metric.to_quantiles(y_pred)
             # for quantile metrics, the original predictions should match the result of
             # `to_quantiles`, since it does not take in the `quantiles` argument.
-            assert torch.allclose(
-                quantile_pred, y_pred
-            ), f"Quantile prediction does not match the original predictions in {metric_type}."  # noqa: E501
+            assert torch.allclose(quantile_pred, y_pred), (
+                f"Quantile prediction does not match the original predictions in {metric_type}."
+            )  # noqa: E501
 
             expected_shape = self._get_expected_output_shape_quantiles(
                 batch_size, prediction_length, output_dim, metric_type
@@ -374,9 +374,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
                 batch_size, prediction_length, len(quantiles), metric_type
             )
 
-        assert isinstance(
-            quantile_pred, torch.Tensor
-        ), "Quantile prediction should be a tensor."  # noqa: E501
+        assert isinstance(quantile_pred, torch.Tensor), (
+            "Quantile prediction should be a tensor."
+        )  # noqa: E501
         assert quantile_pred.shape == expected_shape, (
             f"Quantile prediction shape mismatch: got {quantile_pred.shape}, "
             f"expected {expected_shape}."
@@ -487,9 +487,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
         else:
             assert result.ndim == 0
             if reduction == "sqrt-mean":
-                assert (
-                    result >= 0
-                ), "Result should be non-negative for sqrt-mean reduction."  # noqa: E501
+                assert result >= 0, (
+                    "Result should be non-negative for sqrt-mean reduction."
+                )  # noqa: E501
 
     @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
     def test_loss_method(
@@ -544,9 +544,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             ), "Distribution Loss should match for the first two dimensions."  # noqa: E501
             assert res.ndim == 2, "Distribution loss return should be a 2D tensor."  # noqa: E501
         else:
-            assert (
-                res.ndim == y_pred.ndim
-            ), "Loss should have the same number of dimensions as predictions."  # noqa: E501
-            assert (
-                res.shape == y_pred.shape
-            ), f"Loss should be a tensor with shape {y_pred.shape}, got {res.shape}."  # noqa: E501
+            assert res.ndim == y_pred.ndim, (
+                "Loss should have the same number of dimensions as predictions."
+            )  # noqa: E501
+            assert res.shape == y_pred.shape, (
+                f"Loss should be a tensor with shape {y_pred.shape}, got {res.shape}."
+            )  # noqa: E501
