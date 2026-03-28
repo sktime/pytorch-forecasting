@@ -42,3 +42,29 @@ class PositionalEmbedding(nn.Module):
 
     def forward(self, x):
         return self.pe[:, : x.size(1)]
+
+
+class _PositionalEmbedding(PositionalEmbedding):
+    """
+    Sinusoidal positional embedding with additive application and dropout.
+
+    Inherits the sinusoidal buffer from ``PositionalEmbedding`` and adds:
+    - Additive application (x + pe) in ``forward``
+    - Dropout after addition
+
+    Parameters
+    ----------
+    d_model : int
+        Embedding dimension.
+    max_len : int
+        Maximum sequence length.
+    dropout : float
+        Dropout probability.
+    """
+
+    def __init__(self, d_model: int, max_len: int = 512, dropout: float = 0.1):
+        super().__init__(d_model, max_len)
+        self.drop = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.drop(x + self.pe[:, : x.size(1), :])
