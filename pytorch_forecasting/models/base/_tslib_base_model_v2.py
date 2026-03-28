@@ -44,6 +44,8 @@ class TslibBaseModel(BaseModel):
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
         metadata: dict | None = None,
+        gradient_clip_val: float | None = None,
+        gradient_clip_algorithm: str = "norm",
     ):
         super().__init__(
             loss=loss,
@@ -52,6 +54,8 @@ class TslibBaseModel(BaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
+            gradient_clip_val=gradient_clip_val,
+            gradient_clip_algorithm=gradient_clip_algorithm,
         )
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
         self.metadata = metadata or {}

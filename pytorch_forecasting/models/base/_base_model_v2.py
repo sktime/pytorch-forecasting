@@ -50,6 +50,8 @@ class BaseModel(LightningModule):
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
+        gradient_clip_val: float | None = None,
+        gradient_clip_algorithm: str = "norm",
     ):
         super().__init__()
         self.loss = loss
@@ -60,6 +62,8 @@ class BaseModel(LightningModule):
         self.lr_scheduler_params = (
             lr_scheduler_params if lr_scheduler_params is not None else {}
         )
+        self.gradient_clip_val = gradient_clip_val
+        self.gradient_clip_algorithm = gradient_clip_algorithm
         self.model_name = self.__class__.__name__
         warn(
             f"The Model '{self.model_name}' is part of an experimental rework"
@@ -240,6 +244,34 @@ class BaseModel(LightningModule):
         )
         self.log_metrics(y_hat, y, prefix="test")
         return {"test_loss": loss}
+
+    def configure_gradient_clipping(
+        self,
+        optimizer: Optimizer,
+        gradient_clip_val: int | float | None = None,
+        gradient_clip_algorithm: str | None = None,
+    ) -> None:
+        """
+        Configure gradient clipping for the model.
+        Prioritizes model-owned `gradient_clip_val` and `gradient_clip_algorithm`.
+        """
+        if self.gradient_clip_val is not None:
+            gradient_clip_val = self.gradient_clip_val
+            gradient_clip_algorithm = self.gradient_clip_algorithm
+
+        if gradient_clip_val is not None:
+            self.clip_gradients(
+                optimizer,
+                gradient_clip_val=gradient_clip_val,
+                gradient_clip_algorithm=gradient_clip_algorithm,
+            )
+        elif getattr(self, "sensitive_to_gradient_explosions", False):
+            warn(
+                f"Model {self.__class__.__name__} is sensitive to gradient explosions, "
+                "but `gradient_clip_val` is set to None. "
+                "Consider setting `gradient_clip_val=0.1` for better stability.",
+                UserWarning,
+            )
 
     def predict_step(
         self,
