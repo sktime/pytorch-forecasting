@@ -47,7 +47,6 @@ class Samformer(BaseModel):
         # specific params
         hidden_size: int,
         use_revin: bool,
-        # out_channels has to be 1, due to lack of MultiLoss support in v2.
         out_channels: int | list[int] | None = 1,
         persistence_weight: float = 0.0,
         logging_metrics: list[nn.Module] | None = None,
@@ -77,14 +76,10 @@ class Samformer(BaseModel):
         self.max_encoder_length = self.metadata["max_encoder_length"]
         self.max_prediction_length = self.metadata["max_prediction_length"]
         self.encoder_cont = self.metadata["encoder_cont"]
-        self.encoder_input_dim = self.encoder_cont + 1  # +1 for target variable input.
+
+        self.encoder_input_dim = self.encoder_cont + self.n_targets
 
         self.hidden_size = hidden_size
-        if out_channels != 1:
-            raise ValueError(
-                "out_channels has to be 1 for Samformer,",
-                " due to lack of MultiLoss support in v2.",
-            )
         self.out_channels = out_channels
         self.use_revin = use_revin
         self.persistence_weight = persistence_weight
@@ -172,15 +167,20 @@ class Samformer(BaseModel):
 
         out = out.transpose(1, 2)
 
-        target_predictions = out[:, :, -1]  # (batch_size, max_prediction_length)
-
-        if target_predictions.ndim == 1:
-            target_predictions = target_predictions.unsqueeze(0)
+        target_predictions = out[:, :, -self.n_targets :]
 
         if self.n_quantiles > 1:
             target_predictions = target_predictions.unsqueeze(-1).expand(
-                -1, -1, self.n_quantiles
+                -1, -1, -1, self.n_quantiles
             )
-        elif self.n_quantiles == 1:
+        else:
             target_predictions = target_predictions.unsqueeze(-1)
+
+        if self.n_targets > 1:
+            target_predictions = [
+                target_predictions[:, :, i, :] for i in range(self.n_targets)
+            ]
+        else:
+            target_predictions = target_predictions.squeeze(2)
+
         return {"prediction": target_predictions}
