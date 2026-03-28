@@ -30,9 +30,9 @@ def test_composite_metric():
     metric1 = SMAPE()
     metric2 = MAE()
     combined_metric = 1.0 * (0.3 * metric1 + 2.0 * metric2 + metric1)
-    assert isinstance(combined_metric, CompositeMetric), (
-        "combined metric should be composite metric"
-    )
+    assert isinstance(
+        combined_metric, CompositeMetric
+    ), "combined metric should be composite metric"
 
     # test repr()
     repr(combined_metric)
