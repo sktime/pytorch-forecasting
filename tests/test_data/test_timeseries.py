@@ -61,8 +61,8 @@ def test_find_end_indices():
 def test_raise_short_encoder_length(test_data):
     with pytest.warns(UserWarning):
         test_data = test_data[
-            lambda x: ~(
-                (x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3)
+            lambda x: (
+                ~((x.agency == "Agency_22") & (x.sku == "SKU_01") & (x.time_idx > 3))
             )
         ]
         TimeSeriesDataSet(
@@ -589,8 +589,8 @@ def test_lagged_variable_known_unknown_assignment(test_data):
     ],
 )
 def test_filter_data(test_dataset, agency, first_prediction_idx, should_raise):
-    func = lambda x: (x.agency == agency) & (
-        x.time_idx_first_prediction >= first_prediction_idx
+    func = lambda x: (
+        (x.agency == agency) & (x.time_idx_first_prediction >= first_prediction_idx)
     )
     if should_raise:
         with pytest.raises(ValueError):
@@ -640,8 +640,9 @@ def test_graph_sampler(test_dataset):
                 selected_pos = indices["index_start"].iloc[sub_group_idx]
                 # remove selected sample
                 indices = indices[
-                    lambda x: x["sequence_id"]
-                    != indices["sequence_id"].iloc[sub_group_idx]
+                    lambda x: (
+                        x["sequence_id"] != indices["sequence_id"].iloc[sub_group_idx]
+                    )
                 ]
                 # filter duplicate timeseries
                 # indices = indices.sort_values("sequence_length").drop_duplicates("sequence_id", keep="last") # noqa : E501

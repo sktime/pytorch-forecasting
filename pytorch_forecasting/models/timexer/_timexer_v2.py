@@ -119,6 +119,8 @@ class TimeXer(TslibBaseModel):
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
         metadata: dict | None = None,
+        gradient_clip_val: float | None = 0.1,
+        gradient_clip_algorithm: str = "norm",
         **kwargs: Any,
     ):
         super().__init__(
@@ -129,7 +131,10 @@ class TimeXer(TslibBaseModel):
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
             metadata=metadata,
+            gradient_clip_val=gradient_clip_val,
+            gradient_clip_algorithm=gradient_clip_algorithm,
         )
+        self.sensitive_to_gradient_explosions = True
 
         warn.warn(
             "TimeXer is an experimental model implemented on TslibBaseModelV2. "

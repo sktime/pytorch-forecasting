@@ -6,7 +6,6 @@ Samformer Model from DSIPTS for PyTorch Forecasting
 import math
 from typing import Optional, Union
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
@@ -56,6 +55,8 @@ class Samformer(BaseModel):
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
         metadata: dict | None = None,
+        gradient_clip_val: float | None = 0.1,
+        gradient_clip_algorithm: str = "norm",
         **kwargs,
     ):
         super().__init__(
@@ -65,7 +66,10 @@ class Samformer(BaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
+            gradient_clip_val=gradient_clip_val,
+            gradient_clip_algorithm=gradient_clip_algorithm,
         )
+        self.sensitive_to_gradient_explosions = True
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "optimizer"])
         self.metadata = metadata

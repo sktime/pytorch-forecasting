@@ -36,6 +36,8 @@ class TFT(BaseModel):
         dropout: float = 0.1,
         metadata: dict | None = None,
         output_size: int = 1,
+        gradient_clip_val: float | None = 0.1,
+        gradient_clip_algorithm: str = "norm",
     ):
         super().__init__(
             loss=loss,
@@ -44,7 +46,10 @@ class TFT(BaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
+            gradient_clip_val=gradient_clip_val,
+            gradient_clip_algorithm=gradient_clip_algorithm,
         )
+        self.sensitive_to_gradient_explosions = True
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.hidden_size = hidden_size
