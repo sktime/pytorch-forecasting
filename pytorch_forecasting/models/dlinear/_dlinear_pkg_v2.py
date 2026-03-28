@@ -131,6 +131,15 @@ class DLinear_pkg_v2(Base_pkg):
                 individual=False,
                 logging_metrics=[SMAPE()],
             ),
+            dict(
+                optimizer="adamw",
+                lr_scheduler="cosine_annealing",
+                lr_scheduler_params={"T_max": 5},
+            ),
+            dict(
+                optimizer="adagrad",
+                optimizer_params={"lr": 1e-3},
+            ),
         ]
 
         default_dm_cfg = {"context_length": 8, "prediction_length": 2}
