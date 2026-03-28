@@ -14,6 +14,7 @@ from pytorch_forecasting.data.encoders import (
     TorchNormalizer,
 )
 from pytorch_forecasting.data.samplers import TimeSynchronizedBatchSampler
+from pytorch_forecasting.data.text_embedding_aligner import TextEmbeddingAligner
 from pytorch_forecasting.data.timeseries import TimeSeries, TimeSeriesDataSet
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "EncoderNormalizer",
     "TimeSynchronizedBatchSampler",
     "MultiNormalizer",
+    "TextEmbeddingAligner",
 ]
