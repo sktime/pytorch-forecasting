@@ -695,9 +695,18 @@ class TslibDataModule(LightningDataModule):
                 "Please provide a non-empty dataset."
             )
 
+        # Use separate generators so iterating dataloaders before training
+        # doesn't affect the global RNG state and change training results.
+        self._split_generator = torch.Generator()
+        self._split_generator.manual_seed(int(torch.randint(0, 2**31 - 1, (1,)).item()))
+        self._shuffle_generator = torch.Generator()
+        self._shuffle_generator.manual_seed(
+            int(torch.randint(0, 2**31 - 1, (1,)).item())
+        )
+
         # this is a very rudimentary way to handle the splits when
         # the dataset is of size equal to 1 or 2.
-        self._indices = torch.randperm(total_series)
+        self._indices = torch.randperm(total_series, generator=self._split_generator)
         if total_series == 1:
             self._train_indices = self._indices
             self._val_indices = self._indices
@@ -774,6 +783,7 @@ class TslibDataModule(LightningDataModule):
             shuffle=self.shuffle,
             num_workers=self.num_workers,
             collate_fn=self.collate_fn,
+            generator=self._shuffle_generator if self.shuffle else None,
         )
 
     def val_dataloader(self) -> DataLoader:
