@@ -61,44 +61,58 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         logging_metrics: nn.ModuleList = None,
         **kwargs,
     ):
+        """Recurrent network.
+
+        Simple LSTM/GRU layer followed by an output projection.
+
+        Parameters
+        ----------
+        cell_type : str, default="LSTM"
+            Recurrent cell type. One of {"LSTM", "GRU"}.
+        hidden_size : int, default=10
+            Hidden state size of the recurrent layer.
+        rnn_layers : int, default=2
+            Number of recurrent layers.
+        dropout : float, default=0.1
+            Dropout in recurrent layers (only applied when ``rnn_layers > 1``).
+        static_categoricals : list[str] or None, default=None
+            Names of static categorical variables.
+        static_reals : list[str] or None, default=None
+            Names of static continuous variables.
+        time_varying_categoricals_encoder : list[str] or None, default=None
+            Names of categorical variables used in the encoder.
+        time_varying_categoricals_decoder : list[str] or None, default=None
+            Names of categorical variables used in the decoder.
+        categorical_groups : dict[str, list[str]] or None, default=None
+            Mapping from a grouped categorical name to the list of categorical variables that form it.
+        time_varying_reals_encoder : list[str] or None, default=None
+            Names of continuous variables used in the encoder.
+        time_varying_reals_decoder : list[str] or None, default=None
+            Names of continuous variables used in the decoder.
+        embedding_sizes : dict[str, tuple[int, int]] or None, default=None
+            Mapping from categorical variable name to ``(n_classes, embedding_dim)``.
+        embedding_paddings : list[str] or None, default=None
+            Names of embeddings for which the ``0`` index is treated as padding.
+        embedding_labels : dict[str, numpy.ndarray] or None, default=None
+            Mapping from categorical variable name to the array of category labels.
+        x_reals : list[str] or None, default=None
+            Order of continuous variables in the tensor passed to :meth:`forward`.
+        x_categoricals : list[str] or None, default=None
+            Order of categorical variables in the tensor passed to :meth:`forward`.
+        output_size : int or list[int], default=1
+            Number of outputs per time step. For multi-target models, pass a list with one output size per target.
+        target : str or list[str], default=None
+            Target variable name or list of target variable names.
+        target_lags : dict[str, list[int]] or None, default=None
+            Mapping from target name to a list of lags (time steps) to include as additional inputs.
+        loss : MultiHorizonMetric, optional
+            Loss function taking prediction and targets.
+        logging_metrics : torch.nn.ModuleList, optional
+            Metrics to log during training. Defaults to
+            ``nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])``.
+        **kwargs
+            Additional arguments passed to the base model.
         """
-        Recurrent Network.
-
-        Simple LSTM or GRU layer followed by output layer
-
-        Args:
-            cell_type (str, optional): Recurrent cell type ["LSTM", "GRU"]. Defaults to "LSTM".
-            hidden_size (int, optional): hidden recurrent size - the most important hyperparameter along with
-                ``rnn_layers``. Defaults to 10.
-            rnn_layers (int, optional): Number of RNN layers - important hyperparameter. Defaults to 2.
-            dropout (float, optional): Dropout in RNN layers. Defaults to 0.1.
-            static_categoricals: integer of positions of static categorical variables
-            static_reals: integer of positions of static continuous variables
-            time_varying_categoricals_encoder: integer of positions of categorical variables for encoder
-            time_varying_categoricals_decoder: integer of positions of categorical variables for decoder
-            time_varying_reals_encoder: integer of positions of continuous variables for encoder
-            time_varying_reals_decoder: integer of positions of continuous variables for decoder
-            categorical_groups: dictionary where values
-                are list of categorical variables that are forming together a new categorical
-                variable which is the key in the dictionary
-            x_reals: order of continuous variables in tensor passed to forward function
-            x_categoricals: order of categorical variables in tensor passed to forward function
-            embedding_sizes: dictionary mapping (string) indices to tuple of number of categorical classes and
-                embedding size
-            embedding_paddings: list of indices for embeddings which transform the zero's embedding to a zero vector
-            embedding_labels: dictionary mapping (string) indices to list of categorical labels
-            output_size (Union[int, List[int]], optional): number of outputs (e.g. number of quantiles for
-                QuantileLoss and one target or list of output sizes).
-            target (str, optional): Target variable or list of target variables. Defaults to None.
-            target_lags (Dict[str, Dict[str, int]]): dictionary of target names mapped to list of time steps by
-                which the variable should be lagged.
-                Lags can be useful to indicate seasonality to the models. If you know the seasonalit(ies) of your data,
-                add at least the target variables with the corresponding lags to improve performance.
-                Defaults to no lags, i.e. an empty dictionary.
-            loss (MultiHorizonMetric, optional): loss: loss function taking prediction and targets.
-            logging_metrics (nn.ModuleList, optional): Metrics to log during training.
-                Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
-        """  # noqa : E501
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
@@ -196,17 +210,22 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         allowed_encoder_known_variable_names: list[str] = None,
         **kwargs,
     ):
+        """Create model from a dataset.
+
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            Time series dataset.
+        allowed_encoder_known_variable_names : list[str] or None, default=None
+            List of known variables that are allowed in the encoder. Defaults to all.
+        **kwargs
+            Additional arguments such as hyperparameters for the model (see :meth:`__init__`).
+
+        Returns
+        -------
+        RecurrentNetwork
+            Initialized model.
         """
-        Create model from dataset.
-
-        Args:
-            dataset: timeseries dataset
-            allowed_encoder_known_variable_names: List of known variables that are allowed in encoder, defaults to all
-            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
-
-        Returns:
-            Recurrent network
-        """  # noqa: E501
         new_kwargs = copy(kwargs)
         new_kwargs.update(
             cls.deduce_default_output_parameters(
@@ -237,12 +256,25 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         x_cont: torch.Tensor,
         one_off_target: torch.Tensor = None,
     ) -> torch.Tensor:
-        """
-        Create input vector into RNN network
+        """Create input vector for the RNN.
 
-        Args:
-            one_off_target: tensor to insert into first position of target. If None (default), remove first time step.
-        """  # noqa : E501
+        The target is shifted by one time step. During decoding, the first shifted target value can be provided via
+        ``one_off_target``.
+
+        Parameters
+        ----------
+        x_cat : torch.Tensor
+            Categorical inputs.
+        x_cont : torch.Tensor
+            Continuous inputs.
+        one_off_target : torch.Tensor or None, default=None
+            Target values to insert into the first position after shifting. If None, the first time step is removed.
+
+        Returns
+        -------
+        torch.Tensor
+            Input vector that is fed into the RNN.
+        """
         # create input vector
         if len(self.categoricals) > 0:
             embeddings = self.embeddings(x_cat)
@@ -269,8 +301,17 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         return input_vector
 
     def encode(self, x: dict[str, torch.Tensor]) -> HiddenState:
-        """
-        Encode sequence into hidden state
+        """Encode the encoder sequence into a hidden state.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Network input batch as produced by :class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+
+        Returns
+        -------
+        HiddenState
+            Hidden state for initializing the decoder.
         """
         # encode using rnn
         assert x["encoder_lengths"].min() > 0
@@ -304,10 +345,28 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
         hidden_state: HiddenState,
         n_samples: int = None,
     ) -> tuple[torch.Tensor, bool]:
-        """
-        Decode hidden state of RNN into prediction. If n_samples is given,
-        decode not by using actual values but rather by
-        sampling new targets from past predictions iteratively
+        """Decode the hidden state into a prediction.
+
+        During training, decoding uses teacher forcing. During evaluation, decoding is autoregressive, i.e. past
+        predictions are fed back as inputs.
+
+        Parameters
+        ----------
+        input_vector : torch.Tensor
+            Decoder input vector.
+        target_scale : torch.Tensor
+            Target scale used for rescaling outputs.
+        decoder_lengths : torch.Tensor
+            Lengths of decoder sequences.
+        hidden_state : HiddenState
+            Hidden state returned by :meth:`encode`.
+        n_samples : int or None, optional
+            Reserved for API compatibility. Currently unused for this model.
+
+        Returns
+        -------
+        torch.Tensor or list[torch.Tensor]
+            Model predictions.
         """
         if self.training:
             output, _ = self.decode_all(
@@ -349,8 +408,19 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
     def forward(
         self, x: dict[str, torch.Tensor], n_samples: int = None
     ) -> dict[str, torch.Tensor]:
-        """
-        Forward network
+        """Run a forward pass.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Network input batch as produced by :class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        n_samples : int or None, optional
+            Reserved for API compatibility. Currently unused for this model.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Network output dictionary containing the prediction.
         """
         hidden_state = self.encode(x)
         # decode
