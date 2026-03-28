@@ -300,6 +300,7 @@ class TslibDataModule(LightningDataModule):
         | list[NORMALIZER]
         | tuple[NORMALIZER]
         | None = "auto",  # noqa: E501
+        categorical_encoders: dict[str, Any] | str | None = "auto",
         scalers: dict[
             str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
         ]
@@ -340,6 +341,16 @@ class TslibDataModule(LightningDataModule):
             self._target_normalizer = target_normalizer
 
         self._metadata = None
+
+        # handle defaults and derived attributes
+        if (
+            isinstance(categorical_encoders, str)
+            and categorical_encoders.lower() == "auto"
+        ):
+            # Will be initialized during _prepare_metadata / setup
+            self._categorical_encoders = "auto"
+        else:
+            self._categorical_encoders = _coerce_to_dict(categorical_encoders)
 
         self.scalers = scalers or {}
         self.shuffle = shuffle
@@ -520,7 +531,38 @@ class TslibDataModule(LightningDataModule):
             "features": self.features,
         }
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
+
+    def _resolve_categorical_encoders(self):
+        """Resolve categorical encoders from D1 or user config.
+
+        If categorical_encoders="auto" (the default), this method pulls
+        the already-fitted encoders from the D1 TimeSeries dataset.
+        This ensures the same mappings are used during prediction.
+        """
+        if self._categorical_encoders == "auto":
+            self._categorical_encoders = (
+                self.time_series_dataset.categorical_encoders.copy()
+            )
+
+    def get_categorical_encoders(self) -> dict:
+        """Return the fitted categorical encoders.
+
+        These should be passed to a new TimeSeries instance when creating
+        prediction data, to ensure consistent encoding mappings.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping column names to fitted encoder objects.
+        """
+        if self._categorical_encoders == "auto":
+            self._resolve_categorical_encoders()
+        return self._categorical_encoders
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -582,10 +624,12 @@ class TslibDataModule(LightningDataModule):
         # scaling and normalization
         target_scale = {}
 
+        # Ensure categorical slices are purely
+        # long format integers for PyTorch Embeddings
         categorical_features = (
-            features[:, self.categorical_indices]
+            features[:, self.categorical_indices].long()
             if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
+            else torch.zeros((features.shape[0], 0), dtype=torch.long)
         )
 
         continuous_features = (
@@ -694,6 +738,8 @@ class TslibDataModule(LightningDataModule):
                 "The time series dataset is empty. "
                 "Please provide a non-empty dataset."
             )
+
+        self._resolve_categorical_encoders()
 
         # this is a very rudimentary way to handle the splits when
         # the dataset is of size equal to 1 or 2.
