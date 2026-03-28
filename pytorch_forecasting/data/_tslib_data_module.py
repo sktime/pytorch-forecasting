@@ -691,8 +691,7 @@ class TslibDataModule(LightningDataModule):
 
         if total_series == 0:
             raise ValueError(
-                "The time series dataset is empty. "
-                "Please provide a non-empty dataset."
+                "The time series dataset is empty. Please provide a non-empty dataset."
             )
 
         # this is a very rudimentary way to handle the splits when
