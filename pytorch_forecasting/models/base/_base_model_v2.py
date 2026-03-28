@@ -18,9 +18,8 @@ from torch.utils.data import DataLoader
 
 from pytorch_forecasting.callbacks.predict import PredictCallback
 from pytorch_forecasting.metrics import Metric, MultiLoss
-from pytorch_forecasting.utils._classproperty import classproperty
-
 from pytorch_forecasting.models.base._loss_adapter_v2 import NNLossAdapter
+from pytorch_forecasting.utils._classproperty import classproperty
 
 
 class BaseModel(LightningModule):
@@ -168,7 +167,7 @@ class BaseModel(LightningModule):
         except TypeError:  # in case passed kwargs do not exist
             out = self.loss.to_quantiles(out["prediction"])
         return out
-    
+
     def _compute_loss(self, y_hat, y):
         # If target is (target, weight), take target part for shape checks.
         if isinstance(y, (tuple, list)) and len(y) == 2 and y[1] is None:

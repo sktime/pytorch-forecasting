@@ -75,4 +75,3 @@ class NNLossAdapter(nn.Module):
         if y_pred.ndim == 2:
             return y_pred.unsqueeze(-1)
         return y_pred
-
