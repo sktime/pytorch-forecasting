@@ -69,7 +69,7 @@ class TslibBaseModel(BaseModel):
         self.context_length = self.metadata.get("context_length", 0)
         self.prediction_length = self.metadata.get("prediction_length", 0)
 
-        feature_indices = self.metadata.get("feature_indices", {})
+        feature_indices = metadata.get("feature_indices", {})
         self.cont_indices = feature_indices.get("continuous", [])
         self.cat_indices = feature_indices.get("categorical", [])
         self.known_indices = feature_indices.get("known", [])

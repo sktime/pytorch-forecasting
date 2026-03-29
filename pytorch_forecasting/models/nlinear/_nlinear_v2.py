@@ -69,6 +69,11 @@ class NLinear(TslibBaseModel):
         metadata: dict | None = None,
         **kwargs: Any,
     ):
+        if metadata is None:
+            raise ValueError(
+                "NLinear requires `metadata` from a fitted datamodule to initialize."
+            )
+
         super().__init__(
             loss=loss,
             logging_metrics=logging_metrics,
