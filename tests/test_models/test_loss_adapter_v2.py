@@ -3,12 +3,19 @@ import torch
 import torch.nn as nn
 
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
-from pytorch_forecasting.models.base._loss_adapter_v2 import NNLossAdapter
+from pytorch_forecasting.models.base._loss_adapter_v2 import LossWrapper, NNLossAdapter
 
 
 class DummyV2Model(BaseModel):
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         return {"prediction": x["prediction"]}
+
+
+def test_base_model_wraps_plain_nn_loss_with_loss_wrapper():
+    model = DummyV2Model(loss=nn.MSELoss())
+
+    assert isinstance(model.loss, LossWrapper)
+    assert isinstance(model.loss.loss, NNLossAdapter)
 
 
 def test_nn_loss_adapter_same_shape_squeezes_last_dim():

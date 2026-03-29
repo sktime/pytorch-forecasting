@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 
 from pytorch_forecasting.callbacks.predict import PredictCallback
 from pytorch_forecasting.metrics import Metric, MultiLoss
-from pytorch_forecasting.models.base._loss_adapter_v2 import NNLossAdapter
+from pytorch_forecasting.models.base._loss_adapter_v2 import LossWrapper
 from pytorch_forecasting.utils._classproperty import classproperty
 
 
@@ -53,15 +53,7 @@ class BaseModel(LightningModule):
         lr_scheduler_params: dict | None = None,
     ):
         super().__init__()
-        if isinstance(loss, (Metric, MultiLoss, NNLossAdapter)):
-            self.loss = loss
-        elif isinstance(loss, nn.Module):
-            self.loss = NNLossAdapter(loss)
-        else:
-            raise TypeError(
-                "loss must be a pytorch_forecasting Metric/MultiLoss "
-                "or torch.nn.Module."
-            )
+        self.loss = LossWrapper(loss)
         self.logging_metrics = nn.ModuleList(
             logging_metrics if logging_metrics is not None else []
         )
@@ -169,36 +161,7 @@ class BaseModel(LightningModule):
         return out
 
     def _compute_loss(self, y_hat, y):
-        # If target is (target, weight), take target part for shape checks.
-        if isinstance(y, (tuple, list)) and len(y) == 2 and y[1] is None:
-            target = y[0]
-        else:
-            target = y
-
-        # Single-target path
-        if not isinstance(target, list):
-            return self.loss(y_hat, y)
-
-        # Multi-target path
-        n_targets = len(target)
-
-        # Case A: explicit MultiLoss from user
-        if isinstance(self.loss, MultiLoss):
-            return self.loss(y_hat, (target, None))
-
-        # Case B: user passed a single nn loss (auto-wrapped by NNLossAdapter)
-        if isinstance(self.loss, NNLossAdapter):
-            losses = []
-            for i in range(n_targets):
-                pred_i = y_hat[i] if isinstance(y_hat, list) else y_hat[..., i : i + 1]
-                losses.append(self.loss(pred_i, target[i]))
-            return torch.stack(losses).mean()
-
-        raise TypeError(
-            "Unsupported multi-target loss setup. "
-            "Use MultiLoss(...) or pass a single torch.nn loss "
-            "(which is auto-wrapped and applied per target)."
-        )
+        return self.loss(y_hat, y)
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int

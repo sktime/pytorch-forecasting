@@ -1,6 +1,74 @@
 import torch
 import torch.nn as nn
 
+from pytorch_forecasting.metrics import Metric, MultiLoss
+
+
+class LossWrapper(nn.Module):
+    """Unified loss wrapper for ptf-v2.
+
+    This wrapper accepts native ptf metrics/multi-loss objects and plain
+    ``torch.nn`` losses. For ``torch.nn`` losses, it automatically applies
+    ``NNLossAdapter`` so users can pass ``nn.Module`` losses directly.
+    """
+
+    def __init__(self, loss: Metric | MultiLoss | nn.Module):
+        super().__init__()
+        if isinstance(loss, (Metric, MultiLoss)):
+            self.loss = loss
+        elif isinstance(loss, NNLossAdapter):
+            self.loss = loss
+        elif isinstance(loss, nn.Module):
+            self.loss = NNLossAdapter(loss)
+        else:
+            raise TypeError(
+                "loss must be a pytorch_forecasting Metric/MultiLoss "
+                "or torch.nn.Module."
+            )
+
+    def _unwrap_target(self, target):
+        if isinstance(target, (tuple, list)) and len(target) == 2 and target[1] is None:
+            return target[0]
+        return target
+
+    def forward(self, y_pred, y_actual) -> torch.Tensor:
+        target = self._unwrap_target(y_actual)
+
+        # Single-target path
+        if not isinstance(target, list):
+            return self.loss(y_pred, y_actual)
+
+        # Multi-target path
+        if isinstance(self.loss, MultiLoss):
+            return self.loss(y_pred, (target, None))
+
+        if isinstance(self.loss, NNLossAdapter):
+            losses = []
+            for i, target_i in enumerate(target):
+                pred_i = (
+                    y_pred[i] if isinstance(y_pred, list) else y_pred[..., i : i + 1]
+                )
+                losses.append(self.loss(pred_i, target_i))
+            return torch.stack(losses).mean()
+
+        raise TypeError(
+            "Unsupported multi-target loss setup. "
+            "Use MultiLoss(...) or pass a single torch.nn loss "
+            "(which is auto-wrapped and applied per target)."
+        )
+
+    def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
+        try:
+            return self.loss.to_prediction(y_pred, **kwargs)
+        except TypeError:
+            return self.loss.to_prediction(y_pred)
+
+    def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
+        try:
+            return self.loss.to_quantiles(y_pred, **kwargs)
+        except TypeError:
+            return self.loss.to_quantiles(y_pred)
+
 
 class NNLossAdapter(nn.Module):
     """Adapter wrapper so torch.nn losses work with ptf-v2 target/prediction shapes."""
