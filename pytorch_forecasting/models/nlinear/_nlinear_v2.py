@@ -156,7 +156,7 @@ class NLinear(TslibBaseModel):
                     f"{output.size(-1)}."
                 )
             batch_size = output.shape[0]
-            output = output.squeeze(-1).reshape(
+            output = output.reshape(
                 batch_size, self.prediction_length, self.n_quantiles
             )
         return output
