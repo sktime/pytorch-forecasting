@@ -211,7 +211,6 @@ cache_dir = ".cache/mypy/"
 addopts = [
     "-rsxX",
     "-vv",
-    "--cov-config=.coveragerc",
     "--cov=pytorch_forecasting",
     "--cov-report=html",
     "--cov-report=term-missing:skip-covered",
