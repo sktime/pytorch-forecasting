@@ -26,6 +26,12 @@ class NLinear(TslibBaseModel):
     a fixed context length and does not currently support exogenous,
     categorical, static, or future-known features.
 
+    References
+    ----------
+    [1] Ailing Zeng, Muxi Chen, Lei Zhang & Qiang Xu.
+        *Are Transformers Effective for Time Series Forecasting?*
+        2022. https://arxiv.org/pdf/2205.13504.pdf
+
     Parameters
     ----------
     loss : nn.Module
@@ -42,6 +48,7 @@ class NLinear(TslibBaseModel):
         Learning-rate scheduler keyword arguments.
     metadata : dict | None, default=None
         Metadata coming from TslibDataModule.
+
     """
 
     @classmethod
