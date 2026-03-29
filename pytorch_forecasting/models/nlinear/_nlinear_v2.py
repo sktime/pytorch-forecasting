@@ -91,10 +91,6 @@ class NLinear(TslibBaseModel):
 
     def _init_network(self):
         """Initialize NLinear network layers for single-target input only."""
-        if not self.metadata:
-            raise ValueError(
-                "NLinear requires `metadata` from a fitted datamodule to initialize."
-            )
         if self.context_length <= 0 or self.prediction_length <= 0:
             raise ValueError(
                 "NLinear requires positive `context_length` and `prediction_length` "
@@ -190,7 +186,7 @@ class NLinear(TslibBaseModel):
         input_data = self._prepare_input_data(x)
         prediction = self._encoder(input_data)
 
-        if "target_scale" in x and hasattr(self, "transform_output"):
+        if "target_scale" in x:
             prediction = self.transform_output(prediction, x["target_scale"])
 
         return {"prediction": prediction}

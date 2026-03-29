@@ -76,17 +76,17 @@ class TslibBaseModel(BaseModel):
         self.unknown_indices = feature_indices.get("unknown", [])
         self.target_indices = feature_indices.get("target", [])
 
-        feature_dims = self.metadata.get("n_features", {})
+        feature_dims = metadata.get("n_features", {})
         self.cont_dim = feature_dims.get("continuous", 0)
         self.cat_dim = feature_dims.get("categorical", 0)
         self.static_cat_dim = feature_dims.get("static_categorical", 0)
         self.static_cont_dim = feature_dims.get("static_continuous", 0)
         self.target_dim = feature_dims.get("target", 1)
 
-        self.feature_names = self.metadata.get("feature_names", {})
+        self.feature_names = metadata.get("feature_names", {})
 
         # feature-mode
-        self.features = self.metadata.get("features", "MS")
+        self.features = metadata.get("features", "MS")
 
     def _init_network(self):
         """
