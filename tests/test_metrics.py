@@ -392,12 +392,10 @@ def mock_device(request):
             patch("torch.tensor", new=mock_tensor),
             patch(
                 "torch.Tensor.to",
-                new=lambda self, device, *args, **kwargs: (
-                    self.clone()
-                    if isinstance(device, str | torch.device)
-                    and str(device).startswith("cuda")
-                    else self
-                ),
+                new=lambda self, device, *args, **kwargs: self.clone()
+                if isinstance(device, str | torch.device)
+                and str(device).startswith("cuda")
+                else self,
             ),
             patch(
                 "torch.Tensor.device",

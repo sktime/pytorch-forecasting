@@ -1086,13 +1086,11 @@ class GroupNormalizer(TorchNormalizer):
                     .assign(
                         center=lambda x: x[self._method_kwargs.get("center", 0.5)],
                         scale=lambda x: (
-                            (
-                                x[self._method_kwargs.get("upper", 0.75)]
-                                - x[self._method_kwargs.get("lower", 0.25)]
-                            )
-                            / 2.0
-                            + eps
-                        ),
+                            x[self._method_kwargs.get("upper", 0.75)]
+                            - x[self._method_kwargs.get("lower", 0.25)]
+                        )
+                        / 2.0
+                        + eps,
                     )[["center", "scale"]]
                     for g in self._groups
                 }
@@ -1136,13 +1134,11 @@ class GroupNormalizer(TorchNormalizer):
                     .assign(
                         center=lambda x: x[self._method_kwargs.get("center", 0.5)],
                         scale=lambda x: (
-                            (
-                                x[self._method_kwargs.get("upper", 0.75)]
-                                - x[self._method_kwargs.get("lower", 0.25)]
-                            )
-                            / 2.0
-                            + eps
-                        ),
+                            x[self._method_kwargs.get("upper", 0.75)]
+                            - x[self._method_kwargs.get("lower", 0.25)]
+                        )
+                        / 2.0
+                        + eps,
                     )[["center", "scale"]]
                 )
             if not self.center:  # swap center and scale
