@@ -80,7 +80,11 @@ class Samformer(BaseModel):
         self.encoder_input_dim = self.encoder_cont + 1  # +1 for target variable input.
 
         self.hidden_size = hidden_size
-
+        if out_channels != 1:
+            raise ValueError(
+                "out_channels has to be 1 for Samformer,",
+                " due to lack of MultiLoss support in v2.",
+            )
         self.out_channels = out_channels
         self.use_revin = use_revin
         self.persistence_weight = persistence_weight
