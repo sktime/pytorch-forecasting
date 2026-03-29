@@ -697,30 +697,31 @@ class TslibDataModule(LightningDataModule):
 
         # this is a very rudimentary way to handle the splits when
         # the dataset is of size equal to 1 or 2.
-        self._indices = torch.randperm(total_series)
-        if total_series == 1:
-            self._train_indices = self._indices
-            self._val_indices = self._indices
-            self._test_indices = self._indices
-        elif total_series == 2:
-            self._train_indices = self._indices[0:1]
-            self._val_indices = self._indices[1:2]
-            self._test_indices = self._indices[1:2]
-        else:
-            self._train_size = int(self.train_val_test_split[0] * total_series)
-            self._val_size = int(self.train_val_test_split[1] * total_series)
+        if not hasattr(self, "_indices"):
+            self._indices = torch.randperm(total_series)
+            if total_series == 1:
+                self._train_indices = self._indices
+                self._val_indices = self._indices
+                self._test_indices = self._indices
+            elif total_series == 2:
+                self._train_indices = self._indices[0:1]
+                self._val_indices = self._indices[1:2]
+                self._test_indices = self._indices[1:2]
+            else:
+                self._train_size = int(self.train_val_test_split[0] * total_series)
+                self._val_size = int(self.train_val_test_split[1] * total_series)
 
-            self._train_indices = self._indices[: self._train_size]
-            self._val_indices = self._indices[
-                self._train_size : self._train_size + self._val_size
-            ]
+                self._train_indices = self._indices[: self._train_size]
+                self._val_indices = self._indices[
+                    self._train_size : self._train_size + self._val_size
+                ]
 
-            self._test_indices = self._indices[
-                self._train_size + self._val_size : total_series
-            ]
+                self._test_indices = self._indices[
+                    self._train_size + self._val_size : total_series
+                ]
 
         if stage == "fit" or stage is None:
-            if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
+            if self.train_dataset is None or self.val_dataset is None:
                 self._train_windows = self._create_windows(self._train_indices)
                 self._val_windows = self._create_windows(self._val_indices)
 
@@ -738,7 +739,7 @@ class TslibDataModule(LightningDataModule):
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
         elif stage == "test":
-            if not hasattr(self, "_test_dataset"):
+            if self.test_dataset is None:
                 self._test_windows = self._create_windows(self._test_indices)
 
                 self.test_dataset = _TslibDataset(
