@@ -26,11 +26,47 @@ _CAPABILITY_TAGS = [
 ]
 
 
+def _clean_model_name(class_name):
+    """Derive a clean display name from the registry class name.
+
+    Strips ``_pkg_v2`` and ``_pkg`` suffixes introduced by the packaging
+    layer so that the table shows the canonical model name instead of the
+    internal wrapper name.
+
+    Examples
+    --------
+    ``TFT_pkg``       -> ``TFT``
+    ``DLinear_pkg_v2`` -> ``DLinear_v2``
+    ``TFT_pkg_v2``    -> ``TFT_v2``
+    """
+    if class_name.endswith("_pkg_v2"):
+        return class_name[: -len("_pkg_v2")] + "_v2"
+    if class_name.endswith("_pkg"):
+        return class_name[: -len("_pkg")]
+    return class_name
+
+
+def _object_type_to_version(object_type):
+    """Map the ``object_type`` tag value to a human-readable version label.
+
+    v2 models carry ``"forecaster_pytorch_v2"``; v1 models carry either
+    ``"forecaster_pytorch"`` or ``"forecaster_pytorch_v1"``.
+    """
+    if object_type is None:
+        return ""
+    types = [object_type] if isinstance(object_type, str) else list(object_type)
+    if "forecaster_pytorch_v2" in types:
+        return "v2"
+    if "forecaster_pytorch" in types or "forecaster_pytorch_v1" in types:
+        return "v1"
+    return ""
+
+
 def _get_model_rows():
     """Query the registry and return a list of row dicts for each model.
 
-    Each row maps column header to display value. Only includes v1 models
-    (the ones with full tag metadata). v2 models are listed separately.
+    Each row maps column header to display value. Includes both v1 and v2
+    models; the Version column distinguishes them.
     """
     from pytorch_forecasting._registry import all_objects
 
@@ -42,6 +78,7 @@ def _get_model_rows():
         "capability:exogenous",
         "capability:multivariate",
         "capability:pred_int",
+        "object_type",
     ]
 
     results = all_objects(
@@ -60,10 +97,13 @@ def _get_model_rows():
         if not model_name:
             continue
 
+        # Build the clean display name (strip _pkg / _pkg_v2 suffixes)
+        display_name = _clean_model_name(klass.__name__)
+
         # Build the module path for cross-reference
         module = klass.__module__
         qualname = klass.__qualname__
-        ref = f":py:class:`~{module}.{qualname}`"
+        ref = f":py:class:`{display_name} <{module}.{qualname}>`"
 
         pred_types = tags.get("info:pred_type") or []
         if isinstance(pred_types, str):
@@ -73,8 +113,11 @@ def _get_model_rows():
         if isinstance(y_types, str):
             y_types = [y_types]
 
+        version = _object_type_to_version(tags.get("object_type"))
+
         row = {
             "Name": ref,
+            "Version": version,
             "Covariates": "x" if tags.get("capability:exogenous") else "",
             "Multiple targets": "x" if tags.get("capability:multivariate") else "",
             "Regression": "x" if "numeric" in y_types else "",
@@ -95,6 +138,7 @@ def _build_rst_table(rows):
 
     headers = [
         "Name",
+        "Version",
         "Covariates",
         "Multiple targets",
         "Regression",
