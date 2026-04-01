@@ -328,6 +328,7 @@ class TslibDataModule(LightningDataModule):
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
         self.kwargs = kwargs
+        self.categorical_encoders = categorical_encoders
 
         warnings.warn(
             "TslibDataModule is experimental and subject to change. "
@@ -546,19 +547,25 @@ class TslibDataModule(LightningDataModule):
         """
         if self._categorical_encoders == "auto":
             self._categorical_encoders = (
-                self.time_series_dataset.categorical_encoders.copy()
+                self.time_series_dataset._categorical_encoders.copy()
             )
 
     def get_categorical_encoders(self) -> dict:
-        """Return the fitted categorical encoders.
+        """Return fitted categorical encoders from the D1 layer.
 
-        These should be passed to a new TimeSeries instance when creating
-        prediction data, to ensure consistent encoding mappings.
+        Used when creating a new ``TimeSeries`` for prediction to ensure
+        the same category-to-integer mapping, preventing data leakage.
+
+        Example
+        -------
+        >>> dm.setup(stage="fit")
+        >>> fitted = dm.get_categorical_encoders()
+        >>> ts_predict = TimeSeries(..., categorical_encoders=fitted)
 
         Returns
         -------
         dict
-            Dictionary mapping column names to fitted encoder objects.
+            Column names to fitted ``NaNLabelEncoder`` objects.
         """
         if self._categorical_encoders == "auto":
             self._resolve_categorical_encoders()

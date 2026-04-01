@@ -63,9 +63,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
          default="auto"
         Normalizer for the target variable. If "auto", uses `RobustScaler`.
 
-    categorical_encoders : Optional[Dict[str, NaNLabelEncoder]], default=None
-        Dictionary of categorical encoders.
-
+    categorical_encoders : dict[str, Any] | str | None, default="auto"
+        Categorical encoders. If ``"auto"`` (default), pulled from the D1
+        ``TimeSeries`` dataset during ``setup()``. D2 does NOT perform
+        encoding — D1 handles all fit+transform. This param exists for
+        encoder retrieval via ``get_categorical_encoders()``.
     scalers :
     Optional[Dict[str, Union[StandardScaler, RobustScaler,
                         TorchNormalizer, EncoderNormalizer]]], default=None
@@ -283,19 +285,25 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         """
         if self._categorical_encoders == "auto":
             self._categorical_encoders = (
-                self.time_series_dataset.categorical_encoders.copy()
+                self.time_series_dataset._categorical_encoders.copy()
             )
 
     def get_categorical_encoders(self) -> dict:
-        """Return the fitted categorical encoders.
+        """Return fitted categorical encoders from the D1 layer.
 
-        These should be passed to a new TimeSeries instance when creating
-        prediction data, to ensure consistent encoding mappings.
+        Used when creating a new ``TimeSeries`` for prediction to ensure
+        the same category-to-integer mapping, preventing data leakage.
+
+        Example
+        -------
+        >>> dm.setup(stage="fit")
+        >>> fitted = dm.get_categorical_encoders()
+        >>> ts_predict = TimeSeries(..., categorical_encoders=fitted)
 
         Returns
         -------
         dict
-            Dictionary mapping column names to fitted encoder objects.
+            Column names to fitted ``NaNLabelEncoder`` objects.
         """
         if self._categorical_encoders == "auto":
             self._resolve_categorical_encoders()

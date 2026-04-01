@@ -75,6 +75,15 @@ class TimeSeries(Dataset):
     static : list of str, optional, default = all variables not in known, unknown
         list of variables that do not change over time,
         list may also contain list of str, which are then grouped together.
+    categorical_encoders : dict[str, NaNLabelEncoder] or str, default="auto"
+        Mapping of categorical column names to encoder objects.
+        Only ``NaNLabelEncoder`` is supported.
+        If ``"auto"`` (default), a ``NaNLabelEncoder(add_nan=True)`` is
+        created and fitted for every column in ``cat``.
+        If a dict is provided, columns in ``cat`` missing from the dict
+        get a default ``NaNLabelEncoder(add_nan=True)`` with a warning.
+        Pass pre-fitted encoders from training to ensure consistent
+        encoding during prediction.
     """
 
     def __init__(
@@ -103,6 +112,7 @@ class TimeSeries(Dataset):
         self.known = known
         self.unknown = unknown
         self.static = static
+        self.categorical_encoders = categorical_encoders
 
         warn(
             "TimeSeries is part of an experimental rework of the "
@@ -127,43 +137,35 @@ class TimeSeries(Dataset):
         self._unknown = _coerce_to_list(unknown)
         self._static = _coerce_to_list(static)
 
-        if isinstance(categorical_encoders, str) and categorical_encoders == "auto":
-            self.categorical_encoders = "auto"
-        else:
-            self.categorical_encoders = _coerce_to_dict(categorical_encoders)
-
-        # Initialize encoders if set to "auto"
-        if self.categorical_encoders == "auto":
-            self.categorical_encoders = {
+        if (
+            isinstance(self.categorical_encoders, str)
+            and self.categorical_encoders == "auto"
+        ):
+            self._categorical_encoders = {
                 col: NaNLabelEncoder(add_nan=True) for col in self._cat
             }
         else:
-            # Ensure we have an encoder for every categorical column
+            self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
             for col in self._cat:
-                if col not in self.categorical_encoders:
-                    self.categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
+                if col not in self._categorical_encoders:
+                    warn(
+                        f"No encoder provided for categorical column '{col}'. "
+                        f"Using default NaNLabelEncoder(add_nan=True).",
+                        UserWarning,
+                    )
+                    self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
 
-        # Fit and transform the data natively
-        for col, encoder in self.categorical_encoders.items():
-            # If the encoder is untrained (no classes_ attribute)
+        # Fit and transform categorical columns to integer codes
+        for col, encoder in self._categorical_encoders.items():
             if not hasattr(encoder, "classes_") or len(encoder.classes_) == 0:
-                # Fit on training data
                 encoder.fit(self.data[col])
 
-            # Transform the categorical column to integers
-            encoded = encoder.transform(self.data[col])
-            if isinstance(encoded, torch.Tensor):
-                self.data[col] = encoded.numpy()
-            else:
-                self.data[col] = encoded
+            # NaNLabelEncoder.transform() returns numpy ints directly.
+            # D1's __getitem__ converts to tensors later via torch.tensor().
+            self.data[col] = encoder.transform(self.data[col])
 
-            # Transform future data if present
             if self.data_future is not None and col in self.data_future.columns:
-                future_encoded = encoder.transform(self.data_future[col])
-                if isinstance(future_encoded, torch.Tensor):
-                    self.data_future[col] = future_encoded.numpy()
-                else:
-                    self.data_future[col] = future_encoded
+                self.data_future[col] = encoder.transform(self.data_future[col])
 
         self.feature_cols = [
             col
@@ -230,7 +232,7 @@ class TimeSeries(Dataset):
         # Expose cardinalities for each categorical variable
         self.metadata["categorical_cardinalities"] = {}
         for col in self._cat:
-            encoder = getattr(self, "categorical_encoders", {}).get(col)
+            encoder = self._categorical_encoders.get(col)
             if encoder is not None and hasattr(encoder, "classes_"):
                 self.metadata["categorical_cardinalities"][col] = len(encoder.classes_)
             else:
