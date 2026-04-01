@@ -175,6 +175,19 @@ def test_setup_fit_is_reentrant(tslib_data_module):
     assert tslib_data_module._val_windows is first_val_windows
 
 
+def test_setup_predict_is_reentrant(tslib_data_module):
+    """Repeated predict setup should not recreate the predict dataset."""
+    tslib_data_module.setup(stage="predict")
+
+    first_predict_dataset = tslib_data_module.predict_dataset
+    first_predict_windows = tslib_data_module._predict_windows
+
+    tslib_data_module.setup(stage="predict")
+
+    assert tslib_data_module.predict_dataset is first_predict_dataset
+    assert tslib_data_module._predict_windows is first_predict_windows
+
+
 def test_train_dataloader(tslib_data_module):
     """Test the train dataloader to ensure it returns the batches of the data,
     and all hyperparameters are correctly set."""

@@ -350,6 +350,7 @@ class TslibDataModule(LightningDataModule):
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
+        self.predict_dataset = None
 
         self.window_stride = window_stride
 
@@ -750,15 +751,16 @@ class TslibDataModule(LightningDataModule):
                 )
 
         elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
-            self._predict_windows = self._create_windows(predict_indices)
+            if self.predict_dataset is None:
+                predict_indices = torch.arange(len(self.time_series_dataset))
+                self._predict_windows = self._create_windows(predict_indices)
 
-            self.predict_dataset = _TslibDataset(
-                dataset=self.time_series_dataset,
-                data_module=self,
-                windows=self._predict_windows,
-                add_relative_time_idx=self.add_relative_time_idx,
-            )
+                self.predict_dataset = _TslibDataset(
+                    dataset=self.time_series_dataset,
+                    data_module=self,
+                    windows=self._predict_windows,
+                    add_relative_time_idx=self.add_relative_time_idx,
+                )
 
     def train_dataloader(self) -> DataLoader:
         """
