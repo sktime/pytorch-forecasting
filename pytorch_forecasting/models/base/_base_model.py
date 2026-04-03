@@ -2451,7 +2451,7 @@ class AutoRegressiveBaseModel(BaseModel):
                     prediction, lambda x: x.reshape(x.size(0) * n_samples, 1, -1)
                 )
             else:
-                prediction = self.loss.sample(normalized_prediction_parameters, 1)
+                prediction = self.loss.sample(prediction_parameters, 1)
 
         else:
             prediction = prediction_parameters
