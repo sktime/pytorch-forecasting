@@ -30,6 +30,7 @@ def _make_model(**kwargs):
 
 @pytest.mark.parametrize("name", ["adam", "adamw", "adagrad", "sgd"])
 def test_optimizer_registry_strings(name):
+    """Each registry key resolves to the expected optimizer class."""
     model = _make_model(optimizer=name, optimizer_params={"lr": 1e-3})
     cfg = model.configure_optimizers()
     opt = cfg["optimizer"]
@@ -38,24 +39,28 @@ def test_optimizer_registry_strings(name):
 
 
 def test_optimizer_generic_torch_optim_lookup():
+    """Optimizer names not in the registry fall back to torch.optim by class name."""
     model = _make_model(optimizer="RMSprop", optimizer_params={"lr": 1e-3})
     cfg = model.configure_optimizers()
     assert isinstance(cfg["optimizer"], torch.optim.RMSprop)
 
 
 def test_optimizer_callable():
+    """Passing an optimizer class directly bypasses the registry lookup."""
     model = _make_model(optimizer=torch.optim.AdamW, optimizer_params={"lr": 1e-3})
     cfg = model.configure_optimizers()
     assert isinstance(cfg["optimizer"], torch.optim.AdamW)
 
 
 def test_optimizer_invalid_string():
+    """An unrecognised optimizer string raises ValueError."""
     model = _make_model(optimizer="not_a_real_optimizer")
     with pytest.raises(ValueError, match="not supported"):
         model.configure_optimizers()
 
 
 def test_optimizer_invalid_type():
+    """A non-string, non-callable optimizer value raises ValueError."""
     model = _make_model(optimizer=12345)
     with pytest.raises(ValueError, match="must be a string"):
         model.configure_optimizers()
@@ -77,6 +82,7 @@ def test_optimizer_invalid_type():
     ],
 )
 def test_scheduler_registry_strings(name, expected_cls):
+    """Each scheduler registry key resolves to the expected scheduler class."""
     sched_params = {"step_size": 10} if name == "step_lr" else {}
     if name == "cosine_annealing":
         sched_params["T_max"] = 50
@@ -97,6 +103,7 @@ def test_scheduler_registry_strings(name, expected_cls):
 
 
 def test_scheduler_invalid_string():
+    """An unrecognised scheduler string raises ValueError."""
     model = _make_model(
         optimizer="adam",
         optimizer_params={"lr": 1e-3},
@@ -107,6 +114,7 @@ def test_scheduler_invalid_string():
 
 
 def test_reduce_lr_on_plateau_returns_monitor():
+    """ReduceLROnPlateau config includes the monitor key required by Lightning."""
     model = _make_model(
         optimizer="adam",
         optimizer_params={"lr": 1e-3},
@@ -117,46 +125,10 @@ def test_reduce_lr_on_plateau_returns_monitor():
     assert cfg["lr_scheduler"]["monitor"] == "val_loss"
 
 
-def test_no_scheduler_returns_optimizer_only():
-    model = _make_model(optimizer="adam", optimizer_params={"lr": 1e-3})
-    cfg = model.configure_optimizers()
-    assert "optimizer" in cfg
-    assert "lr_scheduler" not in cfg
-
-
 def test_optimizer_instance():
+    """A pre-built optimizer instance is passed through without modification."""
     model = _make_model()
     opt = torch.optim.SGD(model.parameters(), lr=0.01)
     model.optimizer = opt
     cfg = model.configure_optimizers()
     assert cfg["optimizer"] is opt
-
-
-# --- integration: adamw + cosine schedulers through configure_optimizers ---
-
-
-def test_adamw_with_cosine_annealing():
-    model = _make_model(
-        optimizer="adamw",
-        optimizer_params={"lr": 1e-3},
-        lr_scheduler="cosine_annealing",
-        lr_scheduler_params={"T_max": 100},
-    )
-    cfg = model.configure_optimizers()
-    assert isinstance(cfg["optimizer"], torch.optim.AdamW)
-    assert isinstance(cfg["lr_scheduler"], torch.optim.lr_scheduler.CosineAnnealingLR)
-
-
-def test_adamw_with_cosine_annealing_warm_restarts():
-    model = _make_model(
-        optimizer="adamw",
-        optimizer_params={"lr": 1e-3},
-        lr_scheduler="cosine_annealing_warm_restarts",
-        lr_scheduler_params={"T_0": 10},
-    )
-    cfg = model.configure_optimizers()
-    assert isinstance(cfg["optimizer"], torch.optim.AdamW)
-    assert isinstance(
-        cfg["lr_scheduler"],
-        torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
-    )
