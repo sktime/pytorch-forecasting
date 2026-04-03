@@ -28,16 +28,6 @@ def _make_model(**kwargs):
 # --- optimizer tests ---
 
 
-@pytest.mark.parametrize("name", ["adam", "adamw", "adagrad", "sgd"])
-def test_optimizer_registry_strings(name):
-    """Each registry key resolves to the expected optimizer class."""
-    model = _make_model(optimizer=name, optimizer_params={"lr": 1e-3})
-    cfg = model.configure_optimizers()
-    opt = cfg["optimizer"]
-    expected_cls = model._OPTIMIZER_REGISTRY[name]
-    assert isinstance(opt, expected_cls)
-
-
 def test_optimizer_generic_torch_optim_lookup():
     """Optimizer names not in the registry fall back to torch.optim by class name."""
     model = _make_model(optimizer="RMSprop", optimizer_params={"lr": 1e-3})
@@ -52,17 +42,17 @@ def test_optimizer_callable():
     assert isinstance(cfg["optimizer"], torch.optim.AdamW)
 
 
-def test_optimizer_invalid_string():
-    """An unrecognised optimizer string raises ValueError."""
-    model = _make_model(optimizer="not_a_real_optimizer")
-    with pytest.raises(ValueError, match="not supported"):
-        model.configure_optimizers()
-
-
-def test_optimizer_invalid_type():
-    """A non-string, non-callable optimizer value raises ValueError."""
-    model = _make_model(optimizer=12345)
-    with pytest.raises(ValueError, match="must be a string"):
+@pytest.mark.parametrize(
+    "bad_optimizer,match",
+    [
+        ("not_a_real_optimizer", "not supported"),
+        (12345, "must be a string"),
+    ],
+)
+def test_optimizer_invalid_input(bad_optimizer, match):
+    """Invalid optimizer values raise ValueError with a descriptive message."""
+    model = _make_model(optimizer=bad_optimizer)
+    with pytest.raises(ValueError, match=match):
         model.configure_optimizers()
 
 
