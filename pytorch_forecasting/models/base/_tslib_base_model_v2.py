@@ -23,8 +23,11 @@ class TslibBaseModel(BaseModel):
         Loss function to use for training.
     logging_metrics : Optional[list[nn.Module]], optional
         list of metrics to log during training, validation, and testing.
-    optimizer : Optional[Union[Optimizer, str]], optional
+    optimizer : Optional[Union[Optimizer, str, callable]], optional
         Optimizer to use for training.
+        Can be a string ("adam", "adamw", "adagrad", "sgd", or any
+        ``torch.optim`` class name), a callable returning an optimizer,
+        or an instance of ``torch.optim.Optimizer``.
     optimizer_params : Optional[dict], optional
         Parameters for the optimizer.
     lr_scheduler : Optional[str], optional
