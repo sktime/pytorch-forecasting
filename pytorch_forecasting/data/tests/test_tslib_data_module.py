@@ -530,3 +530,37 @@ def test_multivariate_target():
     assert (
         y.shape[-1] == 2
     ), "Target should have two dimensions for n_features for multivariate target."
+
+
+def test_dataset_class_hook(sample_timeseries_data):
+    """TslibDataModule._dataset_class is used for all four dataset instantiations."""
+    import warnings
+
+    from pytorch_forecasting.data._tslib_data_module import _TslibDataset
+
+    class _DummyDataset(_TslibDataset):
+        pass
+
+    class _DummyDataModule(TslibDataModule):
+        _dataset_class = _DummyDataset
+
+    dm = _DummyDataModule(
+        time_series_dataset=sample_timeseries_data,
+        context_length=8,
+        prediction_length=4,
+        batch_size=2,
+        num_workers=0,
+    )
+    # sample_timeseries_data is session-scoped; nothing here mutates it.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dm.setup("fit")
+    assert isinstance(dm.train_dataset, _DummyDataset)
+    assert isinstance(dm.val_dataset, _DummyDataset)
+
+    # Verify test and predict stages also use the subclass
+    dm.setup("test")
+    assert isinstance(dm.test_dataset, _DummyDataset)
+
+    dm.setup("predict")
+    assert isinstance(dm.predict_dataset, _DummyDataset)
