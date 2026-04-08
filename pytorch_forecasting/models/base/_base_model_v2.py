@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 
 from pytorch_forecasting.callbacks.predict import PredictCallback
 from pytorch_forecasting.metrics import Metric, MultiLoss
+from pytorch_forecasting.models.base._loss_adapter_v2 import LossWrapper
 from pytorch_forecasting.utils._classproperty import classproperty
 
 
@@ -63,7 +64,7 @@ class BaseModel(LightningModule):
 
     def __init__(
         self,
-        loss: Metric,
+        loss: Metric | nn.Module,
         logging_metrics: list[nn.Module] | None = None,
         optimizer: Optimizer | str | None = "adam",
         optimizer_params: dict | None = None,
@@ -71,7 +72,7 @@ class BaseModel(LightningModule):
         lr_scheduler_params: dict | None = None,
     ):
         super().__init__()
-        self.loss = loss
+        self.loss = LossWrapper(loss)
         self.logging_metrics = nn.ModuleList(
             logging_metrics if logging_metrics is not None else []
         )
@@ -178,6 +179,9 @@ class BaseModel(LightningModule):
             out = self.loss.to_quantiles(out["prediction"])
         return out
 
+    def _compute_loss(self, y_hat, y):
+        return self.loss(y_hat, y)
+
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
     ) -> STEP_OUTPUT:
@@ -199,7 +203,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._compute_loss(y_hat, y)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
@@ -227,7 +231,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._compute_loss(y_hat, y)
         self.log(
             "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -255,7 +259,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._compute_loss(y_hat, y)
         self.log(
             "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
