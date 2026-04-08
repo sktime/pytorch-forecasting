@@ -39,10 +39,14 @@ class Metric(LightningMetric):
         """
         Initialize metric
 
-        Args:
-            name (str): metric name. Defaults to class name.
-            quantiles (List[float], optional): quantiles for probability range. Defaults to None.
-            reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
+        Parameters
+        ----------
+            name : str
+                metric name. Defaults to class name.
+            quantiles : List[float], optional
+                quantiles for probability range. Defaults to None.
+            reduction : str, optional
+                Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
         """  # noqa: E501
         self.quantiles = quantiles
         self.reduction = reduction
@@ -60,12 +64,17 @@ class Metric(LightningMetric):
 
         Should be overridden in derived classes
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+            y_pred : Any
+                network output
+            y_actual : Any
+                actual values
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         raise NotImplementedError()
 
@@ -78,13 +87,19 @@ class Metric(LightningMetric):
         """
         Rescale normalized parameters into the scale required for the output.
 
-        Args:
-            parameters (torch.Tensor): normalized parameters (indexed by last dimension)
-            target_scale (torch.Tensor): scale of parameters (n_batch_samples x (center, scale))
-            encoder (BaseEstimator): original encoder that normalized the target in the first place
+        Parameters
+        ----------
+            parameters : torch.Tensor
+                normalized parameters (indexed by last dimension)
+            target_scale : torch.Tensor
+                scale of parameters (n_batch_samples x (center, scale))
+            encoder : BaseEstimator
+                original encoder that normalized the target in the first place
 
-        Returns:
-            torch.Tensor: parameters in real/not normalized space
+        Returns
+        -------
+            torch.Tensor
+                parameters in real/not normalized space
         """  # noqa: E501
         return encoder(dict(prediction=parameters, target_scale=target_scale))
 
@@ -92,11 +107,15 @@ class Metric(LightningMetric):
         """
         Convert network prediction into a point prediction.
 
-        Args:
-            y_pred: prediction output of network
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
 
-        Returns:
-            torch.Tensor: point prediction
+        Returns
+        -------
+            torch.Tensor
+                point prediction
         """
         if y_pred.ndim == 3:
             if self.quantiles is None:
@@ -114,13 +133,18 @@ class Metric(LightningMetric):
         """
         Convert network prediction into a quantile prediction.
 
-        Args:
-            y_pred: prediction output of network
-            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
+            quantiles : List[float], optional
+                quantiles for probability range. Defaults to quantiles as
                 as defined in the class initialization.
 
-        Returns:
-            torch.Tensor: prediction quantiles
+        Returns
+        -------
+            torch.Tensor
+                prediction quantiles
         """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
@@ -171,9 +195,12 @@ class TorchMetricWrapper(Metric):
 
     def __init__(self, torchmetric: LightningMetric, reduction: str = None, **kwargs):
         """
-        Args:
-            torchmetric (LightningMetric): Torchmetric to wrap.
-            reduction (str, optional): use reduction with torchmetric directly. Defaults to None.
+        Parameters
+        ----------
+            torchmetric : LightningMetric
+                Torchmetric to wrap.
+            reduction : str, optional
+                use reduction with torchmetric directly. Defaults to None.
         """  # noqa: E501
         super().__init__(**kwargs)
         if reduction is not None:
@@ -252,11 +279,15 @@ def convert_torchmetric_to_pytorch_forecasting_metric(
     If necessary, convert a torchmetric to a PyTorch Forecasting metric that
     works with PyTorch Forecasting models.
 
-    Args:
-        metric (LightningMetric): metric to (potentially) convert
+    Parameters
+    ----------
+        metric : LightningMetric
+            metric to (potentially) convert
 
-    Returns:
-        Metric: PyTorch Forecasting metric
+    Returns
+    -------
+        Metric
+            PyTorch Forecasting metric
     """
     if not isinstance(metric, Metric | MultiLoss | CompositeMetric):
         return TorchMetricWrapper(metric)
@@ -275,9 +306,12 @@ class MultiLoss(LightningMetric):
 
     def __init__(self, metrics: list[LightningMetric], weights: list[float] = None):
         """
-        Args:
-            metrics (List[LightningMetric], optional): list of metrics to combine.
-            weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
+        Parameters
+        ----------
+            metrics : List[LightningMetric], optional
+                list of metrics to combine.
+            weights : List[float], optional
+                list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """  # noqa: E501
         assert len(metrics) > 0, "at least one metric has to be specified"
         if weights is None:
@@ -316,8 +350,10 @@ class MultiLoss(LightningMetric):
         """
         Number of metrics.
 
-        Returns:
-            int: number of metrics
+        Returns
+        -------
+            int
+                number of metrics
         """
         return len(self.metrics)
 
@@ -325,10 +361,14 @@ class MultiLoss(LightningMetric):
         """
         Update composite metric
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
-            **kwargs: arguments to update function
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
+            **kwargs : Any
+                arguments to update function
         """
         for idx, metric in enumerate(self.metrics):
             try:
@@ -347,8 +387,10 @@ class MultiLoss(LightningMetric):
         """
         Get metric
 
-        Returns:
-            torch.Tensor: metric
+        Returns
+        -------
+            torch.Tensor
+                metric
         """
         results = []
         for weight, metric in zip(self.weights, self.metrics):
@@ -365,13 +407,19 @@ class MultiLoss(LightningMetric):
         """
         Calculate composite metric
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
-            **kwargs: arguments to update function
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
+            **kwargs : Any
+                arguments to update function
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         results = []
         for idx, metric in enumerate(self.metrics):
@@ -419,12 +467,17 @@ class MultiLoss(LightningMetric):
 
         Will use first metric in ``metrics`` attribute to calculate result.
 
-        Args:
-            y_pred: prediction output of network
-            **kwargs: arguments for metrics
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
+            **kwargs : Any
+                arguments for metrics
 
-        Returns:
-            torch.Tensor: point prediction
+        Returns
+        -------
+            torch.Tensor
+                point prediction
         """
         result = []
         for idx, metric in enumerate(self.metrics):
@@ -440,12 +493,17 @@ class MultiLoss(LightningMetric):
 
         Will use first metric in ``metrics`` attribute to calculate result.
 
-        Args:
-            y_pred: prediction output of network
-            **kwargs: parameters to each metric's ``to_quantiles()`` method
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
+            **kwargs : Any
+                parameters to each metric's ``to_quantiles()`` method
 
-        Returns:
-            torch.Tensor: prediction quantiles
+        Returns
+        -------
+            torch.Tensor
+                prediction quantiles
         """
         result = []
         for idx, metric in enumerate(self.metrics):
@@ -459,8 +517,10 @@ class MultiLoss(LightningMetric):
         """
         Return metric.
 
-        Args:
-            idx (int): metric index
+        Parameters
+        ----------
+            idx : int
+                metric index
         """
         return self.metrics[idx]
 
@@ -474,10 +534,13 @@ class MultiLoss(LightningMetric):
         matches the number of metrics. Otherwise, they are directly passed to each callable of the
         metrics
 
-        Args:
-            name (str): name of attribute
+        Parameters
+        ----------
+            name : str
+                name of attribute
 
-        Returns:
+        Returns
+        -------
             attributes of this class or list of attributes of underlying class
         """  # noqa: E501
         try:
@@ -550,9 +613,12 @@ class CompositeMetric(LightningMetric):
         weights: list[float] | None = None,
     ):
         """
-        Args:
-            metrics (List[LightningMetric], optional): list of metrics to combine. Defaults to None.
-            weights (List[float], optional): list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
+        Parameters
+        ----------
+            metrics : List[LightningMetric], optional
+                list of metrics to combine. Defaults to None.
+            weights : List[float], optional
+                list of weights / multipliers for weights. Defaults to 1.0 for all metrics.
         """  # noqa: E501
         self.metrics = metrics
         self.weights = weights
@@ -583,12 +649,17 @@ class CompositeMetric(LightningMetric):
         """
         Update composite metric
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         for metric in self._metrics:
             try:
@@ -600,8 +671,10 @@ class CompositeMetric(LightningMetric):
         """
         Get metric
 
-        Returns:
-            torch.Tensor: metric
+        Returns
+        -------
+            torch.Tensor
+                metric
         """
         results = []
         for weight, metric in zip(self._weights, self._metrics):
@@ -618,13 +691,19 @@ class CompositeMetric(LightningMetric):
         """
         Calculate composite metric
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
-            **kwargs: arguments to update function
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
+            **kwargs : Any
+                arguments to update function
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         results = []
         for weight, metric in zip(self._weights, self._metrics):
@@ -664,12 +743,17 @@ class CompositeMetric(LightningMetric):
 
         Will use first metric in ``metrics`` attribute to calculate result.
 
-        Args:
-            y_pred: prediction output of network
-            **kwargs: parameters to first metric `to_prediction` method
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
+            **kwargs : Any
+                parameters to first metric `to_prediction` method
 
-        Returns:
-            torch.Tensor: point prediction
+        Returns
+        -------
+            torch.Tensor
+                point prediction
         """
         return self._metrics[0].to_prediction(y_pred, **kwargs)
 
@@ -679,12 +763,17 @@ class CompositeMetric(LightningMetric):
 
         Will use first metric in ``metrics`` attribute to calculate result.
 
-        Args:
-            y_pred: prediction output of network
-            **kwargs: parameters to first metric's ``to_quantiles()`` method
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
+            **kwargs : Any
+                parameters to first metric's ``to_quantiles()`` method
 
-        Returns:
-            torch.Tensor: prediction quantiles
+        Returns
+        -------
+            torch.Tensor
+                prediction quantiles
         """
         return self._metrics[0].to_quantiles(y_pred, **kwargs)
 
@@ -712,8 +801,10 @@ class AggregationMetric(Metric):
 
     def __init__(self, metric: Metric, **kwargs):
         """
-        Args:
-            metric (Metric): metric which to calculate on aggregation.
+        Parameters
+        ----------
+            metric : Metric
+                metric which to calculate on aggregation.
         """
         super().__init__(**kwargs)
         self.metric = metric
@@ -724,12 +815,17 @@ class AggregationMetric(Metric):
         """
         Calculate composite metric
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         y_pred_mean, y_mean = self._calculate_mean(y_pred, y_actual)
         # update metric. unsqueeze first batch dimension (as batches are collapsed)
@@ -782,13 +878,19 @@ class AggregationMetric(Metric):
         """
         Calculate composite metric
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
-            **kwargs: arguments to update function
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
+            **kwargs : Any
+                arguments to update function
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         y_pred_mean, y_mean = self._calculate_mean(y_pred, y_actual)
         return self.metric(y_pred_mean, y_mean, **kwargs)
@@ -843,12 +945,17 @@ class MultiHorizonMetric(Metric):
         """
         Calculate loss without reduction. Override in derived classes
 
-        Args:
-            y_pred: network output
-            target: actual values
+        Parameters
+        ----------
+            y_pred : dict[str, torch.Tensor]
+                network output
+            target : torch.Tensor
+                actual values
 
-        Returns:
-            torch.Tensor: loss/metric as a single number for backpropagation
+        Returns
+        -------
+            torch.Tensor
+                loss/metric as a single number for backpropagation
         """
         raise NotImplementedError()
 
@@ -858,12 +965,17 @@ class MultiHorizonMetric(Metric):
 
         Do not override this method but :py:meth:`~loss` instead
 
-        Args:
-            y_pred (Dict[str, torch.Tensor]): network output
-            target (Union[torch.Tensor, rnn.PackedSequence]): actual values
+        Parameters
+        ----------
+            y_pred : Dict[str, torch.Tensor]
+                network output
+            target : Union[torch.Tensor, rnn.PackedSequence]
+                actual values
 
-        Returns:
-            torch.Tensor: loss as a single number for backpropagation
+        Returns
+        -------
+            torch.Tensor
+                loss as a single number for backpropagation
         """
         # unpack weight
         if isinstance(target, list | tuple) and not isinstance(
@@ -917,13 +1029,19 @@ class MultiHorizonMetric(Metric):
         """
         Mask losses.
 
-        Args:
-            losses (torch.Tensor): total loss. the first dimension indexes samples, the second indexes timesteps
-            lengths (torch.Tensor): total length
-            reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
+        Parameters
+        ----------
+            losses : torch.Tensor
+                total loss. the first dimension indexes samples, the second indexes timesteps
+            lengths : torch.Tensor
+                total length
+            reduction : str, optional
+                type of reduction. Defaults to ``self.reduction``.
 
-        Returns:
-            torch.Tensor: masked losses
+        Returns
+        -------
+            torch.Tensor
+                masked losses
         """  # noqa: E501
         if reduction is None:
             reduction = self.reduction
@@ -950,13 +1068,19 @@ class MultiHorizonMetric(Metric):
         """
         Reduce loss.
 
-        Args:
-            losses (torch.Tensor): total loss. the first dimension indexes samples, the second indexes timesteps
-            lengths (torch.Tensor): total length
-            reduction (str, optional): type of reduction. Defaults to ``self.reduction``.
+        Parameters
+        ----------
+            losses : torch.Tensor
+                total loss. the first dimension indexes samples, the second indexes timesteps
+            lengths : torch.Tensor
+                total length
+            reduction : str, optional
+                type of reduction. Defaults to ``self.reduction``.
 
-        Returns:
-            torch.Tensor: reduced loss
+        Returns
+        -------
+            torch.Tensor
+                reduced loss
         """  # noqa: E501
         if reduction is None:
             reduction = self.reduction
@@ -990,9 +1114,12 @@ class DistributionLoss(MultiHorizonMetric):
 
     Define two class attributes in a child class:
 
-    Attributes:
-        distribution_class (distributions.Distribution): torch probability distribution
-        distribution_arguments (List[str]): list of parameter names for the distribution
+    Attributes
+    ----------
+        distribution_class : distributions.Distribution
+            torch probability distribution
+        distribution_arguments : List[str]
+            list of parameter names for the distribution
 
     Further, implement the methods :py:meth:`~map_x_to_distribution` and :py:meth:`~rescale_parameters`.
     """  # noqa: E501
@@ -1009,11 +1136,15 @@ class DistributionLoss(MultiHorizonMetric):
         """
         Initialize metric
 
-        Args:
-            name (str): metric name. Defaults to class name.
-            quantiles (List[float], optional): quantiles for probability range.
+        Parameters
+        ----------
+            name : str
+                metric name. Defaults to class name.
+            quantiles : List[float], optional
+                quantiles for probability range.
                 Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
-            reduction (str, optional): Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
+            reduction : str, optional
+                Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
         """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
@@ -1023,11 +1154,15 @@ class DistributionLoss(MultiHorizonMetric):
         """
         Map the tensor of parameters to a probability distribution.
 
-        Args:
-            x (torch.Tensor): parameters for probability distribution. Last dimension will index the parameters
+        Parameters
+        ----------
+            x : torch.Tensor
+                parameters for probability distribution. Last dimension will index the parameters
 
-        Returns:
-            distributions.Distribution: torch probability distribution as defined in the
+        Returns
+        -------
+            distributions.Distribution
+                torch probability distribution as defined in the
                 class attribute ``distribution_class``
         """  # noqa: E501
         raise NotImplementedError("implement this method")
@@ -1036,12 +1171,17 @@ class DistributionLoss(MultiHorizonMetric):
         """
         Calculate negative likelihood
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         distribution = self.map_x_to_distribution(y_pred)
         loss = -distribution.log_prob(y_actual)
@@ -1051,11 +1191,16 @@ class DistributionLoss(MultiHorizonMetric):
         """
         Convert network prediction into a point prediction.
 
-        Args:
-            y_pred: prediction output of network
-            n_samples (int): number of samples to draw
-        Returns:
-            torch.Tensor: mean prediction
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
+            n_samples : int
+                number of samples to draw
+        Returns
+        -------
+            torch.Tensor
+                mean prediction
         """
         distribution = self.map_x_to_distribution(y_pred)
         try:
@@ -1067,12 +1212,17 @@ class DistributionLoss(MultiHorizonMetric):
         """
         Sample from distribution.
 
-        Args:
-            y_pred: prediction output of network (shape batch_size x n_timesteps x n_parameters)
-            n_samples (int): number of samples to draw
+        Parameters
+        ----------
+            y_pred : Any
+                prediction output of network (shape batch_size x n_timesteps x n_parameters)
+            n_samples : int
+                number of samples to draw
 
-        Returns:
-            torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
+        Returns
+        -------
+            torch.Tensor
+                tensor with samples  (shape batch_size x n_timesteps x n_samples)
         """  # noqa: E501
         dist = self.map_x_to_distribution(y_pred)
         samples = dist.sample((n_samples,))
@@ -1088,14 +1238,20 @@ class DistributionLoss(MultiHorizonMetric):
         """
         Convert network prediction into a quantile prediction.
 
-        Args:
-            y_pred: prediction output of network
-            quantiles (List[float], optional): quantiles for probability range. Defaults to quantiles as
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                prediction output of network
+            quantiles : List[float], optional
+                quantiles for probability range. Defaults to quantiles as
                 as defined in the class initialization.
-            n_samples (int): number of samples to draw for quantiles. Defaults to 100.
+            n_samples : int
+                number of samples to draw for quantiles. Defaults to 100.
 
-        Returns:
-            torch.Tensor: prediction quantiles (last dimension)
+        Returns
+        -------
+            torch.Tensor
+                prediction quantiles (last dimension)
         """  # noqa: E501
         if quantiles is None:
             quantiles = self.quantiles
@@ -1124,12 +1280,17 @@ class MultivariateDistributionLoss(DistributionLoss):
         """
         Sample from distribution.
 
-        Args:
-            y_pred: prediction output of network (shape batch_size x n_timesteps x n_parameters)
-            n_samples (int): number of samples to draw
+        Parameters
+        ----------
+            y_pred : Any
+                prediction output of network (shape batch_size x n_timesteps x n_parameters)
+            n_samples : int
+                number of samples to draw
 
-        Returns:
-            torch.Tensor: tensor with samples  (shape batch_size x n_timesteps x n_samples)
+        Returns
+        -------
+            torch.Tensor
+                tensor with samples  (shape batch_size x n_timesteps x n_samples)
         """  # noqa: E501
         dist = self.map_x_to_distribution(y_pred)
         samples = dist.sample(
@@ -1143,12 +1304,17 @@ class MultivariateDistributionLoss(DistributionLoss):
         """
         Calculate negative likelihood
 
-        Args:
-            y_pred: network output
-            y_actual: actual values
+        Parameters
+        ----------
+            y_pred : torch.Tensor
+                network output
+            y_actual : torch.Tensor
+                actual values
 
-        Returns:
-            torch.Tensor: metric value on which backpropagation can be applied
+        Returns
+        -------
+            torch.Tensor
+                metric value on which backpropagation can be applied
         """
         distribution = self.map_x_to_distribution(y_pred)
         # calculate one number and scale with batch size
