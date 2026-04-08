@@ -37,6 +37,7 @@ from pytorch_forecasting.metrics.distributions import (
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
+from pytorch_forecasting.metrics.nn_loss_adapter import NNLossAdapter
 from pytorch_forecasting.metrics.point import (
     MAE,
     MAPE,
@@ -50,6 +51,7 @@ from pytorch_forecasting.metrics.point import (
 from pytorch_forecasting.metrics.quantile import QuantileLoss
 
 __all__ = [
+    "NNLossAdapter",
     "MultiHorizonMetric",
     "DistributionLoss",
     "MultivariateDistributionLoss",
