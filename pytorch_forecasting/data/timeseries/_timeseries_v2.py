@@ -12,7 +12,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from pytorch_forecasting.utils._coerce import _coerce_to_list
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 
 #######################################################################################
 # Disclaimer: This dataset class is still work in progress and experimental, please
@@ -74,6 +75,15 @@ class TimeSeries(Dataset):
     static : list of str, optional, default = all variables not in known, unknown
         list of variables that do not change over time,
         list may also contain list of str, which are then grouped together.
+    categorical_encoders : dict[str, NaNLabelEncoder] or str, default="auto"
+        Mapping of categorical column names to encoder objects.
+        Only ``NaNLabelEncoder`` is supported.
+        If ``"auto"`` (default), a ``NaNLabelEncoder(add_nan=True)`` is
+        created and fitted for every column in ``cat``.
+        If a dict is provided, columns in ``cat`` missing from the dict
+        get a default ``NaNLabelEncoder(add_nan=True)`` with a warning.
+        Pass pre-fitted encoders from training to ensure consistent
+        encoding during prediction.
     """
 
     def __init__(
@@ -89,6 +99,7 @@ class TimeSeries(Dataset):
         known: list[str | list[str]] | None = None,
         unknown: list[str | list[str]] | None = None,
         static: list[str | list[str]] | None = None,
+        categorical_encoders: dict | str = "auto",
     ):
         self.data = data
         self.data_future = data_future
@@ -101,6 +112,7 @@ class TimeSeries(Dataset):
         self.known = known
         self.unknown = unknown
         self.static = static
+        self.categorical_encoders = categorical_encoders
 
         warn(
             "TimeSeries is part of an experimental rework of the "
@@ -124,6 +136,36 @@ class TimeSeries(Dataset):
         self._known = _coerce_to_list(known)
         self._unknown = _coerce_to_list(unknown)
         self._static = _coerce_to_list(static)
+
+        if (
+            isinstance(self.categorical_encoders, str)
+            and self.categorical_encoders == "auto"
+        ):
+            self._categorical_encoders = {
+                col: NaNLabelEncoder(add_nan=True) for col in self._cat
+            }
+        else:
+            self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
+            for col in self._cat:
+                if col not in self._categorical_encoders:
+                    warn(
+                        f"No encoder provided for categorical column '{col}'. "
+                        f"Using default NaNLabelEncoder(add_nan=True).",
+                        UserWarning,
+                    )
+                    self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
+
+        # Fit and transform categorical columns to integer codes
+        for col, encoder in self._categorical_encoders.items():
+            if not hasattr(encoder, "classes_") or len(encoder.classes_) == 0:
+                encoder.fit(self.data[col])
+
+            # NaNLabelEncoder.transform() returns numpy ints directly.
+            # D1's __getitem__ converts to tensors later via torch.tensor().
+            self.data[col] = encoder.transform(self.data[col])
+
+            if self.data_future is not None and col in self.data_future.columns:
+                self.data_future[col] = encoder.transform(self.data_future[col])
 
         self.feature_cols = [
             col
@@ -186,6 +228,15 @@ class TimeSeries(Dataset):
             self.metadata["col_type"][col] = "C" if col in self._cat else "F"
 
             self.metadata["col_known"][col] = "K" if col in self._known else "U"
+
+        # Expose cardinalities for each categorical variable
+        self.metadata["categorical_cardinalities"] = {}
+        for col in self._cat:
+            encoder = self._categorical_encoders.get(col)
+            if encoder is not None and hasattr(encoder, "classes_"):
+                self.metadata["categorical_cardinalities"][col] = len(encoder.classes_)
+            else:
+                self.metadata["categorical_cardinalities"][col] = 0
 
     def __len__(self) -> int:
         """Return number of time series in the dataset."""
