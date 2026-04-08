@@ -1,5 +1,54 @@
 # Release Notes
 
+## v1.7.0
+Version release focusing on:
+- `pandas 3` compatibility
+- bugfixes
+- Documentation migration to `numpy` documentation style.
+
+### Fixes
+
+* [BUG] Import issue for `SettingWithCopyWarning` fixed (#2036) @lucifer4073
+* [BUG] Remove outdated strict naming convention test in test_all_estim… (#2190) @AyushDineshRathi
+* [BUG] Fix _load_config() to support .pkl file paths (#2199) @Quant-Code-Hacker
+* [BUG] Fix logging_metrics device mismatch in BaseModelV2 (#2205) @StrikerEureka34
+* [BUG] Move prediction tensors to CPU between batches in PredictCallback (#2228) @StrikerEureka34
+
+### Documentation
+
+* [DOC] Clarify RMSE implementation and reduction logic #1541 (#2028) @Ds0uz4
+* [DOC] Add Contributor Guide (#2047) @phoeenniixx
+* [DOC] Improved Documentation (#2048) @Soham-47
+* [DOC] migration of docstrings to numpydoc style in embeddings layer (#2079) @Soham-47
+* [DOC] Improve data subpackage docstring for clarity and consistency (Closes #2092) (#2112) @vinitjain2005
+* [DOC] migrate distributions.py docstrings to numpydoc style (#2118) @Meet-Ramjiyani-10
+* [DOC] Migration of docstrings in layers/_filter to NumPydoc style (#2116) @AyushDineshRathi
+* [DOC] migrate baseline.py docstrings to numpydocstyle  (#2115) @amruth6002
+* [DOC] Migrate encoder docstrings from Google to NumPy style (#2121) @Skvmqq
+* [DOC] Convert TFT tuning and utils docstrings to numpydoc style (#2097) @Siddhazntx
+* [DOC] migrate nhits and quantile docstrings to numpydocstyle (#2111) @amruth6002
+* [DOC] Migrate AttentionLayer docstring to NumPy style (#2174) @QuantumByte-01
+* [DOC] migrate DeepAR docstrings to NumPy style (#2180) @echo-xiao
+* [DOC] Migrate SeriesDecomposition docstring to NumPy style (#2175) @QuantumByte-01
+* [DOC] Migrate docstrings in models/nn/rnn.py to numpydoc format (#2198) @sohamjadhav95
+
+### Maintenance
+
+* [MNT] `pandas 3` compatibility - test data (#2045) @fkiraly
+* [MNT] Ensure full pandas 3 compatibility (#2053) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 7 to 8 (#2101) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 6 to 7 (#2100) @dependabot[bot]
+* [MNT] Improve error message for invalid reduction argument in groupby_apply (#2104) @Gyanam1310
+* [MNT] Remove `pandas 3` warnings (#2139) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump codecov/codecov-action from 5 to 6 (#2235) @dependabot[bot]
+
+### Enhancements
+
+* [ENH] Relax naming convention in test_pkg_linkage (#2080) @PalakB09
+
+### All Contributors
+@amruth6002, @AyushDineshRathi, @dependabot[bot], @Ds0uz4, @echo-xiao, @fkiraly, @Gyanam1310, @lucifer4073, @Meet-Ramjiyani-10, @PalakB09, @phoeenniixx, @Quant-Code-Hacker, @QuantumByte-01, @Siddhazntx, @Skvmqq, @Soham-47, @sohamjadhav95, @StrikerEureka34, @vinitjain2005
+
 ## v1.6.1
 Patch release focusing on:
 * Bug fix  to solve the persisting bug of passing `weights_only` in `load_from_checkpoint` for `lightning <2.6`.
