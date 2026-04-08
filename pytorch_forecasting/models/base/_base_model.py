@@ -1755,7 +1755,15 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         logging.getLogger("lightning").setLevel(log_level_lighting)
         logging.getLogger("pytorch_lightning").setLevel(log_level_pytorch_lightning)
 
-        return predict_callback.result
+        trainer_predict_callback = next(
+            (
+                callback
+                for callback in reversed(trainer.callbacks)
+                if isinstance(callback, PredictCallback)
+            ),
+            predict_callback,
+        )
+        return trainer_predict_callback.result
 
     def predict_dependency(
         self,
