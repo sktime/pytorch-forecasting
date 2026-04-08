@@ -315,14 +315,20 @@ class TimeXer(BaseModelWithCovariates):
         """
         Create model from dataset and set parameters related to covariates.
 
-        Args:
-            dataset: timeseries dataset
-            allowed_encoder_known_variable_names: list of known variables that are allowed in encoder, defaults to all
-            **kwargs: additional arguments such as hyperparameters for model (see ``__init__()``)
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            Timeseries dataset.
+        allowed_encoder_known_variable_names : list[str], optional
+            List of known variables that are allowed in encoder, defaults to all.
+        **kwargs
+            Additional arguments such as hyperparameters for model (see ``__init__()``)
 
-        Returns:
-            TimeXer
-        """  # noqa: E501
+        Returns
+        -------
+        TimeXer
+            TimeXer model.
+        """
         new_kwargs = copy(kwargs)
         new_kwargs.update(
             {
@@ -343,8 +349,10 @@ class TimeXer(BaseModelWithCovariates):
         """
         Forecast for univariate or multivariate with single target (MS) case.
 
-        Args:
-            x: Dictionary containing entries for encoder_cat, encoder_cont
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing entries for encoder_cat, encoder_cont.
         """
         encoder_cont = x["encoder_cont"]
         encoder_time_idx = x.get("encoder_time_idx", None)
@@ -376,10 +384,15 @@ class TimeXer(BaseModelWithCovariates):
         """
         Forecast for multivariate with multiple targets (M) case.
 
-        Args:
-            x: Dictionary containing entries for encoder_cat, encoder_cont
-        Returns:
-            Dictionary with predictions
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing entries for encoder_cat, encoder_cont.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary with predictions.
         """
 
         encoder_cont = x["encoder_cont"]
@@ -415,8 +428,10 @@ class TimeXer(BaseModelWithCovariates):
     def decoder_covariate_size(self) -> int:
         """Decoder covariates size.
 
-        Returns:
-            int: size of time-dependent covariates used by the decoder
+        Returns
+        -------
+        int
+            Size of time-dependent covariates used by the decoder.
         """
         return len(
             set(self.hparams.time_varying_reals_decoder) - set(self.target_names)
@@ -429,8 +444,10 @@ class TimeXer(BaseModelWithCovariates):
     def encoder_covariate_size(self) -> int:
         """Encoder covariate size.
 
-        Returns:
-            int: size of time-dependent covariates used by the encoder
+        Returns
+        -------
+        int
+            Size of time-dependent covariates used by the encoder.
         """
         return len(
             set(self.hparams.time_varying_reals_encoder) - set(self.target_names)
@@ -443,8 +460,10 @@ class TimeXer(BaseModelWithCovariates):
     def static_size(self) -> int:
         """Static covariate size.
 
-        Returns:
-            int: size of static covariates
+        Returns
+        -------
+        int
+            Size of static covariates.
         """
         return len(self.hparams.static_reals) + sum(
             self.embeddings.output_size[name]
@@ -455,11 +474,15 @@ class TimeXer(BaseModelWithCovariates):
         """
         Forward pass of the model.
 
-        Args:
-            x: Dictionary containing model inputs
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing model inputs.
 
-        Returns:
-            Dictionary with model outputs
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary with model outputs.
         """
         if (
             self.hparams.task_name == "long_term_forecast"
