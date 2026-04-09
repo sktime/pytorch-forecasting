@@ -88,11 +88,11 @@ class Softs(TslibBaseModel):
         available_features = []
         target_indices = []
         current_idx = 0
-        
+
         if "history_cont" in x and x["history_cont"].size(-1) > 0:
             available_features.append(x["history_cont"])
             current_idx += x["history_cont"].size(-1)
-            
+
         if "history_target" in x and x["history_target"].size(-1) > 0:
             n_targets = x["history_target"].size(-1)
             target_indices = list(range(current_idx, current_idx + n_targets))
@@ -119,8 +119,8 @@ class Softs(TslibBaseModel):
 
         # Reshape for predictions
         out = out.reshape(B, C, self.prediction_length, self.n_quantiles)
-        out = out.permute(0, 2, 1, 3) # -> [B, Pred_len, C, quantiles]
-        
+        out = out.permute(0, 2, 1, 3)  # -> [B, Pred_len, C, quantiles]
+
         if self.n_quantiles == 1:
             out = out.squeeze(-1)  # -> [B, Pred_len, C]
 
@@ -130,11 +130,14 @@ class Softs(TslibBaseModel):
                 # temporarily reshape to 3D for RevIN [B, Pred_len * quantiles, C]
                 out = out.permute(0, 1, 3, 2).reshape(B, -1, C)
                 out = self.revin(out, mode="denorm")
-                out = out.reshape(B, self.prediction_length, self.n_quantiles, C).permute(0, 1, 3, 2)
+                out = out.reshape(
+                    B, self.prediction_length, self.n_quantiles, C
+                ).permute(0, 1, 3, 2)
             else:
                 out = self.revin(out, mode="denorm")
 
-        # Extract only the target features from output instead of passing all covariates to loss
+        # Extract only the target features from output instead of
+        # passing all covariates to loss
         if target_indices:
             if out.ndim == 4:
                 out = out[:, :, target_indices, :]
