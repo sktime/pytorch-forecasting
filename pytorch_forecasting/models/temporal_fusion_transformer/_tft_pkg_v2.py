@@ -64,6 +64,15 @@ class TFT_pkg_v2(Base_pkg):
                 datamodule_cfg=dict(max_encoder_length=7, max_prediction_length=10),
             ),
             dict(attention_head_size=2),
+            dict(
+                optimizer="adamw",
+                lr_scheduler="cosine_annealing",
+                lr_scheduler_params={"T_max": 5},
+            ),
+            dict(
+                optimizer="adagrad",
+                optimizer_params={"lr": 1e-3},
+            ),
         ]
 
         default_dm_cfg = {"max_encoder_length": 4, "max_prediction_length": 3}
