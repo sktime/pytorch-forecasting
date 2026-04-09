@@ -86,9 +86,16 @@ class Softs(TslibBaseModel):
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         # Form Input: [Batch_Size, Context_Length, Features]
         available_features = []
+        target_indices = []
+        current_idx = 0
+        
         if "history_cont" in x and x["history_cont"].size(-1) > 0:
             available_features.append(x["history_cont"])
+            current_idx += x["history_cont"].size(-1)
+            
         if "history_target" in x and x["history_target"].size(-1) > 0:
+            n_targets = x["history_target"].size(-1)
+            target_indices = list(range(current_idx, current_idx + n_targets))
             available_features.append(x["history_target"])
 
         input_data = torch.cat(available_features, dim=-1)  # [B, L, C]
@@ -112,11 +119,27 @@ class Softs(TslibBaseModel):
 
         # Reshape for predictions
         out = out.reshape(B, C, self.prediction_length, self.n_quantiles)
-        out = out.permute(0, 2, 1, 3).squeeze(-1)  # -> [B, Pred_len, C]
+        out = out.permute(0, 2, 1, 3) # -> [B, Pred_len, C, quantiles]
+        
+        if self.n_quantiles == 1:
+            out = out.squeeze(-1)  # -> [B, Pred_len, C]
 
         # De-normalize
         if self.use_revin:
-            out = self.revin(out, mode="denorm")
+            if out.ndim == 4:
+                # temporarily reshape to 3D for RevIN [B, Pred_len * quantiles, C]
+                out = out.permute(0, 1, 3, 2).reshape(B, -1, C)
+                out = self.revin(out, mode="denorm")
+                out = out.reshape(B, self.prediction_length, self.n_quantiles, C).permute(0, 1, 3, 2)
+            else:
+                out = self.revin(out, mode="denorm")
+
+        # Extract only the target features from output instead of passing all covariates to loss
+        if target_indices:
+            if out.ndim == 4:
+                out = out[:, :, target_indices, :]
+            else:
+                out = out[:, :, target_indices]
 
         if "target_scale" in x and hasattr(self, "transform_output"):
             out = self.transform_output(out, x["target_scale"])
