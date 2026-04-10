@@ -83,7 +83,7 @@ class BaseModel(LightningModule):
         )
         self.model_name = self.__class__.__name__
         warn(
-            f"The Model '{self.model_name}' is part of an experimental rework"
+            f"The Model '{self.model_name}' is part of an experimental rework "
             "of the pytorch-forecasting model layer, scheduled for release with v2.0.0."
             " The API is not stable and may change without prior warning. "
             "This class is intended for beta testing and as a basic skeleton, "
@@ -92,6 +92,7 @@ class BaseModel(LightningModule):
             "pytorch-forecasting issue 1736, "
             "https://github.com/sktime/pytorch-forecasting/issues/1736",
             UserWarning,
+            stacklevel=2,
         )
 
     @classproperty

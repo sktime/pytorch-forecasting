@@ -187,8 +187,10 @@ class KANLayer(nn.Module):
 
         Parameters
         -----
-        x : 2D torch.float
-            inputs, shape (number of samples, input dimension)
+        x : torch.Tensor
+            Input tensor of shape (batch_size, in_dim), where:
+              - batch_size is the number of input samples.
+              - in_dim is the input feature dimension.
 
         Returns:
         --------
