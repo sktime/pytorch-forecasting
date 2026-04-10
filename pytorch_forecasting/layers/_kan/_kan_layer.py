@@ -188,7 +188,9 @@ class KANLayer(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Inputs, shape (number of samples, input dimension).
+            Input tensor of shape (batch_size, in_dim), where:
+              - batch_size is the number of input samples.
+              - in_dim is the input feature dimension.
 
         Returns
         ----------
