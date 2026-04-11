@@ -56,7 +56,13 @@ class QuantileLoss(MultiHorizonMetric):
             point prediction
         """
         if y_pred.ndim == 3:
-            idx = self.quantiles.index(0.5)
+            if 0.5 in self.quantiles:
+                idx = self.quantiles.index(0.5)
+            else:
+                idx = min(
+                    range(len(self.quantiles)),
+                    key=lambda i: abs(self.quantiles[i] - 0.5),
+                )
             y_pred = y_pred[..., idx]
         return y_pred
 
