@@ -133,10 +133,12 @@ class TimeXer(TslibBaseModel):
 
         warn.warn(
             "TimeXer is an experimental model implemented on TslibBaseModelV2. "
-            "It is an unstable version and maybe subject to unannouced changes."
-            "Please use with caution. Feedback on the design and implementation is"
-            ""
-            "welcome. On the issue #1833 - https://github.com/sktime/pytorch-forecasting/issues/1833",
+            "It is an unstable version and may be subject to unannounced changes. "
+            "Please use with caution. Feedback on the design and implementation is "
+            "welcome on issue #1833 - "
+            "https://github.com/sktime/pytorch-forecasting/issues/1833",
+            UserWarning,
+            stacklevel=2,
         )
 
         self.enc_in = enc_in
@@ -178,8 +180,10 @@ class TimeXer(TslibBaseModel):
         if self.context_length % self.patch_length != 0:
             warn.warn(
                 f"Context length ({self.context_length}) is not divisible by"
-                " patch length. This may lead to unexpected behavior, as some"
-                "time steps will not be used in the model."
+                " patch length. This may lead to unexpected behavior, as some "
+                "time steps will not be used in the model.",
+                UserWarning,
+                stacklevel=2,
             )
 
         self.patch_num = max(1, int(self.context_length // self.patch_length))
