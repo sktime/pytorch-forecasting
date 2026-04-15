@@ -33,6 +33,75 @@ class MoiraiMoE_pkg_v2(Base_pkg):
         return TslibDataModule
 
     @classmethod
+    def _get_test_datamodule_from(cls, trainer_kwargs):
+        """Create test dataloaders from trainer_kwargs."""
+        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.tests._data_scenarios import (
+            data_with_covariates_v2,
+            make_datasets_v2,
+        )
+
+        data_with_covariates = data_with_covariates_v2()
+        data_loader_default_kwargs = dict(
+            target="target",
+            group_ids=["agency_encoded", "sku_encoded"],
+            add_relative_time_idx=True,
+        )
+
+        data_loader_kwargs = trainer_kwargs.get("data_loader_kwargs", {})
+        data_loader_default_kwargs.update(data_loader_kwargs)
+
+        datasets_info = make_datasets_v2(
+            data_with_covariates, **data_loader_default_kwargs
+        )
+
+        training_dataset = datasets_info["training_dataset"]
+        validation_dataset = datasets_info["validation_dataset"]
+
+        context_length = data_loader_kwargs.get("context_length", 32)
+        prediction_length = data_loader_kwargs.get("prediction_length", 8)
+        batch_size = data_loader_kwargs.get("batch_size", 2)
+        add_rel = data_loader_kwargs.get("add_relative_time_idx", True)
+
+        train_datamodule = TslibDataModule(
+            time_series_dataset=training_dataset,
+            context_length=context_length,
+            prediction_length=prediction_length,
+            add_relative_time_idx=add_rel,
+            batch_size=batch_size,
+            train_val_test_split=(0.8, 0.2, 0.0),
+        )
+
+        val_datamodule = TslibDataModule(
+            time_series_dataset=validation_dataset,
+            context_length=context_length,
+            prediction_length=prediction_length,
+            add_relative_time_idx=add_rel,
+            batch_size=batch_size,
+            train_val_test_split=(0.0, 1.0, 0.0),
+        )
+
+        test_datamodule = TslibDataModule(
+            time_series_dataset=validation_dataset,
+            context_length=context_length,
+            prediction_length=prediction_length,
+            add_relative_time_idx=add_rel,
+            batch_size=batch_size,
+            train_val_test_split=(0.0, 0.0, 1.0),
+        )
+
+        train_datamodule.setup("fit")
+        val_datamodule.setup("fit")
+        test_datamodule.setup("test")
+
+        return {
+            "train": train_datamodule.train_dataloader(),
+            "val": val_datamodule.val_dataloader(),
+            "test": test_datamodule.test_dataloader(),
+            "data_module": train_datamodule,
+        }
+
+    @classmethod
     def get_test_train_params(cls):
         """Return testing parameter settings for the trainer.
 
