@@ -2,7 +2,21 @@
 Metadata container for Moirai-MoE v2.
 """
 
+from skbase.utils.dependencies import _check_soft_dependencies
+
 from pytorch_forecasting.base._base_pkg import Base_pkg
+
+_MOIRAI_MOE_DEPS = ["uni2ts", "torch", "einops", "huggingface_hub"]
+
+_MOIRAI_MOE_SKIP_TESTS = (
+    []
+    if _check_soft_dependencies(_MOIRAI_MOE_DEPS, severity="none")
+    else [
+        "test_integration",
+        "test_checkpointing",
+        "test_predict_modes",
+    ]
+)
 
 
 class MoiraiMoE_pkg_v2(Base_pkg):
@@ -15,7 +29,8 @@ class MoiraiMoE_pkg_v2(Base_pkg):
         "capability:multivariate": False,
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
-        "python_dependencies": ["uni2ts", "torch", "einops", "huggingface_hub"],
+        "python_dependencies": _MOIRAI_MOE_DEPS,
+        "tests:skip_by_name": _MOIRAI_MOE_SKIP_TESTS,
     }
 
     @classmethod
