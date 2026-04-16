@@ -219,8 +219,37 @@ class _TslibDataset(Dataset):
             x["future_relative_time_idx"] = torch.arange(0, prediction_length)
 
         if processed_data["static"] is not None:
-            x["static_categorical_features"] = processed_data["static"].unsqueeze(0)
-            x["static_continuous_features"] = processed_data["static"].unsqueeze(0)
+            static_features = processed_data["static"]
+            if not isinstance(static_features, torch.Tensor):
+                static_features = torch.tensor(static_features, dtype=torch.float32)
+            static_features = static_features.flatten()
+
+            static_feature_names = metadata["feature_names"]["static"]
+            static_categorical_names = set(
+                metadata["feature_names"]["static_categorical"]
+            )
+
+            static_categorical_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name in static_categorical_names
+            ]
+            static_continuous_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name not in static_categorical_names
+            ]
+
+            x["static_categorical_features"] = (
+                static_features[static_categorical_indices].unsqueeze(0)
+                if len(static_categorical_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
+            x["static_continuous_features"] = (
+                static_features[static_continuous_indices].unsqueeze(0)
+                if len(static_continuous_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
 
         if "target_scale" in processed_data:
             x["target_scale"] = processed_data["target_scale"]
