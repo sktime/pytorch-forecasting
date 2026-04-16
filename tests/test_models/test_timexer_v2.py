@@ -440,3 +440,4 @@ def test_static_features_are_split_by_type_in_tslib_output():
     x, _ = next(iter(dm.train_dataloader()))
     assert x["static_categorical_features"].shape[-1] == 1
     assert x["static_continuous_features"].shape[-1] == 1
+    
