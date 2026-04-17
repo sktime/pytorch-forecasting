@@ -12,6 +12,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+from pytorch_forecasting.data._encoders_v2 import D1CategoricalEncoder
 from pytorch_forecasting.utils._coerce import _coerce_to_list
 
 #######################################################################################
@@ -124,6 +125,17 @@ class TimeSeries(Dataset):
         self._known = _coerce_to_list(known)
         self._unknown = _coerce_to_list(unknown)
         self._static = _coerce_to_list(static)
+
+        self.categorical_encoder = None
+        if self._cat:
+            self.categorical_encoder = D1CategoricalEncoder(columns=self._cat)
+
+            self.categorical_encoder.fit(self.data)
+
+            self.data = self.categorical_encoder.transform(self.data)
+
+            if self.data_future is not None:
+                self.data_future = self.categorical_encoder.transform(self.data_future)
 
         self.feature_cols = [
             col
