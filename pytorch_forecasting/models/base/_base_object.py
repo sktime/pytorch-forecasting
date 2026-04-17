@@ -21,7 +21,7 @@ class _BasePtForecaster_Common(_BaseObject):
         """Get model name."""
         name = cls.get_class_tags().get("info:name", None)
         if name is None:
-            name = cls.get_model_cls().__name__
+            name = cls.get_cls().__name__
         return name
 
     @classmethod
@@ -53,7 +53,7 @@ class _BasePtForecaster_Common(_BaseObject):
                 "get_test_params should either return a dict or list of dict."
             )
 
-        return cls.get_model_cls()(**params)
+        return cls.get_cls()(**params)
 
     @classmethod
     def create_test_instances_and_names(cls, parameter_set="default"):
@@ -93,7 +93,7 @@ class _BasePtForecaster_Common(_BaseObject):
                     f"Error in {cls.__name__}.get_test_params, "
                     "return must be param dict for class, or list thereof"
                 )
-            objs += [cls.get_model_cls()(**params)]
+            objs += [cls.get_cls()(**params)]
 
         num_instances = len(param_list)
         if num_instances > 1:
