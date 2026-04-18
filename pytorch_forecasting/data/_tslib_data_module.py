@@ -192,8 +192,8 @@ class _TslibDataset(Dataset):
         history_target = processed_data["target"][history_indices]
         future_target = processed_data["target"][future_indices]
 
-        # history_time_idx = processed_data["timestep"][history_indices]
-        # future_time_idx = processed_data["timestep"][future_indices]
+        history_time_idx = torch.as_tensor(processed_data["timestep"][history_indices])
+        future_time_idx = torch.as_tensor(processed_data["timestep"][future_indices])
 
         x = {
             "history_cont": history_cont,
@@ -205,10 +205,8 @@ class _TslibDataset(Dataset):
             "history_mask": history_mask,
             "future_mask": future_mask,
             "groups": processed_data["group"],
-            "history_time_idx": torch.arange(context_length),
-            "future_time_idx": torch.arange(
-                context_length, context_length + prediction_length
-            ),
+            "history_time_idx": history_time_idx,
+            "future_time_idx": future_time_idx,
             "history_target": history_target,
             "future_target": future_target,
             "future_target_len": torch.tensor(prediction_length),
