@@ -572,21 +572,20 @@ def test_MASE():
     assert scaling.shape == (batch_size,)
     assert (scaling > 0).all(), "Scaling should be positive"
 
+
 def test_QuantileLoss_to_prediction_fallback():
     """Test to_prediction selects median when present, nearest quantile otherwise."""
 
     loss_with_median = QuantileLoss(quantiles=[0.1, 0.5, 0.9])
-    y_pred_3d = torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]])  
+    y_pred_3d = torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]])
     result = loss_with_median.to_prediction(y_pred_3d)
-    expected = torch.tensor([[2.0, 5.0]]) 
+    expected = torch.tensor([[2.0, 5.0]])
     assert torch.equal(result, expected)
 
-    
     loss_no_median = QuantileLoss(quantiles=[0.1, 0.4, 0.9])
     result_fallback = loss_no_median.to_prediction(y_pred_3d)
-    expected_fallback = torch.tensor([[2.0, 5.0]]) 
+    expected_fallback = torch.tensor([[2.0, 5.0]])
     assert torch.equal(result_fallback, expected_fallback)
-
 
     y_pred_2d = torch.tensor([[10.0, 20.0]])
     result_2d = loss_no_median.to_prediction(y_pred_2d)
