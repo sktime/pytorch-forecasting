@@ -809,7 +809,7 @@ class AggregationMetric(Metric):
         pass
 
     def reset(self) -> None:
-        self.metrics.reset()
+        self.metric.reset()
 
     def persistent(self, mode: bool = False) -> None:
         self.metric.persistent(mode=mode)
