@@ -468,6 +468,7 @@ def test_preprocess_data(tslib_data_module, sample_timeseries_data):
 
     expected_length = len(original_sample["t"])
 
+    assert processed["length"] == expected_length   
     assert processed["features"]["categorical"].shape[0] == expected_length
     assert processed["features"]["continuous"].shape[0] == expected_length
     assert processed["target"].shape[0] == expected_length
