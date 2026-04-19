@@ -62,6 +62,21 @@ def _object_type_to_version(object_type):
     return ""
 
 
+def _model_class_for_link(klass):
+    """Return the implementation class that docs links should target.
+
+    Registry entries are package wrapper classes. When possible, resolve the
+    underlying model class so generated links lead to the model implementation.
+    """
+    get_cls = getattr(klass, "get_cls", None)
+    if get_cls is None:
+        return klass
+    try:
+        return get_cls()
+    except NotImplementedError:
+        return klass
+
+
 def _get_model_rows():
     """Query the registry and return a list of row dicts for each model.
 
@@ -100,9 +115,10 @@ def _get_model_rows():
         # Build the clean display name (strip _pkg / _pkg_v2 suffixes)
         display_name = _clean_model_name(klass.__name__)
 
-        # Build the module path for cross-reference
-        module = klass.__module__
-        qualname = klass.__qualname__
+        # Build the module path for cross-reference to the model implementation.
+        link_class = _model_class_for_link(klass)
+        module = link_class.__module__
+        qualname = link_class.__qualname__
         ref = f":py:class:`{display_name} <{module}.{qualname}>`"
 
         pred_types = tags.get("info:pred_type") or []
