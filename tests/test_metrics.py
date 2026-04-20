@@ -569,7 +569,7 @@ def test_MASE():
     )
 
     assert scaling.shape == (batch_size,)
-    assert (scaling > 0).all()
+    assert (scaling > 0).all(), "Scaling should be positive"
 
 
 def test_composite_metric_immutability():
