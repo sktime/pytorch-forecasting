@@ -569,4 +569,29 @@ def test_MASE():
     )
 
     assert scaling.shape == (batch_size,)
-    assert (scaling > 0).all(), "Scaling should be positive"
+    assert (scaling > 0).all()
+
+
+def test_composite_metric_immutability():
+    metric1 = SMAPE()
+    metric2 = MAE()
+
+    base = metric1 + metric2
+    original_len = len(base._metrics)
+    variant = base + SMAPE()
+
+    assert base is not variant
+    assert len(base._metrics) == original_len
+    assert len(variant._metrics) == original_len + 1
+
+    original_weights = list(base._weights)
+    scaled = base * 2.0
+
+    assert base is not scaled
+    assert base._weights == original_weights
+    assert scaled._weights == [w * 2.0 for w in original_weights]
+
+    rscaled = 3.0 * base
+    assert base is not rscaled
+    assert base._weights == original_weights
+    assert rscaled._weights == [w * 3.0 for w in original_weights]
