@@ -23,6 +23,7 @@ SOURCE_PATH = Path(os.path.dirname(__file__))  # noqa # docs source
 PROJECT_PATH = SOURCE_PATH.joinpath("../..")  # noqa # project root
 
 sys.path.insert(0, str(PROJECT_PATH))  # noqa
+sys.path.insert(0, str(SOURCE_PATH / "_ext"))  # custom Sphinx extensions
 
 import pytorch_forecasting  # isort:skip
 
@@ -49,6 +50,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinx.ext.napoleon",
+    "model_overview",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
