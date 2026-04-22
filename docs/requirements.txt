@@ -17,5 +17,5 @@ ipython
 nbconvert >=6.3.0
 recommonmark >=0.7.1
 pytorch-optimizer >=2.5.1
-fastapi >0.80
+fastapi >=0.136.0
 cpflows
