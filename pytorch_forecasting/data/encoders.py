@@ -9,6 +9,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import scipy.stats
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints
@@ -1576,3 +1577,14 @@ class MultiNormalizer(TorchNormalizer):
                     return [getattr(norm, name) for norm in self.normalizers]
             else:  # attribute does not exist for all normalizers
                 raise e
+
+
+class CategoricalEncoderMixin:
+    """Mixin to provide consistent types and tensor outputs for ptf-v2."""
+
+    def _to_numpy(self, y: pd.Series | np.ndarray | torch.Tensor) -> np.ndarray:
+        if isinstance(y, torch.Tensor):
+            return y.detach().cpu().numpy()
+        elif isinstance(y, pd.Series):
+            return y.to_numpy()
+        return np.asarray(y)

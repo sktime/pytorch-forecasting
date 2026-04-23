@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+import torch
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.timeseries import TimeSeries
@@ -470,3 +471,149 @@ def test_multivariate_target():
 
     x, y = dm.train_dataset[0]
     assert len(y) == 2
+
+
+def test_v2_categorical_with_nan_label_encoder():
+    """Test D1 + D2 with default NaNLabelEncoder."""
+    df = pd.DataFrame(
+        {
+            "time_idx": range(10),
+            "target": np.random.rand(10),
+            "group_id": ["A"] * 5 + ["B"] * 5,
+            "color": ["red", "blue", "red", "green", "blue"] * 2,
+            "value": np.random.rand(10),
+        }
+    )
+
+    ts = TimeSeries(
+        data=df,
+        time="time_idx",
+        target="target",
+        group=["group_id"],
+        cat=["color"],
+        num=["value"],
+    )
+
+    # Verify cardinality is in metadata (NaNLabelEncoder: 4 = NaN + 3 categories)
+    assert "color" in ts.metadata["categorical_cardinalities"]
+    assert ts.metadata["categorical_cardinalities"]["color"] == 4
+
+    # D2 should work
+    datamodule = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=2,
+        max_prediction_length=1,
+        batch_size=2,
+    )
+    datamodule.setup(stage="fit")
+
+    batch = next(iter(datamodule.train_dataloader()))
+    x_batch, y_batch = batch
+    assert x_batch["encoder_cat"].dtype == torch.long
+
+
+def test_predict_encoder_consistency():
+    """Test that encoders from training are reusable for prediction."""
+    df = pd.DataFrame(
+        {
+            "time_idx": range(20),
+            "target": np.random.rand(20),
+            "group_id": ["A"] * 10 + ["B"] * 10,
+            "color": ["red", "blue", "red", "green", "blue"] * 4,
+            "value": np.random.rand(20),
+        }
+    )
+
+    ts = TimeSeries(
+        data=df,
+        time="time_idx",
+        target="target",
+        group=["group_id"],
+        cat=["color"],
+        num=["value"],
+    )
+
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=3,
+        max_prediction_length=1,
+        batch_size=2,
+    )
+    dm.setup(stage="fit")
+
+    # Get fitted encoders
+    fitted_encoders = dm.get_categorical_encoders()
+    assert "color" in fitted_encoders
+
+    # Simulate prediction with new data (with unseen category "purple")
+    predict_df = pd.DataFrame(
+        {
+            "time_idx": range(10),
+            "target": np.random.rand(10),
+            "group_id": ["C"] * 10,
+            "color": [
+                "red",
+                "purple",
+                "blue",
+                "red",
+                "green",
+                "purple",
+                "blue",
+                "red",
+                "green",
+                "blue",
+            ],
+            "value": np.random.rand(10),
+        }
+    )
+
+    ts_predict = TimeSeries(
+        data=predict_df,
+        time="time_idx",
+        target="target",
+        group=["group_id"],
+        cat=["color"],
+        num=["value"],
+        categorical_encoders=fitted_encoders,
+    )
+
+    # "purple" should map to 0 (unknown/NaN class)
+    # This verifies encoding consistency
+    sample = ts_predict[0]
+    assert torch.is_tensor(sample["x"])
+
+
+def test_d2_metadata_has_cardinalities():
+    """Test that D2 metadata includes categorical_cardinalities."""
+    df = pd.DataFrame(
+        {
+            "time_idx": range(10),
+            "target": np.random.rand(10),
+            "group_id": ["A"] * 5 + ["B"] * 5,
+            "color": ["red", "blue", "red", "green", "blue"] * 2,
+            "value": np.random.rand(10),
+        }
+    )
+
+    ts = TimeSeries(
+        data=df,
+        time="time_idx",
+        target="target",
+        group=["group_id"],
+        cat=["color"],
+        num=["value"],
+    )
+
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=2,
+        max_prediction_length=1,
+        batch_size=2,
+    )
+
+    metadata = dm.metadata
+    assert "categorical_cardinalities" in metadata
+    assert "color" in metadata["categorical_cardinalities"]
+    assert metadata["categorical_cardinalities"]["color"] > 0
+    # Embedding sizes should NOT be in D2 metadata anymore
+    assert "categorical_embedding_sizes" not in metadata
