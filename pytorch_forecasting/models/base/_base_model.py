@@ -418,6 +418,13 @@ class PredictCallback(BasePredictionWriter):
             return None
 
 
+def _loss_needs_encoder_target(loss) -> bool:
+    """Return True if the loss's update() accepts encoder_target as a parameter."""
+    if isinstance(loss, MultiLoss):
+        return any(_loss_needs_encoder_target(m) for m in loss.metrics)
+    return "encoder_target" in inspect.signature(loss.update).parameters
+
+
 class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMixIn):
     """
     BaseModel from which new timeseries models should inherit from.
@@ -925,7 +932,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # for smoothness of loss function
             monotinicity_loss = 10 * torch.pow(monotinicity_loss, 2)
             if not self.predicting:
-                if isinstance(self.loss, MASE | MultiLoss):
+                if _loss_needs_encoder_target(self.loss):
                     loss = self.loss(
                         prediction,
                         y,
@@ -944,7 +951,7 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
             # calculate loss
             prediction = out["prediction"]
             if not self.predicting:
-                if isinstance(self.loss, MASE | MultiLoss):
+                if _loss_needs_encoder_target(self.loss):
                     mase_kwargs = dict(
                         encoder_target=x["encoder_target"],
                         encoder_lengths=x["encoder_lengths"],
