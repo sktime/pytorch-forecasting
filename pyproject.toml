@@ -237,3 +237,6 @@ filterwarnings = [
     "default::FutureWarning",
     "ignore::UserWarning"
 ]
+
+[tool.setuptools.package-data]
+pytorch_forecasting = ["py.typed"]
