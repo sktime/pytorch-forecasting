@@ -10,6 +10,7 @@ from pytorch_forecasting.models.base import (
 )
 from pytorch_forecasting.models.baseline import Baseline
 from pytorch_forecasting.models.deepar import DeepAR
+from pytorch_forecasting.models.lstm import LSTMModel
 from pytorch_forecasting.models.mlp import DecoderMLP
 from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
 from pytorch_forecasting.models.nhits import NHiTS
@@ -23,6 +24,7 @@ from pytorch_forecasting.models.timexer import TimeXer
 from pytorch_forecasting.models.xlstm import xLSTMTime
 
 __all__ = [
+    "LSTMModel",
     "NBeats",
     "NBeatsKAN",
     "NHiTS",
