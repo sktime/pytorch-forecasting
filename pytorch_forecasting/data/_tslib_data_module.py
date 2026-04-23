@@ -192,8 +192,8 @@ class _TslibDataset(Dataset):
         history_target = processed_data["target"][history_indices]
         future_target = processed_data["target"][future_indices]
 
-        # history_time_idx = processed_data["timestep"][history_indices]
-        # future_time_idx = processed_data["timestep"][future_indices]
+        history_time_idx = torch.as_tensor(processed_data["timestep"][history_indices])
+        future_time_idx = torch.as_tensor(processed_data["timestep"][future_indices])
 
         x = {
             "history_cont": history_cont,
@@ -205,10 +205,8 @@ class _TslibDataset(Dataset):
             "history_mask": history_mask,
             "future_mask": future_mask,
             "groups": processed_data["group"],
-            "history_time_idx": torch.arange(context_length),
-            "future_time_idx": torch.arange(
-                context_length, context_length + prediction_length
-            ),
+            "history_time_idx": history_time_idx,
+            "future_time_idx": future_time_idx,
             "history_target": history_target,
             "future_target": future_target,
             "future_target_len": torch.tensor(prediction_length),
@@ -219,8 +217,37 @@ class _TslibDataset(Dataset):
             x["future_relative_time_idx"] = torch.arange(0, prediction_length)
 
         if processed_data["static"] is not None:
-            x["static_categorical_features"] = processed_data["static"].unsqueeze(0)
-            x["static_continuous_features"] = processed_data["static"].unsqueeze(0)
+            static_features = processed_data["static"]
+            if not isinstance(static_features, torch.Tensor):
+                static_features = torch.tensor(static_features, dtype=torch.float32)
+            static_features = static_features.flatten()
+
+            static_feature_names = metadata["feature_names"]["static"]
+            static_categorical_names = set(
+                metadata["feature_names"]["static_categorical"]
+            )
+
+            static_categorical_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name in static_categorical_names
+            ]
+            static_continuous_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name not in static_categorical_names
+            ]
+
+            x["static_categorical_features"] = (
+                static_features[static_categorical_indices].unsqueeze(0)
+                if len(static_categorical_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
+            x["static_continuous_features"] = (
+                static_features[static_continuous_indices].unsqueeze(0)
+                if len(static_continuous_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
 
         if "target_scale" in processed_data:
             x["target_scale"] = processed_data["target_scale"]
