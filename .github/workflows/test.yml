@@ -126,6 +126,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
@@ -139,7 +144,16 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          pip install ".[dev, dependencies_2025, github-actions]"
+          uv pip install ".[dev, github-actions]"
+        env:
+          UV_SYSTEM_PYTHON: 1
+          UV_EXCLUDE_NEWER: "2025-01-01"
+
+      - name: Install latest scikit-base
+        shell: bash
+        run: uv pip install --upgrade-package scikit-base ".[dev, github-actions]"
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Show dependencies
         run: python -m pip list
