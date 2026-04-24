@@ -18,9 +18,7 @@ class DecoderMLP_pkg(_BasePtForecaster):
         "capability:flexible_history_length": True,
         "capability:cold_start": True,
         "python_dependencies": ["cpflows"],
-        "tests:skip_by_name": [
-            "test_integration[DecoderMLP-base_params-1-LogNormalDistributionLoss]"
-        ],
+        "tests:skip_by_name": [],
     }
 
     @classmethod
