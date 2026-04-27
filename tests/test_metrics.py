@@ -19,6 +19,7 @@ from pytorch_forecasting.metrics import (
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
+    QuantileLoss,
 )
 from pytorch_forecasting.metrics.base_metrics import (
     AggregationMetric,
@@ -570,3 +571,16 @@ def test_MASE():
 
     assert scaling.shape == (batch_size,)
     assert (scaling > 0).all(), "Scaling should be positive"
+
+
+def test_quantile_loss_handles_2d_input():
+    loss_fn = QuantileLoss(quantiles=[0.1, 0.5, 0.9])
+
+    # 2D input: [batch, quantiles]
+    y_pred = torch.randn(8, 3)
+    target = torch.randn(8)
+
+    loss = loss_fn.loss(y_pred, target)
+
+    # Expected shape: [batch, quantiles]
+    assert loss.shape == (8, 3)
