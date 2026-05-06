@@ -136,8 +136,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+      - name: Get full Python version
+        id: full-python-version
+        shell: bash
+        run: echo version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))") >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         shell: bash
