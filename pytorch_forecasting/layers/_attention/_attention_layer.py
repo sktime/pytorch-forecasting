@@ -14,13 +14,19 @@ class AttentionLayer(nn.Module):
     """
     Attention layer that combines query, key, and value projections with an attention
     mechanism.
-    Args:
-        attention (nn.Module): Attention mechanism to use.
-        d_model (int): Dimension of the model.
-        n_heads (int): Number of attention heads.
-        d_keys (int, optional): Dimension of the keys. Defaults to d_model // n_heads.
-        d_values (int, optional):
-            Dimension of the values. Defaults to d_model // n_heads.
+
+    Parameters
+    ----------
+    attention : nn.Module
+        Attention mechanism to use.
+    d_model : int
+        Dimension of the model.
+    n_heads : int
+        Number of attention heads.
+    d_keys : int, optional
+        Dimension of the keys. Defaults to ``d_model // n_heads``.
+    d_values : int, optional
+        Dimension of the values. Defaults to ``d_model // n_heads``.
     """
 
     def __init__(self, attention, d_model, n_heads, d_keys=None, d_values=None):

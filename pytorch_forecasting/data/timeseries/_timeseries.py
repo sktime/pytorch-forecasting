@@ -1003,7 +1003,9 @@ class TimeSeriesDataSet(Dataset):
         ), "Timeseries index should be of type integer"
         # numeric categoricals which can cause issues in tensorborad logging
         category_columns = data.head(1).select_dtypes("category").columns
-        object_columns = data.head(1).select_dtypes(object).columns
+        object_columns = (
+            data.head(1).select_dtypes(include=["object", "string"]).columns
+        )
         for name in self.flat_categoricals:
             if name not in data.columns:
                 raise KeyError(f"variable {name} specified but not found in data")
@@ -1882,7 +1884,7 @@ class TimeSeriesDataSet(Dataset):
         if predict_mode and "sequence_id" in df_index.columns:
             minimal_columns.append("sequence_id")
 
-        df_index = df_index[minimal_columns].astype("int32", copy=False)
+        df_index = df_index[minimal_columns].astype("int32")
         return df_index.reset_index(drop=True)
 
     def filter(self, filter_func: Callable, copy: bool = True) -> TimeSeriesDataType:

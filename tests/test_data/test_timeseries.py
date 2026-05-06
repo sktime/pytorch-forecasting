@@ -727,8 +727,8 @@ def test_pytorch_unwriteable_data():
     already have been issued.
     """
     # save current mode
-    copy_on_write = pd.options.mode.copy_on_write
-    pd.options.mode.copy_on_write = True
+    # copy_on_write = pd.options.mode.copy_on_write
+    # pd.options.mode.copy_on_write = True
 
     # Create a small dataset
     data = pd.DataFrame(
@@ -762,7 +762,7 @@ def test_pytorch_unwriteable_data():
         next(iter(dataset))
 
         # reset original mode
-        pd.options.mode.copy_on_write = copy_on_write
+        # pd.options.mode.copy_on_write = copy_on_write
 
         # Check if the specific warning was triggered
         to_catch = "The given NumPy array is not writable, and PyTorch"

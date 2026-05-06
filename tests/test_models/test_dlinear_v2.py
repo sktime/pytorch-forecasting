@@ -56,6 +56,19 @@ def sample_dataset():
     return {"data_module": dm, "time_series": ts}
 
 
+@pytest.fixture
+def model_with_logging_metrics(sample_dataset):
+    """DLinear instance used to test BaseModel logging_metrics registration."""
+    dm = sample_dataset["data_module"]
+    with pytest.warns(UserWarning):
+        model = DLinear(
+            loss=MAE(),
+            logging_metrics=[SMAPE(), MAE()],
+            metadata=dm.metadata,
+        )
+    return model
+
+
 @pytest.mark.parametrize(
     "moving_average, individual",
     [
@@ -166,3 +179,18 @@ def test_univariate_forecast():
     assert "prediction" in output
     assert output["prediction"].shape[0] == dm.batch_size
     assert output["prediction"].shape[1] == metadata["prediction_length"]
+
+
+def test_logging_metrics_is_module_list(model_with_logging_metrics):
+    """logging_metrics must be registered as nn.ModuleList so .to() propagates."""
+    assert isinstance(model_with_logging_metrics.logging_metrics, nn.ModuleList)
+
+
+def test_logging_metrics_device_propagation(model_with_logging_metrics):
+    """Metric state tensors must follow the model when moved to a different device."""
+    model_with_logging_metrics.to("meta")
+    for metric in model_with_logging_metrics.logging_metrics:
+        for state_name in metric._defaults:
+            val = getattr(metric, state_name)
+            if isinstance(val, torch.Tensor):
+                assert val.device.type == "meta"

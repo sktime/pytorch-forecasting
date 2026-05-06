@@ -16,9 +16,10 @@ class SeriesDecomposition(nn.Module):
     Decomposes time series into trend and seasonal components using
     moving average filtering.
 
-    Args:
-        kernel_size (int):
-            Size of the moving average kernel for trend extraction.
+    Parameters
+    ----------
+    kernel_size : int
+        Size of the moving average kernel for trend extraction.
     """
 
     def __init__(self, kernel_size):
@@ -27,16 +28,22 @@ class SeriesDecomposition(nn.Module):
 
     def forward(self, x):
         """
-        Forward pass for series decomposition.
+        Decompose input time series into trend and seasonal components.
 
-        Args:
-            x (torch.Tensor):
-                Input time series tensor of shape (batch_size, seq_len, features).
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor of shape (batch_size, seq_len, features) containing
+            the time series data.
 
-        Returns:
-            tuple:
-                - trend (torch.Tensor): Trend component of the time series.
-                - seasonal (torch.Tensor): Seasonal component of the time series.
+        Returns
+        -------
+        seasonal : torch.Tensor
+            Seasonal component (residual after trend removal) with same shape
+            as input.
+        trend : torch.Tensor
+            Trend component extracted via moving average with same shape as
+            input.
         """
         trend = self.moving_avg(x)
         seasonal = x - trend
