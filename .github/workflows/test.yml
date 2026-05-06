@@ -144,7 +144,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: >
-          uv pip install .[dev, github-actions]
+          uv pip install ".[dev, github-actions]"
           --exclude-newer-package "scikit-base=false"
           --exclude-newer-package "setuptools=false"
         env:
