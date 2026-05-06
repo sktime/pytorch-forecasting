@@ -105,6 +105,15 @@ class TimeXer_pkg_v2(Base_pkg):
                 dropout=0.1,
                 use_efficient_attention=True,
             ),
+            dict(
+                optimizer="adamw",
+                lr_scheduler="cosine_annealing",
+                lr_scheduler_params={"T_max": 5},
+            ),
+            dict(
+                optimizer="adagrad",
+                optimizer_params={"lr": 1e-3},
+            ),
         ]
         default_dm_cfg = {"context_length": 12, "prediction_length": 4}
 
