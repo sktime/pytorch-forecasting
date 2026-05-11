@@ -2317,9 +2317,7 @@ class TimeSeriesDataSet(Dataset):
         # set normalizer parameters to torch tensors
         data_scale_idx = torch.as_tensor(data_scale_idx)
         data_scale = (
-            torch.stack(data_scale)
-            if data_scale
-            else torch.as_tensor([]).reshape(0, 2)
+            torch.stack(data_scale) if data_scale else torch.as_tensor([]).reshape(0, 2)
         )
 
         # also normalize lagged variables
@@ -2737,6 +2735,7 @@ class TimeSeriesDataSet(Dataset):
         --------
         A dict mapping self.reals to its rescaled values.
         """
+
         def detach_cpu(x):
             if isinstance(x, torch.Tensor):
                 return x.detach().cpu()
@@ -2780,14 +2779,9 @@ class TimeSeriesDataSet(Dataset):
 
             # Case: feature uses EncoderNormalizer
             # with per-sample scale parameters
-            elif (
-                idx := torch.where(x_scale_idx == i)
-            )[0].nelement():
+            elif (idx := torch.where(x_scale_idx == i))[0].nelement():
                 transformed_values = transformer(
-                    dict(
-                        prediction=values,
-                        target_scale=x_scale[idx]
-                    )
+                    dict(prediction=values, target_scale=x_scale[idx])
                 )
 
             else:
