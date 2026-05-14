@@ -240,11 +240,11 @@ def test_nhits_static_reals_forward():
         time_varying_unknown_reals=["target"],
         max_encoder_length=10,
         max_prediction_length=5,
-        add_target_scales=True,  # introduces static reals, encoder_covariate_size stays 0
+        add_target_scales=True,  # introduces static reals; encoder_covariate_size=0
     )
     dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
     model = NHiTS.from_dataset(dataset, hidden_size=8)
 
     batch, _ = next(iter(dataloader))
-    # must not raise NameError: free variable 'encoder_features' referenced before assignment
+    # must not raise NameError on encoder_features
     model(batch)
