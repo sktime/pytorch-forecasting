@@ -358,10 +358,14 @@ class NHiTS(BaseModelWithCovariates):
             output of model
         """
         # covariates
-        if self.encoder_covariate_size > 0:
+        if self.encoder_covariate_size > 0 or self.static_size > 0:
             encoder_features = self.extract_features(
                 x, self.embeddings, period="encoder"
             )
+        else:
+            encoder_features = {}
+
+        if self.encoder_covariate_size > 0:
             encoder_x_t = torch.concat(
                 [
                     encoder_features[name]
