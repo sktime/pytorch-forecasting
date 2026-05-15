@@ -530,3 +530,47 @@ def test_multivariate_target():
     assert (
         y.shape[-1] == 2
     ), "Target should have two dimensions for n_features for multivariate target."
+
+
+def test_initialization_no_get_metadata():
+    """Test TslibDataModule initialization without get_metadata."""
+
+    class GenericDataset(torch.utils.data.Dataset):
+        def __init__(self):
+            self.target = "target"
+            self.feature_cols = ["feat1", "feat2"]
+            self.cat = ["feat1"]
+            self.num = ["feat2"]
+            self.data = pd.DataFrame(
+                {
+                    "target": np.random.randn(100),
+                    "feat1": np.random.choice([0, 1], 100),
+                    "feat2": np.random.randn(100),
+                    "time": np.arange(100),
+                }
+            )
+
+        def __len__(self):
+            return 1
+
+        def __getitem__(self, idx):
+            return {
+                "y": torch.tensor(self.data["target"].values).float().unsqueeze(-1),
+                "x": torch.tensor(self.data[["feat1", "feat2"]].values).float(),
+                "t": torch.tensor(self.data["time"].values),
+                "cutoff_time": 80,
+                "st": None,
+                "group": torch.tensor([0]),
+            }
+
+    ds = GenericDataset()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=8,
+        prediction_length=4,
+    )
+
+    assert dm.time_series_metadata["cols"]["y"] == ["target"]
+    assert dm.time_series_metadata["cols"]["x"] == ["feat1", "feat2"]
+    assert dm.categorical_indices == [0]
+    assert dm.continuous_indices == [1]

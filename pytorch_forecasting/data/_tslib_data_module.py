@@ -19,7 +19,7 @@ from pytorch_forecasting.data.encoders import (
     TorchNormalizer,
 )
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
-from pytorch_forecasting.utils._coerce import _coerce_to_dict
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 
 NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
@@ -47,7 +47,7 @@ class _TslibDataset(Dataset):
 
     def __init__(
         self,
-        dataset: TimeSeries,
+        dataset: Dataset,
         data_module: "TslibDataModule",
         windows: list[tuple[int, int, int, int]],
         add_relative_time_idx: bool = False,
@@ -226,9 +226,7 @@ class _TslibDataset(Dataset):
             x["target_scale"] = processed_data["target_scale"]
 
         y = processed_data["target"][future_indices]
-        if self.data_module.n_targets > 1:
-            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
-        else:
+        if self.data_module.n_targets == 1:
             y = y.squeeze(-1)
 
         return x, y
@@ -245,7 +243,7 @@ class TslibDataModule(LightningDataModule):
 
     Parameters
     ----------
-    time_series_dataset: TimeSeries
+    time_series_dataset: Dataset
         The time series dataset to be used for training and validation. This is the
         newly implemented D1 layer.
     context_length: int
@@ -285,11 +283,14 @@ class TslibDataModule(LightningDataModule):
         Proportions for train, validation, and test dataset splits.
     collate_fn : Optional[callable], default=None
         Custom collate function for the dataloader.
+    metadata : Optional[dict[str, Any]], default=None
+        Metadata for the dataset. If not provided, the module will attempt to
+        retrieve it from the dataset or infer it.
     """  # noqa: E501
 
     def __init__(
         self,
-        time_series_dataset: TimeSeries,
+        time_series_dataset: Dataset,
         context_length: int,
         prediction_length: int,
         freq: str = "h",
@@ -310,6 +311,7 @@ class TslibDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
         collate_fn: Callable | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -353,7 +355,16 @@ class TslibDataModule(LightningDataModule):
 
         self.window_stride = window_stride
 
-        self.time_series_metadata = time_series_dataset.get_metadata()
+        if metadata is not None:
+            self.time_series_metadata = metadata
+        elif hasattr(time_series_dataset, "get_metadata") and callable(
+            time_series_dataset.get_metadata
+        ):
+            self.time_series_metadata = time_series_dataset.get_metadata()
+        else:
+            # Fallback logic
+            self.time_series_metadata = self._infer_metadata(time_series_dataset)
+
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
@@ -363,6 +374,43 @@ class TslibDataModule(LightningDataModule):
                 self.continuous_indices.append(idx)
 
         self._validate_indices()
+
+    def _infer_metadata(self, dataset: Dataset) -> dict[str, Any]:
+        """
+        Infer minimal metadata from user-provided dataset
+        if get_metadata() is not available.
+        """
+        metadata = {
+            "cols": {"x": [], "y": [], "st": []},
+            "col_type": {},
+            "col_known": {},
+        }
+
+        # Try to infer target columns
+        if hasattr(dataset, "target"):
+            metadata["cols"]["y"] = _coerce_to_list(dataset.target)
+        elif hasattr(dataset, "targets"):
+            metadata["cols"]["y"] = _coerce_to_list(dataset.targets)
+
+        # Try to infer feature columns
+        if hasattr(dataset, "feature_cols"):
+            metadata["cols"]["x"] = _coerce_to_list(dataset.feature_cols)
+        elif hasattr(dataset, "features"):
+            feat = getattr(dataset, "features", [])
+            if isinstance(feat, (list, tuple)) and all(
+                isinstance(f, str) for f in feat
+            ):
+                metadata["cols"]["x"] = list(feat)
+
+        # Infer column types if possible
+        if hasattr(dataset, "cat"):
+            for col in _coerce_to_list(dataset.cat):
+                metadata["col_type"][col] = "C"
+        if hasattr(dataset, "num"):
+            for col in _coerce_to_list(dataset.num):
+                metadata["col_type"][col] = "F"
+
+        return metadata
 
     def _validate_indices(self):
         """
@@ -426,7 +474,7 @@ class TslibDataModule(LightningDataModule):
             - features: str
                 Feature combination mode.
         """
-        # TODO: include handling for datasets without get_metadata()
+        # Metadata handling for generic datasets is managed in __init__
         ds_metadata = self.time_series_metadata
 
         feature_names = {
