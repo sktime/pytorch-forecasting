@@ -2739,6 +2739,8 @@ class TimeSeriesDataSet(Dataset):
         def detach_cpu(x):
             if isinstance(x, torch.Tensor):
                 return x.detach().cpu()
+            if isinstance(x, list):
+                return [detach_cpu(z) for z in x]
             return x
 
         x_cont = detach_cpu(x_cont)
