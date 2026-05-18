@@ -2746,7 +2746,11 @@ class TimeSeriesDataSet(Dataset):
         x_scale_idx = detach_cpu(x_scale_idx)
         x_scale = detach_cpu(x_scale)
 
-        if target_scale.ndim == 1:
+        if self.multi_target:
+            target_scale = [
+                scale[None] if scale.ndim == 1 else scale for scale in target_scale
+            ]
+        elif target_scale.ndim == 1:
             # dataset
             target_scale = target_scale[None]
 
@@ -2766,9 +2770,15 @@ class TimeSeriesDataSet(Dataset):
                 transformed_values = values
 
             elif name in self.target_names:
-                transformed_values = transformer(
-                    dict(prediction=values, target_scale=target_scale)
-                )
+                if self.multi_target:
+                    scale = target_scale[self.target_names.index(name)]
+                    transformed_values = transformer(
+                        dict(prediction=values, target_scale=scale)
+                    )
+                else:
+                    transformed_values = transformer(
+                        dict(prediction=values, target_scale=target_scale)
+                    )
 
             # Case: sklearn StandardScaler
             # → use its inverse_transform directly
