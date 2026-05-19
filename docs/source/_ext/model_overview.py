@@ -135,7 +135,7 @@ def _get_model_rows():
 
         row = {
             "Name": ref,
-            "Version": version,
+            "_version": version,
             "Authors": ", ".join(tags.get("authors") or []),
             "Covariates": "x" if tags.get("capability:exogenous") else "",
             "Multiple targets": "x" if tags.get("capability:multivariate") else "",
