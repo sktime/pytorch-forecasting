@@ -161,7 +161,6 @@ def _build_rst_table(rows):
 
     headers = [
         "Name",
-        "Version",
         "Authors",
         "Covariates",
         "Multiple targets",
@@ -252,7 +251,7 @@ class ModelOverviewDirective(SphinxDirective):
 
     def run(self):
         rows = _get_model_rows()
-        rst_lines = _build_rst_table(rows)
+        rst_lines = _build_versioned_rst(rows)
 
         # Parse the generated RST back into docutils nodes
         source = self.state_machine.get_source_and_line(self.lineno)
