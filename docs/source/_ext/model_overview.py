@@ -4,8 +4,6 @@ Registers the ``.. model-overview::`` directive which queries the
 ``pytorch_forecasting._registry.all_objects`` registry, extracts model
 tags, and renders an RST table comparing model capabilities.
 
-This replaces the manually maintained CSV table in models.rst, ensuring
-the documentation always reflects the actual registered models.
 """
 
 from docutils import nodes
@@ -16,12 +14,15 @@ from sphinx.util.nodes import nested_parse_with_titles
 # Tag keys used to build the comparison table columns
 _CAPABILITY_TAGS = [
     ("info:name", "Name"),
+    ("authors", "Authors"),
     ("capability:exogenous", "Covariates"),
     ("capability:multivariate", "Multiple targets"),
     ("info:y_type", "Regression"),
     ("info:y_type", "Classification"),
     ("info:pred_type", "Probabilistic"),
     ("capability:pred_int", "Prediction intervals"),
+    ("capability:flexible_history_length", "Flexible History Length"),
+    ("capability:cold_start", "Cold Start"),
     ("info:compute", "Compute (1-5)"),
 ]
 
@@ -71,10 +72,8 @@ def _model_class_for_link(klass):
     get_cls = getattr(klass, "get_cls", None)
     if get_cls is None:
         return klass
-    try:
+    else:
         return get_cls()
-    except NotImplementedError:
-        return klass
 
 
 def _get_model_rows():
@@ -93,6 +92,9 @@ def _get_model_rows():
         "capability:exogenous",
         "capability:multivariate",
         "capability:pred_int",
+        "capability:flexible_history_length",
+        "capability:cold_start",
+        "authors",
         "object_type",
     ]
 
@@ -134,12 +136,17 @@ def _get_model_rows():
         row = {
             "Name": ref,
             "Version": version,
+            "Authors": ", ".join(tags.get("authors") or []),
             "Covariates": "x" if tags.get("capability:exogenous") else "",
             "Multiple targets": "x" if tags.get("capability:multivariate") else "",
             "Regression": "x" if "numeric" in y_types else "",
             "Classification": "x" if "category" in y_types else "",
             "Probabilistic": "x" if "distr" in pred_types else "",
             "Prediction intervals": "x" if tags.get("capability:pred_int") else "",
+            "Flexible History Length": "x"
+            if tags.get("capability:flexible_history_length")
+            else "",
+            "Cold Start": "x" if tags.get("capability:cold_start") else "",
             "Compute (1-5)": str(tags.get("info:compute", "")),
         }
         rows.append(row)
@@ -155,12 +162,15 @@ def _build_rst_table(rows):
     headers = [
         "Name",
         "Version",
+        "Authors",
         "Covariates",
         "Multiple targets",
         "Regression",
         "Classification",
         "Probabilistic",
         "Prediction intervals",
+        "Flexible History Length",
+        "Cold Start",
         "Compute (1-5)",
     ]
 
@@ -188,6 +198,42 @@ def _build_rst_table(rows):
         lines.append(_row(values))
         lines.append(_sep("-"))
     lines.append("")
+
+    return lines
+
+
+def _build_versioned_rst(all_rows):
+    """Return RST lines for two labelled tables, one per API version.
+
+    The v1 table is rendered first, followed by the v2 table.
+
+    Parameters
+    ----------
+    all_rows:
+        Full list of row dicts as returned by :func:`_get_model_rows`.
+    """
+    v1_rows = [r for r in all_rows if r.get("_version") == "v1"]
+    v2_rows = [r for r in all_rows if r.get("_version") == "v2"]
+
+    lines = []
+
+    lines.append("**v1 models** (current stable API)")
+    lines.append("")
+    if v1_rows:
+        lines.extend(_build_rst_table(v1_rows))
+    else:
+        lines.append("*No v1 models found in registry.*")
+        lines.append("")
+
+    lines.append(
+        "**v2 models** (experimental API, planned for PyTorch Forecasting 2.0)"
+    )
+    lines.append("")
+    if v2_rows:
+        lines.extend(_build_rst_table(v2_rows))
+    else:
+        lines.append("*No v2 models found in registry.*")
+        lines.append("")
 
     return lines
 
