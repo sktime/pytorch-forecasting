@@ -344,6 +344,9 @@ class TslibDataModule(LightningDataModule):
         self.scalers = scalers or {}
         self.shuffle = shuffle
 
+        self._normalizer_fitted = False
+        self._fitted_target_scale = None
+
         self.continuous_indices = []
         self.categorical_indices = []
 
@@ -364,7 +367,38 @@ class TslibDataModule(LightningDataModule):
 
         self._validate_indices()
 
-    def _validate_indices(self):
+    def _extract_scale_params(self, normalizer: Any) -> dict[str, torch.Tensor]:
+        """
+        Extract center and scale parameters from a fitted sklearn-like scaler.
+
+        Returns a dict with keys "center" and "scale" as torch.float32 tensors.
+        """
+
+        center = None
+        if hasattr(normalizer, "center_"):
+            center = normalizer.center_
+        elif hasattr(normalizer, "mean_"):
+            center = normalizer.mean_
+
+        scale = None
+        if hasattr(normalizer, "scale_"):
+            scale = normalizer.scale_
+
+        if center is None or scale is None:
+            raise ValueError(
+                "Cannot extract target scaling params. Expected scaler with "
+                "center_/scale_ (RobustScaler) or mean_/scale_ (StandardScaler)."
+            )
+
+        center_np = np.asarray(center, dtype=np.float32).reshape(-1)
+        scale_np = np.asarray(scale, dtype=np.float32).reshape(-1)
+
+        return {
+            "center": torch.tensor(center_np, dtype=torch.float32),
+            "scale": torch.tensor(scale_np, dtype=torch.float32),
+        }
+
+    def _validate_indices(self) -> None:
         """
         Validate that we have meaningful features for training.
         Raises warnings for missing features or indices.
@@ -524,20 +558,20 @@ class TslibDataModule(LightningDataModule):
 
     @property
     def metadata(self) -> dict[str, Any]:
-        """ "
-        Compute the metadata via the `_prepare_metadata` method.
-        This method is called when the `metadata` property is accessed for the first.
+        """
+        Metadata for the time series dataset.
+
         Returns
         -------
-        dict
-            Metadata for the data module. Refer to the `_prepare_metadata` method for
-            the keys and values in the metadata dictionary.
+        dict[str, Any]
+            Metadata for the data module. Refer to the `_prepare_metadata`
+            method for the keys and values in the metadata dictionary.
         """
         if self._metadata is None:
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
+    def _preprocess_data(self, idx: torch.Tensor) -> dict[str, Any]:
         """
         Process the the time series data at the given index, before feeding it
         to the `_TslibDataset` class.
@@ -581,6 +615,21 @@ class TslibDataModule(LightningDataModule):
 
         # scaling and normalization
         target_scale = {}
+        if (
+            self.add_target_scales
+            and self._normalizer_fitted
+            and self._target_normalizer is not None
+        ):
+            target_np = target.detach().cpu().numpy()
+            if target_np.ndim == 1:
+                target_np = target_np.reshape(-1, 1)
+            normalized = self._target_normalizer.transform(target_np)
+            target = torch.tensor(normalized, dtype=torch.float32)
+
+            if self._fitted_target_scale is not None:
+                target_scale = {
+                    k: v.clone() for k, v in self._fitted_target_scale.items()
+                }
 
         categorical_features = (
             features[:, self.categorical_indices]
@@ -719,6 +768,28 @@ class TslibDataModule(LightningDataModule):
                 self._train_size + self._val_size : total_series
             ]
 
+        if self.add_target_scales and self._target_normalizer is not None:
+            all_train_targets = []
+            for idx in self._train_indices:
+                series_idx = idx.item() if isinstance(idx, torch.Tensor) else idx
+                series = self.time_series_dataset[series_idx]
+                target = series["y"]
+                if isinstance(target, torch.Tensor):
+                    target = target.detach().cpu().numpy()
+                target = np.asarray(target)
+                if target.ndim == 1:
+                    target = target.reshape(-1, 1)
+                all_train_targets.append(target.reshape(-1, target.shape[-1]))
+            combined = np.concatenate(all_train_targets, axis=0)
+            self._target_normalizer.fit(combined)
+            self._fitted_target_scale = self._extract_scale_params(
+                self._target_normalizer
+            )
+            self._normalizer_fitted = True
+        else:
+            self._normalizer_fitted = False
+            self._fitted_target_scale = None
+
         if stage == "fit" or stage is None:
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
                 self._train_windows = self._create_windows(self._train_indices)
@@ -824,7 +895,14 @@ class TslibDataModule(LightningDataModule):
         )
 
     @staticmethod
-    def collate_fn(batch):
+    def collate_fn(
+        batch: list[
+            tuple[
+                dict[str, Any],
+                torch.Tensor | list[torch.Tensor],
+            ]
+        ],
+    ) -> tuple[dict[str, torch.Tensor], torch.Tensor | list[torch.Tensor]]:
         """
         Custom collate function for the dataloader.
 
@@ -862,7 +940,11 @@ class TslibDataModule(LightningDataModule):
         }
 
         if "target_scale" in batch[0][0]:
-            x_batch["target_scale"] = torch.stack([x["target_scale"] for x, _ in batch])
+            target_scales = [x["target_scale"] for x, _ in batch]
+            x_batch["target_scale"] = {
+                "center": torch.stack([ts["center"] for ts in target_scales]),
+                "scale": torch.stack([ts["scale"] for ts in target_scales]),
+            }
 
         if "history_relative_time_idx" in batch[0][0]:
             x_batch["history_relative_time_idx"] = torch.stack(
