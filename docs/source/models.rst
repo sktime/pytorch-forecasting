@@ -26,16 +26,7 @@ and you should take into account. Here is an overview over the pros and cons of 
    model's entry, modify its ``_tags`` dictionary in the corresponding package
    module (e.g. ``_*_pkg.py``).
 
-.. model-overview::
-
-.. note::
-   ``v1`` marks the current stable model API and
-   ``v2`` marks the experimental model API planned for PyTorch Forecasting 2.0.
-   The v2 API is still under development and may change. See
-   `issue #1736 <https://github.com/sktime/pytorch-forecasting/issues/1736>`_
-   and the
-   `v2 roadmap #1993 <https://github.com/sktime/pytorch-forecasting/issues/1993>`_
-   for details.
+.. model-overview-v1::
 
 Size and type of available data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

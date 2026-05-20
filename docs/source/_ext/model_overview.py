@@ -201,7 +201,7 @@ def _build_rst_table(rows):
     return lines
 
 
-def _build_versioned_rst(all_rows):
+def _build_versioned_rst(all_rows, version: str = "v1"):
     """Return RST lines for two labelled tables, one per API version.
 
     The v1 table is rendered first, followed by the v2 table.
@@ -211,36 +211,39 @@ def _build_versioned_rst(all_rows):
     all_rows:
         Full list of row dicts as returned by :func:`_get_model_rows`.
     """
-    v1_rows = [r for r in all_rows if r.get("_version") == "v1"]
-    v2_rows = [r for r in all_rows if r.get("_version") == "v2"]
+    if version == "v1":
+        v_rows = [r for r in all_rows if r.get("_version") == "v1"]
+    elif version == "v2":
+        v_rows = [r for r in all_rows if r.get("_version") == "v2"]
 
     lines = []
 
     lines.append("**v1 models** (current stable API)")
     lines.append("")
-    if v1_rows:
-        lines.extend(_build_rst_table(v1_rows))
+    if v_rows:
+        lines.extend(_build_rst_table(v_rows))
     else:
-        lines.append("*No v1 models found in registry.*")
+        lines.append(f"*No {version} models found in registry.*")
         lines.append("")
 
-    lines.append(
-        "**v2 models** (experimental API, planned for PyTorch Forecasting 2.0)"
-    )
-    lines.append("")
-    if v2_rows:
-        lines.extend(_build_rst_table(v2_rows))
-    else:
-        lines.append("*No v2 models found in registry.*")
-        lines.append("")
+    # lines.append(
+    #     "**v2 models** (experimental API, planned for PyTorch Forecasting 2.0)"
+    # )
+    # lines.append("")
+    # if v2_rows:
+    #     lines.extend(_build_rst_table(v2_rows))
+    # else:
+    #     lines.append("*No v2 models found in registry.*")
+    #     lines.append("")
 
     return lines
 
 
-class ModelOverviewDirective(SphinxDirective):
+class _ModelOverviewDirective(SphinxDirective):
     """Directive that auto-generates a model comparison table.
 
-    Usage in RST::
+    Usage in RST
+    -----------
 
         .. model-overview::
     """
@@ -248,10 +251,11 @@ class ModelOverviewDirective(SphinxDirective):
     has_content = False
     required_arguments = 0
     optional_arguments = 0
+    _version = "v1"
 
     def run(self):
         rows = _get_model_rows()
-        rst_lines = _build_versioned_rst(rows)
+        rst_lines = _build_versioned_rst(rows, version=self._version)
 
         # Parse the generated RST back into docutils nodes
         source = self.state_machine.get_source_and_line(self.lineno)
@@ -264,8 +268,33 @@ class ModelOverviewDirective(SphinxDirective):
         return node.children
 
 
+class ModelOverviewDirective_v1(_ModelOverviewDirective):
+    """Directive that auto-generates a model comparison table.
+
+    Usage in RST
+    -----------
+
+        .. model-overview-v1::
+    """
+
+    _version = "v1"
+
+
+class ModelOverviewDirective_v2(_ModelOverviewDirective):
+    """Directive that auto-generates a model comparison table.
+
+    Usage in RST
+    -----------
+
+        .. model-overview-v2::
+    """
+
+    _version = "v2"
+
+
 def setup(app):
-    app.add_directive("model-overview", ModelOverviewDirective)
+    app.add_directive("model-overview-v1", ModelOverviewDirective_v1)
+    app.add_directive("model-overview-v2", ModelOverviewDirective_v2)
     return {
         "version": "0.1",
         "parallel_read_safe": True,
