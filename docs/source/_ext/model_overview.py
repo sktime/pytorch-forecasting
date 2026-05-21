@@ -226,16 +226,6 @@ def _build_versioned_rst(all_rows, version: str = "v1"):
         lines.append(f"*No {version} models found in registry.*")
         lines.append("")
 
-    # lines.append(
-    #     "**v2 models** (experimental API, planned for PyTorch Forecasting 2.0)"
-    # )
-    # lines.append("")
-    # if v2_rows:
-    #     lines.extend(_build_rst_table(v2_rows))
-    # else:
-    #     lines.append("*No v2 models found in registry.*")
-    #     lines.append("")
-
     return lines
 
 
