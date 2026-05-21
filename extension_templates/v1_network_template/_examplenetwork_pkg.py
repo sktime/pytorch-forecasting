@@ -114,6 +114,8 @@ class ExampleNetwork_pkg(_BasePtForecaster):
              coverage.
           3. Avoid external dependencies in defaults: Do not require external
              packages in the default parameter dictionary unless absolutely necessary.
+          4. Test defaults: The first test parameter dictionary (or fixture) MUST
+             be an empty dictionary ({}) to test the model's default configurations.
 
         Returns
         -------
@@ -125,16 +127,44 @@ class ExampleNetwork_pkg(_BasePtForecaster):
         """
         # todo: replace with parameters relevant to your model to test edge cases
         return [
+            {},
             {"hidden_size": 8},
-            {"hidden_size": 16},
         ]
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
         """Return train and validation dataloaders for testing.
 
-        This is REQUIRED for v1 models in CI. The method should create
-        dataloaders from the test data scenarios provided by the framework.
+        This is REQUIRED for v1 models in CI. The method prepares the dataloaders
+        used by the CI test runner to check if the model compiles, trains, and
+        performs inference properly.
+
+        What you should do here:
+        ------------------------
+        1. Retrieve custom data-related parameters from the ``params`` dict (e.g.
+           custom ``data_loader_kwargs``).
+        2. Pick a test data scenario from ``_data_scenarios``.
+        3. Call ``make_dataloaders`` to create and return the dataloaders.
+
+        About `make_dataloaders` and Data Scenarios:
+        -------------------------------------------
+        - ``make_dataloaders(data_with_covariates, **kwargs)``:
+          Helper that takes a dataframe and dataset specifications (e.g. target,
+          covariates), creates a training ``TimeSeriesDataSet``, creates a validation
+          ``TimeSeriesDataSet`` using ``from_dataset()``, and returns a dictionary
+          with train, val, and test loaders.
+        - Data Scenarios:
+          You can import various data scenarios from ``_data_scenarios``:
+          - ``data_with_covariates()``: Small Stallion dataset with real/categorical
+            known/unknown covariates. Suitable for general-purpose testing.
+          - ``dataloaders_with_covariates()``: Returns pre-made dataloaders for simple
+            covariates and group normalization.
+          - ``dataloaders_with_different_encoder_decoder_length()``: Test case for
+            varying sequence lengths.
+          - ``dataloaders_multi_target()``: Returns dataloaders with multiple target
+            columns for multivariate forecasting tests.
+          - ``dataloaders_fixed_window_without_covariates()``: Synthetic AR time-series
+            data. Perfect for testing models that do not support covariates.
 
         Parameters
         ----------

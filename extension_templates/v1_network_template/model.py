@@ -33,6 +33,8 @@ class ExampleNetwork(BaseModel):
     - Implement forward()
     - Implement from_dataset()
     - Implement any additional methods required for your architecture
+    - Put any reusable layers or submodules of the model into a ``layers/``
+      folder (e.g., ``my_model/layers/``) to keep code modular and clean.
     """
 
     def __init__(self, hidden_size: int = 16, **kwargs):
@@ -80,6 +82,13 @@ class ExampleNetwork(BaseModel):
         # save_hyperparameters() stores all __init__ args in self.hparams
         # and enables automatic checkpoint save/load.
         # It MUST be called before super().__init__().
+        #
+        # IMPORTANT: Once captured, self.hparams should never be overwritten
+        # or mutated. For handling defaults, scaling, or derived attributes,
+        # write to private attributes, e.g., self._hidden_size = ...
+        #
+        # Put any reusable layers or submodules of the model into a ``layers/``
+        # folder (e.g., ``my_model/layers/``) to keep code modular and clean.
         self.save_hyperparameters()
         super().__init__(**kwargs)
 
@@ -222,7 +231,10 @@ class ExampleNetwork(BaseModel):
     # robust default implementations for point prediction and quantile conversion.
     #
     # Do NOT implement these methods unless your model requires custom post-
-    # processing or special handling. If needed, uncomment and implement:
+    # processing or special handling. If they are not used, REMOVE/DELETE them
+    # from the final code to keep the implementation clean.
+    #
+    # If needed, uncomment and implement:
     #
     # def to_prediction(
     #     self, out: dict[str, Any], use_metric: bool = True, **kwargs

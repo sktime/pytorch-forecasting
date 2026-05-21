@@ -28,12 +28,13 @@ This template exists to:
 A minimal neural network template that should:
 
 - Inherit from an appropriate v1 base class (e.g., `BaseModel` or a relevant subclass).
+- Put any reusable layers or submodules of the model into a `layers/` folder (e.g., `my_model/layers/`) to keep the code modular and clean.
 - Define at least the following required methods:
   - `__init__`
   - `_pkg`
   - `from_dataset`
   - `forward`
-- Keep optional methods commented out (e.g., `to_prediction` or `to_quantiles` for probabilistic/quantile networks) and only implement them when custom post-processing, rescaling, or CDF calculations are needed.
+- Optional methods (e.g., `to_prediction` or `to_quantiles` for probabilistic/quantile networks) should be removed if not used to keep the final codebase clean. Only implement/uncomment them if custom post-processing, rescaling, or CDF calculations are needed.
 
 > This file should primarily contain **structured comments and pointers**,
 > not real working model code.
@@ -62,13 +63,17 @@ Each tag in the template includes detailed comments explaining:
 
 At minimum, `_tags` should include:
 
-- `info:name`
-- `info:pred_type`
-- `info:y_type`
-- `capability:exogenous`
-- `info:compute`
-- `authors`
-- `python_dependencies` (optional)
+- `info:name` (human-readable model name matching the class)
+- `info:pred_type` (prediction types: e.g. `["point"]`, `["quantile"]`, `["distr"]`)
+- `info:y_type` (target type: e.g. `["numeric"]`, `["category"]`)
+- `info:compute` (integer representing compute intensity, 1 to 5)
+- `authors` (GitHub username list)
+- `python_dependencies` (list of external packages if needed)
+- `capability:exogenous` (bool: whether model supports exogenous variables)
+- `capability:multivariate` (bool: whether model supports multivariate targets)
+- `capability:pred_int` (bool: whether model supports prediction intervals)
+- `capability:flexible_history_length` (bool: whether model works with variable-length history)
+- `capability:cold_start` (bool: whether model makes predictions with little/no history)
 
 The class name of the package container **must match the model name**, e.g.:
 
@@ -80,7 +85,7 @@ The class name of the package container **must match the model name**, e.g.:
 
 1. Copy this folder and rename it for your model (e.g., `my_custom_network/`).
 2. Rename the private package file `_examplenetwork_pkg.py` to match your model name (e.g., `_my_custom_network_pkg.py`).
-3. Replace placeholders in `model.py` with your actual implementation.
+3. Replace placeholders in `model.py` with your actual implementation (and place any reusable submodules/layers in a `layers/` subdirectory).
 4. Update all `_tags` in `_my_custom_network_pkg.py` with accurate metadata.
 5. Implement `get_base_test_params()` with **realistic test fixtures**.
 6. Implement `_get_test_dataloaders_from()` using the dataset provided by CI.
@@ -98,13 +103,14 @@ This method **must** return at least **two** different parameter settings that:
 - Create a valid model instance.
 - Exercise different configurations of the model.
 - Run quickly in CI.
+- **Test defaults**: The first element in the returned list MUST be an empty dictionary `{}` to verify default model initialization works correctly.
 
 Example (illustrative only):
 
 ```python
 return [
-    {"hidden_size": 8},
-    {"hidden_size": 16, "use_exogenous": True},
+    {},
+    {"hidden_size": 8, "use_exogenous": True},
 ]
 ```
 
