@@ -217,9 +217,6 @@ def _build_versioned_rst(all_rows, version: str = "v1"):
         v_rows = [r for r in all_rows if r.get("_version") == "v2"]
 
     lines = []
-
-    lines.append("**v1 models** (current stable API)")
-    lines.append("")
     if v_rows:
         lines.extend(_build_rst_table(v_rows))
     else:
