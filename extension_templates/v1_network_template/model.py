@@ -204,9 +204,9 @@ class ExampleNetwork(BaseModel):
         # todo: replace with your actual model logic
         raise NotImplementedError("Implement forward() in your custom model")
 
-    # =========================================================================
+    # -------------------------------------------------------------------------
     # OPTIONAL OVERRIDES (Commented out by default)
-    # =========================================================================
+    # -------------------------------------------------------------------------
     # These methods are OPTIONAL. The BaseModel parent class already provides
     # robust default implementations for point prediction and quantile conversion.
     #
