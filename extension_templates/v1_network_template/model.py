@@ -42,33 +42,38 @@ class ExampleNetwork(BaseModel):
         DESIGN REQUIREMENTS & CONVENTIONS:
         ---------------------------------
         1. PyTorch Lightning Hyperparameter Saving:
-           - We use ``self.save_hyperparameters()`` to automatically capture all constructor
-             arguments and write them to ``self.hparams``.
-           - This is highly recommended as it enables automatic registration of hyperparameters,
-             making them easily serializable and restorable in model checkpoints.
-           - ``self.save_hyperparameters()`` MUST be called before ``super().__init__(**kwargs)``
-             so that the Lightning framework can properly capture and intercept the arguments.
+           - We use ``self.save_hyperparameters()`` to automatically capture all
+             constructor arguments and write them to ``self.hparams``.
+           - This is highly recommended as it enables automatic registration of
+             hyperparameters, making them easily serializable and restorable in
+             model checkpoints.
+           - ``self.save_hyperparameters()`` MUST be called before
+             ``super().__init__(**kwargs)`` so that the Lightning framework can
+             properly capture and intercept the arguments.
 
         2. Parameter Naming Conventions:
            - All constructor parameters must match the instance attribute names.
-           - For example, a constructor argument ``hidden_size`` is automatically stored as
-             ``self.hparams.hidden_size``. You should access it via ``self.hparams.hidden_size``
-             inside forward() or other methods.
+           - For example, a constructor argument ``hidden_size`` is automatically
+             stored as ``self.hparams.hidden_size``. You should access it via
+             ``self.hparams.hidden_size`` inside forward() or other methods.
 
         3. Read-Only self.hparams Constraint:
-           - **CRITICAL**: The ``self.hparams`` object is read-only and should NEVER be modified,
-             overwritten, or mutated after initialization.
-           - If you need to handle default arguments, perform scaling/rescaling, or derive
-             values (e.g., setting up dimensions based on input configurations), write them
-             to private instance attributes (attributes starting with a leading underscore),
-             for example: ``self._hidden_size = self.hparams.hidden_size``.
+           - **CRITICAL**: The ``self.hparams`` object is read-only and should NEVER
+             be modified, overwritten, or mutated after initialization.
+           - If you need to handle default arguments, perform scaling/rescaling,
+             or derive values (e.g., setting up dimensions based on input
+             configurations), write them to private instance attributes (attributes
+             starting with a leading underscore), for example:
+             ``self._hidden_size = self.hparams.hidden_size``.
 
         Parameters
         ----------
         hidden_size : int, default=16
-            An example hyperparameter. Replace with your model's actual hyperparameters.
+            An example hyperparameter. Replace with your model's actual
+            hyperparameters.
         **kwargs
-            Additional keyword arguments passed to the ``BaseModel.__init__`` parent class constructor.
+            Additional keyword arguments passed to the parent
+            ``BaseModel.__init__`` class constructor.
         """
         # todo: add any custom model hyperparameters to the constructor signature above
 
@@ -78,8 +83,8 @@ class ExampleNetwork(BaseModel):
         self.save_hyperparameters()
         super().__init__(**kwargs)
 
-        # todo: optional, parameter checking and default derivation logic (if applicable) here.
-        # E.g., if you write derived values, do NOT overwrite self.hparams.
+        # todo: optional, parameter checking and default derivation logic
+        # (if applicable) here. E.g., do NOT overwrite self.hparams.
         # Instead, write to private attributes prefixed with a leading underscore:
         # self._hidden_size = self.hparams.hidden_size
 
@@ -102,10 +107,14 @@ class ExampleNetwork(BaseModel):
 
         CRITICAL DESIGN REQUIREMENTS:
         - The package file must be in the same folder/directory as this model file.
-        - The filename of the package module must be private (prefixed with an underscore)
-          and match the package class name (e.g., `_ExampleNetwork_pkg.py` for `ExampleNetwork_pkg`).
-        - The import MUST use the absolute, fully qualified path (do NOT use relative imports like `from .package import ...`).
-          Example: ``from pytorch_forecasting.models.examplenetwork._examplenetwork_pkg import ExampleNetwork_pkg``
+        - The filename of the package module must be private (prefixed with an
+          underscore) and match the package class name (e.g.,
+          `_ExampleNetwork_pkg.py` for `ExampleNetwork_pkg`).
+        - The import MUST use the absolute, fully qualified path (do NOT use
+          relative imports like `from .package import ...`).
+        - Example:
+          ``from pytorch_forecasting.models.examplenetwork._examplenetwork_pkg``
+          ``import ExampleNetwork_pkg``
 
         Returns
         -------
@@ -114,7 +123,9 @@ class ExampleNetwork(BaseModel):
         """
         # todo: update the import to use the absolute path to your private package file.
         # Remember: DO NOT use relative imports in PyTorch Forecasting v1 models.
-        from extension_templates.v1_network_template._examplenetwork_pkg import ExampleNetwork_pkg
+        from extension_templates.v1_network_template._examplenetwork_pkg import (
+            ExampleNetwork_pkg,
+        )
 
         return ExampleNetwork_pkg
 

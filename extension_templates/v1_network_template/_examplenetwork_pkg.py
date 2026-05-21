@@ -26,53 +26,43 @@ class ExampleNetwork_pkg(_BasePtForecaster):
         # Human-readable model name — MUST match the model class name.
         # Valid values: str
         "info:name": "ExampleNetwork",
-
         # Approximate compute cost.
         # Valid values: int (1 = lightweight e.g. MLP, 3 = medium, 5 = very heavy)
         "info:compute": 2,
-
         # What type of predictions this model produces.
         # Valid values: list of str, containing one or more of:
         #   "point"     → deterministic point forecasts
         #   "quantile"  → probabilistic quantile forecasts
         #   "distr"     → full predictive distribution (e.g., DeepAR)
         "info:pred_type": ["point"],
-
         # What type of target the model supports.
         # Valid values: list of str, containing one or more of:
         #   "numeric"   → continuous/numeric target variables
         #   "category"  → categorical target variables (e.g., for classification losses)
         "info:y_type": ["numeric"],
-
         # GitHub usernames of the contributors.
         # Valid values: list of str, containing GitHub handles.
         # todo: replace with your GitHub handle(s)
         "authors": ["your-github-handle"],
-
         # Whether the model can use exogenous covariates (X).
         # Valid values: bool
         # True  = model uses exogenous variables in a non-trivial way
         # False = model ignores exogenous inputs
         "capability:exogenous": True,
-
         # Whether the model supports multiple target variables (multivariate target).
         # Valid values: bool
         # True  = multivariate forecasting supported
         # False = univariate target only
         "capability:multivariate": True,
-
         # Whether the model supports probabilistic prediction intervals.
         # Valid values: bool
         "capability:pred_int": False,
-
         # Whether the model can work with variable-length encoder history.
         # Valid values: bool
         "capability:flexible_history_length": True,
-
         # Whether the model can make predictions without long history (cold start).
         # Valid values: bool
         "capability:cold_start": False,
-
         # External python packages required to run this model (e.g. ["cpflows"]).
         # Delete or keep empty if no external packages are needed.
         # Valid values: list of str
@@ -84,15 +74,20 @@ class ExampleNetwork_pkg(_BasePtForecaster):
         """Return the actual Lightning model class.
 
         CRITICAL DESIGN REQUIREMENTS:
-        - The import MUST use the absolute, fully qualified path (do NOT use relative imports like `from .model import ...`).
-        - Example: ``from pytorch_forecasting.models.examplenetwork.model import ExampleNetwork``
+        - The import MUST use the absolute, fully qualified path
+          (do NOT use relative imports like `from .model import ...`).
+        - Example:
+          ``from pytorch_forecasting.models.examplenetwork.model import (``
+          ``    ExampleNetwork,``
+          ``)``
 
         Returns
         -------
         class
             The model class (e.g., ``ExampleNetwork``).
         """
-        # todo: update the import to point to your model using the complete absolute path
+        # todo: update the import to point to your model using the
+        # complete absolute path
         from extension_templates.v1_network_template.model import ExampleNetwork
 
         return ExampleNetwork
@@ -103,25 +98,29 @@ class ExampleNetwork_pkg(_BasePtForecaster):
 
         CRITICAL DESIGN REQUIREMENTS:
         -----------------------------
-        - This method is NOT optional. It is a required test fixture for the CI and test runner.
+        - This method is NOT optional. It is a required test fixture
+          for the CI and test runner.
         - It CANNOT return just an empty list `[{}]` or single empty dict.
         - It MUST return a list of dictionaries with realistic test parameter settings.
-        - Testing parameter choice should cover internal edge cases and hyperparameters well.
+        - Testing parameter choice should cover internal edge cases
+          and hyperparameters well.
         - A good parameter set should primarily satisfy two criteria:
           1. Low testing time: Chosen set of parameters should have a low testing time
              (ideally in the magnitude of a few seconds for the entire test suite).
              Avoid default values that result in "big" models which increase test time
              or risk causing test worker runner crashes/timeouts.
-          2. Wide range of coverage: There should be a minimum of two parameter sets with
-             different sets of values to ensure a wide range of code path coverage.
-          3. Avoid external dependencies in defaults: Do not require external packages in
-             the default parameter dictionary unless absolutely necessary.
+          2. Wide range of coverage: There should be a minimum of two parameter
+             sets with different sets of values to ensure a wide range of code path
+             coverage.
+          3. Avoid external dependencies in defaults: Do not require external
+             packages in the default parameter dictionary unless absolutely necessary.
 
         Returns
         -------
         params : list of dict
             Parameters to create testing instances of the class.
-            Each dict represents parameter settings to construct an "interesting" test instance.
+            Each dict represents parameter settings to construct an
+            "interesting" test instance.
             `create_test_instance` uses the first dictionary in `params` by default.
         """
         # todo: replace with parameters relevant to your model to test edge cases
