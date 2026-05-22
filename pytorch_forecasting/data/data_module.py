@@ -73,6 +73,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
     randomize_length : Union[None, Tuple[float, float], bool], default=False
         Whether to randomize input sequence length.
+    window_stride : int, default=1
+        Step size between consecutive candidate windows. A value of 1 keeps the
+        current dense sliding-window behavior, while larger values only keep every
+        k-th valid window start.
     batch_size : int, default=32
         Batch size for DataLoader.
     num_workers : int, default=0
@@ -104,6 +108,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         ]
         | None = None,
         randomize_length: None | tuple[float, float] | bool = False,
+        window_stride: int = 1,
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
@@ -119,6 +124,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.add_target_scales = add_target_scales
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
+        if window_stride < 1:
+            raise ValueError("window_stride must be at least 1.")
+        self.window_stride = window_stride
         self.target_normalizer = target_normalizer
         self.categorical_encoders = categorical_encoders
         self.scalers = scalers
@@ -606,7 +614,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 continue
 
             for start_idx in range(
-                0, max_prediction_idx - effective_min_prediction_idx
+                0,
+                max_prediction_idx - effective_min_prediction_idx,
+                self.window_stride,
             ):
                 if (
                     start_idx + self.max_encoder_length + self.max_prediction_length
