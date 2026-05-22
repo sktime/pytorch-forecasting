@@ -11,10 +11,13 @@ class TimeXer_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "TimeXer",
         "authors": ["PranavBhatP"],
+        "info:compute": 3,
+        "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod

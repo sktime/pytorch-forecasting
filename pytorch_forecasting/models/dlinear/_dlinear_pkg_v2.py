@@ -12,6 +12,7 @@ class DLinear_pkg_v2(Base_pkg):
         "info:name": "DLinear",
         "info:compute": 2,
         "authors": ["PranavBhatP"],
+        "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
