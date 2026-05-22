@@ -60,13 +60,21 @@ class ExampleNetwork(BaseModel):
              ``self.hparams.hidden_size`` inside forward() or other methods.
 
         3. Read-Only self.hparams Constraint:
-           - **CRITICAL**: The ``self.hparams`` object is read-only and should NEVER
-             be modified, overwritten, or mutated after initialization.
-           - If you need to handle default arguments, perform scaling/rescaling,
-             or derive values (e.g., setting up dimensions based on input
-             configurations), write them to private instance attributes (attributes
-             starting with a leading underscore), for example:
-             ``self._hidden_size = self.hparams.hidden_size``.
+           - **CRITICAL**: Once constructor parameters are collected (e.g. into
+             ``self.hparams`` via ``self.save_hyperparameters()``), they should
+             NEVER be modified, mutated, or overwritten after initialization.
+           - If you need to make any changes, perform validation, or derive values
+             from these collected constructor parameters, write them to private
+             instance attributes prefixed with a leading underscore.
+           - For example, if ``__init__`` has arguments ``param_a`` and ``param_b``,
+             we capture them via ``self.save_hyperparameters()`` and then if we need
+             to modify or derive a value from ``param_a``:
+
+             .. code-block:: python
+
+                 # Once collected, self.hparams.param_a cannot be changed.
+                 # If you need to make changes, use private params:
+                 self._param_a = some_function(self.hparams.param_a)
 
         Parameters
         ----------
@@ -83,9 +91,10 @@ class ExampleNetwork(BaseModel):
         # and enables automatic checkpoint save/load.
         # It MUST be called before super().__init__().
         #
-        # IMPORTANT: Once captured, self.hparams should never be overwritten
-        # or mutated. For handling defaults, scaling, or derived attributes,
-        # write to private attributes, e.g., self._hidden_size = ...
+        # IMPORTANT: Once the constructor arguments are collected (into
+        # self.hparams), they can never be changed or mutated. If you need
+        # to make any changes or derive values, use private parameters:
+        # self._param_a = some_function(self.hparams.param_a)
         #
         # Put any reusable layers or submodules of the model into a ``layers/``
         # folder (e.g., ``my_model/layers/``) to keep code modular and clean.
@@ -95,7 +104,7 @@ class ExampleNetwork(BaseModel):
         # todo: optional, parameter checking and default derivation logic
         # (if applicable) here. E.g., do NOT overwrite self.hparams.
         # Instead, write to private attributes prefixed with a leading underscore:
-        # self._hidden_size = self.hparams.hidden_size
+        # self._hidden_size = some_function(self.hparams.hidden_size)
 
         # todo: define your network layers here, e.g.:
         # self.rnn = torch.nn.LSTM(
