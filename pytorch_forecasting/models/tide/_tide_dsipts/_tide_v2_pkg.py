@@ -8,14 +8,7 @@ class TIDE_pkg_v2(Base_pkg):
 
     _tags = {
         "info:name": "TIDE",
-        "authors": ["fbk_dsipts", "phoeenniixx"],
-        "info:compute": 3,
-        "info:y_type": ["numeric"],
-        "capability:exogenous": True,
-        "capability:multivariate": True,
-        "capability:pred_int": False,
-        "capability:flexible_history_length": False,
-        "capability:cold_start": False,
+        "authors": ["fbk_dsipts"],
     }
 
     @classmethod

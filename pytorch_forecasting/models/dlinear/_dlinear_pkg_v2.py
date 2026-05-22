@@ -10,9 +10,8 @@ class DLinear_pkg_v2(Base_pkg):
 
     _tags = {
         "info:name": "DLinear",
-        "authors": ["PranavBhatP"],
         "info:compute": 2,
-        "info:y_type": ["numeric"],
+        "authors": ["PranavBhatP"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
