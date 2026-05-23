@@ -394,3 +394,49 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
             assert test_output["prediction"].shape[1] == model.prediction_length
         except StopIteration:
             print("Test set is empty, skipping test testing")
+
+
+def test_static_features_are_split_by_type_in_tslib_output():
+    """Ensure static categorical and continuous tensors are separated in v2 output."""
+    np.random.seed(42)
+
+    df = pd.DataFrame(
+        {
+            "time_idx": np.tile(np.arange(30), 2),
+            "group_id": np.repeat(["group_0", "group_1"], 30),
+            "value": np.random.randn(60).astype(np.float32),
+            "temperature": np.random.randn(60).astype(np.float32),
+            "humidity": np.random.randn(60).astype(np.float32),
+            "pressure": np.random.randn(60).astype(np.float32),
+            "static_cont_feat": np.repeat([10.0, 20.0], 30).astype(np.float32),
+            "static_cat_feat": np.repeat([0, 1], 30),
+        }
+    )
+    df["group_id"] = df["group_id"].astype("category")
+
+    ts = TimeSeries(
+        df,
+        time="time_idx",
+        target="value",
+        group=["group_id"],
+        num=["value", "temperature", "humidity", "pressure", "static_cont_feat"],
+        cat=["static_cat_feat"],
+        known=["temperature", "humidity", "pressure", "time_idx"],
+        static=["static_cont_feat", "static_cat_feat"],
+    )
+
+    dm = TslibDataModule(
+        time_series_dataset=ts,
+        batch_size=2,
+        context_length=12,
+        prediction_length=8,
+    )
+    dm.setup(stage="fit")
+
+    metadata = dm.metadata
+    assert metadata["n_features"]["static_categorical"] == 1
+    assert metadata["n_features"]["static_continuous"] == 1
+
+    x, _ = next(iter(dm.train_dataloader()))
+    assert x["static_categorical_features"].shape[-1] == 1
+    assert x["static_continuous_features"].shape[-1] == 1
