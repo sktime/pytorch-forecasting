@@ -156,6 +156,38 @@ def test_setup(tslib_data_module):
     assert len(tslib_data_module._predict_windows) > 0
 
 
+def test_setup_fit_is_reentrant(tslib_data_module):
+    """Repeated fit setup should not recreate splits or datasets."""
+    tslib_data_module.setup(stage="fit")
+
+    first_indices = tslib_data_module._indices.clone()
+    first_train_dataset = tslib_data_module.train_dataset
+    first_val_dataset = tslib_data_module.val_dataset
+    first_train_windows = tslib_data_module._train_windows
+    first_val_windows = tslib_data_module._val_windows
+
+    tslib_data_module.setup(stage="fit")
+
+    assert torch.equal(tslib_data_module._indices, first_indices)
+    assert tslib_data_module.train_dataset is first_train_dataset
+    assert tslib_data_module.val_dataset is first_val_dataset
+    assert tslib_data_module._train_windows is first_train_windows
+    assert tslib_data_module._val_windows is first_val_windows
+
+
+def test_setup_predict_is_reentrant(tslib_data_module):
+    """Repeated predict setup should not recreate the predict dataset."""
+    tslib_data_module.setup(stage="predict")
+
+    first_predict_dataset = tslib_data_module.predict_dataset
+    first_predict_windows = tslib_data_module._predict_windows
+
+    tslib_data_module.setup(stage="predict")
+
+    assert tslib_data_module.predict_dataset is first_predict_dataset
+    assert tslib_data_module._predict_windows is first_predict_windows
+
+
 def test_train_dataloader(tslib_data_module):
     """Test the train dataloader to ensure it returns the batches of the data,
     and all hyperparameters are correctly set."""
