@@ -243,15 +243,11 @@ def test_nhits_static_reals_forward():
         max_prediction_length=5,
         add_target_scales=True,
     )
-    dataloader = dataset.to_dataloader(
-        train=True, batch_size=4, num_workers=0
-    )
+    dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
     model = NHiTS.from_dataset(dataset, hidden_size=8)
 
     assert model.static_size > 0, "static_size should be > 0"
-    assert model.encoder_covariate_size == 0, (
-        "encoder_covariate_size should be 0"
-    )
+    assert model.encoder_covariate_size == 0, "encoder_covariate_size should be 0"
 
     batch, _ = next(iter(dataloader))
     # must not raise NameError on encoder_features
@@ -285,9 +281,7 @@ def test_nhits_static_reals_with_covariates_forward():
         max_prediction_length=5,
         add_target_scales=True,
     )
-    dataloader = dataset.to_dataloader(
-        train=True, batch_size=4, num_workers=0
-    )
+    dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
     model = NHiTS.from_dataset(dataset, hidden_size=8)
 
     assert model.static_size > 0
@@ -322,9 +316,7 @@ def test_nhits_static_reals_training():
         max_prediction_length=5,
         add_target_scales=True,
     )
-    train_dataloader = dataset.to_dataloader(
-        train=True, batch_size=4, num_workers=0
-    )
+    train_dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
     model = NHiTS.from_dataset(dataset, hidden_size=8)
     trainer = pl.Trainer(
         accelerator="cpu",
@@ -334,4 +326,3 @@ def test_nhits_static_reals_training():
         logger=False,
     )
     trainer.fit(model, train_dataloaders=train_dataloader)
-
