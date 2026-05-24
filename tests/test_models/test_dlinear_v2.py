@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.data.data_modules import TslibDataModule
+from pytorch_forecasting.data.data_module import TslibDataModule
 from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 from pytorch_forecasting.models.dlinear._dlinear_v2 import DLinear
 

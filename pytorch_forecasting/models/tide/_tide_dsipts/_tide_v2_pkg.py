@@ -21,7 +21,7 @@ class TIDE_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data.data_modules import (
+        from pytorch_forecasting.data.data_module import (
             EncoderDecoderTimeSeriesDataModule,
         )
 

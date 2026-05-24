@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from pytorch_forecasting.data.data_modules import EncoderDecoderTimeSeriesDataModule
+from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
