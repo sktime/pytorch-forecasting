@@ -10,7 +10,14 @@ class Samformer_pkg_v2(Base_pkg):
 
     _tags = {
         "info:name": "Samformer",
-        "authors": ["fbk_dsipts"],
+        "authors": ["fbk_dsipts", "PranavBhatP"],
+        "info:compute": 2,
+        "info:y_type": ["numeric"],
+        "capability:exogenous": True,
+        "capability:multivariate": False,
+        "capability:pred_int": True,
+        "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
