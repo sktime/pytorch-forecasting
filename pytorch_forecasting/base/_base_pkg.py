@@ -195,7 +195,7 @@ class Base_pkg(_BasePtForecasterV2):
     def fit(
         self,
         data: TimeSeries | LightningDataModule,
-        # todo: we should create a base data_module for different data_module
+        # todo: we should create a base data_module for different data_modules
         save_ckpt: bool = True,
         ckpt_dir: str | Path = "checkpoints",
         ckpt_kwargs: dict[str, Any] | None = None,
