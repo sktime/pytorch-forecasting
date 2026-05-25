@@ -530,3 +530,23 @@ def test_multivariate_target():
     assert (
         y.shape[-1] == 2
     ), "Target should have two dimensions for n_features for multivariate target."
+
+
+def test_group_index():
+    """Ensure group indices are contiguous and deterministic.
+
+    Regression guard: older code used `hash(str(group_id))`, which could yield
+    non-contiguous ids and unstable mappings.
+    """
+
+    data = []
+    for gid in ["aa", "bb", "cc", "dd"]:
+        for t in range(3):
+            data.append({"gid": gid, "time": t, "target": t})
+
+    df = pd.DataFrame(data)
+    ts = TimeSeries(data=df, time="time", target="target", group=["gid"])
+
+    group_indices = [int(ts[i]["group"][0]) for i in range(len(ts))]
+
+    assert group_indices == list(range(len(ts)))
