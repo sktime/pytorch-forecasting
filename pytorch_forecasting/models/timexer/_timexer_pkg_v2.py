@@ -30,7 +30,9 @@ class TimeXer_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module._tslib_data_module import (
+            TslibDataModule,
+        )
 
         return TslibDataModule
 
