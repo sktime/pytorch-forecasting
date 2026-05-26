@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 import torch
 
-from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+from pytorch_forecasting.data.data_module import TslibDataModule
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 

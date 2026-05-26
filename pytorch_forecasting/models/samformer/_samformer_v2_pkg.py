@@ -48,7 +48,6 @@ class Samformer_pkg_v2(Base_pkg):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        import torch.nn as nn
 
         from pytorch_forecasting.metrics import QuantileLoss
 
