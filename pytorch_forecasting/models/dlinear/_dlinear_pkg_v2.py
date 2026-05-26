@@ -30,14 +30,14 @@ class DLinear_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import TslibDataModule
 
         return TslibDataModule
 
     @classmethod
     def _get_test_datamodule_from(cls, trainer_kwargs):
         """Create test dataloaders from trainer_kwargs - following v1 pattern."""
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import TslibDataModule
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates_v2,
             make_datasets_v2,
@@ -118,7 +118,7 @@ class DLinear_pkg_v2(Base_pkg):
             Parameters to create testing instances of the class
         """
 
-        from pytorch_forecasting.metrics import MAE, MAPE, SMAPE, QuantileLoss
+        from pytorch_forecasting.metrics import SMAPE
 
         params = [
             {},
