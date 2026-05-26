@@ -10,10 +10,9 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
-import torch.nn as nn
 
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+from pytorch_forecasting.data.data_module import TslibDataModule
 from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 from pytorch_forecasting.models.timexer._timexer_v2 import TimeXer
 
