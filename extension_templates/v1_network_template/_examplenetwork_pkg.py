@@ -194,11 +194,10 @@ class ExampleNetwork_pkg(_BasePtForecaster):
             Dictionary with keys "train", "val", "test" containing
             PyTorch DataLoaders.
         """
-        data_loader_kwargs = params.get("data_loader_kwargs", {})
-
         # todo: choose the appropriate data scenario for your model.
         # Example using data_with_covariates + make_dataloaders:
         #
+        # data_loader_kwargs = params.get("data_loader_kwargs", {})
         # from pytorch_forecasting.tests._data_scenarios import (
         #     data_with_covariates,
         #     make_dataloaders,
