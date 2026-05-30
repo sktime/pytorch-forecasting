@@ -44,36 +44,45 @@ class ExampleNetwork(BaseModel):
         DESIGN REQUIREMENTS & CONVENTIONS:
         ---------------------------------
         1. PyTorch Lightning Hyperparameter Saving:
-           - We use ``self.save_hyperparameters()`` to automatically capture all
+           - We use ``self.save_hyperparameters()`` to automatically capture
              constructor arguments and write them to ``self.hparams``.
-           - This is highly recommended as it enables automatic registration of
-             hyperparameters, making them easily serializable and restorable in
-             model checkpoints.
+           - This enables automatic checkpoint save/restore and experiment
+             logging.
            - ``self.save_hyperparameters()`` MUST be called before
-             ``super().__init__(**kwargs)`` so that the Lightning framework can
-             properly capture and intercept the arguments.
+             ``super().__init__(**kwargs)``.
 
-        2. Parameter Naming Conventions:
-           - All constructor parameters must match the instance attribute names.
-           - For example, a constructor argument ``hidden_size`` is automatically
-             stored as ``self.hparams.hidden_size``. You should access it via
-             ``self.hparams.hidden_size`` inside forward() or other methods.
-
-        3. Read-Only self.hparams Constraint:
-           - **CRITICAL**: Once constructor parameters are collected (e.g. into
-             ``self.hparams`` via ``self.save_hyperparameters()``), they should
-             NEVER be modified, mutated, or overwritten after initialization.
-           - If you need to make any changes, perform validation, or derive values
-             from these collected constructor parameters, write them to private
-             instance attributes prefixed with a leading underscore.
-           - For example, if ``__init__`` has arguments ``param_a`` and ``param_b``,
-             we capture them via ``self.save_hyperparameters()`` and then if we need
-             to modify or derive a value from ``param_a``:
+        2. Selective Saving with ``ignore``:
+           - **Not all parameters need to be saved.** Model-specific objects
+             that are non-serializable or not true hyperparameters (e.g.,
+             ``loss``, large objects, callables) should be excluded:
 
              .. code-block:: python
 
-                 # Once collected, self.hparams.param_a cannot be changed.
-                 # If you need to make changes, use private params:
+                 self.save_hyperparameters(ignore=["loss"])
+
+           - Only standard configuration values (dimensions, layer counts,
+             dropout rates, etc.) should be captured in ``hparams``.
+
+        3. Accessing Parameters:
+           - Saved parameters can be accessed in two equivalent ways:
+
+             - ``self.hparams.hidden_size`` (explicit, via the hparams namespace)
+             - ``self.hidden_size`` (direct, via Lightning's ``__getattr__``)
+
+           - Both are valid. Use whichever style is consistent with your
+             codebase. Direct access (``self.hidden_size``) is shorter;
+             ``self.hparams.hidden_size`` makes it explicit that the value
+             comes from saved hyperparameters.
+
+        4. Read-Only ``self.hparams`` Constraint:
+           - **CRITICAL**: Once constructor parameters are collected into
+             ``self.hparams``, they should NEVER be modified, mutated, or
+             overwritten after initialization.
+           - If you need to derive or transform values, write them to private
+             instance attributes prefixed with a leading underscore:
+
+             .. code-block:: python
+
                  self._param_a = some_function(self.hparams.param_a)
 
         Parameters
@@ -87,23 +96,24 @@ class ExampleNetwork(BaseModel):
         """
         # todo: add any custom model hyperparameters to the constructor signature above
 
-        # save_hyperparameters() stores all __init__ args in self.hparams
-        # and enables automatic checkpoint save/load.
+        # save_hyperparameters() stores __init__ args in self.hparams and
+        # enables automatic checkpoint save/load.
         # It MUST be called before super().__init__().
         #
-        # IMPORTANT: Once the constructor arguments are collected (into
-        # self.hparams), they can never be changed or mutated. If you need
-        # to make any changes or derive values, use private parameters:
-        # self._param_a = some_function(self.hparams.param_a)
+        # Use ignore=[] to exclude params that are not true hyperparameters
+        # (e.g., loss objects, non-serializable args):
+        #   self.save_hyperparameters(ignore=["loss"])
         #
-        # Put any reusable layers or submodules of the model into a ``layers/``
-        # folder (e.g., ``my_model/layers/``) to keep code modular and clean.
+        # After saving, access params via self.hparams.hidden_size
+        # or directly via self.hidden_size (both work).
+        #
+        # Put any reusable layers or submodules into a ``layers/`` folder.
         self.save_hyperparameters()
         super().__init__(**kwargs)
 
-        # todo: optional, parameter checking and default derivation logic
-        # (if applicable) here. E.g., do NOT overwrite self.hparams.
-        # Instead, write to private attributes prefixed with a leading underscore:
+        # todo: optional, parameter checking and default derivation logic.
+        # Do NOT overwrite self.hparams.
+        # Instead, write to private attributes:
         # self._hidden_size = some_function(self.hparams.hidden_size)
 
         # todo: define your network layers here, e.g.:

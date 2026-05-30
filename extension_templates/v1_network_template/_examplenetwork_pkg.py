@@ -141,30 +141,47 @@ class ExampleNetwork_pkg(_BasePtForecaster):
 
         What you should do here:
         ------------------------
-        1. Retrieve custom data-related parameters from the ``params`` dict (e.g.
-           custom ``data_loader_kwargs``).
+        1. Retrieve custom data-related parameters from the ``params`` dict
+           (e.g. custom ``data_loader_kwargs``).
         2. Pick a test data scenario from ``_data_scenarios``.
-        3. Call ``make_dataloaders`` to create and return the dataloaders.
+        3. If needed, adapt the data for your model's loss function
+           (see "Loss-specific data handling" below).
+        4. Call ``make_dataloaders`` to create and return the dataloaders.
 
-        About `make_dataloaders` and Data Scenarios:
-        -------------------------------------------
-        - ``make_dataloaders(data_with_covariates, **kwargs)``:
-          Helper that takes a dataframe and dataset specifications (e.g. target,
-          covariates), creates a training ``TimeSeriesDataSet``, creates a validation
-          ``TimeSeriesDataSet`` using ``from_dataset()``, and returns a dictionary
-          with train, val, and test loaders.
-        - Data Scenarios:
-          You can import various data scenarios from ``_data_scenarios``:
-          - ``data_with_covariates()``: Small Stallion dataset with real/categorical
-            known/unknown covariates. Suitable for general-purpose testing.
-          - ``dataloaders_with_covariates()``: Returns pre-made dataloaders for simple
-            covariates and group normalization.
-          - ``dataloaders_with_different_encoder_decoder_length()``: Test case for
-            varying sequence lengths.
-          - ``dataloaders_multi_target()``: Returns dataloaders with multiple target
-            columns for multivariate forecasting tests.
-          - ``dataloaders_fixed_window_without_covariates()``: Synthetic AR time-series
-            data. Perfect for testing models that do not support covariates.
+        Choosing a Data Scenario:
+        -------------------------
+        Import from ``pytorch_forecasting.tests._data_scenarios``:
+
+        - ``data_with_covariates()``:
+          Small Stallion dataset with real/categorical known/unknown covariates.
+          Use with ``make_dataloaders(dwc, target=..., ...)``.
+          Best for: general-purpose models that accept exogenous inputs.
+
+        - ``dataloaders_fixed_window_without_covariates()``:
+          Synthetic AR time-series data, returns pre-made dataloaders.
+          Best for: models that do NOT use covariates (e.g., N-BEATS).
+
+        - ``dataloaders_with_different_encoder_decoder_length()``:
+          Pre-made dataloaders with varying sequence lengths.
+          Best for: testing flexible history length support.
+
+        - ``dataloaders_multi_target()``:
+          Pre-made dataloaders with multiple target columns.
+          Best for: multivariate forecasting models.
+
+        Loss-specific data handling:
+        ----------------------------
+        Some losses require specific data transformations. If your model's
+        ``get_base_test_params`` includes a ``loss`` parameter, you may
+        need to adapt the data accordingly. For example:
+
+        - ``NegativeBinomialDistributionLoss`` requires non-negative integer
+          targets → round the target column.
+        - ``CrossEntropy`` requires a categorical target
+          → switch the target to a categorical column.
+
+        See ``DecoderMLP_pkg._get_test_dataloaders_from`` for a reference
+        implementation that handles multiple loss types.
 
         Parameters
         ----------
@@ -179,21 +196,41 @@ class ExampleNetwork_pkg(_BasePtForecaster):
         """
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
-        from pytorch_forecasting.tests._data_scenarios import (
-            data_with_covariates,
-            make_dataloaders,
-        )
+        # todo: choose the appropriate data scenario for your model.
+        # Example using data_with_covariates + make_dataloaders:
+        #
+        # from pytorch_forecasting.tests._data_scenarios import (
+        #     data_with_covariates,
+        #     make_dataloaders,
+        # )
+        #
+        # dwc = data_with_covariates()
+        #
+        # # todo: if your loss requires specific data transformations,
+        # # handle them here. For example:
+        # # loss = params.get("loss", None)
+        # # if isinstance(loss, NegativeBinomialDistributionLoss):
+        # #     dwc = dwc.assign(target=lambda x: x.volume.round())
+        # # elif isinstance(loss, CrossEntropy):
+        # #     data_loader_kwargs["target"] = "agency"
+        #
+        # dl_kwargs = dict(
+        #     target="target",
+        #     time_varying_known_reals=["price_actual"],
+        #     time_varying_unknown_reals=["target"],
+        #     static_categoricals=["agency"],
+        #     add_relative_time_idx=True,
+        # )
+        # dl_kwargs.update(data_loader_kwargs)
+        # return make_dataloaders(dwc, **dl_kwargs)
+        #
+        # Alternatively, for models without covariates:
+        # from pytorch_forecasting.tests._data_scenarios import (
+        #     dataloaders_fixed_window_without_covariates,
+        # )
+        # return dataloaders_fixed_window_without_covariates()
 
-        dwc = data_with_covariates()
-        dwc.assign(target=lambda x: x.volume)
-
-        dl_default_kwargs = dict(
-            target="target",
-            time_varying_known_reals=["price_actual"],
-            time_varying_unknown_reals=["target"],
-            static_categoricals=["agency"],
-            add_relative_time_idx=True,
+        raise NotImplementedError(
+            "Implement _get_test_dataloaders_from() for your model. "
+            "See the docstring above for guidance on choosing data scenarios."
         )
-        dl_default_kwargs.update(data_loader_kwargs)
-        dataloaders = make_dataloaders(dwc, **dl_default_kwargs)
-        return dataloaders
