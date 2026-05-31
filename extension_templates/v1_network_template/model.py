@@ -1,162 +1,91 @@
+"""Extension template for v1 neural network models.
+
+Purpose of this implementation template:
+    quick implementation of new estimators following the template
+    NOT a concrete class to import! This is NOT a base class or concrete class!
+    This is to be used as a "fill-in" coding template.
+
+How to use this implementation template to implement a new estimator:
+- make a copy of the template in a suitable location, give it a descriptive name.
+- work through all the "todo" comments below
+- fill in code for mandatory methods, and optionally for optional methods
+- you can add more private methods, but do not override BaseModel's private methods
+    an easy way to be safe is to prefix your methods with "_custom"
+- change docstrings for functions and the file
+- once complete: use as a local library, or contribute to pytorch-forecasting via PR
+- IMPORTANT: if you have some custom layers that are used by the model, you should add
+    that to a ``layers/`` subfolder in your model directory and import from there.
+
+Mandatory methods to implement:
+    __init__ - constructor with model hyperparameters
+    forward - the forward pass of the model
+    _pkg - method to access the package class of the model
+    from_dataset - factory method to construct model from a TimeSeriesDataSet
+
+Optional methods (delete if not needed):
+    to_prediction - custom post-processing of point predictions
+    to_quantiles - custom quantile extraction for probabilistic outputs
+
+Testing - required for pytorch-forecasting test framework:
+    Use the ``_pkg`` class for this. See _examplenetwork_pkg.py for more info.
 """
-Minimal Lightning model extension template for PyTorch Forecasting (v1).
 
-PURPOSE:
---------
-This is NOT a working model.
-It is a structured template to help contributors implement new v1 models
-that integrate cleanly with PyTorch Forecasting's testing and API.
-
-HOW TO USE:
------------
-- Copy this file and modify the class name.
-- Implement the required methods marked below.
-- Follow the comments carefully — they explain what each method should do.
-"""
-
-from typing import Any
+# todo: write an informative docstring for the file or module, remove the above
 
 import torch
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.models.base import BaseModel
 
+# todo: add any necessary imports here
+# import soft dependencies only inside methods of the class, not at the top of the file
+# do not import the pkg class at the module level, it should
+# be imported within the respective method to access that class (namely _pkg).
 
+
+# todo: change class name and write docstring
 class ExampleNetwork(BaseModel):
-    """
-    Minimal template model for contributors.
+    """Custom forecasting model.
 
-    TODO for contributors:
-    -----------------------
-    - Rename this class to match your model name.
-    - Add your model hyperparameters to __init__
-    - Implement forward()
-    - Implement from_dataset()
-    - Implement any additional methods required for your architecture
-    - Put any reusable layers or submodules of the model into a ``layers/``
-      folder (e.g., ``my_model/layers/``) to keep code modular and clean.
+    todo: write docstring, describe your custom forecaster here
+
+    Parameters
+    ----------
+    hidden_size : int, default=16
+        descriptive explanation of hidden_size
+    **kwargs
+        Additional keyword arguments passed to ``BaseModel.__init__``.
     """
 
+    # todo: add any hyper-parameters and components to constructor
     def __init__(self, hidden_size: int = 16, **kwargs):
-        """
-        Constructor for your model.
-
-        DESIGN REQUIREMENTS & CONVENTIONS:
-        ---------------------------------
-        1. PyTorch Lightning Hyperparameter Saving:
-           - We use ``self.save_hyperparameters()`` to automatically capture
-             constructor arguments and write them to ``self.hparams``.
-           - This enables automatic checkpoint save/restore and experiment
-             logging.
-           - ``self.save_hyperparameters()`` MUST be called before
-             ``super().__init__(**kwargs)``.
-
-        2. Selective Saving with ``ignore``:
-           - **Not all parameters need to be saved.** Model-specific objects
-             that are non-serializable or not true hyperparameters (e.g.,
-             ``loss``, large objects, callables) should be excluded:
-
-             .. code-block:: python
-
-                 self.save_hyperparameters(ignore=["loss"])
-
-           - Only standard configuration values (dimensions, layer counts,
-             dropout rates, etc.) should be captured in ``hparams``.
-
-        3. Accessing Parameters:
-           - Saved parameters can be accessed in two equivalent ways:
-
-             - ``self.hparams.hidden_size`` (explicit, via the hparams namespace)
-             - ``self.hidden_size`` (direct, via Lightning's ``__getattr__``)
-
-           - Both are valid. Use whichever style is consistent with your
-             codebase. Direct access (``self.hidden_size``) is shorter;
-             ``self.hparams.hidden_size`` makes it explicit that the value
-             comes from saved hyperparameters.
-
-        4. Read-Only ``self.hparams`` Constraint:
-           - **CRITICAL**: Once constructor parameters are collected into
-             ``self.hparams``, they should NEVER be modified, mutated, or
-             overwritten after initialization.
-           - If you need to derive or transform values, write them to private
-             instance attributes prefixed with a leading underscore:
-
-             .. code-block:: python
-
-                 self._param_a = some_function(self.hparams.param_a)
-
-        Parameters
-        ----------
-        hidden_size : int, default=16
-            An example hyperparameter. Replace with your model's actual
-            hyperparameters.
-        **kwargs
-            Additional keyword arguments passed to the parent
-            ``BaseModel.__init__`` class constructor.
-        """
-        # todo: add any custom model hyperparameters to the constructor signature above
-
-        # save_hyperparameters() stores __init__ args in self.hparams and
-        # enables automatic checkpoint save/load.
-        # It MUST be called before super().__init__().
-        #
-        # Use ignore=[] to exclude params that are not true hyperparameters
-        # (e.g., loss objects, non-serializable args):
+        # save the hparams
+        # you can ignore some params that are not true hyperparameters:
         #   self.save_hyperparameters(ignore=["loss"])
-        #
-        # After saving, access params via self.hparams.hidden_size
-        # or directly via self.hidden_size (both work).
-        #
-        # Put any reusable layers or submodules into a ``layers/`` folder.
         self.save_hyperparameters()
         super().__init__(**kwargs)
 
-        # todo: optional, parameter checking and default derivation logic.
-        # Do NOT overwrite self.hparams.
-        # Instead, write to private attributes:
-        # self._hidden_size = some_function(self.hparams.hidden_size)
+        # IMPORTANT: the self.hparams should never be overwritten or mutated
+        # for handling defaults etc, write to other attributes, e.g.,
+        #   self._hidden_size = some_function(self.hparams.hidden_size)
 
-        # todo: define your network layers here, e.g.:
-        # self.rnn = torch.nn.LSTM(
-        #     input_size=self.hparams.hidden_size,
-        #     hidden_size=self.hparams.hidden_size,
-        # )
-        # self.projection = torch.nn.Linear(
-        #     self.hparams.hidden_size, 1,
-        # )
+        # todo: create any required layers after this, e.g.:
+        # self.fc = torch.nn.Linear(self.hparams.hidden_size, 1)
 
+    # implement this is mandatory
     @classmethod
     def _pkg(cls):
-        """
-        REQUIRED for v1 models.
-
-        Returns the package container class that defines metadata (_tags)
-        and test fixtures.
-
-        CRITICAL DESIGN REQUIREMENTS:
-        - The package file must be in the same folder/directory as this model file.
-        - The filename of the package module must be private (prefixed with an
-          underscore) and match the package class name (e.g.,
-          `_ExampleNetwork_pkg.py` for `ExampleNetwork_pkg`).
-        - The import MUST use the absolute, fully qualified path (do NOT use
-          relative imports like `from .package import ...`).
-        - Example:
-          ``from pytorch_forecasting.models.examplenetwork._examplenetwork_pkg``
-          ``import ExampleNetwork_pkg``
-
-        Returns
-        -------
-        class
-            The package container class for this model.
-        """
-        # todo: update the import to use the absolute path to your private package file.
-        # Remember: DO NOT use relative imports in PyTorch Forecasting v1 models.
+        """Package containing the model."""
+        # todo: update the import to use the absolute path
+        # to your private package file.
+        # Do NOT use relative imports.
         from extension_templates.v1_network_template._examplenetwork_pkg import (
             ExampleNetwork_pkg,
         )
 
         return ExampleNetwork_pkg
 
+    # implement this is mandatory
     @classmethod
     def from_dataset(
         cls,
@@ -164,17 +93,7 @@ class ExampleNetwork(BaseModel):
         allowed_encoder_known_variable_names: list[str] | None = None,
         **kwargs,
     ):
-        """
-        REQUIRED factory method to construct model from a TimeSeriesDataSet.
-
-        What you should do here:
-        ------------------------
-        - Extract needed information from ``dataset``
-          (e.g., number of targets, encoder/decoder lengths)
-        - Possibly modify kwargs (e.g., set loss, logging metrics, etc.)
-        - Then call super().from_dataset()
-
-        This ensures your model is correctly initialized from data.
+        """Construct model from a TimeSeriesDataSet.
 
         Parameters
         ----------
@@ -191,119 +110,43 @@ class ExampleNetwork(BaseModel):
             Initialized model instance.
         """
         # todo: add any dataset-derived configuration here, e.g.:
-        # new_kwargs = {
-        #     "n_targets": len(dataset.target_names),
-        # }
+        # new_kwargs = {"n_targets": len(dataset.target_names)}
         # new_kwargs.update(kwargs)
 
         return super().from_dataset(
             dataset,
-            allowed_encoder_known_variable_names=allowed_encoder_known_variable_names,
+            allowed_encoder_known_variable_names=(allowed_encoder_known_variable_names),
             **kwargs,
         )
 
+    # implement this is mandatory
     def forward(self, x: dict[str, torch.Tensor], **kwargs) -> dict[str, torch.Tensor]:
-        """
-        REQUIRED: implement the forward pass of your network.
-
-        INPUT:
-        ------
-        x is a dictionary from TimeSeriesDataSet containing tensors such as:
-        - x["encoder_cont"], x["encoder_cat"]
-        - x["decoder_cont"], x["decoder_cat"]
-        - x["encoder_lengths"], x["decoder_lengths"]
-        - x["target_scale"], etc.
-
-        WHAT YOU SHOULD DO HERE:
-        ------------------------
-        1) Encode past sequence (optional but common)
-        2) Decode future sequence
-        3) Produce predictions
-
-        OUTPUT:
-        -------
-        You MUST return a dictionary created via:
-            return self.to_network_output(prediction=your_prediction_tensor)
-
-        The shape of prediction should typically be:
-        (batch_size, decoder_length, target_dim)
+        """Forward pass of the model.
 
         Parameters
         ----------
-        x : dict of str to torch.Tensor
-            Input dictionary provided by the dataloader.
-        **kwargs
-            Additional keyword arguments.
+        x : dict[str, torch.Tensor]
+            Input dictionary from TimeSeriesDataSet containing tensors
+            such as ``encoder_cont``, ``decoder_cont``,
+            ``encoder_lengths``, ``target_scale``, etc.
 
         Returns
         -------
         output : dict
-            Network output dictionary, created via ``self.to_network_output``.
+            Network output dictionary, created via
+            ``self.to_network_output(prediction=...)``.
         """
-        # todo: replace with your actual model logic
+        # todo: implement the forward loop
         raise NotImplementedError("Implement forward() in your custom model")
 
-    # -------------------------------------------------------------------------
-    # OPTIONAL OVERRIDES (Commented out by default)
-    # -------------------------------------------------------------------------
-    # These methods are OPTIONAL. The BaseModel parent class already provides
-    # robust default implementations for point prediction and quantile conversion.
+    # ---- optional methods below ----
+    # Delete these if not needed. Only implement if your model requires
+    # custom post-processing (e.g., rescaling, clipping, CDF extraction).
     #
-    # Do NOT implement these methods unless your model requires custom post-
-    # processing or special handling. If they are not used, REMOVE/DELETE them
-    # from the final code to keep the implementation clean.
-    #
-    # If needed, uncomment and implement:
-    #
-    # def to_prediction(
-    #     self, out: dict[str, Any], use_metric: bool = True, **kwargs
-    # ) -> torch.Tensor:
-    #     """
-    #     OPTIONAL override: convert raw network output to final prediction.
-    #
-    #     Uncomment and implement ONLY if your model requires custom post-
-    #     processing of predictions (e.g., custom rescaling, clipping, etc.).
-    #
-    #     - Called during inference.
-    #     - Default implementation in BaseModel returns ``out.prediction``.
-    #
-    #     Parameters
-    #     ----------
-    #     out : dict
-    #         Raw output from forward().
-    #     use_metric : bool
-    #         Whether to use metric for conversion.
-    #     **kwargs
-    #         Additional keyword arguments.
-    #
-    #     Returns
-    #     -------
-    #     prediction : torch.Tensor
-    #         Final point predictions.
-    #     """
+    # def to_prediction(self, out, use_metric=True, **kwargs):
+    #     """Convert raw output to point predictions (optional)."""
     #     return super().to_prediction(out, use_metric=use_metric, **kwargs)
     #
-    # def to_quantiles(
-    #     self, out: dict[str, Any], use_metric: bool = True, **kwargs
-    # ) -> torch.Tensor:
-    #     """
-    #     OPTIONAL override: convert raw network output to quantile predictions.
-    #
-    #     Uncomment and implement ONLY if your model produces probabilistic
-    #     outputs that require custom quantile extraction (e.g., custom CDF/PDF).
-    #
-    #     Parameters
-    #     ----------
-    #     out : dict
-    #         Raw output from forward().
-    #     use_metric : bool
-    #         Whether to use metric for conversion.
-    #     **kwargs
-    #         Additional keyword arguments.
-    #
-    #     Returns
-    #     -------
-    #     quantiles : torch.Tensor
-    #         Quantile predictions.
-    #     """
+    # def to_quantiles(self, out, use_metric=True, **kwargs):
+    #     """Convert raw output to quantile predictions (optional)."""
     #     return super().to_quantiles(out, use_metric=use_metric, **kwargs)
