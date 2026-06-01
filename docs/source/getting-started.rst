@@ -158,11 +158,8 @@ Example
 Main API
 ---------
 
-.. currentmodule:: pytorch_forecasting
+.. toctree::
+    :maxdepth: 2
 
-.. moduleautosummary::
-   :toctree: api
-   :template: custom-module-template.rst
-   :recursive:
-
-   pytorch_forecasting
+    API v1 <api>
+    API v2 <api_v2>
