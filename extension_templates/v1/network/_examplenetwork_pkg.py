@@ -57,7 +57,7 @@ class ExampleNetwork_pkg(_BasePtForecaster):
         # todo: update the import to point to your model
         # using the complete absolute path.
         # Do NOT use relative imports.
-        from extension_templates.v1_network_template.model import (
+        from extension_templates.v1.network.model import (
             ExampleNetwork,
         )
 

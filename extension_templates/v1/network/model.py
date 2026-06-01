@@ -79,7 +79,7 @@ class ExampleNetwork(BaseModel):
         # todo: update the import to use the absolute path
         # to your private package file.
         # Do NOT use relative imports.
-        from extension_templates.v1_network_template._examplenetwork_pkg import (
+        from extension_templates.v1.network._examplenetwork_pkg import (
             ExampleNetwork_pkg,
         )
 
