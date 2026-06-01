@@ -29,7 +29,10 @@ Anatomy of a V1 Package
 Here is a complete example of a Package container using the ``NBeats`` model:
 
  .. autoclass:: pytorch_forecasting.models.nbeats._nbeats_pkg.NBeats_pkg
-
+   :noindex:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 API Reference
 -------------
 

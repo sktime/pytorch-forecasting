@@ -1,5 +1,5 @@
 API
-===
+====
 
 .. important::
    **Try the New API v2!**
