@@ -3,7 +3,7 @@ Tutorials for ``pytorch-forecasting`` v2
 
 .. warning::
     Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
-    See complete documentation for v2 API :doc:`here <api_v2>`
+    See complete documentation for v2 API :doc:`here <api_v2>` and legacy, stable v1 documentation :doc:`here <api>`.
 
 .. _tutorials:
 
@@ -11,7 +11,7 @@ The following tutorials for version 2 can be also found as `notebooks on GitHub 
 
 .. toctree::
    :titlesonly:
-   :maxdepth: 1
+   :maxdepth: 2
 
    tutorials/ptf_V2_example
    tutorials/tslib_v2_example
