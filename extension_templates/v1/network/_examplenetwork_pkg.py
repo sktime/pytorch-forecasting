@@ -177,23 +177,25 @@ class ExampleNetwork_pkg(_BasePtForecaster):
         #
         # See ``DecoderMLP_pkg._get_test_dataloaders_from`` for a reference.
 
-        data_loader_kwargs = params.get("data_loader_kwargs", {})
+        # Example implementation using covariates:
+        # ----------------------------------------
+        # data_loader_kwargs = params.get("data_loader_kwargs", {})
+        # from pytorch_forecasting.tests._data_scenarios import (
+        #     data_with_covariates,
+        #     make_dataloaders,
+        # )
+        # dwc = data_with_covariates()
+        # dl_default_kwargs = dict(
+        #     target="target",
+        #     time_varying_known_reals=["price_actual"],
+        #     time_varying_unknown_reals=["target"],
+        #     static_categoricals=["agency"],
+        #     add_relative_time_idx=True,
+        # )
+        # dl_default_kwargs.update(data_loader_kwargs)
+        # dataloaders = make_dataloaders(dwc, **dl_default_kwargs)
+        # return dataloaders
 
-        from pytorch_forecasting.tests._data_scenarios import (
-            data_with_covariates,
-            make_dataloaders,
+        raise NotImplementedError(
+            "Implement _get_test_dataloaders_from() in your custom model pkg"
         )
-
-        dwc = data_with_covariates()
-        dwc.assign(target=lambda x: x.volume)
-
-        dl_default_kwargs = dict(
-            target="target",
-            time_varying_known_reals=["price_actual"],
-            time_varying_unknown_reals=["target"],
-            static_categoricals=["agency"],
-            add_relative_time_idx=True,
-        )
-        dl_default_kwargs.update(data_loader_kwargs)
-        dataloaders = make_dataloaders(dwc, **dl_default_kwargs)
-        return dataloaders

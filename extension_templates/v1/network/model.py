@@ -35,7 +35,12 @@ Testing - required for pytorch-forecasting test framework:
 import torch
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
-from pytorch_forecasting.models.base import BaseModel
+
+# Choose the appropriate base class:
+# - Use ``BaseModel`` if the model does NOT use/support covariates (e.g., N-BEATS).
+# - Use ``BaseModelWithCovariates`` if the model supports static and/or time-varying
+#   covariates (e.g., DeepAR, Temporal Fusion Transformer).
+from pytorch_forecasting.models.base import BaseModel  # or BaseModelWithCovariates
 
 # todo: add any necessary imports here
 # import soft dependencies only inside methods of the class, not at the top of the file
@@ -43,7 +48,8 @@ from pytorch_forecasting.models.base import BaseModel
 # be imported within the respective method to access that class (namely _pkg).
 
 
-# todo: change class name and write docstring
+# todo: change class name, docstring, and select the correct base class
+# (BaseModel or BaseModelWithCovariates)
 class ExampleNetwork(BaseModel):
     """Custom forecasting model.
 
