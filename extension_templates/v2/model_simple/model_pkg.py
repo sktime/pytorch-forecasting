@@ -41,6 +41,56 @@ from pytorch_forecasting.base._base_pkg import Base_pkg
 class MyModel_pkg(Base_pkg):
     """Custom Model package container."""
 
+    # todo: fill out estimator tags here
+    #  tags are inherited from parent class if they are not set
+    _tags = {
+        # model name that MUST match the model class name.
+        # Valid values: str
+        "info:name": "ExampleNetwork",
+        # Approximate compute cost.
+        # Valid values: int (1 = lightweight e.g. MLP, 3 = medium, 5 = very heavy)
+        "info:compute": 2,
+        # What type of predictions this model produces.
+        # Valid values: list of str, containing one or more of:
+        #   "point"     - deterministic point forecasts
+        #   "quantile"  - probabilistic quantile forecasts
+        #   "distr"     - full predictive distribution (e.g., DeepAR)
+        "info:pred_type": ["point"],
+        # What type of target the model supports.
+        # Valid values: list of str, containing one or more of:
+        #   "numeric"   - continuous/numeric target variables
+        #   "category"  - categorical target variables (e.g., for classification losses)
+        "info:y_type": ["numeric"],
+        # GitHub usernames of the contributors.
+        # Valid values: list of str, containing GitHub handles.
+        # todo: replace with your GitHub handle(s)
+        "authors": ["your-github-handle"],
+        # Whether the model can use exogenous covariates (X).
+        # Valid values: bool
+        # True  = model uses exogenous variables in a non-trivial way
+        # False = model ignores exogenous inputs
+        "capability:exogenous": True,
+        # Whether the model supports multiple target variables (multivariate target).
+        # Valid values: bool
+        # True  = multivariate forecasting supported
+        # False = univariate target only
+        "capability:multivariate": True,
+        # Whether the model supports probabilistic prediction intervals.
+        # Valid values: bool
+        "capability:pred_int": False,
+        # Whether the model can work with variable-length encoder history.
+        # Valid values: bool
+        "capability:flexible_history_length": True,
+        # Whether the model can make predictions without long history (cold start).
+        # Valid values: bool
+        "capability:cold_start": False,
+        # External python packages (not a core dependency)
+        # required to run this model (e.g. ["cpflows"]).
+        # Delete or keep empty if no external packages are needed.
+        # Valid values: list of str
+        "python_dependencies": [],
+    }
+
     # we dont need any __init__() for this class
 
     # implement this is mandatory
