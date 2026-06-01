@@ -37,16 +37,50 @@ class ExampleNetwork_pkg(_BasePtForecaster):
 
     _tags = {
         # todo: update all tag values to match your model
-        "info:name": "ExampleNetwork",  # must match the model class name
-        "info:compute": 2,  # 1 = light, 3 = medium, 5 = heavy
-        "info:pred_type": ["point"],  # "point", "quantile", or "distr"
-        "info:y_type": ["numeric"],  # "numeric" or "category"
+        #
+        # Human-readable model name — MUST match the model class name.
+        # Valid values: str
+        "info:name": "ExampleNetwork",
+        # Approximate compute cost.
+        # Valid values: int (1 = lightweight e.g. MLP, 3 = medium, 5 = very heavy)
+        "info:compute": 2,
+        # What type of predictions this model produces.
+        # Valid values: list of str, containing one or more of:
+        #   "point"     → deterministic point forecasts
+        #   "quantile"  → probabilistic quantile forecasts
+        #   "distr"     → full predictive distribution (e.g., DeepAR)
+        "info:pred_type": ["point"],
+        # What type of target the model supports.
+        # Valid values: list of str, containing one or more of:
+        #   "numeric"   → continuous/numeric target variables
+        #   "category"  → categorical target variables
+        "info:y_type": ["numeric"],
+        # GitHub usernames of the contributors.
+        # Valid values: list of str, containing GitHub handles.
+        # todo: replace with your GitHub handle(s)
         "authors": ["your-github-handle"],
+        # Whether the model can use exogenous covariates (X).
+        # Valid values: bool
+        # True  = model uses exogenous variables in a non-trivial way
+        # False = model ignores exogenous inputs
         "capability:exogenous": True,
+        # Whether the model supports multiple target variables.
+        # Valid values: bool
+        # True  = multivariate forecasting supported
+        # False = univariate target only
         "capability:multivariate": True,
+        # Whether the model supports probabilistic prediction intervals.
+        # Valid values: bool
         "capability:pred_int": False,
+        # Whether the model can work with variable-length encoder history.
+        # Valid values: bool
         "capability:flexible_history_length": True,
+        # Whether the model can make predictions without long history.
+        # Valid values: bool
         "capability:cold_start": False,
+        # External python packages required to run this model.
+        # Delete or keep empty if no external packages are needed.
+        # Valid values: list of str
         "python_dependencies": [],
     }
 
@@ -112,14 +146,36 @@ class ExampleNetwork_pkg(_BasePtForecaster):
         """
         # todo: choose the appropriate data scenario for your model.
         #
-        # Available scenarios from pytorch_forecasting.tests._data_scenarios:
-        #   data_with_covariates() + make_dataloaders() - general purpose
-        #   dataloaders_fixed_window_without_covariates() - no covariates
-        #   dataloaders_with_different_encoder_decoder_length() - var lengths
-        #   dataloaders_multi_target() - multivariate
+        # Choosing a Data Scenario:
+        # -------------------------
+        # Import from ``pytorch_forecasting.tests._data_scenarios``:
         #
-        # If your loss requires specific data transformations,
-        # handle them here. See DecoderMLP_pkg for a reference.
+        # - ``data_with_covariates()``:
+        #   Small Stallion dataset with real/categorical known/unknown covariates.
+        #   Use with ``make_dataloaders(dwc, target=..., ...)``.
+        #   Best for: general-purpose models that accept exogenous inputs.
+        #
+        # - ``dataloaders_fixed_window_without_covariates()``:
+        #   Synthetic AR time-series data, returns pre-made dataloaders.
+        #   Best for: models that do NOT use covariates (e.g., N-BEATS).
+        #
+        # - ``dataloaders_with_different_encoder_decoder_length()``:
+        #   Pre-made dataloaders with varying sequence lengths.
+        #   Best for: testing flexible history length support.
+        #
+        # - ``dataloaders_multi_target()``:
+        #   Pre-made dataloaders with multiple target columns.
+        #   Best for: multivariate forecasting models.
+        #
+        # Loss-specific data handling:
+        # ----------------------------
+        # Some losses require specific data transformations. For example:
+        # - ``NegativeBinomialDistributionLoss`` requires non-negative
+        #   integer targets → round the target column.
+        # - ``CrossEntropy`` requires a categorical target
+        #   → switch the target to a categorical column.
+        #
+        # See ``DecoderMLP_pkg._get_test_dataloaders_from`` for a reference.
 
         data_loader_kwargs = params.get("data_loader_kwargs", {})
 
