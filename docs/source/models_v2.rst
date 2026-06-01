@@ -1,6 +1,12 @@
 Models v2
 =========
 
+.. warning::
+    Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
+    See complete documentation for v2 API :doc:`here <api_v2>`
+
+.. _models:
+
 .. currentmodule:: pytorch_forecasting
 
 The forecasting models in the V2 ecosystem are designed with a strict emphasis on modularity and separation of concerns. The architecture decouples algorithmic logic from data processing, ensuring that models act as pure, data-agnostic PyTorch Lightning instances.

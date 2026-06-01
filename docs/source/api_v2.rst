@@ -1,6 +1,9 @@
 API v2
 ======
 
+.. warning::
+    Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
+
 .. currentmodule:: pytorch_forecasting
 
 We are currently developing version 2 of PyTorch Forecasting. The primary objective of this redesign is to improve the software architecture and provide a more intuitive workflow for developers and data scientists.
@@ -36,9 +39,6 @@ Join the discussion and track our progress on GitHub:
 
 * **Feedback & Suggestions:** `API-v2 Development Issue <https://github.com/sktime/pytorch-forecasting/issues/1736>`_
 * **Future Plans:** `PyTorch Forecasting Roadmap <https://github.com/sktime/pytorch-forecasting/issues/1993>`_
-
-.. warning::
-    Please note that the V2 modules are currently in active-development and is in beta right now, so please use this API with caution.
 
 .. toctree::
     :maxdepth: 2

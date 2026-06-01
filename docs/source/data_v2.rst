@@ -1,6 +1,10 @@
 Data v2
 =======
 
+.. warning::
+    Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
+    See complete documentation for v2 API :doc:`here <api_v2>`
+
 .. currentmodule:: pytorch_forecasting
 
 Loading and managing time series data for deep learning can be complex, especially when handling varying sequence lengths, multiple covariates, and categorical encodings.

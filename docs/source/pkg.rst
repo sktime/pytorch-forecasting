@@ -1,100 +1,51 @@
-Package Layer
-=============
+Package
+=======
+
+.. important::
+   **Try the New API v2!**
+
+   We are currently building the next generation of PyTorch Forecasting. You are reading the legacy documentation for the v1 Package.
+   If you would like to test the new, decoupled architecture, check out the documentation of Package v2 :doc:`here <pkg_v2>` and complete API v2 documentation :doc:`here <api_v2>`.
+   **Please note that API V2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
+
 
 .. currentmodule:: pytorch_forecasting
 
-The Package Layer is the defining feature of the V2 user experience. While the underlying D1, D2, and Model layers are strictly decoupled to maintain separation of concerns, the Package layer acts as the **Orchestrator**.
+The Package layer (denoted by the ``_pkg`` suffix) is primarily an internal structural component. It serves as a **container for model metadata and testing fixtures**.
 
-It wraps the PyTorch Lightning boilerplate and provides a streamlined, ``scikit-learn``-like interface. By passing standard Python dictionaries for configuration, the Package layer automatically handles the instantiation of the DataModule, extracts the necessary metadata, initializes the underlying forecasting model, and manages the training loop.
+If you are a standard user building forecasting models, you will typically interact directly with the core models (e.g., ``NBeats.from_dataset()``) and bypass this layer entirely. However, if you are contributing a new model to the PyTorch Forecasting library, you must implement a corresponding Package class.
 
-The Configuration Driven Workflow
----------------------------------
+Responsibilities of a V1 Package
+--------------------------------
 
-To use a V2 Package, you do not need to manually instantiate the DataModule or the Model. Instead, you provide three configuration dictionaries to the Package wrapper:
+A V1 Package class inherits from :py:class:`~models.base._base_object._BasePtForecaster` and is strictly responsible for three things:
 
-1. ``datamodule_cfg``: Parameters for the D2 layer (e.g., batch size, scalers, encoders, and maximum sequence lengths).
-2. ``model_cfg``: Parameters for the core neural network (e.g., hidden sizes, dropout, loss metrics, and optimizers).
-3. ``trainer_cfg``: Parameters for the PyTorch Lightning ``Trainer`` (e.g., max epochs, accelerator type, and logging configurations).
+1. **Model Registry Tags (``_tags``):** A dictionary defining the specific capabilities of the model. This includes supported prediction types, whether it supports exogenous variables, multi-target forecasting, and its relative computational cost. These tags are used to dynamically generate the model overview tables in the documentation.
+2. **Testing Fixtures:** Methods like ``get_base_test_params()`` and ``_get_test_dataloaders_from()`` generate standard, valid configurations and dataloaders. These ensure the model can be automatically tested within the Continuous Integration (CI) pipeline without requiring manual test scripts.
 
-Lifecycle Methods
------------------
+Anatomy of a V1 Package
+-----------------------
 
-The Package layer exposes two primary methods for interacting with the model lifecycle:
+Here is a complete example of a Package container using the ``NBeats`` model:
 
-* ``fit()``: Initiates the training process. You can pass a raw D1 ``TimeSeries`` dataset (which the package will internally wrap in a D2 DataModule) or a pre-configured D2 ``LightningDataModule``.
-* ``predict()``: Generates forecasts. Similar to ``fit()``, this accepts a D1 dataset, a D2 DataModule, or even a standard PyTorch ``DataLoader``. It also accepts a ``return_info`` parameter to easily append identifying columns (like time indices and series IDs) alongside the predictions.
-
-All package classes inherit from :py:class:`~pytorch_forecasting.base._base_pkg.Base_pkg`
-
-.. autoclass:: pytorch_forecasting.base._base_pkg.Base_pkg
-   :noindex:
-   :members: __init__
-
-
-Code Example
-------------
-
-Here is how the configuration dictionaries and lifecycle methods come together using the Temporal Fusion Transformer package (``TFT_pkg_v2``):
-
-.. code-block:: python
-
-    from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import TFT_pkg_v2
-    from pytorch_forecasting.metrics import MAE, SMAPE
-    from pytorch_forecasting.data.encoders import NaNLabelEncoder, TorchNormalizer
-    from sklearn.preprocessing import StandardScaler
-
-    # Define Configurations
-    datamodule_cfg = dict(
-        max_encoder_length=30,
-        max_prediction_length=1,
-        batch_size=32,
-        categorical_encoders={"category": NaNLabelEncoder(add_nan=True)},
-        scalers={"x": StandardScaler()},
-        target_normalizer=TorchNormalizer(),
-    )
-
-    model_cfg = dict(
-        loss=MAE(),
-        logging_metrics=[MAE(), SMAPE()],
-        optimizer="adam",
-        optimizer_params={"lr": 1e-3},
-        hidden_size=64,
-        num_layers=2,
-    )
-
-    trainer_cfg = dict(
-        max_epochs=5,
-        accelerator="auto",
-        devices=1,
-    )
-
-    # Initialize the Package
-    model_pkg = TFT_pkg_v2(
-        model_cfg=model_cfg,
-        trainer_cfg=trainer_cfg,
-        datamodule_cfg=datamodule_cfg,
-    )
-
-    # Train the model
-    # (Assuming `dataset` is a previously defined D1 TimeSeries object)
-    model_pkg.fit(dataset)
-
-    # Generate predictions
-    preds = model_pkg.predict(dataset, return_info=["index", "x", "y"])
-
+ .. autoclass:: pytorch_forecasting.models.nbeats._nbeats_pkg.NBeats_pkg
 
 API Reference
 -------------
 
-See the detailed API documentation for the available V2 Package classes below:
+See the detailed API documentation for the V1 Package classes below:
 
 .. currentmodule:: pytorch_forecasting
 
 .. autosummary::
    :toctree: api
 
-   models.temporal_fusion_transformer._tft_pkg_v2.TFT_pkg_v2
-   models.dlinear._dlinear_pkg_v2.DLinear_pkg_v2
-   models.samformer._samformer_v2_pkg.Samformer_pkg_v2
-   models.tide._tide_dsipts._tide_v2_pkg.TIDE_pkg_v2
-   models.timexer._timexer_pkg_v2.TimeXer_pkg_v2
+   models.base._base_object._BasePtForecaster
+   models.deepar._deepar_pkg.DeepAR_pkg
+   models.mlp._decodermlp_pkg.DecoderMLP_pkg
+   models.nbeats._nbeats_pkg.NBeats_pkg
+   models.nbeats._nbeatskan_pkg.NBeatsKAN_pkg
+   models.nhits._nhits_pkg.NHiTS_pkg
+   models.rnn._rnn_pkg.RecurrentNetwork_pkg
+   models.temporal_fusion_transformer._tft_pkg.TemporalFusionTransformer_pkg
+   models.tide._tide_pkg.TiDEModel_pkg

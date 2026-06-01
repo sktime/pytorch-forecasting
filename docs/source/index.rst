@@ -6,6 +6,12 @@
 PyTorch Forecasting Documentation
 ==================================
 
+.. important::
+   **Try the New API v2!**
+
+   We are currently building the next generation of PyTorch Forecasting. If you would like to test the new, decoupled architecture, check out the documentation of API v2 :doc:`here <api_v2>`.
+   **Please note that API V2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
+
 .. raw:: html
 
    <a class="github-button" href="https://github.com/sktime/pytorch-forecasting" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star sktime/pytorch-forecasting on GitHub">GitHub</a>
@@ -62,14 +68,13 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
 
    getting-started
    tutorials
-   data_parent
-   models_parent
+   data
+   models
    metrics
    pkg
    faq
    installation
    api
-   api_v2
    CHANGELOG
 
 
