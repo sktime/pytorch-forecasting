@@ -38,13 +38,16 @@ The API-v2 is being built for the community, and your input is critical to ensur
 
 Join the discussion and track our progress on GitHub:
 
-* **Feedback & Suggestions:** `API-v2 Development Issue <https://github.com/sktime/pytorch-forecasting/issues/1736>`_
-* **Future Plans:** `PyTorch Forecasting Roadmap <https://github.com/sktime/pytorch-forecasting/issues/1993>`_
+* *Feedback & Suggestions:* `API-v2 Development Issue <https://github.com/sktime/pytorch-forecasting/issues/1736>`_
+* *Future Plans:* `PyTorch Forecasting Roadmap <https://github.com/sktime/pytorch-forecasting/issues/1993>`_
+
+**Find the links to specific parts of the API below:**
 
 .. toctree::
     :maxdepth: 2
 
     Data <data_v2>
     Models <models_v2>
-    Package <pkg>
+    Package <pkg_v2>
     Metrics <metrics>
+    Utils <utils>

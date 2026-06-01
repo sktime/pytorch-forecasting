@@ -8,12 +8,11 @@ API
    If you would like to test the new, decoupled architecture, check out the documentation of API v2 :doc:`here <api_v2>`.
    **Please note that API V2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
 
-.. currentmodule:: pytorch_forecasting
+.. toctree::
+    :maxdepth: 2
 
-.. autosummary::
-   :toctree: api
-
-   data
-   models
-   metrics
-   utils
+    Data <data>
+    Models <models>
+    Package <pkg>
+    Metrics <metrics>
+    Utils <utils>
