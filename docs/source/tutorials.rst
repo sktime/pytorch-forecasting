@@ -4,8 +4,9 @@ Tutorials
 .. admonition::
    **Try the New API v2!**
 
-   | We are currently building the next generation of PyTorch Forecasting. You are reading the legacy documentation for the v1 tutorials. If you would like to test the new architecture, check out the Tutorials for v2 :doc:`here <tutorials_v2>` and complete API v2 documentation :doc:`here <api_v2>`.
-   | **Please note that API v2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
+   | You are viewing v1 tutorials. A New API version is in development.
+   | Explore the new architecture: :doc:`v2 Tutorials <tutorials_v2>` | :doc:`v2 API Reference <api_v2>`
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 .. _tutorials:
 

@@ -3,7 +3,7 @@ API v2
 
 .. warning::
     Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
-    See legacy v1 documentation :doc:`here <api>` - it is stable and can be used in the production pipelines.
+    See v1 documentation :doc:`here <api>` - it is stable and can be used in the production pipelines.
 
 .. currentmodule:: pytorch_forecasting
 

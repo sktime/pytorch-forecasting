@@ -4,9 +4,9 @@ Models
 .. admonition::
    **Try the New API v2!**
 
-   | We are currently building the next generation of PyTorch Forecasting. You are reading the legacy documentation for the v1 models. If you would like to test the new, decoupled architecture, check out the documentation of Models v2 :doc:`here <models_v2>` and complete API v2 documentation :doc:`here <api_v2>`.
-   | **Please note that API V2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
-
+   | You are viewing Documentation of v1 Models. A New API version is in development.
+   | Explore the new architecture: :doc:`v2 Models <models_v2>` | :doc:`v2 API Reference <api_v2>`
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 .. _models:
 
 .. currentmodule:: pytorch_forecasting

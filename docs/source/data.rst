@@ -4,8 +4,9 @@ Data
 .. admonition::
    **Try the New API v2!**
 
-   | We are currently building the next generation of PyTorch Forecasting. You are reading the legacy documentation for the v1 data pipelines. If you would like to test the new architecture, check out the documentation of Data v2 :doc:`here <data_v2>` and complete API v2 documentation :doc:`here <api_v2>`.
-   | **Please note that API v2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
+   | You are viewing Documentation of v1 Data Pipeline. A New API version is in development.
+   | Explore the new architecture: :doc:`v2 Data Pipeline <data_v2>` | :doc:`v2 API Reference <api_v2>`
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 .. currentmodule:: pytorch_forecasting.data
 
