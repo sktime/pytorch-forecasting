@@ -1,12 +1,11 @@
 Package
 =======
 
-.. important::
+.. admonition::
    **Try the New API v2!**
 
-   We are currently building the next generation of PyTorch Forecasting. You are reading the legacy documentation for the v1 Package.
-   If you would like to test the new, decoupled architecture, check out the documentation of Package v2 :doc:`here <pkg_v2>` and complete API v2 documentation :doc:`here <api_v2>`.
-   **Please note that API V2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
+   | We are currently building the next generation of PyTorch Forecasting. You are reading the legacy documentation for the v1 Package. If you would like to test the new, decoupled architecture, check out the documentation of Package v2 :doc:`here <pkg_v2>` and complete API v2 documentation :doc:`here <api_v2>`.
+   | **Please note that API V2 is currently a Work in Progress and is considered unstable, so use it with caution in production environments.**
 
 
 .. currentmodule:: pytorch_forecasting
