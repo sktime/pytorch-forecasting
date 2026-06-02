@@ -1,5 +1,5 @@
-Package Layer
-=============
+Package (P) Layer v2
+=====================
 
 .. warning::
     Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
@@ -52,9 +52,6 @@ Here is how the configuration dictionaries and lifecycle methods come together u
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
-        categorical_encoders={"category": NaNLabelEncoder(add_nan=True)},
-        scalers={"x": StandardScaler()},
-        target_normalizer=TorchNormalizer(),
     )
 
     model_cfg = dict(

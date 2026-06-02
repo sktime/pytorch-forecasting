@@ -51,3 +51,4 @@ Join the discussion and track our progress on GitHub:
     Package <pkg_v2>
     Metrics <metrics>
     Utils <utils>
+    Tutorials <tutorials_v2>

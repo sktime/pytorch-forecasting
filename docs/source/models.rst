@@ -7,6 +7,7 @@ Models
    | You are viewing Documentation of v1 Models. A New API version is in development.
    | Explore the new architecture: :doc:`v2 Models <models_v2>` | :doc:`v2 API Reference <api_v2>`
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+
 .. _models:
 
 .. currentmodule:: pytorch_forecasting
@@ -21,18 +22,22 @@ To tune models, `optuna <https://optuna.readthedocs.io/>`_ can be used. For exam
 :py:class:`~models.temporal_fusion_transformer.TemporalFusionTransformer`
 is implemented by :py:func:`~models.temporal_fusion_transformer.tuning.optimize_hyperparameters`
 
+Architecture
+------------
+The v1 models in ``pytorch-forecasting`` are separated into two distinct sub-layers:
+
+* **The M Layer (Model):** The core ``torch`` neural network implementation, inheriting from PyTorch Lightning's ``LightningModule``. This is the primary user-facing layer for building training and prediction pipelines, initialized via the ``.from_dataset()`` method. End-users should use this layer for the ML pipelines in production.
+    * **Learn more:** :doc:`M Layer Documentation <m_layer>`
+    * **Examples:** :doc:`v1 Tutorials <tutorials>`
+
+* **The P Layer (Package):** An internal wrapper around the M Layer strictly for **testing framework integration**. It provides automated test fixtures and registry tags for model discovery. End-users bypass this layer entirely, though developers contributing new architectures to the library or testing their own implementation locally using the unified test framework must implement one.
+    * **Learn more:** :doc:`P Layer Documentation <pkg>`
+
 Selecting an architecture
 --------------------------
 
 Criteria for selecting an architecture depend heavily on the use-case. There are multiple selection criteria
-and you should take into account. Here is an overview over the pros and cons of the implemented models:
-
-.. note::
-   This table is auto-generated from the model registry. To add or update a
-   model's entry, modify its ``_tags`` dictionary in the corresponding package
-   module (e.g. ``_*_pkg.py``).
-
-.. model-overview-v1::
+and you should take into account.
 
 Size and type of available data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,37 +141,13 @@ but might be slow at inference time (in case of :py:class:`~pytorch_forecasting.
 driven by sampling results probabilistically multiple times, effectively increasing the computational burden linearly with the
 number of samples.
 
-
-Implementing new architectures
--------------------------------
-
-Please see the :ref:`Using custom data and implementing custom models <new-model-tutorial>` tutorial on how implement basic and more advanced models.
-
-Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base_model`.
-
-.. autoclass:: pytorch_forecasting.models.base_model.BaseModel
-   :noindex:
-   :members: __init__
-
-
-
 Details and available models
 -------------------------------
 
-See the API documentation for further details on available models:
+See the API documentation for further details on M layer and P layer and the list of the models:
 
-.. currentmodule:: pytorch_forecasting
+.. toctree::
+    :maxdepth: 2
 
-.. autosummary::
-   :toctree: api
-
-    models.deepar.DeepAR
-    models.mlp.DecoderMLP
-    models.nbeats.NBeats
-    models.nbeats.NBeatsKAN
-    models.nhits.NHiTS
-    models.rnn.RecurrentNetwork
-    models.temporal_fusion_transformer.TemporalFusionTransformer
-    models.tide.TiDEModel
-    models.timexer.TimeXer
-    models.xlstm.xLSTMTime
+    M Layer <m_layer>
+    P Layer <pkg>

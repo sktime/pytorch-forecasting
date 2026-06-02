@@ -1,63 +1,38 @@
-Getting started
-===============
+M Layer (Model)
+================
 
 .. admonition::
    **Try the New API v2!**
 
-   | A New API version is in development. Explore the new architecture: :doc:`v2 API Reference <api_v2>`
+   | You are viewing Documentation of v1 Models. A New API version is in development.
+   | Explore the new architecture: :doc:`v2 Models <models_v2>` | :doc:`v2 API Reference <api_v2>`
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
-
-
-.. _getting-started:
-
-
-Installation
---------------
-
-.. _install:
-
-You can install ``pytorch-forecasting`` using:
-
-.. code-block:: bash
-    pip install pytorch-forecasting
-
-For special cases (like specific ``torch`` versions or to with with the use of the MQF2 loss, please look at out :doc:`Installation Guide <installation>`.
-
-
-Usage
--------------
 
 .. currentmodule:: pytorch_forecasting
 
-The library builds strongly upon `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ which allows to train models with ease,
-spot bugs quickly and train on multiple GPUs out-of-the-box.
+Model parameters very much depend on the dataset for which they are destined.
 
-Further, we rely on `Tensorboard <https://pytorch.org/docs/stable/tensorboard.html>`_ for logging training progress.
+PyTorch Forecasting provides a ``.from_dataset()`` method for each model that
+takes a :py:class:`~data.timeseries.TimeSeriesDataSet` and additional parameters
+that cannot directly derived from the dataset such as, e.g. ``learning_rate`` or ``hidden_size``.
 
-The general setup for training and testing a model is
+To tune models, `optuna <https://optuna.readthedocs.io/>`_ can be used. For example, tuning of the
+:py:class:`~models.temporal_fusion_transformer.TemporalFusionTransformer`
+is implemented by :py:func:`~models.temporal_fusion_transformer.tuning.optimize_hyperparameters`
 
-#. Create training dataset using :py:class:`~data.timeseries.TimeSeriesDataSet`.
-#. Using the training dataset, create a validation dataset with :py:meth:`~data.timeseries.TimeSeriesDataSet.from_dataset`.
-   Similarly, a test dataset or later a dataset for inference can be created. You can store the dataset parameters
-   directly if you do not wish to load the entire training dataset at inference time.
+Available Models
+----------------
+Here is an overview over the pros and cons of the implemented models:
 
-#. Instantiate a model using the ``.from_dataset()`` method.
-#. Create a ``lightning.Trainer()`` object.
-#. Find the optimal learning rate with its ``.tuner.lr_find()`` method.
-#. Train the model with early stopping on the training dataset and use the tensorboard logs
-   to understand if it has converged with acceptable accuracy.
-#. Tune the hyperparameters of the model with your
-   `favourite package <https://pytorch-lightning.readthedocs.io/en/latest/hyperparameters.html#hyperparameter-optimization>`_.
-#. Train the model with the same learning rate schedule on the entire dataset.
-#. Load the model from the model checkpoint and apply it to new data.
+.. model-overview-v1::
 
+Usage
+-----
+PyTorch Forecasting provides a ``.from_dataset()`` method for each model that
+takes a :py:class:`~data.timeseries.TimeSeriesDataSet` and additional parameters
+that cannot directly derived from the dataset such as, e.g. ``learning_rate`` or ``hidden_size``.
 
-The :ref:`Tutorials <tutorials>` section provides detailed guidance and examples on how to use models and implement new ones.
-
-
-Example
---------
-
+One example of using :py:class:`~data.timeseries.TimeSeriesDataSet` and models is given below:
 
 .. code-block:: python
 
@@ -136,11 +111,36 @@ Example
         tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader,
     )
 
-Main API
----------
+Implementing new architectures
+-------------------------------
 
-.. toctree::
-    :maxdepth: 2
+Please see the :ref:`Using custom data and implementing custom models <new-model-tutorial>` tutorial on how implement basic and more advanced models.
 
-    API v1 <api>
-    API v2 <api_v2>
+Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base`.
+
+.. autoclass:: pytorch_forecasting.models.base._base_model.BaseModel
+   :noindex:
+   :members: __init__
+
+
+
+Details and available models
+-------------------------------
+
+See the API documentation for further details on available models:
+
+.. currentmodule:: pytorch_forecasting
+
+.. autosummary::
+   :toctree: api
+
+    models.deepar.DeepAR
+    models.mlp.DecoderMLP
+    models.nbeats.NBeats
+    models.nbeats.NBeatsKAN
+    models.nhits.NHiTS
+    models.rnn.RecurrentNetwork
+    models.temporal_fusion_transformer.TemporalFusionTransformer
+    models.tide.TiDEModel
+    models.timexer.TimeXer
+    models.xlstm.xLSTMTime

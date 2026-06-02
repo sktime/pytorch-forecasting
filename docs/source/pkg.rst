@@ -1,5 +1,5 @@
-Package
-=======
+P Layer (Package)
+==================
 
 .. admonition::
    **Try the New API v2!**
@@ -32,6 +32,7 @@ Here is a complete example of a Package container using the ``NBeats`` model:
    :members:
    :undoc-members:
    :show-inheritance:
+
 API Reference
 -------------
 
@@ -42,7 +43,6 @@ See the detailed API documentation for the V1 Package classes below:
 .. autosummary::
    :toctree: api
 
-   models.base._base_object._BasePtForecaster
    models.deepar._deepar_pkg.DeepAR_pkg
    models.mlp._decodermlp_pkg.DecoderMLP_pkg
    models.nbeats._nbeats_pkg.NBeats_pkg

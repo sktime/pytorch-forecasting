@@ -16,3 +16,4 @@ API
     Package <pkg>
     Metrics <metrics>
     Utils <utils>
+    Tutorials <tutorials>

@@ -74,6 +74,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    faq
    installation
    api
+   model_list
    CHANGELOG
 
 
