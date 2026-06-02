@@ -94,7 +94,7 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
     preds = model_pkg.predict(dataset, return_info=["index", "x", "y"])
 
 
-2. Without using ``Package`` class, here we are using ``EncoderDecoderDataModule`` and ``Lightning``'s trainer, but you can use your own implementations of the datamodule and trainer for this workflow.
+2. Without using ``Package`` class, here we are using :py:class:`~data.data_module.EncoderDecoderDataModule` and ``Lightning``'s trainer, but you can use your own implementations of the datamodule and trainer for this workflow.
 
 .. code-block:: python
 
