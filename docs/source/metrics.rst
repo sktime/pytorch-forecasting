@@ -1,6 +1,13 @@
 Metrics
 ==========
 
+.. admonition::
+   **Try the New API v2!**
+
+   | A New API version is in development. Explore the new architecture: :doc:`v2 API Reference <api_v2>`
+   | Note: that ``metrics`` are SAME for both the versions.
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+
 Multiple metrics have been implemented to ease adaptation.
 
 In particular, these metrics can be applied to the multi-horizon forecasting problem, i.e.
