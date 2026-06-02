@@ -21,7 +21,7 @@ You can install ``pytorch-forecasting`` using:
 .. code-block:: bash
     pip install pytorch-forecasting
 
-For special cases (like specific ``torch`` versions or to with with the use of the MQF2 loss), please look at out :doc:`Installation Guide <installation>`.
+For special cases (like specific ``torch`` versions or to install the package for the use of the MQF2 loss), please look at out :doc:`Installation Guide <installation>`.
 
 
 Usage
