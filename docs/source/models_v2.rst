@@ -53,10 +53,6 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
-        categorical_encoders={
-            "category": NaNLabelEncoder(add_nan=True),
-            "static_feature_cat": NaNLabelEncoder(add_nan=True),
-        },
         scalers={
             "x": StandardScaler(),
             "future_known_feature": StandardScaler(),
