@@ -12,7 +12,7 @@ We are currently developing version 2 of PyTorch Forecasting. The primary object
 The key structural changes and design philosophies driving V2 include:
 
 * **Decoupling Models and Data Structures:** In the original API, models are heavily tightly coupled with the :py:class:`~data.timeseries.TimeSeriesDataSet` class. V2 systematically reduces this strict dependency. By decoupling the forecasting models from specific data-handling classes, the models become more modular and can interface more seamlessly with standard PyTorch tensors, data loaders, and external data pipelines.
-* **Adoption of a Scikit-Learn-like API:** We are transitioning the user interface to mirror the widely recognized design patterns of ``scikit-learn``. By standardizing the model interfaces to use familiar methodologies (such as standard initialization, ``fit``, and ``predict`` workflows), the API becomes more predictable and accessible to the broader machine learning community.
+* **Unified API with Exchangeable Models:** V2 introduces a high-level Package wrapper providing a standardized ``fit()`` and ``predict()`` workflow, making it effortless to swap between different forecasting architectures. Crucially, this does not replace the PyTorch Lightning interface—advanced users retain full access to interact with the underlying models directly at a lower level.
 * **Simplified User Journey:** Consequently, these architectural changes drastically reduce the amount of boilerplate code required to set up data, initialize models, and generate predictions, allowing users to move from raw data to forecasting more efficiently.
 
 The New Layered Architecture
