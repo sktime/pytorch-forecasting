@@ -27,7 +27,7 @@ Optional methods (delete if not needed):
     to_quantiles - custom quantile extraction for probabilistic outputs
 
 Testing - required for pytorch-forecasting test framework:
-    Use the ``_pkg`` class for this. See _examplenetwork_pkg.py for more info.
+    Use the ``_pkg`` class for this. See _example_network_pkg.py for more info.
 """
 
 # todo: write an informative docstring for the file or module, remove the above
@@ -37,10 +37,17 @@ import torch
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 
 # Choose the appropriate base class:
-# - Use ``BaseModel`` if the model does NOT use/support covariates (e.g., N-BEATS).
+# - Use ``BaseModel`` if the model does NOT use/support covariates or autoregressive
+#   features (e.g., N-BEATS).
 # - Use ``BaseModelWithCovariates`` if the model supports static and/or time-varying
-#   covariates (e.g., DeepAR, Temporal Fusion Transformer).
-from pytorch_forecasting.models.base import BaseModel  # or BaseModelWithCovariates
+#   covariates but is NOT autoregressive (e.g., MLP-based models with covariates).
+# - Use ``AutoRegressiveBaseModel`` if the model is autoregressive but does NOT
+#   support covariates.
+# - Use ``AutoRegressiveBaseModelWithCovariates`` if the model is autoregressive and
+#   supports covariates (e.g., DeepAR, Temporal Fusion Transformer).
+from pytorch_forecasting.models.base import (
+    BaseModel,  # or BaseModelWithCovariates, AutoRegressiveBaseModel, etc.
+)
 
 # todo: add any necessary imports here
 # import soft dependencies only inside methods of the class, not at the top of the file
@@ -85,7 +92,7 @@ class ExampleNetwork(BaseModel):
         # todo: update the import to use the absolute path
         # to your private package file.
         # Do NOT use relative imports.
-        from extension_templates.v1.network._examplenetwork_pkg import (
+        from extension_templates.v1.network._example_network_pkg import (
             ExampleNetwork_pkg,
         )
 
