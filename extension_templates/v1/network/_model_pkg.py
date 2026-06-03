@@ -9,7 +9,7 @@ How to use this implementation template to implement a new estimator:
 - make a copy of the template in a suitable location, give it a descriptive name.
     - the name of the file should be prefixed with an underscore and end with ``_pkg``.
     For eg, for ExampleNetwork, the name of the file would be
-    _example_network_pkg.py.
+    _model_pkg.py.
 - work through all the "todo" comments below
 - fill in code for mandatory methods, and optionally for optional methods
 - change docstrings for functions and the file

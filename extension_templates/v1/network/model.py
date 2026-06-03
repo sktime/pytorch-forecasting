@@ -27,7 +27,7 @@ Optional methods (delete if not needed):
     to_quantiles - custom quantile extraction for probabilistic outputs
 
 Testing - required for pytorch-forecasting test framework:
-    Use the ``_pkg`` class for this. See _example_network_pkg.py for more info.
+    Use the ``_pkg`` class for this. See _model_pkg.py for more info.
 """
 
 # todo: write an informative docstring for the file or module, remove the above
@@ -92,7 +92,7 @@ class ExampleNetwork(BaseModel):
         # todo: update the import to use the absolute path
         # to your private package file.
         # Do NOT use relative imports.
-        from extension_templates.v1.network._example_network_pkg import (
+        from extension_templates.v1.network._model_pkg import (
             ExampleNetwork_pkg,
         )
 

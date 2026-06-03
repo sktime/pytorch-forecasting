@@ -42,7 +42,7 @@ A minimal neural network template that should:
 
 ---
 
-### `_example_network_pkg.py`
+### `_model_pkg.py`
 
 A **private package container** that exposes metadata and links to the model class. It **must**:
 
@@ -77,14 +77,14 @@ At minimum, `_tags` should include:
 
 The class name of the package container **must match the model name**, e.g.:
 
-- If your model is `ExampleNetwork`, the package class should be `ExampleNetwork_pkg` and the package file must be named `_example_network_pkg.py`.
+- If your model is `ExampleNetwork`, the package class should be `ExampleNetwork_pkg` and the package file must be named `_model_pkg.py`.
 
 ---
 
 ## How to use this template
 
 1. Copy this folder and rename it for your model (e.g., `my_custom_network/`).
-2. Rename the private package file `_example_network_pkg.py` to match your model name (e.g., `_my_custom_network_pkg.py`).
+2. Rename the private package file `_model_pkg.py` to match your model name (e.g., `_my_custom_network_pkg.py`).
 3. Replace placeholders in `model.py` with your actual implementation (and place any reusable submodules/layers in a `layers/` subdirectory).
 4. Update all `_tags` in `_my_custom_network_pkg.py` with accurate metadata.
 5. Implement `get_base_test_params()` with **realistic test fixtures**.
