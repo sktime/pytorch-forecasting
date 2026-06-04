@@ -4,6 +4,7 @@ Sub-modules and layers for the Autoformer architecture.
 
 import math
 from math import sqrt
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -68,7 +69,14 @@ class AutoCorrelation(nn.Module):
     This block can replace the self-attention family mechanism seamlessly.
     """
 
-    def __init__(self, mask_flag=True, factor=1, scale=None, attention_dropout=0.1, output_attention=False):
+    def __init__(
+        self,
+        mask_flag=True,
+        factor=1,
+        scale=None,
+        attention_dropout=0.1,
+        output_attention=False,
+    ):
         super().__init__()
         self.factor = factor
         self.scale = scale
@@ -96,8 +104,13 @@ class AutoCorrelation(nn.Module):
         delays_agg = torch.zeros_like(values).float()
         for i in range(top_k):
             pattern = torch.roll(tmp_values, -int(index[i]), -1)
-            delays_agg = delays_agg + pattern * \
-                         (tmp_corr[:, i].unsqueeze(1).unsqueeze(1).unsqueeze(1).repeat(1, head, channel, length))
+            delays_agg = delays_agg + pattern * (
+                tmp_corr[:, i]
+                .unsqueeze(1)
+                .unsqueeze(1)
+                .unsqueeze(1)
+                .repeat(1, head, channel, length)
+            )
         return delays_agg
 
     def time_delay_agg_inference(self, values, corr):
@@ -110,7 +123,14 @@ class AutoCorrelation(nn.Module):
         channel = values.shape[2]
         length = values.shape[3]
         # index init
-        init_index = torch.arange(length).unsqueeze(0).unsqueeze(0).unsqueeze(0).repeat(batch, head, channel, 1).to(values.device)
+        init_index = (
+            torch.arange(length)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .repeat(batch, head, channel, 1)
+            .to(values.device)
+        )
         # find top k
         top_k = int(self.factor * math.log(length))
         mean_value = torch.mean(torch.mean(corr, dim=1), dim=1)
@@ -121,10 +141,17 @@ class AutoCorrelation(nn.Module):
         tmp_values = values.repeat(1, 1, 1, 2)
         delays_agg = torch.zeros_like(values).float()
         for i in range(top_k):
-            tmp_delay = init_index + delay[:, i].unsqueeze(1).unsqueeze(1).unsqueeze(1).repeat(1, head, channel, length)
+            tmp_delay = init_index + delay[:, i].unsqueeze(1).unsqueeze(1).unsqueeze(
+                1
+            ).repeat(1, head, channel, length)
             pattern = torch.gather(tmp_values, dim=-1, index=tmp_delay)
-            delays_agg = delays_agg + pattern * \
-                         (tmp_corr[:, i].unsqueeze(1).unsqueeze(1).unsqueeze(1).repeat(1, head, channel, length))
+            delays_agg = delays_agg + pattern * (
+                tmp_corr[:, i]
+                .unsqueeze(1)
+                .unsqueeze(1)
+                .unsqueeze(1)
+                .repeat(1, head, channel, length)
+            )
         return delays_agg
 
     def time_delay_agg_full(self, values, corr):
@@ -136,7 +163,14 @@ class AutoCorrelation(nn.Module):
         channel = values.shape[2]
         length = values.shape[3]
         # index init
-        init_index = torch.arange(length).unsqueeze(0).unsqueeze(0).unsqueeze(0).repeat(batch, head, channel, 1).to(values.device)
+        init_index = (
+            torch.arange(length)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .repeat(batch, head, channel, 1)
+            .to(values.device)
+        )
         # find top k
         top_k = int(self.factor * math.log(length))
         weights, delay = torch.topk(corr, top_k, dim=-1)
@@ -155,7 +189,7 @@ class AutoCorrelation(nn.Module):
         B, L, H, E = queries.shape
         _, S, _, D = values.shape
         if L > S:
-            zeros = torch.zeros_like(queries[:, :(L - S), :]).float()
+            zeros = torch.zeros_like(queries[:, : (L - S), :]).float()
             values = torch.cat([values, zeros], dim=1)
             keys = torch.cat([keys, zeros], dim=1)
         else:
@@ -170,9 +204,13 @@ class AutoCorrelation(nn.Module):
 
         # time delay agg
         if self.training:
-            V = self.time_delay_agg_training(values.permute(0, 2, 3, 1).contiguous(), corr).permute(0, 3, 1, 2)
+            V = self.time_delay_agg_training(
+                values.permute(0, 2, 3, 1).contiguous(), corr
+            ).permute(0, 3, 1, 2)
         else:
-            V = self.time_delay_agg_inference(values.permute(0, 2, 3, 1).contiguous(), corr).permute(0, 3, 1, 2)
+            V = self.time_delay_agg_inference(
+                values.permute(0, 2, 3, 1).contiguous(), corr
+            ).permute(0, 3, 1, 2)
 
         if self.output_attention:
             return (V.contiguous(), corr.permute(0, 3, 1, 2))
@@ -203,12 +241,7 @@ class AutoCorrelationLayer(nn.Module):
         keys = self.key_projection(keys).view(B, S, H, -1)
         values = self.value_projection(values).view(B, S, H, -1)
 
-        out, attn = self.inner_correlation(
-            queries,
-            keys,
-            values,
-            attn_mask
-        )
+        out, attn = self.inner_correlation(queries, keys, values, attn_mask)
         out = out.view(B, L, -1)
 
         return self.out_projection(out), attn
@@ -219,22 +252,31 @@ class EncoderLayer(nn.Module):
     Autoformer encoder layer with the progressive decomposition architecture.
     """
 
-    def __init__(self, attention, d_model, d_ff=None, moving_avg=25, dropout=0.1, activation="relu"):
+    def __init__(
+        self,
+        attention,
+        d_model,
+        d_ff=None,
+        moving_avg=25,
+        dropout=0.1,
+        activation="relu",
+    ):
         super().__init__()
         d_ff = d_ff or 4 * d_model
         self.attention = attention
-        self.conv1 = nn.Conv1d(in_channels=d_model, out_channels=d_ff, kernel_size=1, bias=False)
-        self.conv2 = nn.Conv1d(in_channels=d_ff, out_channels=d_model, kernel_size=1, bias=False)
+        self.conv1 = nn.Conv1d(
+            in_channels=d_model, out_channels=d_ff, kernel_size=1, bias=False
+        )
+        self.conv2 = nn.Conv1d(
+            in_channels=d_ff, out_channels=d_model, kernel_size=1, bias=False
+        )
         self.decomp1 = series_decomp(moving_avg)
         self.decomp2 = series_decomp(moving_avg)
         self.dropout = nn.Dropout(dropout)
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(self, x, attn_mask=None):
-        new_x, attn = self.attention(
-            x, x, x,
-            attn_mask=attn_mask
-        )
+        new_x, attn = self.attention(x, x, x, attn_mask=attn_mask)
         x = x + self.dropout(new_x)
         x, _ = self.decomp1(x)
         y = x
@@ -252,7 +294,9 @@ class Encoder(nn.Module):
     def __init__(self, attn_layers, conv_layers=None, norm_layer=None):
         super().__init__()
         self.attn_layers = nn.ModuleList(attn_layers)
-        self.conv_layers = nn.ModuleList(conv_layers) if conv_layers is not None else None
+        self.conv_layers = (
+            nn.ModuleList(conv_layers) if conv_layers is not None else None
+        )
         self.norm = norm_layer
 
     def forward(self, x, attn_mask=None):
@@ -280,32 +324,48 @@ class DecoderLayer(nn.Module):
     Autoformer decoder layer with the progressive decomposition architecture.
     """
 
-    def __init__(self, self_attention, cross_attention, d_model, c_out, d_ff=None,
-                 moving_avg=25, dropout=0.1, activation="relu"):
+    def __init__(
+        self,
+        self_attention,
+        cross_attention,
+        d_model,
+        c_out,
+        d_ff=None,
+        moving_avg=25,
+        dropout=0.1,
+        activation="relu",
+    ):
         super().__init__()
         d_ff = d_ff or 4 * d_model
         self.self_attention = self_attention
         self.cross_attention = cross_attention
-        self.conv1 = nn.Conv1d(in_channels=d_model, out_channels=d_ff, kernel_size=1, bias=False)
-        self.conv2 = nn.Conv1d(in_channels=d_ff, out_channels=d_model, kernel_size=1, bias=False)
+        self.conv1 = nn.Conv1d(
+            in_channels=d_model, out_channels=d_ff, kernel_size=1, bias=False
+        )
+        self.conv2 = nn.Conv1d(
+            in_channels=d_ff, out_channels=d_model, kernel_size=1, bias=False
+        )
         self.decomp1 = series_decomp(moving_avg)
         self.decomp2 = series_decomp(moving_avg)
         self.decomp3 = series_decomp(moving_avg)
         self.dropout = nn.Dropout(dropout)
-        self.projection = nn.Conv1d(in_channels=d_model, out_channels=c_out, kernel_size=3, stride=1, padding=1,
-                                    padding_mode='circular', bias=False)
+        self.projection = nn.Conv1d(
+            in_channels=d_model,
+            out_channels=c_out,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            padding_mode="circular",
+            bias=False,
+        )
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(self, x, cross, x_mask=None, cross_mask=None):
-        x = x + self.dropout(self.self_attention(
-            x, x, x,
-            attn_mask=x_mask
-        )[0])
+        x = x + self.dropout(self.self_attention(x, x, x, attn_mask=x_mask)[0])
         x, trend1 = self.decomp1(x)
-        x = x + self.dropout(self.cross_attention(
-            x, cross, cross,
-            attn_mask=cross_mask
-        )[0])
+        x = x + self.dropout(
+            self.cross_attention(x, cross, cross, attn_mask=cross_mask)[0]
+        )
         x, trend2 = self.decomp2(x)
         y = x
         y = self.dropout(self.activation(self.conv1(y.transpose(-1, 1))))
@@ -313,7 +373,9 @@ class DecoderLayer(nn.Module):
         x, trend3 = self.decomp3(x + y)
 
         residual_trend = trend1 + trend2 + trend3
-        residual_trend = self.projection(residual_trend.permute(0, 2, 1)).transpose(1, 2)
+        residual_trend = self.projection(residual_trend.permute(0, 2, 1)).transpose(
+            1, 2
+        )
         return x, residual_trend
 
 
@@ -348,29 +410,37 @@ class PositionalEmbedding(nn.Module):
         pe.requires_grad = False
 
         position = torch.arange(0, max_len).float().unsqueeze(1)
-        div_term = (torch.arange(0, d_model, 2).float()
-                    * -(math.log(10000.0) / d_model)).exp()
+        div_term = (
+            torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)
+        ).exp()
 
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
 
         pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
+        self.register_buffer("pe", pe)
 
     def forward(self, x):
-        return self.pe[:, :x.size(1)]
+        return self.pe[:, : x.size(1)]
 
 
 class TokenEmbedding(nn.Module):
     def __init__(self, c_in, d_model):
         super().__init__()
-        padding = 1 if torch.__version__ >= '1.5.0' else 2
-        self.tokenConv = nn.Conv1d(in_channels=c_in, out_channels=d_model,
-                                   kernel_size=3, padding=padding, padding_mode='circular', bias=False)
+        padding = 1 if torch.__version__ >= "1.5.0" else 2
+        self.tokenConv = nn.Conv1d(
+            in_channels=c_in,
+            out_channels=d_model,
+            kernel_size=3,
+            padding=padding,
+            padding_mode="circular",
+            bias=False,
+        )
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
                 nn.init.kaiming_normal_(
-                    m.weight, mode='fan_in', nonlinearity='leaky_relu')
+                    m.weight, mode="fan_in", nonlinearity="leaky_relu"
+                )
 
     def forward(self, x):
         x = self.tokenConv(x.permute(0, 2, 1)).transpose(1, 2)
@@ -385,8 +455,9 @@ class FixedEmbedding(nn.Module):
         w.requires_grad = False
 
         position = torch.arange(0, c_in).float().unsqueeze(1)
-        div_term = (torch.arange(0, d_model, 2).float()
-                    * -(math.log(10000.0) / d_model)).exp()
+        div_term = (
+            torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)
+        ).exp()
 
         w[:, 0::2] = torch.sin(position * div_term)
         w[:, 1::2] = torch.cos(position * div_term)
@@ -399,7 +470,7 @@ class FixedEmbedding(nn.Module):
 
 
 class TemporalEmbedding(nn.Module):
-    def __init__(self, d_model, embed_type='fixed', freq='h'):
+    def __init__(self, d_model, embed_type="fixed", freq="h"):
         super().__init__()
 
         minute_size = 4
@@ -408,8 +479,8 @@ class TemporalEmbedding(nn.Module):
         day_size = 32
         month_size = 13
 
-        Embed = FixedEmbedding if embed_type == 'fixed' else nn.Embedding
-        if freq == 't':
+        Embed = FixedEmbedding if embed_type == "fixed" else nn.Embedding
+        if freq == "t":
             self.minute_embed = Embed(minute_size, d_model)
         self.hour_embed = Embed(hour_size, d_model)
         self.weekday_embed = Embed(weekday_size, d_model)
@@ -418,8 +489,9 @@ class TemporalEmbedding(nn.Module):
 
     def forward(self, x):
         x = x.long()
-        minute_x = self.minute_embed(x[:, :, 4]) if hasattr(
-            self, 'minute_embed') else 0.
+        minute_x = (
+            self.minute_embed(x[:, :, 4]) if hasattr(self, "minute_embed") else 0.0
+        )
         hour_x = self.hour_embed(x[:, :, 3])
         weekday_x = self.weekday_embed(x[:, :, 2])
         day_x = self.day_embed(x[:, :, 1])
@@ -429,11 +501,10 @@ class TemporalEmbedding(nn.Module):
 
 
 class TimeFeatureEmbedding(nn.Module):
-    def __init__(self, d_model, embed_type='timeF', freq='h'):
+    def __init__(self, d_model, embed_type="timeF", freq="h"):
         super().__init__()
 
-        freq_map = {'h': 4, 't': 5, 's': 6,
-                    'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
+        freq_map = {"h": 4, "t": 5, "s": 6, "m": 1, "a": 1, "w": 2, "d": 3, "b": 3}
         d_inp = freq_map[freq]
         self.embed = nn.Linear(d_inp, d_model, bias=False)
 
@@ -442,13 +513,15 @@ class TimeFeatureEmbedding(nn.Module):
 
 
 class DataEmbedding_wo_pos(nn.Module):
-    def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
+    def __init__(self, c_in, d_model, embed_type="fixed", freq="h", dropout=0.1):
         super().__init__()
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
-        self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type,
-                                                    freq=freq) if embed_type != 'timeF' else TimeFeatureEmbedding(
-            d_model=d_model, embed_type=embed_type, freq=freq)
+        self.temporal_embedding = (
+            TemporalEmbedding(d_model=d_model, embed_type=embed_type, freq=freq)
+            if embed_type != "timeF"
+            else TimeFeatureEmbedding(d_model=d_model, embed_type=embed_type, freq=freq)
+        )
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark):

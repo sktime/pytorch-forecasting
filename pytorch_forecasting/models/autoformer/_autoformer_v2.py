@@ -10,26 +10,28 @@ import torch.nn as nn
 from torch.optim import Optimizer
 
 from pytorch_forecasting.metrics import QuantileLoss
-from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 from pytorch_forecasting.models.autoformer.sub_modules import (
     AutoCorrelation,
     AutoCorrelationLayer,
+    DataEmbedding_wo_pos,
     Decoder,
     DecoderLayer,
     Encoder,
     EncoderLayer,
-    DataEmbedding_wo_pos,
     my_Layernorm,
     series_decomp,
 )
+from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
 class Autoformer(TslibBaseModel):
     """
-    Autoformer: Decomposition Transformers with Auto-Correlation for Long-Term Time Series Forecasting.
+    Autoformer: Decomposition Transformers with Auto-Correlation
+    for Long-Term Time Series Forecasting.
 
-    Autoformer designs a series-wise decomposition connection to progressively decompose time series
-    into trend and seasonal components, and proposes an Auto-Correlation mechanism to replace standard self-attention.
+    Autoformer designs a series-wise decomposition connection to
+    progressively decompose time series into trend and seasonal components,
+    and proposes an Auto-Correlation mechanism to replace standard self-attention.
 
     Parameters
     ----------
@@ -58,7 +60,8 @@ class Autoformer(TslibBaseModel):
     freq : str, default='h'
         Frequency of the time series.
     label_len : int, default=None
-        Length of the overlap history fed into the decoder. If None, defaults to context_length // 2.
+        Length of the overlap history fed into the decoder.
+        If None, defaults to context_length // 2.
     logging_metrics : Optional[list[nn.Module]], default=None
         List of metrics to log during training, validation, and testing.
     optimizer : Optional[Union[Optimizer, str]], default='adam'
@@ -81,7 +84,9 @@ class Autoformer(TslibBaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.autoformer._autoformer_pkg_v2 import Autoformer_pkg_v2
+        from pytorch_forecasting.models.autoformer._autoformer_pkg_v2 import (
+            Autoformer_pkg_v2,
+        )
 
         return Autoformer_pkg_v2
 
@@ -173,7 +178,10 @@ class Autoformer(TslibBaseModel):
                 EncoderLayer(
                     AutoCorrelationLayer(
                         AutoCorrelation(
-                            False, self.factor, attention_dropout=self.dropout, output_attention=False
+                            False,
+                            self.factor,
+                            attention_dropout=self.dropout,
+                            output_attention=False,
                         ),
                         self.hidden_size,
                         self.n_heads,
@@ -195,14 +203,20 @@ class Autoformer(TslibBaseModel):
                 DecoderLayer(
                     AutoCorrelationLayer(
                         AutoCorrelation(
-                            True, self.factor, attention_dropout=self.dropout, output_attention=False
+                            True,
+                            self.factor,
+                            attention_dropout=self.dropout,
+                            output_attention=False,
                         ),
                         self.hidden_size,
                         self.n_heads,
                     ),
                     AutoCorrelationLayer(
                         AutoCorrelation(
-                            False, self.factor, attention_dropout=self.dropout, output_attention=False
+                            False,
+                            self.factor,
+                            attention_dropout=self.dropout,
+                            output_attention=False,
                         ),
                         self.hidden_size,
                         self.n_heads,
@@ -232,7 +246,9 @@ class Autoformer(TslibBaseModel):
         x_enc_target = x_enc[:, :, target_indices]
 
         # decomp init
-        mean = torch.mean(x_enc_target, dim=1, keepdim=True).repeat(1, self.prediction_length, 1)
+        mean = torch.mean(x_enc_target, dim=1, keepdim=True).repeat(
+            1, self.prediction_length, 1
+        )
         zeros = torch.zeros(
             [batch_size, self.prediction_length, self.target_dim],
             dtype=x_enc.dtype,
@@ -241,8 +257,10 @@ class Autoformer(TslibBaseModel):
         seasonal_init, trend_init = self.decomp(x_enc_target)
 
         # decoder input
-        trend_init = torch.cat([trend_init[:, -self.label_len:, :], mean], dim=1)
-        seasonal_init = torch.cat([seasonal_init[:, -self.label_len:, :], zeros], dim=1)
+        trend_init = torch.cat([trend_init[:, -self.label_len :, :], mean], dim=1)
+        seasonal_init = torch.cat(
+            [seasonal_init[:, -self.label_len :, :], zeros], dim=1
+        )
 
         # If n_quantiles is not None, repeat trend_init along channels to match c_out
         if self.n_quantiles is not None:
@@ -265,16 +283,21 @@ class Autoformer(TslibBaseModel):
         # final
         dec_out = trend_part + seasonal_part
         # extract prediction length from the end of sequence
-        prediction = dec_out[:, -self.prediction_length:, :]
+        prediction = dec_out[:, -self.prediction_length :, :]
 
         if self.n_quantiles is not None:
             # Reshape prediction from (batch, pred_len, target_dim * n_quantiles)
             # to (batch, pred_len, n_quantiles) for target_dim=1.
             if self.target_dim == 1:
-                prediction = prediction.reshape(batch_size, self.prediction_length, self.n_quantiles)
+                prediction = prediction.reshape(
+                    batch_size, self.prediction_length, self.n_quantiles
+                )
             else:
                 prediction = prediction.reshape(
-                    batch_size, self.prediction_length, self.target_dim, self.n_quantiles
+                    batch_size,
+                    self.prediction_length,
+                    self.target_dim,
+                    self.n_quantiles,
                 )
 
         return prediction
