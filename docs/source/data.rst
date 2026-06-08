@@ -2,10 +2,10 @@ Data
 ====
 
 .. admonition::
-   **Try the New API v2!**
+   **Try the API v2 pre-release!**
 
-   | You are viewing Documentation of v1 Data Pipeline. A New API version is in development.
-   | Explore the new architecture: :doc:`v2 Data Pipeline <data_v2>` | :doc:`v2 API Reference <api_v2>`
+   | You are viewing Documentation of v1 Data Pipeline. A New API version 2 is in development.
+   | Try it out before release: :doc:`v2 Data Pipeline <data_v2>` | :doc:`v2 API Reference <api_v2>`
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 .. currentmodule:: pytorch_forecasting.data

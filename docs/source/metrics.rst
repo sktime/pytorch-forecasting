@@ -2,9 +2,9 @@ Metrics
 ==========
 
 .. admonition::
-   **Try the New API v2!**
+   **Try the API v2 pre-release!**
 
-   | A New API version is in development. Explore the new architecture: :doc:`v2 API Reference <api_v2>`
+   | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
    | Note: that ``metrics`` are SAME for both the versions.
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
