@@ -19,8 +19,8 @@ Responsibilities of a v1 Package
 
 A v1 Package class inherits from :py:class:`~models.base._base_object._BasePtForecaster` and is strictly responsible for managing the model's ecosystem integration:
 
-1. **Model Linkage (``get_cls``):** It acts as a lazy-loading proxy that returns the actual PyTorch Lightning model class without triggering heavy imports across the framework.
-2. **Metadata & Capability Tags (``_tags``):** A comprehensive dictionary defining the model's structural profile. This includes the target data types, supported prediction types (e.g., ``point``, ``quantile``), exogenous variable support, multivariate capabilities, computational intensity, and author attribution. These tags dynamically populate the model overview tables and to understand the properties of the models.
+1. **Model Linkage** (``get_cls``): It acts as a lazy-loading proxy that returns the actual PyTorch Lightning model class without triggering heavy imports across the framework.
+2. **Metadata & Capability Tags** (``_tags``): A comprehensive dictionary defining the model's structural profile. This includes the target data types, supported prediction types (e.g., ``point``, ``quantile``), exogenous variable support, multivariate capabilities, computational intensity, and author attribution. These tags dynamically populate the model overview tables and to understand the properties of the models.
 3. **Dependency Management:** Through the ``python_dependencies`` tag, the package container declares any specific external packages required by the model, allowing the framework to manage optional imports gracefully.
 4. **Testing Fixtures:** Methods like ``get_base_test_params()`` and ``_get_test_dataloaders_from()`` generate standard, valid configurations and train/validation dataloaders. These ensure the model can be seamlessly validated within the Continuous Integration (CI) pipeline.
 
