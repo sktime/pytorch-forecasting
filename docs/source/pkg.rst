@@ -12,7 +12,7 @@ P Layer (Package)
 
 The Package layer (denoted by the ``_pkg`` suffix) is a private, internal structural component of the v1 architecture. It serves as a centralized **container for model metadata, capability tags, dependency management, and testing fixtures**.
 
-If you are a standard user building forecasting models, you will typically interact directly with the core models (e.g., ``NBeats.from_dataset()``) and bypass this layer entirely. However, if you are contributing a new model to the PyTorch Forecasting library, you must implement a corresponding Package class (see the extension templates `here <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v1/network>`_ for more info on how to implement this class).
+If you are a standard user building forecasting models, you will typically interact directly with the core models (e.g., ``NBeats.from_dataset()``) and bypass this layer entirely. However, if you are contributing a new model to the PyTorch Forecasting library, you must implement a corresponding Package class (see the extension templates `here <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v1>`_ for more info on how to implement this class).
 
 Responsibilities of a v1 Package
 --------------------------------

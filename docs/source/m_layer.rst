@@ -29,7 +29,7 @@ Here is an overview over the pros and cons of the implemented models:
 Implementing new architectures
 -------------------------------
 
-Please see the :ref:`Using custom data and implementing custom models <new-model-tutorial>` tutorial on how implement basic and more advanced models.
+Please see the :ref:`Using custom data and implementing custom models <new-model-tutorial>` tutorial and `extension templates <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v1>`_ to understand how implement basic and more advanced models.
 
 Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base`.
 

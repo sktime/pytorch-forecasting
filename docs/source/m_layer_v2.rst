@@ -21,7 +21,7 @@ Below is a summary of the forecasting models currently implemented and supported
 Implementing new architectures
 -------------------------------
 
-Please see the Extension Templates to understand the process and design of the implementations.
+Please see the `Extension Templates <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v2>`_ to understand the process and design of the implementations.
 
 Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base._base_model_v2`.
 
