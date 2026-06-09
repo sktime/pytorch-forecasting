@@ -9,18 +9,18 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.metrics import QuantileLoss
-from pytorch_forecasting.models.autoformer.sub_modules import (
+from pytorch_forecasting.layers import (
     AutoCorrelation,
     AutoCorrelationLayer,
+    AutoformerDecoder,
+    AutoformerDecoderLayer,
+    AutoformerEncoder,
+    AutoformerEncoderLayer,
     DataEmbedding_wo_pos,
-    Decoder,
-    DecoderLayer,
-    Encoder,
-    EncoderLayer,
-    my_Layernorm,
-    series_decomp,
+    SeasonalLayerNorm,
+    SeriesDecomposition,
 )
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
@@ -162,7 +162,7 @@ class Autoformer(TslibBaseModel):
             c_out = self.target_dim * self.n_quantiles
 
         # Decomp
-        self.decomp = series_decomp(self.moving_avg)
+        self.decomp = SeriesDecomposition(self.moving_avg)
 
         # Embedding
         self.enc_embedding = DataEmbedding_wo_pos(
@@ -173,9 +173,9 @@ class Autoformer(TslibBaseModel):
         )
 
         # Encoder
-        self.encoder = Encoder(
+        self.encoder = AutoformerEncoder(
             [
-                EncoderLayer(
+                AutoformerEncoderLayer(
                     AutoCorrelationLayer(
                         AutoCorrelation(
                             False,
@@ -194,13 +194,13 @@ class Autoformer(TslibBaseModel):
                 )
                 for _ in range(self.e_layers)
             ],
-            norm_layer=my_Layernorm(self.hidden_size),
+            norm_layer=SeasonalLayerNorm(self.hidden_size),
         )
 
         # Decoder
-        self.decoder = Decoder(
+        self.decoder = AutoformerDecoder(
             [
-                DecoderLayer(
+                AutoformerDecoderLayer(
                     AutoCorrelationLayer(
                         AutoCorrelation(
                             True,
@@ -230,7 +230,7 @@ class Autoformer(TslibBaseModel):
                 )
                 for _ in range(self.d_layers)
             ],
-            norm_layer=my_Layernorm(self.hidden_size),
+            norm_layer=SeasonalLayerNorm(self.hidden_size),
             projection=nn.Linear(self.hidden_size, c_out, bias=True),
         )
 
