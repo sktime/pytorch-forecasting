@@ -141,10 +141,9 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
         if logging_metrics is None:
             logging_metrics = nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
         if n_plotting_samples is None:
-            if n_validation_samples is None:
-                n_plotting_samples = n_validation_samples
-            else:
-                n_plotting_samples = 100
+            n_plotting_samples = (
+                n_validation_samples if n_validation_samples is not None else 100
+            )
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
