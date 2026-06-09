@@ -10,11 +10,11 @@ from pytorch_forecasting.layers._attention._auto_correlation import (  # noqa: F
     AutoCorrelationLayer,
 )
 from pytorch_forecasting.layers._decoders._autoformer_decoder import (  # noqa: F401
-    AutoformerDecoder as Decoder,
-    AutoformerDecoderLayer as DecoderLayer,
+    AutoformerDecoder,
+    AutoformerDecoderLayer,
 )
 from pytorch_forecasting.layers._decomposition._series_decomp import (  # noqa: F401
-    SeriesDecomposition as series_decomp,
+    SeriesDecomposition,
 )
 from pytorch_forecasting.layers._embeddings._autoformer_embedding import (  # noqa: F401
     DataEmbedding_wo_pos,
@@ -24,12 +24,12 @@ from pytorch_forecasting.layers._embeddings._autoformer_embedding import (  # no
     TokenEmbedding,
 )
 from pytorch_forecasting.layers._encoders._autoformer_encoder import (  # noqa: F401
-    AutoformerEncoder as Encoder,
-    AutoformerEncoderLayer as EncoderLayer,
+    AutoformerEncoder,
+    AutoformerEncoderLayer,
 )
 from pytorch_forecasting.layers._filter._moving_avg_filter import (  # noqa: F401
-    MovingAvg as moving_avg,
+    MovingAvg,
 )
 from pytorch_forecasting.layers._normalization._seasonal_layernorm import (  # noqa: F401
-    SeasonalLayerNorm as my_Layernorm,
+    SeasonalLayerNorm,
 )
