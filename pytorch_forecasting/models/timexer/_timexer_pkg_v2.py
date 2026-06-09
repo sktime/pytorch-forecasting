@@ -11,10 +11,13 @@ class TimeXer_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "TimeXer",
         "authors": ["PranavBhatP"],
+        "info:compute": 3,
+        "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
@@ -27,7 +30,9 @@ class TimeXer_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module._tslib_data_module import (
+            TslibDataModule,
+        )
 
         return TslibDataModule
 
@@ -104,6 +109,15 @@ class TimeXer_pkg_v2(Base_pkg):
                 d_ff=32,
                 dropout=0.1,
                 use_efficient_attention=True,
+            ),
+            dict(
+                optimizer="adamw",
+                lr_scheduler="cosine_annealing",
+                lr_scheduler_params={"T_max": 5},
+            ),
+            dict(
+                optimizer="adagrad",
+                optimizer_params={"lr": 1e-3},
             ),
         ]
         default_dm_cfg = {"context_length": 12, "prediction_length": 4}
