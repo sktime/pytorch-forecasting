@@ -12,7 +12,7 @@ and may change without prior notice.
 For general questions about v1, see :doc:`FAQ <faq>`.
 Other places to seek help:
 
-* `PyTorch Lightning documentation <https://pytorch-lightning.readthedocs.io>`_ and issues
+* `PyTorch Lightning documentation <https://lightning.ai/docs/pytorch/stable/>`_ and issues
 * `PyTorch documentation <https://pytorch.org/>`_ and issues
 * `Stack Overflow <https://stackoverflow.com/>`_
 
