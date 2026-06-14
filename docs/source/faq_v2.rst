@@ -6,7 +6,7 @@ FAQ for v2
 .. currentmodule:: pytorch_forecasting
 
 Common questions and answers about the experimental v2 architecture
-of pytorch-forecasting. Note that this API is still under developement
+of pytorch-forecasting. Note that this API is still under development
 and may change without prior notice.
 
 For general questions about v1, see :doc:`FAQ <faq>`.
@@ -22,8 +22,8 @@ Architecture Overview
 
 * **What is the architecture of v2?**
 
-  pytorch-forecasting v2 is organized into four layers to seperate data ingestion,
-  preprocessing, modelling, and workflow managment:
+  pytorch-forecasting v2 is organized into four layers to separate data ingestion,
+  preprocessing, modeling, and workflow management:
 
   * **D1 Layer (TimeSeries):** The raw data ingestion layer. Takes a pandas
     DataFrame and converts it into PyTorch tensors. It also extracts metadata
@@ -84,7 +84,7 @@ Creating datasets
           data=data,
           time="time_idx",           # column with time index
           target="target",           # what to predict
-          group=["group"],           # each group is a seperate time series
+          group=["group"],           # each group is a separate time series
           known=["holiday"],         # known in the future
           unknown=["feature_1"],     # not known in the future
           num=["feature_1"],         # numerical columns
@@ -100,8 +100,8 @@ Creating datasets
 
 * **What is the difference between TimeSeries, TimeSeriesDataSet and DataModule?**
 
-  In v1, ``TimeSeriesDataSet`` handled everthing from data loading to preprocessing
-  and batching in a single monolithic class. In v2, these responsibilites are split
+  In v1, ``TimeSeriesDataSet`` handled everything from data loading to preprocessing
+  and batching in a single monolithic class. In v2, these responsibilities are split
   into ``TimeSeries`` (D1 layer, raw data only) and ``DataModule``
   (D2 layer, preprocessing and batching).
 
@@ -126,7 +126,7 @@ Creating datasets
        - ``DataModule.train_dataloader()``
      * - Separation of Concerns
        - Everything in one large class
-       - Clear responsibilty per layer
+       - Clear responsibility per layer
 
   The key advantage of v2 is that each layer has exactly one job, which makes
   the codebase easier to maintain and extend.
@@ -175,7 +175,7 @@ Using DataModules
       train_loader = datamodule.train_dataloader()
       val_loader = datamodule.val_dataloader()
 
-      # metadata is available for model initalization
+      # metadata is available for model initialization
       print(datamodule.metadata)
 
 
@@ -188,7 +188,7 @@ Training and Prediction
   trainer configuration into a single convenient interface.
 
   Each model class has a ``pkg`` class property that returns the corresponding
-  package class. You can instanciate it with your configs and call ``fit()``
+  package class. You can instantiate it with your configs and call ``fit()``
   and ``predict()``.
 
   .. code-block:: python
@@ -229,7 +229,7 @@ Extending the package
   2. **Implement the Model class:** Inherit from ``BaseModel`` and implement
      ``__init__()``, ``forward()``, and ``_pkg()`` methods.
   3. **Implement the Package class:** Inherit from ``Base_pkg``, set the
-     ``_tags`` dictionary describing your model's capabilites, and implement
+     ``_tags`` dictionary describing your model's capabilities, and implement
      ``get_cls()``, ``get_datamodule_cls()``, and ``get_test_train_params()``.
   4. **Register** your model in ``pytorch_forecasting/models/__init__.py``.
   5. **Verify** your implementation by running the built-in interface checks:
