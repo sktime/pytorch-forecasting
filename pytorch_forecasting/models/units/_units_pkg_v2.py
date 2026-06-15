@@ -9,15 +9,21 @@ class UniTS_pkg_v2(Base_pkg):
     """
     UniTS: Unified Time Series Model.
     Reference: https://arxiv.org/abs/2403.00131
+    Github: https://github.com/mims-harvard/UniTS
     """
 
     _tags = {
         "info:name": "UniTS",
-        "authors": ["Muhammad-Rebaal", "sohamukute"],
+        "info:pred_type": ["point"],
+        "info:y_type": ["numeric"],
+        "info:compute": 4,
+        "authors": ["Muhammad-Rebaal", "gasvn", "sohamukute"],
+        "python_dependencies": ["torch"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": False,
         "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
@@ -28,7 +34,7 @@ class UniTS_pkg_v2(Base_pkg):
 
     @classmethod
     def get_datamodule_cls(cls):
-        from pytorch_forecasting.data._tslib_data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import TslibDataModule
 
         return TslibDataModule
 
