@@ -86,14 +86,34 @@ If needed, copy data_module.py and _dataset.py to your target directory.
 
 ### Data Module (`data_module.py`)
 
-Inherits from `LightningDataModule`. Implement the following:
+Inherits from `BaseTimeSeriesDataModule`. Implement the following:
 
 **Mandatory Methods:**
 
 * `_prepare_metadata()`: Derives the metadata required for model initialization from the raw data/parameters.
-* `metadata`: Property that returns `_metadata`, invoking `_prepare_metadata()` if null.
+* `_context_length()` / `_prediction_length()`: Return window sizes for the unified test suite.
+* `_create_windows(indices)`: Build sliding-window index tuples.
+* `_build_dataset(windows)`: Return a processed `Dataset` for the windows.
 * `_preprocess_data(series_idx)`: Contains logic to transform raw series before dataset consumption.
-* `setup(stage: str)`: Standard Lightning method to instantiate train/val/test splits.
+* `collate_fn(batch)`: Stack samples into model-ready batches.
+
+Shared split logic, metadata caching, and dataloader factories are provided by `BaseTimeSeriesDataModule`.
+
+#### Package Configuration (`_datamodule_pkg.py`)
+
+The package file serves to register your custom Data Module with the PyTorch Forecasting extension test suite and makes it discoverable by the unified test harness. Your class must inherit from `_BasePtDataModule` and implement the following methods and attributes:
+
+- `get_cls()`: Imports and returns your Data Module class.
+- `get_test_timeseries()`: Returns a minimal example `TimeSeries` dataset or other appropriate test data format used to validate core data flows and batch construction.
+- `get_datamodule_test_params()`: Produces a list of parameter dictionaries for instantiating your Data Module in different configurations. The first dictionary should always be empty (`{}`) to check default parameter handling. Additional parameterizations can be included to test edge cases.
+
+**Tags (`_tags`):**
+Dictionary defining framework integration rules. Tags are inherited from parent class if they are not set.
+
+- `info:name` (human-readable model name matching the class)
+- `capability:static_features` (bool: whether data module supports static features)
+- `capability:multivariate_target` (bool: whether data module supports multivariate targets)
+
 
 ### Dataset (`_dataset.py`)
 
