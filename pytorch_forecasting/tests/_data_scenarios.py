@@ -478,4 +478,3 @@ def make_tslib_timeseries(**kwargs):
         static=["static_feature"],
         known=["feature_1", "feature_3"],
     )
-

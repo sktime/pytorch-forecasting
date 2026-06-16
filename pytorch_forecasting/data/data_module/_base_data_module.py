@@ -53,11 +53,10 @@ class BaseTimeSeriesDataModule(LightningDataModule):
     ):
         super().__init__()
         warn(
-            _EXPERIMENTAL_WARNING.format(module_name=type(self).__name__), 
-            UserWarning, 
-            stacklevel=3
+            _EXPERIMENTAL_WARNING.format(module_name=type(self).__name__),
+            UserWarning,
+            stacklevel=3,
         )
-   
 
         self.time_series_dataset = time_series_dataset
         self.target_normalizer = target_normalizer
@@ -117,9 +116,7 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         """Return decoder/prediction window length."""
 
     @abstractmethod
-    def _create_windows(
-        self, indices: torch.Tensor
-    ) -> list[tuple[int, int, int, int]]:
+    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Create sliding windows for the given series indices."""
 
     @abstractmethod
@@ -191,7 +188,7 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             - ``"predict"`` : Prepares the dataset for inference.
             - ``None`` : Prepares ``fit`` datasets.
         """
-        
+
         self._compute_split_indices()
 
         if stage is None or stage == "fit":

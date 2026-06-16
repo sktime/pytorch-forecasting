@@ -7,11 +7,11 @@ import torch
 
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
+from pytorch_forecasting.tests._data_scenarios import make_tslib_timeseries
 from pytorch_forecasting.tests._datamodule_config import (
     EXCLUDE_DATA_MODULES,
     EXCLUDED_TESTS,
 )
-from pytorch_forecasting.tests._data_scenarios import make_tslib_timeseries
 
 
 def _encoder_decoder_known_feature_counts(time_series_metadata):
@@ -118,7 +118,9 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
 
         batch_format = object_pkg.get_class_tag("batch_format")
         if batch_format == "encoder_decoder":
-            assert object_instance.max_encoder_length == object_instance._context_length()
+            assert (
+                object_instance.max_encoder_length == object_instance._context_length()
+            )
             assert (
                 object_instance.max_prediction_length
                 == object_instance._prediction_length()
@@ -145,7 +147,9 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             assert metadata["decoder_cont"] == 1
         elif batch_format == "tslib":
             for key in metadata["n_features"]:
-                assert metadata["n_features"][key] == len(metadata["feature_names"][key])
+                assert metadata["n_features"][key] == len(
+                    metadata["feature_names"][key]
+                )
 
     def test_setup_fit(self, object_pkg, object_instance):
         """Fit stage creates train and validation datasets with windows."""
@@ -471,7 +475,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert processed["target"].shape[0] == expected_length
 
     def test_with_static_features(self, object_pkg, object_instance):
-        """Datamodule exposes static features in metadata and samples when configured."""
+        """Datamodule exposes static features in metadata and samples when configured"""
         if not object_pkg.get_class_tag("capability:static_features", False):
             pytest.skip("Datamodule does not support static features.")
 
@@ -545,7 +549,9 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
     def test_variable_encoder_lengths(self, object_pkg, object_instance):
         """Variable encoder lengths are respected when randomize_length is enabled."""
         if object_pkg.get_class_tag("batch_format") != "encoder_decoder":
-            pytest.skip("Variable encoder length test only applies to encoder-decoder format.")
+            pytest.skip(
+                "Variable encoder length test only applies to encoder-decoder" "format."
+            )
 
         dm_class = object_pkg.get_cls()
         ts = object_instance.time_series_dataset

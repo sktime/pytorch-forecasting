@@ -19,11 +19,11 @@ def get_test_class_registry():
         test class registry
         keys are scitypes, values are test classes TestAll[Scitype]
     """
+    from pytorch_forecasting.tests.test_all_data_modules import TestAllDataModules
     from pytorch_forecasting.tests.test_all_estimators import TestAllPtForecasters
     from pytorch_forecasting.tests.test_all_v2.test_all_estimators_v2 import (
         TestAllPtForecastersV2,
     )
-    from pytorch_forecasting.tests.test_all_data_modules import TestAllDataModules
 
     testclass_dict = dict()
     testclass_dict["forecaster_pytorch_v1"] = TestAllPtForecasters
