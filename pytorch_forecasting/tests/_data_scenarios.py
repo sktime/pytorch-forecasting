@@ -372,3 +372,110 @@ def dataloaders_fixed_window_without_covariates():
     )
 
     return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
+
+
+def make_encoder_decoder_timeseries(**kwargs):
+    """Create a TimeSeries dataset for encoder-decoder datamodule tests."""
+    num_groups = kwargs.get("num_groups", 10)
+    seq_length = kwargs.get("seq_length", 100)
+    seed = kwargs.get("seed", None)
+    if seed is not None:
+        np.random.seed(seed)
+
+    groups = []
+    times = []
+    values = []
+    categorical_feature = []
+    continuous_feature1 = []
+    continuous_feature2 = []
+    known_future = []
+
+    for g in range(num_groups):
+        for t in range(seq_length):
+            groups.append(g)
+            times.append(pd.Timestamp("2020-01-01") + pd.Timedelta(days=t))
+
+            value = 10 + 0.1 * t + 5 * np.sin(t / 10) + g * 2 + np.random.normal(0, 1)
+            values.append(value)
+
+            categorical_feature.append(np.random.choice([0, 1, 2]))
+
+            continuous_feature1.append(np.random.normal(g, 1))
+            continuous_feature2.append(value * 0.5 + np.random.normal(0, 0.5))
+
+            known_future.append(t % 7)
+
+    df = pd.DataFrame(
+        {
+            "group": groups,
+            "time": times,
+            "target": values,
+            "cat_feat": categorical_feature,
+            "cont_feat1": continuous_feature1,
+            "cont_feat2": continuous_feature2,
+            "known_future": known_future,
+        }
+    )
+
+    return TimeSeries(
+        data=df,
+        time="time",
+        target="target",
+        group=["group"],
+        num=["cont_feat1", "cont_feat2", "known_future"],
+        cat=["cat_feat"],
+        known=["known_future"],
+    )
+
+
+def make_tslib_timeseries(**kwargs):
+    """Create a TimeSeries dataset for tslib datamodule tests."""
+    seed = kwargs.get("seed", 42)
+    n_series = kwargs.get("n_series", 20)
+    n_timesteps = kwargs.get("n_timesteps", 50)
+
+    np.random.seed(seed)
+    data = []
+
+    for series_id in range(n_series):
+        for time_idx in range(n_timesteps):
+            target = (
+                10
+                + 0.1 * time_idx
+                + np.sin(2 * np.pi * time_idx / 12)
+                + np.random.randn() * 0.5
+            )
+
+            cat_a = np.random.choice([0, 1, 2])
+            feature_1 = np.random.randn() + time_idx * 0.01
+            feature_2 = target * 0.8 + np.random.randn() * 0.2
+            feature_3 = np.sin(time_idx / 5) + np.random.randn() * 0.1
+            static_feature = series_id * 2.5
+
+            data.append(
+                {
+                    "series_id": series_id,
+                    "time_idx": time_idx,
+                    "target": target,
+                    "cat_a": cat_a,
+                    "feature_1": feature_1,
+                    "feature_2": feature_2,
+                    "feature_3": feature_3,
+                    "static_feature": static_feature,
+                }
+            )
+
+    df = pd.DataFrame(data)
+
+    return TimeSeries(
+        data=df,
+        time="time_idx",
+        target="target",
+        group=["series_id"],
+        num=["feature_1", "feature_2", "feature_3"],
+        cat=["cat_a"],
+        unknown=["feature_2", "target", "cat_a"],
+        static=["static_feature"],
+        known=["feature_1", "feature_3"],
+    )
+
