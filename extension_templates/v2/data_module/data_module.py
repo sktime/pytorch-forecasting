@@ -25,14 +25,15 @@ Mandatory methods to implement:
 # todo: write an informative docstring for the file or module, remove the above
 from typing import Any
 
-from lightning.pytorch import LightningDataModule
 import torch
+
+from pytorch_forecasting.data.data_module import BaseTimeSeriesDataModule
 
 # todo: add any necessary imports here
 # import soft dependencies only inside methods of the class, not at the top of the file
 
 
-class MyDataModule(LightningDataModule):
+class MyDataModule(BaseTimeSeriesDataModule):
     """Custom DataModule.
     todo: write docstring.
 
