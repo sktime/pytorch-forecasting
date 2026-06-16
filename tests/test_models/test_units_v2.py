@@ -78,7 +78,7 @@ class TestUniTSPkg:
     def test_get_datamodule_cls(self):
         assert UniTS_pkg_v2.get_datamodule_cls() is not None
 
-    def get_base_test_params(self):
+    def test_get_base_test_params(self):
         params = UniTS_pkg_v2.get_base_test_params()
         assert isinstance(params, list) and len(params) > 0
         for p in params:
