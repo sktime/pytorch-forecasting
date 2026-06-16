@@ -7,14 +7,16 @@
 # into the memory.
 #######################################################################################
 
-from typing import Any, Optional, Union
-from warnings import warn
+from typing import Any
 
-from lightning.pytorch import LightningDataModule
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
+from pytorch_forecasting.data.data_module._base_data_module import (
+    NORMALIZER,
+    BaseTimeSeriesDataModule,
+)
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
@@ -23,10 +25,8 @@ from pytorch_forecasting.data.encoders import (
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
-NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
-
-class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
+class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
     """
     Lightning DataModule for processing time series data in an encoder-decoder format.
 
@@ -108,61 +108,46 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
-        self.time_series_dataset = time_series_dataset
+        super().__init__(
+            time_series_dataset=time_series_dataset,
+            target_normalizer=target_normalizer,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            train_val_test_split=train_val_test_split,
+            add_relative_time_idx=add_relative_time_idx,
+        )
+
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
         self.max_prediction_length = max_prediction_length
         self.min_prediction_length = min_prediction_length
         self.min_prediction_idx = min_prediction_idx
         self.allow_missing_timesteps = allow_missing_timesteps
-        self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
-        self.target_normalizer = target_normalizer
         self.categorical_encoders = categorical_encoders
         self.scalers = scalers
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.train_val_test_split = train_val_test_split
 
-        warn(
-            "EncoderDecoderTimeSeriesDataModule is part of an experimental "
-            "rework of the "
-            "pytorch-forecasting data layer, "
-            "scheduled for release with v2.0.0. "
-            "The API is not stable and may change without prior warning. "
-            "For beta testing, but not for stable production use. "
-            "Feedback and suggestions are very welcome in "
-            "pytorch-forecasting issue 1736, "
-            "https://github.com/sktime/pytorch-forecasting/issues/1736",
-            UserWarning,
-        )
-
-        super().__init__()
-
-        # handle defaults and derived attributes
-        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
-            self._target_normalizer = RobustScaler()
-        else:
-            self._target_normalizer = target_normalizer
-
-        self.time_series_metadata = time_series_dataset.get_metadata()
         self._min_prediction_length = min_prediction_length or max_prediction_length
         self._min_encoder_length = min_encoder_length or max_encoder_length
         self._categorical_encoders = _coerce_to_dict(categorical_encoders)
         self._scalers = _coerce_to_dict(scalers)
-        self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
-        self.categorical_indices = []
-        self.continuous_indices = []
-        self._metadata = None
+    def _context_length(self) -> int:
+        return self.max_encoder_length
 
-        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
-            if self.time_series_metadata["col_type"].get(col) == "C":
-                self.categorical_indices.append(idx)
-            else:
-                self.continuous_indices.append(idx)
+    def _prediction_length(self) -> int:
+        return self.max_prediction_length
+
+    def _build_dataset(self, windows: list[tuple[int, int, int, int]]) -> Dataset:
+        """Build a processed dataset from window tuples."""
+        return self._ProcessedEncoderDecoderDataset(
+            self.time_series_dataset,
+            self,
+            windows,
+            self.add_relative_time_idx,
+        )
 
     def _prepare_metadata(self):
         """Prepare metadata for model initialisation.
@@ -261,37 +246,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         )
 
         return metadata
-
-    @property
-    def metadata(self):
-        """Compute metadata for model initialization.
-
-        This property returns a dictionary containing the shapes and key information
-        related to the time series model. The metadata includes:
-
-        * ``encoder_cat``: Number of categorical variables in the encoder.
-        * ``encoder_cont``: Number of continuous variables in the encoder.
-        * ``decoder_cat``: Number of categorical variables in the decoder that are
-                            known in advance.
-        * ``decoder_cont``:  Number of continuous variables in the decoder that are
-                            known in advance.
-        * ``target``: Number of target variables.
-
-        If static features are present, the following keys are added:
-
-        * ``static_categorical_features``: Number of static categorical features
-        * ``static_continuous_features``: Number of static continuous features
-
-        It also contains the following information:
-
-        * ``max_encoder_length``: maximum encoder length
-        * ``max_prediction_length``: maximum prediction length
-        * ``min_encoder_length``: minimum encoder length
-        * ``min_prediction_length``: minimum prediction length
-        """
-        if self._metadata is None:
-            self._metadata = self._prepare_metadata()
-        return self._metadata
 
     def _preprocess_data(self, series_idx: torch.Tensor) -> list[dict[str, Any]]:
         """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
@@ -622,100 +576,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     )
 
         return windows
-
-    def setup(self, stage: str | None = None):
-        """Prepare the datasets for training, validation, testing, or prediction.
-
-        Parameters
-        ----------
-        stage : Optional[str], default=None
-            Specifies the stage of setup. Can be one of:
-            - ``"fit"`` : Prepares training and validation datasets.
-            - ``"test"`` : Prepares the test dataset.
-            - ``"predict"`` : Prepares the dataset for inference.
-            - ``None`` : Prepares ``fit`` datasets.
-        """
-        total_series = len(self.time_series_dataset)
-        self._split_indices = torch.randperm(total_series)
-
-        self._train_size = int(self.train_val_test_split[0] * total_series)
-        self._val_size = int(self.train_val_test_split[1] * total_series)
-
-        self._train_indices = self._split_indices[: self._train_size]
-        self._val_indices = self._split_indices[
-            self._train_size : self._train_size + self._val_size
-        ]
-        self._test_indices = self._split_indices[self._train_size + self._val_size :]
-
-        if stage is None or stage == "fit":
-            if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
-                self.train_windows = self._create_windows(self._train_indices)
-                self.val_windows = self._create_windows(self._val_indices)
-
-                self.train_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.time_series_dataset,
-                    self,
-                    self.train_windows,
-                    self.add_relative_time_idx,
-                )
-                self.val_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.time_series_dataset,
-                    self,
-                    self.val_windows,
-                    self.add_relative_time_idx,
-                )
-
-        elif stage == "test":
-            if not hasattr(self, "test_dataset"):
-                self.test_windows = self._create_windows(self._test_indices)
-                self.test_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.time_series_dataset,
-                    self,
-                    self.test_windows,
-                    self.add_relative_time_idx,
-                )
-        elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
-            self.predict_windows = self._create_windows(predict_indices)
-            self.predict_dataset = self._ProcessedEncoderDecoderDataset(
-                self.time_series_dataset,
-                self,
-                self.predict_windows,
-                self.add_relative_time_idx,
-            )
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=True,
-            collate_fn=self.collate_fn,
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def predict_dataloader(self):
-        return DataLoader(
-            self.predict_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
 
     @staticmethod
     def collate_fn(batch):
