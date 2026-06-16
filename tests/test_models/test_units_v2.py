@@ -78,8 +78,8 @@ class TestUniTSPkg:
     def test_get_datamodule_cls(self):
         assert UniTS_pkg_v2.get_datamodule_cls() is not None
 
-    def test_get_test_train_params(self):
-        params = UniTS_pkg_v2.get_test_train_params()
+    def get_base_test_params(self):
+        params = UniTS_pkg_v2.get_base_test_params()
         assert isinstance(params, list) and len(params) > 0
         for p in params:
             assert "datamodule_cfg" in p
@@ -94,7 +94,7 @@ class TestUniTSPkg:
 
     def test_get_test_train_params_independent(self):
         """Each param dict must be independent — no shared mutable objects."""
-        params = UniTS_pkg_v2.get_test_train_params()
+        params = UniTS_pkg_v2.get_base_test_params()
         dm_ids = [id(p["datamodule_cfg"]) for p in params]
         assert len(dm_ids) == len(
             set(dm_ids)
