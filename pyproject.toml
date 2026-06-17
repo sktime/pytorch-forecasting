@@ -96,7 +96,7 @@ dev = [
   "black[jupyter]",
   # documentatation
   "sphinx",
-  "pydata-sphinx-theme<0.19.0",
+  "pydata-sphinx-theme",
   "nbsphinx",
   "recommonmark",
   "ipywidgets>=8.0.1,<9.0.0",
@@ -108,7 +108,7 @@ dev = [
 # docs - dependencies for building the documentation
 docs = [
   "sphinx>3.2,<9.1.1",
-  "pydata-sphinx-theme<0.19.0",
+  "pydata-sphinx-theme",
   "nbsphinx",
   "pandoc",
   "nbconvert",
