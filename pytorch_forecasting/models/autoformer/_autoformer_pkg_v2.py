@@ -58,7 +58,6 @@ class Autoformer_pkg_v2(Base_pkg):
                 d_layers=1,
                 d_ff=16,
                 loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
-                logging_metrics=[SMAPE()],
             ),
             # Third set: MAE loss with custom moving_avg
             dict(
