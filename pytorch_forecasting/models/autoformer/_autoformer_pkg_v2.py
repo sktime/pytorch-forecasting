@@ -11,6 +11,7 @@ class Autoformer_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "Autoformer",
         "info:compute": 2,
+        "info:y_type": ["numeric"],
         "authors": ["harshsomankar123-tech"],
         "capability:exogenous": True,
         "capability:multivariate": True,
@@ -38,10 +39,10 @@ class Autoformer_pkg_v2(Base_pkg):
         """
         Return testing parameter settings for the trainer.
         """
-        from pytorch_forecasting.metrics import SMAPE
+        from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 
         params = [
-            # First set: smaller network params for fast testing
+            # First set: default loss (SMAPE)
             dict(
                 hidden_size=16,
                 n_heads=2,
@@ -49,17 +50,27 @@ class Autoformer_pkg_v2(Base_pkg):
                 d_layers=1,
                 d_ff=32,
             ),
-            # Second set: custom moving_avg and logging metrics
+            # Second set: QuantileLoss to test prediction intervals
             dict(
                 hidden_size=8,
                 n_heads=2,
                 e_layers=1,
                 d_layers=1,
                 d_ff=16,
-                moving_avg=5,
+                loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
                 logging_metrics=[SMAPE()],
             ),
-            # Third set: custom scheduler
+            # Third set: MAE loss with custom moving_avg
+            dict(
+                hidden_size=8,
+                n_heads=2,
+                e_layers=1,
+                d_layers=1,
+                d_ff=16,
+                loss=MAE(),
+                moving_avg=5,
+            ),
+            # Fourth set: custom scheduler
             dict(
                 hidden_size=8,
                 n_heads=2,

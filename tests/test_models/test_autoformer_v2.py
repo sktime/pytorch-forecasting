@@ -6,7 +6,7 @@ from torch import nn
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import TslibDataModule
-from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
+from pytorch_forecasting.metrics import MAE, SMAPE
 from pytorch_forecasting.models.autoformer._autoformer_v2 import Autoformer
 
 
@@ -99,62 +99,6 @@ def test_autoformer_init(hidden_size, n_heads, e_layers, d_layers, sample_datase
     assert model.e_layers == e_layers
     assert model.d_layers == d_layers
     assert model.n_quantiles is None
-
-
-def test_autoformer_forward(sample_dataset):
-    """Test forward pass of Autoformer."""
-    dm = sample_dataset["data_module"]
-    train_dataloader = dm.train_dataloader()
-    batch = next(iter(train_dataloader))[0]
-    metadata = dm.metadata
-
-    model = Autoformer(
-        loss=MAE(),
-        hidden_size=16,
-        n_heads=2,
-        e_layers=1,
-        d_layers=1,
-        d_ff=32,
-        metadata=metadata,
-    )
-
-    with torch.no_grad():
-        output = model(batch)
-
-    assert "prediction" in output
-    assert output["prediction"].shape[0] == dm.batch_size
-    assert output["prediction"].shape[1] == metadata["prediction_length"]
-    assert output["prediction"].shape[2] == metadata["n_features"]["target"]
-
-
-def test_quantile_loss_output(sample_dataset):
-    """Test Autoformer output shape with quantile loss."""
-    dm = sample_dataset["data_module"]
-    train_dataloader = dm.train_dataloader()
-    batch = next(iter(train_dataloader))[0]
-    metadata = dm.metadata
-
-    quantiles = [0.1, 0.5, 0.9]
-
-    model = Autoformer(
-        loss=QuantileLoss(quantiles=quantiles),
-        hidden_size=16,
-        n_heads=2,
-        e_layers=1,
-        d_layers=1,
-        d_ff=32,
-        logging_metrics=[SMAPE(), MAE()],
-        metadata=metadata,
-    )
-
-    with torch.no_grad():
-        output = model(batch)
-
-    assert "prediction" in output
-    pred = output["prediction"]
-    assert pred.ndim == 3
-    assert pred.shape[-1] == len(quantiles)
-    assert pred.shape[1] == metadata["prediction_length"]
 
 
 def test_univariate_forecast():
