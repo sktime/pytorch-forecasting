@@ -6,8 +6,8 @@ import torch
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.metrics import MAE, SMAPE
-from pytorch_forecasting.models.frets._frets_pkg_v2 import FreTS_v2_pkg_v2
-from pytorch_forecasting.models.frets._frets_v2 import FreTS_v2
+from pytorch_forecasting.models.frets._frets_pkg_v2 import FreTS_pkg_v2
+from pytorch_forecasting.models.frets._frets_v2 import FreTS
 
 CONTEXT_LENGTH = 6
 PREDICTION_LENGTH = 3
@@ -65,7 +65,7 @@ def test_frets_v2_forward_shapes(sample_datamodule):
     """
     dm = sample_datamodule
     metadata = dm.metadata
-    model = FreTS_v2(loss=MAE(), metadata=metadata)
+    model = FreTS(loss=MAE(), metadata=metadata)
 
     batch_x, _ = next(iter(dm.train_dataloader()))
 
@@ -90,7 +90,7 @@ def test_frets_v2_training_step(sample_datamodule):
     """
     dm = sample_datamodule
     metadata = dm.metadata
-    model = FreTS_v2(loss=MAE(), metadata=metadata)
+    model = FreTS(loss=MAE(), metadata=metadata)
 
     batch = next(iter(dm.train_dataloader()))
     result = model.training_step(batch, batch_idx=0)
@@ -112,7 +112,7 @@ def test_frets_v2_validation_step(sample_datamodule):
         Fixture providing the data module.
     """
     dm = sample_datamodule
-    model = FreTS_v2(loss=MAE(), metadata=dm.metadata)
+    model = FreTS(loss=MAE(), metadata=dm.metadata)
 
     batch = next(iter(dm.train_dataloader()))
     result = model.validation_step(batch, batch_idx=0)
@@ -136,7 +136,7 @@ def test_frets_v2_channel_independence(sample_datamodule, channel_independence):
         Whether to use channel-independent mode.
     """
     dm = sample_datamodule
-    model = FreTS_v2(
+    model = FreTS(
         loss=MAE(),
         metadata=dm.metadata,
         channel_independence=channel_independence,
@@ -170,7 +170,7 @@ def test_frets_v2_architecture_variants(sample_datamodule, embed_size, hidden_si
         FC hidden size.
     """
     dm = sample_datamodule
-    model = FreTS_v2(
+    model = FreTS(
         loss=MAE(),
         metadata=dm.metadata,
         embed_size=embed_size,
@@ -193,25 +193,25 @@ def test_frets_v2_default_loss(sample_datamodule):
         Fixture providing the data module.
     """
     dm = sample_datamodule
-    model = FreTS_v2(metadata=dm.metadata)
+    model = FreTS(metadata=dm.metadata)
     assert isinstance(model.loss, MAE)
 
 
 def test_frets_v2_pkg_get_cls():
-    """Test that FreTS_v2_pkg_v2.get_cls() returns FreTS_v2."""
-    assert FreTS_v2_pkg_v2.get_cls() is FreTS_v2
+    """Test that FreTS_pkg_v2.get_cls() returns FreTS."""
+    assert FreTS_pkg_v2.get_cls() is FreTS
 
 
 def test_frets_v2_pkg_naming_convention():
     """Test that pkg class name follows the convention <model>_pkg_v2."""
-    model_cls = FreTS_v2_pkg_v2.get_cls()
+    model_cls = FreTS_pkg_v2.get_cls()
     expected_pkg_name = model_cls.__name__ + "_pkg_v2"
-    assert FreTS_v2_pkg_v2.__name__ == expected_pkg_name
+    assert FreTS_pkg_v2.__name__ == expected_pkg_name
 
 
 def test_frets_v2_pkg_test_train_params():
     """Test that get_test_train_params returns a non-empty list of dicts."""
-    params = FreTS_v2_pkg_v2.get_test_train_params()
+    params = FreTS_pkg_v2.get_test_train_params()
     assert isinstance(params, list)
     assert len(params) > 0
     for p in params:

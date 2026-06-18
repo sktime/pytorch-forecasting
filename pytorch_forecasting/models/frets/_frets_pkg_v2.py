@@ -3,11 +3,11 @@
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class FreTS_v2_pkg_v2(Base_pkg):
+class FreTS_pkg_v2(Base_pkg):
     """FreTS v2 package container."""
 
     _tags = {
-        "info:name": "FreTS_v2",
+        "info:name": "FreTS",
         "info:compute": 2,
         "authors": ["echo-xiao"],
         "capability:exogenous": False,
@@ -23,12 +23,12 @@ class FreTS_v2_pkg_v2(Base_pkg):
 
         Returns
         -------
-        FreTS_v2 : type
+        FreTS : type
             The model class.
         """
-        from pytorch_forecasting.models.frets._frets_v2 import FreTS_v2
+        from pytorch_forecasting.models.frets._frets_v2 import FreTS
 
-        return FreTS_v2
+        return FreTS
 
     @classmethod
     def get_datamodule_cls(cls):
