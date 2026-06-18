@@ -137,9 +137,7 @@ class DeepAR(BaseModel):
         # Projects RNN output to distribution parameters
         self.distribution_projector = nn.Linear(hidden_size, self.n_dist_args)
 
-    def _build_encoder_input(
-        self, x: dict[str, torch.Tensor]
-    ) -> torch.Tensor:
+    def _build_encoder_input(self, x: dict[str, torch.Tensor]) -> torch.Tensor:
         """Build the encoder input by concatenating features and shifted target.
 
         Parameters
@@ -207,8 +205,6 @@ class DeepAR(BaseModel):
         torch.Tensor
             Decoder input of shape (batch, pred_len, decoder_input_dim).
         """
-        batch_size = last_target.shape[0]
-
         target_scale = x["target_scale"]
         if target_scale.dim() == 1:
             target_scale_unsqueezed = target_scale.unsqueeze(1).unsqueeze(2)
@@ -223,7 +219,9 @@ class DeepAR(BaseModel):
         last_target_scaled = last_target / target_scale_unsqueezed
 
         # Prepare shifted target: [last_encoder_target, y[0], y[1], ..., y[T-2]]
-        teacher_target = torch.cat([last_target_scaled, y_input_scaled[:, :-1, :]], dim=1)
+        teacher_target = torch.cat(
+            [last_target_scaled, y_input_scaled[:, :-1, :]], dim=1
+        )
 
         parts = []
         decoder_cont = x.get("decoder_cont")
@@ -260,8 +258,6 @@ class DeepAR(BaseModel):
         torch.Tensor
             Distribution parameters of shape (batch, pred_len, n_dist_args).
         """
-        batch_size = last_target.shape[0]
-
         # Prepare target scale for internal scaling and division
         target_scale_val = x["target_scale"]
         if target_scale_val.dim() == 1:
@@ -306,7 +302,9 @@ class DeepAR(BaseModel):
             predictions.append(step_params)
 
             # Rescale step_params for the loss functions to map to distribution
-            rescaled_step_params = self.rescale_prediction(step_params, target_scale_val)
+            rescaled_step_params = self.rescale_prediction(
+                step_params, target_scale_val
+            )
 
             # Use distribution mean as next autoregressive input
             if hasattr(self.loss, "to_prediction"):
