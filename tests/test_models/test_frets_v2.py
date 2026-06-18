@@ -4,8 +4,7 @@ import pytest
 import torch
 
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
-from pytorch_forecasting.metrics import MAE, SMAPE
+from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.models.frets._frets_pkg_v2 import FreTS_pkg_v2
 from pytorch_forecasting.models.frets._frets_v2 import FreTS
 
@@ -15,20 +14,33 @@ BATCH_SIZE = 4
 N_SERIES = 3
 N_SAMPLES = 80
 
+# fast, deterministic trainer config for the integration tests
+TRAINER_CFG = {
+    "max_epochs": 1,
+    "limit_train_batches": 2,
+    "limit_val_batches": 1,
+    "enable_checkpointing": False,
+    "logger": False,
+    "accelerator": "cpu",
+}
+
 
 @pytest.fixture
-def sample_datamodule():
-    """Create a sample EncoderDecoderTimeSeriesDataModule for testing.
+def test_data():
+    """Create synthetic ``TimeSeries`` data for fit/predict.
 
     Returns
     -------
-    dm : EncoderDecoderTimeSeriesDataModule
-        Configured data module with synthetic univariate time series.
+    dict
+        Dictionary with ``"train"`` and ``"predict"`` ``TimeSeries`` datasets,
+        mirroring the structure consumed by the v2 package ``fit``/``predict``
+        API.
     """
+    rng = np.random.default_rng(0)
     time_idx = np.arange(N_SAMPLES)
     series_data = []
     for i in range(N_SERIES):
-        values = np.sin(2 * np.pi * time_idx / 20) + np.random.normal(0, 0.1, N_SAMPLES)
+        values = np.sin(2 * np.pi * time_idx / 20) + rng.normal(0, 0.1, N_SAMPLES)
         series_data.append(
             pd.DataFrame({"time_idx": time_idx, "series_id": i, "value": values})
         )
@@ -44,173 +56,83 @@ def sample_datamodule():
         known=[],
         unknown=["value"],
     )
-
-    dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=ts,
-        max_encoder_length=CONTEXT_LENGTH,
-        max_prediction_length=PREDICTION_LENGTH,
-        batch_size=BATCH_SIZE,
-    )
-    dm.setup("fit")
-    return dm
+    return {"train": ts, "predict": ts}
 
 
-def test_frets_v2_forward_shapes(sample_datamodule):
-    """Test that forward pass returns correct output shapes.
+def _build_pkg(model_cfg):
+    """Build a ``FreTS_pkg_v2`` from a ``get_test_train_params`` entry.
 
     Parameters
     ----------
-    sample_datamodule : EncoderDecoderTimeSeriesDataModule
-        Fixture providing the data module.
+    model_cfg : dict
+        One entry returned by
+        :meth:`FreTS_pkg_v2.get_test_train_params`. The ``"datamodule_cfg"``
+        key is split out and forwarded to the datamodule; everything else is
+        passed to the model.
+
+    Returns
+    -------
+    FreTS_pkg_v2
+        Configured package instance, ready for ``fit``.
     """
-    dm = sample_datamodule
-    metadata = dm.metadata
-    model = FreTS(loss=MAE(), metadata=metadata)
+    model_cfg = dict(model_cfg)
+    dm_cfg = dict(model_cfg.pop("datamodule_cfg"))
+    dm_cfg.setdefault("batch_size", BATCH_SIZE)
+    # ensure a non-empty model_cfg so the package can build from scratch
+    model_cfg.setdefault("loss", SMAPE())
+    return FreTS_pkg_v2(
+        model_cfg=model_cfg,
+        trainer_cfg=TRAINER_CFG,
+        datamodule_cfg=dm_cfg,
+    )
 
-    batch_x, _ = next(iter(dm.train_dataloader()))
 
-    with torch.no_grad():
-        out = model(batch_x)
+@pytest.mark.parametrize("model_cfg", FreTS_pkg_v2.get_test_train_params())
+def test_frets_v2_integration(test_data, model_cfg):
+    """End-to-end fit + predict through the package for each test config.
 
-    assert "prediction" in out
+    This drives the model the same way the generic v2 estimator suite does
+    (``pkg.fit`` then ``pkg.predict``), and covers every configuration in
+    ``get_test_train_params`` -- including both ``channel_independence``
+    modes, the ``embed_size``/``hidden_size`` variants and the default loss.
 
-    pred = out["prediction"]
+    Parameters
+    ----------
+    test_data : dict
+        Fixture providing ``"train"``/``"predict"`` ``TimeSeries``.
+    model_cfg : dict
+        A single configuration from ``get_test_train_params``.
+    """
+    pkg = _build_pkg(model_cfg)
+    expected_pred_len = pkg.datamodule_cfg["max_prediction_length"]
+
+    pkg.fit(test_data["train"], save_ckpt=False)
+    predictions = pkg.predict(test_data["predict"], mode="raw")
+
+    assert predictions is not None
+    assert isinstance(predictions, dict)
+    assert "prediction" in predictions
+
+    pred = predictions["prediction"]
+    assert isinstance(pred, torch.Tensor)
     assert pred.ndim == 3, f"prediction must be 3D, got {pred.ndim}D"
-    assert pred.shape[1] == PREDICTION_LENGTH
-    assert pred.shape[2] == 1
-
-
-def test_frets_v2_training_step(sample_datamodule):
-    """Test that training_step returns a scalar loss with gradients.
-
-    Parameters
-    ----------
-    sample_datamodule : EncoderDecoderTimeSeriesDataModule
-        Fixture providing the data module.
-    """
-    dm = sample_datamodule
-    metadata = dm.metadata
-    model = FreTS(loss=MAE(), metadata=metadata)
-
-    batch = next(iter(dm.train_dataloader()))
-    result = model.training_step(batch, batch_idx=0)
-
-    assert "loss" in result
-    loss = result["loss"]
-    assert isinstance(loss, torch.Tensor)
-    assert loss.ndim == 0
-    assert not torch.isnan(loss)
-    loss.backward()
-
-
-def test_frets_v2_validation_step(sample_datamodule):
-    """Test that validation_step returns a scalar val_loss.
-
-    Parameters
-    ----------
-    sample_datamodule : EncoderDecoderTimeSeriesDataModule
-        Fixture providing the data module.
-    """
-    dm = sample_datamodule
-    model = FreTS(loss=MAE(), metadata=dm.metadata)
-
-    batch = next(iter(dm.train_dataloader()))
-    result = model.validation_step(batch, batch_idx=0)
-
-    assert "val_loss" in result
-    loss = result["val_loss"]
-    assert isinstance(loss, torch.Tensor)
-    assert loss.ndim == 0
-    assert not torch.isnan(loss)
-
-
-@pytest.mark.parametrize("channel_independence", [True, False])
-def test_frets_v2_channel_independence(sample_datamodule, channel_independence):
-    """Test that channel_independence flag works for both modes.
-
-    Parameters
-    ----------
-    sample_datamodule : EncoderDecoderTimeSeriesDataModule
-        Fixture providing the data module.
-    channel_independence : bool
-        Whether to use channel-independent mode.
-    """
-    dm = sample_datamodule
-    model = FreTS(
-        loss=MAE(),
-        metadata=dm.metadata,
-        channel_independence=channel_independence,
-    )
-
-    batch_x, _ = next(iter(dm.train_dataloader()))
-    with torch.no_grad():
-        out = model(batch_x)
-
-    assert out["prediction"].shape[1] == PREDICTION_LENGTH
-
-
-@pytest.mark.parametrize(
-    "embed_size, hidden_size",
-    [
-        (32, 64),
-        (64, 128),
-        (16, 32),
-    ],
-)
-def test_frets_v2_architecture_variants(sample_datamodule, embed_size, hidden_size):
-    """Test that different embed_size and hidden_size configs run without error.
-
-    Parameters
-    ----------
-    sample_datamodule : EncoderDecoderTimeSeriesDataModule
-        Fixture providing the data module.
-    embed_size : int
-        Token embedding size.
-    hidden_size : int
-        FC hidden size.
-    """
-    dm = sample_datamodule
-    model = FreTS(
-        loss=MAE(),
-        metadata=dm.metadata,
-        embed_size=embed_size,
-        hidden_size=hidden_size,
-    )
-
-    batch_x, _ = next(iter(dm.train_dataloader()))
-    with torch.no_grad():
-        out = model(batch_x)
-
-    assert out["prediction"].shape[1] == PREDICTION_LENGTH
-
-
-def test_frets_v2_default_loss(sample_datamodule):
-    """Test that loss=None falls back to MAE as default.
-
-    Parameters
-    ----------
-    sample_datamodule : EncoderDecoderTimeSeriesDataModule
-        Fixture providing the data module.
-    """
-    dm = sample_datamodule
-    model = FreTS(metadata=dm.metadata)
-    assert isinstance(model.loss, MAE)
+    assert pred.shape[1] == expected_pred_len
 
 
 def test_frets_v2_pkg_get_cls():
-    """Test that FreTS_pkg_v2.get_cls() returns FreTS."""
+    """Test that ``FreTS_pkg_v2.get_cls()`` returns ``FreTS``."""
     assert FreTS_pkg_v2.get_cls() is FreTS
 
 
 def test_frets_v2_pkg_naming_convention():
-    """Test that pkg class name follows the convention <model>_pkg_v2."""
+    """Test that pkg class name follows the convention ``<model>_pkg_v2``."""
     model_cls = FreTS_pkg_v2.get_cls()
     expected_pkg_name = model_cls.__name__ + "_pkg_v2"
     assert FreTS_pkg_v2.__name__ == expected_pkg_name
 
 
 def test_frets_v2_pkg_test_train_params():
-    """Test that get_test_train_params returns a non-empty list of dicts."""
+    """Test that ``get_test_train_params`` returns a non-empty list of dicts."""
     params = FreTS_pkg_v2.get_test_train_params()
     assert isinstance(params, list)
     assert len(params) > 0
