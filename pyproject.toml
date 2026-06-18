@@ -55,7 +55,7 @@ dependencies = [
 #
 all_extras = [
   "cpflows",
-  "matplotlib",
+  "matplotlib<3.11.0",
   "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "pytorch_optimizer >=2.5.1,<4.0.0",
