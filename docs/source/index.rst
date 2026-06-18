@@ -72,6 +72,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    models
    metrics
    faq
+   faq_v2
    installation
    api
    model_list
