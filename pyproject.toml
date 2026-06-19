@@ -55,7 +55,7 @@ dependencies = [
 #
 all_extras = [
   "cpflows",
-  "matplotlib<3.11.0",
+  "matplotlib<3.12.0",
   "optuna >=3.1.0,<5.0.0",
   "optuna-integration",
   "pytorch_optimizer >=2.5.1,<4.0.0",
@@ -116,7 +116,7 @@ docs = [
   "docutils",
 ]
 
-github-actions = ["pytest-github-actions-annotate-failures"]
+github-actions = ["pytest-github-actions-annotate-failures<0.4.1"]
 
 [tool.setuptools.packages.find]
 exclude = ["build_tools"]
