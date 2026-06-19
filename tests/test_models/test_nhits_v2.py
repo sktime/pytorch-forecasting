@@ -226,6 +226,27 @@ def test_nhits_v2_validation_step(sample_datamodule):
     assert not torch.isnan(loss)
 
 
+def test_nhits_v2_test_step(sample_datamodule):
+    """Test that test_step returns a scalar test_loss.
+
+    Parameters
+    ----------
+    sample_datamodule : EncoderDecoderTimeSeriesDataModule
+        Fixture providing the data module.
+    """
+    dm = sample_datamodule
+    model = NHiTS_v2(loss=MAE(), metadata=dm.metadata)
+
+    batch = next(iter(dm.train_dataloader()))
+    result = model.test_step(batch, batch_idx=0)
+
+    assert "test_loss" in result
+    loss = result["test_loss"]
+    assert isinstance(loss, torch.Tensor)
+    assert loss.ndim == 0
+    assert not torch.isnan(loss)
+
+
 def test_nhits_v2_forward_with_2d_mask(sample_datamodule):
     """Test forward pass when encoder_mask is already 2D.
 

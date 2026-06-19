@@ -295,7 +295,7 @@ class NHiTS_v2(BaseModel):
             Ground-truth future target of shape
             ``(batch_size, prediction_length)``.
         prefix : str
-            Logging prefix, either ``"train"`` or ``"val"``.
+            Logging prefix, one of ``"train"``, ``"val"`` or ``"test"``.
 
         Returns
         -------
@@ -364,3 +364,27 @@ class NHiTS_v2(BaseModel):
         x, y = batch
         loss, _ = self._compute_loss(x, y, "val")
         return {"val_loss": loss}
+
+    def test_step(self, batch, batch_idx):
+        """Test step.
+
+        Overridden so the weighted forecast/backcast loss (controlled by
+        ``backcast_loss_ratio``) is applied consistently with
+        :meth:`training_step` and :meth:`validation_step`, rather than the
+        forecast-only loss from the v2 :class:`BaseModel`.
+
+        Parameters
+        ----------
+        batch : tuple of (dict[str, torch.Tensor], torch.Tensor)
+            Batch of data from the dataloader.
+        batch_idx : int
+            Index of the current batch.
+
+        Returns
+        -------
+        output : dict[str, torch.Tensor]
+            Dictionary with key ``"test_loss"``.
+        """
+        x, y = batch
+        loss, _ = self._compute_loss(x, y, "test")
+        return {"test_loss": loss}
