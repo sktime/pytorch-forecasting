@@ -223,8 +223,5 @@ filterwarnings = [
     "default::DeprecationWarning",
     "default::PendingDeprecationWarning",
     "default::FutureWarning",
-    "ignore::UserWarning",
-    # lightning-internal deprecation; emitted from site-packages and crashes the
-    # github-actions annotate plugin on Windows (cross-drive os.path.relpath)
-    "ignore:.*LeafSpec.*:FutureWarning"
+    "ignore::UserWarning"
 ]
