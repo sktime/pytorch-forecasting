@@ -8,6 +8,12 @@ from pytorch_forecasting.metrics import SMAPE
 from pytorch_forecasting.models.frets._frets_pkg_v2 import FreTS_pkg_v2
 from pytorch_forecasting.models.frets._frets_v2 import FreTS
 
+# ``trainer.fit`` surfaces a lightning-internal ``FutureWarning`` (from
+# ``_pytree``) on some setups; ignore it here so the suite does not record a
+# warning originating from a site-packages file (which crashes pytest's warning
+# summary on Windows when the toolcache and checkout are on different drives).
+pytestmark = pytest.mark.filterwarnings("ignore::FutureWarning")
+
 CONTEXT_LENGTH = 6
 PREDICTION_LENGTH = 3
 BATCH_SIZE = 4
