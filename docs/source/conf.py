@@ -30,8 +30,8 @@ import pytorch_forecasting  # isort:skip
 # -- Project information -----------------------------------------------------
 
 project = "pytorch-forecasting"
-copyright = "2020, Jan Beitner"
-author = "Jan Beitner"
+copyright = "2020, present, the pytorch-forecasting developers"
+author = "Jan Beitner, the pytorch-forecasting developers"
 
 
 # -- General configuration ---------------------------------------------------
