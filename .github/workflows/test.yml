@@ -106,7 +106,6 @@ jobs:
         shell: bash
         run: |
           pip install ".[dev,github-actions]"
-          pip install pytest-github-actions-annotate-failures==0.4.0
 
       - name: Show dependencies
         run: python -m pip list
@@ -191,7 +190,6 @@ jobs:
         shell: bash
         run: |
           pip install ".[dev,all_extras,github-actions]"
-          pip install pytest-github-actions-annotate-failures==0.4.0
 
       - name: Show dependencies
         run: python -m pip list
