@@ -4,7 +4,6 @@ Timeseries dataset - v2 prototype.
 Beta version, experimental - use for testing but not in production.
 """
 
-from typing import Optional, Union
 from warnings import warn
 
 import numpy as np
@@ -131,11 +130,18 @@ class TimeSeries(Dataset):
             if col not in [self.time] + self._group + [self.weight] + self._target
         ]
         if self._group:
-            self._groups = self.data.groupby(self._group).groups
+            group_arg = (
+                self._group[0]
+                if isinstance(self._group, (list, tuple)) and len(self._group) == 1
+                else self._group
+            )
+            self._groups = self.data.groupby(group_arg).groups
             self._group_ids = list(self._groups.keys())
         else:
             self._groups = {"_single_group": self.data.index}
             self._group_ids = ["_single_group"]
+        # create mapping from group id to index for efficient lookup
+        self._group_to_idx = {gid: i for i, gid in enumerate(self._group_ids)}
 
         self._prepare_metadata()
 
@@ -245,7 +251,7 @@ class TimeSeries(Dataset):
             "t": data_vals,
             "y": torch.tensor(data_tgt_vals),
             "x": torch.tensor(data_feat_vals),
-            "group": torch.tensor([hash(str(group_id))]),
+            "group": torch.tensor([self._group_to_idx[group_id]], dtype=torch.long),
             # PyTorch wants writeable arrays
             "st": torch.tensor(
                 data[_static].iloc[0].to_numpy(copy=True) if _static else []
@@ -255,7 +261,12 @@ class TimeSeries(Dataset):
 
         if data_future is not None:
             if _group:
-                future_mask = self.data_future.groupby(_group).groups[group_id]
+                group_arg = (
+                    self._group[0]
+                    if isinstance(self._group, (list, tuple)) and len(self._group) == 1
+                    else self._group
+                )
+                future_mask = self.data_future.groupby(group_arg).groups[group_id]
                 future_data = self.data_future.loc[future_mask]
             else:
                 future_data = self.data_future

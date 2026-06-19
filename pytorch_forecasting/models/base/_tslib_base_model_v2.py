@@ -23,8 +23,11 @@ class TslibBaseModel(BaseModel):
         Loss function to use for training.
     logging_metrics : Optional[list[nn.Module]], optional
         list of metrics to log during training, validation, and testing.
-    optimizer : Optional[Union[Optimizer, str]], optional
+    optimizer : Optional[Union[Optimizer, str, callable]], optional
         Optimizer to use for training.
+        Can be a string ("adam", "adamw", "adagrad", "sgd", or any
+        ``torch.optim`` class name), a callable returning an optimizer,
+        or an instance of ``torch.optim.Optimizer``.
     optimizer_params : Optional[dict], optional
         Parameters for the optimizer.
     lr_scheduler : Optional[str], optional
@@ -69,24 +72,24 @@ class TslibBaseModel(BaseModel):
         self.context_length = self.metadata.get("context_length", 0)
         self.prediction_length = self.metadata.get("prediction_length", 0)
 
-        feature_indices = metadata.get("feature_indices", {})
+        feature_indices = self.metadata.get("feature_indices", {})
         self.cont_indices = feature_indices.get("continuous", [])
         self.cat_indices = feature_indices.get("categorical", [])
         self.known_indices = feature_indices.get("known", [])
         self.unknown_indices = feature_indices.get("unknown", [])
         self.target_indices = feature_indices.get("target", [])
 
-        feature_dims = metadata.get("n_features", {})
+        feature_dims = self.metadata.get("n_features", {})
         self.cont_dim = feature_dims.get("continuous", 0)
         self.cat_dim = feature_dims.get("categorical", 0)
         self.static_cat_dim = feature_dims.get("static_categorical", 0)
         self.static_cont_dim = feature_dims.get("static_continuous", 0)
         self.target_dim = feature_dims.get("target", 1)
 
-        self.feature_names = metadata.get("feature_names", {})
+        self.feature_names = self.metadata.get("feature_names", {})
 
         # feature-mode
-        self.features = metadata.get("features", "MS")
+        self.features = self.metadata.get("features", "MS")
 
     def _init_network(self):
         """
