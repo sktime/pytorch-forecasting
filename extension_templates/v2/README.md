@@ -104,7 +104,6 @@ Shared split logic, metadata caching, and dataloader factories are provided by `
 The package file serves to register your custom Data Module with the PyTorch Forecasting extension test suite and makes it discoverable by the unified test harness. Your class must inherit from `_BasePtDataModule` and implement the following methods and attributes:
 
 - `get_cls()`: Imports and returns your Data Module class.
-- `get_test_timeseries()`: Returns a minimal example `TimeSeries` dataset or other appropriate test data format used to validate core data flows and batch construction.
 - `get_datamodule_test_params()`: Produces a list of parameter dictionaries for instantiating your Data Module in different configurations. The first dictionary should always be empty (`{}`) to check default parameter handling. Additional parameterizations can be included to test edge cases.
 
 **Tags (`_tags`):**
@@ -114,6 +113,7 @@ Dictionary defining framework integration rules. Tags are inherited from parent 
 - `capability:static_features` (bool: whether data module supports static features)
 - `capability:multivariate_target` (bool: whether data module supports multivariate targets)
 
+**IMPORTANT:** Map datamodule ``batch_format`` tag to a D1 TimeSeries factory used by tests in `pytorch_forecasting.tests._datamodule_config`.
 
 ### Dataset (`_dataset.py`)
 

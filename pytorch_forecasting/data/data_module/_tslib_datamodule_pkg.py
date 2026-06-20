@@ -21,12 +21,6 @@ class TslibDataModule_pkg(_BasePtDataModule):
         return TslibDataModule
 
     @classmethod
-    def get_test_timeseries(cls, **kwargs):
-        from pytorch_forecasting.tests._data_scenarios import make_tslib_timeseries
-
-        return make_tslib_timeseries(**kwargs)
-
-    @classmethod
     def get_datamodule_test_params(cls):
         return [
             {

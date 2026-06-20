@@ -7,10 +7,10 @@ import torch
 
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
-from pytorch_forecasting.tests._data_scenarios import make_tslib_timeseries
 from pytorch_forecasting.tests._datamodule_config import (
     EXCLUDE_DATA_MODULES,
     EXCLUDED_TESTS,
+    get_test_timeseries_for_pkg,
 )
 
 
@@ -87,7 +87,7 @@ class DataModuleFixtureGenerator(BaseFixtureGenerator):
         all_params = obj_meta.get_datamodule_test_params()
 
         if not all_params:
-            ts = obj_meta.get_test_timeseries()
+            ts = get_test_timeseries_for_pkg(obj_meta)
             return [dm_class(time_series_dataset=ts)], ["default"]
 
         instances = []
@@ -95,7 +95,7 @@ class DataModuleFixtureGenerator(BaseFixtureGenerator):
         for i, params in enumerate(all_params):
             params_copy = dict(params)
             ts_kwargs = params_copy.pop("timeseries_kwargs", {})
-            ts = obj_meta.get_test_timeseries(**ts_kwargs)
+            ts = get_test_timeseries_for_pkg(obj_meta, **ts_kwargs)
             instances.append(dm_class(time_series_dataset=ts, **params_copy))
             names.append(str(i))
 
@@ -178,7 +178,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
     def test_different_train_val_test_split(self, object_pkg, split):
         """Train/val/test indices respect configured split ratios."""
         dm_class = object_pkg.get_cls()
-        ts = object_pkg.get_test_timeseries()
+        ts = get_test_timeseries_for_pkg(object_pkg)
         params = dict(object_pkg.get_datamodule_test_params()[0])
         params["train_val_test_split"] = split
         dm = dm_class(time_series_dataset=ts, **params)
@@ -526,7 +526,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
                 == metadata["static_continuous_features"]
             )
         elif batch_format == "tslib":
-            ts = make_tslib_timeseries()
+            ts = get_test_timeseries_for_pkg(object_pkg)
             params = object_pkg.get_datamodule_test_params()[0]
             dm = dm_class(time_series_dataset=ts, **params)
             dm.setup(stage="fit")

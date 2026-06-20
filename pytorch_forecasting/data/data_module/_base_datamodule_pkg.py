@@ -1,7 +1,6 @@
 """Base package class for D2 datamodule discovery and testing."""
 
 from pytorch_forecasting.base._base_object import _BaseObject
-from pytorch_forecasting.data.timeseries import TimeSeries
 
 
 class _BasePtDataModule(_BaseObject):
@@ -21,11 +20,6 @@ class _BasePtDataModule(_BaseObject):
         if name is None:
             name = cls.get_cls().__name__
         return name
-
-    @classmethod
-    def get_test_timeseries(cls, **kwargs) -> TimeSeries:
-        """Return a D1 TimeSeries configured for this datamodule format."""
-        raise NotImplementedError("Subclasses must implement `get_test_timeseries`.")
 
     @classmethod
     def get_datamodule_test_params(cls):

@@ -21,14 +21,6 @@ class MyDataModule_pkg(_BasePtDataModule):
         return MyDataModule
 
     @classmethod
-    def get_test_timeseries(cls, **kwargs):
-        from pytorch_forecasting.tests._data_scenarios import (
-            make_encoder_decoder_timeseries,
-        )
-
-        return make_encoder_decoder_timeseries(**kwargs)
-
-    @classmethod
     def get_datamodule_test_params(cls):
         return [
             {
