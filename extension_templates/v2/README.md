@@ -97,7 +97,7 @@ Inherits from `BaseTimeSeriesDataModule`. Implement the following:
 * `_preprocess_data(series_idx)`: Contains logic to transform raw series before dataset consumption.
 * `collate_fn(batch)`: Stack samples into model-ready batches.
 
-Shared split logic, metadata caching, and dataloader factories are provided by `BaseTimeSeriesDataModule`.
+Shared metadata caching and dataloader factories are provided by `BaseTimeSeriesDataModule`.
 
 #### Package Configuration (`_datamodule_pkg.py`)
 

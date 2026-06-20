@@ -148,33 +148,13 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _compute_split_indices(self):
-        total_series = len(self.time_series_dataset)
-        if total_series == 0:
-            raise ValueError(
-                "The time series dataset is empty. "
-                "Please provide a non-empty dataset."
-            )
+    def _series_indices(self) -> torch.Tensor:
+        """Return indices for all series in the D1 dataset.
 
-        self._indices = torch.randperm(total_series)
-        if total_series == 1:
-            self._train_indices = self._indices
-            self._val_indices = self._indices
-            self._test_indices = self._indices
-        elif total_series == 2:
-            self._train_indices = self._indices[0:1]
-            self._val_indices = self._indices[1:2]
-            self._test_indices = self._indices[1:2]
-        else:
-            self._train_size = int(self.train_val_test_split[0] * total_series)
-            self._val_size = int(self.train_val_test_split[1] * total_series)
-            self._train_indices = self._indices[: self._train_size]
-            self._val_indices = self._indices[
-                self._train_size : self._train_size + self._val_size
-            ]
-            self._test_indices = self._indices[
-                self._train_size + self._val_size : total_series
-            ]
+        Train/val/test splitting is not implemented in v2 yet; all stages use the
+        full dataset until a series-level index splitting design is implemented.
+        """
+        return torch.arange(len(self.time_series_dataset))
 
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
@@ -188,22 +168,31 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             - ``"predict"`` : Prepares the dataset for inference.
             - ``None`` : Prepares ``fit`` datasets.
         """
+        if len(self.time_series_dataset) == 0:
+            raise ValueError(
+                f"Error in {type(self).__name__} setup stage '{stage}': "
+                "The time series dataset is empty. "
+                "Please provide a non-empty dataset."
+            )
 
-        self._compute_split_indices()
+        # Series-level train/val/test splitting is not part of the v2 base API yet;
+        # `setup()` currently windows over all series via
+        # `torch.arange(len(time_series_dataset))`.
+
+        indices = self._series_indices()
 
         if stage is None or stage == "fit":
             if self.train_dataset is None:
-                self.train_windows = self._create_windows(self._train_indices)
-                self.val_windows = self._create_windows(self._val_indices)
+                self.train_windows = self._create_windows(indices)
+                self.val_windows = self._create_windows(indices)
                 self.train_dataset = self._build_dataset(self.train_windows)
                 self.val_dataset = self._build_dataset(self.val_windows)
         elif stage == "test":
             if self.test_dataset is None:
-                self.test_windows = self._create_windows(self._test_indices)
+                self.test_windows = self._create_windows(indices)
                 self.test_dataset = self._build_dataset(self.test_windows)
         elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
-            self.predict_windows = self._create_windows(predict_indices)
+            self.predict_windows = self._create_windows(indices)
             self.predict_dataset = self._build_dataset(self.predict_windows)
 
     def train_dataloader(self) -> DataLoader:

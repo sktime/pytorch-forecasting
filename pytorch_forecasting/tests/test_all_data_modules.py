@@ -159,6 +159,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert len(object_instance.train_windows) > 0
         assert len(object_instance.val_windows) > 0
         assert len(object_instance.train_dataset) == len(object_instance.train_windows)
+        assert len(object_instance.val_dataset) == len(object_instance.val_windows)
 
     def test_setup_test_predict(self, object_pkg, object_instance):
         """Test and predict stages create their datasets."""
@@ -171,37 +172,10 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert len(object_instance.test_windows) > 0
         assert len(object_instance.predict_windows) > 0
 
-    @pytest.mark.parametrize(
-        "split",
-        [(0.7, 0.15, 0.15), (0.8, 0.1, 0.1), (0.6, 0.2, 0.2)],
-    )
-    def test_different_train_val_test_split(self, object_pkg, split):
-        """Train/val/test indices respect configured split ratios."""
-        dm_class = object_pkg.get_cls()
-        ts = get_test_timeseries_for_pkg(object_pkg)
-        params = dict(object_pkg.get_datamodule_test_params()[0])
-        params["train_val_test_split"] = split
-        dm = dm_class(time_series_dataset=ts, **params)
-        dm.setup(stage="fit")
-
-        total_series = len(ts)
-        expected_train = int(split[0] * total_series)
-        expected_val = int(split[1] * total_series)
-        expected_test = total_series - expected_train - expected_val
-
-        assert len(dm._train_indices) == expected_train
-        assert len(dm._val_indices) == expected_val
-        assert len(dm._test_indices) == expected_test
-        assert dm.train_val_test_split == split
-        assert (
-            len(dm._train_indices) + len(dm._val_indices) + len(dm._test_indices)
-            == total_series
-        )
-
     def test_create_windows(self, object_pkg, object_instance):
         """Windows are 4-tuples with valid indices and configured lengths."""
         object_instance.setup(stage="fit")
-        windows = object_instance._create_windows(object_instance._train_indices)
+        windows = object_instance._create_windows(object_instance._series_indices())
 
         assert len(windows) > 0
         context_length = object_instance._context_length()
@@ -452,7 +426,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
     def test_preprocess_data(self, object_pkg, object_instance):
         """Preprocessed series expose feature and target tensors."""
         object_instance.setup(stage="fit")
-        series_idx = object_instance._train_indices[0]
+        series_idx = torch.tensor(0)
         processed = object_instance._preprocess_data(series_idx)
 
         assert "features" in processed
