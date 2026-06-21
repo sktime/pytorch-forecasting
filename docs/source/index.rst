@@ -6,6 +6,12 @@
 PyTorch Forecasting Documentation
 ==================================
 
+.. admonition::
+   **Try the API v2 pre-release!**
+
+   | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+
 .. raw:: html
 
    <a class="github-button" href="https://github.com/sktime/pytorch-forecasting" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star sktime/pytorch-forecasting on GitHub">GitHub</a>
@@ -68,6 +74,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    faq
    installation
    api
+   model_list
    CHANGELOG
 
 
