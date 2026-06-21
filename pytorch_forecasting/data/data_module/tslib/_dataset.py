@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
 
 if TYPE_CHECKING:
-    from pytorch_forecasting.data.data_module._tslib_data_module import TslibDataModule
+    from pytorch_forecasting.data.data_module.tslib._data_module import TslibDataModule
 
 
 class _TslibDataset(Dataset):

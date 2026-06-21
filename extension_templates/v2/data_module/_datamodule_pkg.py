@@ -1,6 +1,6 @@
 """Extension template package container for a custom D2 datamodule."""
 
-from pytorch_forecasting.data.data_module._base_datamodule_pkg import _BasePtDataModule
+from pytorch_forecasting.data.data_module.base._datamodule_pkg import _BasePtDataModule
 
 
 class MyDataModule_pkg(_BasePtDataModule):
