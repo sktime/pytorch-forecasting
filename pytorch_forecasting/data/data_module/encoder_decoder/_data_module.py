@@ -144,7 +144,13 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         return self.max_prediction_length
 
     def _build_dataset(self, windows: list[tuple[int, int, int, int]]) -> Dataset:
-        """Build a processed dataset from window tuples."""
+        """Return a ``_ProcessedEncoderDecoderDataset`` over *windows*.
+
+        Parameters
+        ----------
+        windows : list of tuple[int, int, int, int]
+        List of window tuples having (series_idx, start_idx, enc_length, pred_length).
+        """
         return _ProcessedEncoderDecoderDataset(
             self.time_series_dataset,
             self,
@@ -364,6 +370,18 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
 
     @staticmethod
     def collate_fn(batch):
+        """Stack encoder-decoder samples into batched ``x`` and ``y``.
+
+        Parameters
+        ----------
+        batch : list of tuple[dict, target]
+            Samples from ``_ProcessedEncoderDecoderDataset`` dataset.
+
+        Returns
+        -------
+        tuple[dict, torch.Tensor or list[torch.Tensor]]
+            Collated inputs and targets. Multivariate targets become a list of tensors.
+        """
         x_batch = {
             "encoder_cat": torch.stack([x["encoder_cat"] for x, _ in batch]),
             "encoder_cont": torch.stack([x["encoder_cont"] for x, _ in batch]),

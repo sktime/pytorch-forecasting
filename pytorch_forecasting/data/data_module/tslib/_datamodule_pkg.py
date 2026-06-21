@@ -22,6 +22,7 @@ class TslibDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_datamodule_test_params(cls):
+        """Constructor kwargs for parametrized tests."""
         return [
             {
                 "context_length": 8,
@@ -39,6 +40,7 @@ class TslibDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_expected_metadata_keys(cls):
+        """Keys that must exist in ``datamodule.metadata`` after ``setup()``."""
         return [
             "feature_names",
             "feature_indices",
@@ -51,6 +53,7 @@ class TslibDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_batch_keys(cls):
+        """Required keys in the collated batch."""
         return [
             "history_cont",
             "history_cat",
@@ -70,6 +73,7 @@ class TslibDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_sample_item_keys(cls):
+        """Required keys in a single dataset item."""
         return [
             "history_cont",
             "history_cat",

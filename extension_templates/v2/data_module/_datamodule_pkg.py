@@ -22,7 +22,9 @@ class MyDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_datamodule_test_params(cls):
+        """Constructor kwargs for parametrized tests."""
         return [
+            {},
             {
                 "max_encoder_length": 8,
                 "max_prediction_length": 4,
@@ -32,8 +34,10 @@ class MyDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_expected_metadata_keys(cls):
-        return ["target"]
+        """Keys that must exist in ``datamodule.metadata`` after ``setup()``."""
+        return ["target"]  # todo: match ``_prepare_metadata`` output
 
     @classmethod
     def get_batch_keys(cls):
-        return []
+        """Required keys in collated batch."""
+        return []  # todo: list keys your collate_fn produces

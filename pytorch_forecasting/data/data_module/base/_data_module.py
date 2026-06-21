@@ -36,7 +36,24 @@ _EXPERIMENTAL_WARNING = (
 
 
 class BaseTimeSeriesDataModule(LightningDataModule):
-    """Abstract D2 base for v2 time series datamodules."""
+    """
+    Base Lightning datamodule for v2 time series pipelines (D2 layer).
+
+    Parameters
+    ----------
+    time_series_dataset : TimeSeries
+        D1 dataset passed to windowing and preprocessing. Must be non-empty.
+    target_normalizer : normalizer, str, list, tuple, or None, default="auto"
+        Target scaling. ``"auto"`` resolves to ``RobustScaler()``.
+    batch_size : int, default=32
+        Batch size for all dataloaders.
+    num_workers : int, default=0
+        Worker count for all dataloaders.
+    train_val_test_split : tuple of float, default=(0.7, 0.15, 0.15)
+        Stored for future use; not applied in the current v2 base implementation.
+    add_relative_time_idx : bool, default=False
+        Passed through to processed datasets when supported by the subclass.
+    """
 
     def __init__(
         self,
@@ -69,9 +86,9 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         self.time_series_metadata = time_series_dataset.get_metadata()
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
-        self.categorical_indices: list[int] = []
-        self.continuous_indices: list[int] = []
-        self._init_feature_indices()
+        self.categorical_indices, self.continuous_indices = (
+            self._extract_feature_type_indices(self.time_series_metadata)
+        )
 
         self._metadata = None
         self.train_windows: list | None = None
@@ -96,12 +113,16 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             return RobustScaler()
         return target_normalizer
 
-    def _init_feature_indices(self):
-        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
-            if self.time_series_metadata["col_type"].get(col) == "C":
-                self.categorical_indices.append(idx)
+    def _extract_feature_type_indices(self, time_series_metadata: dict):
+        """Extract feature type indices from the time series metadata."""
+        categorical_indices = []
+        continuous_indices = []
+        for idx, col in enumerate(time_series_metadata["cols"]["x"]):
+            if time_series_metadata["col_type"].get(col) == "C":
+                categorical_indices.append(idx)
             else:
-                self.continuous_indices.append(idx)
+                continuous_indices.append(idx)
+        return categorical_indices, continuous_indices
 
     @abstractmethod
     def _prepare_metadata(self) -> dict:
@@ -109,26 +130,60 @@ class BaseTimeSeriesDataModule(LightningDataModule):
 
     @abstractmethod
     def _context_length(self) -> int:
-        """Return encoder/context window length."""
+        """Return encoder/context window length for this datamodule."""
 
     @abstractmethod
     def _prediction_length(self) -> int:
-        """Return decoder/prediction window length."""
+        """Return decoder/prediction window length for this datamodule."""
 
     @abstractmethod
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
-        """Create sliding windows for the given series indices."""
+        """Generate sliding windows for training, validation, and testing.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            The indices of the time series data to be processed.
+
+        Returns
+        -------
+        list of tuple[int, int, int, int]
+            Each tuple is ``(series_idx, start_idx, context_length, prediction_length)``
+            Series shorter than context + prediction are skipped.
+        """
 
     @abstractmethod
     def _build_dataset(self, windows: list[tuple[int, int, int, int]]) -> Dataset:
-        """Build a processed dataset from window tuples."""
+        """Return a processed ``Dataset`` for ``DataLoader`` consumption.
+
+        Parameters
+        ----------
+        windows : list of tuple[int, int, int, int]
+
+        Returns
+        -------
+        Dataset
+            A dataset that contains the processed data.
+        """
 
     @staticmethod
     @abstractmethod
     def collate_fn(batch):
-        """Collate a batch of samples."""
+        """Stack samples from dataset into a model-ready batch.
+
+        Parameters
+        ----------
+        batch : list of tuple[dict, target]
+            Samples as returned by the processed dataset.
+
+        Returns
+        -------
+        tuple[dict, target]
+            Collated ``x`` dict and ``y`` (tensor or list of tensors for multivariate).
+        """
 
     def _train_shuffle(self) -> bool:
+        """Return whether to shuffle at the training dataloader."""
         return True
 
     def _get_collate_fn(self):

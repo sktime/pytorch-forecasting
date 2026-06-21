@@ -10,7 +10,7 @@ class _BasePtDataModule(_BaseObject):
 
     @classmethod
     def get_cls(cls):
-        """Return the Lightning datamodule class."""
+        """Return the Lightning datamodule class wrapped by this package."""
         raise NotImplementedError("Subclasses must implement `get_cls`.")
 
     @classmethod
@@ -23,20 +23,23 @@ class _BasePtDataModule(_BaseObject):
 
     @classmethod
     def get_datamodule_test_params(cls):
-        """Return parameter dicts for datamodule instantiation (excluding dataset)."""
+        """Return parameter dicts for parametrized tests."""
         return [{}]
 
     @classmethod
     def get_expected_metadata_keys(cls):
-        """Return metadata keys expected after setup for format-specific tests."""
+        """
+        Return metadata keys that must be present after ``setup()``
+        for format tests.
+        """
         return []
 
     @classmethod
     def get_batch_keys(cls):
-        """Return expected keys in the collated batch x-dict."""
+        """Return required keys in the collated batch."""
         return []
 
     @classmethod
     def get_sample_item_keys(cls):
-        """Return expected keys in a single dataset __getitem__ x-dict."""
+        """Return required keys in a single dataset item."""
         return cls.get_batch_keys()

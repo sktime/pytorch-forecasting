@@ -131,10 +131,23 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         return self.prediction_length
 
     def _train_shuffle(self) -> bool:
+        """Return whether to shuffle at the training dataloader."""
         return self.shuffle
 
     def _build_dataset(self, windows: list[tuple[int, int, int, int]]) -> Dataset:
-        """Build a processed dataset from window tuples."""
+        """Return a ``_TslibDataset`` over *windows*.
+
+        Parameters
+        ----------
+        windows : list of tuple[int, int, int, int]
+        A list of tuples where each tuple contains the following:
+            - series_idx: Index of time series in the dataset
+            - start_idx: Start index of the window
+            - context_length: Length of the context/encoder window
+            - prediction_length: Length of the prediction/decoder window
+            - add_relative_time_idx: bool Whether to add relative time index to dataset.
+
+        """
         return _TslibDataset(
             dataset=self.time_series_dataset,
             data_module=self,

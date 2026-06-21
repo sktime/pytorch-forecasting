@@ -24,6 +24,7 @@ class EncoderDecoderDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_datamodule_test_params(cls):
+        """Constructor kwargs for parametrized tests."""
         return [
             {
                 "max_encoder_length": 24,
@@ -40,6 +41,7 @@ class EncoderDecoderDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_expected_metadata_keys(cls):
+        """Keys that must exist in ``datamodule.metadata`` after ``setup()``."""
         return [
             "encoder_cat",
             "encoder_cont",
@@ -52,6 +54,7 @@ class EncoderDecoderDataModule_pkg(_BasePtDataModule):
 
     @classmethod
     def get_batch_keys(cls):
+        """Keys present in collated batches."""
         return [
             "encoder_cat",
             "encoder_cont",
@@ -68,7 +71,3 @@ class EncoderDecoderDataModule_pkg(_BasePtDataModule):
             "encoder_mask",
             "decoder_mask",
         ]
-
-    @classmethod
-    def get_sample_item_keys(cls):
-        return cls.get_batch_keys()
