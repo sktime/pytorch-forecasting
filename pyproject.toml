@@ -116,7 +116,7 @@ docs = [
   "docutils",
 ]
 
-github-actions = ["pytest-github-actions-annotate-failures<0.4.1"]
+github-actions = ["pytest-github-actions-annotate-failures<0.4.3"]
 
 [tool.setuptools.packages.find]
 exclude = ["build_tools"]
