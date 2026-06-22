@@ -48,11 +48,15 @@ class DeepAR_pkg_v2(Base_pkg):
             Parameters to create testing instances of the class.
             Each dict contains model config and optionally datamodule_cfg.
         """
-        from pytorch_forecasting.metrics import NormalDistributionLoss
+        from pytorch_forecasting.metrics import (
+            LogNormalDistributionLoss,
+            NormalDistributionLoss,
+        )
 
         params = [
             dict(loss=NormalDistributionLoss()),
             dict(loss=NormalDistributionLoss(), cell_type="GRU"),
+            dict(loss=LogNormalDistributionLoss()),
             dict(
                 loss=NormalDistributionLoss(),
                 hidden_size=16,

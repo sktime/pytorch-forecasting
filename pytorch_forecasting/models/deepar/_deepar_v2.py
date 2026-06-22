@@ -334,8 +334,17 @@ class DeepAR(BaseModel):
         from pytorch_forecasting.metrics.base_metrics import DistributionLoss
 
         if isinstance(self.loss, DistributionLoss):
-            if not hasattr(self.loss, "_transformation"):
-                self.loss._transformation = None
+            if self.loss.__class__.__name__ == "LogNormalDistributionLoss":
+                self.transformation = "log"
+            else:
+                self.transformation = None
+
+            if (
+                not hasattr(self.loss, "_transformation")
+                or self.loss._transformation is None
+            ):
+                self.loss._transformation = self.transformation
+
             if target_scale.dim() == 1:
                 target_scale = torch.stack(
                     [torch.zeros_like(target_scale), target_scale], dim=-1
