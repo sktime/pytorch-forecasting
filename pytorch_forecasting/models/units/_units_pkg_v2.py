@@ -39,7 +39,7 @@ class UniTS_pkg_v2(Base_pkg):
         return TslibDataModule
 
     @classmethod
-    def get_base_test_params(cls):
+    def get_test_train_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns
