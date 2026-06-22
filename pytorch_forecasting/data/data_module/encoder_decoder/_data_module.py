@@ -368,6 +368,25 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
 
         return windows
 
+    def _split_data_indices(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Split data indices into train, val, and test sets based on the
+        train_val_test_split ratio.
+        """
+        # this is a very rudimentary way to handle the splits when
+        # the dataset is of size equal to 1 or 2.
+        total_series = len(self.time_series_dataset)
+        self._split_indices = torch.randperm(total_series)
+
+        self._train_size = int(self.train_val_test_split[0] * total_series)
+        self._val_size = int(self.train_val_test_split[1] * total_series)
+
+        self._train_indices = self._split_indices[: self._train_size]
+        self._val_indices = self._split_indices[
+            self._train_size : self._train_size + self._val_size
+        ]
+        self._test_indices = self._split_indices[self._train_size + self._val_size :]
+
     @staticmethod
     def collate_fn(batch):
         """Stack encoder-decoder samples into batched ``x`` and ``y``.

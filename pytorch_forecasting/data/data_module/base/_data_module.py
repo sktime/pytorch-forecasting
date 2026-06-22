@@ -203,13 +203,11 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _series_indices(self) -> torch.Tensor:
-        """Return indices for all series in the D1 dataset.
-
-        Train/val/test splitting is not implemented in v2 yet; all stages use the
-        full dataset until a series-level index splitting design is implemented.
+    @abstractmethod
+    def _split_data_indices(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Split data indices into train, val, and test sets based on the
+        train_val_test_split ratio.
         """
-        return torch.arange(len(self.time_series_dataset))
 
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
@@ -234,20 +232,21 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         # `setup()` currently windows over all series via
         # `torch.arange(len(time_series_dataset))`.
 
-        indices = self._series_indices()
+        self._split_data_indices()
 
         if stage is None or stage == "fit":
             if self.train_dataset is None:
-                self.train_windows = self._create_windows(indices)
-                self.val_windows = self._create_windows(indices)
+                self.train_windows = self._create_windows(self._train_indices)
+                self.val_windows = self._create_windows(self._val_indices)
                 self.train_dataset = self._build_dataset(self.train_windows)
                 self.val_dataset = self._build_dataset(self.val_windows)
         elif stage == "test":
             if self.test_dataset is None:
-                self.test_windows = self._create_windows(indices)
+                self.test_windows = self._create_windows(self._test_indices)
                 self.test_dataset = self._build_dataset(self.test_windows)
         elif stage == "predict":
-            self.predict_windows = self._create_windows(indices)
+            predict_indices = torch.arange(len(self.time_series_dataset))
+            self.predict_windows = self._create_windows(predict_indices)
             self.predict_dataset = self._build_dataset(self.predict_windows)
 
     def train_dataloader(self) -> DataLoader:
