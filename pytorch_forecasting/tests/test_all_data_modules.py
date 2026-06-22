@@ -179,7 +179,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
     def test_different_train_val_test_split(self, object_pkg, split):
         """Train/val/test indices respect configured split ratios."""
         dm_class = object_pkg.get_cls()
-        ts = object_pkg.get_test_timeseries()
+        ts = get_test_timeseries_for_pkg(object_pkg)
         params = dict(object_pkg.get_datamodule_test_params()[0])
         params["train_val_test_split"] = split
         dm = dm_class(time_series_dataset=ts, **params)
