@@ -47,7 +47,7 @@ class Softs_pkg_v2(Base_pkg):
             Each dict is a valid set of constructor arguments for ``Softs``.
             The key ``datamodule_cfg`` is passed to the DataModule, not the model.
         """
-        from pytorch_forecasting.metrics import MAE, SMAPE
+        from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE
 
         params = [
             {},
@@ -57,6 +57,16 @@ class Softs_pkg_v2(Base_pkg):
                 hidden_size=64,
                 n_layers=1,
                 loss=MAE(),
+            ),
+            dict(
+                hidden_size=64,
+                n_layers=1,
+                loss=MAPE(),
+            ),
+            dict(
+                hidden_size=64,
+                n_layers=1,
+                loss=RMSE(),
             ),
             dict(
                 hidden_size=64,
