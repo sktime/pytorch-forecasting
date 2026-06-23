@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 if TYPE_CHECKING:
-    from pytorch_forecasting.data.data_module.encoder_decoder._data_module import (
+    from pytorch_forecasting.data.data_module.encoder_decoder._encoder_decoder_data_module import (  # noqa: E501
         EncoderDecoderTimeSeriesDataModule,
     )
 

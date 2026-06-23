@@ -1,6 +1,8 @@
 """Package container for EncoderDecoderTimeSeriesDataModule."""
 
-from pytorch_forecasting.data.data_module.base._datamodule_pkg import _BasePtDataModule
+from pytorch_forecasting.data.data_module.base._base_datamodule_pkg import (
+    _BasePtDataModule,
+)
 
 
 class EncoderDecoderDataModule_pkg(_BasePtDataModule):

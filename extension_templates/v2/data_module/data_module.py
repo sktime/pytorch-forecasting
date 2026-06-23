@@ -9,7 +9,7 @@ How to use this implementation template to implement a new estimator:
     - if the name has more than one word (like Encoder-Decoder Data Module), the name of
     the file should be created by separating these words by a underscore (_).
     For eg, for Encoder-Decoder Data Module, the name of the file would be
-    encoder_decoder/_data_module.py.
+    encoder_decoder/_encoder_decoder_data_module.py.
 - work through all the "todo" comments below
 - fill in code for mandatory methods, and optionally for optional methods
 - change docstrings for functions and the file

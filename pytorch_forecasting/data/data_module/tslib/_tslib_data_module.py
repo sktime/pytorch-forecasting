@@ -10,11 +10,11 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import Dataset
 
-from pytorch_forecasting.data.data_module.base._data_module import (
+from pytorch_forecasting.data.data_module.base._base_data_module import (
     NORMALIZER,
     BaseTimeSeriesDataModule,
 )
-from pytorch_forecasting.data.data_module.tslib._dataset import _TslibDataset
+from pytorch_forecasting.data.data_module.tslib._tslib_dataset import _TslibDataset
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
