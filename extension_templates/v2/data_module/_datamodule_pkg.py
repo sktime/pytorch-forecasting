@@ -11,8 +11,6 @@ How to use this implementation template:
 - work through all the "todo" comments below
 - fill in code for mandatory methods
 - change docstrings for functions and the file
-- register your ``batch_format`` tag in
-  ``pytorch_forecasting.tests._datamodule_config.DATAMODULE_TEST_TIMESERIES``
 - once complete: use as a local library, or contribute to pytorch-forecasting via PR
 
 Mandatory methods to implement:
@@ -47,10 +45,8 @@ class MyDataModule_pkg(_BasePtDataModule):
     _tags = {
         # Required: identifies this as a v2 datamodule package (do not change).
         "object_type": "datamodule_v2",
-        # Links to a D1 TimeSeries factory in
-        # pytorch_forecasting.tests._datamodule_config.DATAMODULE_TEST_TIMESERIES.
-        # Use "encoder_decoder" or "tslib" if your batch format matches an existing
-        # datamodule; otherwise add a new factory entry for a custom tag.
+        # Labels the batch layout for format-specific test assertions.
+        # Use "encoder_decoder" or "tslib" when your keys match an existing format.
         "batch_format": "encoder_decoder",
         # Human-readable name; should match the Lightning datamodule class name.
         "info:name": "MyDataModule",

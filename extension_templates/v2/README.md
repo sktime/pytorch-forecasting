@@ -112,8 +112,8 @@ Dictionary defining framework integration rules. Tags are inherited from parent 
 - `info:name` (human-readable model name matching the class)
 - `capability:static_features` (bool: whether data module supports static features)
 - `capability:multivariate_target` (bool: whether data module supports multivariate targets)
+- `batch_format` (str: labels the batch layout, e.g. `"encoder_decoder"` or `"tslib"` — used by tests to select format-specific assertions)
 
-**IMPORTANT:** Map datamodule ``batch_format`` tag to a D1 TimeSeries factory used by tests in `pytorch_forecasting.tests._datamodule_config`.
 
 ### Dataset (`_dataset.py`)
 
