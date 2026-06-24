@@ -14,8 +14,8 @@ from pytorch_forecasting.tests._datamodule_config import (
 )
 
 
-def _encoder_decoder_known_feature_counts(time_series_metadata):
-    """Count known categorical and continuous features for encoder-decoder format."""
+def _known_feature_counts(time_series_metadata):
+    """Count known categorical and continuous x-features from D1 metadata."""
     known_cat_count = len(
         [
             col
@@ -30,25 +30,6 @@ def _encoder_decoder_known_feature_counts(time_series_metadata):
             for col in time_series_metadata["cols"]["x"]
             if time_series_metadata["col_type"].get(col) == "F"
             and time_series_metadata["col_known"].get(col) == "K"
-        ]
-    )
-    return known_cat_count, known_cont_count
-
-
-def _tslib_known_feature_counts(metadata):
-    """Count known categorical and continuous features for tslib format."""
-    known_cat_count = len(
-        [
-            name
-            for name in metadata["feature_names"]["known"]
-            if name in metadata["feature_names"]["categorical"]
-        ]
-    )
-    known_cont_count = len(
-        [
-            name
-            for name in metadata["feature_names"]["known"]
-            if name in metadata["feature_names"]["continuous"]
         ]
     )
     return known_cat_count, known_cont_count
@@ -141,10 +122,13 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
 
         batch_format = object_pkg.get_class_tag("batch_format")
         if batch_format == "encoder_decoder":
-            assert metadata["encoder_cat"] == 1
-            assert metadata["encoder_cont"] == 3
-            assert metadata["decoder_cat"] == 0
-            assert metadata["decoder_cont"] == 1
+            assert metadata["encoder_cat"] == len(object_instance.categorical_indices)
+            assert metadata["encoder_cont"] == len(object_instance.continuous_indices)
+            known_cat, known_cont = _known_feature_counts(
+                object_instance.time_series_metadata
+            )
+            assert metadata["decoder_cat"] == known_cat
+            assert metadata["decoder_cont"] == known_cont
         elif batch_format == "tslib":
             for key in metadata["n_features"]:
                 assert metadata["n_features"][key] == len(
@@ -261,19 +245,17 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         batch_format = object_pkg.get_class_tag("batch_format")
         context_length = object_instance._context_length()
         prediction_length = object_instance._prediction_length()
+        known_cat_count, known_cont_count = _known_feature_counts(
+            object_instance.time_series_metadata
+        )
 
         if batch_format == "encoder_decoder":
-            known_cat_count, known_cont_count = _encoder_decoder_known_feature_counts(
-                object_instance.time_series_metadata
-            )
             assert x["encoder_cat"].shape[0] == context_length
             assert x["decoder_cat"].shape[0] == prediction_length
             assert x["decoder_cat"].shape[1] == known_cat_count
             assert x["decoder_cont"].shape[1] == known_cont_count
             assert y.shape[0] == prediction_length
         elif batch_format == "tslib":
-            metadata = object_instance.metadata
-            known_cat_count, known_cont_count = _tslib_known_feature_counts(metadata)
             assert x["history_cont"].shape[0] == context_length
             assert x["history_cat"].shape[0] == context_length
             assert x["future_cont"].shape[0] == prediction_length
@@ -309,17 +291,16 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         batch_format = object_pkg.get_class_tag("batch_format")
         prediction_length = object_instance._prediction_length()
 
+        known_cat_count, known_cont_count = _known_feature_counts(
+            object_instance.time_series_metadata
+        )
+
         if batch_format == "encoder_decoder":
-            known_cat_count, known_cont_count = _encoder_decoder_known_feature_counts(
-                object_instance.time_series_metadata
-            )
             assert x_batch["decoder_cat"].shape[2] == known_cat_count
             assert x_batch["decoder_cont"].shape[2] == known_cont_count
             assert y_batch.shape[0] == batch_size
             assert y_batch.shape[1] == prediction_length
         elif batch_format == "tslib":
-            metadata = object_instance.metadata
-            known_cat_count, known_cont_count = _tslib_known_feature_counts(metadata)
             assert x_batch["future_cont"].shape[2] == known_cont_count
             assert x_batch["future_cat"].shape[2] == known_cat_count
             assert y_batch.shape[0] == batch_size
@@ -337,10 +318,11 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         context_length = object_instance._context_length()
         prediction_length = object_instance._prediction_length()
 
+        known_cat_count, known_cont_count = _known_feature_counts(
+            object_instance.time_series_metadata
+        )
+
         if batch_format == "encoder_decoder":
-            known_cat_count, known_cont_count = _encoder_decoder_known_feature_counts(
-                object_instance.time_series_metadata
-            )
             assert x_batch["encoder_cat"].shape[0] == batch_size
             assert x_batch["encoder_cat"].shape[1] == context_length
             assert x_batch["decoder_cat"].shape[0] == batch_size
@@ -353,8 +335,6 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
                 assert y_batch.shape[0] == batch_size
                 assert y_batch.shape[1] == prediction_length
         elif batch_format == "tslib":
-            metadata = object_instance.metadata
-            known_cat_count, known_cont_count = _tslib_known_feature_counts(metadata)
             assert x_batch["history_cont"].shape[1] == context_length
             assert x_batch["history_cat"].shape[1] == context_length
             assert x_batch["future_cont"].shape[0] == batch_size
