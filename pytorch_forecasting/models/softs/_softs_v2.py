@@ -74,7 +74,6 @@ class SOFTS(BaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
-            metadata=metadata,
         )
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
