@@ -377,9 +377,6 @@ def dataloaders_fixed_window_without_covariates():
 def make_datamodule_test_timeseries(**kwargs):
     """Create a lightweight synthetic ``TimeSeries`` for D2 datamodule tests.
 
-    Works for both encoder-decoder and tslib batch formats. Tests derive expected
-    feature dimensions from D1 ``time_series_metadata``, not from per-format factories.
-
     Parameters
     ----------
     n_series : int, default=10
