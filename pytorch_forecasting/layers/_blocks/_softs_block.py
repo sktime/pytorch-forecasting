@@ -62,7 +62,7 @@ class STADModule(nn.Module):
         return x + dispatch_out
 
 
-class SoftsEncoderLayer(nn.Module):
+class SOFTSEncoderLayer(nn.Module):
     """
     Single encoder layer for SOFTS, combining STAD and a Feed-Forward Network.
 

@@ -5,7 +5,7 @@ Packages container for SOFTS model.
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class Softs_pkg_v2(Base_pkg):
+class SOFTS_pkg_v2(Base_pkg):
     """
     SOFTS package container.
     Reference : https://arxiv.org/abs/2404.14197
@@ -26,9 +26,9 @@ class Softs_pkg_v2(Base_pkg):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.softs._softs_v2 import Softs
+        from pytorch_forecasting.models.softs._softs_v2 import SOFTS
 
-        return Softs
+        return SOFTS
 
     @classmethod
     def get_datamodule_cls(cls):
@@ -44,7 +44,7 @@ class Softs_pkg_v2(Base_pkg):
         Returns
         -------
         list of dict
-            Each dict is a valid set of constructor arguments for ``Softs``.
+            Each dict is a valid set of constructor arguments for ``SOFTS``.
             The key ``datamodule_cfg`` is passed to the DataModule, not the model.
         """
         from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE

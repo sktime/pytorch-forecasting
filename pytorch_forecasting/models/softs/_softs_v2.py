@@ -7,12 +7,12 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers._blocks._softs_block import SoftsEncoderLayer
+from pytorch_forecasting.layers._blocks._softs_block import SOFTSEncoderLayer
 from pytorch_forecasting.layers._normalization import RevIN
-from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class Softs(TslibBaseModel):
+class SOFTS(BaseModel):
     """
     SOFTS: Efficient Multivariate Time Series Forecasting with Series-Core Fusion.
 
@@ -46,9 +46,9 @@ class Softs(TslibBaseModel):
 
     @classmethod
     def _pkg(cls):
-        from pytorch_forecasting.models.softs._softs_pkg_v2 import Softs_pkg_v2
+        from pytorch_forecasting.models.softs._softs_pkg_v2 import SOFTS_pkg_v2
 
-        return Softs_pkg_v2
+        return SOFTS_pkg_v2
 
     def __init__(
         self,
@@ -78,6 +78,14 @@ class Softs(TslibBaseModel):
         )
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
+        self.metadata = metadata or {}
+        self.context_length = self.metadata.get("context_length", 0)
+        self.prediction_length = self.metadata.get("prediction_length", 0)
+
+        feature_dims = self.metadata.get("n_features", {})
+        self.cont_dim = feature_dims.get("continuous", 0)
+        self.target_dim = feature_dims.get("target", 1)
+
         self.use_revin = use_revin
         self.n_quantiles = (
             len(loss.quantiles)
@@ -98,7 +106,7 @@ class Softs(TslibBaseModel):
         # Encoder Blocks
         self.encoder = nn.ModuleList(
             [
-                SoftsEncoderLayer(
+                SOFTSEncoderLayer(
                     d_model=d_model, d_core=d_core, d_ff=d_ff, dropout=dropout
                 )
                 for _ in range(n_layers)
@@ -175,3 +183,44 @@ class Softs(TslibBaseModel):
             out = self.transform_output(out, x["target_scale"])
 
         return {"prediction": out}
+
+    def predict_step(
+        self,
+        batch: tuple[dict[str, torch.Tensor]],
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> torch.Tensor:
+        """
+        Prediction step for the model.
+        """
+        x, _ = batch
+        y_hat = self(x)
+
+        if "target" in x:
+            y_hat["target"] = x["target"]
+
+        return y_hat
+
+    def transform_output(
+        self,
+        y_hat: torch.Tensor | list[torch.Tensor],
+        target_scale: dict[str, torch.Tensor] | None,
+    ) -> torch.Tensor | list[torch.Tensor]:
+        """
+        Transform the output of the model back to the original scale.
+        """
+        if (
+            target_scale is None
+            or "scale" not in target_scale
+            or "center" not in target_scale
+        ):
+            raise ValueError("Cannot transform output without scale and center.")
+
+        scale = target_scale["scale"]
+        center = target_scale["center"]
+
+        while scale.dim() < y_hat.dim():
+            scale = scale.unsqueeze(0)
+            center = center.unsqueeze(0)
+
+        return y_hat * scale + center
