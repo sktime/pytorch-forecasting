@@ -88,16 +88,15 @@ If needed, copy data_module.py and _dataset.py to your target directory.
 
 Inherits from `BaseTimeSeriesDataModule`. Implement the following:
 
-**Mandatory Methods:**
+**Mandatory methods:**
 
 * `_prepare_metadata()`: Derives the metadata required for model initialization from the raw data/parameters.
 * `_context_length()` / `_prediction_length()`: Return window sizes for the unified test suite.
 * `_create_windows(indices)`: Build sliding-window index tuples.
 * `_build_dataset(windows)`: Return a processed `Dataset` for the windows.
-* `_preprocess_data(series_idx)`: Contains logic to transform raw series before dataset consumption.
+* `_split_data_indices()`: Split series indices into train, validation, and test sets.
 * `collate_fn(batch)`: Stack samples into model-ready batches.
 
-Shared metadata caching and dataloader factories are provided by `BaseTimeSeriesDataModule`.
 
 #### Package Configuration (`_datamodule_pkg.py`)
 
