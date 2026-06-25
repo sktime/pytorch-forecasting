@@ -7,8 +7,6 @@
 # into the memory.
 #######################################################################################
 
-from typing import Any
-
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import Dataset
@@ -255,63 +253,6 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         )
 
         return metadata
-
-    def _preprocess_data(self, series_idx: torch.Tensor) -> list[dict[str, Any]]:
-        """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
-
-        Preprocessing steps
-        --------------------
-
-        * Converts target (`y`) and features (`x`) to `torch.float32`.
-        * Masks time points that are at or before the cutoff time.
-        * Splits features into categorical and continuous subsets based on
-            predefined indices.
-
-
-        TODO: add scalers, target normalizers etc.
-        """
-        sample = self.time_series_dataset[series_idx]
-
-        target = sample["y"]
-        features = sample["x"]
-        times = sample["t"]
-        cutoff_time = sample["cutoff_time"]
-
-        time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
-
-        if isinstance(target, torch.Tensor):
-            target = target.float()
-        else:
-            target = torch.tensor(target, dtype=torch.float32)
-
-        if isinstance(features, torch.Tensor):
-            features = features.float()
-        else:
-            features = torch.tensor(features, dtype=torch.float32)
-
-        # TODO: add scalers, target normalizers etc.
-
-        categorical = (
-            features[:, self.categorical_indices]
-            if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
-        )
-        continuous = (
-            features[:, self.continuous_indices]
-            if self.continuous_indices
-            else torch.zeros((features.shape[0], 0))
-        )
-
-        return {
-            "features": {"categorical": categorical, "continuous": continuous},
-            "target": target,
-            "static": sample.get("st", None),
-            "group": sample.get("group", torch.tensor([0])),
-            "length": len(target),
-            "time_mask": time_mask,
-            "times": times,
-            "cutoff_time": cutoff_time,
-        }
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
