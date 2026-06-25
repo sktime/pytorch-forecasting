@@ -1934,8 +1934,8 @@ class TimeSeriesDataSet(Dataset):
             pd.DataFrame: index that can be understood in terms of original data
         """
         # get dataframe to filter
-        index_start = self.index["index_start"].to_numpy()
-        index_last = self.index["index_end"].to_numpy()
+        index_start = self.index["index_start"].to_numpy(copy=True)
+        index_last = self.index["index_end"].to_numpy(copy=True)
         index = (
             # get group ids in order of index
             pd.DataFrame(

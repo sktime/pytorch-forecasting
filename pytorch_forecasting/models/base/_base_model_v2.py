@@ -30,17 +30,36 @@ class BaseModel(LightningModule):
         Loss function to use for training.
     logging_metrics : Optional[List[nn.Module]], optional
         List of metrics to log during training, validation, and testing.
-    optimizer : Optional[Union[Optimizer, str]], optional
+    optimizer : Optional[Union[Optimizer, str, callable]], optional
         Optimizer to use for training.
-        Can be a string ("adam", "sgd") or an instance of `torch.optim.Optimizer`.
+        Can be a string ("adam", "adamw", "adagrad", "sgd", or any
+        ``torch.optim`` class name), a callable returning an optimizer,
+        or an instance of ``torch.optim.Optimizer``.
     optimizer_params : Optional[Dict], optional
         Parameters for the optimizer.
     lr_scheduler : Optional[str], optional
         Learning rate scheduler to use.
-        Supported values: "reduce_lr_on_plateau", "step_lr".
+        Supported values: "reduce_lr_on_plateau", "step_lr",
+        "cosine_annealing", "cosine_annealing_warm_restarts".
     lr_scheduler_params : Optional[Dict], optional
         Parameters for the learning rate scheduler.
     """
+
+    _OPTIMIZER_REGISTRY = {
+        "adam": torch.optim.Adam,
+        "adamw": torch.optim.AdamW,
+        "adagrad": torch.optim.Adagrad,
+        "sgd": torch.optim.SGD,
+    }
+
+    _SCHEDULER_REGISTRY = {
+        "reduce_lr_on_plateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
+        "step_lr": torch.optim.lr_scheduler.StepLR,
+        "cosine_annealing": torch.optim.lr_scheduler.CosineAnnealingLR,
+        "cosine_annealing_warm_restarts": (
+            torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+        ),
+    }
 
     def __init__(
         self,
@@ -303,18 +322,22 @@ class BaseModel(LightningModule):
         Optimizer
             The optimizer instance.
         """
-        if isinstance(self.optimizer, str):
-            if self.optimizer.lower() == "adam":
-                return torch.optim.Adam(self.parameters(), **self.optimizer_params)
-            elif self.optimizer.lower() == "sgd":
-                return torch.optim.SGD(self.parameters(), **self.optimizer_params)
+        if callable(self.optimizer) and not isinstance(self.optimizer, str):
+            return self.optimizer(self.parameters(), **self.optimizer_params)
+        elif isinstance(self.optimizer, str):
+            name = self.optimizer.lower()
+            if name in self._OPTIMIZER_REGISTRY:
+                opt_cls = self._OPTIMIZER_REGISTRY[name]
+            elif hasattr(torch.optim, self.optimizer):
+                opt_cls = getattr(torch.optim, self.optimizer)
             else:
                 raise ValueError(f"Optimizer {self.optimizer} not supported.")
+            return opt_cls(self.parameters(), **self.optimizer_params)
         elif isinstance(self.optimizer, Optimizer):
             return self.optimizer
         else:
             raise ValueError(
-                "Optimizer must be either a string or "
+                "Optimizer must be a string, a callable, or "
                 "an instance of torch.optim.Optimizer."
             )
 
@@ -334,14 +357,10 @@ class BaseModel(LightningModule):
         torch.optim.lr_scheduler._LRScheduler
             The learning rate scheduler instance.
         """
-        if self.lr_scheduler.lower() == "reduce_lr_on_plateau":
-            return torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, **self.lr_scheduler_params
-            )
-        elif self.lr_scheduler.lower() == "step_lr":
-            return torch.optim.lr_scheduler.StepLR(
-                optimizer, **self.lr_scheduler_params
-            )
+        name = self.lr_scheduler.lower()
+        if name in self._SCHEDULER_REGISTRY:
+            sched_cls = self._SCHEDULER_REGISTRY[name]
+            return sched_cls(optimizer, **self.lr_scheduler_params)
         else:
             raise ValueError(f"Scheduler {self.lr_scheduler} not supported.")
 
