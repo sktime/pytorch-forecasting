@@ -33,9 +33,11 @@ class SOFTS_pkg_v2(Base_pkg):
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data.data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
+        )
 
-        return TslibDataModule
+        return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
     def get_test_train_params(cls):
@@ -75,7 +77,7 @@ class SOFTS_pkg_v2(Base_pkg):
                 loss=MAE(),
             ),
             dict(hidden_size=64, dropout=0.0, n_layers=1),
-            dict(datamodule_cfg=dict(context_length=16, prediction_length=4)),
+            dict(datamodule_cfg=dict(max_encoder_length=16, max_prediction_length=4)),
             dict(
                 optimizer="adamw",
                 lr_scheduler="cosine_annealing",
@@ -88,7 +90,7 @@ class SOFTS_pkg_v2(Base_pkg):
             dict(hidden_size=64, n_layers=1, logging_metrics=[SMAPE()]),
         ]
 
-        default_dm_cfg = {"context_length": 8, "prediction_length": 2}
+        default_dm_cfg = {"max_encoder_length": 8, "max_prediction_length": 2}
 
         for param in params:
             current_dm_cfg = param.get("datamodule_cfg", {})

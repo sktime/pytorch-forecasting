@@ -78,12 +78,11 @@ class SOFTS(BaseModel):
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.metadata = metadata or {}
-        self.context_length = self.metadata.get("context_length", 0)
-        self.prediction_length = self.metadata.get("prediction_length", 0)
+        self.context_length = self.metadata.get("max_encoder_length", 0)
+        self.prediction_length = self.metadata.get("max_prediction_length", 0)
 
-        feature_dims = self.metadata.get("n_features", {})
-        self.cont_dim = feature_dims.get("continuous", 0)
-        self.target_dim = feature_dims.get("target", 1)
+        self.cont_dim = self.metadata.get("encoder_cont", 0)
+        self.target_dim = self.metadata.get("target", 1)
 
         self.use_revin = use_revin
         self.n_quantiles = (
@@ -123,14 +122,17 @@ class SOFTS(BaseModel):
         target_indices = []
         current_idx = 0
 
-        if "history_cont" in x and x["history_cont"].size(-1) > 0:
-            available_features.append(x["history_cont"])
-            current_idx += x["history_cont"].size(-1)
+        if "encoder_cont" in x and x["encoder_cont"].size(-1) > 0:
+            available_features.append(x["encoder_cont"])
+            current_idx += x["encoder_cont"].size(-1)
 
-        if "history_target" in x and x["history_target"].size(-1) > 0:
-            n_targets = x["history_target"].size(-1)
+        if "target_past" in x and x["target_past"].size(-1) > 0:
+            target_data = x["target_past"]
+            if target_data.ndim == 2:
+                target_data = target_data.unsqueeze(-1)
+            n_targets = target_data.size(-1)
             target_indices = list(range(current_idx, current_idx + n_targets))
-            available_features.append(x["history_target"])
+            available_features.append(target_data)
 
         input_data = torch.cat(available_features, dim=-1)
 
@@ -203,23 +205,20 @@ class SOFTS(BaseModel):
     def transform_output(
         self,
         y_hat: torch.Tensor | list[torch.Tensor],
-        target_scale: dict[str, torch.Tensor] | None,
+        target_scale: torch.Tensor | dict[str, torch.Tensor] | None,
     ) -> torch.Tensor | list[torch.Tensor]:
         """
         Transform the output of the model back to the original scale.
+
+        Support:
+        - EncoderDecoderTimeSeriesDataModule: target_scale is a scalar tensor
         """
-        if (
-            target_scale is None
-            or "scale" not in target_scale
-            or "center" not in target_scale
-        ):
-            raise ValueError("Cannot transform output without scale and center.")
+        if target_scale is None:
+            return y_hat
 
-        scale = target_scale["scale"]
-        center = target_scale["center"]
-
-        while scale.dim() < y_hat.dim():
-            scale = scale.unsqueeze(0)
-            center = center.unsqueeze(0)
-
-        return y_hat * scale + center
+        # EncoderDecoderTimeSeriesDataModule provides a plain tensor
+        if isinstance(target_scale, torch.Tensor):
+            scale = target_scale
+            while scale.dim() < y_hat.dim():
+                scale = scale.unsqueeze(-1)
+            return y_hat * scale
