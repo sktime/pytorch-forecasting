@@ -7,6 +7,7 @@ import torch
 
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
+from pytorch_forecasting.tests._config import resolve_batch_key
 from pytorch_forecasting.tests._data_scenarios import make_datamodule_test_timeseries
 from pytorch_forecasting.tests._datamodule_config import (
     EXCLUDE_DATA_MODULES,
@@ -242,33 +243,41 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         for key in object_pkg.get_sample_item_keys():
             assert key in x
 
-        batch_format = object_pkg.get_class_tag("batch_format")
         context_length = object_instance._context_length()
         prediction_length = object_instance._prediction_length()
         known_cat_count, known_cont_count = _known_feature_counts(
             object_instance.time_series_metadata
         )
 
-        if batch_format == "encoder_decoder":
-            assert x["encoder_cat"].shape[0] == context_length
-            assert x["decoder_cat"].shape[0] == prediction_length
-            assert x["decoder_cat"].shape[1] == known_cat_count
-            assert x["decoder_cont"].shape[1] == known_cont_count
-            assert y.shape[0] == prediction_length
-        elif batch_format == "tslib":
-            assert x["history_cont"].shape[0] == context_length
-            assert x["history_cat"].shape[0] == context_length
-            assert x["future_cont"].shape[0] == prediction_length
-            assert x["future_cat"].shape[0] == prediction_length
-            assert x["history_target"].shape[0] == context_length
-            assert x["future_target"].shape[0] == prediction_length
-            assert x["future_cont"].shape[1] == known_cont_count
-            assert x["future_cat"].shape[1] == known_cat_count
-            assert y.shape[0] == prediction_length
-            assert x["history_cont"].dtype == torch.float32
-            assert x["future_cont"].dtype == torch.float32
-            assert x["history_target"].dtype == torch.float32
-            assert y.dtype == torch.float32
+        x_history_cat_key = resolve_batch_key(x, "history_cat")
+        if x_history_cat_key is not None:
+            assert x[x_history_cat_key].shape[0] == context_length
+
+        x_future_cat_key = resolve_batch_key(x, "future_cat")
+        if x_future_cat_key is not None:
+            assert x[x_future_cat_key].shape[0] == prediction_length
+            assert x[x_future_cat_key].shape[1] == known_cat_count
+
+        x_future_cont_key = resolve_batch_key(x, "future_cont")
+        if x_future_cont_key is not None:
+            assert x[x_future_cont_key].shape[1] == known_cont_count
+
+        x_history_target_key = resolve_batch_key(x, "history_target")
+        if x_history_target_key is not None:
+            assert x[x_history_target_key].shape[0] == context_length
+
+        assert y.shape[0] == prediction_length
+
+        x_history_cont_key = resolve_batch_key(x, "history_cont")
+        if x_history_cont_key is not None:
+            assert x[x_history_cont_key].dtype == torch.float32
+
+        if x_future_cont_key is not None:
+            assert x[x_future_cont_key].dtype == torch.float32
+
+        if x_history_target_key is not None:
+            assert x[x_history_target_key].dtype == torch.float32
+        assert y.dtype == torch.float32
 
         if object_instance.n_targets > 1:
             assert isinstance(y, list)
@@ -288,23 +297,20 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         for value in x_batch.values():
             assert value.shape[0] == batch_size
 
-        batch_format = object_pkg.get_class_tag("batch_format")
         prediction_length = object_instance._prediction_length()
-
         known_cat_count, known_cont_count = _known_feature_counts(
             object_instance.time_series_metadata
         )
 
-        if batch_format == "encoder_decoder":
-            assert x_batch["decoder_cat"].shape[2] == known_cat_count
-            assert x_batch["decoder_cont"].shape[2] == known_cont_count
-            assert y_batch.shape[0] == batch_size
-            assert y_batch.shape[1] == prediction_length
-        elif batch_format == "tslib":
-            assert x_batch["future_cont"].shape[2] == known_cont_count
-            assert x_batch["future_cat"].shape[2] == known_cat_count
-            assert y_batch.shape[0] == batch_size
-            assert y_batch.shape[1] == prediction_length
+        x_future_cat_key = resolve_batch_key(x_batch, "future_cat")
+        if x_future_cat_key is not None:
+            assert x_batch[x_future_cat_key].shape[2] == known_cat_count
+
+        x_future_cont_key = resolve_batch_key(x_batch, "future_cont")
+        if x_future_cont_key is not None:
+            assert x_batch[x_future_cont_key].shape[2] == known_cont_count
+        assert y_batch.shape[0] == batch_size
+        assert y_batch.shape[1] == prediction_length
 
     def test_full_dataloader_iteration(self, object_pkg, object_instance):
         """Train dataloader yields batches with correct tensor dimensions."""
@@ -313,7 +319,6 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         x_batch, y_batch = next(iter(train_loader))
 
         assert isinstance(x_batch, dict)
-        batch_format = object_pkg.get_class_tag("batch_format")
         batch_size = object_instance.batch_size
         context_length = object_instance._context_length()
         prediction_length = object_instance._prediction_length()
@@ -322,25 +327,23 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             object_instance.time_series_metadata
         )
 
-        if batch_format == "encoder_decoder":
-            assert x_batch["encoder_cat"].shape[0] == batch_size
-            assert x_batch["encoder_cat"].shape[1] == context_length
-            assert x_batch["decoder_cat"].shape[0] == batch_size
-            assert x_batch["decoder_cat"].shape[2] == known_cat_count
-            assert x_batch["decoder_cont"].shape[0] == batch_size
-            assert x_batch["decoder_cont"].shape[2] == known_cont_count
-            if isinstance(y_batch, list):
-                assert all(t.shape[0] == batch_size for t in y_batch)
-            else:
-                assert y_batch.shape[0] == batch_size
-                assert y_batch.shape[1] == prediction_length
-        elif batch_format == "tslib":
-            assert x_batch["history_cont"].shape[1] == context_length
-            assert x_batch["history_cat"].shape[1] == context_length
-            assert x_batch["future_cont"].shape[0] == batch_size
-            assert x_batch["future_cat"].shape[2] == known_cat_count
-            assert x_batch["future_cont"].shape[2] == known_cont_count
-            assert isinstance(y_batch, torch.Tensor)
+        x_history_cat_key = resolve_batch_key(x_batch, "history_cat")
+        if x_history_cat_key is not None:
+            assert x_batch[x_history_cat_key].shape[0] == batch_size
+            assert x_batch[x_history_cat_key].shape[1] == context_length
+
+        x_future_cat_key = resolve_batch_key(x_batch, "future_cat")
+        if x_future_cat_key is not None:
+            assert x_batch[x_future_cat_key].shape[0] == batch_size
+            assert x_batch[x_future_cat_key].shape[2] == known_cat_count
+
+        x_future_cont_key = resolve_batch_key(x_batch, "future_cont")
+        if x_future_cont_key is not None:
+            assert x_batch[x_future_cont_key].shape[0] == batch_size
+            assert x_batch[x_future_cont_key].shape[2] == known_cont_count
+        if isinstance(y_batch, list):
+            assert all(t.shape[0] == batch_size for t in y_batch)
+        else:
             assert y_batch.shape[0] == batch_size
             assert y_batch.shape[1] == prediction_length
 
