@@ -449,6 +449,7 @@ class DeepAR(BaseModel):
             prog_bar=True,
             logger=True,
         )
+        self.log_metrics(y_hat, y, prefix="train")
         return {"loss": loss}
 
     def validation_step(
@@ -484,6 +485,7 @@ class DeepAR(BaseModel):
             prog_bar=True,
             logger=True,
         )
+        self.log_metrics(y_hat, y, prefix="val")
         return {"val_loss": loss}
 
     def test_step(
@@ -519,4 +521,5 @@ class DeepAR(BaseModel):
             prog_bar=True,
             logger=True,
         )
+        self.log_metrics(y_hat, y, prefix="test")
         return {"test_loss": loss}

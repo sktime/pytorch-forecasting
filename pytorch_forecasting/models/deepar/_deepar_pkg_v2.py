@@ -55,12 +55,14 @@ class DeepAR_pkg_v2(Base_pkg):
 
         params = [
             dict(loss=NormalDistributionLoss()),
-            dict(loss=NormalDistributionLoss(), cell_type="GRU"),
-            dict(loss=LogNormalDistributionLoss()),
+            dict(loss=NormalDistributionLoss(), cell_type="GRU", dropout=0.2),
+            dict(loss=LogNormalDistributionLoss(), optimizer="adamw"),
             dict(
                 loss=NormalDistributionLoss(),
                 hidden_size=16,
                 rnn_layers=1,
+                optimizer="sgd",
+                optimizer_params=dict(momentum=0.9),
             ),
         ]
 
