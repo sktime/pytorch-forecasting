@@ -14,8 +14,6 @@ class UniTS_pkg_v2(Base_pkg):
 
     _tags = {
         "info:name": "UniTS",
-        "info:pred_type": ["point"],
-        "info:y_type": ["numeric"],
         "info:compute": 4,
         "authors": ["Muhammad-Rebaal", "gasvn", "sohamukute"],
         "python_dependencies": ["torch"],
