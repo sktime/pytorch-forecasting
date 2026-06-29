@@ -233,18 +233,77 @@ class NegativeBinomialDistributionLoss(DistributionLoss):
 
 
 class LogNormalDistributionLoss(DistributionLoss):
-    """
-    Log-normal loss.
+    """Log-normal loss.
 
     Requirements for original target normalizer:
         * normalized target in log space
+
+    Parameters
+    ----------
+    clamp_min : float, optional
+        Minimum value to clamp targets to before computing log-prob,
+        preventing ``ValueError`` when targets contain zeros.
+        Defaults to 1e-12.
     """
 
     distribution_class = distributions.LogNormal
     distribution_arguments = ["loc", "scale"]
 
+    def __init__(self, clamp_min: float = 1e-12, **kwargs):
+        """Initialize LogNormalDistributionLoss.
+
+        Parameters
+        ----------
+        clamp_min : float, optional
+            Minimum value to clamp targets to before computing log-prob,
+            preventing ``ValueError`` when targets contain zeros.
+            Defaults to 1e-12.
+        **kwargs
+            Additional keyword arguments passed to
+            :class:`DistributionLoss`.
+        """
+        super().__init__(**kwargs)
+        self.clamp_min = clamp_min
+
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.LogNormal:
+        """Map network output to a LogNormal distribution.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Network output tensor with loc and scale parameters.
+
+        Returns
+        -------
+        distributions.LogNormal
+            LogNormal distribution parameterised by ``x``.
+        """
         return self.distribution_class(loc=x[..., 0], scale=x[..., 1])
+
+    def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """Calculate negative log-likelihood.
+
+        Clamps ``y_actual`` to ``self.clamp_min`` to avoid
+        :class:`ValueError` from the ``LogNormal`` distribution when
+        targets contain zeros.
+
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Network output.
+        y_actual : torch.Tensor
+            Actual values.
+
+        Returns
+        -------
+        torch.Tensor
+            Metric value on which backpropagation can be applied.
+        """
+        distribution = self.map_x_to_distribution(y_pred)
+        # LogNormal support is (0, inf); clamp to avoid validation error
+        y_actual = y_actual.clamp(min=self.clamp_min)
+        loss = -distribution.log_prob(y_actual)
+        return loss
 
     def rescale_parameters(
         self,
