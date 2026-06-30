@@ -56,13 +56,14 @@ to maximize flexibility and modularity:
 * **Package Layer (P)** — ``pkg`` wrapper
   (e.g., :py:class:`~models.temporal_fusion_transformer._tft_pkg_v2.TFT_pkg_v2`)
 
-  The P layer is an **optional** high-level convenience wrapper. It manages
+  The P layer is a high-level convenience wrapper. It manages
   model, datamodule, and trainer configurations in one place and exposes a
   simple ``fit()`` / ``predict()`` API. Using the ``pkg`` class is **not**
-  the only way to use the library — you can always instantiate the model
-  and datamodule manually and use the standard PyTorch Lightning
-  ``Trainer`` workflow. The ``pkg`` layer simply makes common workflows
-  easier. See :ref:`tutorials <tutorials>` for examples of both approaches.
+  the only way for users to interact with the library — you can always
+  instantiate the model and datamodule manually and use the standard
+  PyTorch Lightning ``Trainer`` workflow. The ``pkg`` layer simply makes
+  common workflows easier. See :ref:`tutorials <tutorials>` for examples
+  of both approaches.
 
   See the base class API:
   :py:class:`~base._base_pkg.Base_pkg`.
