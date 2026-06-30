@@ -164,4 +164,4 @@ class MyDataModule(BaseTimeSeriesDataModule):
 
     # Optional overrides:
     # - _preprocess_data(series_idx) — only if base tensorization is insufficient
-    # - _train_shuffle() — return False to disable training shuffle
+    # - train_shuffle (property) — return False to disable training shuffle

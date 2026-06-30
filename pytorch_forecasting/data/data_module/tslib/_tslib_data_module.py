@@ -130,7 +130,8 @@ class TslibDataModule(BaseTimeSeriesDataModule):
     def _prediction_length(self) -> int:
         return self.prediction_length
 
-    def _train_shuffle(self) -> bool:
+    @property
+    def train_shuffle(self) -> bool:
         """Return whether to shuffle at the training dataloader."""
         return self.shuffle
 

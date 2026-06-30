@@ -252,7 +252,8 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             Collated ``x`` dict and ``y`` (tensor or list of tensors for multivariate).
         """
 
-    def _train_shuffle(self) -> bool:
+    @property
+    def train_shuffle(self) -> bool:
         """Return whether to shuffle at the training dataloader."""
         return True
 
@@ -324,7 +325,7 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            shuffle=self._train_shuffle(),
+            shuffle=self.train_shuffle,
             collate_fn=self._get_collate_fn(),
         )
 
