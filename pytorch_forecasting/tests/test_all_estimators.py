@@ -179,7 +179,7 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
         compatible_metric_types = []
         for pred_type in pred_types:
             for y_type in y_types:
-                compatible_metric_types.extend(
+                compatible_metric_types.append(
                     metric_type_mappings[(pred_type, y_type)]
                 )
         metric_pkgs = all_objects(
@@ -251,6 +251,9 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
             )
 
         else:
+            print(
+                f"No compatible loss packages found for {obj_meta.name()}", flush=True
+            )
             all_train_kwargs = obj_meta.get_test_train_params()
             rg = range(len(all_train_kwargs))
             train_kwargs_names = [str(i) for i in rg]
