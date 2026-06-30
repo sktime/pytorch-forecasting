@@ -30,3 +30,16 @@ class BetaDistributionLoss_pkg(_BasePtMetric):
         Returns a TorchNormalizer instance for rescaling parameters.
         """
         return TorchNormalizer(transformation="logit")
+
+    @classmethod
+    def get_test_train_params(cls):
+        from pytorch_forecasting.data.encoders import GroupNormalizer
+
+        return {
+            "clip_target": True,
+            "data_loader_kwargs": {
+                "target_normalizer": GroupNormalizer(
+                    groups=["agency", "sku"], transformation="logit"
+                )
+            },
+        }

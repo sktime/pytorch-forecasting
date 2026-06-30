@@ -34,6 +34,20 @@ class MQF2DistributionLoss_pkg(_BasePtMetric):
         return TorchNormalizer()
 
     @classmethod
+    def get_test_train_params(cls):
+        from pytorch_forecasting.data.encoders import GroupNormalizer
+
+        return {
+            "clip_target": True,
+            "data_loader_kwargs": {
+                "target_normalizer": GroupNormalizer(
+                    groups=["agency", "sku"], center=False, transformation="log1p"
+                )
+            },
+            "trainer_kwargs": {"accelerator": "cpu"},
+        }
+
+    @classmethod
     def get_metric_test_params(cls):
         """
         Returns test parameters for the MQF2 distribution loss metric.

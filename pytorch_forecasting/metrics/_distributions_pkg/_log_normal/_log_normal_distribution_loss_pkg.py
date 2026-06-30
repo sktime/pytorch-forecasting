@@ -34,6 +34,19 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
         return TorchNormalizer(transformation="log")
 
     @classmethod
+    def get_test_train_params(cls):
+        from pytorch_forecasting.data.encoders import GroupNormalizer
+
+        return {
+            "clip_target": True,
+            "data_loader_kwargs": {
+                "target_normalizer": GroupNormalizer(
+                    groups=["agency", "sku"], transformation="log1p"
+                )
+            },
+        }
+
+    @classmethod
     def prepare_test_inputs(cls, test_case):
         """Prepare inputs for log normal distribution tests."""
         y_pred = test_case["y_pred"]
