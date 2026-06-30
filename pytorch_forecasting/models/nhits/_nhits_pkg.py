@@ -1,5 +1,6 @@
 """NHiTS package container."""
 
+from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
@@ -84,11 +85,15 @@ class NHiTS_pkg(_BasePtForecaster):
             dataloaders_fixed_window_without_covariates,
             make_dataloaders,
         )
-        from pytorch_forecasting.tests._loss_mapping import DISTR_LOSSES_NUMERIC
 
+        distr_losses_numeric = all_objects(
+            "metric",
+            filter_tags={"metric_type": "distribution"},
+            return_names=False,
+        )
         distr_losses = tuple(
             type(l)
-            for l in DISTR_LOSSES_NUMERIC
+            for l in distr_losses_numeric
             if not isinstance(l, MultivariateNormalDistributionLoss)
             # use dataloaders without covariates as default settings of nhits
             # (hidden_size = 512) is not compatible with
