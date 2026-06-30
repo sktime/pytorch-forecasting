@@ -388,9 +388,6 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
 
     def test_multivariate_target(self, object_pkg, object_instance):
         """Multivariate targets are returned as a list of tensors."""
-        if not object_pkg.get_class_tag("capability:multivariate_target", False):
-            pytest.skip("Datamodule does not support multivariate targets.")
-
         dm_class = object_pkg.get_cls()
         df = pd.DataFrame(
             {
@@ -460,9 +457,6 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
 
     def test_with_static_features(self, object_pkg, object_instance):
         """Datamodule exposes static features in metadata and samples when configured"""
-        if not object_pkg.get_class_tag("capability:static_features", False):
-            pytest.skip("Datamodule does not support static features.")
-
         batch_format = object_pkg.get_class_tag("batch_format")
         dm_class = object_pkg.get_cls()
 

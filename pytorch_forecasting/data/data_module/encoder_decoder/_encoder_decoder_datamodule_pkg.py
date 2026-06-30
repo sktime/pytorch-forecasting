@@ -12,8 +12,6 @@ class EncoderDecoderDataModule_pkg(_BasePtDataModule):
         "object_type": "datamodule_v2",
         "batch_format": "encoder_decoder",
         "info:name": "EncoderDecoderTimeSeriesDataModule",
-        "capability:static_features": True,
-        "capability:multivariate_target": True,
     }
 
     @classmethod

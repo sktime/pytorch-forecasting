@@ -109,8 +109,6 @@ The package file serves to register your custom Data Module with the PyTorch For
 Dictionary defining framework integration rules. Tags are inherited from parent class if they are not set.
 
 - `info:name` (human-readable model name matching the class)
-- `capability:static_features` (bool: whether data module supports static features)
-- `capability:multivariate_target` (bool: whether data module supports multivariate targets)
 - `batch_format` (str: labels the batch layout, e.g. `"encoder_decoder"` or `"tslib"` — used by tests to select format-specific assertions)
 
 

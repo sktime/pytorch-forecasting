@@ -12,8 +12,6 @@ class TslibDataModule_pkg(_BasePtDataModule):
         "object_type": "datamodule_v2",
         "batch_format": "tslib",
         "info:name": "TslibDataModule",
-        "capability:static_features": True,
-        "capability:multivariate_target": True,
     }
 
     @classmethod

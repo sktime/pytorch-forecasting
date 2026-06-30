@@ -50,11 +50,6 @@ class MyDataModule_pkg(_BasePtDataModule):
         "batch_format": "encoder_decoder",
         # Human-readable name; should match the Lightning datamodule class name.
         "info:name": "MyDataModule",
-        # Whether tests should run static-feature scenarios
-        # (adds static cols to D1 data).
-        "capability:static_features": False,
-        # Whether tests should run multivariate-target scenarios.
-        "capability:multivariate_target": False,
     }
 
     # implement this — mandatory
