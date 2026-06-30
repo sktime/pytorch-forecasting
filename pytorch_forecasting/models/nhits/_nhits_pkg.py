@@ -71,12 +71,8 @@ class NHiTS_pkg(_BasePtForecaster):
         data_loader_kwargs = params.get("data_loader_kwargs", {})
         clip_target = params.get("clip_target", False)
 
-        import inspect
-
         from pytorch_forecasting.metrics import (
             LogNormalDistributionLoss,
-            MQF2DistributionLoss,
-            MultivariateNormalDistributionLoss,
             NegativeBinomialDistributionLoss,
             TweedieLoss,
         )
@@ -86,19 +82,15 @@ class NHiTS_pkg(_BasePtForecaster):
             make_dataloaders,
         )
 
-        distr_losses_numeric = all_objects(
-            "metric",
+        distr_loss_pkgs = all_objects(
+            object_types="metric",
             filter_tags={"metric_type": "distribution"},
             return_names=False,
         )
         distr_losses = tuple(
-            type(l)
-            for l in distr_losses_numeric
-            if not isinstance(l, MultivariateNormalDistributionLoss)
-            # use dataloaders without covariates as default settings of nhits
-            # (hidden_size = 512) is not compatible with
-            # MultivariateNormalDistributionLoss causing Cholesky
-            # decomposition to fail during loss computation.
+            pkg.get_cls()
+            for pkg in distr_loss_pkgs
+            if pkg.get_cls().__name__ != "MultivariateNormalDistributionLoss"
         )
 
         if isinstance(loss, distr_losses):
