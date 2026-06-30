@@ -34,7 +34,7 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
         return TorchNormalizer(transformation="log")
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_default_params(cls):
         from pytorch_forecasting.data.encoders import GroupNormalizer
 
         return {

@@ -221,7 +221,7 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
         for loss_pkg in compatible_loss_pkgs:
             loss = loss_pkg.get_cls()()
             loss_name = loss.__class__.__name__
-            loss_params = deepcopy(loss_pkg.get_test_train_params())
+            loss_params = deepcopy(loss_pkg.get_default_params())
             loss_params["loss"] = loss
 
             for i, base_params in enumerate(base_params_list):
@@ -251,9 +251,6 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
             )
 
         else:
-            print(
-                f"No compatible loss packages found for {obj_meta.name()}", flush=True
-            )
             all_train_kwargs = obj_meta.get_test_train_params()
             rg = range(len(all_train_kwargs))
             train_kwargs_names = [str(i) for i in rg]

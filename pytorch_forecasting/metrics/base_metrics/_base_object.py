@@ -80,7 +80,7 @@ class _BasePtMetric(_BaseObject):
         return TorchNormalizer()
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_default_params(cls):
         """Return extra keyword arguments for model integration tests.
 
         Returns
