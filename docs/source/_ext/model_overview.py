@@ -133,9 +133,26 @@ def _get_model_rows():
 
         version = _object_type_to_version(tags.get("object_type"))
 
+        # Extract compatible datamodules dynamically
+        dm_refs = []
+        if version == "v2":
+            get_dm = getattr(klass, "get_datamodule_cls", None)
+            dm_cls = get_dm()
+            if not isinstance(dm_cls, (list, tuple)):
+                dm_cls = [dm_cls] if dm_cls is not None else []
+            # elif dm_cls is not None:
+            #     dm_names = [getattr(dm_cls, "__name__", str(dm_cls))]
+            for c in dm_cls:
+                m = c.__module__
+                q = c.__qualname__
+                display = c.__name__
+                dm_ref = f":py:class:`{display} <{m}.{q}>`"
+                dm_refs.append(dm_ref)
+
         row = {
             "Name": ref,
             "_version": version,
+            "Compatible Data Modules": ", ".join(dm_refs) if dm_refs else "",
             "Authors": ", ".join(tags.get("authors") or []),
             "Covariates": "x" if tags.get("capability:exogenous") else "",
             "Multiple targets": "x" if tags.get("capability:multivariate") else "",
@@ -154,24 +171,10 @@ def _get_model_rows():
     return rows
 
 
-def _build_rst_table(rows):
+def _build_rst_table(rows, headers):
     """Build an RST grid table from a list of row dicts."""
     if not rows:
         return ["*No models found in registry.*", ""]
-
-    headers = [
-        "Name",
-        "Authors",
-        "Covariates",
-        "Multiple targets",
-        "Regression",
-        "Classification",
-        "Probabilistic",
-        "Prediction intervals",
-        "Flexible History Length",
-        "Cold Start",
-        "Compute (1-5)",
-    ]
 
     # Compute column widths
     col_widths = [len(h) for h in headers]
@@ -211,14 +214,28 @@ def _build_versioned_rst(all_rows, version: str = "v1"):
     all_rows:
         Full list of row dicts as returned by :func:`_get_model_rows`.
     """
+    base_headers = [
+        "Authors",
+        "Covariates",
+        "Multiple targets",
+        "Regression",
+        "Classification",
+        "Probabilistic",
+        "Prediction intervals",
+        "Flexible History Length",
+        "Cold Start",
+        "Compute (1-5)",
+    ]
+
     if version == "v1":
         v_rows = [r for r in all_rows if r.get("_version") == "v1"]
+        headers = ["Name"] + base_headers
     elif version == "v2":
         v_rows = [r for r in all_rows if r.get("_version") == "v2"]
-
+        headers = ["Name", "Compatible Data Modules"] + base_headers
     lines = []
     if v_rows:
-        lines.extend(_build_rst_table(v_rows))
+        lines.extend(_build_rst_table(v_rows, headers))
     else:
         lines.append(f"*No {version} models found in registry.*")
         lines.append("")
