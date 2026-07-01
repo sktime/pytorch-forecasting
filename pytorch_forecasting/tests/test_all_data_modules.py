@@ -60,6 +60,30 @@ class DataModuleFixtureGenerator(BaseFixtureGenerator):
     fixture_sequence = ["object_pkg", "object_instance"]
     indirect_fixtures = []
 
+    @staticmethod
+    def is_excluded(test_name, obj_meta, param_name=None):
+        """Shorthand to check whether test test_name is excluded for datamodule obj."""
+
+        # global excluded tests
+        if test_name in EXCLUDED_TESTS.get(obj_meta.__name__, []):
+            return True
+
+        # package level excluded tests
+        if obj_meta.__name__.endswith("_pkg") or obj_meta.__name__.endswith("_pkg_v2"):
+            excl_tag = obj_meta.get_class_tag("tests:skip_by_name", [])
+        else:
+            excl_tag = obj_meta.pkg.get_class_tag("tests:skip_by_name", [])
+        if excl_tag is None:
+            excl_tag = []
+        cond = test_name in excl_tag
+
+        # indivisual parameterized test exclusion
+        if param_name is not None:
+            full_test_name = f"{test_name}[{obj_meta.__name__}-{param_name}]"
+            if full_test_name in excl_tag:
+                return True
+        return cond
+
     def _generate_object_instance(self, test_name, **kwargs):
         if "object_pkg" not in kwargs:
             return [], []
@@ -67,6 +91,9 @@ class DataModuleFixtureGenerator(BaseFixtureGenerator):
         obj_meta = kwargs["object_pkg"]
         dm_class = obj_meta.get_cls()
         all_params = obj_meta.get_datamodule_test_params()
+
+        if self.is_excluded(test_name, obj_meta):
+            return [], []
 
         if not all_params:
             ts = make_datamodule_test_timeseries()
@@ -78,6 +105,8 @@ class DataModuleFixtureGenerator(BaseFixtureGenerator):
             params_copy = dict(params)
             ts_kwargs = params_copy.pop("timeseries_kwargs", {})
             ts = make_datamodule_test_timeseries(**ts_kwargs)
+            if self.is_excluded(test_name, obj_meta, str(i)):
+                continue
             instances.append(dm_class(time_series_dataset=ts, **params_copy))
             names.append(str(i))
 

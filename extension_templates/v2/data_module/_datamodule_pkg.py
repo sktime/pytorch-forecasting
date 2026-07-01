@@ -50,6 +50,8 @@ class MyDataModule_pkg(_BasePtDataModule):
         "batch_format": "encoder_decoder",
         # Human-readable name; should match the Lightning datamodule class name.
         "info:name": "MyDataModule",
+        # List of test names to skip for this datamodule (if any).
+        "tests:skip_by_name": [],
     }
 
     # implement this — mandatory

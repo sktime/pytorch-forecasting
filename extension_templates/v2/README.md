@@ -110,6 +110,7 @@ Dictionary defining framework integration rules. Tags are inherited from parent 
 
 - `info:name` (human-readable model name matching the class)
 - `batch_format` (str: labels the batch layout, e.g. `"encoder_decoder"` or `"tslib"` — used by tests to select format-specific assertions)
+- `tests:skip_by_name` (list of str: names of tests to skip for this data module)
 
 
 ### Dataset (`_dataset.py`)
