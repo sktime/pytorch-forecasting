@@ -416,7 +416,6 @@ def test_timeseries_categorical_encoding():
         target="target",
         group=["group"],
         cat=["cat_feature", "group"],
-        categorical_encoders="auto",
     )
 
     # red, blue, green + unknown class
