@@ -425,3 +425,33 @@ def test_timeseries_categorical_encoding():
     item = ts[0]
     # Assert D1 emits purely tensors, no strings!
     assert isinstance(item["x"], torch.Tensor)
+
+
+def test_custom_sklearn_encoders():
+    """Test injection of standard scikit-learn encoders instead of NaNLabelEncoder."""
+    from sklearn.preprocessing import LabelEncoder
+
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=4, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0],
+            "group": ["Grp1", "Grp1", "Grp2", "Grp2"],
+            "cat_feature": ["red", "blue", "red", "green"],
+        }
+    )
+
+    custom_encoder = LabelEncoder()
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=["cat_feature", "group"],
+        categorical_encoders={"cat_feature": custom_encoder},
+    )
+
+    # LabelEncoder encodes strictly seen classes (3 classes: blue, green, red)
+    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == 3
+
+    item = ts[0]
+    assert isinstance(item["x"], torch.Tensor)

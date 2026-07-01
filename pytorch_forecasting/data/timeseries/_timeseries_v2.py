@@ -4,6 +4,7 @@ Timeseries dataset - v2 prototype.
 Beta version, experimental - use for testing but not in production.
 """
 
+from typing import Any
 from warnings import warn
 
 import numpy as np
@@ -74,13 +75,12 @@ class TimeSeries(Dataset):
     static : list of str, optional, default = all variables not in known, unknown
         list of variables that do not change over time,
         list may also contain list of str, which are then grouped together.
-    categorical_encoders : dict[str, NaNLabelEncoder] or str, default="auto"
-        Mapping of categorical column names to encoder objects.
-        Only ``NaNLabelEncoder`` is supported.
-        If ``"auto"`` (default), a ``NaNLabelEncoder(add_nan=True)`` is
+    categorical_encoders : dict[str, Any] | None, default=None
+        Mapping of categorical column names to encoder objects .
+        If ``None`` (default), a ``NaNLabelEncoder(add_nan=True)`` is
         created and fitted for every column in ``cat``.
         If a dict is provided, columns in ``cat`` missing from the dict
-        get a default ``NaNLabelEncoder(add_nan=True)`` with a warning.
+        get a default ``NaNLabelEncoder(add_nan=True)`` without warning.
         Pass pre-fitted encoders from training to ensure consistent
         encoding during prediction.
     """
@@ -98,7 +98,7 @@ class TimeSeries(Dataset):
         known: list[str | list[str]] | None = None,
         unknown: list[str | list[str]] | None = None,
         static: list[str | list[str]] | None = None,
-        categorical_encoders: dict | str = "auto",
+        categorical_encoders: dict[str, Any] | None = None,
     ):
         self.data = data
         self.data_future = data_future
@@ -136,23 +136,10 @@ class TimeSeries(Dataset):
         self._unknown = _coerce_to_list(unknown)
         self._static = _coerce_to_list(static)
 
-        if (
-            isinstance(self.categorical_encoders, str)
-            and self.categorical_encoders == "auto"
-        ):
-            self._categorical_encoders = {
-                col: NaNLabelEncoder(add_nan=True) for col in self._cat
-            }
-        else:
-            self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
-            for col in self._cat:
-                if col not in self._categorical_encoders:
-                    warn(
-                        f"No encoder provided for categorical column '{col}'. "
-                        f"Using default NaNLabelEncoder(add_nan=True).",
-                        UserWarning,
-                    )
-                    self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
+        self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
+        for col in self._cat:
+            if col not in self._categorical_encoders:
+                self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
 
         # Fit and transform categorical columns to integer codes
         for col, encoder in self._categorical_encoders.items():

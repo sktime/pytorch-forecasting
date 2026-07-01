@@ -62,12 +62,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         Union[NORMALIZER, str, List[NORMALIZER], Tuple[NORMALIZER], None],
          default="auto"
         Normalizer for the target variable. If "auto", uses `RobustScaler`.
-
-    categorical_encoders : dict[str, Any] | str | None, default="auto"
-        Categorical encoders. If ``"auto"`` (default), pulled from the D1
-        ``TimeSeries`` dataset during ``setup()``. D2 does NOT perform
-        encoding — D1 handles all fit+transform. This param exists for
-        encoder retrieval via ``get_categorical_encoders()``.
     scalers :
     Optional[Dict[str, Union[StandardScaler, RobustScaler,
                         TorchNormalizer, EncoderNormalizer]]], default=None
@@ -100,7 +94,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         | list[NORMALIZER]
         | tuple[NORMALIZER]
         | None = "auto",
-        categorical_encoders: dict[str, Any] | str | None = "auto",
         scalers: dict[
             str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
         ]
@@ -122,7 +115,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
         self.target_normalizer = target_normalizer
-        self.categorical_encoders = categorical_encoders
         self.scalers = scalers
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -152,15 +144,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.time_series_metadata = time_series_dataset.get_metadata()
         self._min_prediction_length = min_prediction_length or max_prediction_length
         self._min_encoder_length = min_encoder_length or max_encoder_length
-        # handle defaults and derived attributes
-        if (
-            isinstance(categorical_encoders, str)
-            and categorical_encoders.lower() == "auto"
-        ):
-            # Will be initialized during _prepare_metadata / setup
-            self._categorical_encoders = "auto"
-        else:
-            self._categorical_encoders = _coerce_to_dict(categorical_encoders)
         self._scalers = _coerce_to_dict(scalers)
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
@@ -276,18 +259,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         return metadata
 
-    def _resolve_categorical_encoders(self):
-        """Resolve categorical encoders from D1 or user config.
-
-        If categorical_encoders="auto" (the default), this method pulls
-        the already-fitted encoders from the D1 TimeSeries dataset.
-        This ensures the same mappings are used during prediction.
-        """
-        if self._categorical_encoders == "auto":
-            self._categorical_encoders = (
-                self.time_series_dataset._categorical_encoders.copy()
-            )
-
     def get_categorical_encoders(self) -> dict:
         """Return fitted categorical encoders from the D1 layer.
 
@@ -303,11 +274,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         Returns
         -------
         dict
-            Column names to fitted ``NaNLabelEncoder`` objects.
+            Column names to fitted encoder objects.
         """
-        if self._categorical_encoders == "auto":
-            self._resolve_categorical_encoders()
-        return self._categorical_encoders
+        return self.time_series_dataset._categorical_encoders.copy()
 
     @property
     def metadata(self):
@@ -685,7 +654,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             - ``None`` : Prepares ``fit`` datasets.
         """
         total_series = len(self.time_series_dataset)
-        self._resolve_categorical_encoders()
         self._split_indices = torch.randperm(total_series)
 
         self._train_size = int(self.train_val_test_split[0] * total_series)
