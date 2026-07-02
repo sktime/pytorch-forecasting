@@ -185,23 +185,6 @@ class SOFTS(BaseModel):
 
         return {"prediction": out}
 
-    def predict_step(
-        self,
-        batch: tuple[dict[str, torch.Tensor]],
-        batch_idx: int,
-        dataloader_idx: int = 0,
-    ) -> torch.Tensor:
-        """
-        Prediction step for the model.
-        """
-        x, _ = batch
-        y_hat = self(x)
-
-        if "target" in x:
-            y_hat["target"] = x["target"]
-
-        return y_hat
-
     def transform_output(
         self,
         y_hat: torch.Tensor | list[torch.Tensor],
