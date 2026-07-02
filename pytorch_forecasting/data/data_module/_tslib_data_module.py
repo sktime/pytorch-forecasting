@@ -232,10 +232,7 @@ class _TslibDataset(Dataset):
         )
 
         y = processed_data["target"][future_indices]
-        if self.data_module.n_targets > 1:
-            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
-        else:
-            y = y.squeeze(-1)
+        y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
 
         return x, (y, future_weight)
 
@@ -892,14 +889,12 @@ class TslibDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        if isinstance(batch[0][1][0], list | tuple):
-            num_targets = len(batch[0][1][0])
-            y_batch = []
-            for i in range(num_targets):
-                target_tensors = [sample_y[0][i] for _, sample_y in batch]
-                stacked_target = torch.stack(target_tensors)
-                y_batch.append(stacked_target)
-        else:
-            y_batch = torch.stack([sample_y[0] for _, sample_y in batch])
+        num_targets = len(batch[0][1][0])
+        y_batch = []
+        for i in range(num_targets):
+            target_tensors = [sample_y[0][i] for _, sample_y in batch]
+            stacked_target = torch.stack(target_tensors)
+            y_batch.append(stacked_target)
+
         weight_batch = torch.stack([sample_y[1] for _, sample_y in batch])
         return x_batch, (y_batch, weight_batch)

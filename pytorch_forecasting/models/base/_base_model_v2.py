@@ -223,89 +223,50 @@ class BaseModel(LightningModule):
             out = self.loss.to_quantiles(out["prediction"])
         return out
 
-    def training_step(
-        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
-    ) -> STEP_OUTPUT:
+    def _coerce_targets_for_loss(self, y):
         """
-        Training step for the model.
-
-        Parameters
-        ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
-            Batch of data containing input and target tensors.
-        batch_idx : int
-            Index of the batch.
-
-        Returns
-        -------
-        STEP_OUTPUT
-            Dictionary containing the loss and other metrics.
+        Coerce target outputs to match loss function expectations.
+        The DataModule always returns a list of tensors (one per target),
+        but legacy metrics/losses expect a single tensor for single-target tasks.
         """
+        y_targets, y_weights = y
+        if isinstance(y_targets, list) and len(y_targets) == 1:
+            return y_targets[0], y_weights
+        return y_targets, y_weights
+
+    def _step(self, batch, batch_idx):
+        """Shared step logic for train, val, and test."""
         x, y = batch
+        y = self._coerce_targets_for_loss(y)
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
         loss = self.loss(y_hat, y)
+        return {"loss": loss, "y_hat": y_hat, "y": y}
+
+    def training_step(self, batch, batch_idx):
+        step_out = self._step(batch, batch_idx)
+
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train_loss", step_out["loss"], on_step=True, on_epoch=True, prog_bar=True
         )
-        self.log_metrics(y_hat, y, prefix="train")
-        return {"loss": loss}
+        self.log_metrics(step_out["y_hat"], step_out["y"], prefix="train")
+        return step_out["loss"]
 
-    def validation_step(
-        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
-    ) -> STEP_OUTPUT:
-        """
-        Validation step for the model.
+    def validation_step(self, batch, batch_idx):
+        step_out = self._step(batch, batch_idx)
 
-        Parameters
-        ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
-            Batch of data containing input and target tensors.
-        batch_idx : int
-            Index of the batch.
-
-        Returns
-        -------
-        STEP_OUTPUT
-            Dictionary containing the loss and other metrics.
-        """
-        x, y = batch
-        y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
         self.log(
-            "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            "val_loss", step_out["loss"], on_step=False, on_epoch=True, prog_bar=True
         )
-        self.log_metrics(y_hat, y, prefix="val")
-        return {"val_loss": loss}
+        self.log_metrics(step_out["y_hat"], step_out["y"], prefix="val")
+        return step_out
 
-    def test_step(
-        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
-    ) -> STEP_OUTPUT:
-        """
-        Test step for the model.
+    def test_step(self, batch, batch_idx):
+        step_out = self._step(batch, batch_idx)
 
-        Parameters
-        ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
-            Batch of data containing input and target tensors.
-        batch_idx : int
-            Index of the batch.
-
-        Returns
-        -------
-        STEP_OUTPUT
-            Dictionary containing the loss and other metrics.
-        """
-        x, y = batch
-        y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
-        self.log(
-            "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
-        )
-        self.log_metrics(y_hat, y, prefix="test")
-        return {"test_loss": loss}
+        self.log("test_loss", step_out["loss"], on_step=False, on_epoch=True)
+        self.log_metrics(step_out["y_hat"], step_out["y"], prefix="test")
+        return step_out
 
     def predict_step(
         self,

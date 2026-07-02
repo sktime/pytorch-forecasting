@@ -460,12 +460,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 target_scale_vec,
             )
 
-            if self.data_module.n_targets > 1:
-                target_scale = [
-                    target_scale_vec[i] for i in range(self.data_module.n_targets)
-                ]
-            else:
-                target_scale = target_scale_vec.squeeze(0)
+            target_scale = [
+                target_scale_vec[i] for i in range(self.data_module.n_targets)
+            ]
 
             encoder_mask = (
                 data["time_mask"][encoder_indices]
@@ -586,10 +583,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 else torch.ones(pred_length, dtype=torch.float32)
             )
 
-            if self.data_module.n_targets > 1:
-                y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
-            else:
-                y = y.squeeze(-1)
+            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
 
             return x, (y, decoder_weights)
 
@@ -761,14 +755,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "encoder_mask": torch.stack([x["encoder_mask"] for x, _ in batch]),
             "decoder_mask": torch.stack([x["decoder_mask"] for x, _ in batch]),
         }
-        if isinstance(batch[0][0]["target_scale"], list | tuple):
-            num_targets = len(batch[0][0]["target_scale"])
-            target_scale = [
-                torch.stack([x["target_scale"][i] for x, _ in batch])
-                for i in range(num_targets)
-            ]
-        else:
-            target_scale = torch.stack([x["target_scale"] for x, _ in batch])
+
+        num_targets = len(batch[0][0]["target_scale"])
+        target_scale = [
+            torch.stack([x["target_scale"][i] for x, _ in batch])
+            for i in range(num_targets)
+        ]
 
         x_batch["target_scale"] = target_scale
 
@@ -780,15 +772,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        if isinstance(batch[0][1][0], list | tuple):
-            num_targets = len(batch[0][1][0])
-            y_batch = []
-            for i in range(num_targets):
-                target_tensors = [sample_y[0][i] for _, sample_y in batch]
-                stacked_target = torch.stack(target_tensors)
-                y_batch.append(stacked_target)
-        else:
-            y_batch = torch.stack([y[0] for _, y in batch])
+        num_targets = len(batch[0][1][0])
+        y_batch = []
+        for i in range(num_targets):
+            target_tensors = [sample_y[0][i] for _, sample_y in batch]
+            stacked_target = torch.stack(target_tensors)
+            y_batch.append(stacked_target)
 
         weight_batch = torch.stack([sample_y[1] for _, sample_y in batch])
 

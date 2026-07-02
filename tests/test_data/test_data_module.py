@@ -238,7 +238,7 @@ def test_processed_dataset(data_module):
 
     assert x["decoder_cat"].shape[1] == known_cat_count
     assert x["decoder_cont"].shape[1] == known_cont_count
-    assert y[0].shape[0] == data_module.max_prediction_length
+    assert y[0][0].shape[0] == data_module.max_prediction_length
 
 
 def test_collate_fn(data_module):
@@ -253,7 +253,10 @@ def test_collate_fn(data_module):
     x_batch, y_batch = data_module.collate_fn(batch)
 
     for key in x_batch:
-        assert x_batch[key].shape[0] == batch_size
+        if isinstance(x_batch[key], list):
+            assert x_batch[key][0].shape[0] == batch_size
+        else:
+            assert x_batch[key].shape[0] == batch_size
 
     metadata = data_module.time_series_metadata
     known_cat_count = len(
@@ -276,8 +279,8 @@ def test_collate_fn(data_module):
 
     assert x_batch["decoder_cat"].shape[2] == known_cat_count
     assert x_batch["decoder_cont"].shape[2] == known_cont_count
-    assert y_batch[0].shape[0] == batch_size
-    assert y_batch[0].shape[1] == data_module.max_prediction_length
+    assert y_batch[0][0].shape[0] == batch_size
+    assert y_batch[0][0].shape[1] == data_module.max_prediction_length
 
 
 def test_full_dataloader_iteration(data_module):
@@ -316,8 +319,8 @@ def test_full_dataloader_iteration(data_module):
     assert x_batch["decoder_cat"].shape[2] == known_cat_count
     assert x_batch["decoder_cont"].shape[0] == data_module.batch_size
     assert x_batch["decoder_cont"].shape[2] == known_cont_count
-    assert y_batch[0].shape[0] == data_module.batch_size
-    assert y_batch[0].shape[1] == data_module.max_prediction_length
+    assert y_batch[0][0].shape[0] == data_module.batch_size
+    assert y_batch[0][0].shape[1] == data_module.max_prediction_length
 
 
 def test_variable_encoder_lengths(sample_timeseries_data):
