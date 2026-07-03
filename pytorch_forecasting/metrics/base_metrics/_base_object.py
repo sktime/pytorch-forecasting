@@ -81,7 +81,8 @@ class _BasePtMetric(_BaseObject):
 
     @classmethod
     def get_default_params(cls):
-        """Return extra keyword arguments for model integration tests.
+        """Return extra keyword arguments used by the test-framework
+        for the fixtures of tests for models.
 
         Returns
         -------

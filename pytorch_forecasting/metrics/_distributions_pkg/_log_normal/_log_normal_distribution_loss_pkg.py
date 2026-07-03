@@ -35,6 +35,15 @@ class LogNormalDistributionLoss_pkg(_BasePtMetric):
 
     @classmethod
     def get_default_params(cls):
+        """Return extra keyword arguments used by the test-framework
+        for the fixtures of tests for models.
+
+        Returns
+        -------
+        dict
+            Trainer, dataloader, or data-preparation kwargs for integration tests.
+        """
+
         from pytorch_forecasting.data.encoders import GroupNormalizer
 
         return {
