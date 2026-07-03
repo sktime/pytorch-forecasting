@@ -387,11 +387,14 @@ def make_datamodule_test_timeseries(**kwargs):
         Random seed for reproducibility.
     include_static : bool, default=True
         Whether to include a static continuous feature column.
+    include_static_categorical : bool, default=False
+        Whether to include a static categorical feature column.
     """
     n_series = kwargs.get("n_series", kwargs.get("num_groups", 10))
     seq_length = kwargs.get("seq_length", kwargs.get("n_timesteps", 100))
     seed = kwargs.get("seed", None)
     include_static = kwargs.get("include_static", True)
+    include_static_categorical = kwargs.get("include_static_categorical", False)
 
     if seed is not None:
         np.random.seed(seed)
@@ -399,6 +402,7 @@ def make_datamodule_test_timeseries(**kwargs):
     rows = []
     for series_id in range(n_series):
         static_value = series_id * 2.5
+        static_cat_value = series_id % 2
         for time_idx in range(seq_length):
             target = (
                 10
@@ -418,11 +422,21 @@ def make_datamodule_test_timeseries(**kwargs):
             }
             if include_static:
                 row["static_feature"] = static_value
+            if include_static_categorical:
+                row["static_cat"] = static_cat_value
             rows.append(row)
 
     df = pd.DataFrame(rows)
 
-    static_cols = ["static_feature"] if include_static else None
+    static_cols = []
+    if include_static:
+        static_cols.append("static_feature")
+    if include_static_categorical:
+        static_cols.append("static_cat")
+
+    cat_cols = ["cat_feat"]
+    if include_static_categorical:
+        cat_cols.append("static_cat")
 
     return TimeSeries(
         data=df,
@@ -430,8 +444,8 @@ def make_datamodule_test_timeseries(**kwargs):
         target="target",
         group=["series_id"],
         num=["cont_feat1", "cont_feat2", "known_future"],
-        cat=["cat_feat"],
-        static=static_cols,
+        cat=cat_cols,
+        static=static_cols or None,
         known=["cont_feat1", "known_future"],
         unknown=["cont_feat2", "cat_feat"],
     )

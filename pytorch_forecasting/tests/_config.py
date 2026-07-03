@@ -17,6 +17,7 @@ EXCLUDED_TESTS = {}
 #  similar way. Test framework will test all keys in the list for the given role.
 # if a key is present in the batch, but absent from the list,
 # that key wont be tested by test_all_data_modules.py.
+# The same role map also resolves metadata count keys.
 DATAMODULE_DATASET_KEYS_MAP: dict[str, list[str]] = {
     "history_cat": ["history_cat", "encoder_cat"],
     "history_cont": ["history_cont", "encoder_cont"],
@@ -36,7 +37,11 @@ DATAMODULE_DATASET_KEYS_MAP: dict[str, list[str]] = {
 
 
 def resolve_batch_key(batch: dict, role: str) -> str | None:
-    """Return the first batch key in *batch* that matches *role*, or ``None``."""
+    """Return the first key in *batch* matching *role*, or ``None``.
+
+    Works for dataset items, collated batches, and metadata dicts that share
+    the same role aliases (e.g. ``history_cat`` / ``encoder_cat``).
+    """
     try:
         candidates = DATAMODULE_DATASET_KEYS_MAP[role]
     except KeyError as exc:

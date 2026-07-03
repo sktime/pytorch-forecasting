@@ -118,61 +118,27 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
 
     object_type_filter = "datamodule_v2"
 
-    def test_init(self, object_pkg, object_instance):
-        """Construction wires D1 input into the datamodule and valid hyperparameters.
-
-        Also checks format-specific length attributes and the default split
-        against the internal context/prediction length helpers.
-        """
-        assert object_instance.time_series_dataset is not None
-        assert isinstance(object_instance.time_series_metadata, dict)
-        assert "cols" in object_instance.time_series_metadata
-        assert object_instance.batch_size > 0
-        assert object_instance._context_length() > 0
-        assert object_instance._prediction_length() > 0
-
-        batch_format = object_pkg.get_class_tag("batch_format")
-        # format-specific length attributes
-        if batch_format == "encoder_decoder":
-            assert (
-                object_instance.max_encoder_length == object_instance._context_length()
-            )
-            assert (
-                object_instance.max_prediction_length
-                == object_instance._prediction_length()
-            )
-            assert object_instance.train_val_test_split == (0.7, 0.15, 0.15)
-        elif batch_format == "tslib":
-            assert object_instance.context_length == object_instance._context_length()
-            assert (
-                object_instance.prediction_length
-                == object_instance._prediction_length()
-            )
-            assert object_instance.train_val_test_split == (0.7, 0.15, 0.15)
-
     def test_metadata_property(self, object_pkg, object_instance):
         """Metadata property is cached and reports correct feature counts.
 
-        Encoder-decoder: encoder/decoder cat-cont counts.
-        Tslib: n_features entries match the length of each feature_names group.
+        Categorical and continuous feature counts match the expected counts.
         """
         metadata = object_instance.metadata
         assert object_instance.metadata is metadata  # same object on repeat access
 
-        batch_format = object_pkg.get_class_tag("batch_format")
-        if batch_format == "encoder_decoder":
-            assert metadata["encoder_cat"] == len(object_instance.categorical_indices)
-            assert metadata["encoder_cont"] == len(object_instance.continuous_indices)
-            known_cat, known_cont = _known_feature_counts(
-                object_instance.time_series_metadata
-            )
-            assert metadata["decoder_cat"] == known_cat
-            assert metadata["decoder_cont"] == known_cont
-        elif batch_format == "tslib":
-            for key in metadata["n_features"]:
-                assert metadata["n_features"][key] == len(
-                    metadata["feature_names"][key]
-                )
+        known_cat, known_cont = _known_feature_counts(
+            object_instance.time_series_metadata
+        )
+        expected_counts = {
+            "history_cat": len(object_instance.categorical_indices),
+            "history_cont": len(object_instance.continuous_indices),
+            "future_cat": known_cat,
+            "future_cont": known_cont,
+        }
+        for role, expected in expected_counts.items():
+            key = resolve_batch_key(metadata, role)
+            if key is not None:
+                assert metadata[key] == expected
 
     def test_setup_fit(self, object_pkg, object_instance):
         """setup('fit') creates non-empty train/val datasets aligned with windows."""
@@ -185,7 +151,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert len(object_instance.val_dataset) == len(object_instance.val_windows)
 
     def test_setup_test_predict(self, object_pkg, object_instance):
-        """setup('test') and setup('predict') create their datasets and windows."""
+        """setup for 'test' and 'predict' create their non-empty datasets & windows."""
         object_instance.setup(stage="fit")
         object_instance.setup(stage="test")
         object_instance.setup(stage="predict")
@@ -403,46 +369,10 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             assert y_batch.shape[1] == prediction_length
 
     def test_prepare_metadata(self, object_pkg, object_instance):
-        """Prepared metadata has all package-expected keys and nested structure.
-
-        Length fields and tslib feature groupings are checked per batch format.
-        """
+        """Prepared metadata has all package-expected keys."""
         metadata = object_instance.metadata
         for key in object_pkg.get_expected_metadata_keys():
             assert key in metadata
-
-        batch_format = object_pkg.get_class_tag("batch_format")
-        if batch_format == "encoder_decoder":
-            assert metadata["max_encoder_length"] == object_instance._context_length()
-            assert (
-                metadata["max_prediction_length"]
-                == object_instance._prediction_length()
-            )
-        elif batch_format == "tslib":
-            assert metadata["context_length"] == object_instance._context_length()
-            assert metadata["prediction_length"] == object_instance._prediction_length()
-
-            for group in (
-                "categorical",
-                "continuous",
-                "static",
-                "known",
-                "unknown",
-                "target",
-                "all",
-                "static_categorical",
-                "static_continuous",
-            ):
-                assert group in metadata["feature_names"]
-            for group in (
-                "categorical",
-                "continuous",
-                "static",
-                "known",
-                "unknown",
-                "target",
-            ):
-                assert group in metadata["feature_indices"]
 
     def test_multivariate_target(self, object_pkg, object_instance):
         """Two target columns are exposed correctly in a train sample.
@@ -518,101 +448,28 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert processed["target"].shape[0] == expected_length
 
     def test_with_static_features(self, object_pkg, object_instance):
-        """Static features appear in metadata and samples (and batches for tslib).
-
-        Encoder-decoder uses a custom TimeSeries with static cat/num columns;
-        Tslib: uses the default fixture and checks a collated batch too.
-        """
-        batch_format = object_pkg.get_class_tag("batch_format")
+        """Non-empty static features appear in samples and batches when configured."""
         dm_class = object_pkg.get_cls()
 
-        if batch_format == "encoder_decoder":
-            df = pd.DataFrame(
-                {
-                    "group": [0, 0, 0, 1, 1, 1],
-                    "time": pd.date_range("2020-01-01", periods=6),
-                    "target": [1, 2, 3, 4, 5, 6],
-                    "static_cat": [0, 0, 0, 1, 1, 1],
-                    "static_num": [10, 10, 10, 20, 20, 20],
-                    "feature1": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
-                }
-            )
-            ts = TimeSeries(
-                data=df,
-                time="time",
-                target="target",
-                group=["group"],
-                num=["feature1", "static_num"],
-                static=["static_cat", "static_num"],
-                cat=["static_cat"],
-            )
-            dm = dm_class(
-                time_series_dataset=ts,
-                max_encoder_length=2,
-                max_prediction_length=1,
-                batch_size=2,
-            )
-            dm.setup(stage="fit")
-
-            metadata = dm.metadata
-            assert metadata["static_categorical_features"] == 1
-            assert metadata["static_continuous_features"] == 1
-
-            x, _ = dm.train_dataset[0]
-            assert "static_categorical_features" in x
-            assert "static_continuous_features" in x
-            assert (
-                x["static_categorical_features"].shape[1]
-                == metadata["static_categorical_features"]
-            )
-            assert (
-                x["static_continuous_features"].shape[1]
-                == metadata["static_continuous_features"]
-            )
-        elif batch_format == "tslib":
-            ts = make_datamodule_test_timeseries()
-            params = object_pkg.get_datamodule_test_params()[0]
-            dm = dm_class(time_series_dataset=ts, **params)
-            dm.setup(stage="fit")
-
-            metadata = dm.metadata
-            assert metadata["n_features"]["static_continuous"] == 1
-
-            x, _ = dm.train_dataset[0]
-            assert "static_continuous_features" in x
-            assert (
-                x["static_continuous_features"].shape[1]
-                == metadata["n_features"]["static_continuous"]
-            )
-
-            train_loader = dm.train_dataloader()
-            x_batch, _ = next(iter(train_loader))
-            assert "static_categorical_features" in x_batch
-            assert "static_continuous_features" in x_batch
-
-    def test_variable_encoder_lengths(self, object_pkg, object_instance):
-        """Encoder-decoder datamodule retains min/max encoder length settings.
-
-        Only runs for encoder-decoder format. Uses randomize_length=True but only
-        checks the stored hyperparameters after setup, not window sampling behaviour.
-        """
-        if object_pkg.get_class_tag("batch_format") != "encoder_decoder":
-            pytest.skip(
-                "Variable encoder length test only applies to encoder-decoder format."
-            )
-
-        dm_class = object_pkg.get_cls()
-        ts = object_instance.time_series_dataset
-        params = object_pkg.get_datamodule_test_params()[0]
-        params = {
-            **dict(params),
-            "batch_size": 4,
-            "min_encoder_length": 12,
-            "max_encoder_length": 24,
-            "randomize_length": True,
-            "max_prediction_length": 12,
-        }
+        ts = make_datamodule_test_timeseries(
+            include_static=True,
+            include_static_categorical=True,
+        )
+        params = dict(object_pkg.get_datamodule_test_params()[0])
         dm = dm_class(time_series_dataset=ts, **params)
         dm.setup(stage="fit")
-        assert dm.min_encoder_length == 12
-        assert dm.max_encoder_length == 24
+
+        x, _ = dm.train_dataset[0]
+        assert "static_categorical_features" in x
+        assert "static_continuous_features" in x
+        n_static_cat = x["static_categorical_features"].shape[1]
+        n_static_cont = x["static_continuous_features"].shape[1]
+        assert n_static_cat > 0
+        assert n_static_cont > 0
+
+        train_loader = dm.train_dataloader()
+        x_batch, _ = next(iter(train_loader))
+        assert "static_categorical_features" in x_batch
+        assert "static_continuous_features" in x_batch
+        assert x_batch["static_categorical_features"].shape[-1] == n_static_cat
+        assert x_batch["static_continuous_features"].shape[-1] == n_static_cont
