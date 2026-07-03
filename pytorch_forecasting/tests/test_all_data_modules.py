@@ -119,7 +119,11 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
     object_type_filter = "datamodule_v2"
 
     def test_init(self, object_pkg, object_instance):
-        """Datamodule stores hyperparameters and reads D1 metadata."""
+        """Construction wires D1 input into the datamodule and valid hyperparameters.
+
+        Also checks format-specific length attributes and the default split
+        against the internal context/prediction length helpers.
+        """
         assert object_instance.time_series_dataset is not None
         assert isinstance(object_instance.time_series_metadata, dict)
         assert "cols" in object_instance.time_series_metadata
@@ -128,6 +132,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert object_instance._prediction_length() > 0
 
         batch_format = object_pkg.get_class_tag("batch_format")
+        # format-specific length attributes
         if batch_format == "encoder_decoder":
             assert (
                 object_instance.max_encoder_length == object_instance._context_length()
@@ -146,9 +151,13 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             assert object_instance.train_val_test_split == (0.7, 0.15, 0.15)
 
     def test_metadata_property(self, object_pkg, object_instance):
-        """Metadata property caches the prepared dict with format-specific counts."""
+        """Metadata property is cached and reports correct feature counts.
+
+        Encoder-decoder: encoder/decoder cat-cont counts.
+        Tslib: n_features entries match the length of each feature_names group.
+        """
         metadata = object_instance.metadata
-        assert object_instance.metadata is metadata
+        assert object_instance.metadata is metadata  # same object on repeat access
 
         batch_format = object_pkg.get_class_tag("batch_format")
         if batch_format == "encoder_decoder":
@@ -166,7 +175,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
                 )
 
     def test_setup_fit(self, object_pkg, object_instance):
-        """Fit stage creates train and validation datasets with windows."""
+        """setup('fit') creates non-empty train/val datasets aligned with windows."""
         object_instance.setup(stage="fit")
         assert object_instance.train_dataset is not None
         assert object_instance.val_dataset is not None
@@ -176,7 +185,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert len(object_instance.val_dataset) == len(object_instance.val_windows)
 
     def test_setup_test_predict(self, object_pkg, object_instance):
-        """Test and predict stages create their datasets."""
+        """setup('test') and setup('predict') create their datasets and windows."""
         object_instance.setup(stage="fit")
         object_instance.setup(stage="test")
         object_instance.setup(stage="predict")
@@ -191,7 +200,10 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         [(0.7, 0.15, 0.15), (0.8, 0.1, 0.1), (0.6, 0.2, 0.2)],
     )
     def test_different_train_val_test_split(self, object_pkg, split):
-        """Train/val/test indices respect configured split ratios."""
+        """Train/val/test index sizes follow the configured split ratios.
+
+        Parametrized over lengths of three tuples (train, val, test).
+        """
         dm_class = object_pkg.get_cls()
         ts = make_datamodule_test_timeseries()
         params = dict(object_pkg.get_datamodule_test_params()[0])
@@ -208,13 +220,19 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert len(dm._val_indices) == expected_val
         assert len(dm._test_indices) == expected_test
         assert dm.train_val_test_split == split
+        # train + val + test must partition all series exactly once
         assert (
             len(dm._train_indices) + len(dm._val_indices) + len(dm._test_indices)
             == total_series
         )
 
     def test_create_windows(self, object_pkg, object_instance):
-        """Windows are 4-tuples with valid indices and configured lengths."""
+        """_create_windows returns valid (series_idx, start, context, prediction)
+        tuples.
+
+        Each window must fit inside the source series. Also covers the all-series
+        and empty-index edge cases.
+        """
         object_instance.setup(stage="fit")
         windows = object_instance._create_windows(object_instance._train_indices)
 
@@ -235,6 +253,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             min_required_length = context_length + prediction_length
             assert start_idx + min_required_length <= _series_length(sample)
 
+        # all series should produce at least as many windows as the train split
         all_indices = torch.arange(len(object_instance.time_series_dataset))
         all_windows = object_instance._create_windows(all_indices)
         assert len(all_windows) >= len(windows)
@@ -243,7 +262,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert len(empty_windows) == 0
 
     def test_dataloader_creation(self, object_pkg, object_instance):
-        """Dataloaders honour batch_size and num_workers across all stages."""
+        """Dataloaders for fit/test/predict honour batch_size and num_workers."""
         object_instance.setup(stage="fit")
         train_loader = object_instance.train_dataloader()
         val_loader = object_instance.val_dataloader()
@@ -263,7 +282,11 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert predict_loader.num_workers == object_instance.num_workers
 
     def test_processed_dataset(self, object_pkg, object_instance):
-        """Single dataset items expose expected keys, shapes, and dtypes."""
+        """A single train sample has expected keys, tensor shapes, and dtypes.
+
+        History/future features should match context/prediction length and
+        known-feature counts; multivariate targets return a list of tensors.
+        """
         object_instance.setup(stage="fit")
         assert len(object_instance.train_dataset) == len(object_instance.train_windows)
         assert len(object_instance.val_dataset) == len(object_instance.val_windows)
@@ -314,7 +337,7 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             assert isinstance(y, torch.Tensor)
 
     def test_collate_fn(self, object_pkg, object_instance):
-        """Collated batch contains expected keys and feature dimensions."""
+        """collate_fn stacks manual samples into a batch with correct dimensions."""
         object_instance.setup(stage="fit")
         batch_size = min(3, len(object_instance.train_dataset))
         batch = [object_instance.train_dataset[i] for i in range(batch_size)]
@@ -342,7 +365,10 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert y_batch.shape[1] == prediction_length
 
     def test_full_dataloader_iteration(self, object_pkg, object_instance):
-        """Train dataloader yields batches with correct tensor dimensions."""
+        """One train-loader batch has the expected batch/time/feature dimensions.
+
+        End-to-end check through the dataloader rather than collate_fn alone.
+        """
         object_instance.setup(stage="fit")
         train_loader = object_instance.train_dataloader()
         x_batch, y_batch = next(iter(train_loader))
@@ -377,7 +403,10 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             assert y_batch.shape[1] == prediction_length
 
     def test_prepare_metadata(self, object_pkg, object_instance):
-        """Metadata contains format-specific keys and nested structure."""
+        """Prepared metadata has all package-expected keys and nested structure.
+
+        Length fields and tslib feature groupings are checked per batch format.
+        """
         metadata = object_instance.metadata
         for key in object_pkg.get_expected_metadata_keys():
             assert key in metadata
@@ -416,7 +445,11 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
                 assert group in metadata["feature_indices"]
 
     def test_multivariate_target(self, object_pkg, object_instance):
-        """Multivariate targets are returned as a list of tensors."""
+        """Two target columns are exposed correctly in a train sample.
+
+        Encoder-decoder: returns a list of tensors;
+        Tslib: may stack them.
+        """
         dm_class = object_pkg.get_cls()
         df = pd.DataFrame(
             {
@@ -455,12 +488,15 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         if isinstance(y, list):
             assert len(y) == 2
         elif object_pkg.get_class_tag("batch_format") == "tslib":
-            assert y.shape[-1] == 2
+            assert y.shape[-1] == 2  # stacked multivariate target
         else:
             assert len(y) == 2
 
     def test_preprocess_data(self, object_pkg, object_instance):
-        """Preprocessed series expose feature and target tensors."""
+        """_preprocess_data returns the expected per-series dict and tensor lengths.
+
+        Feature and target tensors should span the full original series length.
+        """
         object_instance.setup(stage="fit")
         series_idx = object_instance._train_indices[0]
         processed = object_instance._preprocess_data(series_idx)
@@ -470,13 +506,10 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert "continuous" in processed["features"]
         assert "target" in processed
         assert "time_mask" in processed
-
-        batch_format = object_pkg.get_class_tag("batch_format")
-        if batch_format == "tslib":
-            assert "static" in processed
-            assert "group" in processed
-            assert "length" in processed
-            assert "timestep" in processed
+        assert "static" in processed
+        assert "group" in processed
+        assert "length" in processed
+        assert "timestep" in processed
 
         original_sample = object_instance.time_series_dataset[series_idx.item()]
         expected_length = _series_length(original_sample)
@@ -485,7 +518,11 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
         assert processed["target"].shape[0] == expected_length
 
     def test_with_static_features(self, object_pkg, object_instance):
-        """Datamodule exposes static features in metadata and samples when configured"""
+        """Static features appear in metadata and samples (and batches for tslib).
+
+        Encoder-decoder uses a custom TimeSeries with static cat/num columns;
+        Tslib: uses the default fixture and checks a collated batch too.
+        """
         batch_format = object_pkg.get_class_tag("batch_format")
         dm_class = object_pkg.get_cls()
 
@@ -554,10 +591,14 @@ class TestAllDataModules(DataModulePackageConfig, DataModuleFixtureGenerator):
             assert "static_continuous_features" in x_batch
 
     def test_variable_encoder_lengths(self, object_pkg, object_instance):
-        """Variable encoder lengths are respected when randomize_length is enabled."""
+        """Encoder-decoder datamodule retains min/max encoder length settings.
+
+        Only runs for encoder-decoder format. Uses randomize_length=True but only
+        checks the stored hyperparameters after setup, not window sampling behaviour.
+        """
         if object_pkg.get_class_tag("batch_format") != "encoder_decoder":
             pytest.skip(
-                "Variable encoder length test only applies to encoder-decoder" "format."
+                "Variable encoder length test only applies to encoder-decoder format."
             )
 
         dm_class = object_pkg.get_cls()
