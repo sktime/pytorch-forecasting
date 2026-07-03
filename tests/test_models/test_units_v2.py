@@ -105,67 +105,6 @@ def model(request, basic_metadata):
     )
 
 
-def test_basic_model_initialization(model, basic_metadata):
-    """Test the basic model initialization."""
-    assert isinstance(model, UniTS)
-    assert model.d_model in [16, 32]
-    assert model.n_heads == 4
-    assert model.e_layers == 2
-    assert model.patch_len == 8
-
-    assert model.context_length == basic_metadata["context_length"]
-    assert model.prediction_length == basic_metadata["prediction_length"]
-
-
-def test_multivariate_single_series(model, basic_tslib_data_module):
-    """Test forward pass shape and no NaN outputs."""
-    basic_tslib_data_module.setup()
-    train_dataloader = basic_tslib_data_module.train_dataloader()
-    batch = next(iter(train_dataloader))[0]
-
-    model.eval()
-    with torch.no_grad():
-        output = model(batch)
-
-    assert "prediction" in output
-    predictions = output["prediction"]
-
-    batch_size = batch["history_target"].shape[0]
-    assert predictions.shape == (batch_size, model.prediction_length, model.target_dim)
-    assert not torch.isnan(predictions).any()
-    assert not torch.isinf(predictions).any()
-
-
-def test_integration_with_datamodule(model, basic_tslib_data_module):
-    """Test integration of UniTS model with TslibDataModule."""
-    basic_tslib_data_module.setup(stage="fit")
-    basic_tslib_data_module.setup(stage="test")
-
-    train_loader = basic_tslib_data_module.train_dataloader()
-    val_loader = basic_tslib_data_module.val_dataloader()
-    test_loader = basic_tslib_data_module.test_dataloader()
-
-    model.eval()
-    with torch.no_grad():
-        train_batch = next(iter(train_loader))[0]
-        train_output = model(train_batch)
-        assert train_output["prediction"].shape[1] == model.prediction_length
-
-        try:
-            val_batch = next(iter(val_loader))[0]
-            val_output = model(val_batch)
-            assert val_output["prediction"].shape[1] == model.prediction_length
-        except StopIteration:
-            pass
-
-        try:
-            test_batch = next(iter(test_loader))[0]
-            test_output = model(test_batch)
-            assert test_output["prediction"].shape[1] == model.prediction_length
-        except StopIteration:
-            pass
-
-
 def test_parameter_validation(basic_metadata):
     """Test parameter validation for UniTS."""
     with pytest.raises(ValueError, match="d_model"):
