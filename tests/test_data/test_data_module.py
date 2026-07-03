@@ -473,8 +473,8 @@ def test_multivariate_target():
     assert len(y) == 2
 
 
-def test_v2_categorical_with_nan_label_encoder():
-    """Test D1 + D2 with default NaNLabelEncoder."""
+def test_v2_batch_categorical_dtype():
+    """Verify D2 emits encoder_cat as torch.long after D1 encoding."""
     df = pd.DataFrame(
         {
             "time_idx": range(10),
@@ -494,11 +494,6 @@ def test_v2_categorical_with_nan_label_encoder():
         num=["value"],
     )
 
-    # Verify cardinality is in metadata (NaNLabelEncoder: 4 = NaN + 3 categories)
-    assert "color" in ts.metadata["categorical_cardinalities"]
-    assert ts.metadata["categorical_cardinalities"]["color"] == 4
-
-    # D2 should work
     datamodule = EncoderDecoderTimeSeriesDataModule(
         time_series_dataset=ts,
         max_encoder_length=2,

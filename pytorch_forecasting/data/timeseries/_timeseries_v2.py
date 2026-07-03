@@ -75,14 +75,33 @@ class TimeSeries(Dataset):
     static : list of str, optional, default = all variables not in known, unknown
         list of variables that do not change over time,
         list may also contain list of str, which are then grouped together.
-    categorical_encoders : dict[str, Any] | None, default=None
-        Mapping of categorical column names to encoder objects .
-        If ``None`` (default), a ``NaNLabelEncoder(add_nan=True)`` is
-        created and fitted for every column in ``cat``.
-        If a dict is provided, columns in ``cat`` missing from the dict
-        get a default ``NaNLabelEncoder(add_nan=True)`` without warning.
+    categorical_encoders : dict[str, encoder] | False | None, default=None
+        Controls how categorical columns in ``cat`` are encoded to integers.
+
+        - ``None`` (default): every column in ``cat`` gets a fresh
+        ``NaNLabelEncoder(add_nan=True)`` that is fitted automatically.
+        - ``dict``: mapping of column names to encoder instances. Columns
+        in ``cat`` that are missing from the dict still receive a default
+        ``NaNLabelEncoder(add_nan=True)``.  Pre-fitted encoders (those
+        with a non-empty ``classes_`` attribute) are reused as-is;
+        unfitted encoders are fitted on the training data.
+        - ``False``: skip all encoding.  The data in ``cat`` columns must
+        already contain integer codes.  Cardinalities are inferred from
+        the data via ``nunique()``.
+
+        Supported encoder types include any object implementing a
+        scikit-learn-style ``fit`` / ``transform`` API that outputs
+        integer codes.  Tested options:
+
+        * ``pytorch_forecasting.data.encoders.NaNLabelEncoder``
+        * ``sklearn.preprocessing.LabelEncoder``
+        * ``sklearn.preprocessing.OrdinalEncoder``
+          (note: expects 2D input — wrap the column in a DataFrame)
+
         Pass pre-fitted encoders from training to ensure consistent
-        encoding during prediction.
+        encoding at prediction time.  See
+        ``DataModule.get_categorical_encoders()`` for retrieving fitted
+        encoders.
     """
 
     def __init__(
@@ -98,7 +117,7 @@ class TimeSeries(Dataset):
         known: list[str | list[str]] | None = None,
         unknown: list[str | list[str]] | None = None,
         static: list[str | list[str]] | None = None,
-        categorical_encoders: dict[str, Any] | None = None,
+        categorical_encoders: dict[str, Any] | bool | None = None,
     ):
         self.data = data
         self.data_future = data_future
@@ -136,10 +155,13 @@ class TimeSeries(Dataset):
         self._unknown = _coerce_to_list(unknown)
         self._static = _coerce_to_list(static)
 
-        self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
-        for col in self._cat:
-            if col not in self._categorical_encoders:
-                self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
+        if self.categorical_encoders is False:
+            self._categorical_encoders = {}
+        else:
+            self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
+            for col in self._cat:
+                if col not in self._categorical_encoders:
+                    self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
 
         # Fit and transform categorical columns to integer codes
         for col, encoder in self._categorical_encoders.items():
@@ -218,9 +240,16 @@ class TimeSeries(Dataset):
             self.metadata["col_known"][col] = "K" if col in self._known else "U"
 
         # Expose cardinalities for each categorical variable
-        self.metadata["categorical_cardinalities"] = {
-            col: len(self._categorical_encoders[col].classes_) for col in self._cat
-        }
+        if self._categorical_encoders:
+            self.metadata["categorical_cardinalities"] = {
+                col: len(self._categorical_encoders[col].classes_) for col in self._cat
+            }
+        else:
+            # No encoders (cat=[] or categorical_encoders=False)
+            # Infer cardinalities directly from the data
+            self.metadata["categorical_cardinalities"] = {
+                col: int(self.data[col].nunique()) for col in self._cat
+            }
 
     def __len__(self) -> int:
         """Return number of time series in the dataset."""

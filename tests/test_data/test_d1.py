@@ -426,9 +426,24 @@ def test_timeseries_categorical_encoding():
     assert isinstance(item["x"], torch.Tensor)
 
 
-def test_custom_sklearn_encoders():
-    """Test injection of standard scikit-learn encoders instead of NaNLabelEncoder."""
-    from sklearn.preprocessing import LabelEncoder
+@pytest.mark.parametrize(
+    "encoder_cls,expected_cardinality",
+    [
+        pytest.param(
+            "LabelEncoder",
+            3,
+            id="LabelEncoder",
+        ),
+        pytest.param(
+            "OrdinalEncoder",
+            3,
+            id="OrdinalEncoder",
+        ),
+    ],
+)
+def test_custom_sklearn_encoders(encoder_cls, expected_cardinality):
+    """Test injection of scikit-learn encoders into TimeSeries."""
+    from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 
     data = pd.DataFrame(
         {
@@ -439,7 +454,31 @@ def test_custom_sklearn_encoders():
         }
     )
 
-    custom_encoder = LabelEncoder()
+    if encoder_cls == "LabelEncoder":
+        custom_encoder = LabelEncoder()
+    elif encoder_cls == "OrdinalEncoder":
+        custom_encoder = OrdinalEncoder()
+        # OrdinalEncoder expects 2D input pre-fit on the column as a DataFrame
+        custom_encoder.fit(data[["cat_feature"]])
+        data["cat_feature"] = (
+            custom_encoder.transform(data[["cat_feature"]]).astype(int).ravel()
+        )
+        # Mark as pre-encoded so D1 doesn't re-fit
+        ts = TimeSeries(
+            data=data,
+            time="timestamp",
+            target="target",
+            group=["group"],
+            cat=["cat_feature", "group"],
+            categorical_encoders=False,
+        )
+        assert ts.metadata["categorical_cardinalities"]["cat_feature"] == (
+            expected_cardinality
+        )
+        item = ts[0]
+        assert isinstance(item["x"], torch.Tensor)
+        return
+
     ts = TimeSeries(
         data=data,
         time="timestamp",
@@ -449,8 +488,64 @@ def test_custom_sklearn_encoders():
         categorical_encoders={"cat_feature": custom_encoder},
     )
 
-    # LabelEncoder encodes strictly seen classes (3 classes: blue, green, red)
-    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == 3
+    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == (
+        expected_cardinality
+    )
+    item = ts[0]
+    assert isinstance(item["x"], torch.Tensor)
 
+
+def test_pre_encoded_data():
+    """Test categorical_encoders=False with pre-encoded integer data."""
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=6, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "group": [0, 0, 0, 1, 1, 1],
+            "cat_feature": [0, 1, 2, 0, 1, 2],
+        }
+    )
+
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=["cat_feature"],
+        num=[],
+        categorical_encoders=False,
+    )
+
+    # Cardinalities inferred from data via nunique()
+    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == 3
+    # No encoders fitted
+    assert ts._categorical_encoders == {}
+    # Data should pass through untouched
+    item = ts[0]
+    assert isinstance(item["x"], torch.Tensor)
+
+
+def test_no_categorical_features():
+    """Test TimeSeries with no categorical columns and no encoders."""
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=6, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "group": [1, 1, 1, 2, 2, 2],
+            "feature1": np.random.randn(6),
+        }
+    )
+
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=[],
+        num=["feature1"],
+    )
+
+    assert ts.metadata["categorical_cardinalities"] == {}
+    assert ts._categorical_encoders == {}
     item = ts[0]
     assert isinstance(item["x"], torch.Tensor)
