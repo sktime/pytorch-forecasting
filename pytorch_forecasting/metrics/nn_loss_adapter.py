@@ -15,7 +15,7 @@ class NNLossAdapter(nn.Module):
 
     def __init__(self, loss: nn.Module):
         super().__init__()
-        self.loss = loss
+        self._loss = loss
 
     def forward(
         self,
@@ -99,15 +99,15 @@ class NNLossAdapter(nn.Module):
         Compute the loss for a single target, applying weights if provided.
         """
         if weight is None:
-            return self.loss(y_pred, target)
+            return self._loss(y_pred, target)
 
         # Handle weighting
-        old_reduction = getattr(self.loss, "reduction", "mean")
-        self.loss.reduction = "none"
+        old_reduction = getattr(self._loss, "reduction", "mean")
+        self._loss.reduction = "none"
         try:
-            loss = self.loss(y_pred, target)
+            loss = self._loss(y_pred, target)
         finally:
-            self.loss.reduction = old_reduction
+            self._loss.reduction = old_reduction
 
         # Ensure weight has same dimensions as loss for multiplication
         if weight.ndim < loss.ndim:
