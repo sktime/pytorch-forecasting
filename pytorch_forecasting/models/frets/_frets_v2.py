@@ -51,7 +51,9 @@ class FreTS(BaseModel):
         :class:`~pytorch_forecasting.data.data_module\
 .EncoderDecoderTimeSeriesDataModule`.
         Must contain ``"max_encoder_length"`` and
-        ``"max_prediction_length"``.
+        ``"max_prediction_length"``. Optionally reads ``"target"`` (number
+        of target series, default 1) and ``"encoder_cont"`` (number of past
+        continuous covariates, default 0).
     **kwargs
         Additional keyword arguments forwarded to
         :class:`~pytorch_forecasting.models.base._base_model_v2.BaseModel`.
@@ -105,7 +107,11 @@ class FreTS(BaseModel):
 
         self.context_length = metadata["max_encoder_length"]
         self.prediction_length = metadata["max_prediction_length"]
-        self.n_channels = metadata.get("target", 1)
+
+        # model input = target series + past continuous covariates
+        self.n_targets = metadata.get("target", 1)
+        self.n_cont = metadata.get("encoder_cont", 0)
+        self.n_channels = self.n_targets + self.n_cont
 
         self.model = FreTSCore(
             context_length=self.context_length,
@@ -117,8 +123,20 @@ class FreTS(BaseModel):
             sparsity_threshold=sparsity_threshold,
         )
 
+        # final layer mapping all channels back to the target dimension;
+        # identity when there are no covariates (keeps target-only behaviour)
+        if self.n_channels != self.n_targets:
+            self.output_projection = nn.Linear(self.n_channels, self.n_targets)
+        else:
+            self.output_projection = nn.Identity()
+
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Forward pass of the FreTS model.
+
+        The past target is concatenated with the past continuous covariates
+        (``encoder_cont``) along the channel dimension, passed through the
+        frequency-domain core, and projected back to the target dimension by
+        a final linear layer.
 
         Parameters
         ----------
@@ -126,7 +144,11 @@ class FreTS(BaseModel):
             Input batch containing:
 
             * ``"target_past"`` : tensor of shape
-              ``(batch_size, context_length, n_channels)``
+              ``(batch_size, context_length, n_targets)``
+            * ``"encoder_cont"`` : optional tensor of shape
+              ``(batch_size, context_length, n_cont)`` holding the past
+              continuous covariates. If absent or empty, only the past
+              target is used.
 
         Returns
         -------
@@ -134,8 +156,18 @@ class FreTS(BaseModel):
             Dictionary containing:
 
             * ``"prediction"`` : tensor of shape
-              ``(batch_size, prediction_length, n_channels)``
+              ``(batch_size, prediction_length, n_targets)``
         """
-        enc = x["target_past"]
-        prediction = self.model(enc)
+        target_past = x["target_past"]
+        if target_past.dim() == 2:  # (B, L) -> (B, L, 1)
+            target_past = target_past.unsqueeze(-1)
+
+        encoder_cont = x.get("encoder_cont")
+        if encoder_cont is not None and encoder_cont.shape[-1] > 0:
+            enc = torch.cat([target_past, encoder_cont], dim=-1)
+        else:
+            enc = target_past
+
+        out = self.model(enc)
+        prediction = self.output_projection(out)
         return {"prediction": prediction}

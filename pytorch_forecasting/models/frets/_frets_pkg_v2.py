@@ -10,7 +10,7 @@ class FreTS_pkg_v2(Base_pkg):
         "info:name": "FreTS",
         "info:compute": 2,
         "authors": ["echo-xiao"],
-        "capability:exogenous": False,
+        "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": False,
         "capability:flexible_history_length": False,
