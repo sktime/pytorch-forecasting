@@ -4,6 +4,9 @@ This module exports the following methods for registry lookup:
 
 all_objects(object_types, filter_tags)
     lookup and filtering of objects
+
+all_tags(object_types)
+    lookup and filtering of tags
 """
 
 # based on the sktime module of same name
@@ -14,8 +17,10 @@ __author__ = ["fkiraly"]
 from inspect import isclass
 from pathlib import Path
 
+import pandas as pd
 from skbase.lookup import all_objects as _all_objects
 
+from pytorch_forecasting._registry._tags import OBJECT_TAG_REGISTER
 from pytorch_forecasting.base._base_object import _BaseObject
 
 
@@ -207,6 +212,59 @@ def all_objects(
     )
 
     return result
+
+
+def all_tags(object_types=None, as_dataframe=False):
+    """Get a list of all tags from pytorch_forecasting.
+
+    Retrieves tags directly from ``_tags``, offers filtering functionality.
+
+    Parameters
+    ----------
+    object_types : string, list of string, optional (default=None)
+        Which kind of objects the tags should apply to.
+        If None, no filter is applied and all tags are returned.
+    as_dataframe : bool, optional (default=False)
+        if False, return is as described below;
+        if True, return is converted into a pandas.DataFrame for pretty display
+
+    Returns
+    -------
+    tags : list of tuples (a, b, c, d), in alphabetical order by a
+        a : string - name of the tag as used in the ``_tags`` dictionary
+        b : string - name of the object_type this tag applies to,
+                     e.g., "forecaster_pytorch_v1", "metric"
+        c : string - expected type of the tag value
+            should be one of:
+                "bool" - valid values are True/False
+                "int" - valid values are all integers
+                "str" - valid values are all strings
+                "list" - valid values are all lists of arbitrary elements
+                ("str", list_of_string) - any string in list_of_string is valid
+                ("list", list_of_string) - any individual string and sub-list is valid
+        d : string - plain English description of the tag
+    """
+
+    def _is_tag_for_type(tag, object_types):
+        tag_types = tag[1]
+        if isinstance(tag_types, str):
+            tag_types = [tag_types]
+        return len(set(tag_types).intersection(set(object_types))) > 0
+
+    all_tags_ = OBJECT_TAG_REGISTER
+
+    if object_types:
+        if isinstance(object_types, str):
+            object_types = [object_types]
+        all_tags_ = [tag for tag in all_tags_ if _is_tag_for_type(tag, object_types)]
+
+    all_tags_ = sorted(all_tags_, key=lambda tag: tag[0])
+
+    if as_dataframe:
+        columns = ["name", "object_type", "type", "description"]
+        all_tags_ = pd.DataFrame(all_tags_, columns=columns)
+
+    return all_tags_
 
 
 def _check_list_of_str_or_error(arg_to_check, arg_name):

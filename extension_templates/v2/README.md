@@ -40,17 +40,13 @@ Inherits from `Base_pkg`. Implement the following:
 **Tags (`_tags`):**
 Dictionary defining framework integration rules. Tags are inherited from parent class if they are not set.
 
-- `info:name` (human-readable model name matching the class)
-- `info:pred_type` (prediction types: e.g. `["point"]`, `["quantile"]`, `["distr"]`)
-- `info:y_type` (target type: e.g. `["numeric"]`, `["category"]`)
-- `info:compute` (integer representing compute intensity, 1 to 5)
-- `authors` (GitHub username list)
-- `python_dependencies` (list of external packages if needed)
-- `capability:exogenous` (bool: whether model supports exogenous variables)
-- `capability:multivariate` (bool: whether model supports multivariate targets)
-- `capability:pred_int` (bool: whether model supports prediction intervals)
-- `capability:flexible_history_length` (bool: whether model works with variable-length history)
-- `capability:cold_start` (bool: whether model makes predictions with little/no history)
+Common tags for forecaster models include `info:name`, `info:pred_type`, `info:y_type`,
+`info:compute`, `authors`, `python_dependencies`, and the `capability:*` flags
+(`exogenous`, `multivariate`, `pred_int`, `flexible_history_length`, `cold_start`).
+
+For the full list of tags, their expected value types, and descriptions, see the tag
+registry at `pytorch_forecasting/_registry/_tags.py`, or call
+`pytorch_forecasting._registry.all_tags()`.
 
 **Mandatory Methods:**
 
