@@ -102,9 +102,18 @@ class PredictCallback(BasePredictionWriter):
 
         for key, data_list in self.info.items():
             if isinstance(data_list[0], dict):
-                collated_info = {
-                    k: torch.cat([d[k] for d in data_list]) for k in data_list[0].keys()
-                }
+                collated_info = {}
+                for k in data_list[0].keys():
+                    batch_elements = [d[k] for d in data_list]
+
+                    if isinstance(batch_elements[0], (list, tuple)):
+                        n_items = len(batch_elements[0])
+                        collated_info[k] = [
+                            torch.cat([elem[i] for elem in batch_elements])
+                            for i in range(n_items)
+                        ]
+                    else:
+                        collated_info[k] = torch.cat(batch_elements)
             else:
                 collated_info = torch.cat(data_list)
             final_result[key] = collated_info
