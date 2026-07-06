@@ -11,10 +11,10 @@ from torch.optim import Optimizer
 
 from pytorch_forecasting.layers._blocks import _TransformerBlock
 from pytorch_forecasting.layers._embeddings import _PatchEmbedding, _PositionalEmbedding
-from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class UniTS(TslibBaseModel):
+class UniTS(BaseModel):
     """
     UniTS: Unified Time Series Model.
 
@@ -59,7 +59,7 @@ class UniTS(TslibBaseModel):
     lr_scheduler_params : dict or None, optional
         Scheduler parameters.
     metadata : dict or None, optional
-        Dataset metadata provided by TslibDataModule.
+        Dataset metadata provided by EncoderDecoderTimeSeriesDataModule.
     """
 
     @classmethod
@@ -95,11 +95,10 @@ class UniTS(TslibBaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
-            metadata=metadata,
         )
 
         warnings.warn(
-            "UniTS is an experimental model implemented on TslibBaseModelV2. "
+            "UniTS is an experimental model implemented on BaseModel. "
             "It is an unstable version and may be subject to unannounced changes. "
             "Please use with caution.",
             UserWarning,
@@ -107,6 +106,11 @@ class UniTS(TslibBaseModel):
         )
 
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
+
+        self.metadata = metadata or {}
+        self.context_length = self.metadata.get("max_encoder_length", 0)
+        self.prediction_length = self.metadata.get("max_prediction_length", 0)
+        self.target_dim = self.metadata.get("target", 1)
 
         if d_model % n_heads != 0:
             raise ValueError(
@@ -173,10 +177,10 @@ class UniTS(TslibBaseModel):
         """
         Forward logic passing data through the abstracted layers.
         """
-        target = x["history_target"]
+        target = x["target_past"]
         B = target.size(0)
 
-        cont = x.get("history_cont")
+        cont = x.get("encoder_cont")
         if cont is not None and cont.size(-1) > 0:
             src = torch.cat([cont, target], dim=-1)
         else:

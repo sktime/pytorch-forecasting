@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.data.data_module import TslibDataModule
+from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.metrics import MAE, SMAPE
 from pytorch_forecasting.models.units._units_v2 import UniTS
 
@@ -69,22 +69,22 @@ def basic_timeseries_dataset(sample_multivariate_data):
 
 
 @pytest.fixture
-def basic_tslib_data_module(basic_timeseries_dataset):
-    """Create a basic TslibDataModule for testing."""
-    return TslibDataModule(
+def basic_data_module(basic_timeseries_dataset):
+    """Create a basic DataModule for testing."""
+    return EncoderDecoderTimeSeriesDataModule(
         time_series_dataset=basic_timeseries_dataset,
         batch_size=2,
-        context_length=16,
-        prediction_length=4,
+        max_encoder_length=16,
+        max_prediction_length=4,
         train_val_test_split=(0.7, 0.15, 0.15),
     )
 
 
 @pytest.fixture
-def basic_metadata(basic_tslib_data_module):
+def basic_metadata(basic_data_module):
     """Basic metadata from data module for model initialization."""
-    basic_tslib_data_module.setup()
-    return basic_tslib_data_module.metadata
+    basic_data_module.setup()
+    return basic_data_module.metadata
 
 
 @pytest.fixture(params=[16, 32], ids=["d_model_16", "d_model_32"])

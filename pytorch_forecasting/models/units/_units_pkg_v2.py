@@ -32,9 +32,11 @@ class UniTS_pkg_v2(Base_pkg):
 
     @classmethod
     def get_datamodule_cls(cls):
-        from pytorch_forecasting.data.data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
+        )
 
-        return TslibDataModule
+        return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
     def get_test_train_params(cls):
@@ -64,11 +66,14 @@ class UniTS_pkg_v2(Base_pkg):
             {
                 "patch_len": 8,
                 "stride": 4,
-                "datamodule_cfg": {"context_length": 16, "prediction_length": 4},
+                "datamodule_cfg": {
+                    "max_encoder_length": 16,
+                    "max_prediction_length": 4,
+                },
             },
         ]
 
-        base_dm_cfg = {"context_length": 16, "prediction_length": 4}
+        base_dm_cfg = {"max_encoder_length": 16, "max_prediction_length": 4}
 
         for param in params:
             merged = base_dm_cfg.copy()
