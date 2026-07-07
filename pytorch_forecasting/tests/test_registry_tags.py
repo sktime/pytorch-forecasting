@@ -3,6 +3,8 @@
 import ast
 from pathlib import Path
 
+import pytest
+
 from pytorch_forecasting._registry import all_tags
 from pytorch_forecasting._registry._tags import (
     OBJECT_TAG_LIST,
@@ -34,20 +36,33 @@ def test_tag_register_type():
 
 def test_check_tag_is_valid():
     """Test that check_tag_is_valid accepts valid and rejects invalid values."""
+    # simple types: bool, str, int, list
     check_tag_is_valid("capability:multivariate", True)
     check_tag_is_valid("info:name", "DeepAR")
+    check_tag_is_valid("info:compute", 3)
+    check_tag_is_valid("authors", ["some-author"])
 
-    try:
+    # tuple types: ("str", choices) and ("list", choices)
+    check_tag_is_valid("object_type", "metric")
+    check_tag_is_valid("info:pred_type", ["point"])
+
+    with pytest.raises(ValueError):
         check_tag_is_valid("capability:multivariate", "not_a_bool")
-        raise AssertionError("expected ValueError for wrong tag type")
-    except ValueError:
-        pass
 
-    try:
+    with pytest.raises(ValueError):
+        check_tag_is_valid("info:compute", "not_an_int")
+
+    with pytest.raises(ValueError):
+        check_tag_is_valid("authors", "not_a_list")
+
+    with pytest.raises(ValueError):
+        check_tag_is_valid("object_type", "not_a_valid_object_type")
+
+    with pytest.raises(ValueError):
+        check_tag_is_valid("info:pred_type", ["not_a_valid_pred_type"])
+
+    with pytest.raises(KeyError):
         check_tag_is_valid("not_a_real_tag", 42)
-        raise AssertionError("expected KeyError for unknown tag name")
-    except KeyError:
-        pass
 
 
 def test_all_tags_filters_by_object_type():
