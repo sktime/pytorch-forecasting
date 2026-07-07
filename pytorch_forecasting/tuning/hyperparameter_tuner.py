@@ -6,8 +6,6 @@ HyperparameterTuner: Centralized, model-agnostic optimizer.
 import copy
 import os
 
-import optuna
-
 from pytorch_forecasting.tuning.search_range import SearchRange
 
 
@@ -95,6 +93,15 @@ class HyperparameterTuner:
         optuna.Study
             The completed study with results.
         """
+
+        try:
+            import optuna
+        except ImportError:
+            raise ImportError(
+                "Optuna is required for hyperparameter tuning. "
+                "Please install it with `pip install optuna`"
+            )
+
         model_cls = self.pkg_cls.get_cls()
         search_ranges = model_cls.get_tuneable_hyperparameters()
 
