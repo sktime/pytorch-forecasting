@@ -36,13 +36,10 @@ def test_tag_register_type():
 
 def test_check_tag_is_valid():
     """Test that check_tag_is_valid accepts valid and rejects invalid values."""
-    # simple types: bool, str, int, list
     check_tag_is_valid("capability:multivariate", True)
     check_tag_is_valid("info:name", "DeepAR")
     check_tag_is_valid("info:compute", 3)
     check_tag_is_valid("authors", ["some-author"])
-
-    # tuple types: ("str", choices) and ("list", choices)
     check_tag_is_valid("object_type", "metric")
     check_tag_is_valid("info:pred_type", ["point"])
 

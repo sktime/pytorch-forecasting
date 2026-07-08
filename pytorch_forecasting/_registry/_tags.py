@@ -46,10 +46,6 @@ import pandas as pd
 
 from pytorch_forecasting.base._base_object import _BaseObject
 
-# ---------------------------------------------------------
-# Tag Class Definitions
-# ---------------------------------------------------------
-
 
 class _BaseTag(_BaseObject):
     """Base class for all tags in pytorch-forecasting.
@@ -66,10 +62,6 @@ class _BaseTag(_BaseObject):
         "short_descr": "",
     }
 
-
-# --------------------------
-# All objects
-# --------------------------
 
 _FORECASTER_TYPES = ["forecaster_pytorch_v1", "forecaster_pytorch_v2"]
 
@@ -119,11 +111,6 @@ class tests_skip_by_name(_BaseTag):
         "tag_type": "list",
         "short_descr": "names of tests to skip in CI for this object",
     }
-
-
-# --------------------------
-# Forecasters (v1 and v2)
-# --------------------------
 
 
 class info_name(_BaseTag):
@@ -238,11 +225,6 @@ class capability_quantile_generation(_BaseTag):
     }
 
 
-# --------------------------
-# Metrics
-# --------------------------
-
-
 class info_metric_name(_BaseTag):
     """Human-readable metric name."""
 
@@ -314,10 +296,6 @@ class shape_adds_quantile_dimension(_BaseTag):
     }
 
 
-# ---------------------------------------------------------
-# Registry Generation Logic
-# ---------------------------------------------------------
-
 OBJECT_TAG_REGISTER = []
 tag_classes = inspect.getmembers(sys.modules[__name__], inspect.isclass)
 
@@ -360,7 +338,6 @@ def check_tag_is_valid(tag_name, tag_value):
     tag_row = OBJECT_TAG_TABLE[OBJECT_TAG_TABLE[0] == tag_name]
     tag_type = tag_row.iloc[0, 2]
 
-    # Validation logic for strings/types
     if isinstance(tag_type, str):
         if tag_type == "bool" and not isinstance(tag_value, bool):
             raise ValueError(f"{tag_name} must be bool, found {type(tag_value)}")
@@ -371,7 +348,6 @@ def check_tag_is_valid(tag_name, tag_value):
         if tag_type == "list" and not isinstance(tag_value, list):
             raise ValueError(f"{tag_name} must be list, found {type(tag_value)}")
 
-    # Validation logic for complex types (tuples)
     elif isinstance(tag_type, tuple):
         if tag_type[0] == "str":
             if tag_value not in tag_type[1]:
