@@ -33,6 +33,11 @@ from pytorch_forecasting.layers._recurrent._slstm import (
     sLSTMLayer,
     sLSTMNetwork,
 )
+from pytorch_forecasting.layers._timesnet import (
+    FFT_for_Period,
+    Inception_Block_V1,
+    TimesBlock,
+)
 
 __all__ = [
     "FullAttention",
@@ -54,4 +59,7 @@ __all__ = [
     "RevIN",
     "ResidualBlock",
     "embedding_cat_variables",
+    "FFT_for_Period",
+    "Inception_Block_V1",
+    "TimesBlock",
 ]
