@@ -63,7 +63,7 @@ class BaseModel(LightningModule):
 
     def __init__(
         self,
-        loss: Metric,
+        loss: Metric | nn.Module,
         logging_metrics: list[nn.Module] | None = None,
         optimizer: Optimizer | str | None = "adam",
         optimizer_params: dict | None = None,
