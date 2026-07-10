@@ -10,7 +10,7 @@ class xLSTMTime_pkg_v2(Base_pkg):
         "info:name": "xLSTMTime",
         "info:compute": 3,
         "info:y_type": ["numeric"],
-        "authors": ["muslehal", "phoeenniixx"],
+        "authors": ["Faakhir30"],
         "capability:exogenous": True,
         "capability:multivariate": False,
         "capability:pred_int": True,
