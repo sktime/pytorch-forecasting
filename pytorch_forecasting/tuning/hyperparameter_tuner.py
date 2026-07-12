@@ -4,12 +4,9 @@ HyperparameterTuner: Centralized, model-agnostic optimizer.
 """
 
 import copy
-import os
-
-from pytorch_forecasting.tuning.search_range import SearchRange
 
 
-class HyperparameterTuner:
+class _HyperparameterTuner:
     """Model-agnostic hyperparameter optimizer for v2 models.
 
     Parameters
@@ -102,8 +99,7 @@ class HyperparameterTuner:
                 "Please install it with `pip install optuna`"
             )
 
-        model_cls = self.pkg_cls.get_cls()
-        search_ranges = model_cls.get_tuneable_hyperparameters()
+        search_ranges = {}
 
         if custom_ranges:
             search_ranges.update(custom_ranges)

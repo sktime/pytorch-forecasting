@@ -8,7 +8,7 @@ from typing import Any
 
 
 @dataclass
-class SearchRange:
+class _SearchRange:
     """Defines a search range for a single hyperparameter.
 
     Parameters
