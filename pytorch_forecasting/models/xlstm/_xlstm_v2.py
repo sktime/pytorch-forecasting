@@ -57,7 +57,9 @@ class xLSTMTime(BaseModel):
         self.metadata = metadata or {}
 
         if xlstm_type not in ["slstm", "mlstm"]:
-            raise ValueError("xlstm_type must be either 'slstm' or 'mlstm'")
+            raise ValueError(
+                "Error in xLSTMTime: xlstm_type must be either 'slstm' or 'mlstm'"
+            )
 
         self.max_encoder_length = self.metadata["max_encoder_length"]
         self.max_prediction_length = self.metadata["max_prediction_length"]
