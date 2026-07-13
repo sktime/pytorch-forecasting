@@ -92,11 +92,28 @@ class PredictCallback(BasePredictionWriter):
         """Collate all batch results into final tensors."""
         if self.mode == "raw" and isinstance(self.predictions[0], dict):
             keys = self.predictions[0].keys()
-            collated_preds = {
-                key: torch.cat([p[key] for p in self.predictions]) for key in keys
-            }
+            collated_preds = {}
+            for key in keys:
+                batch_elements = [p[key] for p in self.predictions]
+                if isinstance(batch_elements[0], (list, tuple)):
+                    n_items = len(batch_elements[0])
+                    collated_preds[key] = [
+                        torch.cat([elem[i] for elem in batch_elements])
+                        for i in range(n_items)
+                    ]
+                else:
+                    collated_preds[key] = torch.cat(batch_elements)
         else:
-            collated_preds = {"prediction": torch.cat(self.predictions)}
+            if isinstance(self.predictions[0], (list, tuple)):
+                n_items = len(self.predictions[0])
+                collated_preds = {
+                    "prediction": [
+                        torch.cat([p[i] for p in self.predictions])
+                        for i in range(n_items)
+                    ]
+                }
+            else:
+                collated_preds = {"prediction": torch.cat(self.predictions)}
 
         final_result = collated_preds
 

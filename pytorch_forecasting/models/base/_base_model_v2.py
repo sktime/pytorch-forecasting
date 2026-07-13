@@ -161,7 +161,7 @@ class BaseModel(LightningModule):
         return predict_callback.result
 
     def to_prediction(
-        self, out: dict[str, Any], use_metric: bool = True, **kwargs
+        self, out: dict[str, Any], use_metric: bool = False, **kwargs
     ) -> list[torch.Tensor] | torch.Tensor:
         """Converts raw model output to point forecasts.
 
@@ -169,26 +169,29 @@ class BaseModel(LightningModule):
         ----------
         out : dict
             Network output dict with key ``"prediction"``.
-        use_metric : bool
+        use_metric : bool, default = False
             If True, use loss metric for conversion.
             If False, take mean over prediction directly.
         """
+        pred = out["prediction"]
+        pred_list = pred if isinstance(pred, (list, tuple)) else [pred]
+        pred_input = pred_list[0] if len(pred_list) == 1 else pred_list
         if not use_metric:
             if isinstance(self.loss, MultiLoss):
                 return [
-                    Metric.to_prediction(loss, out["prediction"][idx])
+                    Metric.to_prediction(loss, pred_list[idx])
                     for idx, loss in enumerate(self.loss)
                 ]
             else:
-                return Metric.to_prediction(self.loss, out["prediction"])
-        try:
-            out = self.loss.to_prediction(out["prediction"], **kwargs)
-        except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_prediction(out["prediction"])
+                return Metric.to_prediction(self.loss, pred_input)
+        if kwargs:
+            out = self.loss.to_prediction(pred_input, **kwargs)
+        else:  # in case passed kwargs do not exist
+            out = self.loss.to_prediction(pred_input)
         return out
 
     def to_quantiles(
-        self, out: dict[str, Any], use_metric: bool = True, **kwargs
+        self, out: dict[str, Any], use_metric: bool = False, **kwargs
     ) -> list[torch.Tensor] | torch.Tensor:
         """Converts raw model output to quantile forecasts.
 
@@ -196,17 +199,19 @@ class BaseModel(LightningModule):
         ----------
         out : dict
             Network output dict.
-        use_metric : bool
+        use_metric : bool, default = False
             If True, use loss metric for conversion.
             If False, take mean over prediction directly.
         """
-
+        pred = out["prediction"]
+        pred_list = pred if isinstance(pred, (list, tuple)) else [pred]
+        pred_input = pred_list[0] if len(pred_list) == 1 else pred_list
         if not use_metric:
             if isinstance(self.loss, MultiLoss):
                 return [
                     Metric.to_quantiles(
                         loss,
-                        out["prediction"][idx],
+                        pred_list[idx],
                         quantiles=kwargs.get("quantiles", loss.quantiles),
                     )
                     for idx, loss in enumerate(self.loss)
@@ -214,13 +219,13 @@ class BaseModel(LightningModule):
             else:
                 return Metric.to_quantiles(
                     self.loss,
-                    out["prediction"],
+                    pred_input,
                     quantiles=kwargs.get("quantiles", self.loss.quantiles),
                 )
-        try:
-            out = self.loss.to_quantiles(out["prediction"], **kwargs)
-        except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_quantiles(out["prediction"])
+        if kwargs:
+            out = self.loss.to_quantiles(pred_input, **kwargs)
+        else:  # in case passed kwargs do not exist
+            out = self.loss.to_quantiles(pred_input)
         return out
 
     def _coerce_targets_for_loss(self, y):
@@ -293,6 +298,9 @@ class BaseModel(LightningModule):
         """
         x, _ = batch
         y_hat = self(x)
+        pred = y_hat["prediction"]
+        if not isinstance(pred, (list, tuple)):
+            y_hat["prediction"] = [pred]
         return y_hat
 
     def configure_optimizers(self) -> dict:
