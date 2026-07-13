@@ -131,8 +131,15 @@ class PredictCallback(BasePredictionWriter):
                         ]
                     else:
                         collated_info[k] = torch.cat(batch_elements)
+
+            elif isinstance(data_list[0], (list, tuple)):
+                n_items = len(data_list[0])
+                collated_info = [
+                    torch.cat([elem[i] for elem in data_list]) for i in range(n_items)
+                ]
             else:
                 collated_info = torch.cat(data_list)
+
             final_result[key] = collated_info
 
         self._result = final_result
