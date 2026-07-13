@@ -81,7 +81,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         # mode="raw"
         raw_out = pkg.predict(predict_data, mode="raw")
         raw_pred_tensor = raw_out["prediction"][0]
-        assert any(isinstance(v, torch.Tensor) for v in raw_out.values())
+        assert any(isinstance(v[0], torch.Tensor) for v in raw_out.values())
         assert (
             raw_pred_tensor.ndim == 3
         ), f"Prediction must be 3D, got {raw_pred_tensor.ndim}D"

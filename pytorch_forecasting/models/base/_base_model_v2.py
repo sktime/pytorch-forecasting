@@ -183,12 +183,13 @@ class BaseModel(LightningModule):
                     for idx, loss in enumerate(self.loss)
                 ]
             else:
-                return Metric.to_prediction(self.loss, pred_input)
+                pred_out = Metric.to_prediction(self.loss, pred_input)
+                return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
         if kwargs:
-            out = self.loss.to_prediction(pred_input, **kwargs)
+            pred_out = self.loss.to_prediction(pred_input, **kwargs)
         else:  # in case passed kwargs do not exist
-            out = self.loss.to_prediction(pred_input)
-        return out
+            pred_out = self.loss.to_prediction(pred_input)
+        return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
 
     def to_quantiles(
         self, out: dict[str, Any], use_metric: bool = False, **kwargs
@@ -217,16 +218,17 @@ class BaseModel(LightningModule):
                     for idx, loss in enumerate(self.loss)
                 ]
             else:
-                return Metric.to_quantiles(
+                pred_out = Metric.to_quantiles(
                     self.loss,
                     pred_input,
                     quantiles=kwargs.get("quantiles", self.loss.quantiles),
                 )
+                return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
         if kwargs:
-            out = self.loss.to_quantiles(pred_input, **kwargs)
+            pred_out = self.loss.to_quantiles(pred_input, **kwargs)
         else:  # in case passed kwargs do not exist
-            out = self.loss.to_quantiles(pred_input)
-        return out
+            pred_out = self.loss.to_quantiles(pred_input)
+        return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
 
     def _coerce_targets_for_loss(self, y):
         """
