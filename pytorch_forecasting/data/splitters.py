@@ -95,42 +95,75 @@ def stratified_series_split(
 def temporal_window_split(
     windows: list[tuple[int, int, int, int]],
     train_val_test_split: tuple[float, float, float],
+    series_timestamps: dict[int, np.ndarray],
 ) -> tuple[
     list[tuple[int, int, int, int]],
     list[tuple[int, int, int, int]],
     list[tuple[int, int, int, int]],
 ]:
+    """Split windows by global timestamp cutoffs to prevent data leakage.
+
+    Computes global time cutoffs across all series and assigns each window
+    to train/val/test based on the window's end timestamp (the last prediction
+    time step). This prevents future information from leaking into training.
+
+    Parameters
+    ----------
+    windows : list of (series_idx, start_idx, enc_len, pred_len)
+        All sliding windows across all series.
+    train_val_test_split : (train_ratio, val_ratio, test_ratio)
+        Proportions for the three folds. Must sum to 1.0.
+    series_timestamps : dict mapping series_idx to np.ndarray of timestamps
+        The actual time index values for each series (from TimeSeries["t"]).
+
+    Returns
+    -------
+    train_windows, val_windows, test_windows
+        Three lists of window tuples, split by global time boundaries.
     """
-    Time-Series Splitting: Implementation of a sliding/expanding window split.
-    Instead of splitting series, we take all windows for a series and
-    split them temporally. The first X% of windows from series A go to Train,
-    next Y% to Val, last Z% to Test.
-    """
-    # Group windows by series_idx
-    series_windows = {}
-    for w in windows:
-        s_idx = w[0]
-        if s_idx not in series_windows:
-            series_windows[s_idx] = []
-        series_windows[s_idx].append(w)
+    if not windows:
+        return [], [], []
 
-    train_windows, val_windows, test_windows = [], [], []
+    # Find global time range across ALL series
+    all_timestamps = np.concatenate(list(series_timestamps.values()))
+    global_min = float(np.min(all_timestamps))
+    global_max = float(np.max(all_timestamps))
+    time_range = global_max - global_min
 
-    for s_idx, sw in series_windows.items():
-        # Ensure windows are sorted by time (start_idx: w[1])
-        sw.sort(key=lambda x: x[1])
-        total_w = len(sw)
-
+    # Edge case: all timestamps identical → fall back to positional split
+    if time_range == 0:
+        total_w = len(windows)
         train_end = int(np.round(train_val_test_split[0] * total_w))
         if train_end == 0 and train_val_test_split[0] > 0 and total_w > 0:
             train_end = 1
-
         val_end = train_end + int(np.round(train_val_test_split[1] * total_w))
         if val_end > total_w:
             val_end = total_w
+        return windows[:train_end], windows[train_end:val_end], windows[val_end:]
 
-        train_windows.extend(sw[:train_end])
-        val_windows.extend(sw[train_end:val_end])
-        test_windows.extend(sw[val_end:])
+    # Compute cutoff points on the actual timeline
+    train_cutoff = global_min + train_val_test_split[0] * time_range
+    val_cutoff = train_cutoff + train_val_test_split[1] * time_range
+
+    # Assign each window based on its END timestamp
+    train_windows, val_windows, test_windows = [], [], []
+
+    for w in windows:
+        series_idx, start_idx, enc_len, pred_len = w
+        timestamps = series_timestamps[series_idx]
+
+        # The window covers [start_idx, start_idx + enc_len + pred_len - 1]
+        end_idx = start_idx + enc_len + pred_len - 1
+        # Clamp to array bounds
+        end_idx = min(end_idx, len(timestamps) - 1)
+
+        end_time = float(timestamps[end_idx])
+
+        if end_time <= train_cutoff:
+            train_windows.append(w)
+        elif end_time <= val_cutoff:
+            val_windows.append(w)
+        else:
+            test_windows.append(w)
 
     return train_windows, val_windows, test_windows

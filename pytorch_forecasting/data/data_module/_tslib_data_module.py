@@ -726,9 +726,21 @@ class TslibDataModule(LightningDataModule):
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
                 if self.split_strategy == "temporal":
                     all_windows = self._create_windows(self._train_indices)
+
+                    series_timestamps = {}
+                    for idx in self._train_indices:
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
+                        sample = self.time_series_dataset[series_idx]
+                        series_timestamps[series_idx] = sample["t"]
+
                     t_win, v_win, te_win = temporal_window_split(
-                        all_windows, self.train_val_test_split
+                        all_windows,
+                        self.train_val_test_split,
+                        series_timestamps,
                     )
+
                     self._train_windows, self._val_windows, self._test_windows = (
                         t_win,
                         v_win,
@@ -755,9 +767,18 @@ class TslibDataModule(LightningDataModule):
             if not hasattr(self, "_test_dataset"):
                 if self.split_strategy == "temporal":
                     all_windows = self._create_windows(torch.arange(total_series))
+
+                    series_timestamps = {}
+                    for idx in range(total_series):
+                        sample = self.time_series_dataset[idx]
+                        series_timestamps[idx] = sample["t"]
+
                     _, _, self._test_windows = temporal_window_split(
-                        all_windows, self.train_val_test_split
+                        all_windows,
+                        self.train_val_test_split,
+                        series_timestamps,
                     )
+
                 else:
                     self._test_windows = self._create_windows(self._test_indices)
 

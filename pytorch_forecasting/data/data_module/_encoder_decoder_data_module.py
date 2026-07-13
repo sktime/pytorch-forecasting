@@ -669,9 +669,21 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
                 if self.split_strategy == "temporal":
                     all_windows = self._create_windows(self._train_indices)
+
+                    series_timestamps = {}
+                    for idx in self._train_indices:
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
+                        sample = self.time_series_dataset[series_idx]
+                        series_timestamps[series_idx] = sample["t"]
+
                     t_win, v_win, te_win = temporal_window_split(
-                        all_windows, self.train_val_test_split
+                        all_windows,
+                        self.train_val_test_split,
+                        series_timestamps,
                     )
+
                     self.train_windows, self.val_windows, self.test_windows = (
                         t_win,
                         v_win,
@@ -695,21 +707,29 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 )
 
         elif stage == "test":
-            if not hasattr(self, "test_dataset"):
-                if self.split_strategy == "temporal":
-                    all_windows = self._create_windows(torch.arange(total_series))
-                    _, _, self.test_windows = temporal_window_split(
-                        all_windows, self.train_val_test_split
-                    )
-                else:
-                    self.test_windows = self._create_windows(self._test_indices)
+            if self.split_strategy == "temporal":
+                all_windows = self._create_windows(torch.arange(total_series))
 
-                self.test_dataset = self._ProcessedEncoderDecoderDataset(
-                    self.time_series_dataset,
-                    self,
-                    self.test_windows,
-                    self.add_relative_time_idx,
+                series_timestamps = {}
+                for idx in range(total_series):
+                    sample = self.time_series_dataset[idx]
+                    series_timestamps[idx] = sample["t"]
+
+                _, _, self.test_windows = temporal_window_split(
+                    all_windows,
+                    self.train_val_test_split,
+                    series_timestamps,
                 )
+
+            else:
+                self.test_windows = self._create_windows(self._test_indices)
+
+            self.test_dataset = self._ProcessedEncoderDecoderDataset(
+                self.time_series_dataset,
+                self,
+                self.test_windows,
+                self.add_relative_time_idx,
+            )
         elif stage == "predict":
             predict_indices = torch.arange(len(self.time_series_dataset))
             self.predict_windows = self._create_windows(predict_indices)
