@@ -493,8 +493,8 @@ def test_multivariate_target(normalizer_list):
 
     x, y = dm.train_dataset[0]
     assert len(y) == 2
-    assert y[0].shape == (dm.max_prediction_length,)
-    assert y[1].shape == (dm.max_prediction_length,)
+    assert y[0][0].shape == (dm.max_prediction_length,)
+    assert y[0][1].shape == (dm.max_prediction_length,)
     assert x["target_past"].shape == (dm.max_encoder_length, 2)
     if normalizer_list is None:
         dm._target_normalizer = None
@@ -616,7 +616,7 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
 
     x_no_norm, y_no_norm = dm_no_norm.train_dataset[0]
     x_with_norm, y_with_norm = dm_with_norm.train_dataset[0]
-    assert y_with_norm.shape == y_no_norm.shape
+    assert y_with_norm[0][0].shape == y_no_norm[0][0].shape
     assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
 
     if normalizer is not None and not isinstance(normalizer, EncoderNormalizer):
