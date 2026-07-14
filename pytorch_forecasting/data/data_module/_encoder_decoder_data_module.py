@@ -389,7 +389,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         if target.ndim == 1:
             target = target.unsqueeze(-1)
         features = features.float()
-        weights = weights.float()
+        if weights is not None:
+            weights = weights.float()
 
         time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
         return target, features, times, time_mask, weights

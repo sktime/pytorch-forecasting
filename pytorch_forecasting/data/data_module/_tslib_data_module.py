@@ -582,10 +582,8 @@ class TslibDataModule(LightningDataModule):
             features = features.detach().clone().float()
         else:
             features = torch.tensor(features, dtype=torch.float32)
-        if isinstance(weights, torch.Tensor):
+        if weights is not None:
             weights = weights.float()
-        elif weights is not None:
-            weights = torch.tensor(weights, dtype=torch.float32)
 
         # scaling and normalization
         target_scale = {}
