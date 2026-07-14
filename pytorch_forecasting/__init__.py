@@ -1,30 +1,121 @@
-import sys
-import warnings
-from importlib.abc import MetaPathFinder
+"""
+PyTorch Forecasting package for timeseries forecasting with PyTorch.
+"""
 
-# Raise deprecation warning on import
-warnings.warn(
-    "pytorch_forecasting has been renamed to ptf. Please import from ptf instead.",
-    DeprecationWarning,
-    stacklevel=2,
+__version__ = "1.8.0"
+
+from pytorch_forecasting.data import (
+    EncoderNormalizer,
+    GroupNormalizer,
+    MultiNormalizer,
+    NaNLabelEncoder,
+    TimeSeriesDataSet,
 )
+from pytorch_forecasting.metrics import (
+    MAE,
+    MAPE,
+    MASE,
+    RMSE,
+    SMAPE,
+    BetaDistributionLoss,
+    CrossEntropy,
+    DistributionLoss,
+    ImplicitQuantileNetworkDistributionLoss,
+    LogNormalDistributionLoss,
+    MQF2DistributionLoss,
+    MultiHorizonMetric,
+    MultiLoss,
+    MultivariateNormalDistributionLoss,
+    NegativeBinomialDistributionLoss,
+    NormalDistributionLoss,
+    PoissonLoss,
+    QuantileLoss,
+)
+from pytorch_forecasting.models import (
+    GRU,
+    LSTM,
+    AutoRegressiveBaseModel,
+    AutoRegressiveBaseModelWithCovariates,
+    Baseline,
+    BaseModel,
+    BaseModelWithCovariates,
+    DecoderMLP,
+    DeepAR,
+    MultiEmbedding,
+    NBeats,
+    NBeatsKAN,
+    NHiTS,
+    RecurrentNetwork,
+    TemporalFusionTransformer,
+    TiDEModel,
+    get_rnn,
+)
+from pytorch_forecasting.utils import (
+    apply_to_list,
+    autocorrelation,
+    create_mask,
+    detach,
+    get_embedding_size,
+    groupby_apply,
+    integer_histogram,
+    move_to_device,
+    profile,
+    to_list,
+    unpack_sequence,
+)
+from pytorch_forecasting.utils._maint._show_versions import show_versions
 
-# Custom import interceptor to redirect all sub-imports (e.g., pytorch_forecasting.models)
-class LegacyRedirectFinder(MetaPathFinder):
-    def find_spec(self, fullname, path, target=None):
-        if fullname.startswith("pytorch_forecasting"):
-            real_name = fullname.replace("pytorch_forecasting", "ptf", 1)
-            try:
-                __import__(real_name)
-                sys.modules[fullname] = sys.modules[real_name]
-                return sys.modules[real_name].__spec__
-            except ImportError:
-                return None
-        return None
-
-# Register the finder at the start of sys.meta_path
-sys.meta_path.insert(0, LegacyRedirectFinder())
-
-# Map the root package to the renamed ptf package
-import ptf
-sys.modules["pytorch_forecasting"] = ptf
+__all__ = [
+    "TimeSeriesDataSet",
+    "GroupNormalizer",
+    "EncoderNormalizer",
+    "NaNLabelEncoder",
+    "MultiNormalizer",
+    "TemporalFusionTransformer",
+    "TiDEModel",
+    "NBeats",
+    "NBeatsKAN",
+    "NHiTS",
+    "Baseline",
+    "DeepAR",
+    "BaseModel",
+    "BaseModelWithCovariates",
+    "AutoRegressiveBaseModel",
+    "AutoRegressiveBaseModelWithCovariates",
+    "MultiHorizonMetric",
+    "MultiLoss",
+    "MAE",
+    "MAPE",
+    "MASE",
+    "SMAPE",
+    "DistributionLoss",
+    "BetaDistributionLoss",
+    "LogNormalDistributionLoss",
+    "NegativeBinomialDistributionLoss",
+    "NormalDistributionLoss",
+    "ImplicitQuantileNetworkDistributionLoss",
+    "MultivariateNormalDistributionLoss",
+    "MQF2DistributionLoss",
+    "CrossEntropy",
+    "PoissonLoss",
+    "QuantileLoss",
+    "RMSE",
+    "get_rnn",
+    "LSTM",
+    "GRU",
+    "MultiEmbedding",
+    "apply_to_list",
+    "autocorrelation",
+    "get_embedding_size",
+    "create_mask",
+    "to_list",
+    "RecurrentNetwork",
+    "DecoderMLP",
+    "detach",
+    "move_to_device",
+    "integer_histogram",
+    "groupby_apply",
+    "profile",
+    "show_versions",
+    "unpack_sequence",
+]

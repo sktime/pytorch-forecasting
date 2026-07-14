@@ -1,121 +1,25 @@
-"""
-PyTorch Forecasting package for timeseries forecasting with PyTorch.
-"""
+from importlib.abc import MetaPathFinder
+import sys
 
-__version__ = "1.8.0"
 
-from ptf.data import (
-    EncoderNormalizer,
-    GroupNormalizer,
-    MultiNormalizer,
-    NaNLabelEncoder,
-    TimeSeriesDataSet,
-)
-from ptf.metrics import (
-    MAE,
-    MAPE,
-    MASE,
-    RMSE,
-    SMAPE,
-    BetaDistributionLoss,
-    CrossEntropy,
-    DistributionLoss,
-    ImplicitQuantileNetworkDistributionLoss,
-    LogNormalDistributionLoss,
-    MQF2DistributionLoss,
-    MultiHorizonMetric,
-    MultiLoss,
-    MultivariateNormalDistributionLoss,
-    NegativeBinomialDistributionLoss,
-    NormalDistributionLoss,
-    PoissonLoss,
-    QuantileLoss,
-)
-from ptf.models import (
-    GRU,
-    LSTM,
-    AutoRegressiveBaseModel,
-    AutoRegressiveBaseModelWithCovariates,
-    Baseline,
-    BaseModel,
-    BaseModelWithCovariates,
-    DecoderMLP,
-    DeepAR,
-    MultiEmbedding,
-    NBeats,
-    NBeatsKAN,
-    NHiTS,
-    RecurrentNetwork,
-    TemporalFusionTransformer,
-    TiDEModel,
-    get_rnn,
-)
-from ptf.utils import (
-    apply_to_list,
-    autocorrelation,
-    create_mask,
-    detach,
-    get_embedding_size,
-    groupby_apply,
-    integer_histogram,
-    move_to_device,
-    profile,
-    to_list,
-    unpack_sequence,
-)
-from ptf.utils._maint._show_versions import show_versions
+# Custom import interceptor to redirect all sub-imports
+# (e.g., ptf.models -> pytorch_forecasting.models)
+class LegacyRedirectFinder(MetaPathFinder):
+    def find_spec(self, fullname, path, target=None):
+        if fullname.startswith("ptf"):
+            real_name = fullname.replace("ptf", "pytorch_forecasting", 1)
+            try:
+                __import__(real_name)
+                sys.modules[fullname] = sys.modules[real_name]
+                return sys.modules[real_name].__spec__
+            except ImportError:
+                return None
+        return None
 
-__all__ = [
-    "TimeSeriesDataSet",
-    "GroupNormalizer",
-    "EncoderNormalizer",
-    "NaNLabelEncoder",
-    "MultiNormalizer",
-    "TemporalFusionTransformer",
-    "TiDEModel",
-    "NBeats",
-    "NBeatsKAN",
-    "NHiTS",
-    "Baseline",
-    "DeepAR",
-    "BaseModel",
-    "BaseModelWithCovariates",
-    "AutoRegressiveBaseModel",
-    "AutoRegressiveBaseModelWithCovariates",
-    "MultiHorizonMetric",
-    "MultiLoss",
-    "MAE",
-    "MAPE",
-    "MASE",
-    "SMAPE",
-    "DistributionLoss",
-    "BetaDistributionLoss",
-    "LogNormalDistributionLoss",
-    "NegativeBinomialDistributionLoss",
-    "NormalDistributionLoss",
-    "ImplicitQuantileNetworkDistributionLoss",
-    "MultivariateNormalDistributionLoss",
-    "MQF2DistributionLoss",
-    "CrossEntropy",
-    "PoissonLoss",
-    "QuantileLoss",
-    "RMSE",
-    "get_rnn",
-    "LSTM",
-    "GRU",
-    "MultiEmbedding",
-    "apply_to_list",
-    "autocorrelation",
-    "get_embedding_size",
-    "create_mask",
-    "to_list",
-    "RecurrentNetwork",
-    "DecoderMLP",
-    "detach",
-    "move_to_device",
-    "integer_histogram",
-    "groupby_apply",
-    "profile",
-    "show_versions",
-    "unpack_sequence",
-]
+
+sys.meta_path.insert(0, LegacyRedirectFinder())
+
+# Map the root package to pytorch_forecasting
+import pytorch_forecasting
+
+sys.modules["ptf"] = pytorch_forecasting
