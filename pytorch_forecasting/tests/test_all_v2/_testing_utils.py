@@ -39,6 +39,13 @@ def _integration(
 
 
 def _check_save(ckpt_dir, best_model_path):
+    """Test saving artifacts.
+
+    Checks:
+
+    - if the artifacts are stored correctly
+    - artifacts.yaml exists and has correct format
+    """
     artifacts_yaml_path = ckpt_dir / "artifacts.yaml"
     assert artifacts_yaml_path.is_file(), "artifacts.yaml not created"
 
@@ -80,6 +87,12 @@ def _check_save(ckpt_dir, best_model_path):
 
 
 def _check_load(test_data, pkg_loaded, tmp_path):
+    """Test loading artifacts.
+
+    Checks:
+    - if the artifacts are loaded correctly
+    - if the model is instantiated from checkpoint and loaded correctly
+    """
     assert pkg_loaded.model is not None, "Model was not loaded from checkpoint"
 
     # Configs loaded from pkl files
