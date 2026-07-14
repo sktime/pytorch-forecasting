@@ -1126,17 +1126,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "encoder_mask": torch.stack([x["encoder_mask"] for x, _ in batch]),
             "decoder_mask": torch.stack([x["decoder_mask"] for x, _ in batch]),
         }
-        if isinstance(batch[0][0]["target_scale"], list | tuple):
-            num_targets = len(batch[0][0]["target_scale"])
-            target_scale = [
-                torch.stack([x["target_scale"][i] for x, _ in batch])
-                for i in range(num_targets)
-            ]
-        else:
-            target_scale = torch.stack([x["target_scale"] for x, _ in batch])
-
-        x_batch["target_scale"] = target_scale
-
         num_targets = len(batch[0][0]["target_scale"])
         target_scale = [
             torch.stack([x["target_scale"][i] for x, _ in batch])
