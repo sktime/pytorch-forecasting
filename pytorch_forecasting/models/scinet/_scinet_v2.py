@@ -260,7 +260,9 @@ class SCINet_v2(BaseModel):
     Based on the paper
     `SCINet: Time Series Modeling and Forecasting with Sample Convolution
     and Interaction Networks
-    <https://arxiv.org/abs/2106.09305>`_ (NeurIPS 2022).
+    <https://arxiv.org/abs/2106.09305>`_ by Liu et al. (NeurIPS 2022),
+    adapted from the authors' original implementation at
+    `cure-lab/SCINet <https://github.com/cure-lab/SCINet>`_.
 
     The model recursively splits the input sequence into even- and
     odd-indexed sub-sequences, applies interactive convolutional

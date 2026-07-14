@@ -11,7 +11,7 @@ class SCINet_v2_pkg_v2(Base_pkg):
         "info:compute": 2,
         "authors": ["echo-xiao"],
         "capability:exogenous": False,
-        "capability:multivariate": False,
+        "capability:multivariate": True,
         "capability:pred_int": False,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
