@@ -386,9 +386,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         weights = sample.get("weights", None)
 
         target = target.float()
+        features = features.float()
+
         if target.ndim == 1:
             target = target.unsqueeze(-1)
-        features = features.float()
         if weights is not None:
             weights = weights.float()
 
