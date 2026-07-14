@@ -571,6 +571,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             return x, y
 
+    _ARTIFACT_SPECS = [
+        ("scaler", "_scalers", "scalers"),
+        ("target_normalizer", "_target_normalizer", "scalers"),
+        ("datamodule_metadata", "_metadata", "metadata"),
+    ]
+
     def save_artifacts(
         self, artifact_dir: Path, include: list[str] = [], exclude: list[str] = []
     ):
@@ -603,45 +609,25 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         artifact_dir = Path(artifact_dir)
         saved_artifacts: dict[str, Path] = {}
 
-        if "scaler" not in exclude:
-            if self._scalers:
-                scalers_dir = artifact_dir / "scalers"
-                scalers_dir.mkdir(parents=True, exist_ok=True)
-                scalers_path = scalers_dir / "scalers.pkl"
-                with open(scalers_path, "wb") as f:
-                    pickle.dump(self._scalers, f)
-                saved_artifacts["scalers"] = scalers_path
-            else:
+        for key, attr, subdir in self._ARTIFACT_SPECS:
+            if key in exclude:
+                continue
+
+            value = getattr(self, attr)
+            if not value:
                 warnings.warn(
-                    "No scalers found in the datamodule to save. "
-                    "If you expected scalers to be saved, ensure they are "
+                    f"No {key} found in the datamodule to save. "
+                    f"If you expected {key} to be saved, ensure it is "
                     "passed to the datamodule constructor."
                 )
+                continue
 
-        if "target_normalizer" not in exclude:
-            if self._target_normalizer is not None:
-                scalers_dir = artifact_dir / "scalers"
-                scalers_dir.mkdir(parents=True, exist_ok=True)
-                target_norm_path = scalers_dir / "target_normalizer.pkl"
-                with open(target_norm_path, "wb") as f:
-                    pickle.dump(self._target_normalizer, f)
-                saved_artifacts["target_normalizer"] = target_norm_path
-            else:
-                warnings.warn(
-                    "No target_normalizer found in the datamodule to save. "
-                    "If you expected a target normalizer to be saved, ensure "
-                    "one is passed to the datamodule constructor."
-                )
-
-        if "datamodule_metadata" not in exclude:
-            metadata = self.metadata
-            if metadata:
-                metadata_dir = artifact_dir / "metadata"
-                metadata_dir.mkdir(parents=True, exist_ok=True)
-                metadata_path = metadata_dir / "datamodule_metadata.pkl"
-                with open(metadata_path, "wb") as f:
-                    pickle.dump(metadata, f)
-                saved_artifacts["datamodule_metadata"] = metadata_path
+            target_dir = artifact_dir / subdir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            path = target_dir / f"{key}.pkl"
+            with open(path, "wb") as f:
+                pickle.dump(value, f)
+            saved_artifacts[key] = path
 
         return saved_artifacts
 
@@ -683,41 +669,18 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         UserWarning
             If a key is present in ``artifacts`` but the file doesn't exist.
         """
-        scalers_path = artifacts.get("scalers")
-        if scalers_path is not None:
-            scalers_path = Path(scalers_path)
-            if not scalers_path.exists():
-                warnings.warn(
-                    f"Scalers file not found at {scalers_path}. "
-                    "Skipping scalers load."
-                )
-            else:
-                with open(scalers_path, "rb") as f:
-                    self._scalers = pickle.load(f)  # noqa: S301
+        for key, attr, _ in self._ARTIFACT_SPECS:
+            path = artifacts.get(key)
+            if path is None:
+                continue
 
-        target_norm_path = artifacts.get("target_normalizer")
-        if target_norm_path is not None:
-            target_norm_path = Path(target_norm_path)
-            if not target_norm_path.exists():
-                warnings.warn(
-                    f"Target normalizer file not found at {target_norm_path}. "
-                    "Skipping target normalizer load."
-                )
-            else:
-                with open(target_norm_path, "rb") as f:
-                    self._target_normalizer = pickle.load(f)  # noqa: S301
+            path = Path(path)
+            if not path.exists():
+                warnings.warn(f"{key} file not found at {path}. Skipping {key} load.")
+                continue
 
-        metadata_path = artifacts.get("datamodule_metadata")
-        if metadata_path is not None:
-            metadata_path = Path(metadata_path)
-            if not metadata_path.exists():
-                warnings.warn(
-                    f"Metadata file not found at {metadata_path}. "
-                    "Skipping metadata load."
-                )
-            else:
-                with open(metadata_path, "rb") as f:
-                    self._metadata = pickle.load(f)  # noqa: S301
+            with open(path, "rb") as f:
+                setattr(self, attr, pickle.load(f))  # noqa: S301
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
