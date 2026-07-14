@@ -88,59 +88,31 @@ class PredictCallback(BasePredictionWriter):
             else:
                 warn(f"Unknown return_info key: {key}")
 
+    @staticmethod
+    def _collate(items: list[Any]) -> Any:
+        """Recursively concatenate a list of per-batch tensors/dicts/lists into one."""
+        first = items[0]
+        if isinstance(first, dict):
+            return {
+                key: PredictCallback._collate([item[key] for item in items])
+                for key in first
+            }
+        if isinstance(first, (list, tuple)):
+            n = len(first)
+            return [
+                PredictCallback._collate([item[i] for item in items]) for i in range(n)
+            ]
+        return torch.cat(items)
+
     def on_predict_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         """Collate all batch results into final tensors."""
-        if self.mode == "raw" and isinstance(self.predictions[0], dict):
-            keys = self.predictions[0].keys()
-            collated_preds = {}
-            for key in keys:
-                batch_elements = [p[key] for p in self.predictions]
-                if isinstance(batch_elements[0], (list, tuple)):
-                    n_items = len(batch_elements[0])
-                    collated_preds[key] = [
-                        torch.cat([elem[i] for elem in batch_elements])
-                        for i in range(n_items)
-                    ]
-                else:
-                    collated_preds[key] = torch.cat(batch_elements)
-        else:
-            if isinstance(self.predictions[0], (list, tuple)):
-                n_items = len(self.predictions[0])
-                collated_preds = {
-                    "prediction": [
-                        torch.cat([p[i] for p in self.predictions])
-                        for i in range(n_items)
-                    ]
-                }
-            else:
-                collated_preds = {"prediction": torch.cat(self.predictions)}
+        is_raw_dict = self.mode == "raw" and isinstance(self.predictions[0], dict)
+        collated_preds = self._collate(self.predictions)
 
-        final_result = collated_preds
+        final_result = collated_preds if is_raw_dict else {"prediction": collated_preds}
 
         for key, data_list in self.info.items():
-            if isinstance(data_list[0], dict):
-                collated_info = {}
-                for k in data_list[0].keys():
-                    batch_elements = [d[k] for d in data_list]
-
-                    if isinstance(batch_elements[0], (list, tuple)):
-                        n_items = len(batch_elements[0])
-                        collated_info[k] = [
-                            torch.cat([elem[i] for elem in batch_elements])
-                            for i in range(n_items)
-                        ]
-                    else:
-                        collated_info[k] = torch.cat(batch_elements)
-
-            elif isinstance(data_list[0], (list, tuple)):
-                n_items = len(data_list[0])
-                collated_info = [
-                    torch.cat([elem[i] for elem in data_list]) for i in range(n_items)
-                ]
-            else:
-                collated_info = torch.cat(data_list)
-
-            final_result[key] = collated_info
+            final_result[key] = self._collate(data_list)
 
         self._result = final_result
         self._reset_data(result=False)
