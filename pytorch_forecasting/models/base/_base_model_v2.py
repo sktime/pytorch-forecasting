@@ -233,8 +233,6 @@ class BaseModel(LightningModule):
     def _coerce_targets_for_loss(self, y):
         """
         Coerce target outputs to match loss function expectations.
-        The DataModule always returns a list of tensors (one per target),
-        but legacy metrics/losses expect a single tensor for single-target tasks.
         """
         y_targets, y_weights = y
         if isinstance(y_targets, list) and len(y_targets) == 1:
