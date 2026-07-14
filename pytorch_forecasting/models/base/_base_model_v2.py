@@ -160,6 +160,42 @@ class BaseModel(LightningModule):
 
         return predict_callback.result
 
+    def _convert_output(
+        self,
+        out: dict[str, Any],
+        metric_fn_name: str,
+        use_metric: bool = False,
+        **kwargs,
+    ) -> list[torch.Tensor]:
+        """Convert inputs for prediction/quantiles.
+
+        Parameters
+        ----------
+        out : dict
+            Network output dict with key "prediction".
+        metric_fn_name : str
+            Name of the Metric method to invoke: "to_prediction" or "to_quantiles".
+        use_metric : bool, default = False
+            If True, use loss metric for conversion.
+            If False, take mean over prediction directly.
+        """
+        pred = out["prediction"]
+        pred_list = pred if isinstance(pred, (list, tuple)) else [pred]
+        pred_input = pred_list[0] if len(pred_list) == 1 else pred_list
+
+        if not use_metric:
+            if isinstance(self.loss, MultiLoss):
+                return [
+                    getattr(Metric, metric_fn_name)(loss, pred_list[idx], **kwargs)
+                    for idx, loss in enumerate(self.loss)
+                ]
+            pred_out = getattr(Metric, metric_fn_name)(self.loss, pred_input, **kwargs)
+            return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
+
+        bound_fn = getattr(self.loss, metric_fn_name)
+        pred_out = bound_fn(pred_input, **kwargs) if kwargs else bound_fn(pred_input)
+        return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
+
     def to_prediction(
         self, out: dict[str, Any], use_metric: bool = False, **kwargs
     ) -> list[torch.Tensor] | torch.Tensor:
@@ -173,23 +209,7 @@ class BaseModel(LightningModule):
             If True, use loss metric for conversion.
             If False, take mean over prediction directly.
         """
-        pred = out["prediction"]
-        pred_list = pred if isinstance(pred, (list, tuple)) else [pred]
-        pred_input = pred_list[0] if len(pred_list) == 1 else pred_list
-        if not use_metric:
-            if isinstance(self.loss, MultiLoss):
-                return [
-                    Metric.to_prediction(loss, pred_list[idx])
-                    for idx, loss in enumerate(self.loss)
-                ]
-            else:
-                pred_out = Metric.to_prediction(self.loss, pred_input)
-                return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
-        if kwargs:
-            pred_out = self.loss.to_prediction(pred_input, **kwargs)
-        else:  # in case passed kwargs do not exist
-            pred_out = self.loss.to_prediction(pred_input)
-        return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
+        return self._convert_output(out, "to_prediction", use_metric, **kwargs)
 
     def to_quantiles(
         self, out: dict[str, Any], use_metric: bool = False, **kwargs
@@ -204,31 +224,9 @@ class BaseModel(LightningModule):
             If True, use loss metric for conversion.
             If False, take mean over prediction directly.
         """
-        pred = out["prediction"]
-        pred_list = pred if isinstance(pred, (list, tuple)) else [pred]
-        pred_input = pred_list[0] if len(pred_list) == 1 else pred_list
         if not use_metric:
-            if isinstance(self.loss, MultiLoss):
-                return [
-                    Metric.to_quantiles(
-                        loss,
-                        pred_list[idx],
-                        quantiles=kwargs.get("quantiles", loss.quantiles),
-                    )
-                    for idx, loss in enumerate(self.loss)
-                ]
-            else:
-                pred_out = Metric.to_quantiles(
-                    self.loss,
-                    pred_input,
-                    quantiles=kwargs.get("quantiles", self.loss.quantiles),
-                )
-                return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
-        if kwargs:
-            pred_out = self.loss.to_quantiles(pred_input, **kwargs)
-        else:  # in case passed kwargs do not exist
-            pred_out = self.loss.to_quantiles(pred_input)
-        return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
+            kwargs.setdefault("quantiles", self.loss.quantiles)
+        return self._convert_output(out, "to_quantiles", use_metric, **kwargs)
 
     def _coerce_targets_for_loss(self, y):
         """
