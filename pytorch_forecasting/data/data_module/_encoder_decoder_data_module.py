@@ -386,25 +386,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         weights = sample.get("weights", None)
 
         target = target.float()
-        features = features.float()
-        time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
-
-        if isinstance(target, torch.Tensor):
-            target = target.float()
-        else:
-            target = torch.tensor(target, dtype=torch.float32)
-
-        if isinstance(features, torch.Tensor):
-            features = features.float()
-        else:
-            features = torch.tensor(features, dtype=torch.float32)
-        if isinstance(weights, torch.Tensor):
-            weights = weights.float()
-        elif weights is not None:
-            weights = torch.tensor(weights, dtype=torch.float32)
-
         if target.ndim == 1:
             target = target.unsqueeze(-1)
+        features = features.float()
+        weights = weights.float()
 
         time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
         return target, features, times, time_mask, weights
@@ -685,22 +670,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 target_scale_vec,
             )
 
-            if self.data_module.n_targets > 1:
-                target_scale = [
-                    target_scale_vec[i] for i in range(self.data_module.n_targets)
-                ]
-            else:
-                target_scale = target_scale_vec.squeeze(0)
-            valid_mask = ~torch.isnan(target_past)
-            abs_vals = target_past.abs().masked_fill(~valid_mask, 0.0)
-            counts = valid_mask.sum(dim=0).clamp(min=1)
-            target_scale_vec = abs_vals.sum(dim=0) / counts  # (n_targets,)
-            target_scale_vec = torch.where(
-                (target_scale_vec == 0) | torch.isnan(target_scale_vec),
-                torch.ones_like(target_scale_vec),
-                target_scale_vec,
-            )
-
             target_scale = [
                 target_scale_vec[i] for i in range(self.data_module.n_targets)
             ]
@@ -833,11 +802,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 else torch.ones(pred_length, dtype=torch.float32)
             )
 
-            if y.shape[-1] > 1:
-                y = [y[:, i] for i in range(y.shape[-1])]
-            else:
-                y = y.squeeze(-1)
-            return x, y
             y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
 
             return x, (y, decoder_weights)
