@@ -37,6 +37,69 @@ class _HyperparameterTuner:
         self.base_trainer_cfg = base_trainer_cfg or {}
         self.base_datamodule_cfg = base_datamodule_cfg or {}
 
+    def optimize(
+        self,
+        n_trials=100,
+        timeout=3600 * 8,
+        max_epochs=20,
+        custom_ranges=None,
+        study=None,
+        direction="minimize",
+    ):
+        """Run hyperparameter optimization.
+
+        Parameters
+        ----------
+        n_trials : int
+            Number of Optuna trials.
+        timeout : float
+            Maximum time in seconds.
+        max_epochs : int
+            Max training epochs per trial.
+        custom_ranges : dict[str, SearchRange], optional
+            Override or add to auto-discovered ranges.
+        study : optuna.Study, optional
+            Existing study to resume. If None (default), a new study is
+            created with the given ``direction``.
+        direction : str
+            Optimization direction, ``"minimize"`` or ``"maximize"``.
+            Only used when ``study`` is None. Default: ``"minimize"``.
+
+        Returns
+        -------
+        optuna.Study
+            The completed study with results.
+        """
+
+        from skbase.utils.dependencies import _safe_import
+
+        optuna = _safe_import("optuna")
+
+        search_ranges = {}
+
+        if custom_ranges:
+            search_ranges.update(custom_ranges)
+
+        def _objective(trial):
+            model_cfg, trainer_cfg = self._build_trial_config(trial, search_ranges)
+            trainer_cfg.setdefault("max_epochs", max_epochs)
+            trainer_cfg.setdefault("enable_progress_bar", False)
+
+            pkg = self.pkg_cls(
+                model_cfg=model_cfg,
+                trainer_cfg=trainer_cfg,
+                datamodule_cfg=self.base_datamodule_cfg,
+            )
+            pkg.fit(self.data, save_ckpt=False)
+
+            return pkg.trainer.callback_metrics["val_loss"].item()
+
+        if study is None:
+            study = optuna.create_study(direction=direction)
+        study.optimize(_objective, n_trials=n_trials, timeout=timeout)
+
+        return study
+
     def _build_trial_config(self, trial, search_ranges):
         """Convert Optuna trial suggestions into model_cfg and trainer_cfg.
 
@@ -60,66 +123,3 @@ class _HyperparameterTuner:
                 model_cfg[param_name] = value
 
         return model_cfg, trainer_cfg
-
-    def optimize(
-        self,
-        n_trials=100,
-        timeout=3600 * 8,
-        max_epochs=20,
-        custom_ranges=None,
-        study=None,
-        direction="minimize",
-    ):
-        """Run hyperparameter optimization.
-
-        Parameters
-        ----------
-        n_trials : int
-            Number of Optuna trials.
-        timeout : float
-            Maximum time in seconds.
-        max_epochs : int
-            Max training epochs per trial.
-        custom_ranges : dict[str, SearchRange], optional
-            Override or add to auto-discovered ranges.
-        study : optuna.Study, optional
-            Existing study to resume.
-
-        Returns
-        -------
-        optuna.Study
-            The completed study with results.
-        """
-
-        try:
-            import optuna
-        except ImportError:
-            raise ImportError(
-                "Optuna is required for hyperparameter tuning. "
-                "Please install it with `pip install optuna`"
-            )
-
-        search_ranges = {}
-
-        if custom_ranges:
-            search_ranges.update(custom_ranges)
-
-        def objective(trial):
-            model_cfg, trainer_cfg = self._build_trial_config(trial, search_ranges)
-            trainer_cfg.setdefault("max_epochs", max_epochs)
-            trainer_cfg.setdefault("enable_progress_bar", False)
-
-            pkg = self.pkg_cls(
-                model_cfg=model_cfg,
-                trainer_cfg=trainer_cfg,
-                datamodule_cfg=self.base_datamodule_cfg,
-            )
-            pkg.fit(self.data, save_ckpt=False)
-
-            return pkg.trainer.callback_metrics["val_loss"].item()
-
-        if study is None:
-            study = optuna.create_study(direction=direction)
-        study.optimize(objective, n_trials=n_trials, timeout=timeout)
-
-        return study

@@ -1,6 +1,7 @@
 """ForecastingSearchCV: Hyperparameter search with fit/predict interface."""
 
 import copy
+import inspect
 
 from pytorch_forecasting.tuning.hyperparameter_tuner import _HyperparameterTuner
 
@@ -13,18 +14,22 @@ class ForecastingSearchCV:
 
     Parameters
     ----------
-    pkg_cls : type
-        A Base_pkg subclass (e.g., ``TFT_pkg_v2``, ``DLinear_pkg_v2``).
-    param_grid : dict[str, SearchRange]
-        Search space. Keys are parameter names, values are SearchRange objects.
+    pkg : Base_pkg
+        An instantiated package object (e.g., ``DLinear_pkg_v2(...)``).
+        The wrapper reads ``model_cfg``, ``trainer_cfg``, and
+        ``datamodule_cfg`` directly from this instance.
+    param_grid : dict, optional
+        Search space overrides. Keys are parameter names, values can be:
+
+        - ``list``: categorical choices, e.g. ``[3, 5, 7]``
+        - ``tuple``: numeric range, e.g. ``(16, 512)`` for int,
+          ``(0.01, 0.5)`` for float
+        - ``_SearchRange``: advanced users can pass structured objects
+
+        If ``None``, the search space is auto-discovered from the model's
+        ``__init__`` signature and the global registry.
     n_trials : int, default=50
         Number of optimization trials.
-    base_model_cfg : dict, optional
-        Fixed model parameters that should NOT be tuned.
-    base_trainer_cfg : dict, optional
-        Fixed trainer parameters.
-    base_datamodule_cfg : dict, optional
-        Fixed datamodule parameters.
 
     Attributes
     ----------
@@ -37,33 +42,29 @@ class ForecastingSearchCV:
 
     Examples
     --------
-    >>> from pytorch_forecasting.tuning import ForecastingSearchCV, SearchRange
-    >>> search = ForecastingSearchCV(
-    ...     pkg_cls=DLinear_pkg_v2,
-    ...     param_grid={"moving_avg": SearchRange(
-    ...     param_type="categorical",
-    ...     choices=[3, 5, 7])},
-    ...     n_trials=10,
+    >>> from pytorch_forecasting.tuning import ForecastingSearchCV
+    >>> pkg = DLinear_pkg_v2(
+    ...     model_cfg={"context_length": 60},
+    ...     trainer_cfg={"max_epochs": 30},
+    ...     datamodule_cfg={"batch_size": 64},
     ... )
+    >>> search = ForecastingSearchCV(pkg=pkg, n_trials=10)
     >>> search.fit(train_data)
     >>> predictions = search.predict(test_data)
     """
 
     def __init__(
         self,
-        pkg_cls,
-        param_grid,
+        pkg,
+        param_grid=None,
         n_trials=50,
-        base_model_cfg=None,
-        base_trainer_cfg=None,
-        base_datamodule_cfg=None,
     ):
-        self.pkg_cls = pkg_cls
+        self.pkg_cls = type(pkg)
         self.param_grid = param_grid
         self.n_trials = n_trials
-        self.base_model_cfg = base_model_cfg or {}
-        self.base_trainer_cfg = base_trainer_cfg or {}
-        self.base_datamodule_cfg = base_datamodule_cfg or {}
+        self.base_model_cfg = pkg.model_cfg
+        self.base_trainer_cfg = pkg.trainer_cfg
+        self.base_datamodule_cfg = pkg.datamodule_cfg
 
         self.best_params_ = None
         self.best_estimator_ = None
@@ -88,6 +89,9 @@ class ForecastingSearchCV:
         self
             Returns self for method chaining.
         """
+        search_ranges = self._auto_discover_ranges()
+        if self.param_grid:
+            search_ranges.update(self._parse_param_grid(self.param_grid))
 
         tuner = _HyperparameterTuner(
             pkg_cls=self.pkg_cls,
@@ -101,7 +105,7 @@ class ForecastingSearchCV:
             n_trials=self.n_trials,
             timeout=timeout,
             max_epochs=max_epochs,
-            custom_ranges=self.param_grid,
+            custom_ranges=search_ranges,
             direction=direction,
         )
 
@@ -137,3 +141,70 @@ class ForecastingSearchCV:
         if self.best_estimator_ is None:
             raise RuntimeError("No model available. Call fit() before predict().")
         return self.best_estimator_.predict(data, **kwargs)
+
+    def _parse_param_grid(self, param_grid):
+        """Converts user's plain Python types into _SearchRange objects.
+
+        Parameters
+        ----------
+        param_grid : dict
+            Keys are hyperparameter names. Values can be lists (for categorical),
+            tuples of length 2 (for int/float ranges), or _SearchRange objects.
+        """
+        from pytorch_forecasting.tuning.search_range import _SearchRange
+
+        parsed_param_grid = {}
+
+        for key, value in param_grid.items():
+            if isinstance(value, _SearchRange):
+                parsed_param_grid[key] = value
+            elif isinstance(value, list):
+                parsed_param_grid[key] = _SearchRange(
+                    param_type="categorical", choices=value
+                )
+            elif isinstance(value, tuple) and len(value) == 2:
+                low, high = value
+
+                if isinstance(low, bool) or isinstance(high, bool):
+                    raise ValueError(
+                        f"'{key}' received a boolean tuple {value}. "
+                        "To tune a boolean parameter, use a list instead: "
+                        f"'{key}': [True, False]"
+                    )
+
+                if isinstance(low, int) and isinstance(high, int):
+                    parsed_param_grid[key] = _SearchRange(
+                        low=low, high=high, param_type="int"
+                    )
+                else:
+                    parsed_param_grid[key] = _SearchRange(
+                        low=low, high=high, param_type="float"
+                    )
+            else:
+                raise ValueError(f"Invalid search range for {key}: {value}")
+
+        return parsed_param_grid
+
+    def _auto_discover_ranges(self):
+        """Inspect the model class and match params against the global registry.
+
+        Returns
+        -------
+        dict[str, _SearchRange]
+            Auto-discovered search ranges for parameters found in both
+            the model's ``__init__`` signature and ``_GLOBAL_SEARCH_SPACE``.
+        """
+        from pytorch_forecasting.tuning.global_registry import _GLOBAL_SEARCH_SPACE
+
+        model_cls = self.pkg_cls.get_cls()
+        sig = inspect.signature(model_cls.__init__)
+
+        model_param_names = [name for name in sig.parameters if name != "self"]
+
+        discovered = {}
+
+        for param_name in model_param_names:
+            if param_name in _GLOBAL_SEARCH_SPACE:
+                discovered[param_name] = _GLOBAL_SEARCH_SPACE[param_name]
+
+        return discovered
