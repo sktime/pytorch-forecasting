@@ -163,32 +163,18 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
         list of metric packages
             List of compatible loss packages
         """
-        pred_types = obj_meta.get_class_tag("info:pred_type", [])
-        y_types = obj_meta.get_class_tag("info:y_type", [])
+        compatible_metric_types = obj_meta._get_compatible_loss_types()
+        if not compatible_metric_types:
+            return []
 
-        compatible_loss_pkgs = []
-        metric_type_mappings = {
-            ("point", "numeric"): "point",
-            ("point", "category"): "point_classification",
-            ("quantile", "numeric"): "quantile",
-            ("quantile", "category"): "quantile_classification",
-            ("distr", "numeric"): "distribution",
-            ("distr", "category"): "distribution_classification",
-        }
-
-        compatible_metric_types = []
-        for pred_type in pred_types:
-            for y_type in y_types:
-                compatible_metric_types.append(
-                    metric_type_mappings[(pred_type, y_type)]
-                )
         metric_pkgs = all_objects(
             object_types="metric",
             filter_tags={"metric_type": compatible_metric_types},
             return_names=False,
         )
+        compatible_loss_pkgs = []
         for metric_pkg in metric_pkgs:
-            # TODO: still need some debugging to add the MQF2DistributionLosss
+            # TODO: still need some debugging to add the MQF2DistributionLoss
             if metric_pkg.get_cls().__name__ == "MQF2DistributionLoss":
                 continue
             if not self._check_required_dependencies(metric_pkg):
