@@ -961,7 +961,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._target_normalizer = ScalerAdapter(normalizer)
 
     def _ensure_split(self):
-        """Compute train/val/test indices once and cache them, respecting split_strategy."""
+        """
+        Compute train/val/test indices once and cache them,
+        respecting split_strategy.
+        """
         if hasattr(self, "_split_done"):
             return
 
@@ -993,7 +996,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             raise ValueError(f"Unknown split_strategy: {self.split_strategy}")
 
         self._split_done = True
-
 
     def _make_dataset(self, indices: torch.Tensor):
         """Preprocess a set of series indices into a windowed Dataset.
@@ -1042,26 +1044,37 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     all_windows = self._create_windows(self._train_indices)
                     series_timestamps = {}
                     for idx in self._train_indices:
-                        series_idx = idx.item() if isinstance(idx, torch.Tensor) else idx
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
                         sample = self.time_series_dataset[series_idx]
                         series_timestamps[series_idx] = sample["t"]
 
                     from pytorch_forecasting.data.splitters import temporal_window_split
+
                     t_win, v_win, te_win = temporal_window_split(
                         all_windows, self.train_val_test_split, series_timestamps
                     )
-                    self.train_windows, self.val_windows, self.test_windows = t_win, v_win, te_win
+                    self.train_windows, self.val_windows, self.test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
 
                     # Preprocess ALL series (train, val, test share the same series)
                     all_indices = self._train_indices
                     preprocessed = {
-                        idx.item(): self._preprocess_data(idx.item()) for idx in all_indices
+                        idx.item(): self._preprocess_data(idx.item())
+                        for idx in all_indices
                     }
                     self._train_preprocessed = preprocessed
                     self._val_preprocessed = preprocessed
 
                     self.train_dataset = self._ProcessedEncoderDecoderDataset(
-                        self, self.train_windows, preprocessed, self.add_relative_time_idx
+                        self,
+                        self.train_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
                     )
                     self.val_dataset = self._ProcessedEncoderDecoderDataset(
                         self, self.val_windows, preprocessed, self.add_relative_time_idx
@@ -1073,7 +1086,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self._val_preprocessed, self.val_windows, self.val_dataset = (
                         self._make_dataset(self._val_indices)
                     )
-
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
@@ -1087,7 +1099,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                             sample = self.time_series_dataset[idx]
                             series_timestamps[idx] = sample["t"]
 
-                        from pytorch_forecasting.data.splitters import temporal_window_split
+                        from pytorch_forecasting.data.splitters import (
+                            temporal_window_split,
+                        )
+
                         _, _, self.test_windows = temporal_window_split(
                             all_windows, self.train_val_test_split, series_timestamps
                         )
@@ -1097,7 +1112,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                         for idx in {w[0] for w in self.test_windows}
                     }
                     self.test_dataset = self._ProcessedEncoderDecoderDataset(
-                        self, self.test_windows, preprocessed, self.add_relative_time_idx
+                        self,
+                        self.test_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
                     )
                 else:
                     self._test_preprocessed, self.test_windows, self.test_dataset = (
@@ -1107,9 +1125,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         elif stage == "predict":
             if not hasattr(self, "predict_dataset"):
                 predict_indices = torch.arange(len(self.time_series_dataset))
-                self._predict_preprocessed, self.predict_windows, self.predict_dataset = (
-                    self._make_dataset(predict_indices)
-                )
+                (
+                    self._predict_preprocessed,
+                    self.predict_windows,
+                    self.predict_dataset,
+                ) = self._make_dataset(predict_indices)
 
     def train_dataloader(self):
         return DataLoader(
