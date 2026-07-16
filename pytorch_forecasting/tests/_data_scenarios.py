@@ -271,6 +271,159 @@ def make_datasets_v2(data_with_covariates, **kwargs):
     }
 
 
+def make_datasets_v2_without_covariates(data_with_covariates, **kwargs):
+    """Create datasets with only time, target, weight, and group features,
+    no covariates.
+    """
+    training_cutoff = "2016-09-01"
+    target_col = kwargs.get("target", "target")
+    group_cols = kwargs.get("group_ids", ["agency_encoded", "sku_encoded"])
+
+    training_data = data_with_covariates[
+        data_with_covariates.date < training_cutoff
+    ].copy()
+    validation_data = data_with_covariates.copy()
+
+    required_columns = ["time_idx", target_col, "weight"] + group_cols
+    training_data_clean = training_data[required_columns].copy()
+    validation_data_clean = validation_data[required_columns].copy()
+
+    training_dataset = TimeSeries(
+        data=training_data_clean,
+        time="time_idx",
+        target=[target_col],
+        group=group_cols,
+        weight="weight",
+        num=[],
+        cat=None,
+        known=[],
+        unknown=[],
+        static=group_cols,
+    )
+
+    validation_dataset = TimeSeries(
+        data=validation_data_clean,
+        time="time_idx",
+        target=[target_col],
+        group=group_cols,
+        weight="weight",
+        num=[],
+        cat=None,
+        known=[],
+        unknown=[],
+        static=group_cols,
+    )
+
+    training_max_time_idx = training_data["time_idx"].max() + 1
+
+    return {
+        "training_dataset": training_dataset,
+        "validation_dataset": validation_dataset,
+        "training_max_time_idx": training_max_time_idx,
+    }
+
+
+def make_datasets_v2_with_categoricals(data_with_covariates, **kwargs):
+    """Create datasets with categorical features."""
+    training_cutoff = "2016-09-01"
+    target_col = kwargs.get("target", "target")
+    group_cols = kwargs.get("group_ids", ["agency_encoded", "sku_encoded"])
+
+    known_features = [
+        "month",
+        "year",
+        "quarter",
+        "seasonal_1",
+        "seasonal_2",
+        "trend",
+    ]
+    unknown_features = [
+        "agency_feature_1",
+        "agency_feature_2",
+        "sku_feature_1",
+        "sku_feature_2",
+        "noise",
+        "log_volume",
+    ]
+
+    numerical_features = known_features + unknown_features
+    categorical_features = ["special_event_1", "special_event_2"]
+    static_features = group_cols
+
+    for col in numerical_features + group_cols + [target_col]:
+        if col in data_with_covariates.columns:
+            data_with_covariates[col] = pd.to_numeric(
+                data_with_covariates[col], errors="coerce"
+            ).fillna(0)
+
+    for col in categorical_features + group_cols:
+        if col in data_with_covariates.columns:
+            data_with_covariates[col] = data_with_covariates[col].astype("int64")
+
+    if "weight" in data_with_covariates.columns:
+        data_with_covariates["weight"] = pd.to_numeric(
+            data_with_covariates["weight"], errors="coerce"
+        ).fillna(1.0)
+
+    training_data = data_with_covariates[
+        data_with_covariates.date < training_cutoff
+    ].copy()
+    validation_data = data_with_covariates.copy()
+
+    required_columns = (
+        ["time_idx", target_col, "weight", "date"]
+        + group_cols
+        + numerical_features
+        + categorical_features
+    )
+
+    available_columns = [
+        col for col in required_columns if col in data_with_covariates.columns
+    ]
+
+    training_data_clean = training_data[available_columns].copy()
+    validation_data_clean = validation_data[available_columns].copy()
+
+    if "date" in training_data_clean.columns:
+        training_data_clean = training_data_clean.drop("date", axis=1)
+    if "date" in validation_data_clean.columns:
+        validation_data_clean = validation_data_clean.drop("date", axis=1)
+
+    training_dataset = TimeSeries(
+        data=training_data_clean,
+        time="time_idx",
+        target=[target_col],
+        group=group_cols,
+        weight="weight",
+        num=numerical_features,
+        cat=categorical_features,
+        known=known_features + categorical_features,
+        unknown=unknown_features,
+        static=static_features,
+    )
+
+    validation_dataset = TimeSeries(
+        data=validation_data_clean,
+        time="time_idx",
+        target=[target_col],
+        group=group_cols,
+        weight="weight",
+        num=numerical_features,
+        cat=categorical_features,
+        known=known_features + categorical_features,
+        unknown=unknown_features,
+        static=static_features,
+    )
+
+    training_max_time_idx = training_data["time_idx"].max() + 1
+
+    return {
+        "training_dataset": training_dataset,
+        "validation_dataset": validation_dataset,
+        "training_max_time_idx": training_max_time_idx,
+    }
+
+
 def dataloaders_with_different_encoder_decoder_length():
     return make_dataloaders(
         data_with_covariates(),

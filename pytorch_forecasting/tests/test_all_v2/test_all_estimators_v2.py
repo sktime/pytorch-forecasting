@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 
+import pytest
 import torch
 
 from pytorch_forecasting.tests.test_all_estimators import (
@@ -29,18 +30,45 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
         run_doctest(object_class, name=f"class {object_class.__name__}")
 
+    @pytest.mark.parametrize(
+        "data_scenario",
+        ["with_covariates", "without_covariates", "with_categoricals"],
+    )
     def test_integration(
         self,
         object_pkg,
         trainer_kwargs,
         tmp_path,
+        data_scenario,
     ):
         pkg, test_data, dm_cfg = _setup_pkg_and_data(
-            object_pkg, trainer_kwargs, tmp_path
+            object_pkg, trainer_kwargs, tmp_path, data_scenario=data_scenario
         )
 
         _integration(pkg, test_data, dm_cfg)
 
+        shutil.rmtree(tmp_path, ignore_errors=True)
+
+    def test_uninitialized_predict_error(self, object_pkg):
+        """Test that predict raises RuntimeError if model is not initialized."""
+        pkg = object_pkg()
+        with pytest.raises(RuntimeError, match="Model is not initialized"):
+            pkg.predict(None)
+
+    def test_predict_save_to_dir(self, object_pkg, trainer_kwargs, tmp_path):
+        """Test that predict can save predictions to a specified directory."""
+        pkg, test_data, _ = _setup_pkg_and_data(object_pkg, trainer_kwargs, tmp_path)
+        pkg.fit(test_data["train"], save_ckpt=False)
+
+        output_dir = Path(tmp_path) / "predictions_out"
+        out = pkg.predict(
+            test_data["predict"], mode="prediction", output_dir=output_dir
+        )
+
+        assert out is None, "predict should return None when output_dir is specified"
+        assert (
+            output_dir / "predictions.pkl"
+        ).exists(), "predictions.pkl was not saved"
         shutil.rmtree(tmp_path, ignore_errors=True)
 
     def test_checkpointing(self, object_pkg, trainer_kwargs, tmp_path):

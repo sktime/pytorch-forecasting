@@ -112,6 +112,9 @@ class TIDE(BaseModel):
         )
 
         # embedding categorical for both past and future
+        if not embs and metadata is not None:
+            embs = metadata.get("categorical_cardinalities", [])
+
         self.seq_len = self.past_steps + self.future_steps
         self.emb_cat_var = sub_nn.embedding_cat_variables(
             self.seq_len, self.future_steps, hidden_size, embs, self.device
