@@ -89,6 +89,7 @@ class TimeSeries(Dataset):
         known: list[str | list[str]] | None = None,
         unknown: list[str | list[str]] | None = None,
         static: list[str | list[str]] | None = None,
+        categorical_encoder: D1CategoricalEncoder | None = None,
     ):
         self.data = data
         self.data_future = data_future
@@ -127,9 +128,11 @@ class TimeSeries(Dataset):
 
         self.categorical_encoder = None
         if self._cat:
-            self.categorical_encoder = D1CategoricalEncoder(columns=self._cat)
-
-            self.categorical_encoder.fit(self.data)
+            if categorical_encoder is not None:
+                self.categorical_encoder = categorical_encoder
+            else:
+                self.categorical_encoder = D1CategoricalEncoder(columns=self._cat)
+                self.categorical_encoder.fit(self.data)
 
             self.data = self.categorical_encoder.transform(self.data)
 
@@ -147,7 +150,7 @@ class TimeSeries(Dataset):
                 if isinstance(self._group, (list, tuple)) and len(self._group) == 1
                 else self._group
             )
-            self._groups = self.data.groupby(group_arg).groups
+            self._groups = self.data.groupby(group_arg, observed=True).groups
             self._group_ids = list(self._groups.keys())
         else:
             self._groups = {"_single_group": self.data.index}
@@ -278,7 +281,9 @@ class TimeSeries(Dataset):
                     if isinstance(self._group, (list, tuple)) and len(self._group) == 1
                     else self._group
                 )
-                future_mask = self.data_future.groupby(group_arg).groups[group_id]
+                future_mask = self.data_future.groupby(group_arg, observed=True).groups[
+                    group_id
+                ]
                 future_data = self.data_future.loc[future_mask]
             else:
                 future_data = self.data_future

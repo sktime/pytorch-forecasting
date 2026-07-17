@@ -34,7 +34,7 @@ class D1CategoricalEncoder:
         """Learns the vocabulary from the dataframe."""
         if self.columns is None:
             self.columns = df.select_dtypes(
-                include=["object", "category"]
+                include=["object", "category", "string"]
             ).columns.tolist()
 
         for col in self.columns:
@@ -48,7 +48,8 @@ class D1CategoricalEncoder:
             self.mapping_[col] = {val: idx + 1 for idx, val in enumerate(uniques)}
 
             self.inverse_mapping_[col] = {
-                idx: val for val, idx in self.mapping_[col].items()
+                idx: (val if val != "NaN_CATEGORY" else np.nan)
+                for val, idx in self.mapping_[col].items()
             }
 
         self._is_fitted = True
@@ -100,6 +101,5 @@ class D1CategoricalEncoder:
                 continue
 
             df_decoded[col] = df_decoded[col].map(self.inverse_mapping_[col])
-            df_decoded[col] = df_decoded[col].replace("NaN_CATEGORY", np.nan)
 
         return df_decoded
