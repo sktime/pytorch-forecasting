@@ -265,10 +265,16 @@ class TimeXer(TslibBaseModel):
     def _forecast(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TimeXer model.
-        Args:
-            x (dict[str, torch.Tensor]): Input data.
-        Returns:
-            dict[str, torch.Tensor]: Model predictions.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Input data.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Model predictions.
         """
         batch_size = x["history_cont"].shape[0]
         history_cont = x["history_cont"]
@@ -307,10 +313,16 @@ class TimeXer(TslibBaseModel):
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the TimeXer model.
-        Args:
-            x (dict[str, torch.Tensor]): Input data.
-        Returns:
-            dict[str, torch.Tensor]: Model predictions.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Input data.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Model predictions.
         """
 
         out = self._forecast(x)

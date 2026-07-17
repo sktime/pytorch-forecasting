@@ -221,6 +221,30 @@ def test_predict_samples(model, dataloaders_with_covariates):
 
 
 @pytest.mark.parametrize(
+    "n_validation_samples,expected_n_plotting_samples",
+    [(None, 100), (50, 50), (200, 200)],
+)
+def test_n_plotting_samples_default(
+    dataloaders_with_covariates, n_validation_samples, expected_n_plotting_samples
+):
+    """Regression for #2234/#2246: when ``n_plotting_samples`` is left at its
+    default of ``None``, it should resolve to ``n_validation_samples`` if that
+    is given (matching the docstring) and fall back to ``100`` only when
+    ``n_validation_samples`` is also ``None``. The previous condition was
+    inverted and left ``n_plotting_samples`` as ``None`` in the all-defaults
+    case.
+    """
+    dataset = dataloaders_with_covariates["train"].dataset
+    model = DeepAR.from_dataset(
+        dataset,
+        hidden_size=5,
+        learning_rate=0.15,
+        n_validation_samples=n_validation_samples,
+    )
+    assert model.hparams.n_plotting_samples == expected_n_plotting_samples
+
+
+@pytest.mark.parametrize(
     "loss", [NormalDistributionLoss(), MultivariateNormalDistributionLoss()]
 )
 def test_pickle(dataloaders_with_covariates, loss):

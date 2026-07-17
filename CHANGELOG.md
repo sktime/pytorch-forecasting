@@ -1,5 +1,105 @@
 # Release Notes
 
+## v1.8.0 and v2.0-beta-2
+release focusing on:
+- A new shared documentation for v1 and v2.0-beta
+- Bugfixes
+
+### Maintenance
+
+* [MNT] [Dependabot](deps): Bump scikit-base from 0.13.0 to 1.0.0 (#2268) @dependabot[bot]
+* [MNT] remove unused `requirements.txt` (#2274) @phoeenniixx
+* [MNT] Add version bounds to prevent installation of compromised `lightning` versions (#2278) @phoeenniixx
+* [MNT] migrate test-deps-2025 to use uv date cutoffs (#2055) @RUPESH-KUMAR01
+* [MNT] Remove unused `_get_test_datamodule_from` method from `DLinear_pkg_v2` (#2296) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump codecov/codecov-action from 6 to 7 (#2306) @dependabot[bot]
+* [MNT] add an upper bound on `matplotlib` to prevent failing notebooks (#2315) @phoeenniixx
+* [MNT] Solve the failing notebooks on main due to `matplotlib 3.11` (#2317) @phoeenniixx
+* [MNT] Fix windows CI failing on main by adding upper bound on `pytest-github-actions-annotate-failures` (#2319) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/checkout from 6 to 7 (#2318) @dependabot[bot]
+* [MNT] [Dependabot](deps-dev): Update pytest-github-actions-annotate-failures requirement from <0.4.1 to <0.4.3 (#2320) @dependabot[bot]
+
+### Enhancements
+
+* [ENH] Extend v2 BaseModel with AdamW optimizer and additional LR schedulers (#2169) @StrikerEureka34
+* [ENH] Add missing tags in v2 models (#2287) @phoeenniixx
+* [ENH] Move datamodules to a single folder (#2286) @phoeenniixx
+* [ENH] auto-generate model overview table from registry tags (#2236) @IgnazioDS
+* [ENH] Add extension templates for v1 neural networks (#2285) @harshsomankar123-tech
+* [ENH] Add extension templates for `pytorch-forecasting` v2 (#2297) @phoeenniixx
+* [ENH] Add a separate documentation for `pytorch-forecasting` v1 and v2 (#2279) @phoeenniixx
+
+### Documentation
+
+* [DOC] migrate timexer model docstrings numpydoc (#2249) @vvvvvivekkk
+* [DOC] Migrate timexer sub_modules.py docstrings to NumPy style (#2248) @vvvvvivekkk
+* [DOC] Migrate samplers and KANLayer docstrings to NumPy style (#2202) @Gitanaskhan26
+
+### Fixes
+
+* [BUG] Corrected typo in `AggregationMetric.reset()` from metrics to metric (#2252) @Muhammad-Rebaal
+* [BUG] correct inverted condition for `n_plotting_samples` default in `DeepAR` (#2257) @haoyu-haoyu
+* [BUG] Fix PyTorch warning when slicing tensor with non-writable numpy arrays (#2276) @andersendsa
+* [BUG] LogNormalDistributionLoss validation error and enable integration tests (#2275) @harshsomankar123-tech
+* [BUG] Ensure writable NumPy array before tensor indexing in `decoded_index` (#2300) @cngmid
+* [BUG] Ensure deterministic groups across different processes (#2294) @fnhirwa
+* [BUG] Remove missing coverage config reference from pytest defaults (#2243) @Ajeem-git
+* [BUG] Fix TslibBaseModel crash when metadata=None (#2239) @archietyagi100-tech
+
+### All Contributors
+@Ajeem-git, @andersendsa, @archietyagi100-tech, @cngmid, @dependabot[bot], @fnhirwa, @Gitanaskhan26, @haoyu-haoyu, @harshsomankar123-tech, @IgnazioDS, @Muhammad-Rebaal, @phoeenniixx, @RUPESH-KUMAR01, @StrikerEureka34, @vvvvvivekkk
+
+
+
+## v1.7.0
+Version release focusing on:
+- `pandas 3` compatibility
+- bugfixes
+- Documentation migration to `numpy` documentation style.
+
+### Fixes
+
+* [BUG] Import issue for `SettingWithCopyWarning` fixed (#2036) @lucifer4073
+* [BUG] Remove outdated strict naming convention test in test_all_estim… (#2190) @AyushDineshRathi
+* [BUG] Fix _load_config() to support .pkl file paths (#2199) @Quant-Code-Hacker
+* [BUG] Fix logging_metrics device mismatch in BaseModelV2 (#2205) @StrikerEureka34
+* [BUG] Move prediction tensors to CPU between batches in PredictCallback (#2228) @StrikerEureka34
+
+### Documentation
+
+* [DOC] Clarify RMSE implementation and reduction logic #1541 (#2028) @Ds0uz4
+* [DOC] Add Contributor Guide (#2047) @phoeenniixx
+* [DOC] Improved Documentation (#2048) @Soham-47
+* [DOC] migration of docstrings to numpydoc style in embeddings layer (#2079) @Soham-47
+* [DOC] Improve data subpackage docstring for clarity and consistency (Closes #2092) (#2112) @vinitjain2005
+* [DOC] migrate distributions.py docstrings to numpydoc style (#2118) @Meet-Ramjiyani-10
+* [DOC] Migration of docstrings in layers/_filter to NumPydoc style (#2116) @AyushDineshRathi
+* [DOC] migrate baseline.py docstrings to numpydocstyle  (#2115) @amruth6002
+* [DOC] Migrate encoder docstrings from Google to NumPy style (#2121) @Skvmqq
+* [DOC] Convert TFT tuning and utils docstrings to numpydoc style (#2097) @Siddhazntx
+* [DOC] migrate nhits and quantile docstrings to numpydocstyle (#2111) @amruth6002
+* [DOC] Migrate AttentionLayer docstring to NumPy style (#2174) @QuantumByte-01
+* [DOC] migrate DeepAR docstrings to NumPy style (#2180) @echo-xiao
+* [DOC] Migrate SeriesDecomposition docstring to NumPy style (#2175) @QuantumByte-01
+* [DOC] Migrate docstrings in models/nn/rnn.py to numpydoc format (#2198) @sohamjadhav95
+
+### Maintenance
+
+* [MNT] `pandas 3` compatibility - test data (#2045) @fkiraly
+* [MNT] Ensure full pandas 3 compatibility (#2053) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump actions/download-artifact from 7 to 8 (#2101) @dependabot[bot]
+* [MNT] [Dependabot](deps): Bump actions/upload-artifact from 6 to 7 (#2100) @dependabot[bot]
+* [MNT] Improve error message for invalid reduction argument in groupby_apply (#2104) @Gyanam1310
+* [MNT] Remove `pandas 3` warnings (#2139) @phoeenniixx
+* [MNT] [Dependabot](deps): Bump codecov/codecov-action from 5 to 6 (#2235) @dependabot[bot]
+
+### Enhancements
+
+* [ENH] Relax naming convention in test_pkg_linkage (#2080) @PalakB09
+
+### All Contributors
+@amruth6002, @AyushDineshRathi, @dependabot[bot], @Ds0uz4, @echo-xiao, @fkiraly, @Gyanam1310, @lucifer4073, @Meet-Ramjiyani-10, @PalakB09, @phoeenniixx, @Quant-Code-Hacker, @QuantumByte-01, @Siddhazntx, @Skvmqq, @Soham-47, @sohamjadhav95, @StrikerEureka34, @vinitjain2005
+
 ## v1.6.1
 Patch release focusing on:
 * Bug fix  to solve the persisting bug of passing `weights_only` in `load_from_checkpoint` for `lightning <2.6`.
