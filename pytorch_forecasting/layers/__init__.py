@@ -10,9 +10,13 @@ from pytorch_forecasting.layers._attention import (
 from pytorch_forecasting.layers._blocks import ResidualBlock
 from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.layers._embeddings import (
+    DataEmbedding,
     DataEmbedding_inverted,
     EnEmbedding,
+    FixedEmbedding,
     PositionalEmbedding,
+    TemporalEmbedding,
+    TokenEmbedding,
     embedding_cat_variables,
 )
 from pytorch_forecasting.layers._encoders import (
@@ -32,6 +36,11 @@ from pytorch_forecasting.layers._recurrent._slstm import (
     sLSTMCell,
     sLSTMLayer,
     sLSTMNetwork,
+)
+from pytorch_forecasting.layers._reformer import (
+    ReformerEncoder,
+    ReformerEncoderLayer,
+    ReformerLayer,
 )
 
 __all__ = [
@@ -54,4 +63,11 @@ __all__ = [
     "RevIN",
     "ResidualBlock",
     "embedding_cat_variables",
+    "ReformerEncoder",
+    "ReformerEncoderLayer",
+    "ReformerLayer",
+    "DataEmbedding",
+    "TemporalEmbedding",
+    "FixedEmbedding",
+    "TokenEmbedding",
 ]
