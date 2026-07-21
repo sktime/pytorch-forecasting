@@ -263,7 +263,7 @@ class Base_pkg(_BasePtForecasterV2):
         # Always rebuild: model architecture depends on datamodule metadata.
         # Reusing a cached model across fits with different data leaves stale
         # shapes/attributes and can raise RuntimeError.
-        if not self.model_cfg and not self.ckpt_path:
+        if not self.model_cfg and self.model is None:
             raise RuntimeError("`model_cfg` must be provided to train from scratch.")
         self.metadata = self.datamodule.metadata
         self._build_model(self.metadata)
