@@ -535,6 +535,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             "length": len(target),
             "time_mask": time_mask,
             "times": times,
+            "timestep": times,
             "cutoff_time": sample["cutoff_time"],
         }
 
@@ -726,7 +727,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             idx.item(): self._preprocess_data(idx.item()) for idx in indices
         }
         windows = self._create_windows(indices)
-        dataset = self._ProcessedEncoderDecoderDataset(
+        dataset = _ProcessedEncoderDecoderDataset(
             self, windows, preprocessed, self.add_relative_time_idx
         )
         return preprocessed, windows, dataset
@@ -751,7 +752,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                 self._fit_target_normalizer(self._train_indices)
             if not self._feature_scalers_fitted:
                 self._fit_scalers(self._train_indices)
-            if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
+            if self.train_dataset is None or self.val_dataset is None:
                 self._train_preprocessed, self.train_windows, self.train_dataset = (
                     self._make_dataset(self._train_indices)
                 )
@@ -760,7 +761,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                 )
 
         elif stage == "test":
-            if not hasattr(self, "test_dataset"):
+            if self.test_dataset is None:
                 self._test_preprocessed, self.test_windows, self.test_dataset = (
                     self._make_dataset(self._test_indices)
                 )
