@@ -140,10 +140,41 @@ class Base_pkg(_BasePtForecasterV2):
             "predict": datasets_info["validation_dataset"],
         }
 
+    def _load_ckpt_metadata(self) -> dict | None:
+        """Load ``metadata.pkl`` saved alongside ``ckpt_path``, if present."""
+        if not self.ckpt_path:
+            return None
+        path = Path(self.ckpt_path).parent / "metadata.pkl"
+        if not path.exists():
+            return None
+        with open(path, "rb") as f:
+            return pickle.load(f)  # noqa: S301
+
+    def _validate_ckpt_metadata(self, metadata: dict) -> None:
+        """Ensure metadata used to load a checkpoint matches the saved artifact.
+
+        Model layer sizes are derived from metadata at construction time. Passing
+        different metadata into ``load_from_checkpoint`` rebuilds layers with new
+        shapes while weights still expect the checkpoint dims.
+        """
+        ckpt_metadata = self._load_ckpt_metadata()
+        if ckpt_metadata is None:
+            return
+        if ckpt_metadata != metadata:
+            raise ValueError(
+                "Metadata passed to load_from_checkpoint does not match the "
+                f"metadata saved with the checkpoint at {self.ckpt_path}. "
+                "Model layer sizes are derived from metadata; a mismatch can "
+                "cause shape errors or unintended behavior. "
+                f"checkpoint metadata={ckpt_metadata!r}, "
+                f"passed metadata={metadata!r}."
+            )
+
     def _build_model(self, metadata: dict, **kwargs):
         """Instantiates the model, either from a checkpoint or from config."""
         model_cls = self.get_cls()
         if self.ckpt_path:
+            self._validate_ckpt_metadata(metadata)
             self.model = model_cls.load_from_checkpoint(
                 self.ckpt_path, metadata=metadata, **kwargs
             )
@@ -233,9 +264,7 @@ class Base_pkg(_BasePtForecasterV2):
         # Reusing a cached model across fits with different data leaves stale
         # shapes/attributes and can raise RuntimeError.
         if not self.model_cfg and not self.ckpt_path:
-            raise RuntimeError(
-                "`model_cfg` must be provided to train from scratch."
-            )
+            raise RuntimeError("`model_cfg` must be provided to train from scratch.")
         self.metadata = self.datamodule.metadata
         self._build_model(self.metadata)
 
