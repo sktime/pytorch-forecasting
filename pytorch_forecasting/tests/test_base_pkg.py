@@ -1,11 +1,18 @@
-"""Tests for Base_pkg._load_config."""
+"""Tests for Base_pkg."""
 
 import pickle
 import tempfile
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
+from pytorch_forecasting.data import TimeSeries
+from pytorch_forecasting.metrics import SMAPE
+from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
+    TFT_pkg_v2,
+)
 
 
 def test_load_config_pkl():
@@ -27,3 +34,65 @@ def test_load_config_unsupported_format():
 
     with pytest.raises(ValueError, match="Unsupported config format"):
         Base_pkg._load_config(json_path)
+
+
+def _make_ts(n_cont: int) -> TimeSeries:
+    rng = np.random.default_rng(0)
+    rows = []
+    for g in range(2):
+        for t in range(20):
+            row = {
+                "time_idx": t,
+                "group": g,
+                "target": float(rng.normal()),
+                "weight": 1.0,
+            }
+            for i in range(n_cont):
+                row[f"x{i}"] = float(rng.normal())
+            rows.append(row)
+
+    return TimeSeries(
+        data=pd.DataFrame(rows),
+        time="time_idx",
+        target=["target"],
+        group=["group"],
+        weight="weight",
+        num=[f"x{i}" for i in range(n_cont)],
+        known=[f"x{i}" for i in range(n_cont)],
+        unknown=[],
+        static=["group"],
+    )
+
+
+def test_fit_rebuilds_model_for_new_data():
+    """Refit with different data must rebuild the model from new metadata."""
+    pkg = TFT_pkg_v2(
+        model_cfg={
+            "loss": SMAPE(),
+            "hidden_size": 16,
+            "attention_head_size": 2,
+        },
+        datamodule_cfg={
+            "max_encoder_length": 8,
+            "max_prediction_length": 3,
+            "train_val_test_split": (0.8, 0.2),
+            "batch_size": 2,
+        },
+        trainer_cfg={
+            "max_epochs": 1,
+            "limit_train_batches": 1,
+            "limit_val_batches": 1,
+            "logger": False,
+            "enable_checkpointing": False,
+            "enable_progress_bar": False,
+            "accelerator": "cpu",
+        },
+    )
+
+    pkg.fit(_make_ts(2), save_ckpt=False)
+    model_after_first = pkg.model
+
+    pkg.fit(_make_ts(5), save_ckpt=False)
+
+    assert pkg.model is not model_after_first
+    assert pkg.model is not None

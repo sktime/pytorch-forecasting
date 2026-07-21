@@ -229,13 +229,15 @@ class Base_pkg(_BasePtForecasterV2):
             self.datamodule = data
         self.datamodule.setup(stage="fit")
 
-        if self.model is None:
-            if not self.model_cfg:
-                raise RuntimeError(
-                    "`model_cfg` must be provided to train from scratch."
-                )
-            metadata = self.datamodule.metadata
-            self._build_model(metadata)
+        # Always rebuild: model architecture depends on datamodule metadata.
+        # Reusing a cached model across fits with different data leaves stale
+        # shapes/attributes and can raise RuntimeError.
+        if not self.model_cfg and not self.ckpt_path:
+            raise RuntimeError(
+                "`model_cfg` must be provided to train from scratch."
+            )
+        self.metadata = self.datamodule.metadata
+        self._build_model(self.metadata)
 
         callbacks = self.trainer_cfg.get("callbacks", []).copy()
         checkpoint_cb = None
