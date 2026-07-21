@@ -59,6 +59,12 @@ class TFT_pkg_v2(Base_pkg):
                 hidden_size=16,
                 attention_head_size=4,
             ),
+            dict(
+                loss=nn.GaussianNLLLoss(),
+                output_size=2,
+                hidden_size=16,
+                attention_head_size=2,
+            ),
             dict(datamodule_cfg=dict(max_encoder_length=5, max_prediction_length=3)),
             dict(
                 hidden_size=24,
