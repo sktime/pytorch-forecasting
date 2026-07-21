@@ -254,6 +254,11 @@ New in v2 (see the linked pages, not repeated here):
 - Metadata-driven model construction and the v2 base models — :doc:`models_v2`.
 - The package wrapper layer — :doc:`pkg_v2`.
 
+Models available in v2 (auto-generated from the registry — this list grows as more
+models are ported):
+
+.. model-overview-v2::
+
 Not yet ported: v2 is still beta and some v1 features are not yet available (e.g. the
 full ``optuna`` tuning workflow and some v1 models). Check current status in
 `issue #1974 <https://github.com/sktime/pytorch-forecasting/issues/1974>`_ before relying
