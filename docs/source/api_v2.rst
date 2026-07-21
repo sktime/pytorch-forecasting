@@ -48,6 +48,7 @@ Join the discussion and track our progress on GitHub:
 
     Data <data_v2>
     Models <models_v2>
+    Migrating from v1 <migration_v2>
     Package <pkg_v2>
     Metrics <metrics>
     Utils <utils>
