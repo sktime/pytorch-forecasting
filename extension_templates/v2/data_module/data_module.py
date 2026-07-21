@@ -29,10 +29,11 @@ Mandatory methods to implement (abstract on BaseTimeSeriesDataModule):
         given series indices. Skip series shorter than context + prediction.
     _build_dataset(windows)
         Return a private processed ``torch.utils.data.Dataset`` for the windows.
-    _split_data_indices()
+    _ensure_split()
         Split series indices into train, validation, and test tensors using
-        ``self.train_val_test_split``. Set ``self._train_indices``,
-        ``self._val_indices``, and ``self._test_indices``.
+        ``self.train_val_test_split`` once and cache them.
+        Cache them in ``self._train_indices``, ``self._val_indices``, and
+        ``self._test_indices``.
     collate_fn(batch)
         Static method that stacks dataset samples into the ``(x, y)`` batch
         layout expected by your model's ``forward`` pass.
@@ -44,7 +45,7 @@ Provided by BaseTimeSeriesDataModule (override only when needed):
     metadata (property)
         Lazy cache around ``_prepare_metadata()``.
     setup(stage)
-        Calls ``_split_data_indices``, builds windows/datasets per stage
+        Calls ``_ensure_split()``, builds windows/datasets per stage
         (``fit``, ``test``, ``predict``).
     train_dataloader / val_dataloader / test_dataloader / predict_dataloader
         Standard Lightning dataloaders wired to ``collate_fn``.
@@ -134,13 +135,12 @@ class MyDataModule(BaseTimeSeriesDataModule):
         """Return a processed Dataset for DataLoader consumption."""
         # todo: return your private _MyDataset(self, windows)
 
-    def _split_data_indices(
+    def _ensure_split(
         self,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Split series indices
-        into train, validation, and test sets based on the
-        ``train_val_test_split`` ratio.
+        Split series indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
 
         Sets
         -------

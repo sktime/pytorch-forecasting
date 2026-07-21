@@ -94,7 +94,9 @@ Inherits from `BaseTimeSeriesDataModule`. Implement the following:
 * `_context_length()` / `_prediction_length()`: Return window sizes for the unified test suite.
 * `_create_windows(indices)`: Build sliding-window index tuples.
 * `_build_dataset(windows)`: Return a processed `Dataset` for the windows.
-* `_split_data_indices()`: Split series indices into train, validation, and test sets.
+* `_ensure_split()`: Split series indices into train, validation, and test sets.
+        Split series indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
 * `collate_fn(batch)`: Stack samples into model-ready batches.
 
 

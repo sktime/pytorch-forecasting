@@ -101,8 +101,8 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         self.test_dataset: Dataset | None = None
         self.predict_dataset: Dataset | None = None
 
-    @staticmethod
     def _coerce_target_normalizer(
+        self,
         target_normalizer: NORMALIZER
         | str
         | list[NORMALIZER]
@@ -275,9 +275,10 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         return self._metadata
 
     @abstractmethod
-    def _split_data_indices(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Split data indices into train, val, and test sets based on the
-        train_val_test_split ratio.
+    def _ensure_split(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Split data indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
         """
 
     def setup(self, stage: str | None = None):
@@ -303,7 +304,7 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         # `setup()` currently windows over all series via
         # `torch.arange(len(time_series_dataset))`.
 
-        self._split_data_indices()
+        self._ensure_split()
 
         if stage is None or stage == "fit":
             if self.train_dataset is None:

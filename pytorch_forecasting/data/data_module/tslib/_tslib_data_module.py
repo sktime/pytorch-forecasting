@@ -372,11 +372,14 @@ class TslibDataModule(BaseTimeSeriesDataModule):
 
         return windows
 
-    def _split_data_indices(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _ensure_split(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Split data indices into train, val, and test sets based on the
-        train_val_test_split ratio.
+        train_val_test_split ratio once and cache them.
         """
+        if hasattr(self, "_indices"):
+            return
+
         total_series = len(self.time_series_dataset)
         self._indices = torch.randperm(total_series)
         if total_series == 1:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import torch
 from torch.utils.data import Dataset
@@ -20,8 +20,6 @@ class _ProcessedEncoderDecoderDataset(Dataset):
 
     Parameters
     ----------
-    dataset : TimeSeries
-        The base time series dataset that provides access to raw data and metadata.
     data_module : EncoderDecoderTimeSeriesDataModule
         The data module handling preprocessing and metadata configuration.
     windows : List[Tuple[int, int, int, int]]
@@ -29,18 +27,20 @@ class _ProcessedEncoderDecoderDataset(Dataset):
         (series_idx, start_idx, enc_length, pred_length).
     add_relative_time_idx : bool, default=False
         Whether to include relative time indices.
+    preprocessed_data : Optional[dict[int, dict[str, Any]]], default=None
+        Preprocessed data for all time series indices on input dataset.
     """
 
     def __init__(
         self,
-        dataset: TimeSeries,
         data_module: EncoderDecoderTimeSeriesDataModule,
         windows: list[tuple[int, int, int, int]],
+        preprocessed_data: dict[int, dict[str, Any]],
         add_relative_time_idx: bool = False,
     ):
-        self.dataset = dataset
         self.data_module = data_module
         self.windows = windows
+        self.preprocessed_data = preprocessed_data
         self.add_relative_time_idx = add_relative_time_idx
 
     def __len__(self):
@@ -60,41 +60,41 @@ class _ProcessedEncoderDecoderDataset(Dataset):
             Dictionary containing model inputs:
 
             * ``encoder_cat`` : tensor of shape (enc_length, n_cat_features)
-              Categorical features for the encoder.
+                Categorical features for the encoder.
             * ``encoder_cont`` : tensor of shape (enc_length, n_cont_features)
-              Continuous features for the encoder.
+                Continuous features for the encoder.
             * ``decoder_cat`` : tensor of shape (pred_length, n_cat_features)
-              Categorical features for the decoder.
+                Categorical features for the decoder.
             * ``decoder_cont`` : tensor of shape (pred_length, n_cont_features)
-              Continuous features for the decoder.
+                Continuous features for the decoder.
             * ``encoder_lengths`` : tensor of shape (1,)
-              Length of the encoder sequence.
+                Length of the encoder sequence.
             * ``decoder_lengths`` : tensor of shape (1,)
-              Length of the decoder sequence.
+                Length of the decoder sequence.
             * ``decoder_target_lengths`` : tensor of shape (1,)
-              Length of the decoder target sequence.
+                Length of the decoder target sequence.
             * ``groups`` : tensor of shape (1,)
-              Group identifier for the time series instance.
+                Group identifier for the time series instance.
             * ``encoder_time_idx`` : tensor of shape (enc_length,)
-              Time indices for the encoder sequence.
+                Time indices for the encoder sequence.
             * ``decoder_time_idx`` : tensor of shape (pred_length,)
-              Time indices for the decoder sequence.
+                Time indices for the decoder sequence.
             * ``target_past`` : torch.Tensor of shape (enc_length,)
-              Historical target values for the encoder sequence.
+                Historical target values for the encoder sequence.
             * ``target_scale`` : tensor of shape (1,)
-              Scaling factor for the target values.
+                Scaling factor for the target values.
             * ``encoder_mask`` : tensor of shape (enc_length,)
-              Boolean mask indicating valid encoder time points.
+                Boolean mask indicating valid encoder time points.
             * ``decoder_mask`` : tensor of shape (pred_length,)
-              Boolean mask indicating valid decoder time points.
+                Boolean mask indicating valid decoder time points.
 
-              If static features are present, the following keys are added:
+                If static features are present, the following keys are added:
 
             * ``static_categorical_features`` : tensor of shape
                                                 (1, n_static_cat_features), optional
-              Static categorical features, if available.
+                Static categorical features, if available.
             * ``static_continuous_features`` : tensor of shape (1, 0), optional
-              Placeholder for static continuous features (currently empty).
+                Placeholder for static continuous features (currently empty).
 
         y : torch.Tensor or list of torch.Tensor
             Target values for the decoder sequence.
@@ -102,16 +102,38 @@ class _ProcessedEncoderDecoderDataset(Dataset):
             is returned. Otherwise, a tensor of shape (pred_length,) is returned.
         """
         series_idx, start_idx, enc_length, pred_length = self.windows[idx]
-        data = self.data_module._preprocess_data(series_idx)
+        data = self.preprocessed_data[series_idx]
 
         end_idx = start_idx + enc_length + pred_length
         encoder_indices = slice(start_idx, start_idx + enc_length)
         decoder_indices = slice(start_idx + enc_length, end_idx)
 
         target_past = data["target"][encoder_indices]
-        target_scale = target_past[~torch.isnan(target_past)].abs().mean()
-        if torch.isnan(target_scale) or target_scale == 0:
-            target_scale = torch.tensor(1.0)
+
+        # apply encoder normalizer on target_past.
+        normalizer = self.data_module._target_normalizer
+        if normalizer is not None and normalizer.fit_per_sequence:
+            target_past = self.data_module._target_normalizer.fit_transform_sequence(
+                target_past
+            )
+
+        target_original_past = data["target_original"][encoder_indices]
+        valid_mask = ~torch.isnan(target_original_past)
+        abs_vals = target_original_past.abs().masked_fill(~valid_mask, 0.0)
+        counts = valid_mask.sum(dim=0).clamp(min=1)
+        target_scale_vec = abs_vals.sum(dim=0) / counts
+        target_scale_vec = torch.where(
+            (target_scale_vec == 0) | torch.isnan(target_scale_vec),
+            torch.ones_like(target_scale_vec),
+            target_scale_vec,
+        )
+
+        if self.data_module.n_targets > 1:
+            target_scale = [
+                target_scale_vec[i] for i in range(self.data_module.n_targets)
+            ]
+        else:
+            target_scale = target_scale_vec.squeeze(0)
 
         encoder_mask = (
             data["time_mask"][encoder_indices]
@@ -125,7 +147,16 @@ class _ProcessedEncoderDecoderDataset(Dataset):
         )
 
         encoder_cat = data["features"]["categorical"][encoder_indices]
+
         encoder_cont = data["features"]["continuous"][encoder_indices]
+
+        # apply encoder normalizer on cont features (assuming the presence of
+        # EncoderNormalizer)
+        for feat_idx, adapter in self.data_module._cont_scalers:
+            if adapter.fit_per_sequence:
+                encoder_cont[:, feat_idx] = adapter.fit_transform_sequence(
+                    encoder_cont[:, feat_idx]
+                )
 
         features = data["features"]
         metadata = self.data_module.time_series_metadata
@@ -222,9 +253,8 @@ class _ProcessedEncoderDecoderDataset(Dataset):
 
         y = data["target"][decoder_indices]
 
-        if self.data_module.n_targets > 1:
-            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
+        if y.shape[-1] > 1:
+            y = [y[:, i] for i in range(y.shape[-1])]
         else:
             y = y.squeeze(-1)
-
         return x, y
