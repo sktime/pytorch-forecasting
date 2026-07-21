@@ -15,6 +15,14 @@ Migrating from v1 to v2
 High-level changes at a glance
 ------------------------------
 
+- The one big ``TimeSeriesDataSet`` splits into a thin ``TimeSeries`` dataset plus a
+  ``DataModule`` (see :doc:`data_v2`).
+- Models are data-agnostic: instead of ``Model.from_dataset(...)``, a model receives
+  ``metadata`` from the DataModule (see :doc:`models_v2`).
+- An optional package wrapper gives a uniform ``fit`` / ``predict`` and lets you swap
+  architectures (see :doc:`pkg_v2`).
+- The PyTorch Lightning ``Trainer`` and the metrics/loss classes are unchanged.
+
 Concept mapping: v1 → v2
 ------------------------
 
@@ -232,8 +240,29 @@ For a runnable end-to-end notebook, see :doc:`tutorials_v2` (``ptf_V2_example``)
 What stays the same
 -------------------
 
+- The PyTorch Lightning ``Trainer`` interface (``trainer.fit(...)``) is unchanged.
+- Loss and metric classes (``MAE``, ``SMAPE``, ``QuantileLoss``, ...) from
+  ``pytorch_forecasting.metrics`` are reused as-is (see :doc:`api_v2`).
+- Input is still a long-format ``pandas.DataFrame`` with a time index and group id(s).
+
 What's new / not yet in v2
 --------------------------
 
+New in v2 (see the linked pages, not repeated here):
+
+- The layered data design and multiple DataModules — :doc:`data_v2`.
+- Metadata-driven model construction and the v2 base models — :doc:`models_v2`.
+- The package wrapper layer — :doc:`pkg_v2`.
+
+Not yet ported: v2 is still beta and some v1 features are not yet available (e.g. the
+full ``optuna`` tuning workflow and some v1 models). Check current status in
+`issue #1974 <https://github.com/sktime/pytorch-forecasting/issues/1974>`_ before relying
+on a specific v1 feature.
+
 Getting help
 ------------
+
+- Try the v2 modules and share feedback on the
+  `API-v2 development issue <https://github.com/sktime/pytorch-forecasting/issues/1736>`_.
+- Track the roadmap in
+  `issue #1974 <https://github.com/sktime/pytorch-forecasting/issues/1974>`_.
