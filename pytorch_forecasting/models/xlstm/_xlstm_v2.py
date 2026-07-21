@@ -18,6 +18,41 @@ class xLSTMTime(BaseModel):
     extended LSTM (xLSTM) design, incorporating either the scalar-memory
     stabilized LSTM (sLSTM) or the matrix-memory mLSTM variant.
 
+    Parameters
+    ----------
+    loss : nn.Module
+        Loss (and evaluation metric) used during training.
+    hidden_size : int, default 32
+        Hidden size of the xLSTM network; also used by batch norm / LSTM internals.
+    xlstm_type : {"slstm", "mlstm"}, default "slstm"
+        Specifies which xLSTM variant to use:
+        - "slstm": stabilized LSTM with scalar memory,
+        - "mlstm": matrix-memory variant for higher capacity and scalability.
+    num_layers : int, default 1
+        Number of recurrent layers in the sLSTM or mLSTM network.
+    decomposition_kernel : int, default 25
+        Kernel size for series decomposition into trend and seasonal components.
+    input_projection_size : int, optional
+        If specified, the encoded input (trend + seasonal) is projected to this size
+        before being fed to the xLSTM; otherwise equals hidden_size.
+    dropout : float, default 0.1
+        Dropout rate applied within the recurrent layers.
+    logging_metrics : list of nn.Module, optional
+        Metrics logged during training / validation / testing.
+    optimizer : Optimizer or str, optional
+        Optimizer used for training.
+    optimizer_params : dict, optional
+        Parameters for the optimizer.
+    lr_scheduler : str, optional
+        Learning rate scheduler name.
+    lr_scheduler_params : dict, optional
+        Parameters for the learning rate scheduler.
+    metadata : dict, optional
+        Metadata from the encoder-decoder datamodule. Used to derive
+        ``input_size`` (``encoder_cont + 1`` for ``target_past``) and
+        ``output_size`` (``max_prediction_length``, times ``n_quantiles``
+        when using ``QuantileLoss``).
+
     Based on https://arxiv.org/pdf/2407.10240 and https://github.com/muslehal/xLSTMTime
     """
 
@@ -65,21 +100,25 @@ class xLSTMTime(BaseModel):
         self.max_prediction_length = self.metadata["max_prediction_length"]
         self.input_size = self.metadata["encoder_cont"] + 1
 
-        self.hidden_size = hidden_size
-        self.xlstm_type = xlstm_type
-        self.input_projection_size = input_projection_size or hidden_size
-
         self.n_quantiles = 1
         if hasattr(loss, "quantiles") and loss.quantiles is not None:
             self.n_quantiles = len(loss.quantiles)
 
-        output_dim = self.max_prediction_length * self.n_quantiles
+        # output_size ~= forecast horizon; extend by n_quantiles when needed
+        self.output_size = self.max_prediction_length * self.n_quantiles
 
-        kernel = min(decomposition_kernel, self.max_encoder_length)
-        if kernel % 2 == 0:
-            kernel = max(1, kernel - 1)
-        self.decomposition = SeriesDecomposition(kernel)
+        self.xlstm_type = xlstm_type
+        self.input_projection_size = input_projection_size or hidden_size
+
+        # clamp kernel so short test contexts still work (v1 assumed long history)
+        # kernel = min(decomposition_kernel, self.max_encoder_length)
+        # if kernel % 2 == 0:
+        #     kernel = max(1, kernel - 1)
+
+        # self.decomposition = SeriesDecomposition(kernel)
+        self.decomposition = SeriesDecomposition(decomposition_kernel)
         self.batch_norm = nn.BatchNorm1d(hidden_size)
+
         self.input_linear = nn.Linear(self.input_size * 2, self.input_projection_size)
 
         if xlstm_type == "mlstm":
@@ -90,7 +129,7 @@ class xLSTMTime(BaseModel):
                 output_size=hidden_size,
                 dropout=dropout,
             )
-        else:
+        else:  # slstm
             self.lstm = sLSTMNetwork(
                 input_size=hidden_size,
                 hidden_size=hidden_size,
@@ -99,45 +138,64 @@ class xLSTMTime(BaseModel):
                 dropout=dropout,
             )
 
-        self.output_linear = nn.Linear(hidden_size, output_dim)
-        self.instance_norm = nn.InstanceNorm1d(output_dim)
+        self.output_linear = nn.Linear(hidden_size, self.output_size)
+        self.instance_norm = nn.InstanceNorm1d(self.output_size)
 
-    def _prepare_input(self, x: dict[str, torch.Tensor]) -> torch.Tensor:
+    def _encoder_features(self, x: dict[str, torch.Tensor]) -> torch.Tensor:
         """Build encoder input from covariates and past target values."""
         encoder_cont = x["encoder_cont"]
         target_past = x["target_past"]
         if target_past.ndim == 2:
             target_past = target_past.unsqueeze(-1)
 
+        # In v1, the target lived inside ``encoder_cont``. In v2 encoder-decoder
+        # batches the target is separate as ``target_past``, so concatenate it.
         if encoder_cont.size(-1) > 0:
             return torch.cat([encoder_cont, target_past], dim=-1)
         return target_past
 
-    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """Forward pass of the model."""
-        encoder_input = self._prepare_input(x)
-        batch_size = encoder_input.size(0)
+    def forward(
+        self,
+        x: dict[str, torch.Tensor],
+        hidden_states: tuple[torch.Tensor, torch.Tensor]
+        | tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+        | None = None,
+    ) -> dict[str, torch.Tensor]:
+        """Forward Pass for the model."""
+        encoder_cont = self._encoder_features(x)
+        batch_size, seq_len, n_features = encoder_cont.shape
 
-        seasonal, trend = self.decomposition(encoder_input)
-        x_proc = torch.cat([trend, seasonal], dim=-1)
-        x_proc = self.input_linear(x_proc)
+        seasonal, trend = self.decomposition(encoder_cont)
 
-        x_proc = x_proc.transpose(1, 2)
-        x_proc = self.batch_norm(x_proc)
-        x_proc = x_proc.transpose(1, 2)
+        x = torch.cat([trend, seasonal], dim=-1)
 
-        hidden_states = self.lstm.init_hidden(batch_size, device=x_proc.device)
-        x_proc = x_proc.transpose(0, 1)
-        output, _ = self.lstm(x_proc, *hidden_states)
+        x = self.input_linear(x)
+
+        x = x.transpose(1, 2)
+        x = self.batch_norm(x)
+        x = x.transpose(1, 2)
+
+        if hidden_states is None:
+            hidden_states = self.lstm.init_hidden(batch_size, device=x.device)
+
+        x = x.transpose(0, 1)
+        output, hidden_states = self.lstm(x, *hidden_states)
 
         if isinstance(output, tuple):
             output = output[0]
+
         if output.dim() == 2:
             output = output.unsqueeze(0)
 
-        output = self.output_linear(output[-1])
-        output = self.instance_norm(output.unsqueeze(1)).squeeze(1)
+        output = self.output_linear(output)
 
+        output = output.transpose(1, 2)
+        output = self.instance_norm(output)
+        output = output.transpose(1, 2)
+
+        output = output[0, ..., : self.output_size]
+
+        # reshape to (batch, horizon, n_quantiles) when using QuantileLoss
         if self.n_quantiles > 1:
             prediction = output.view(
                 batch_size, self.max_prediction_length, self.n_quantiles
