@@ -21,3 +21,4 @@ The following tutorials can be also found as `notebooks on GitHub <https://githu
    tutorials/building
    tutorials/deepar
    tutorials/nhits
+   migration_v1_to_v2

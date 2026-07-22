@@ -48,8 +48,10 @@ Join the discussion and track our progress on GitHub:
 
     Data <data_v2>
     Models <models_v2>
-    Migrating from v1 <migration_v2>
     Package <pkg_v2>
     Metrics <metrics>
     Utils <utils>
     Tutorials <tutorials_v2>
+
+.. seealso::
+    Porting a v1 model implementation to v2? See :doc:`migration_v1_to_v2`.
