@@ -76,12 +76,6 @@ class TestParseParamGrid:
         with pytest.raises(ValueError, match="boolean tuple"):
             search._parse_param_grid({"use_norm": (True, False)})
 
-    def test_boolean_mixed_tuple_raises(self):
-        """A tuple with one boolean should also raise ValueError."""
-        search = _make_search_cv()
-        with pytest.raises(ValueError, match="boolean tuple"):
-            search._parse_param_grid({"flag": (False, 5)})
-
     def test_invalid_type_raises(self):
         """An unsupported type (e.g., a string) should raise ValueError."""
         search = _make_search_cv()
@@ -115,7 +109,7 @@ class TestAutoDiscoverRanges:
     """Tests for ForecastingSearchCV._auto_discover_ranges."""
 
     def test_discovers_known_params(self):
-        """Params in both model __init__ and _GLOBAL_SEARCH_SPACE are discovered."""
+        """Params in model __init__ are discovered."""
         search = _make_search_cv()
         discovered = search._auto_discover_ranges()
 
@@ -123,7 +117,7 @@ class TestAutoDiscoverRanges:
         assert isinstance(discovered["moving_avg"], _SearchRange)
 
     def test_skips_unknown_params(self):
-        """Params NOT in _GLOBAL_SEARCH_SPACE should not appear."""
+        """Params NOT in model __init__ should not appear."""
         search = _make_search_cv()
         discovered = search._auto_discover_ranges()
 

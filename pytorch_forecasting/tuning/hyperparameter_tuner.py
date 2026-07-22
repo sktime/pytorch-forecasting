@@ -111,9 +111,7 @@ class _HyperparameterTuner:
         for param_name, search_range in search_ranges.items():
             value = search_range.suggest(trial, param_name)
 
-            if param_name == "gradient_clip_val":
-                trainer_cfg["gradient_clip_val"] = value
-            elif "." in param_name:
+            if "." in param_name:
                 parts = param_name.split(".")
                 d = model_cfg
                 for part in parts[:-1]:

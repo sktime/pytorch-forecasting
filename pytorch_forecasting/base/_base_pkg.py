@@ -256,7 +256,13 @@ class Base_pkg(_BasePtForecasterV2):
         trainer_init_cfg = self.trainer_cfg.copy()
         trainer_init_cfg.pop("callbacks", None)
 
+        auto_lr_find = trainer_init_cfg.pop("auto_lr_find", False)
         self.trainer = Trainer(**trainer_init_cfg, callbacks=callbacks)
+        
+        if auto_lr_find:
+            from pytorch_forecasting.tuning.tuner import Tuner
+            tuner = Tuner(self.trainer)          
+            tuner.lr_find(self.model, datamodule=self.datamodule)
 
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
         if save_ckpt and checkpoint_cb:

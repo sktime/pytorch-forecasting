@@ -27,7 +27,7 @@ class ForecastingSearchCV:
         - ``_SearchRange``: advanced users can pass structured objects
 
         If ``None``, the search space is auto-discovered from the model's
-        ``__init__`` signature and the global registry.
+        ``__init__`` signature
     n_trials : int, default=50
         Number of optimization trials.
 
@@ -186,25 +186,26 @@ class ForecastingSearchCV:
         return parsed_param_grid
 
     def _auto_discover_ranges(self):
-        """Inspect the model class and match params against the global registry.
+        """Inspect the model class and match params against the class tags.
 
         Returns
         -------
         dict[str, _SearchRange]
             Auto-discovered search ranges for parameters found in both
-            the model's ``__init__`` signature and ``_GLOBAL_SEARCH_SPACE``.
+            the model's __init__ signature and class tags.
         """
-        from pytorch_forecasting.tuning.global_registry import _GLOBAL_SEARCH_SPACE
 
         model_cls = self.pkg_cls.get_cls()
+        tunable_params = self.pkg_cls.get_class_tags().get("tunable_params", {})
+        common_params = self.pkg_cls.get_class_tags().get("common_params", {})
         sig = inspect.signature(model_cls.__init__)
 
         model_param_names = [name for name in sig.parameters if name != "self"]
-
+        local_search_space = {**common_params, **tunable_params}
         discovered = {}
 
         for param_name in model_param_names:
-            if param_name in _GLOBAL_SEARCH_SPACE:
-                discovered[param_name] = _GLOBAL_SEARCH_SPACE[param_name]
+            if param_name in local_search_space:
+                discovered[param_name] = local_search_space[param_name]
 
         return discovered
