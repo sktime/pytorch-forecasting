@@ -258,10 +258,11 @@ class Base_pkg(_BasePtForecasterV2):
 
         auto_lr_find = trainer_init_cfg.pop("auto_lr_find", False)
         self.trainer = Trainer(**trainer_init_cfg, callbacks=callbacks)
-        
+
         if auto_lr_find:
             from pytorch_forecasting.tuning.tuner import Tuner
-            tuner = Tuner(self.trainer)          
+
+            tuner = Tuner(self.trainer)
             tuner.lr_find(self.model, datamodule=self.datamodule)
 
         self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
