@@ -13,7 +13,7 @@ class xLSTMTime_pkg_v2(Base_pkg):
         "authors": ["Faakhir30"],
         "capability:exogenous": True,
         "capability:multivariate": False,
-        "capability:pred_int": True,
+        "capability:pred_int": False,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
     }
@@ -37,7 +37,6 @@ class xLSTMTime_pkg_v2(Base_pkg):
     @classmethod
     def get_test_train_params(cls):
         """Return testing parameter settings for the trainer."""
-        from pytorch_forecasting.metrics import QuantileLoss
 
         params = [
             {},
@@ -48,10 +47,6 @@ class xLSTMTime_pkg_v2(Base_pkg):
                 "xlstm_type": "mlstm",
                 "decomposition_kernel": 3,
                 "dropout": 0.2,
-            },
-            {
-                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
-                "hidden_size": 16,
             },
             {
                 "optimizer": "adamw",

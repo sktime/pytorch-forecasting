@@ -50,8 +50,7 @@ class xLSTMTime(BaseModel):
     metadata : dict, optional
         Metadata from the encoder-decoder datamodule. Used to derive
         ``input_size`` (``encoder_cont + 1`` for ``target_past``) and
-        ``output_size`` (``max_prediction_length``, times ``n_quantiles``
-        when using ``QuantileLoss``).
+        ``output_size`` (``max_prediction_length``).
 
     Based on https://arxiv.org/pdf/2407.10240 and https://github.com/muslehal/xLSTMTime
     """
@@ -195,12 +194,6 @@ class xLSTMTime(BaseModel):
 
         output = output[0, ..., : self.output_size]
 
-        # reshape to (batch, horizon, n_quantiles) when using QuantileLoss
-        if self.n_quantiles > 1:
-            prediction = output.view(
-                batch_size, self.max_prediction_length, self.n_quantiles
-            )
-        else:
-            prediction = output.unsqueeze(-1)
+        prediction = output.unsqueeze(-1)
 
         return {"prediction": prediction}
