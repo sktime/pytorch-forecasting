@@ -145,16 +145,9 @@ Architecture
 v1 architecture
 ~~~~~~~~~~~~~~~
 
-In v1 a single ``TimeSeriesDataSet`` handles ingestion, preprocessing, and
-batching in one class. Models inherit ``BaseModel`` (in
-``pytorch_forecasting.models.base._base_model``), which mixes in several
-capabilities (training step, logging, prediction helpers) and are
-constructed with ``Model.from_dataset(dataset, ...)``; the model reads its
-input sizes, embedding dimensions, and categorical vocabulary directly from
-the dataset object at instantiation. A lightweight package class inheriting
-``_BasePtForecaster`` carries tags and metadata and participates in the
-registry (``TestAllPtForecasters``). The tight coupling between the dataset
-object and the model constructor is what the v2 redesign addresses.
+In v1, ``TimeSeriesDataSet`` handles ingestion, preprocessing, and batching, and
+the model is built from it via ``Model.from_dataset(...)``; this tight
+dataset-to-model coupling is what v2 unwinds (full v1 reference: :doc:`api`).
 
 .. mermaid::
 
@@ -166,21 +159,9 @@ object and the model constructor is what the v2 redesign addresses.
 v2 architecture
 ~~~~~~~~~~~~~~~
 
-v2 splits the monolithic v1 design into four layers, so a model no longer
-depends on a specific data class and works from plain tensors plus a
-``metadata`` dict. The full reference for the four layers, the design goals,
-and the high- and low-level APIs lives in :doc:`api_v2`. When you write or port
-an estimator, these are the points that actually affect your code:
-
-* The model-layer ``BaseModel`` lives in
-  ``pytorch_forecasting.models.base._base_model_v2``. It is a different class
-  from v1's same-named ``BaseModel`` in ``_base_model``, so keep them straight.
-  Models ported from tslib inherit ``TslibBaseModel`` instead.
-* A model is built from explicit hyperparameters plus the ``metadata`` dict the
-  D2 DataModule supplies. There is no ``from_dataset``.
-* The package class extends ``Base_pkg`` and names its DataModule through
-  ``get_datamodule_cls()``.
-* ``forward(x: dict) -> dict`` is the same as in v1.
+v2 splits that monolith into four decoupled layers (Dataset, DataModule, Model,
+Package), where the model is driven by a ``metadata`` dict instead of
+``from_dataset`` (full reference: :doc:`api_v2`).
 
 .. mermaid::
 
@@ -192,11 +173,8 @@ an estimator, these are the points that actually affect your code:
        pkg -.->|orchestrates| d1
        user -->|"low-level API:<br/>drive the 3 stages via Lightning"| d1
 
-The diagram shows both entry points: the Package's high-level ``fit`` /
-``predict``, and the low-level path that drives the three stages directly
-through a PyTorch Lightning ``Trainer``. For runnable end-to-end examples, see
-the v2 tutorials :doc:`tutorials/ptf_V2_example` and
-:doc:`tutorials/tslib_v2_example`.
+Runnable end-to-end examples are in the v2 tutorials
+:doc:`tutorials/ptf_V2_example` and :doc:`tutorials/tslib_v2_example`.
 
 .. warning::
 
@@ -208,12 +186,9 @@ the v2 tutorials :doc:`tutorials/ptf_V2_example` and
 v1 to v2
 ~~~~~~~~
 
-The shifts that matter for a contributor: the data layer splits into D1 and D2,
-``from_dataset`` gives way to a ``metadata`` dict, the package base gains
-``get_datamodule_cls()``, and the ``forward`` contract is unchanged, so porting
-a model is mostly re-organisation rather than a rewrite. For the full,
-item-by-item comparison at the model-implementation level, see the table in
-:doc:`migration_v1_to_v2`.
+The model-implementation differences (data layer split, ``from_dataset`` to
+``metadata``, the new package base, unchanged ``forward``) are compared item by
+item in :doc:`migration_v1_to_v2`.
 
 Adding a contribution
 ---------------------
