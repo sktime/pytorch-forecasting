@@ -57,7 +57,7 @@ class NHiTS_pkg_v2(Base_pkg):
             The key ``"datamodule_cfg"`` inside each dict is forwarded to
             the datamodule constructor.
         """
-        from pytorch_forecasting.metrics import MAE, SMAPE
+        from pytorch_forecasting.metrics import MAE, RMSE, SMAPE
 
         params = [
             {},
@@ -67,12 +67,14 @@ class NHiTS_pkg_v2(Base_pkg):
                 hidden_size=256,
                 pooling_mode="max",
                 interpolation_mode="linear",
+                loss=RMSE(),
             ),
             dict(
                 n_blocks=[1, 1],
                 hidden_size=128,
                 backcast_loss_ratio=0.1,
-                logging_metrics=[SMAPE()],
+                loss=SMAPE(),
+                logging_metrics=[MAE()],
             ),
             dict(
                 n_blocks=[1],
