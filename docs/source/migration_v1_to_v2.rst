@@ -3,18 +3,18 @@ Migrating models from v1 to v2
 
 .. warning::
     The v2 model layer is in active development / beta. Use with caution.
-    v1 remains stable for production — see :doc:`v1 API <api>`.
+    v1 remains stable for production; see :doc:`v1 API <api>`.
 
 .. currentmodule:: pytorch_forecasting
 
 .. note::
-    This is a **developer** guide — how to migrate a model's *implementation* from
+    This is a **developer** guide: how to migrate a model's *implementation* from
     the v1 API to the v2 four-layer architecture, per the roadmap goal *"migrate the
     models from v1 to v2 and deprecate v1"*
     (`#1993 <https://github.com/sktime/pytorch-forecasting/issues/1993>`_), aiming
     for **minimal changes to the model code**. To *use* v2 to build forecasts, see
     the v2 tutorials (``ptf_V2_example`` in :doc:`tutorials_v2`) instead; for the
-    general contribution workflow, see the developer guide.
+    general contribution workflow, see the :doc:`developer guide <developer_guide>`.
 
 Overview
 --------
@@ -44,8 +44,8 @@ Changes to the model implementation
      - ``BaseModel`` (``models.base._base_model``)
      - ``BaseModel`` (``models.base._base_model_v2``); ``TslibBaseModel`` for tslib models
    * - Construction
-     - ``@classmethod from_dataset(cls, dataset, ...)`` — sizes inferred from the dataset
-     - ``__init__(..., metadata=None)`` — sizes read from the DataModule's ``metadata``
+     - ``@classmethod from_dataset(cls, dataset, ...)``, sizes inferred from the dataset
+     - ``__init__(..., metadata=None)``, sizes read from the DataModule's ``metadata``
    * - Base ``super().__init__`` args
      - dataset-derived + hyperparameters
      - ``loss``, ``logging_metrics``, ``optimizer``, ``optimizer_params``, ``lr_scheduler``, ``lr_scheduler_params``
@@ -63,28 +63,28 @@ Changes to the model implementation
      - ``TestAllPtForecastersV2`` (via ``get_test_train_params`` + ``check_estimator``)
 
 The data layer also changes (``TimeSeriesDataSet`` → a thin D1 ``TimeSeries`` plus a
-D2 ``DataModule``), but a model **does not touch it directly** — it only consumes
+D2 ``DataModule``), but a model **does not touch it directly**; it only consumes
 the ``metadata`` the DataModule produces. See :doc:`data_v2`, :doc:`models_v2`,
 :doc:`pkg_v2`.
 
 Migration procedure
 -------------------
 
-**Step 1 — move the network into a v2** ``model.py``. Inherit the v2 ``BaseModel``;
+**Step 1: move the network into a v2** ``model.py``. Inherit the v2 ``BaseModel``;
 the ``forward`` body usually transfers unchanged.
 
-**Step 2 — replace** ``from_dataset`` **with** ``metadata``. In v1 the model read its
+**Step 2: replace** ``from_dataset`` **with** ``metadata``. In v1 the model read its
 sizes from the dataset; in v2 they come from ``metadata`` (produced by the D2
 DataModule) and are passed to ``__init__``:
 
 .. code-block:: python
 
-   # v1 — sizes inferred from the dataset via a factory classmethod
+   # v1: sizes inferred from the dataset via a factory classmethod
    @classmethod
    def from_dataset(cls, dataset, **kwargs):
        return super().from_dataset(dataset, **kwargs)
 
-   # v2 — no from_dataset; sizes come from metadata (as TFT v2 does)
+   # v2: no from_dataset; sizes come from metadata (as TFT v2 does)
    import torch.nn as nn
    from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
@@ -124,11 +124,11 @@ DataModule) and are passed to ``__init__``:
            ...  # unchanged from v1
 
 For a real migrated model, see
-``pytorch_forecasting/models/temporal_fusion_transformer/_tft_v2.py`` — it reads
+``pytorch_forecasting/models/temporal_fusion_transformer/_tft_v2.py``; it reads
 ``encoder_cont``, ``decoder_cont``, ``static_categorical_features``, etc. from
 ``metadata``.
 
-**Step 3 — add a** ``model_pkg.py`` **package class** inheriting ``Base_pkg``, with
+**Step 3: add a** ``model_pkg.py`` **package class** inheriting ``Base_pkg``, with
 ``_tags`` and the factory methods; point ``get_datamodule_cls`` at a compatible
 DataModule and keep the first ``get_test_train_params`` entry ``{}`` (low-compute):
 
@@ -156,7 +156,7 @@ DataModule and keep the first ``get_test_train_params`` entry ``{}`` (low-comput
        def get_test_train_params(cls):
            return [{}, {"hidden_size": 8}]
 
-**Step 4 — register and check.** Register the package class so the ``all_objects``
+**Step 4: register and check.** Register the package class so the ``all_objects``
 registry and ``TestAllPtForecastersV2`` discover it, then validate the interface:
 
 .. code-block:: python
@@ -179,14 +179,14 @@ as references.
 Unchanged components
 --------------------
 
-- ``forward(x: dict) -> dict`` — the network and its forward pass transfer directly.
+- ``forward(x: dict) -> dict``: the network and its forward pass transfer directly.
 - The PyTorch Lightning ``Trainer`` interface, and the loss / metric classes
   (``MAE``, ``SMAPE``, ``QuantileLoss``, …) from ``pytorch_forecasting.metrics``.
 
 Migration status
 ----------------
 
-Models already available in v2 (auto-generated from the registry — this list grows
+Models already available in v2 (auto-generated from the registry, this list grows
 as more are migrated):
 
 .. model-overview-v2::
