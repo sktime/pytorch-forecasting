@@ -43,6 +43,19 @@ class NNLossAdapter(nn.Module):
 
     @staticmethod
     def _infer_mode(loss: nn.Module) -> _Mode:
+        """Map a native loss class to the adapter reshape/call mode.
+
+        Parameters
+        ----------
+        loss :
+            Wrapped ``torch.nn`` loss module.
+
+        Returns
+        -------
+        {"point", "class", "gaussian_nll"}
+            ``"class"`` for ``CrossEntropyLoss`` / ``NLLLoss``,
+            ``"gaussian_nll"`` for ``GaussianNLLLoss``, else ``"point"``.
+        """
         if isinstance(loss, _CLASS_LOSSES):
             return "class"
         if isinstance(loss, _GAUSSIAN_NLL_LOSSES):
@@ -119,6 +132,23 @@ class NNLossAdapter(nn.Module):
     def _unpack_y_actual(
         y_actual: torch.Tensor | list[torch.Tensor] | tuple,
     ) -> tuple[torch.Tensor | list[torch.Tensor], torch.Tensor | None]:
+        """Split ``y_actual`` into ``(target, weight)``.
+
+        Accepts a bare target tensor/list, ``(target, weight)``,
+        ``(target, None)``, or a length-1 sequence wrapping the target only.
+
+        Parameters
+        ----------
+        y_actual :
+            Target payload from the ptf-v2 training loop.
+
+        Returns
+        -------
+        target :
+            Tensor or list of target tensors.
+        weight :
+            Optional sample/time weight tensor, or ``None``.
+        """
         if (
             isinstance(y_actual, tuple)
             and len(y_actual) == 2
@@ -143,19 +173,40 @@ class NNLossAdapter(nn.Module):
         target: torch.Tensor,
         mode: _Mode,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Reshape ``y_pred`` / ``target`` into the layout expected by ``mode``.
+
+        * **point** — squeeze trailing singleton ``H=1`` so both are ``[B, T]``
+        * **class** — flatten to ``(B*T, C)`` logits and ``(B*T,)`` long labels
+        * **gaussian_nll** — keep ``[B, T, 2]`` preds and ``[B, T]`` targets
+
+        Parameters
+        ----------
+        y_pred :
+            Raw network prediction tensor.
+        target :
+            Raw target tensor (single-target path only).
+        mode :
+            Adapter mode from :meth:`_infer_mode`.
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor]
+            Prepared ``(y_pred, target)`` ready for :meth:`_call_loss`.
+        """
         if mode == "point":
-            if y_pred.ndim == 3:
-                if y_pred.size(-1) != 1:
-                    raise ValueError(
-                        f"NNLossAdapter only supports point predictions (H=1). "
-                        f"Got y_pred shape {list(y_pred.shape)} with "
-                        f"H={y_pred.size(-1)}. "
-                        "For multi-horizon losses, use a ptf metrics loss instead."
-                    )
-                y_pred = y_pred.squeeze(-1)
+            if y_pred.ndim != 3:
+                return y_pred, target
+            if y_pred.size(-1) != 1:
+                raise ValueError(
+                    f"NNLossAdapter only supports point predictions (H=1). "
+                    f"Got y_pred shape {list(y_pred.shape)} with "
+                    f"H={y_pred.size(-1)}. "
+                    "For multi-horizon losses, use a ptf metrics loss instead."
+                )
+            y_pred = y_pred.squeeze(-1)
             return y_pred, target
 
-        if mode == "class":
+        elif mode == "class":
             if y_pred.ndim != 3:
                 raise ValueError(
                     "Classification losses expect logits of shape "
@@ -187,6 +238,28 @@ class NNLossAdapter(nn.Module):
         target: torch.Tensor,
         mode: _Mode,
     ) -> torch.Tensor:
+        """Invoke the wrapped ``torch.nn`` loss with mode-specific arguments.
+
+        * **gaussian_nll** — split mean / softplus(raw_var)+eps, call
+          ``loss(mean, target, var)``
+        * **class** + ``NLLLoss`` — apply ``log_softmax`` before the loss
+        * otherwise — ``loss(y_pred, target)``
+
+        Parameters
+        ----------
+        y_pred :
+            Prepared prediction tensor from :meth:`_prepare_inputs`.
+        target :
+            Prepared target tensor.
+        mode :
+            Adapter mode controlling the call signature.
+
+        Returns
+        -------
+        torch.Tensor
+            Loss as returned by the wrapped module (honoring its reduction,
+            unless temporarily overridden by :meth:`_compute_loss`).
+        """
         if mode == "gaussian_nll":
             mean = y_pred[..., 0]
             var = F.softplus(y_pred[..., 1]) + 1e-6
@@ -203,6 +276,28 @@ class NNLossAdapter(nn.Module):
         weight: torch.Tensor | None,
         mode: _Mode,
     ) -> torch.Tensor:
+        """Compute (optionally sample-weighted) loss for one target.
+
+        When ``weight`` is set, temporarily forces ``reduction="none"``,
+        multiplies elementwise, then reduces with the original reduction
+        (weighted mean via ``sum(loss*w)/sum(w)``, ``sum``, or unreduced).
+
+        Parameters
+        ----------
+        y_pred :
+            Prepared prediction tensor.
+        target :
+            Prepared target tensor.
+        weight :
+            Optional weights broadcastable to the unreduced loss.
+        mode :
+            Used to flatten class-mode weights to ``(B*T,)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Scalar or unreduced weighted loss.
+        """
         if weight is None:
             return self._call_loss(y_pred, target, mode)
 
@@ -238,8 +333,23 @@ class NNLossAdapter(nn.Module):
         return weighted_loss
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
-        """
-        Convert network prediction into a point prediction.
+        """Convert network output to a point forecast.
+
+        * **class** — ``argmax`` over the class dimension
+        * **gaussian_nll** — mean channel (index 0)
+        * **point** — squeeze trailing ``H=1`` when present
+
+        Parameters
+        ----------
+        y_pred :
+            Raw network prediction tensor.
+        **kwargs :
+            Accepted for API compatibility; ignored.
+
+        Returns
+        -------
+        torch.Tensor
+            Point prediction, typically ``[B, T]``.
         """
         del kwargs
         mode = self._mode
@@ -252,8 +362,24 @@ class NNLossAdapter(nn.Module):
         return y_pred
 
     def to_quantiles(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
-        """
-        Convert network prediction into a quantile prediction.
+        """Expose a quantile-shaped view of the point prediction.
+
+        Native ``torch.nn`` losses are not quantile models; this wraps
+        :meth:`to_prediction` and adds a trailing singleton dim when needed
+        so callers expecting ``[B, T, Q]`` still work.
+
+        Parameters
+        ----------
+        y_pred :
+            Raw network prediction tensor.
+        **kwargs :
+            Accepted for API compatibility; ignored.
+
+        Returns
+        -------
+        torch.Tensor
+            ``[B, T, 1]`` when the point forecast is ``[B, T]``, else the
+            point forecast unchanged.
         """
         del kwargs
         point = self.to_prediction(y_pred)
