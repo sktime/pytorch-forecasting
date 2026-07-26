@@ -12,11 +12,13 @@ from pytorch_forecasting.layers import SeriesDecomposition, mLSTMNetwork, sLSTMN
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class xLSTMTime(BaseModel):
+class xLSTMTime_v2(BaseModel):
     """
     xLSTMTime is a long-term time series forecasting architecture built on the
     extended LSTM (xLSTM) design, incorporating either the scalar-memory
     stabilized LSTM (sLSTM) or the matrix-memory mLSTM variant.
+
+    Based on https://arxiv.org/pdf/2407.10240 and https://github.com/muslehal/xLSTMTime
 
     Parameters
     ----------
@@ -26,8 +28,10 @@ class xLSTMTime(BaseModel):
         Hidden size of the xLSTM network; also used by batch norm / LSTM internals.
     xlstm_type : {"slstm", "mlstm"}, default "slstm"
         Specifies which xLSTM variant to use:
+
         - "slstm": stabilized LSTM with scalar memory,
         - "mlstm": matrix-memory variant for higher capacity and scalability.
+
     num_layers : int, default 1
         Number of recurrent layers in the sLSTM or mLSTM network.
     decomposition_kernel : int, default 25
@@ -52,7 +56,6 @@ class xLSTMTime(BaseModel):
         ``input_size`` (``encoder_cont + 1`` for ``target_past``) and
         ``output_size`` (``max_prediction_length``).
 
-    Based on https://arxiv.org/pdf/2407.10240 and https://github.com/muslehal/xLSTMTime
     """
 
     @classmethod
@@ -88,9 +91,15 @@ class xLSTMTime(BaseModel):
             lr_scheduler_params=lr_scheduler_params,
         )
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
+        self.xlstm_type = xlstm_type
+        self.hidden_size = hidden_size
+        self.input_projection_size = input_projection_size or self.hidden_size
+        self.decomposition_kernel = decomposition_kernel
+        self.num_layers = num_layers
+        self.dropout = dropout
         self.metadata = metadata or {}
 
-        if xlstm_type not in ["slstm", "mlstm"]:
+        if self.xlstm_type not in ["slstm", "mlstm"]:
             raise ValueError(
                 "Error in xLSTMTime: xlstm_type must be either 'slstm' or 'mlstm'"
             )
@@ -99,45 +108,32 @@ class xLSTMTime(BaseModel):
         self.max_prediction_length = self.metadata["max_prediction_length"]
         self.input_size = self.metadata["encoder_cont"] + 1
 
-        self.n_quantiles = 1
-        if hasattr(loss, "quantiles") and loss.quantiles is not None:
-            self.n_quantiles = len(loss.quantiles)
-
-        # output_size ~= forecast horizon; extend by n_quantiles when needed
-        self.output_size = self.max_prediction_length * self.n_quantiles
-
-        self.xlstm_type = xlstm_type
-        self.input_projection_size = input_projection_size or hidden_size
-
-        # clamp kernel so short test contexts still work (v1 assumed long history)
-        # kernel = min(decomposition_kernel, self.max_encoder_length)
-        # if kernel % 2 == 0:
-        #     kernel = max(1, kernel - 1)
+        self.output_size = self.max_prediction_length
 
         # self.decomposition = SeriesDecomposition(kernel)
-        self.decomposition = SeriesDecomposition(decomposition_kernel)
-        self.batch_norm = nn.BatchNorm1d(hidden_size)
+        self.decomposition = SeriesDecomposition(self.decomposition_kernel)
+        self.batch_norm = nn.BatchNorm1d(self.hidden_size)
 
         self.input_linear = nn.Linear(self.input_size * 2, self.input_projection_size)
 
         if xlstm_type == "mlstm":
             self.lstm = mLSTMNetwork(
-                input_size=hidden_size,
-                hidden_size=hidden_size,
-                num_layers=num_layers,
-                output_size=hidden_size,
-                dropout=dropout,
+                input_size=self.hidden_size,
+                hidden_size=self.hidden_size,
+                num_layers=self.num_layers,
+                output_size=self.hidden_size,
+                dropout=self.dropout,
             )
         else:  # slstm
             self.lstm = sLSTMNetwork(
-                input_size=hidden_size,
-                hidden_size=hidden_size,
-                num_layers=num_layers,
-                output_size=hidden_size,
-                dropout=dropout,
+                input_size=self.hidden_size,
+                hidden_size=self.hidden_size,
+                num_layers=self.num_layers,
+                output_size=self.hidden_size,
+                dropout=self.dropout,
             )
 
-        self.output_linear = nn.Linear(hidden_size, self.output_size)
+        self.output_linear = nn.Linear(self.hidden_size, self.output_size)
         self.instance_norm = nn.InstanceNorm1d(self.output_size)
 
     def _encoder_features(self, x: dict[str, torch.Tensor]) -> torch.Tensor:

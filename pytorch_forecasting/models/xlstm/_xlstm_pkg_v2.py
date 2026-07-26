@@ -10,7 +10,7 @@ class xLSTMTime_pkg_v2(Base_pkg):
         "info:name": "xLSTMTime",
         "info:compute": 3,
         "info:y_type": ["numeric"],
-        "authors": ["Faakhir30"],
+        "authors": ["muslehal", "phoeenniixx", "Faakhir30"],
         "capability:exogenous": True,
         "capability:multivariate": False,
         "capability:pred_int": False,
@@ -21,9 +21,9 @@ class xLSTMTime_pkg_v2(Base_pkg):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.xlstm._xlstm_v2 import xLSTMTime
+        from pytorch_forecasting.models.xlstm._xlstm_v2 import xLSTMTime_v2
 
-        return xLSTMTime
+        return xLSTMTime_v2
 
     @classmethod
     def get_datamodule_cls(cls):
@@ -37,6 +37,7 @@ class xLSTMTime_pkg_v2(Base_pkg):
     @classmethod
     def get_test_train_params(cls):
         """Return testing parameter settings for the trainer."""
+        from pytorch_forecasting.metrics import MAE, MAPE
 
         params = [
             {},
@@ -47,6 +48,10 @@ class xLSTMTime_pkg_v2(Base_pkg):
                 "xlstm_type": "mlstm",
                 "decomposition_kernel": 3,
                 "dropout": 0.2,
+                "loss": MAE(),
+            },
+            {
+                "loss": MAPE(),
             },
             {
                 "optimizer": "adamw",
