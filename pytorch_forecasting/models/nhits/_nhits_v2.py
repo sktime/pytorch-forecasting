@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.metrics import MASE, Metric
+from pytorch_forecasting.metrics import MASE, Metric, QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
 
@@ -140,7 +140,24 @@ class NHiTS_v2(BaseModel):
 
         self.context_length = metadata["max_encoder_length"]
         self.prediction_length = metadata["max_prediction_length"]
-        output_size = [metadata["target"]]
+        n_targets = metadata["target"]
+        # The number of network outputs per target is dictated by the loss:
+        # a quantile loss needs one output per quantile, point losses need one.
+        if isinstance(loss, QuantileLoss):
+            n_outputs_per_target = len(loss.quantiles)
+        else:
+            n_outputs_per_target = 1
+        output_size = [n_outputs_per_target] * n_targets
+
+        # The backcast is single-valued per target and cannot be scored by a
+        # quantile loss, so mixing it with backcast regularization is disallowed
+        # (mirrors the v1 NHiTS constraint).
+        if backcast_loss_ratio > 0.0 and n_outputs_per_target > 1:
+            raise ValueError(
+                "backcast_loss_ratio > 0 is only supported for point forecasts "
+                "(one output per target). Set backcast_loss_ratio=0 to use a "
+                "quantile loss."
+            )
         static_size = (
             metadata["static_categorical_features"]
             + metadata["static_continuous_features"]
@@ -279,6 +296,17 @@ class NHiTS_v2(BaseModel):
             "block_backcasts": block_backcasts,
         }
 
+    def _call_loss(self, y_pred, target, encoder_target):
+        """Evaluate ``self.loss``.
+
+        Scale-dependent losses such as :class:`~pytorch_forecasting.metrics.MASE`
+        need the encoder history to compute their scaling and are called with
+        ``encoder_target``; all other losses take only prediction and target.
+        """
+        if isinstance(self.loss, MASE):
+            return self.loss(y_pred, target, encoder_target=encoder_target)
+        return self.loss(y_pred, target)
+
     def _compute_loss(
         self,
         x: dict[str, torch.Tensor],
@@ -305,11 +333,16 @@ class NHiTS_v2(BaseModel):
             Raw model output from :meth:`forward`.
         """
         out = self(x)
-        forecast_loss = self.loss(out["prediction"], y)
+        encoder_target = x["target_past"].squeeze(-1)  # [batch, context_length]
+        forecast_loss = self._call_loss(out["prediction"], y, encoder_target)
 
         if self._backcast_loss_ratio > 0.0:
-            backcast_target = x["target_past"].squeeze(-1)  # [batch, context_length]
-            backcast_loss = self.loss(out["backcast"], backcast_target)
+            # The backcast reconstructs the encoder-window target; reuse it as the
+            # scaling reference for scale-dependent losses. Only reached for point
+            # forecasts (guarded in __init__).
+            backcast_loss = self._call_loss(
+                out["backcast"], encoder_target, encoder_target
+            )
             loss = (
                 1 - self._backcast_loss_ratio
             ) * forecast_loss + self._backcast_loss_ratio * backcast_loss
@@ -324,7 +357,9 @@ class NHiTS_v2(BaseModel):
             prog_bar=True,
             logger=True,
         )
-        self.log_metrics(out["prediction"], y, prefix=prefix)
+        # Point logging metrics reject the quantile dimension, so log on the
+        # point-reduced prediction (identity-shaped for point losses).
+        self.log_metrics(self.to_prediction(out), y, prefix=prefix)
         return loss, out
 
     def training_step(self, batch, batch_idx):

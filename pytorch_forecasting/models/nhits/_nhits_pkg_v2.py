@@ -12,7 +12,7 @@ class NHiTS_pkg_v2(Base_pkg):
         "authors": ["echo-xiao"],
         "capability:exogenous": False,
         "capability:multivariate": False,
-        "capability:pred_int": False,
+        "capability:pred_int": True,
         "capability:flexible_history_length": False,
         "capability:cold_start": False,
     }
@@ -57,7 +57,7 @@ class NHiTS_pkg_v2(Base_pkg):
             The key ``"datamodule_cfg"`` inside each dict is forwarded to
             the datamodule constructor.
         """
-        from pytorch_forecasting.metrics import MAE, RMSE, SMAPE
+        from pytorch_forecasting.metrics import MAE, MASE, RMSE, SMAPE, QuantileLoss
 
         params = [
             {},
@@ -80,6 +80,18 @@ class NHiTS_pkg_v2(Base_pkg):
                 n_blocks=[1],
                 hidden_size=64,
                 loss=MAE(),
+            ),
+            dict(
+                n_blocks=[1],
+                hidden_size=64,
+                loss=QuantileLoss(),
+                backcast_loss_ratio=0.0,
+                logging_metrics=[MAE()],
+            ),
+            dict(
+                n_blocks=[1],
+                hidden_size=64,
+                loss=MASE(),
             ),
         ]
 

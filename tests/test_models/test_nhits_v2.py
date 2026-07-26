@@ -6,7 +6,7 @@ import torch
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
-from pytorch_forecasting.metrics import MAE, SMAPE
+from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 from pytorch_forecasting.models.nhits._nhits_pkg_v2 import NHiTS_pkg_v2
 from pytorch_forecasting.models.nhits._nhits_v2 import NHiTS_v2
 
@@ -135,6 +135,28 @@ def test_nhits_v2_backcast_loss_ratio(sample_datamodule, backcast_loss_ratio):
     loss = result["loss"]
     assert not torch.isnan(loss)
     assert loss.item() >= 0.0
+
+
+def test_nhits_v2_backcast_loss_ratio_rejects_quantile_loss(sample_datamodule):
+    """backcast_loss_ratio > 0 must be rejected for multi-output (quantile) losses.
+
+    The backcast is single-valued per target and cannot be scored by a quantile
+    loss, so combining it with backcast regularization is disallowed.
+
+    Parameters
+    ----------
+    sample_datamodule : EncoderDecoderTimeSeriesDataModule
+        Fixture providing the data module.
+    """
+    dm = sample_datamodule
+    metadata = dm.metadata
+
+    with pytest.raises(ValueError, match="backcast_loss_ratio"):
+        NHiTS_v2(
+            loss=QuantileLoss(),
+            metadata=metadata,
+            backcast_loss_ratio=0.1,
+        )
 
 
 @pytest.mark.parametrize(
