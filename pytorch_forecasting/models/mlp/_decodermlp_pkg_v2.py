@@ -14,8 +14,8 @@ class DecoderMLP_pkg_v2(Base_pkg):
         "capability:exogenous": True,
         "capability:multivariate": False,
         "capability:pred_int": True,
-        "capability:flexible_history_length": False,
-        "capability:cold_start": False,
+        "capability:flexible_history_length": True,
+        "capability:cold_start": True,
     }
 
     @classmethod
