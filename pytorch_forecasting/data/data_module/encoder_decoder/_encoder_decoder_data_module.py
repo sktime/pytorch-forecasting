@@ -744,16 +744,19 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                 self.train_dataset = self._build_dataset(self._train_indices)
                 self.val_dataset = self._build_dataset(self._val_indices)
                 self.train_windows = self.train_dataset.windows
+                self._train_preprocessed = self.train_dataset.preprocessed_data
                 self.val_windows = self.val_dataset.windows
-
+                self._val_preprocessed = self.val_dataset.preprocessed_data
         elif stage == "test":
             if self.test_dataset is None:
                 self.test_dataset = self._build_dataset(self._test_indices)
                 self.test_windows = self.test_dataset.windows
+                self._test_preprocessed = self.test_dataset.preprocessed_data
         elif stage == "predict":
             predict_indices = torch.arange(len(self.time_series_dataset))
             self.predict_dataset = self._build_dataset(predict_indices)
             self.predict_windows = self.predict_dataset.windows
+            self._predict_preprocessed = self.predict_dataset.preprocessed_data
 
     # endregion
 
