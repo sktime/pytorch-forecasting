@@ -128,15 +128,54 @@ class MyDataModule(BaseTimeSeriesDataModule):
         # todo: return the prediction window length
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
-        """Build sliding-window index tuples for the given series indices."""
+        """Generate sliding windows for training, validation, and testing.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            The indices of the time series data to be processed.
+
+        Returns
+        -------
+        list of tuple[int, int, int, int]
+            Each tuple is ``(series_idx, start_idx, context_length, prediction_length)``
+            Series shorter than context + prediction are skipped.
+        """
         # todo: return the sliding-window index tuples
 
     def _preprocess_data(self, series_idx) -> dict:
-        """Load and prepare one series before window slicing."""
+        """Load and prepare one series before window slicing.
+        Composes coercion, feature splitting, and global normalization.
+
+        Parameters
+        ----------
+        series_idx : int or torch.Tensor
+            The index of the time series data to be processed.
+
+        Returns
+        -------
+        dict of features of series item.
+        """
         # todo: return the per-series dict (features, target, time_mask, ...)
 
     def _build_dataset(self, indices: torch.Tensor) -> Dataset:
-        """Preprocess series at indices, create windows, return a Dataset."""
+        """Preprocess series at *indices*, create windows, and return a Dataset.
+
+        Implementations typically call ``_preprocess_data``, ``_create_windows``,
+        then wrap the result in a format-specific processed ``Dataset``. The
+        returned dataset must expose a ``.windows`` attribute so base ``setup()``
+        can cache window lists on the data module.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            Series indices for this split (train, val, test, or predict).
+
+        Returns
+        -------
+        Dataset
+            A dataset that contains the processed data for the split.
+        """
         # todo: return your private _MyDataset with a .windows attribute
 
     def _ensure_split(
@@ -163,7 +202,18 @@ class MyDataModule(BaseTimeSeriesDataModule):
 
     @staticmethod
     def collate_fn(batch):
-        """Stack samples from the processed dataset into a model-ready batch."""
+        """Stack samples from dataset into a model-ready batch.
+
+        Parameters
+        ----------
+        batch : list of tuple[dict, target]
+            Samples as returned by the processed dataset.
+
+        Returns
+        -------
+        tuple[dict, target]
+            Collated ``x`` dict and ``y`` (tensor or list of tensors for multivariate).
+        """
         # todo: implement
 
     # Optional overrides:
