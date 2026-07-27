@@ -431,6 +431,7 @@ class Base_pkg(_BasePtForecasterV2):
         ckpt_kwargs: dict[str, Any] | None = None,
         exclude: list[str] | None = None,
         overwrite: bool = False,
+        force_rebuild: bool = False,
         **trainer_fit_kwargs,
     ):
         """
@@ -451,6 +452,9 @@ class Base_pkg(_BasePtForecasterV2):
             Artifacts to exclude from saving.
         overwrite : bool, default=False
             Whether to overwrite the `ckpt_dir` (if present) or not.
+        force_rebuild: bool, default=False
+            Whether to rebuild the model with the new metadata with `model_cfg`.
+            If self.model_cfg is not provided, this will be ignored.
         **trainer_fit_kwargs :
             Additional keyword arguments passed to `trainer.fit()`.
 
@@ -475,8 +479,29 @@ class Base_pkg(_BasePtForecasterV2):
         if hasattr(self.datamodule, "metadata"):
             self.metadata = self.datamodule.metadata
 
-        if self.model is None:
+        if self.model is None or (force_rebuild and self.model_cfg):
             self.model = self._init_model_from_cfg(self.metadata)
+
+        # Validate that (cached) model metadata matches new datamodule metadata
+        if self.metadata != self.model.metadata:
+            err_msg = (
+                "Error in fit(): Model metadata does not match metadata "
+                "created from the new `data` passed in fit."
+            )
+            if self.model_cfg:
+                err_msg += (
+                    " You can pass force_rebuild=True to rebuild the model "
+                    "with the new metadata with `model_cfg`."
+                )
+            else:
+                err_msg += (
+                    " Cached model loaded from a checkpoint is not compatible "
+                    "with the new datamodule metadata. Please either pass "
+                    "`data` in fit of similar structure used to build the "
+                    "model initially, or pass `model_cfg` to rebuild the "
+                    "model with the new data."
+                )
+            raise ValueError(err_msg)
 
         save_callbacks = []
         registry_path = None

@@ -92,59 +92,40 @@ def _make_tft_pkg(**trainer_overrides):
 
 
 def test_fit_rebuilds_model_for_new_data():
-    """Refit with different data must rebuild the model from new metadata."""
+    """Refit with different data rebuilds when ``force_rebuild=True``."""
     pkg = _make_tft_pkg()
 
-    pkg.fit(_make_ts(2), save_ckpt=False)
+    pkg.fit(_make_ts(2))
     model_after_first = pkg.model
 
-    pkg.fit(_make_ts(5), save_ckpt=False)
+    pkg.fit(_make_ts(5), force_rebuild=True)
 
     assert pkg.model is not model_after_first
     assert pkg.model is not None
+    assert pkg.model.metadata == pkg.metadata
 
 
-def test_ckpt_metadata_mismatch_raises(tmp_path):
-    """Loading a checkpoint with different metadata must fail clearly."""
-    pkg = _make_tft_pkg(enable_checkpointing=True)
-    ckpt_path = pkg.fit(
-        _make_ts(2),
-        save_ckpt=True,
-        ckpt_dir=tmp_path / "checkpoints",
-        ckpt_kwargs={"monitor": "train_loss_epoch"},
-    )
-    assert ckpt_path is not None
-
-    loaded = TFT_pkg_v2(ckpt_path=ckpt_path)
-    bad_metadata = dict(loaded.metadata)
-    bad_metadata["encoder_cont"] = bad_metadata["encoder_cont"] + 10
+def test_fit_metadata_mismatch_raises_without_force_rebuild():
+    """Refit with different data must fail unless ``force_rebuild=True``."""
+    pkg = _make_tft_pkg()
+    pkg.fit(_make_ts(2))
 
     with pytest.raises(ValueError, match="does not match"):
-        loaded._build_model(bad_metadata)
+        pkg.fit(_make_ts(5))
 
 
 def test_fit_from_ckpt_with_different_data_raises(tmp_path):
     """Refitting a checkpoint-loaded pkg on incompatible data must fail."""
     pkg = _make_tft_pkg(enable_checkpointing=True)
-    ckpt_path = pkg.fit(
+    ckpt_dir = tmp_path / "checkpoints"
+    best_path = pkg.fit(
         _make_ts(2),
-        save_ckpt=True,
-        ckpt_dir=tmp_path / "checkpoints",
+        ckpt_dir=ckpt_dir,
         ckpt_kwargs={"monitor": "train_loss_epoch"},
     )
+    assert best_path is not None
 
-    loaded = TFT_pkg_v2(
-        ckpt_path=ckpt_path,
-        trainer_cfg={
-            "max_epochs": 1,
-            "limit_train_batches": 1,
-            "limit_val_batches": 1,
-            "logger": False,
-            "enable_checkpointing": False,
-            "enable_progress_bar": False,
-            "accelerator": "cpu",
-        },
-    )
+    loaded = TFT_pkg_v2.load(ckpt_dir)
 
     with pytest.raises(ValueError, match="does not match"):
-        loaded.fit(_make_ts(5), save_ckpt=False)
+        loaded.fit(_make_ts(5))
