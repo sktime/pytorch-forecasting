@@ -148,12 +148,16 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         Dataset
             ``_TslibDataset`` over the split windows.
         """
+        preprocessed = {
+            idx.item(): self._preprocess_data(idx.item()) for idx in indices
+        }
         windows = self._create_windows(indices)
         return _TslibDataset(
             dataset=self.time_series_dataset,
             data_module=self,
             windows=windows,
             add_relative_time_idx=self.add_relative_time_idx,
+            preprocessed_data=preprocessed,
         )
 
     def _validate_indices(self):

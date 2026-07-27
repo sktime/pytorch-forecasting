@@ -33,6 +33,8 @@ class _TslibDataset(Dataset):
             - prediction_length: Length of the prediction/decoder window
     add_relative_time_idx: bool
         Whether to add relative time index to the dataset.
+    preprocessed_data : Optional[dict[int, dict[str, Any]]], default=None
+        Preprocessed data for all time series indices on input dataset.
     """
 
     def __init__(
@@ -41,11 +43,13 @@ class _TslibDataset(Dataset):
         data_module: TslibDataModule,
         windows: list[tuple[int, int, int, int]],
         add_relative_time_idx: bool = False,
+        preprocessed_data: dict[int, dict[str, Any]] | None = None,
     ):
         self.dataset = dataset
         self.data_module = data_module
         self.windows = windows
         self.add_relative_time_idx = add_relative_time_idx
+        self.preprocessed_data = preprocessed_data
 
     def __len__(self) -> int:
         return len(self.windows)
@@ -122,7 +126,7 @@ class _TslibDataset(Dataset):
         """
         series_idx, start_idx, context_length, prediction_length = self.windows[idx]
 
-        processed_data = self.data_module._preprocess_data(series_idx)
+        processed_data = self.preprocessed_data[series_idx]
 
         continuous_features = processed_data["features"]["continuous"]
         categorical_features = processed_data["features"]["categorical"]
