@@ -223,7 +223,12 @@ def test_quantile_loss_output_shape(basic_metadata, basic_data_module):
     expected_shape = (
         (actual_batch, MAX_PREDICTION_LENGTH, len(quantiles))
         if basic_metadata["target"] == 1
-        else (actual_batch, MAX_PREDICTION_LENGTH, basic_metadata["target"], len(quantiles))
+        else (
+            actual_batch,
+            MAX_PREDICTION_LENGTH,
+            basic_metadata["target"],
+            len(quantiles),
+        )
     )
     assert pred.shape == expected_shape
 
@@ -276,7 +281,12 @@ def test_distribution_loss_output_shape(basic_metadata, basic_data_module):
     expected_shape = (
         (actual_batch, MAX_PREDICTION_LENGTH, len(loss.distribution_arguments))
         if basic_metadata["target"] == 1
-        else (actual_batch, MAX_PREDICTION_LENGTH, basic_metadata["target"], len(loss.distribution_arguments))
+        else (
+            actual_batch,
+            MAX_PREDICTION_LENGTH,
+            basic_metadata["target"],
+            len(loss.distribution_arguments),
+        )
     )
     assert pred.shape == expected_shape
 

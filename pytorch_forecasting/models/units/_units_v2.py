@@ -208,14 +208,17 @@ class UniTS(BaseModel):
             if self.target_dim == 1:
                 out = raw.view(B, self.prediction_length, self.n_quantiles)
             else:
-                out = raw.view(B, self.prediction_length, self.target_dim, self.n_quantiles)
+                out = raw.view(
+                    B, self.prediction_length, self.target_dim, self.n_quantiles
+                )
         elif self.n_dist_args is not None:
             if self.target_dim == 1:
                 out = raw.view(B, self.prediction_length, self.n_dist_args)
             else:
-                out = raw.view(B, self.prediction_length, self.target_dim, self.n_dist_args)
+                out = raw.view(
+                    B, self.prediction_length, self.target_dim, self.n_dist_args
+                )
         else:
             out = raw.view(B, self.prediction_length, self.target_dim)
-
 
         return {"prediction": out}
