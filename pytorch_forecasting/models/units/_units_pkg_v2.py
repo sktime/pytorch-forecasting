@@ -16,11 +16,12 @@ class UniTS_pkg_v2(Base_pkg):
         "info:name": "UniTS",
         "info:compute": 4,
         "authors": ["Muhammad-Rebaal", "gasvn", "sohamukute"],
-        "python_dependencies": ["torch"],
         "capability:exogenous": True,
         "capability:multivariate": True,
-        "capability:pred_int": False,
-        "capability:flexible_history_length": False,
+        "info:pred_type": ["point", "quantile", "distribution"],
+        "info:y_type": ["numeric"],
+        "capability:pred_int": True,
+        "capability:flexible_history_length": True,
         "capability:cold_start": False,
     }
 
@@ -51,6 +52,8 @@ class UniTS_pkg_v2(Base_pkg):
             instance. ``create_test_instance`` uses the first (or only) dictionary in
             ``params``.
         """
+        from pytorch_forecasting.metrics import NormalDistributionLoss, QuantileLoss
+
         params = [
             {},
             {
@@ -70,6 +73,16 @@ class UniTS_pkg_v2(Base_pkg):
                     "max_encoder_length": 16,
                     "max_prediction_length": 4,
                 },
+            },
+            {
+                "patch_len": 8,
+                "stride": 4,
+                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+            },
+            {
+                "patch_len": 8,
+                "stride": 4,
+                "loss": NormalDistributionLoss(),
             },
         ]
 

@@ -11,6 +11,7 @@ from torch.optim import Optimizer
 
 from pytorch_forecasting.layers._blocks import _TransformerBlock
 from pytorch_forecasting.layers._embeddings import _PatchEmbedding, _PositionalEmbedding
+from pytorch_forecasting.metrics import DistributionLoss, QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -135,9 +136,6 @@ class UniTS(BaseModel):
 
     def _init_network(self):
         """Initialise model layers."""
-        self.num_patches = max(
-            1, (self.context_length - self.patch_len) // self.stride + 1
-        )
 
         self.patch_embedding = _PatchEmbedding(
             patch_len=self.patch_len,
@@ -150,12 +148,6 @@ class UniTS(BaseModel):
         self.prompt_tokens = nn.Parameter(torch.empty(1, self.prompt_len, self.d_model))
         nn.init.trunc_normal_(self.prompt_tokens, std=0.02)
 
-        self.pos_enc = _PositionalEmbedding(
-            d_model=self.d_model,
-            max_len=self.prompt_len + self.num_patches + 16,
-            dropout=self.dropout,
-        )
-
         self.encoder = nn.ModuleList(
             [
                 _TransformerBlock(self.d_model, self.n_heads, self.d_ff, self.dropout)
@@ -163,14 +155,27 @@ class UniTS(BaseModel):
             ]
         )
 
+        self.pos_enc = _PositionalEmbedding(d_model=self.d_model, dropout=self.dropout)
         self.norm = nn.LayerNorm(self.d_model)
+
+        self.n_quantiles = None
+        self.n_dist_args = None
+
+        if isinstance(self.loss, QuantileLoss):
+            self.n_quantiles = len(self.loss.quantiles)
+
+        elif isinstance(self.loss, DistributionLoss):
+            self.n_dist_args = len(self.loss.distribution_arguments)
+        output_dim = self.prediction_length * self.target_dim
+
+        if self.n_quantiles is not None:
+            output_dim = self.prediction_length * self.target_dim * self.n_quantiles
+        elif self.n_dist_args is not None:
+            output_dim = self.prediction_length * self.target_dim * self.n_dist_args
 
         self.head = nn.Sequential(
             nn.Flatten(start_dim=1),
-            nn.Linear(
-                self.num_patches * self.d_model,
-                self.prediction_length * self.target_dim,
-            ),
+            nn.Linear(self.prompt_len * self.d_model, output_dim),
         )
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -186,10 +191,6 @@ class UniTS(BaseModel):
         else:
             src = target
 
-        mean = src.mean(dim=1, keepdim=True)
-        std = src.std(dim=1, keepdim=True, unbiased=False) + 1e-5
-        src = (src - mean) / std
-
         patch_emb = self.patch_embedding(src)
 
         seq = torch.cat([self.prompt_tokens.expand(B, -1, -1), patch_emb], dim=1)
@@ -199,10 +200,15 @@ class UniTS(BaseModel):
             seq = layer(seq)
 
         seq = self.norm(seq)
-        patch_out = seq[:, self.prompt_len : self.prompt_len + self.num_patches, :]
-        out = self.head(patch_out).view(B, self.prediction_length, self.target_dim)
+        patch_out = seq[:, : self.prompt_len, :]
 
-        target_mean = mean[:, :, -self.target_dim :]
-        target_std = std[:, :, -self.target_dim :]
+        raw = self.head(patch_out)
 
-        return {"prediction": out * target_std + target_mean}
+        if self.n_quantiles is not None:
+            out = raw.view(B, self.prediction_length, self.target_dim, self.n_quantiles)
+        elif self.n_dist_args is not None:
+            out = raw.view(B, self.prediction_length, self.target_dim, self.n_dist_args)
+        else:
+            out = raw.view(B, self.prediction_length, self.target_dim)
+
+        return {"prediction": out}
