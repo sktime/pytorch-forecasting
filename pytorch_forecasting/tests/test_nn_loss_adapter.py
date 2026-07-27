@@ -198,6 +198,33 @@ def test_base_model_auto_wrap():
     assert isinstance(model_multi.loss, MultiLoss)
 
 
+def test_multiloss_mixed_ptf_and_nn_loss():
+    """MultiLoss([ptf_metric, nn.MSELoss()]) wraps the nn child via NNLossAdapter."""
+    from pytorch_forecasting.metrics import MAPE
+
+    ml = MultiLoss([MAPE(), nn.MSELoss()])
+    assert isinstance(ml.metrics[0], MAPE)
+    assert isinstance(ml.metrics[1], NNLossAdapter)
+
+    y_pred = [torch.randn(4, 5, 1), torch.randn(4, 5, 1)]
+    # MAPE is unstable near zero targets
+    targets = [torch.randn(4, 5).abs() + 0.5, torch.randn(4, 5)]
+    weight = torch.ones(4, 5)
+
+    loss = ml(y_pred, (targets, weight))
+    assert loss.ndim == 0
+    assert torch.isfinite(loss)
+
+    class SimpleModel(BaseModel):
+        def forward(self, x):
+            return {"prediction": torch.randn(4, 5, 1)}
+
+    model = SimpleModel(loss=MultiLoss([MAE(), nn.L1Loss()]))
+    assert isinstance(model.loss, MultiLoss)
+    assert isinstance(model.loss.metrics[0], MAE)
+    assert isinstance(model.loss.metrics[1], NNLossAdapter)
+
+
 def test_nn_loss_adapter_to_prediction():
     adapter = NNLossAdapter(nn.MSELoss())
     y_pred = torch.randn(4, 5, 1)

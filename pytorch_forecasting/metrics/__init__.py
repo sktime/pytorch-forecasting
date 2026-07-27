@@ -26,7 +26,7 @@ from pytorch_forecasting.metrics.base_metrics import (
     MultiHorizonMetric,
     MultiLoss,
     MultivariateDistributionLoss,
-    convert_torchmetric_to_pytorch_forecasting_metric,
+    coerce_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.metrics.distributions import (
     BetaDistributionLoss,
@@ -57,7 +57,7 @@ __all__ = [
     "MultivariateDistributionLoss",
     "MultiLoss",
     "Metric",
-    "convert_torchmetric_to_pytorch_forecasting_metric",
+    "coerce_to_pytorch_forecasting_metric",
     "MAE",
     "MAPE",
     "MASE",

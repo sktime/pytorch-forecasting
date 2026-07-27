@@ -17,7 +17,10 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from pytorch_forecasting.callbacks.predict import PredictCallback
-from pytorch_forecasting.metrics import Metric, MultiLoss, NNLossAdapter
+from pytorch_forecasting.metrics import (
+    Metric,
+    coerce_to_pytorch_forecasting_metric,
+)
 from pytorch_forecasting.utils._classproperty import classproperty
 
 
@@ -72,11 +75,8 @@ class BaseModel(LightningModule):
     ):
         super().__init__()
 
-        # auto-wrap nn.Module losses that are not ptf metrics
-        if isinstance(loss, nn.Module) and not isinstance(loss, (Metric, MultiLoss)):
-            loss = NNLossAdapter(loss)
-
-        self.loss = loss
+        # wrap bare nn losses; recurse into MultiLoss children via the converter
+        self.loss = coerce_to_pytorch_forecasting_metric(loss)
         self.logging_metrics = nn.ModuleList(
             logging_metrics if logging_metrics is not None else []
         )
