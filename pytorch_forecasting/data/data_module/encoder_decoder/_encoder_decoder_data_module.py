@@ -298,82 +298,6 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
 
         return metadata
 
-    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
-        """Generate sliding windows for training, validation, and testing.
-
-        Returns
-        -------
-        List[Tuple[int, int, int, int]]
-            A list of tuples, where each tuple consists of:
-            - ``series_idx`` : int
-              Index of the time series in `time_series_dataset`.
-            - ``start_idx`` : int
-              Start index of the encoder window.
-            - ``enc_length`` : int
-              Length of the encoder input sequence.
-            - ``pred_length`` : int
-              Length of the decoder output sequence.
-        """
-        windows = []
-
-        for idx in indices:
-            series_idx = idx.item()
-            sample = self.time_series_dataset[series_idx]
-            sequence_length = len(sample["y"])
-
-            if sequence_length < self.max_encoder_length + self.max_prediction_length:
-                continue
-
-            effective_min_prediction_idx = (
-                self.min_prediction_idx
-                if self.min_prediction_idx is not None
-                else self.max_encoder_length
-            )
-
-            max_prediction_idx = sequence_length - self.max_prediction_length + 1
-
-            if max_prediction_idx <= effective_min_prediction_idx:
-                continue
-
-            for start_idx in range(
-                0, max_prediction_idx - effective_min_prediction_idx
-            ):
-                if (
-                    start_idx + self.max_encoder_length + self.max_prediction_length
-                    <= sequence_length
-                ):
-                    windows.append(
-                        (
-                            series_idx,
-                            start_idx,
-                            self.max_encoder_length,
-                            self.max_prediction_length,
-                        )
-                    )
-
-        return windows
-
-    def _ensure_split(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Split data indices into train, val, and test sets based on the
-        train_val_test_split ratio once and cache them.
-        """
-        if hasattr(self, "_split_indices"):
-            return
-        # this is a very rudimentary way to handle the splits when
-        # the dataset is of size equal to 1 or 2.
-        total_series = len(self.time_series_dataset)
-        self._split_indices = torch.randperm(total_series)
-
-        self._train_size = int(self.train_val_test_split[0] * total_series)
-        self._val_size = int(self.train_val_test_split[1] * total_series)
-
-        self._train_indices = self._split_indices[: self._train_size]
-        self._val_indices = self._split_indices[
-            self._train_size : self._train_size + self._val_size
-        ]
-        self._test_indices = self._split_indices[self._train_size + self._val_size :]
-
     # region Preprocessing
 
     # TODO: once TSLib preprocessing is done,
@@ -620,6 +544,61 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
 
         self._feature_scalers_fitted = True
 
+    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
+        """Generate sliding windows for training, validation, and testing.
+
+        Returns
+        -------
+        List[Tuple[int, int, int, int]]
+            A list of tuples, where each tuple consists of:
+            - ``series_idx`` : int
+              Index of the time series in `time_series_dataset`.
+            - ``start_idx`` : int
+              Start index of the encoder window.
+            - ``enc_length`` : int
+              Length of the encoder input sequence.
+            - ``pred_length`` : int
+              Length of the decoder output sequence.
+        """
+        windows = []
+
+        for idx in indices:
+            series_idx = idx.item()
+            sample = self.time_series_dataset[series_idx]
+            sequence_length = len(sample["y"])
+
+            if sequence_length < self.max_encoder_length + self.max_prediction_length:
+                continue
+
+            effective_min_prediction_idx = (
+                self.min_prediction_idx
+                if self.min_prediction_idx is not None
+                else self.max_encoder_length
+            )
+
+            max_prediction_idx = sequence_length - self.max_prediction_length + 1
+
+            if max_prediction_idx <= effective_min_prediction_idx:
+                continue
+
+            for start_idx in range(
+                0, max_prediction_idx - effective_min_prediction_idx
+            ):
+                if (
+                    start_idx + self.max_encoder_length + self.max_prediction_length
+                    <= sequence_length
+                ):
+                    windows.append(
+                        (
+                            series_idx,
+                            start_idx,
+                            self.max_encoder_length,
+                            self.max_prediction_length,
+                        )
+                    )
+
+        return windows
+
     def _compute_data_properties(self, train_indices: torch.Tensor) -> dict:
         """Scan training targets to determine per-target type, positivity, skewness.
 
@@ -719,6 +698,27 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         data_properties = self._compute_data_properties(train_indices)
         normalizer = self._get_auto_normalizer(data_properties)
         self._target_normalizer = ScalerAdapter(normalizer)
+
+    def _ensure_split(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Split data indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
+        """
+        if hasattr(self, "_split_indices"):
+            return
+        # this is a very rudimentary way to handle the splits when
+        # the dataset is of size equal to 1 or 2.
+        total_series = len(self.time_series_dataset)
+        self._split_indices = torch.randperm(total_series)
+
+        self._train_size = int(self.train_val_test_split[0] * total_series)
+        self._val_size = int(self.train_val_test_split[1] * total_series)
+
+        self._train_indices = self._split_indices[: self._train_size]
+        self._val_indices = self._split_indices[
+            self._train_size : self._train_size + self._val_size
+        ]
+        self._test_indices = self._split_indices[self._train_size + self._val_size :]
 
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
