@@ -9,7 +9,7 @@ class DecoderMLP_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "DecoderMLP_v2",
         "info:compute": 1,
-        "authors": ["echo-xiao"],
+        "authors": ["jdb78", "echo-xiao"],
         "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": False,

@@ -9,9 +9,9 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.layers import FullyConnectedModule
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
-from pytorch_forecasting.models.mlp.submodules import FullyConnectedModule
 
 
 class DecoderMLP_v2(BaseModel):
