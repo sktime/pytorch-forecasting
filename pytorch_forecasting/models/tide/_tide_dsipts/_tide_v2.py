@@ -78,7 +78,7 @@ class TIDE(BaseModel):
 
         """
 
-        super().__init__(loss=loss)
+        super().__init__(loss=loss, metadata=metadata)
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self.dropout = dropout_rate
@@ -90,11 +90,11 @@ class TIDE(BaseModel):
 
         self.hidden_size = hidden_size  # r
         self.d_model = d_model  # r^tilde
-        self.past_steps = metadata["max_encoder_length"]  # lookback size
-        self.future_steps = metadata["max_prediction_length"]  # horizon size
-        self.past_channels = metadata["encoder_cont"]  # psat_vars
-        self.future_channels = metadata["decoder_cont"]  # fut_vars
-        self.output_channels = metadata["target"]  # target_vars
+        self.past_steps = self.metadata["max_encoder_length"]  # lookback size
+        self.future_steps = self.metadata["max_prediction_length"]  # horizon size
+        self.past_channels = self.metadata["encoder_cont"]  # psat_vars
+        self.future_channels = self.metadata["decoder_cont"]  # fut_vars
+        self.output_channels = self.metadata["target"]  # target_vars
         self.mul = 1
         self.use_quantiles = False
         self.outLinear = nn.Linear(d_model, self.output_channels)
