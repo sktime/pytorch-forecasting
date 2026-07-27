@@ -125,8 +125,11 @@ class BaseTimeSeriesDataModule(LightningDataModule):
                 continuous_indices.append(idx)
         return categorical_indices, continuous_indices
 
+    @abstractmethod
     def _preprocess_data(self, series_idx) -> dict[str, Any]:
-        """Load and tensorize one series before window slicing in the processed dataset.
+        """Preprocess one series into a cache dict.
+
+        Composes coercion, feature splitting, and global normalization.
 
         Parameters
         ----------
@@ -135,64 +138,11 @@ class BaseTimeSeriesDataModule(LightningDataModule):
 
         Returns
         -------
-        dict
-            Keys: ``features`` (categorical/continuous), ``target``, ``static``,
-            ``group``, ``length``, ``time_mask``, ``cutoff_time``, ``times``,
-            ``timestep``.
-
-        Notes
-        -----
-        - The target data `y` and features `x` are converted to torch.float32 tensors.
-        - The timepoints before the cutoff time are masked off.
-        - Splits data into categorical and continuous features, which are grouped based on the indices.
+        dict of features of series item.
+            Suggested keys: ``features`` (categorical/continuous), ``target``,
+            ``static``, ``group``, ``length``, ``time_mask``, ``cutoff_time``,
+            ``times``, ``timestep``.
         """  # noqa: E501
-        sample = self.time_series_dataset[series_idx]
-        if sample is None:
-            raise ValueError(
-                f"Error in {type(self).__name__} _preprocess_data: "
-                f"series at index {series_idx} is None."
-                " Check the dataset."
-            )
-
-        target = sample["y"]
-        features = sample["x"]
-        times = sample["t"]
-        cutoff_time = sample["cutoff_time"]
-
-        time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
-
-        if isinstance(target, torch.Tensor):
-            target = target.detach().clone().float()
-        else:
-            target = torch.tensor(target, dtype=torch.float32)
-
-        if isinstance(features, torch.Tensor):
-            features = features.detach().clone().float()
-        else:
-            features = torch.tensor(features, dtype=torch.float32)
-
-        categorical = (
-            features[:, self.categorical_indices]
-            if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
-        )
-        continuous = (
-            features[:, self.continuous_indices]
-            if self.continuous_indices
-            else torch.zeros((features.shape[0], 0))
-        )
-
-        return {
-            "features": {"categorical": categorical, "continuous": continuous},
-            "target": target,
-            "static": sample.get("st", None),
-            "group": sample.get("group", torch.tensor([0])),
-            "length": len(target),
-            "time_mask": time_mask,
-            "times": times,
-            "timestep": times,
-            "cutoff_time": cutoff_time,
-        }
 
     @abstractmethod
     def _prepare_metadata(self) -> dict:
