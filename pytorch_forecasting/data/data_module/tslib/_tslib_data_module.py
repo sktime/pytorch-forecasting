@@ -336,20 +336,20 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         - The timepoints before the cutoff time are masked off.
         - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
-        sample = self.time_series_dataset[series_idx]
-        if sample is None:
+        series = self.time_series_dataset[series_idx]
+        if series is None:
             raise ValueError(
                 f"Error in {type(self).__name__} _preprocess_data: "
                 f"series at index {series_idx} is None."
                 " Check the dataset."
             )
 
-        target = sample["y"]
-        features = sample["x"]
-        times = sample["t"]
-        cutoff_time = sample["cutoff_time"]
+        target = series["y"]
+        features = series["x"]
+        timestep = series["t"]
+        cutoff_time = series["cutoff_time"]
 
-        time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
+        mask_timestep = torch.tensor(timestep <= cutoff_time, dtype=torch.bool)
 
         if isinstance(target, torch.Tensor):
             target = target.detach().clone().float()
@@ -375,13 +375,13 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         return {
             "features": {"categorical": categorical, "continuous": continuous},
             "target": target,
-            "static": sample.get("st", None),
-            "group": sample.get("group", torch.tensor([0])),
+            "static": series.get("st", None),
+            "group": series.get("group", torch.tensor([0])),
             "length": len(target),
-            "time_mask": time_mask,
-            "times": times,
+            "time_mask": mask_timestep,
+            "times": timestep,
             "cutoff_time": cutoff_time,
-            "timestep": times,
+            "timestep": timestep,
         }
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
