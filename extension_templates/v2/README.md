@@ -93,7 +93,8 @@ Inherits from `BaseTimeSeriesDataModule`. Implement the following:
 * `_prepare_metadata()`: Derives the metadata required for model initialization from the raw data/parameters.
 * `_context_length()` / `_prediction_length()`: Return window sizes for the unified test suite.
 * `_create_windows(indices)`: Build sliding-window index tuples.
-* `_build_dataset(windows)`: Return a processed `Dataset` for the windows.
+* `_preprocess_data(series_idx)`: Preprocessing logic for one series before windowing.
+* `_build_dataset(indices)`: Preprocess series, create windows, return a processed `Dataset` with `.windows`.
 * `_ensure_split()`: Split series indices into train, validation, and test sets.
         Split series indices into train, val, and test sets based on the
         train_val_test_split ratio once and cache them.

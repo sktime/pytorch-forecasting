@@ -135,20 +135,20 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         """Return whether to shuffle at the training dataloader."""
         return self.shuffle
 
-    def _build_dataset(self, windows: list[tuple[int, int, int, int]]) -> Dataset:
-        """Return a ``_TslibDataset`` over *windows*.
+    def _build_dataset(self, indices: torch.Tensor) -> Dataset:
+        """Create windows for *indices* and wrap them in a ``_TslibDataset``.
 
         Parameters
         ----------
-        windows : list of tuple[int, int, int, int]
-        A list of tuples where each tuple contains the following:
-            - series_idx: Index of time series in the dataset
-            - start_idx: Start index of the window
-            - context_length: Length of the context/encoder window
-            - prediction_length: Length of the prediction/decoder window
-            - add_relative_time_idx: bool Whether to add relative time index to dataset.
+        indices : torch.Tensor
+            Series indices for this split.
 
+        Returns
+        -------
+        Dataset
+            ``_TslibDataset`` over the split windows.
         """
+        windows = self._create_windows(indices)
         return _TslibDataset(
             dataset=self.time_series_dataset,
             data_module=self,

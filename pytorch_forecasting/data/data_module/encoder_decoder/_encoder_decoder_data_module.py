@@ -126,7 +126,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         | str
         | list[NORMALIZER]
         | tuple[NORMALIZER]
-        | None = "auto",
+        | None = None,
         categorical_encoders: dict[str, NaNLabelEncoder] | None = None,
         scalers: dict[
             str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
@@ -176,18 +176,27 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
     def _prediction_length(self) -> int:
         return self.max_prediction_length
 
-    def _build_dataset(self, windows: list[tuple[int, int, int, int]]) -> Dataset:
-        """Return a ``_ProcessedEncoderDecoderDataset`` over *windows*.
+    def _build_dataset(self, indices: torch.Tensor) -> Dataset:
+        """Preprocess series, create windows, and wrap them in a Dataset.
 
         Parameters
         ----------
-        windows : list of tuple[int, int, int, int]
-        List of window tuples having (series_idx, start_idx, enc_length, pred_length).
+        indices : torch.Tensor
+            Series indices for this split.
+
+        Returns
+        -------
+        Dataset
+            ``_ProcessedEncoderDecoderDataset`` over the split windows.
         """
+        preprocessed = {
+            idx.item(): self._preprocess_data(idx.item()) for idx in indices
+        }
+        windows = self._create_windows(indices)
         return _ProcessedEncoderDecoderDataset(
-            self.time_series_dataset,
             self,
             windows,
+            preprocessed,
             self.add_relative_time_idx,
         )
 
@@ -711,27 +720,6 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         normalizer = self._get_auto_normalizer(data_properties)
         self._target_normalizer = ScalerAdapter(normalizer)
 
-    def _make_dataset(self, indices: torch.Tensor):
-        """Preprocess a set of series indices into a windowed Dataset.
-
-        Returns
-        -------
-        preprocessed : dict
-            preprocessed dictionary of series indices.
-        windows : list
-            list of (series_idx, start_idx, enc_length, pred_length)
-        dataset : Dataset
-            dataset wrapping the windows over the preprocessed cache
-        """
-        preprocessed = {
-            idx.item(): self._preprocess_data(idx.item()) for idx in indices
-        }
-        windows = self._create_windows(indices)
-        dataset = _ProcessedEncoderDecoderDataset(
-            self, windows, preprocessed, self.add_relative_time_idx
-        )
-        return preprocessed, windows, dataset
-
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
 
@@ -753,23 +741,19 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             if not self._feature_scalers_fitted:
                 self._fit_scalers(self._train_indices)
             if self.train_dataset is None or self.val_dataset is None:
-                self._train_preprocessed, self.train_windows, self.train_dataset = (
-                    self._make_dataset(self._train_indices)
-                )
-                self._val_preprocessed, self.val_windows, self.val_dataset = (
-                    self._make_dataset(self._val_indices)
-                )
+                self.train_dataset = self._build_dataset(self._train_indices)
+                self.val_dataset = self._build_dataset(self._val_indices)
+                self.train_windows = self.train_dataset.windows
+                self.val_windows = self.val_dataset.windows
 
         elif stage == "test":
             if self.test_dataset is None:
-                self._test_preprocessed, self.test_windows, self.test_dataset = (
-                    self._make_dataset(self._test_indices)
-                )
+                self.test_dataset = self._build_dataset(self._test_indices)
+                self.test_windows = self.test_dataset.windows
         elif stage == "predict":
             predict_indices = torch.arange(len(self.time_series_dataset))
-            self._predict_preprocessed, self.predict_windows, self.predict_dataset = (
-                self._make_dataset(predict_indices)
-            )
+            self.predict_dataset = self._build_dataset(predict_indices)
+            self.predict_windows = self.predict_dataset.windows
 
     # endregion
 

@@ -27,8 +27,11 @@ Mandatory methods to implement (abstract on BaseTimeSeriesDataModule):
         Build sliding-window index tuples
         ``(series_idx, start_idx, context_length, prediction_length)`` for the
         given series indices. Skip series shorter than context + prediction.
-    _build_dataset(windows)
-        Return a private processed ``torch.utils.data.Dataset`` for the windows.
+    _preprocess_data(series_idx)
+        Load and prepare one series (tensorize, mask, split features, etc.).
+    _build_dataset(indices)
+        Preprocess series at indices, create windows, return a processed
+        ``torch.utils.data.Dataset`` that exposes ``.windows``.
     _ensure_split()
         Split series indices into train, validation, and test tensors using
         ``self.train_val_test_split`` once and cache them.
@@ -39,14 +42,11 @@ Mandatory methods to implement (abstract on BaseTimeSeriesDataModule):
         layout expected by your model's ``forward`` pass.
 
 Provided by BaseTimeSeriesDataModule (override only when needed):
-    _preprocess_data(series_idx)
-        Load one series, tensorize ``y``/``x``, apply cutoff mask.
-        Used by the processed dataset.
     metadata (property)
         Lazy cache around ``_prepare_metadata()``.
     setup(stage)
         Calls ``_ensure_split()``, builds windows/datasets per stage
-        (``fit``, ``test``, ``predict``).
+        (``fit``, ``test``, ``predict``) via ``_build_dataset(indices)``.
     train_dataloader / val_dataloader / test_dataloader / predict_dataloader
         Standard Lightning dataloaders wired to ``collate_fn``.
 """
@@ -131,9 +131,13 @@ class MyDataModule(BaseTimeSeriesDataModule):
         """Build sliding-window index tuples for the given series indices."""
         # todo: return the sliding-window index tuples
 
-    def _build_dataset(self, windows: list[tuple[int, int, int, int]]) -> Dataset:
-        """Return a processed Dataset for DataLoader consumption."""
-        # todo: return your private _MyDataset(self, windows)
+    def _preprocess_data(self, series_idx) -> dict:
+        """Load and prepare one series before window slicing."""
+        # todo: return the per-series dict (features, target, time_mask, ...)
+
+    def _build_dataset(self, indices: torch.Tensor) -> Dataset:
+        """Preprocess series at indices, create windows, return a Dataset."""
+        # todo: return your private _MyDataset with a .windows attribute
 
     def _ensure_split(
         self,
@@ -163,5 +167,4 @@ class MyDataModule(BaseTimeSeriesDataModule):
         # todo: implement
 
     # Optional overrides:
-    # - _preprocess_data(series_idx) — only if base tensorization is insufficient
     # - train_shuffle (property) — return False to disable training shuffle
