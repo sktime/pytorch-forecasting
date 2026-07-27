@@ -14,7 +14,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pytorch_forecasting.metrics import MAE, MultiLoss, NNLossAdapter
+from pytorch_forecasting.metrics import (
+    MAE,
+    Metric,
+    MultiHorizonMetric,
+    MultiLoss,
+    NNLossAdapter,
+)
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 POINT_NN_LOSSES = [
@@ -48,6 +54,12 @@ def _point_tensors(loss_fn: nn.Module, batch=4, time=5):
         y_pred = torch.randn(batch, time, 1)
         target = torch.randn(batch, time)
     return y_pred, target
+
+
+def test_nn_loss_adapter_is_metric():
+    adapter = NNLossAdapter(nn.MSELoss())
+    assert isinstance(adapter, Metric)
+    assert isinstance(adapter, MultiHorizonMetric)
 
 
 @pytest.mark.parametrize("loss_fn", POINT_NN_LOSSES, ids=lambda x: type(x).__name__)
@@ -126,57 +138,42 @@ def test_nn_loss_adapter_single_target():
     loss_fn = nn.MSELoss()
     adapter = NNLossAdapter(loss_fn)
 
-    y_pred = torch.randn(4, 5, 1)  # [B, T, H]
-    target = torch.randn(4, 5)  # [B, T]
+    y_pred = torch.randn(4, 5, 1)
+    target = torch.randn(4, 5)
 
-    # Test without weights
     loss = adapter(y_pred, target)
     expected_loss = loss_fn(y_pred.squeeze(-1), target)
     assert torch.allclose(loss, expected_loss)
 
-    # Test with weights
     weight = torch.rand(4, 5)
     loss_weighted = adapter(y_pred, (target, weight))
 
-    # Manual weighted mean
+    # MultiHorizonMetric weight semantics: sum(l*w) / sum(lengths)
     raw_loss = nn.MSELoss(reduction="none")(y_pred.squeeze(-1), target)
-    expected_weighted_loss = (raw_loss * weight).sum() / weight.sum()
+    expected_weighted_loss = (raw_loss * weight).sum() / raw_loss.numel()
     assert torch.allclose(loss_weighted, expected_weighted_loss)
 
 
-def test_nn_loss_adapter_multi_target():
-    loss_fn = nn.MSELoss()
-    adapter = NNLossAdapter(loss_fn)
+def test_nn_loss_adapter_multi_target_via_multiloss():
+    """Multi-target uses MultiLoss of adapters, not a stacked single adapter."""
+    ml = MultiLoss([NNLossAdapter(nn.MSELoss()), NNLossAdapter(nn.MSELoss())])
+    y_pred = [torch.randn(4, 5, 1), torch.randn(4, 5, 1)]
+    targets = [torch.randn(4, 5), torch.randn(4, 5)]
+    weight = torch.ones(4, 5)
 
-    y_pred = torch.randn(4, 5, 2)  # [B, T, N]
-    targets = [torch.randn(4, 5), torch.randn(4, 5)]  # List of [B, T]
-
-    # Test without weights
-    loss = adapter(y_pred, (targets, None))
-    expected_loss = loss_fn(y_pred[..., 0], targets[0]) + loss_fn(
-        y_pred[..., 1], targets[1]
+    loss = ml(y_pred, (targets, weight))
+    expected = nn.MSELoss()(y_pred[0].squeeze(-1), targets[0]) + nn.MSELoss()(
+        y_pred[1].squeeze(-1), targets[1]
     )
-    assert torch.allclose(loss, expected_loss)
-
-    # Test with weights
-    weight = torch.rand(4, 5)
-    loss_weighted = adapter(y_pred, (targets, weight))
-
-    # Manual weighted mean for each target then sum
-    raw_loss0 = nn.MSELoss(reduction="none")(y_pred[..., 0], targets[0])
-    raw_loss1 = nn.MSELoss(reduction="none")(y_pred[..., 1], targets[1])
-    expected_weighted_loss = (raw_loss0 * weight).sum() / weight.sum() + (
-        raw_loss1 * weight
-    ).sum() / weight.sum()
-    assert torch.allclose(loss_weighted, expected_weighted_loss)
+    assert torch.allclose(loss, expected)
 
 
-def test_nn_loss_adapter_mismatch_error():
+def test_nn_loss_adapter_rejects_target_list():
     adapter = NNLossAdapter(nn.MSELoss())
-    y_pred = torch.randn(4, 5, 2)  # N=2
-    targets = [torch.randn(4, 5)]  # N=1
+    y_pred = torch.randn(4, 5, 2)
+    targets = [torch.randn(4, 5), torch.randn(4, 5)]
 
-    with pytest.raises(ValueError, match="does not match number of targets"):
+    with pytest.raises(ValueError, match="MultiLoss"):
         adapter(y_pred, (targets, None))
 
 
@@ -185,15 +182,12 @@ def test_base_model_auto_wrap():
         def forward(self, x):
             return {"prediction": torch.randn(4, 5, 1)}
 
-    # Should wrap
     model = SimpleModel(loss=nn.MSELoss())
     assert isinstance(model.loss, NNLossAdapter)
 
-    # Should NOT wrap
     model_ptf = SimpleModel(loss=MAE())
     assert isinstance(model_ptf.loss, MAE)
 
-    # Should NOT wrap MultiLoss
     model_multi = SimpleModel(loss=MultiLoss([MAE()]))
     assert isinstance(model_multi.loss, MultiLoss)
 
@@ -207,7 +201,6 @@ def test_multiloss_mixed_ptf_and_nn_loss():
     assert isinstance(ml.metrics[1], NNLossAdapter)
 
     y_pred = [torch.randn(4, 5, 1), torch.randn(4, 5, 1)]
-    # MAPE is unstable near zero targets
     targets = [torch.randn(4, 5).abs() + 0.5, torch.randn(4, 5)]
     weight = torch.ones(4, 5)
 
@@ -223,6 +216,21 @@ def test_multiloss_mixed_ptf_and_nn_loss():
     assert isinstance(model.loss, MultiLoss)
     assert isinstance(model.loss.metrics[0], MAE)
     assert isinstance(model.loss.metrics[1], NNLossAdapter)
+
+
+def test_composite_metric_with_nn_loss_adapter():
+    """SMAPE() + 0.4 * NNLossAdapter(MSE) works like native metrics."""
+    from pytorch_forecasting.metrics import SMAPE
+    from pytorch_forecasting.metrics.base_metrics import CompositeMetric
+
+    composite = SMAPE() + 0.4 * NNLossAdapter(nn.MSELoss())
+    assert isinstance(composite, CompositeMetric)
+
+    y_pred = torch.randn(4, 5, 1)
+    target = torch.randn(4, 5).abs() + 0.5
+    loss = composite(y_pred, target)
+    assert loss.ndim == 0
+    assert torch.isfinite(loss)
 
 
 def test_nn_loss_adapter_to_prediction():
@@ -243,20 +251,18 @@ def test_nn_loss_adapter_to_prediction():
     assert torch.equal(ce_adapter.to_prediction(logits), torch.tensor([[1, 0]]))
 
 
-def test_nn_loss_adapter_reduction_sum():
-    loss_fn = nn.MSELoss(reduction="sum")
-    adapter = NNLossAdapter(loss_fn)
-
+def test_nn_loss_adapter_weighted_mean_matches_mhm():
+    """Weights follow MultiHorizonMetric: sum(l*w) / n_timesteps."""
+    adapter = NNLossAdapter(nn.MSELoss())
     y_pred = torch.randn(4, 5, 1)
     target = torch.randn(4, 5)
     weight = torch.rand(4, 5)
 
     loss = adapter(y_pred, (target, weight))
-
     raw_loss = nn.MSELoss(reduction="none")(y_pred.squeeze(-1), target)
-    expected_loss = (raw_loss * weight).sum()
-    assert torch.allclose(loss, expected_loss)
-    assert loss_fn.reduction == "sum"  # Check it was restored
+    expected = (raw_loss * weight).sum() / raw_loss.numel()
+    assert torch.allclose(loss, expected)
+    assert nn.MSELoss().reduction == "mean"  # caller's loss untouched
 
 
 def test_nn_loss_adapter_list_pred_error():
@@ -264,10 +270,7 @@ def test_nn_loss_adapter_list_pred_error():
     y_pred = [torch.randn(4, 5), torch.randn(4, 5)]
     target = torch.randn(4, 5)
 
-    with pytest.raises(
-        ValueError,
-        match="does not support list of predictions with single target tensor",
-    ):
+    with pytest.raises(ValueError, match="does not support list of predictions"):
         adapter(y_pred, target)
 
 
@@ -284,7 +287,6 @@ def test_tft_cross_entropy_on_discrete_target(tmp_path):
     )
 
     raw = data_with_covariates_v2()
-    # special_event_1 is binary col already present
     raw["class_label"] = raw["special_event_1"].astype("int64")
     n_classes = int(raw["class_label"].nunique())
 

@@ -1,4 +1,4 @@
-"""Adapter for native ``torch.nn`` loss modules in ptf-v2."""
+"""Adapter for native ``torch.nn`` loss modules as ptf metrics."""
 
 from __future__ import annotations
 
@@ -9,36 +9,52 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
+
 _Mode = Literal["point", "class", "gaussian_nll"]
 _CLASS_LOSSES = (nn.CrossEntropyLoss, nn.NLLLoss)
 _GAUSSIAN_NLL_LOSSES = (nn.GaussianNLLLoss,)
 
 
-class NNLossAdapter(nn.Module):
-    """Adapt a ``torch.nn`` loss module to the ptf-v2 loss API.
+class NNLossAdapter(MultiHorizonMetric):
+    """Adapt a ``torch.nn`` loss module to the pytorch-forecasting metric API.
 
-    Wraps a standard PyTorch loss (nn.Module) to handle the specific
-    input formats used in pytorch-forecasting v2, such as (target, weight) tuples
-    and multi-target list of tensors.
+    Subclasses :class:`~pytorch_forecasting.metrics.MultiHorizonMetric` so the
+    wrapped loss participates in the same ecosystem as ``MAE`` / ``SMAPE``.
 
-    The reshape mode is inferred automatically from the wrapped loss type:
+
+    Reshape mode is inferred from the wrapped loss type:
 
     * **point** — same-shape ``[B, T]`` after squeeze (default)
     * **class** — logits ``[B, T, C]`` vs labels ``[B, T]``
       (``CrossEntropyLoss``, ``NLLLoss``)
     * **gaussian_nll** — mean/var head ``[B, T, 2]`` (``GaussianNLLLoss``)
 
+    Multi-target forecasting should use ``MultiLoss([NNLossAdapter(...), ...])``,
+    not a single adapter over stacked targets.
+
     Parameters
     ----------
     loss :
         Native PyTorch loss, e.g. ``nn.MSELoss()``.
+    **kwargs :
+        Forwarded to :class:`~pytorch_forecasting.metrics.MultiHorizonMetric`
+        (e.g. ``reduction``, ``name``).
     """
 
-    def __init__(self, loss: nn.Module):
-        super().__init__()
-        # deepcopy so we never mutate the caller's loss instance
+    def __init__(self, loss: nn.Module, **kwargs):
+        nn_reduction = getattr(loss, "reduction", "mean")
+        # MultiHorizonMetric reductions: mean | none | sqrt-mean
+        if "reduction" not in kwargs:
+            kwargs["reduction"] = "none" if nn_reduction == "none" else "mean"
+        if "name" not in kwargs or kwargs["name"] is None:
+            kwargs["name"] = f"NNLossAdapter({type(loss).__name__})"
+
+        super().__init__(**kwargs)
+
         self._loss = copy.deepcopy(loss)
-        self._reduction = getattr(loss, "reduction", "mean")
+        if hasattr(self._loss, "reduction"):
+            self._loss.reduction = "none"
         self._mode = self._infer_mode(self._loss)
 
     @staticmethod
@@ -62,110 +78,62 @@ class NNLossAdapter(nn.Module):
             return "gaussian_nll"
         return "point"
 
-    def forward(
-        self,
-        y_pred: torch.Tensor | list[torch.Tensor],
-        y_actual: torch.Tensor
-        | list[torch.Tensor]
-        | tuple[torch.Tensor | list[torch.Tensor], torch.Tensor],
-    ) -> torch.Tensor:
-        """
-        Forward pass of the adapter.
+    def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """Per-element losses ``[B, T]`` for :meth:`MultiHorizonMetric.update`.
 
         Parameters
         ----------
         y_pred :
-            Model predictions.
-
-            * point: ``[B, T, 1]`` / ``[B, T]``, or ``[B, T, N]`` for multi-target
-            * class: ``[B, T, C]`` logits
-            * gaussian_nll: ``[B, T, 2]`` as ``(mean, raw_variance)``
-        y_actual :
-            Targets, optionally as ``(target, weight)``. Multi-target uses a
-            list of ``[B, T]`` tensors (point mode only).
+            Network prediction (see class docstring for shapes by mode).
+        target :
+            Target tensor ``[B, T]`` (weight already stripped by ``update``).
 
         Returns
         -------
         torch.Tensor
-            Scalar (or unreduced) loss.
+            Unreduced loss of shape ``[B, T]``.
         """
-        target, weight = self._unpack_y_actual(y_actual)
-        mode = self._mode
-
-        # multi-target scenario
-        if isinstance(target, list):
-            if mode != "point":
-                raise ValueError(
-                    f"Error in NNLossAdapter: Multi-target lists are only supported"
-                    f"for point losses, got {self._loss.__class__.__name__!r}."
-                )
-            if not isinstance(y_pred, torch.Tensor):
-                raise ValueError(
-                    f"NNLossAdapter expected y_pred to be a torch.Tensor for "
-                    f"multi-target, but got {type(y_pred)}. Standard multi-target "
-                    f"in ptf-v2 expects y_pred of shape [B, T, N]."
-                )
-            # y_pred is [B, T, N], split along last dimension
-            y_preds = [yp.squeeze(-1) for yp in y_pred.split(1, dim=-1)]
-            if len(y_preds) != len(target):
-                raise ValueError(
-                    f"Number of predictions ({len(y_preds)}) does not match "
-                    f"number of targets ({len(target)})."
-                )
-
-            total_loss = torch.tensor(0.0, device=y_pred.device, dtype=y_pred.dtype)
-            for yp, t in zip(y_preds, target):
-                total_loss = total_loss + self._compute_loss(yp, t, weight, mode)
-            return total_loss
-
-        # single-target scenario
         if isinstance(y_pred, list):
             raise ValueError(
                 "NNLossAdapter does not support list of predictions "
-                "with single target tensor."
+                "with a single target tensor. For multi-target use "
+                "MultiLoss([NNLossAdapter(...), ...])."
+            )
+        if isinstance(target, list):
+            raise ValueError(
+                "NNLossAdapter does not accept a list of targets. "
+                "For multi-target use MultiLoss([NNLossAdapter(...), ...])."
             )
 
-        y_pred, target = self._prepare_inputs(y_pred, target, mode)
-        return self._compute_loss(y_pred, target, weight, mode)
+        mode = self._mode
+        batch_size, time_idx = target.shape[0], target.shape[1]
+        y_pred_p, target_p = self._prepare_inputs(y_pred, target, mode)
+        per_elem = self._call_loss(y_pred_p, target_p, mode)
 
-    @staticmethod
-    def _unpack_y_actual(
-        y_actual: torch.Tensor | list[torch.Tensor] | tuple,
-    ) -> tuple[torch.Tensor | list[torch.Tensor], torch.Tensor | None]:
-        """Split ``y_actual`` into ``(target, weight)``.
+        if mode == "class":
+            return per_elem.view(batch_size, time_idx)
+        if per_elem.ndim == 0:
+            # defensive: some losses ignore reduction="none"
+            return per_elem.expand(batch_size, time_idx)
+        return per_elem
 
-        Accepts a bare target tensor/list, ``(target, weight)``,
-        ``(target, None)``, or a length-1 sequence wrapping the target only.
-
-        Parameters
-        ----------
-        y_actual :
-            Target payload from the ptf-v2 training loop.
-
-        Returns
-        -------
-        target :
-            Tensor or list of target tensors.
-        weight :
-            Optional sample/time weight tensor, or ``None``.
-        """
+    def update(self, y_pred, target):
+        """Update metric state; reject multi-target lists with a clear error."""
+        # MultiHorizonMetric unpacks (target, weight) before calling loss();
+        # catch list targets here so the message is useful.
+        raw_target = target
         if (
-            isinstance(y_actual, tuple)
-            and len(y_actual) == 2
-            and torch.is_tensor(y_actual[1])
+            isinstance(target, (list, tuple))
+            and len(target) == 2
+            and (target[1] is None or torch.is_tensor(target[1]))
         ):
-            return y_actual[0], y_actual[1]
-        # also allow (target, None) or len-2 list/tuple without weight tensor
-        if isinstance(y_actual, (list, tuple)) and not isinstance(
-            y_actual, torch.Tensor
-        ):
-            if len(y_actual) == 2 and (
-                y_actual[1] is None or torch.is_tensor(y_actual[1])
-            ):
-                return y_actual[0], y_actual[1]
-            if len(y_actual) == 1:
-                return y_actual[0], None
-        return y_actual, None
+            raw_target = target[0]
+        if isinstance(raw_target, list):
+            raise ValueError(
+                "NNLossAdapter does not accept a list of targets. "
+                "For multi-target use MultiLoss([NNLossAdapter(...), ...])."
+            )
+        return super().update(y_pred, target)
 
     def _prepare_inputs(
         self,
@@ -198,10 +166,11 @@ class NNLossAdapter(nn.Module):
                 return y_pred, target
             if y_pred.size(-1) != 1:
                 raise ValueError(
-                    f"NNLossAdapter only supports point predictions (H=1). "
+                    "Error inNNLossAdapter for point prediction (H=1): "
                     f"Got y_pred shape {list(y_pred.shape)} with "
                     f"H={y_pred.size(-1)}. "
-                    "For multi-horizon losses, use a ptf metrics loss instead."
+                    "For multi-output / multi-target heads use MultiLoss "
+                    "or a ptf metric such as QuantileLoss."
                 )
             y_pred = y_pred.squeeze(-1)
             return y_pred, target
@@ -268,69 +237,6 @@ class NNLossAdapter(nn.Module):
             # NLLLoss expects log-probabilities
             return self._loss(F.log_softmax(y_pred, dim=-1), target)
         return self._loss(y_pred, target)
-
-    def _compute_loss(
-        self,
-        y_pred: torch.Tensor,
-        target: torch.Tensor,
-        weight: torch.Tensor | None,
-        mode: _Mode,
-    ) -> torch.Tensor:
-        """Compute (optionally sample-weighted) loss for one target.
-
-        When ``weight`` is set, temporarily forces ``reduction="none"``,
-        multiplies elementwise, then reduces with the original reduction
-        (weighted mean via ``sum(loss*w)/sum(w)``, ``sum``, or unreduced).
-
-        Parameters
-        ----------
-        y_pred :
-            Prepared prediction tensor.
-        target :
-            Prepared target tensor.
-        weight :
-            Optional weights broadcastable to the unreduced loss.
-        mode :
-            Used to flatten class-mode weights to ``(B*T,)``.
-
-        Returns
-        -------
-        torch.Tensor
-            Scalar or unreduced weighted loss.
-        """
-        if weight is None:
-            return self._call_loss(y_pred, target, mode)
-
-        old_reduction = getattr(self._loss, "reduction", None)
-        if old_reduction is not None:
-            self._loss.reduction = "none"
-        try:
-            loss = self._call_loss(y_pred, target, mode)
-        finally:
-            if old_reduction is not None:
-                self._loss.reduction = old_reduction
-
-        # class mode flattens to (B*T,); flatten matching weights
-        if mode == "class" and weight is not None:
-            weight = weight.reshape(-1)
-        elif mode == "gaussian_nll" and weight is not None and weight.ndim == 2:
-            pass  # already [B, T], matches per-element loss
-
-        # Ensure weight has same dimensions as loss for multiplication
-        if weight.ndim < loss.ndim:
-            weight = weight.unsqueeze(-1).expand_as(loss)
-        elif weight.ndim > loss.ndim:
-            # Squeeze weight if it has more dimensions (e.g. [B, T, 1] vs [B, T])
-            weight = weight.squeeze(-1)
-
-        weighted_loss = loss * weight
-
-        if old_reduction == "mean":
-            return weighted_loss.sum() / weight.sum()
-        elif old_reduction == "sum":
-            return weighted_loss.sum()
-        # 'none' or others
-        return weighted_loss
 
     def to_prediction(self, y_pred: torch.Tensor, **kwargs) -> torch.Tensor:
         """Convert network output to a point forecast.
