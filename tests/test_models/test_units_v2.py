@@ -220,12 +220,12 @@ def test_quantile_loss_output_shape(basic_metadata, basic_data_module):
         pred = model(batch_x)["prediction"]
 
     actual_batch = batch_x["target_past"].shape[0]
-    assert pred.shape == (
-        actual_batch,
-        MAX_PREDICTION_LENGTH,
-        basic_metadata["target"],
-        len(quantiles),
+    expected_shape = (
+        (actual_batch, MAX_PREDICTION_LENGTH, len(quantiles))
+        if basic_metadata["target"] == 1
+        else (actual_batch, MAX_PREDICTION_LENGTH, basic_metadata["target"], len(quantiles))
     )
+    assert pred.shape == expected_shape
 
 
 def test_quantile_n_quantiles_attribute(basic_metadata):
@@ -255,7 +255,7 @@ def test_point_loss_n_quantiles_is_none(basic_metadata):
 
 
 def test_distribution_loss_output_shape(basic_metadata, basic_data_module):
-    """DistributionLoss must produce (B, pred_len, target_dim, n_dist_args) output."""
+    """DistributionLoss must produce (B, pred_len, [target_dim], n_dist_args) output."""
     basic_data_module.setup()
     loss = NormalDistributionLoss()
     model = UniTS(
@@ -273,12 +273,12 @@ def test_distribution_loss_output_shape(basic_metadata, basic_data_module):
         pred = model(batch_x)["prediction"]
 
     actual_batch = batch_x["target_past"].shape[0]
-    assert pred.shape == (
-        actual_batch,
-        MAX_PREDICTION_LENGTH,
-        basic_metadata["target"],
-        len(loss.distribution_arguments),
+    expected_shape = (
+        (actual_batch, MAX_PREDICTION_LENGTH, len(loss.distribution_arguments))
+        if basic_metadata["target"] == 1
+        else (actual_batch, MAX_PREDICTION_LENGTH, basic_metadata["target"], len(loss.distribution_arguments))
     )
+    assert pred.shape == expected_shape
 
 
 @pytest.mark.parametrize("loss_cls", [MAE, SMAPE])

@@ -40,7 +40,7 @@ class UniTS_pkg_v2(Base_pkg):
         return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
-    def get_test_train_params(cls):
+    def get_base_test_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns

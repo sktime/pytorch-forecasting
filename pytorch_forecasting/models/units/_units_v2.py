@@ -205,10 +205,17 @@ class UniTS(BaseModel):
         raw = self.head(patch_out)
 
         if self.n_quantiles is not None:
-            out = raw.view(B, self.prediction_length, self.target_dim, self.n_quantiles)
+            if self.target_dim == 1:
+                out = raw.view(B, self.prediction_length, self.n_quantiles)
+            else:
+                out = raw.view(B, self.prediction_length, self.target_dim, self.n_quantiles)
         elif self.n_dist_args is not None:
-            out = raw.view(B, self.prediction_length, self.target_dim, self.n_dist_args)
+            if self.target_dim == 1:
+                out = raw.view(B, self.prediction_length, self.n_dist_args)
+            else:
+                out = raw.view(B, self.prediction_length, self.target_dim, self.n_dist_args)
         else:
             out = raw.view(B, self.prediction_length, self.target_dim)
+
 
         return {"prediction": out}
