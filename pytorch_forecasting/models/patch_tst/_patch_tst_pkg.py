@@ -42,14 +42,14 @@ class PatchTST_pkg(_BasePtForecaster):
         return [
             {
                 # Basic test params
-                "hidden_size": 16,
+                "d_model": 16,
                 "n_heads": 2,
                 "patch_len": 4,
                 "stride": 4,
                 "dropout": 0.1,
             },
             {
-                "hidden_size": 32,
+                "d_model": 32,
                 "n_heads": 4,
                 "patch_len": 8,
                 "stride": 8,
@@ -57,14 +57,14 @@ class PatchTST_pkg(_BasePtForecaster):
                 "activation": "gelu",
             },
             {
-                "hidden_size": 16,
+                "d_model": 16,
                 "n_heads": 2,
                 "patch_len": 2,
                 "stride": 2,
                 "dropout": 0.1,
             },
             {
-                "hidden_size": 24,
+                "d_model": 24,
                 "n_heads": 3,
                 "patch_len": 4,
                 "stride": 2,

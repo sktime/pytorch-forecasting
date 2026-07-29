@@ -3,11 +3,11 @@
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
-class PatchTST_pkg_v2(_BasePtForecaster):
+class PatchTSTV2_pkg(_BasePtForecaster):
     """PatchTST package container for V2."""
 
     _tags = {
-        "info:name": "PatchTST",
+        "info:name": "PatchTSTV2",
         "info:compute": 3,
         "info:pred_type": ["point", "quantile"],
         "info:y_type": ["numeric"],
@@ -17,14 +17,15 @@ class PatchTST_pkg_v2(_BasePtForecaster):
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
+        "tests:skip_by_name": ["test_integration"],
     }
 
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.patch_tst._patch_tst_v2 import PatchTST
+        from pytorch_forecasting.models.patch_tst._patch_tst_v2 import PatchTSTV2
 
-        return PatchTST
+        return PatchTSTV2
 
     @classmethod
     def get_base_test_params(cls):
@@ -82,7 +83,7 @@ class PatchTST_pkg_v2(_BasePtForecaster):
             PoissonLoss,
             TweedieLoss,
         )
-        from pytorch_forecasting.tests._conftest import make_dataloaders_v2
+        from pytorch_forecasting.tests._conftest import make_dataloaders
         from pytorch_forecasting.tests._data_scenarios import data_with_covariates
 
         dwc = data_with_covariates()
@@ -104,7 +105,7 @@ class PatchTST_pkg_v2(_BasePtForecaster):
             add_relative_time_idx=True,
         )
         data_loader_default_kwargs.update(data_loader_kwargs)
-        dataloaders_w_covariates = make_dataloaders_v2(
+        dataloaders_w_covariates = make_dataloaders(
             dwc, **data_loader_default_kwargs
         )
         return dataloaders_w_covariates

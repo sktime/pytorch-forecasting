@@ -24,6 +24,13 @@ from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 class PatchTST(BaseModelWithCovariates):
     """PatchTST model for time series forecasting."""
 
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models.patch_tst._patch_tst_pkg import PatchTST_pkg
+
+        return PatchTST_pkg
+
     def __init__(
         self,
         context_length: int,

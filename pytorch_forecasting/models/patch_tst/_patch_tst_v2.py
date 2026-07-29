@@ -13,7 +13,7 @@ from torch.optim import Optimizer
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
-class PatchTST(TslibBaseModel):
+class PatchTSTV2(TslibBaseModel):
     """
     An implementation of PatchTST model for v2 of pytorch-forecasting.
 
@@ -58,10 +58,10 @@ class PatchTST(TslibBaseModel):
     def _pkg(cls):
         """Package containing the model."""
         from pytorch_forecasting.models.patch_tst._patch_tst_pkg_v2 import (
-            PatchTST_pkg_v2,
+            PatchTSTV2_pkg,
         )
 
-        return PatchTST_pkg_v2
+        return PatchTSTV2_pkg
 
     def __init__(
         self,
