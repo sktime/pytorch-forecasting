@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers._blocks._softs_block import SOFTSEncoderLayer
+from pytorch_forecasting.layers._encoders._softs_encoder import SOFTSEncoderLayer
 from pytorch_forecasting.layers._normalization import RevIN
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
