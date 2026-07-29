@@ -797,6 +797,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
 
+            # Apply the encoder normalizer to the decoder target as well, reusing
+            # the parameters fitted on this item's encoder window above, so that
+            # y lives in the same space as x["target_past"]. Note this transforms
+            # rather than re-fits: fitting on the decoder window would leak future
+            # values into the scaling.
+            if normalizer is not None and normalizer.fit_per_sequence:
+                y = normalizer.transform_sequence(y)
+
             if y.shape[-1] > 1:
                 y = [y[:, i] for i in range(y.shape[-1])]
             else:
