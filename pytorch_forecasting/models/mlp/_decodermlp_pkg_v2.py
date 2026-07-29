@@ -10,6 +10,9 @@ class DecoderMLP_pkg_v2(Base_pkg):
         "info:name": "DecoderMLP_v2",
         "info:compute": 1,
         "authors": ["jdb78", "echo-xiao"],
+        # TODO: the v2 datamodule supports categorical inputs but not
+        # categorical targets yet; add "categorical" to y_type once
+        # EncoderDecoderTimeSeriesDataModule supports categorical targets.
         "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": False,
