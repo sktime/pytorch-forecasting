@@ -15,7 +15,10 @@ from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiLoss, Quant
 from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
 from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.models.patch_tst.sub_modules import FlattenHead, PatchEmbedding
+from pytorch_forecasting.layers import (
+    PatchTSTFlattenHead as FlattenHead,
+    PatchEmbedding,
+)
 
 
 class PatchTST(BaseModelWithCovariates):
