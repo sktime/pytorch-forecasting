@@ -3,8 +3,8 @@ A Time Series is Worth 64 Words (PatchTST)
 ------------------------------------------
 """
 
-import warnings as warn
 from typing import Any
+import warnings as warn
 
 import torch
 import torch.nn as nn
@@ -57,7 +57,9 @@ class PatchTST(TslibBaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.patch_tst._patch_tst_pkg_v2 import PatchTST_pkg_v2
+        from pytorch_forecasting.models.patch_tst._patch_tst_pkg_v2 import (
+            PatchTST_pkg_v2,
+        )
 
         return PatchTST_pkg_v2
 
@@ -163,24 +165,29 @@ class PatchTST(TslibBaseModel):
         Forward pass.
         """
         batch_size = x["history_cont"].shape[0]
-        
+
         # Combine endogenous and exogenous variables as continuous covariates
         history_target = x.get(
             "history_target",
             torch.zeros(batch_size, self.context_length, 1, device=self.device),
         )
-        history_cont = x.get("history_cont", torch.empty(batch_size, self.context_length, 0, device=self.device))
-        
+        history_cont = x.get(
+            "history_cont",
+            torch.empty(batch_size, self.context_length, 0, device=self.device),
+        )
+
         # [Batch, seq_len, total_vars]
         combined = torch.cat([history_target, history_cont], dim=-1)
         total_vars = combined.shape[-1]
-        
+
         # Determine target dimension for slicing at the end
         target_dim = history_target.shape[-1]
 
         # Channel Independence: merge Batch and Var dimension
         # [Batch * total_vars, seq_len, 1]
-        enc_in = combined.permute(0, 2, 1).reshape(batch_size * total_vars, 1, self.context_length)
+        enc_in = combined.permute(0, 2, 1).reshape(
+            batch_size * total_vars, 1, self.context_length
+        )
 
         # Embedding
         # [Batch * total_vars, patch_num, d_model]
@@ -195,11 +202,13 @@ class PatchTST(TslibBaseModel):
 
         # Reshape back to separate batch and variables
         # [Batch, total_vars, target_window, n_quantiles]
-        dec_out = dec_out.reshape(batch_size, total_vars, self.prediction_length, self.n_quantiles)
+        dec_out = dec_out.reshape(
+            batch_size, total_vars, self.prediction_length, self.n_quantiles
+        )
 
         # Extract only the target predictions
         target_predictions = dec_out[:, :target_dim, :, :]
-        
+
         # Expected output shape: [Batch, target_window, n_quantiles] if target_dim == 1,
         # or [Batch, target_window, target_dim, n_quantiles] if target_dim > 1.
         # Following TslibBaseModel convention:
@@ -207,7 +216,7 @@ class PatchTST(TslibBaseModel):
             target_predictions = target_predictions.squeeze(1)
         else:
             target_predictions = target_predictions.permute(0, 2, 1, 3)
-            
+
         return target_predictions
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:

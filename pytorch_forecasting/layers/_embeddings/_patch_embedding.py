@@ -4,6 +4,7 @@ Patch Embedding Layer for PTF.
 
 import torch
 import torch.nn as nn
+
 from pytorch_forecasting.layers._embeddings._positional_embedding import (
     PositionalEmbedding,
 )
@@ -12,7 +13,7 @@ from pytorch_forecasting.layers._embeddings._positional_embedding import (
 class PatchEmbedding(nn.Module):
     """
     Patch Embedding module that creates patches and maps them to the model dimension.
-    
+
     Parameters
     ----------
     d_model : int
@@ -27,7 +28,9 @@ class PatchEmbedding(nn.Module):
         Dropout rate.
     """
 
-    def __init__(self, d_model: int, patch_len: int, stride: int, padding: int, dropout: float):
+    def __init__(
+        self, d_model: int, patch_len: int, stride: int, padding: int, dropout: float
+    ):
         super().__init__()
         # Patching
         self.patch_len = patch_len
@@ -46,12 +49,12 @@ class PatchEmbedding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass.
-        
+
         Parameters
         ----------
         x : torch.Tensor
             Input tensor of shape [Batch * n_vars, 1, seq_len]
-            
+
         Returns
         -------
         torch.Tensor

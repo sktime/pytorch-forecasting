@@ -12,8 +12,8 @@ from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.layers._embeddings import (
     DataEmbedding_inverted,
     EnEmbedding,
-    PositionalEmbedding,
     PatchEmbedding,
+    PositionalEmbedding,
     embedding_cat_variables,
 )
 from pytorch_forecasting.layers._encoders import (

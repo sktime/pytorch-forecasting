@@ -8,7 +8,7 @@ import torch.nn as nn
 class PatchTSTFlattenHead(nn.Module):
     """
     Flatten Head for the output of the PatchTST model.
-    
+
     Parameters
     ----------
     patch_num : int
@@ -24,7 +24,12 @@ class PatchTSTFlattenHead(nn.Module):
     """
 
     def __init__(
-        self, patch_num: int, d_model: int, target_window: int, head_dropout: float = 0.0, n_quantiles: int = 1
+        self,
+        patch_num: int,
+        d_model: int,
+        target_window: int,
+        head_dropout: float = 0.0,
+        n_quantiles: int = 1,
     ):
         super().__init__()
         self.flatten = nn.Flatten(start_dim=-2)

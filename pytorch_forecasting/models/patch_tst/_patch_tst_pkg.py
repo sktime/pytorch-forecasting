@@ -115,7 +115,7 @@ class PatchTST_pkg(_BasePtForecaster):
             dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
         else:
             dwc["target"] = dwc["volume"]
-            
+
         data_loader_default_kwargs = dict(
             target="target",
             time_varying_known_reals=["price_actual"],

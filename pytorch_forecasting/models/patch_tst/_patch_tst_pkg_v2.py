@@ -104,5 +104,7 @@ class PatchTST_pkg_v2(_BasePtForecaster):
             add_relative_time_idx=True,
         )
         data_loader_default_kwargs.update(data_loader_kwargs)
-        dataloaders_w_covariates = make_dataloaders_v2(dwc, **data_loader_default_kwargs)
+        dataloaders_w_covariates = make_dataloaders_v2(
+            dwc, **data_loader_default_kwargs
+        )
         return dataloaders_w_covariates

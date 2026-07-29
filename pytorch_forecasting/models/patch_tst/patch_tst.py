@@ -11,14 +11,14 @@ import torch.nn as nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
+from pytorch_forecasting.layers import (
+    PatchEmbedding,
+    PatchTSTFlattenHead as FlattenHead,
+)
 from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiLoss, QuantileLoss
 from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
 from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
-from pytorch_forecasting.layers import (
-    PatchTSTFlattenHead as FlattenHead,
-    PatchEmbedding,
-)
 
 
 class PatchTST(BaseModelWithCovariates):
