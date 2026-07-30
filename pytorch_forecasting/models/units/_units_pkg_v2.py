@@ -18,8 +18,6 @@ class UniTS_pkg_v2(Base_pkg):
         "authors": ["Muhammad-Rebaal", "gasvn", "sohamukute"],
         "capability:exogenous": True,
         "capability:multivariate": True,
-        "info:pred_type": ["point", "quantile", "distribution"],
-        "info:y_type": ["numeric"],
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
@@ -40,7 +38,7 @@ class UniTS_pkg_v2(Base_pkg):
         return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
-    def get_base_test_params(cls):
+    def get_test_train_params(cls):
         """Return testing parameter settings for the trainer.
 
         Returns
