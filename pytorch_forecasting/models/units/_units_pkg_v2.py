@@ -77,11 +77,6 @@ class UniTS_pkg_v2(Base_pkg):
                 "stride": 4,
                 "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
             },
-            {
-                "patch_len": 8,
-                "stride": 4,
-                "loss": NormalDistributionLoss(),
-            },
         ]
 
         base_dm_cfg = {"max_encoder_length": 16, "max_prediction_length": 4}

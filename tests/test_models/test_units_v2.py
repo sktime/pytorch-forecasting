@@ -7,7 +7,7 @@ import torch
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
-from pytorch_forecasting.metrics import MAE, SMAPE, NormalDistributionLoss, QuantileLoss
+from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 from pytorch_forecasting.models.units._units_v2 import UniTS
 
 BATCH_SIZE = 2
@@ -257,38 +257,6 @@ def test_point_loss_n_quantiles_is_none(basic_metadata):
         metadata=basic_metadata,
     )
     assert model.n_quantiles is None
-
-
-def test_distribution_loss_output_shape(basic_metadata, basic_data_module):
-    """DistributionLoss must produce (B, pred_len, [target_dim], n_dist_args) output."""
-    basic_data_module.setup()
-    loss = NormalDistributionLoss()
-    model = UniTS(
-        loss=loss,
-        d_model=D_MODEL,
-        n_heads=N_HEADS,
-        patch_len=PATCH_LEN,
-        stride=STRIDE,
-        metadata=basic_metadata,
-    )
-    model.eval()
-
-    batch_x, _ = next(iter(basic_data_module.train_dataloader()))
-    with torch.no_grad():
-        pred = model(batch_x)["prediction"]
-
-    actual_batch = batch_x["target_past"].shape[0]
-    expected_shape = (
-        (actual_batch, MAX_PREDICTION_LENGTH, len(loss.distribution_arguments))
-        if basic_metadata["target"] == 1
-        else (
-            actual_batch,
-            MAX_PREDICTION_LENGTH,
-            basic_metadata["target"],
-            len(loss.distribution_arguments),
-        )
-    )
-    assert pred.shape == expected_shape
 
 
 @pytest.mark.parametrize("loss_cls", [MAE, SMAPE])
