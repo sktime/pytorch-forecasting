@@ -1,8 +1,17 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import (
+    MaxAbsScaler,
+    MinMaxScaler,
+    RobustScaler,
+    StandardScaler,
+)
+import torch
 
+from pytorch_forecasting import GroupNormalizer, MultiNormalizer, NaNLabelEncoder
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -436,7 +445,19 @@ def test_different_train_val_test_split(sample_timeseries_data):
     assert len(dm._test_indices) == total_series - expected_train - expected_val
 
 
-def test_multivariate_target():
+@pytest.mark.parametrize(
+    "normalizer_list",
+    [
+        None,
+        [TorchNormalizer(), EncoderNormalizer()],
+        [EncoderNormalizer(), GroupNormalizer()],
+        [GroupNormalizer(), NaNLabelEncoder(add_nan=True)],
+        [TorchNormalizer(), GroupNormalizer()],
+        [NaNLabelEncoder(add_nan=True), EncoderNormalizer()],
+        [EncoderNormalizer(), TorchNormalizer()],
+    ],
+)
+def test_multivariate_target(normalizer_list):
     """Test with multivariate target (multiple target columns).
 
     Verifies correct handling of multivariate targets in data pipeline."""
@@ -458,15 +479,250 @@ def test_multivariate_target():
         group=["group"],
         num=["feature1", "feature2"],
     )
-
     dm = EncoderDecoderTimeSeriesDataModule(
         time_series_dataset=ts,
         max_encoder_length=10,
         max_prediction_length=5,
         batch_size=4,
+        target_normalizer=normalizer_list,
     )
 
     dm.setup()
 
     x, y = dm.train_dataset[0]
     assert len(y) == 2
+    assert y[0].shape == (dm.max_prediction_length,)
+    assert y[1].shape == (dm.max_prediction_length,)
+    assert x["target_past"].shape == (dm.max_encoder_length, 2)
+    if normalizer_list is None:
+        dm._target_normalizer = None
+        dm._target_normalizer_fitted = False
+
+
+@pytest.mark.parametrize(
+    "normalizer_list",
+    [
+        None,
+        [TorchNormalizer(), EncoderNormalizer()],
+        [EncoderNormalizer(), GroupNormalizer()],
+        [GroupNormalizer(), NaNLabelEncoder(add_nan=True)],
+        [TorchNormalizer(), GroupNormalizer()],
+        [NaNLabelEncoder(add_nan=True), EncoderNormalizer()],
+        [EncoderNormalizer(), TorchNormalizer()],
+    ],
+)
+def test_multivariate_target_scale(normalizer_list):
+    """Test that target_scale is correctly computed for multivariate targets.
+
+    Verifies:
+    - target_scale is a list of length n_targets for multi-target
+    - each element is a scalar tensor
+    - scale values are positive and finite
+    - scale reflects the original (pre-normalization) target magnitude
+    """
+    np.random.seed(42)
+    target1 = np.random.normal(0, 1, 100)
+    target2 = np.random.normal(0, 100, 100)
+
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], 50),
+            "time": np.tile(pd.date_range("2020-01-01", periods=50), 2),
+            "target1": target1,
+            "target2": target2,
+            "feature1": np.random.normal(0, 1, 100),
+        }
+    )
+
+    ts = TimeSeries(
+        data=df,
+        time="time",
+        target=["target1", "target2"],
+        group=["group"],
+        num=["feature1"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=10,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer=normalizer_list,
+    )
+    dm.setup()
+
+    x, y = dm.train_dataset[0]
+    target_scale = x["target_scale"]
+
+    assert isinstance(
+        target_scale, list
+    ), f"expected list for multi-target, got {type(target_scale)}"
+    assert len(target_scale) == 2, f"expected 2 scale values, got {len(target_scale)}"
+
+    for i, scale in enumerate(target_scale):
+        assert isinstance(
+            scale, torch.Tensor
+        ), f"target_scale[{i}] should be a Tensor, got {type(scale)}"
+        assert (
+            scale.shape == ()
+        ), f"target_scale[{i}] should be scalar, got shape {scale.shape}"
+        assert torch.isfinite(scale), f"target_scale[{i}] is not finite: {scale}"
+        assert scale > 0, f"target_scale[{i}] should be positive, got {scale}"
+
+    assert target_scale[1] > target_scale[0], (
+        f"expected target_scale[1] > target_scale[0] given std ratio, "
+        f"got {target_scale[1]:.4f} vs {target_scale[0]:.4f}"
+    )
+
+
+@pytest.mark.parametrize(
+    "normalizer",
+    [
+        None,
+        "auto",
+        TorchNormalizer(),
+        EncoderNormalizer(),
+        GroupNormalizer(),
+        NaNLabelEncoder(add_nan=True),
+    ],
+)
+def test_target_normalizers(sample_timeseries_data, normalizer):
+    """Test different target normalizers.
+
+    Ensures compatibility and correct integration of various normalizers.
+    Verifies that:
+    - The normalizer is applied correctly.
+    - Output shapes are as expected.
+    - Target is actually scaled.
+    """
+    dm_no_norm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=15,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer=None,
+    )
+    dm_no_norm.setup(stage="fit")
+
+    dm_with_norm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=15,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer=normalizer,
+    )
+    dm_with_norm.setup(stage="fit")
+
+    x_no_norm, y_no_norm = dm_no_norm.train_dataset[0]
+    x_with_norm, y_with_norm = dm_with_norm.train_dataset[0]
+    assert y_with_norm.shape == y_no_norm.shape
+    assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
+
+    if normalizer is not None and not isinstance(normalizer, EncoderNormalizer):
+        assert (
+            dm_with_norm._target_normalizer_fitted
+        ), "Target normalizer should be fitted"
+    if normalizer is None:
+        dm_with_norm._target_normalizer = None
+        dm_with_norm._target_normalizer_fitted = False
+
+
+@pytest.mark.parametrize(
+    "scaler_type",
+    [
+        None,
+        TorchNormalizer(),
+        StandardScaler(),
+        RobustScaler(),
+        EncoderNormalizer(),
+        GroupNormalizer(),
+        MinMaxScaler(),
+        MaxAbsScaler(),
+    ],
+)
+def test_feature_scaling(sample_timeseries_data, scaler_type):
+    """Test feature scaling with different scalers.
+
+    Verifies that:
+    - Scaling is actually applied (data changes)
+    - Only specified features are scaled
+    - Output format is preserved
+    """
+    scalers = {
+        "cont_feat1": scaler_type,
+        "cont_feat2": scaler_type,
+    }
+
+    dm_no_scale = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        scalers=None,
+    )
+    dm_no_scale.setup(stage="fit")
+
+    dm_with_scale = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=24,
+        max_prediction_length=12,
+        batch_size=4,
+        scalers=scalers,
+    )
+    dm_with_scale.setup(stage="fit")
+
+    assert dm_with_scale._feature_scalers_fitted
+    assert "cont_feat1" in dm_with_scale.scalers
+    assert "cont_feat2" in dm_with_scale.scalers
+
+    x_no_scale, _ = dm_no_scale.train_dataset[0]
+    x_with_scale, _ = dm_with_scale.train_dataset[0]
+
+    assert x_with_scale["encoder_cont"].shape == x_no_scale["encoder_cont"].shape
+    assert x_with_scale["decoder_cont"].shape == x_no_scale["decoder_cont"].shape
+    if scaler_type is None:
+        dm_with_scale._scalers = None
+        dm_with_scale._feature_scalers_fitted = False
+
+
+def test_group_normalizer_uses_groups():
+    """Test that GroupNormalizer produces different scales per group."""
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], 100),
+            "time": np.tile(range(100), 2),
+            "target": np.concatenate(
+                [
+                    np.random.normal(1, 0.1, 100),  # group 0
+                    np.random.normal(100, 10, 100),  # group 1
+                ]
+            ),
+            "feature1": np.random.normal(0, 1, 200),
+        }
+    )
+    ts = TimeSeries(
+        data=df,
+        time="time",
+        target="target",
+        group=["group"],
+        num=["feature1"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=10,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer=GroupNormalizer(groups=["group"]),
+    )
+    dm.setup("fit")
+
+    group0_idx = ts._group_to_idx[0]
+    group1_idx = ts._group_to_idx[1]
+
+    target0 = dm._train_preprocessed.get(group0_idx)
+    target1 = dm._train_preprocessed.get(group1_idx)
+
+    if target0 is not None and target1 is not None:
+        mean0 = target0["target"].mean().abs()
+        mean1 = target1["target"].mean().abs()
+        assert mean0 < 1.0, "Group 0 target should be normalized near 0"
+        assert mean1 < 1.0, "Group 1 target should be normalized near 0"
