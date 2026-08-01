@@ -131,30 +131,71 @@ Creating a fork and cloning the repository
 Setting up an editable virtual environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Set up a new virtual environment. Our instructions will go through the commands to set up a ``conda`` environment which is recommended for ``pytorch-forecasting`` development.
-The process will be similar for ``venv`` or other virtual environment managers.
+Navigate to your local ``pytorch-forecasting`` repository:
 
-  .. warning::
-       Using ``conda`` via one of the commercial distributions such as Anaconda
-       is in general not free for commercial use and may incur significant costs or liabilities.
-       Consider using free distributions and channels for package management,
-       and be aware of applicable terms and conditions.
+.. code-block:: bash
 
-In the ``conda`` terminal:
+    cd pytorch-forecasting
 
-2. Navigate to your local pytorch-forecasting folder, :code:`cd pytorch-forecasting` or similar
+Using ``uv`` (recommended)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-3. Create a new environment with a supported python version: :code:`conda create -n pytorch-forecasting-dev python=3.11` (or :code:`python=3.12` etc)
+`uv <https://docs.astral.sh/uv/getting-started/installation/>`__ is the recommended
+tool for creating the development environment and installing dependencies.
+Create a virtual environment with a supported Python version:
 
-   .. warning::
-       If you already have an environment called ``pytorch-forecasting-dev`` from a previous attempt you will first need to remove this.
+.. code-block:: bash
 
-4. Activate the environment: :code:`conda activate pytorch-forecasting-dev`
+    uv venv --python 3.11
 
-5. Build an editable version of pytorch-forecasting.
-In order to install only the dev dependencies, :code:`pip install -e ".[dev]"`
-If you also want to install soft dependencies, install them individually, after the above,
-or instead use: :code:`pip install -e ".[all_extras,dev]"` to install all of them.
+``uv`` creates the environment at ``.venv`` and automatically discovers it for
+subsequent commands. To activate it when running project tools directly, use:
+
+.. code-block:: bash
+
+    # macOS and Linux
+    source .venv/bin/activate
+
+.. code-block:: powershell
+
+    # Windows PowerShell
+    .venv\Scripts\Activate.ps1
+
+Install PyTorch Forecasting in editable mode with the developer dependencies:
+
+.. code-block:: bash
+
+    uv pip install -e ".[dev]"
+
+If you also need all optional dependencies, use:
+
+.. code-block:: bash
+
+    uv pip install -e ".[all_extras,dev]"
+
+Using ``venv``
+^^^^^^^^^^^^^^^
+
+If ``uv`` is unavailable, create a virtual environment using Python's standard
+library:
+
+.. code-block:: bash
+
+    python -m venv .venv
+
+Activate the environment using the command for your platform shown above, then
+upgrade ``pip`` and install the project with its developer dependencies:
+
+.. code-block:: bash
+
+    python -m pip install --upgrade pip
+    python -m pip install -e ".[dev]"
+
+To include all optional dependencies, use:
+
+.. code-block:: bash
+
+    python -m pip install -e ".[all_extras,dev]"
 
 Contribution Guidelines and Recommendations
 -------------------------------------------
