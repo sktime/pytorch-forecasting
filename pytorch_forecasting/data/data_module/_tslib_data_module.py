@@ -225,11 +225,7 @@ class _TslibDataset(Dataset):
         if "target_scale" in processed_data:
             x["target_scale"] = processed_data["target_scale"]
         weights = processed_data.get("weights", None)
-        future_weight = (
-            weights[future_indices]
-            if weights is not None
-            else torch.ones(prediction_length, dtype=torch.float32)
-        )
+        future_weight = weights[future_indices] if weights is not None else None
 
         y = processed_data["target"][future_indices]
         y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
@@ -894,5 +890,6 @@ class TslibDataModule(LightningDataModule):
             stacked_target = torch.stack(target_tensors)
             y_batch.append(stacked_target)
 
-        weight_batch = torch.stack([sample_y[1] for _, sample_y in batch])
+        weights = [sample_y[1] for _, sample_y in batch]
+        weight_batch = None if weights[0] is None else torch.stack(weights)
         return x_batch, (y_batch, weight_batch)

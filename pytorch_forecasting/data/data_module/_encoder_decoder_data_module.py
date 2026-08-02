@@ -798,11 +798,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
             weights = data["weights"]
-            decoder_weights = (
-                weights[decoder_indices]
-                if weights is not None
-                else torch.ones(pred_length, dtype=torch.float32)
-            )
+            decoder_weights = weights[decoder_indices] if weights is not None else None
 
             y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
 
@@ -1115,6 +1111,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             stacked_target = torch.stack(target_tensors)
             y_batch.append(stacked_target)
 
-        weight_batch = torch.stack([sample_y[1] for _, sample_y in batch])
+        weights = [sample_y[1] for _, sample_y in batch]
+        weight_batch = None if weights[0] is None else torch.stack(weights)
 
         return x_batch, (y_batch, weight_batch)
