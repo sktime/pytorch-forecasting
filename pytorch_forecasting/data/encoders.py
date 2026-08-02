@@ -9,7 +9,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import scipy.stats
 from sklearn.base import BaseEstimator, TransformerMixin
 import torch
 from torch.distributions import constraints

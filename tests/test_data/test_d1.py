@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import LabelEncoder
 import torch
 
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -427,22 +429,31 @@ def test_timeseries_categorical_encoding():
 
 
 @pytest.mark.parametrize(
-    "encoder_cls,expected_cardinality",
+    "encoder,expected_cardinality",
     [
         pytest.param(
-            "LabelEncoder",
-            3,
-            id="LabelEncoder",
+            NaNLabelEncoder(add_nan=True),
+            4,
+            id="NaNLabelEncoder-add_nan",
         ),
         pytest.param(
-            "OrdinalEncoder",
+            NaNLabelEncoder(add_nan=False),
             3,
-            id="OrdinalEncoder",
+            id="NaNLabelEncoder-no_nan",
+        ),
+        pytest.param(
+            LabelEncoder(),
+            3,
+            id="sklearn-LabelEncoder",
         ),
     ],
 )
-def test_custom_sklearn_encoders(encoder_cls, expected_cardinality):
-    """Test injection of scikit-learn encoders into TimeSeries."""
+def test_custom_sklearn_encoders(encoder, expected_cardinality):
+    """Test that D1 correctly handles injected encoders via categorical_encoders.
+
+    Verifies that various encoders satisfying the fit/transform/classes_ contract
+    are properly fitted, applied, and produce correct cardinality metadata.
+    """
     from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 
     data = pd.DataFrame(
@@ -454,38 +465,13 @@ def test_custom_sklearn_encoders(encoder_cls, expected_cardinality):
         }
     )
 
-    if encoder_cls == "LabelEncoder":
-        custom_encoder = LabelEncoder()
-    elif encoder_cls == "OrdinalEncoder":
-        custom_encoder = OrdinalEncoder()
-        # OrdinalEncoder expects 2D input pre-fit on the column as a DataFrame
-        custom_encoder.fit(data[["cat_feature"]])
-        data["cat_feature"] = (
-            custom_encoder.transform(data[["cat_feature"]]).astype(int).ravel()
-        )
-        # Mark as pre-encoded so D1 doesn't re-fit
-        ts = TimeSeries(
-            data=data,
-            time="timestamp",
-            target="target",
-            group=["group"],
-            cat=["cat_feature", "group"],
-            categorical_encoders=False,
-        )
-        assert ts.metadata["categorical_cardinalities"]["cat_feature"] == (
-            expected_cardinality
-        )
-        item = ts[0]
-        assert isinstance(item["x"], torch.Tensor)
-        return
-
     ts = TimeSeries(
         data=data,
         time="timestamp",
         target="target",
         group=["group"],
         cat=["cat_feature", "group"],
-        categorical_encoders={"cat_feature": custom_encoder},
+        categorical_encoders={"cat_feature": encoder},
     )
 
     assert ts.metadata["categorical_cardinalities"]["cat_feature"] == (
