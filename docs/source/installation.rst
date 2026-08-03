@@ -131,6 +131,11 @@ Creating a fork and cloning the repository
 Setting up an editable virtual environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+The ``conda`` instructions in the package installation section above remain
+available for users who prefer that installation method. The following
+instructions apply specifically to contributor development environments, for
+which ``uv`` is recommended.
+
 Navigate to your local ``pytorch-forecasting`` repository:
 
 .. code-block:: bash
