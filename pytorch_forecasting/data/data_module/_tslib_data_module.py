@@ -554,9 +554,7 @@ class TslibDataModule(LightningDataModule):
         """Fit the target normalizer on the training targets only."""
         if self._target_normalizer is None or self._target_normalizer_fitted:
             return
-        targets = [
-            self.time_series_dataset[idx.item()]["y"] for idx in train_indices
-        ]
+        targets = [self.time_series_dataset[idx.item()]["y"] for idx in train_indices]
         if not targets:
             return
         self._target_normalizer.fit(torch.cat(targets, dim=0))

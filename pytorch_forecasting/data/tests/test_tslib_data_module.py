@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
-import torch
 from sklearn.preprocessing import StandardScaler
+import torch
 
 from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.data_module import TslibDataModule
@@ -685,3 +685,20 @@ def test_setup_fit_produces_scaled_samples():
     x, _ = dm.train_dataset[0]
     hist = x["history_cont"]
     assert abs(float(hist[:, 0].mean())) < 5.0  # unscaled value was ~100
+
+
+def test_no_scalers_leaves_data_untouched():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    out = dm._preprocess_data(0)
+    raw_cont = ds[0]["x"][:, dm.continuous_indices].float()
+    # when no scaler is configured, continuous features must be byte-identical to raw
+    assert torch.allclose(out["features"]["continuous"], raw_cont)
+    # target_scale is not produced (out of scope for this PR)
+    assert "target_scale" not in out
