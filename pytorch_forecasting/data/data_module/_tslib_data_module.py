@@ -623,9 +623,14 @@ class TslibDataModule(LightningDataModule):
         - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
 
-        series = self.time_series_dataset[idx]
+        # cache: a series is transformed once, not per window
+        i = idx.item() if isinstance(idx, torch.Tensor) else idx
+        if i in self._preprocess_cache:
+            return self._preprocess_cache[i]
+
+        series = self.time_series_dataset[i]
         if series is None:
-            raise ValueError(f"series at index {idx} is None. Check the dataset.")
+            raise ValueError(f"series at index {i} is None. Check the dataset.")
         target = series["y"]
         features = series["x"]
         timestep = series["t"]
@@ -658,6 +663,10 @@ class TslibDataModule(LightningDataModule):
             else torch.zeros((features.shape[0], 0))
         )
 
+        # apply fitted scalers / normalizers (no-op until fitted)
+        continuous_features = self._normalize_features(continuous_features)
+        target = self._normalize_target(target)
+
         res = {
             "features": {
                 "categorical": categorical_features,
@@ -675,6 +684,7 @@ class TslibDataModule(LightningDataModule):
         if target_scale:
             res["target_scale"] = target_scale
 
+        self._preprocess_cache[i] = res
         return res
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:

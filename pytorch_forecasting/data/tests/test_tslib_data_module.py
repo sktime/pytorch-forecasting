@@ -645,3 +645,23 @@ def test_normalize_target_is_noop_until_fitted():
     assert torch.equal(dm._normalize_target(tgt), tgt)  # not yet fitted
     dm._fit_target_normalizer(torch.arange(len(ds)))
     assert dm._normalize_target(tgt).shape == tgt.shape
+
+
+def test_preprocess_data_scales_and_caches():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    dm._fit_scalers(torch.arange(len(ds)))
+
+    out1 = dm._preprocess_data(0)
+    cont = out1["features"]["continuous"]
+    # x was originally ~100; after scaling it should be near 0
+    assert abs(float(cont[:, 0].mean())) < 5.0
+    # cache: second call must return the exact same object
+    out2 = dm._preprocess_data(0)
+    assert out1 is out2
