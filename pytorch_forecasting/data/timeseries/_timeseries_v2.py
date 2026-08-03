@@ -95,7 +95,6 @@ class TimeSeries(Dataset):
 
         * ``pytorch_forecasting.data.encoders.NaNLabelEncoder``
         * ``sklearn.preprocessing.LabelEncoder``
-        * ``sklearn.preprocessing.OrdinalEncoder``
           (note: expects 2D input — wrap the column in a DataFrame)
 
         Pass pre-fitted encoders from training to ensure consistent

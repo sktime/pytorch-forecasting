@@ -454,7 +454,7 @@ def test_custom_sklearn_encoders(encoder, expected_cardinality):
     Verifies that various encoders satisfying the fit/transform/classes_ contract
     are properly fitted, applied, and produce correct cardinality metadata.
     """
-    from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+    from sklearn.preprocessing import LabelEncoder
 
     data = pd.DataFrame(
         {
