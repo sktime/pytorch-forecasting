@@ -609,3 +609,39 @@ def test_fit_target_normalizer_sets_flag():
     )
     dm._fit_target_normalizer(torch.arange(len(ds)))
     assert dm._target_normalizer_fitted is True
+
+
+def test_normalize_features_scales_only_configured_columns():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    # before fit: no-op
+    raw_cont = ds[0]["x"][:, dm.continuous_indices]
+    assert torch.equal(dm._normalize_features(raw_cont), raw_cont)
+
+    # after fit: scaled
+    dm._fit_scalers(torch.arange(len(ds)))
+    scaled = dm._normalize_features(raw_cont)
+    assert not torch.equal(scaled, raw_cont)
+    # magnitude drops from ~100 toward ~0
+    assert abs(float(scaled.mean())) < abs(float(raw_cont.mean()))
+
+
+def test_normalize_target_is_noop_until_fitted():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    tgt = ds[0]["y"].float()
+    assert torch.equal(dm._normalize_target(tgt), tgt)  # not yet fitted
+    dm._fit_target_normalizer(torch.arange(len(ds)))
+    assert dm._normalize_target(tgt).shape == tgt.shape

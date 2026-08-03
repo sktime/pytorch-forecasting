@@ -580,6 +580,27 @@ class TslibDataModule(LightningDataModule):
             self._scalers[name].fit(torch.cat(column, dim=0))
         self._feature_scalers_fitted = True
 
+    def _normalize_target(self, target):
+        """Apply the fitted target normalizer (no-op until fitted)."""
+        if self._target_normalizer is None or not self._target_normalizer_fitted:
+            return target
+        return self._target_normalizer.transform(target)
+
+    def _normalize_features(self, continuous):
+        """Apply fitted continuous-feature scalers (no-op until fitted).
+
+        ``continuous`` columns are ordered by ``self.continuous_indices``.
+        """
+        if not self._feature_scalers_fitted or not self.continuous_indices:
+            return continuous
+        names = self.time_series_metadata["cols"]["x"]
+        out = continuous.clone()
+        for pos, orig_idx in enumerate(self.continuous_indices):
+            name = names[orig_idx]
+            if name in self._scalers:
+                out[:, pos] = self._scalers[name].transform(continuous[:, pos])
+        return out
+
     def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
         """
         Process the the time series data at the given index, before feeding it
