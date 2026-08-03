@@ -13,6 +13,7 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
@@ -341,7 +342,19 @@ class TslibDataModule(LightningDataModule):
 
         self._metadata = None
 
-        self.scalers = scalers or {}
+        # 包进统一适配器,对外只用一套 fit/transform 接口
+        self._target_normalizer = (
+            ScalerAdapter(self._target_normalizer)
+            if self._target_normalizer is not None
+            else None
+        )
+        self._scalers = {
+            name: ScalerAdapter(scaler) for name, scaler in (scalers or {}).items()
+        }
+        self._target_normalizer_fitted = False
+        self._feature_scalers_fitted = False
+        self._preprocess_cache = {}
+
         self.shuffle = shuffle
 
         self.continuous_indices = []

@@ -2,9 +2,36 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
+from sklearn.preprocessing import StandardScaler
 
+from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.data_module import TslibDataModule
+from pytorch_forecasting.data.encoders import TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
+
+
+def _make_ts(n_series: int = 20, length: int = 40, offset: float = 100.0) -> TimeSeries:
+    """合成数据集:连续特征 ``x`` 远离 0(~offset),便于看出标准化;目标 ``y`` 是正弦。"""
+    rows = []
+    for i in range(n_series):
+        for t in range(length):
+            rows.append(
+                {
+                    "series_id": i,
+                    "time_idx": t,
+                    "x": offset + 10.0 * np.sin(t / 5.0) + i,
+                    "y": np.sin(t / 5.0),
+                }
+            )
+    df = pd.DataFrame(rows)
+    return TimeSeries(
+        data=df,
+        time="time_idx",
+        target="y",
+        group=["series_id"],
+        num=["x"],
+        unknown=["x"],
+    )
 
 
 @pytest.fixture(scope="session")
@@ -530,3 +557,20 @@ def test_multivariate_target():
     assert (
         y.shape[-1] == 2
     ), "Target should have two dimensions for n_features for multivariate target."
+
+
+def test_init_wraps_scalers_in_adapter_and_sets_flags():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    assert isinstance(dm._scalers["x"], ScalerAdapter)
+    assert isinstance(dm._target_normalizer, ScalerAdapter)
+    assert dm._feature_scalers_fitted is False
+    assert dm._target_normalizer_fitted is False
+    assert dm._preprocess_cache == {}
