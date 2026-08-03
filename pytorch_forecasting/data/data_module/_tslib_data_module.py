@@ -342,7 +342,7 @@ class TslibDataModule(LightningDataModule):
 
         self._metadata = None
 
-        # 包进统一适配器,对外只用一套 fit/transform 接口
+        # wrap in the unified adapter so we speak one fit/transform interface
         self._target_normalizer = (
             ScalerAdapter(self._target_normalizer)
             if self._target_normalizer is not None
