@@ -310,6 +310,7 @@ class TslibDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
         split_strategy: str = "random",
+        temporal_cutoffs: dict[str, float] | None = None,
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
@@ -325,6 +326,7 @@ class TslibDataModule(LightningDataModule):
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
         self.split_strategy = split_strategy
+        self.temporal_cutoffs = temporal_cutoffs
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
@@ -723,7 +725,7 @@ class TslibDataModule(LightningDataModule):
             raise ValueError(f"Unknown split_strategy: {self.split_strategy}")
 
         if stage == "fit" or stage is None:
-            if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
+            if not hasattr(self, "_train_windows") or not hasattr(self, "_val_windows"):
                 if self.split_strategy == "temporal":
                     all_windows = self._create_windows(self._train_indices)
 
@@ -739,6 +741,7 @@ class TslibDataModule(LightningDataModule):
                         all_windows,
                         self.train_val_test_split,
                         series_timestamps,
+                        self.temporal_cutoffs,
                     )
 
                     self._train_windows, self._val_windows, self._test_windows = (
@@ -764,7 +767,7 @@ class TslibDataModule(LightningDataModule):
                 )
 
         elif stage == "test":
-            if not hasattr(self, "_test_dataset"):
+            if not hasattr(self, "_test_windows") or self.test_dataset is None:
                 if self.split_strategy == "temporal":
                     all_windows = self._create_windows(torch.arange(total_series))
 
@@ -777,6 +780,7 @@ class TslibDataModule(LightningDataModule):
                         all_windows,
                         self.train_val_test_split,
                         series_timestamps,
+                        self.temporal_cutoffs,
                     )
 
                 else:

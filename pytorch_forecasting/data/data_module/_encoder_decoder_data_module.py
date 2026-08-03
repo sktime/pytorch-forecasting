@@ -136,6 +136,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
         split_strategy: str = "random",
+        temporal_cutoffs: dict[str, float] | None = None,
     ):
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
@@ -155,6 +156,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
         self.split_strategy = split_strategy
+        self.temporal_cutoffs = temporal_cutoffs
 
         warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
@@ -971,7 +973,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         from pytorch_forecasting.data.splitters import (
             random_series_split,
             stratified_series_split,
-            temporal_window_split,
         )
 
         total_series = len(self.time_series_dataset)
@@ -1053,7 +1054,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     from pytorch_forecasting.data.splitters import temporal_window_split
 
                     t_win, v_win, te_win = temporal_window_split(
-                        all_windows, self.train_val_test_split, series_timestamps
+                        all_windows,
+                        self.train_val_test_split,
+                        series_timestamps,
+                        self.temporal_cutoffs,
                     )
                     self.train_windows, self.val_windows, self.test_windows = (
                         t_win,
@@ -1104,7 +1108,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                         )
 
                         _, _, self.test_windows = temporal_window_split(
-                            all_windows, self.train_val_test_split, series_timestamps
+                            all_windows,
+                            self.train_val_test_split,
+                            series_timestamps,
+                            self.temporal_cutoffs,
                         )
 
                     preprocessed = {

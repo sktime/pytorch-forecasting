@@ -53,8 +53,7 @@ class TestTemporalWindowSplit:
         return windows, series_timestamps
 
     def test_no_leakage(self, overlapping_series_setup):
-        """Critical test: no train window's end timestamp should exceed
-        any val window's end timestamp."""
+        """No leakage within each individual series."""
         windows, series_timestamps = overlapping_series_setup
 
         train_w, val_w, test_w = temporal_window_split(
@@ -66,24 +65,30 @@ class TestTemporalWindowSplit:
             end = min(start + enc + pred - 1, len(series_timestamps[s_idx]) - 1)
             return float(series_timestamps[s_idx][end])
 
-        if train_w and val_w:
-            max_train_time = max(get_end_time(w) for w in train_w)
-            min_val_time = min(get_end_time(w) for w in val_w)
-            assert max_train_time <= min_val_time, (
-                f"LEAKAGE: max train time {max_train_time} > "
-                f"min val time {min_val_time}"
-            )
+        all_series = {w[0] for w in train_w + val_w + test_w}
+        for s_idx in all_series:
+            s_train = [w for w in train_w if w[0] == s_idx]
+            s_val = [w for w in val_w if w[0] == s_idx]
+            s_test = [w for w in test_w if w[0] == s_idx]
 
-        if val_w and test_w:
-            max_val_time = max(get_end_time(w) for w in val_w)
-            min_test_time = min(get_end_time(w) for w in test_w)
-            assert max_val_time <= min_test_time, (
-                f"LEAKAGE: max val time {max_val_time} > "
-                f"min test time {min_test_time}"
-            )
+            if s_train and s_val:
+                max_train = max(get_end_time(w) for w in s_train)
+                min_val = min(get_end_time(w) for w in s_val)
+                assert max_train <= min_val, (
+                    f"Series {s_idx}: LEAKAGE train->val: "
+                    f"max_train={max_train} > min_val={min_val}"
+                )
 
-    def test_global_cutoff_with_overlapping_series(self, overlapping_series_setup):
-        """Verify both series are split by the SAME global cutoff."""
+            if s_val and s_test:
+                max_val = max(get_end_time(w) for w in s_val)
+                min_test = min(get_end_time(w) for w in s_test)
+                assert max_val <= min_test, (
+                    f"Series {s_idx}: LEAKAGE val->test: "
+                    f"max_val={max_val} > min_test={min_test}"
+                )
+
+    def test_all_windows_assigned_overlapping_series(self, overlapping_series_setup):
+        """Verify all windows are assigned and both series appear in train."""
         windows, series_timestamps = overlapping_series_setup
 
         train_w, val_w, test_w = temporal_window_split(
@@ -137,7 +142,7 @@ class TestTemporalWindowSplit:
         assert test_w == []
 
     def test_non_overlapping_series(self):
-        """When 2 series aren't overlapping"""
+        """When 2 series aren't overlapping, per-series split applies."""
         enc_len, pred_len = 2, 1
         ts_a = np.arange(0, 24)
         ts_b = np.arange(24, 48)
@@ -149,16 +154,110 @@ class TestTemporalWindowSplit:
             (1, s, enc_len, pred_len) for s in range(24 - enc_len - pred_len + 1)
         ]
         windows = windows_a + windows_b
-
         series_timestamps = {0: ts_a, 1: ts_b}
 
         train_w, val_w, test_w = temporal_window_split(
             windows, (0.7, 0.15, 0.15), series_timestamps
         )
 
-        # With global range 0..47, train_cutoff ≈ 32.9
-        # Series A (ends at 23) → all in train
-        series_a_in_train = [w for w in train_w if w[0] == 0]
-        assert len(series_a_in_train) == len(
-            windows_a
-        ), "All of Series A should be in train since it ends before cutoff"
+        total = len(train_w) + len(val_w) + len(test_w)
+        assert total == len(windows)
+
+        for s_idx in [0, 1]:
+            s_train = [w for w in train_w if w[0] == s_idx]
+            s_test = [w for w in test_w if w[0] == s_idx]
+            assert len(s_train) > 0, f"Series {s_idx} should have train windows"
+            assert len(s_test) > 0, f"Series {s_idx} should have test windows"
+
+
+class TestTemporalWindowSplitAbsoluteMode:
+    """Tests for absolute cutoff mode."""
+
+    def test_absolute_cutoffs_basic(self):
+        """Windows should be split at exact timestamp boundaries."""
+        enc_len, pred_len = 3, 2
+        timestamps = np.arange(0, 20)
+        windows = [
+            (0, s, enc_len, pred_len) for s in range(20 - enc_len - pred_len + 1)
+        ]
+        series_timestamps = {0: timestamps}
+
+        cutoffs = {"end_train": 10.0, "start_test": 15.0}
+        train_w, val_w, test_w = temporal_window_split(
+            windows,
+            (0.7, 0.15, 0.15),
+            series_timestamps,
+            temporal_cutoffs=cutoffs,
+        )
+        for w in train_w:
+            end_idx = min(w[1] + w[2] + w[3] - 1, len(timestamps) - 1)
+            assert timestamps[end_idx] <= 10.0
+
+        for w in test_w:
+            end_idx = min(w[1] + w[2] + w[3] - 1, len(timestamps) - 1)
+            assert timestamps[end_idx] >= 15.0
+
+        total = len(train_w) + len(val_w) + len(test_w)
+        assert total == len(windows)
+
+    def test_absolute_no_gap(self):
+        """When start_test == end_train, val should be empty."""
+        timestamps = np.arange(0, 10)
+        windows = [(0, s, 2, 1) for s in range(8)]
+        series_timestamps = {0: timestamps}
+
+        cutoffs = {"end_train": 5.0, "start_test": 5.0}
+        train_w, val_w, test_w = temporal_window_split(
+            windows,
+            (0.7, 0.15, 0.15),
+            series_timestamps,
+            temporal_cutoffs=cutoffs,
+        )
+        assert len(val_w) == 0
+
+    def test_absolute_invalid_cutoffs_raises(self):
+        """start_test < end_train should raise ValueError."""
+        windows = [(0, 0, 2, 1)]
+        series_timestamps = {0: np.arange(5)}
+
+        with pytest.raises(ValueError, match="start_test"):
+            temporal_window_split(
+                windows,
+                (0.7, 0.15, 0.15),
+                series_timestamps,
+                temporal_cutoffs={"end_train": 10.0, "start_test": 5.0},
+            )
+
+
+class TestTemporalWindowSplitPercentageMode:
+    """Tests for per-series percentage mode."""
+
+    def test_different_lifespans_proportional(self):
+        """Each series should get ~70% train regardless of when it starts."""
+        enc_len, pred_len = 2, 1
+
+        # Series A: timestamps 0-23,  Series B: timestamps 100-123
+        ts_a = np.arange(0, 24)
+        ts_b = np.arange(100, 124)
+
+        windows_a = [
+            (0, s, enc_len, pred_len) for s in range(24 - enc_len - pred_len + 1)
+        ]
+        windows_b = [
+            (1, s, enc_len, pred_len) for s in range(24 - enc_len - pred_len + 1)
+        ]
+        windows = windows_a + windows_b
+        series_timestamps = {0: ts_a, 1: ts_b}
+
+        train_w, val_w, test_w = temporal_window_split(
+            windows,
+            (0.7, 0.15, 0.15),
+            series_timestamps,
+        )
+
+        train_series = {w[0] for w in train_w}
+        assert 0 in train_series
+        assert 1 in train_series
+        test_series = {w[0] for w in test_w}
+        assert 0 in test_series, "Series A should have test windows in per-series mode"
+        assert 1 in test_series
