@@ -574,3 +574,38 @@ def test_init_wraps_scalers_in_adapter_and_sets_flags():
     assert dm._feature_scalers_fitted is False
     assert dm._target_normalizer_fitted is False
     assert dm._preprocess_cache == {}
+
+
+def test_fit_scalers_standardizes_train_feature():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    train_idx = torch.arange(len(ds))  # 本单测在全部序列上 fit
+    dm._fit_scalers(train_idx)
+
+    assert dm._feature_scalers_fitted is True
+    # transform 原始 train 列,检查已标准化(~0 均值,~1 标准差)
+    names = dm.time_series_metadata["cols"]["x"]
+    oi = dm.continuous_indices[names.index("x") if "x" in names else 0]
+    raw = torch.cat([ds[i.item()]["x"][:, oi] for i in train_idx], dim=0)
+    scaled = dm._scalers["x"].transform(raw)
+    assert abs(float(scaled.mean())) < 1e-3
+    assert abs(float(scaled.std()) - 1.0) < 1e-2
+
+
+def test_fit_target_normalizer_sets_flag():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    dm._fit_target_normalizer(torch.arange(len(ds)))
+    assert dm._target_normalizer_fitted is True

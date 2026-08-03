@@ -550,6 +550,36 @@ class TslibDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
+    def _fit_target_normalizer(self, train_indices):
+        """Fit the target normalizer on the training targets only."""
+        if self._target_normalizer is None or self._target_normalizer_fitted:
+            return
+        targets = [
+            self.time_series_dataset[idx.item()]["y"] for idx in train_indices
+        ]
+        if not targets:
+            return
+        self._target_normalizer.fit(torch.cat(targets, dim=0))
+        self._target_normalizer_fitted = True
+
+    def _fit_scalers(self, train_indices):
+        """Fit each named continuous-feature scaler on the training data only."""
+        if not self._scalers or not self.continuous_indices:
+            return
+        names = self.time_series_metadata["cols"]["x"]
+        for orig_idx in self.continuous_indices:
+            name = names[orig_idx]
+            if name not in self._scalers:
+                continue
+            column = [
+                self.time_series_dataset[idx.item()]["x"][:, orig_idx]
+                for idx in train_indices
+            ]
+            if not column:
+                continue
+            self._scalers[name].fit(torch.cat(column, dim=0))
+        self._feature_scalers_fitted = True
+
     def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
         """
         Process the the time series data at the given index, before feeding it
