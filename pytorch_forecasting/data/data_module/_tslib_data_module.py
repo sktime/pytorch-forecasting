@@ -793,6 +793,11 @@ class TslibDataModule(LightningDataModule):
                 self._train_size + self._val_size : total_series
             ]
 
+        self._preprocess_cache = {}
+        if stage is None or stage == "fit":
+            self._fit_target_normalizer(self._train_indices)
+            self._fit_scalers(self._train_indices)
+
         if stage == "fit" or stage is None:
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
                 self._train_windows = self._create_windows(self._train_indices)

@@ -665,3 +665,23 @@ def test_preprocess_data_scales_and_caches():
     # cache: second call must return the exact same object
     out2 = dm._preprocess_data(0)
     assert out1 is out2
+
+
+def test_setup_fit_produces_scaled_samples():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    assert dm._feature_scalers_fitted is True
+    assert dm._target_normalizer_fitted is True
+
+    # retrieve encoder continuous features; x should be standardized
+    x, _ = dm.train_dataset[0]
+    hist = x["history_cont"]
+    assert abs(float(hist[:, 0].mean())) < 5.0  # unscaled value was ~100
