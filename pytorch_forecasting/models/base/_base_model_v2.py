@@ -179,21 +179,19 @@ class BaseModel(LightningModule):
             If True, use loss metric for conversion.
             If False, take mean over prediction directly.
         """
-        pred = out["prediction"]
-        pred_list = pred if isinstance(pred, (list, tuple)) else [pred]
-        pred_input = pred_list[0] if len(pred_list) == 1 else pred_list
+        pred = self._coerce_y_hat_for_loss(out["prediction"])
 
         if not use_metric:
             if isinstance(self.loss, MultiLoss):
                 return [
-                    getattr(Metric, metric_fn_name)(loss, pred_list[idx], **kwargs)
-                    for idx, loss in enumerate(self.loss)
+                    getattr(Metric, metric_fn_name)(sub_loss, pred[idx], **kwargs)
+                    for idx, sub_loss in enumerate(self.loss)
                 ]
-            pred_out = getattr(Metric, metric_fn_name)(self.loss, pred_input, **kwargs)
+            pred_out = getattr(Metric, metric_fn_name)(self.loss, pred, **kwargs)
             return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
 
         bound_fn = getattr(self.loss, metric_fn_name)
-        pred_out = bound_fn(pred_input, **kwargs) if kwargs else bound_fn(pred_input)
+        pred_out = bound_fn(pred, **kwargs) if kwargs else bound_fn(pred)
         return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
 
     def to_prediction(
@@ -229,20 +227,67 @@ class BaseModel(LightningModule):
         return self._convert_output(out, "to_quantiles", use_metric, **kwargs)
 
     def _coerce_targets_for_loss(self, y):
-        """
-        Coerce target outputs to match loss function expectations.
-        """
+        """Coerce target outputs to match loss function expectations."""
         y_targets, y_weights = y
-        if isinstance(y_targets, list) and len(y_targets) == 1:
-            return y_targets[0], y_weights
-        return y_targets, y_weights
+        if not isinstance(y_targets, (list, tuple)):
+            y_targets = [y_targets]
+        n_targets = len(y_targets)
+
+        if isinstance(self.loss, MultiLoss):
+            if len(self.loss) != n_targets:
+                raise ValueError(
+                    f"MultiLoss holds {len(self.loss)} metrics but the data "
+                    f"provides {n_targets} target(s) - these have to match."
+                )
+            return list(y_targets), y_weights
+
+        if n_targets > 1:
+            raise ValueError(
+                f"The data provides {n_targets} targets, which requires the loss "
+                f"to be a MultiLoss, but found {self.loss.__class__.__name__}. "
+                f"Use MultiLoss([...]) with one metric per target."
+            )
+        return y_targets[0], y_weights
+
+    def _coerce_y_hat_for_loss(self, y_hat):
+        """Coerce the network output to match loss function expectations."""
+        if not isinstance(self.loss, MultiLoss):
+            if isinstance(y_hat, (list, tuple)):
+                if len(y_hat) != 1:
+                    raise ValueError(
+                        f"The model returned {len(y_hat)} predictions, which "
+                        f"requires the loss to be a MultiLoss, but found "
+                        f"{self.loss.__class__.__name__}."
+                    )
+                return y_hat[0]
+            return y_hat
+
+        n_metrics = len(self.loss)
+        if isinstance(y_hat, (list, tuple)):
+            if len(y_hat) != n_metrics:
+                raise ValueError(
+                    f"MultiLoss holds {n_metrics} metrics but the model returned "
+                    f"{len(y_hat)} predictions - these have to match."
+                )
+            return list(y_hat)
+
+        if n_metrics == 1:
+            return [y_hat]
+        if y_hat.size(-1) != n_metrics:
+            raise ValueError(
+                f"MultiLoss holds {n_metrics} metrics, so the model has to return "
+                f"one prediction per target, either as a list or as a tensor whose "
+                f"last dimension is {n_metrics}, but got shape "
+                f"{tuple(y_hat.shape)}."
+            )
+        return list(torch.split(y_hat, 1, dim=-1))
 
     def _step(self, batch, batch_idx):
         """Shared step logic for train, val, and test."""
         x, y = batch
         y = self._coerce_targets_for_loss(y)
         y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
+        y_hat = self._coerce_y_hat_for_loss(y_hat_dict["prediction"])
         loss = self.loss(y_hat, y)
         return {"loss": loss, "y_hat": y_hat, "y": y}
 
@@ -295,11 +340,7 @@ class BaseModel(LightningModule):
             Predicted output tensor.
         """
         x, _ = batch
-        y_hat = self(x)
-        pred = y_hat["prediction"]
-        if not isinstance(pred, (list, tuple)):
-            y_hat["prediction"] = [pred]
-        return y_hat
+        return self(x)
 
     def configure_optimizers(self) -> dict:
         """
@@ -395,7 +436,8 @@ class BaseModel(LightningModule):
             return
 
         target, weight = y
-        is_multi = isinstance(target, list)
+
+        is_multi = isinstance(self.loss, MultiLoss)
         y_hat_list = y_hat if is_multi else [y_hat]
         target_list = target if is_multi else [target]
 

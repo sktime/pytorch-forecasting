@@ -147,10 +147,6 @@ class TslibBaseModel(BaseModel):
 
         if "target" in x:
             y_hat["target"] = x["target"]
-        pred = y_hat["prediction"]
-
-        if not isinstance(pred, (list, tuple)):
-            y_hat["prediction"] = [pred]
         return y_hat
 
     def transform_output(

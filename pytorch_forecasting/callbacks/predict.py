@@ -61,6 +61,8 @@ class PredictCallback(BasePredictionWriter):
 
         if self.mode == "raw":
             processed_output = outputs
+            if not isinstance(processed_output["prediction"], (list, tuple)):
+                processed_output["prediction"] = [processed_output["prediction"]]
         elif self.mode == "prediction":
             processed_output = pl_module.to_prediction(outputs, **self.mode_kwargs)
         elif self.mode == "quantiles":
