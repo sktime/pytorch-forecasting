@@ -46,7 +46,7 @@ class Base_pkg(_BasePtForecasterV2):
     """
 
     _CFG_KEYS = ("model_cfg", "datamodule_cfg", "trainer_cfg")
-    _DATAMODULE_KEYS = ("scalers", "target_normalizer")
+    _DATAMODULE_KEYS = ("scaler", "target_normalizer", "datamodule_metadata")
 
     def __init__(
         self,
@@ -72,6 +72,7 @@ class Base_pkg(_BasePtForecasterV2):
         self.model = None
         self.trainer = None
         self.datamodule = None
+        self._pending_dm_artifacts = {}
 
     @staticmethod
     def _load_config(
@@ -155,7 +156,7 @@ class Base_pkg(_BasePtForecasterV2):
             raise ValueError("`datamodule_cfg` must be provided to build a datamodule.")
         datamodule_cls = self.get_datamodule_cls()
         dm = datamodule_cls(data, **self.datamodule_cfg)
-        if hasattr(self, "_pending_dm_artifacts"):
+        if self._pending_dm_artifacts:
             dm.load_artifacts(self._pending_dm_artifacts)
             self._pending_dm_artifacts = {}
 

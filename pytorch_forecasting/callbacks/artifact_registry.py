@@ -124,7 +124,8 @@ class _ArtifactRegistry:
 
         value = artifacts.get(key)
         if value is None:
-            raise KeyError(f"Key '{key}' not found in {registry_path}.")
+            warnings.warn(f"Key '{key}' not found in {registry_path}.")
+            return None
 
         return {key: value}
 

@@ -805,9 +805,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             return x, y
 
     _ARTIFACT_SPECS = [
-        ("scaler", "_scalers", "scalers"),
-        ("target_normalizer", "_target_normalizer", "scalers"),
-        ("datamodule_metadata", "_metadata", "metadata"),
+        ("scaler", "_scalers", "scalers", "_feature_scalers_fitted"),
+        (
+            "target_normalizer",
+            "_target_normalizer",
+            "scalers",
+            "_target_normalizer_fitted",
+        ),
+        ("datamodule_metadata", "_metadata", "metadata", None),
     ]
 
     def save_artifacts(
@@ -842,7 +847,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         artifact_dir = Path(artifact_dir)
         saved_artifacts: dict[str, Path] = {}
 
-        for key, attr, subdir in self._ARTIFACT_SPECS:
+        for key, attr, subdir, fitted_attr in self._ARTIFACT_SPECS:
             if key in exclude:
                 continue
 
@@ -852,6 +857,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     f"No {key} found in the datamodule to save. "
                     f"If you expected {key} to be saved, ensure it is "
                     "passed to the datamodule constructor."
+                )
+                continue
+
+            if fitted_attr is not None and not getattr(self, fitted_attr):
+                warnings.warn(
+                    f"{key} has not been fitted, so it is not saved -- there are "
+                    "no fitted parameters to persist. It will be rebuilt from "
+                    "`datamodule_cfg` on load. Call `setup(stage='fit')` before "
+                    "saving if you expected fitted values here."
                 )
                 continue
 
@@ -873,9 +887,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             Dictionary mapping artifact names to their file paths.
             Expected keys (all optional):
 
-            - ``"scalers"``: Path to pickled scalers dict.
+            - ``"scaler"``: Path to pickled scalers dict.
             - ``"target_normalizer"``: Path to pickled target normalizer.
             - ``"datamodule_metadata"``: Path to pickled metadata dict.
+
+            Any artifact that is loaded is marked as fitted, since
+            ``save_artifacts`` only persists fitted state.
 
         exclude : list[str], default=None
             The list of artifacts that need to be excluded from saving.
@@ -902,7 +919,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         UserWarning
             If a key is present in ``artifacts`` but the file doesn't exist.
         """
-        for key, attr, _ in self._ARTIFACT_SPECS:
+        for key, attr, _, fitted_attr in self._ARTIFACT_SPECS:
             path = artifacts.get(key)
             if path is None:
                 continue
@@ -914,6 +931,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             with open(path, "rb") as f:
                 setattr(self, attr, pickle.load(f))  # noqa: S301
+
+            if fitted_attr is not None:
+                setattr(self, fitted_attr, True)
+
+        self._build_cont_scalers()
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
