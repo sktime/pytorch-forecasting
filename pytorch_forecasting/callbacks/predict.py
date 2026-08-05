@@ -102,19 +102,15 @@ class PredictCallback(BasePredictionWriter):
             Tensor of shape ``(batch_size, 2)``  whose columns are the group identifier
              of the series and the first position predicted by the window.
         """
-        time_key = next(
-            (k for k in ("decoder_time_idx", "future_time_idx") if k in x), None
-        )
-
         groups = x["groups"]
         if groups.ndim == 1:
             groups = groups.unsqueeze(-1)
 
-        time_idx = x[time_key]
-        if time_idx.ndim == 1:
-            time_idx = time_idx.unsqueeze(-1)
+        start_idx = x["prediction_start_idx"]
+        if start_idx.ndim == 1:
+            start_idx = start_idx.unsqueeze(-1)
 
-        return torch.cat([groups.long(), time_idx[:, :1].long()], dim=-1)
+        return torch.cat([groups.long(), start_idx[:, :1].long()], dim=-1)
 
     def on_predict_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         """Collate all batch results into final tensors."""
