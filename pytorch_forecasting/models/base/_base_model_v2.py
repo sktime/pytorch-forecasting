@@ -206,6 +206,8 @@ class BaseModel(LightningModule):
         use_metric : bool, default = False
             If True, use loss metric for conversion.
             If False, take mean over prediction directly.
+        **kwargs
+            Passed on to the metric's ``to_prediction``.
         """
         return self._convert_output(out, "to_prediction", use_metric, **kwargs)
 
@@ -221,9 +223,9 @@ class BaseModel(LightningModule):
         use_metric : bool, default = False
             If True, use loss metric for conversion.
             If False, take mean over prediction directly.
+        **kwargs
+            Passed on to the metric's ``to_quantiles``.
         """
-        if not use_metric:
-            kwargs.setdefault("quantiles", self.loss.quantiles)
         return self._convert_output(out, "to_quantiles", use_metric, **kwargs)
 
     def _coerce_targets_for_loss(self, y):
