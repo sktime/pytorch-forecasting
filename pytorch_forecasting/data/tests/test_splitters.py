@@ -142,8 +142,9 @@ class TestTemporalWindowSplit:
         assert test_w == []
 
     def test_non_overlapping_series(self):
-        """When 2 series aren't overlapping, per-series split applies."""
+        """Non-overlapping series use a global cutoff across the combined range."""
         enc_len, pred_len = 2, 1
+        # Series A: timestamps 0-23, Series B: timestamps 24-47
         ts_a = np.arange(0, 24)
         ts_b = np.arange(24, 48)
 
@@ -163,11 +164,8 @@ class TestTemporalWindowSplit:
         total = len(train_w) + len(val_w) + len(test_w)
         assert total == len(windows)
 
-        for s_idx in [0, 1]:
-            s_train = [w for w in train_w if w[0] == s_idx]
-            s_test = [w for w in test_w if w[0] == s_idx]
-            assert len(s_train) > 0, f"Series {s_idx} should have train windows"
-            assert len(s_test) > 0, f"Series {s_idx} should have test windows"
+        assert len(train_w) > 0
+        assert len(test_w) > 0
 
 
 class TestTemporalWindowSplitAbsoluteMode:
@@ -230,10 +228,10 @@ class TestTemporalWindowSplitAbsoluteMode:
 
 
 class TestTemporalWindowSplitPercentageMode:
-    """Tests for per-series percentage mode."""
+    """Tests for global percentage mode."""
 
-    def test_different_lifespans_proportional(self):
-        """Each series should get ~70% train regardless of when it starts."""
+    def test_different_lifespans_global_cutoff(self):
+        """A global cutoff is applied across all series uniformly."""
         enc_len, pred_len = 2, 1
 
         # Series A: timestamps 0-23,  Series B: timestamps 100-123
@@ -255,9 +253,74 @@ class TestTemporalWindowSplitPercentageMode:
             series_timestamps,
         )
 
-        train_series = {w[0] for w in train_w}
-        assert 0 in train_series
-        assert 1 in train_series
-        test_series = {w[0] for w in test_w}
-        assert 0 in test_series, "Series A should have test windows in per-series mode"
-        assert 1 in test_series
+        total = len(train_w) + len(val_w) + len(test_w)
+        assert total == len(windows)
+
+        assert len(train_w) > 0
+        assert len(test_w) > 0
+
+    def test_global_cutoff_consistency(self):
+        """All train windows must end before all val/test windows globally."""
+        enc_len, pred_len = 3, 2
+        ts_a = np.arange(0, 20)
+        ts_b = np.arange(10, 30)
+
+        windows_a = [
+            (0, s, enc_len, pred_len) for s in range(20 - enc_len - pred_len + 1)
+        ]
+        windows_b = [
+            (1, s, enc_len, pred_len) for s in range(20 - enc_len - pred_len + 1)
+        ]
+        windows = windows_a + windows_b
+        series_timestamps = {0: ts_a, 1: ts_b}
+
+        train_w, val_w, test_w = temporal_window_split(
+            windows, (0.7, 0.15, 0.15), series_timestamps
+        )
+
+        def get_end(w):
+            s_idx, start, enc, pred = w
+            end = min(start + enc + pred - 1, len(series_timestamps[s_idx]) - 1)
+            return series_timestamps[s_idx][end]
+
+        if train_w and val_w:
+            max_train = max(get_end(w) for w in train_w)
+            min_val = min(get_end(w) for w in val_w)
+            assert max_train <= min_val
+
+        if val_w and test_w:
+            max_val = max(get_end(w) for w in val_w)
+            min_test = min(get_end(w) for w in test_w)
+            assert max_val <= min_test
+
+    def test_datetime_timestamps(self):
+        """Percentage split should work with datetime64 timestamps."""
+        timestamps = np.arange("2023-01", "2023-07", dtype="datetime64[M]")
+        enc_len, pred_len = 2, 1
+        windows = [
+            (0, s, enc_len, pred_len)
+            for s in range(len(timestamps) - enc_len - pred_len + 1)
+        ]
+        series_timestamps = {0: timestamps}
+
+        train_w, val_w, test_w = temporal_window_split(
+            windows, (0.6, 0.2, 0.2), series_timestamps
+        )
+
+        total = len(train_w) + len(val_w) + len(test_w)
+        assert total == len(windows)
+        assert len(train_w) > 0
+
+    def test_warning_on_conflicting_params(self):
+        """A warning should fire when both cutoffs and custom split are given."""
+        timestamps = np.arange(0, 10)
+        windows = [(0, 0, 2, 1)]
+        series_timestamps = {0: timestamps}
+
+        with pytest.warns(UserWarning, match="temporal_cutoffs"):
+            temporal_window_split(
+                windows,
+                (0.5, 0.25, 0.25),
+                series_timestamps,
+                temporal_cutoffs={"end_train": 5.0},
+            )

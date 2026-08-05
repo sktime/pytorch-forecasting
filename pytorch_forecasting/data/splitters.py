@@ -1,4 +1,5 @@
 from typing import Any
+from warnings import warn
 
 import numpy as np
 import torch
@@ -107,8 +108,8 @@ def temporal_window_split(
     - **Absolute mode** (when ``temporal_cutoffs`` is provided):
       Uses global timestamp boundaries. All series share the same cutoffs.
     - **Percentage mode** (default, when ``temporal_cutoffs`` is None):
-      Computes cutoffs per-series based on each series' own time range,
-      so each series contributes proportionally to train/val/test.
+      Computes cutoffs from a global timeline across all series,
+      ensuring a single boundary that prevents cross-series leakage.
     Parameters
     ----------
     windows : list of (series_idx, start_idx, enc_len, pred_len)
@@ -133,6 +134,14 @@ def temporal_window_split(
     """
     if not windows:
         return [], [], []
+    if temporal_cutoffs is not None and train_val_test_split != (0.7, 0.15, 0.15):
+        warn(
+            "Both 'temporal_cutoffs' and a custom 'train_val_test_split' were "
+            "provided. 'temporal_cutoffs' takes precedence and the percentage "
+            "split will be ignored.",
+            UserWarning,
+            stacklevel=2,
+        )
     if temporal_cutoffs is not None:
         return _split_absolute(windows, series_timestamps, temporal_cutoffs)
     return _split_percentage(windows, series_timestamps, train_val_test_split)
@@ -141,16 +150,16 @@ def temporal_window_split(
 def _get_window_end_time(
     w: tuple[int, int, int, int],
     series_timestamps: dict[int, np.ndarray],
-) -> float:
+):
     """Compute the real-world end timestamp of a window.
-    Why end_time? Because data leakage is about whether the MODEL
-    has seen future information. The window's last timestep is the
-    latest point it 'sees', so that's what we compare against cutoffs.
+
+    Returns the raw timestamp value (int, float, or datetime64) so that
+    comparisons work regardless of the timestamp dtype.
     """
     series_idx, start_idx, enc_len, pred_len = w
     timestamps = series_timestamps[series_idx]
     end_idx = min(start_idx + enc_len + pred_len - 1, len(timestamps) - 1)
-    return float(timestamps[end_idx])
+    return timestamps[end_idx]
 
 
 def _split_absolute(
@@ -163,6 +172,7 @@ def _split_absolute(
     list[tuple[int, int, int, int]],
 ]:
     """Absolute mode: split using user-specified timestamp boundaries.
+
     The user says: "train ends at time X, test starts at time Y."
     Everything between X and Y is validation.
     """
@@ -193,43 +203,42 @@ def _split_percentage(
     list[tuple[int, int, int, int]],
     list[tuple[int, int, int, int]],
 ]:
-    """Percentage mode: compute cutoffs per-series from its own time range."""
-    series_cutoffs = {}
-    for s_idx, timestamps in series_timestamps.items():
-        t_min = float(np.min(timestamps))
-        t_max = float(np.max(timestamps))
-        t_range = t_max - t_min
-        if t_range == 0:
-            series_cutoffs[s_idx] = None
-        else:
-            train_cutoff = t_min + train_val_test_split[0] * t_range
-            val_cutoff = train_cutoff + train_val_test_split[1] * t_range
-            series_cutoffs[s_idx] = (train_cutoff, val_cutoff)
-    all_zero = all(v is None for v in series_cutoffs.values())
+    """Percentage mode: compute global cutoffs from the unified timeline.
 
-    if all_zero:
+    Pools all timestamps across every series into a single sorted timeline,
+    then picks cutoff values at the requested percentile positions. This
+    ensures a single global boundary so no cross-series leakage can occur,
+    and works with any comparable timestamp type (int, float, datetime64).
+    """
+    all_ts = np.concatenate(list(series_timestamps.values()))
+    global_timeline = np.unique(all_ts)
+
+    if len(global_timeline) <= 1:
         total_w = len(windows)
         train_end = int(np.round(train_val_test_split[0] * total_w))
-
         if train_end == 0 and train_val_test_split[0] > 0 and total_w > 0:
             train_end = 1
         val_end = train_end + int(np.round(train_val_test_split[1] * total_w))
         val_end = min(val_end, total_w)
         return windows[:train_end], windows[train_end:val_end], windows[val_end:]
 
+    n = len(global_timeline)
+    train_pos = min(int(np.round(train_val_test_split[0] * n)), n - 1)
+    val_pos = min(
+        int(np.round((train_val_test_split[0] + train_val_test_split[1]) * n)),
+        n - 1,
+    )
+
+    train_cutoff = global_timeline[train_pos]
+    val_cutoff = global_timeline[val_pos]
+
     train_windows, val_windows, test_windows = [], [], []
     for w in windows:
-        s_idx = w[0]
-        cutoffs = series_cutoffs.get(s_idx)
         end_time = _get_window_end_time(w, series_timestamps)
-        if cutoffs is None:
+        if end_time <= train_cutoff:
             train_windows.append(w)
+        elif end_time <= val_cutoff:
+            val_windows.append(w)
         else:
-            train_cutoff, val_cutoff = cutoffs
-            if end_time <= train_cutoff:
-                train_windows.append(w)
-            elif end_time <= val_cutoff:
-                val_windows.append(w)
-            else:
-                test_windows.append(w)
+            test_windows.append(w)
     return train_windows, val_windows, test_windows
