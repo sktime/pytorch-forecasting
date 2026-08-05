@@ -614,9 +614,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 * ``groups`` : tensor of shape (1,)
                   Group identifier for the time series instance.
                 * ``encoder_time_idx`` : tensor of shape (enc_length,)
-                  Time indices for the encoder sequence.
+                  Positions within the series selected by the encoder window.
                 * ``decoder_time_idx`` : tensor of shape (pred_length,)
-                  Time indices for the decoder sequence.
+                  Positions within the series selected by the decoder window.
                 * ``target_past`` : torch.Tensor of shape (enc_length,)
                   Historical target values for the encoder sequence.
                 * ``target_scale`` : tensor of shape (1,)
@@ -645,6 +645,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             end_idx = start_idx + enc_length + pred_length
             encoder_indices = slice(start_idx, start_idx + enc_length)
             decoder_indices = slice(start_idx + enc_length, end_idx)
+
+            positions = torch.arange(data["length"])
 
             target_past = data["target"][encoder_indices]
 
@@ -753,8 +755,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "decoder_target_lengths": torch.tensor(pred_length),
                 "groups": data["group"],
                 "target_past": target_past,
-                "encoder_time_idx": torch.arange(enc_length),
-                "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
+                "encoder_time_idx": positions[encoder_indices],
+                "decoder_time_idx": positions[decoder_indices],
                 "target_scale": target_scale,
                 "encoder_mask": encoder_mask,
                 "decoder_mask": decoder_mask,

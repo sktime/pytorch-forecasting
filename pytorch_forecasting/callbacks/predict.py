@@ -70,8 +70,8 @@ class PredictCallback(BasePredictionWriter):
 
         self.predictions.append(move_to_device(detach(processed_output), "cpu"))
 
-        # Only pay the detach+copy cost if x or decoder_lengths are actually requested
-        needs_x = any(k in ("x", "decoder_lengths") for k in self.return_info)
+        # Only pay the detach+copy cost for keys that are derived from x
+        needs_x = any(k in ("x", "index", "decoder_lengths") for k in self.return_info)
         x_cpu = move_to_device(detach(x), "cpu") if needs_x else None
 
         for key in self.return_info:
@@ -81,12 +81,40 @@ class PredictCallback(BasePredictionWriter):
                 y_cpu = move_to_device(detach(y[0]), "cpu")
                 self.info[key].append(y_cpu)
             elif key == "index":
-                index_cpu = move_to_device(detach(y[1]), "cpu")
-                self.info[key].append(index_cpu)
+                self.info[key].append(self._extract_index(x_cpu))
             elif key == "decoder_lengths":
                 self.info[key].append(x_cpu["decoder_lengths"])
             else:
                 warn(f"Unknown return_info key: {key}")
+
+    @staticmethod
+    def _extract_index(x: dict[str, torch.Tensor]) -> torch.Tensor:
+        """Build the per-sample index of the predictions in a batch.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Model inputs of the batch, already detached and on cpu.
+
+        Returns
+        -------
+        torch.Tensor
+            Tensor of shape ``(batch_size, 2)``  whose columns are the group identifier
+             of the series and the first position predicted by the window.
+        """
+        time_key = next(
+            (k for k in ("decoder_time_idx", "future_time_idx") if k in x), None
+        )
+
+        groups = x["groups"]
+        if groups.ndim == 1:
+            groups = groups.unsqueeze(-1)
+
+        time_idx = x[time_key]
+        if time_idx.ndim == 1:
+            time_idx = time_idx.unsqueeze(-1)
+
+        return torch.cat([groups.long(), time_idx[:, :1].long()], dim=-1)
 
     def on_predict_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
         """Collate all batch results into final tensors."""

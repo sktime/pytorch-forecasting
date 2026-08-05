@@ -97,9 +97,9 @@ class _TslibDataset(Dataset):
             * ``groups`` : torch.Tensor of shape (1,)
                 Group identifier for the time series instance.
             * ``history_time_idx`` : torch.Tensor of shape (context_length,)
-                Time indices for the encoder sequence.
+                Positions within the series selected by the history window.
             * ``future_time_idx`` : torch.Tensor of shape (prediction_length,)
-                Time indices for the decoder sequence.
+                Positions within the series selected by the future window.
             * ``history_target`` : torch.Tensor of shape (context_length,)
                 Historical target values for the encoder sequence.
             * ``future_target`` : torch.Tensor of shape (prediction_length,)
@@ -142,6 +142,8 @@ class _TslibDataset(Dataset):
         end_idx = start_idx + context_length + prediction_length
         history_indices = slice(start_idx, start_idx + context_length)
         future_indices = slice(start_idx + context_length, end_idx)
+
+        positions = torch.arange(processed_data["target"].shape[0])
 
         metadata = self.data_module.metadata
 
@@ -192,9 +194,6 @@ class _TslibDataset(Dataset):
         history_target = processed_data["target"][history_indices]
         future_target = processed_data["target"][future_indices]
 
-        # history_time_idx = processed_data["timestep"][history_indices]
-        # future_time_idx = processed_data["timestep"][future_indices]
-
         x = {
             "history_cont": history_cont,
             "history_cat": history_cat,
@@ -205,10 +204,8 @@ class _TslibDataset(Dataset):
             "history_mask": history_mask,
             "future_mask": future_mask,
             "groups": processed_data["group"],
-            "history_time_idx": torch.arange(context_length),
-            "future_time_idx": torch.arange(
-                context_length, context_length + prediction_length
-            ),
+            "history_time_idx": positions[history_indices],
+            "future_time_idx": positions[future_indices],
             "history_target": history_target,
             "future_target": future_target,
             "future_target_len": torch.tensor(prediction_length),
