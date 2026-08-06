@@ -116,14 +116,18 @@ class PatchTSTV2(TslibBaseModel):
             PatchTSTFlattenHead,
         )
 
-        if self.context_length <= self.patch_len:
-            raise ValueError(
-                f"Context length ({self.context_length}) must be greater than patch "
-                f"length ({self.patch_len})."
-            )
+        rem = self.context_length % self.patch_len
+        self.pad_len = 0 if rem == 0 else self.patch_len - rem
 
         self.patch_num = int(
-            (self.context_length + self.padding - self.patch_len) / self.stride + 1
+            (
+                self.context_length
+                + self.pad_len
+                + self.padding
+                - self.patch_len
+            )
+            / self.stride
+            + 1
         )
 
         self.enc_in = self.enc_in or self.cont_dim
@@ -185,9 +189,15 @@ class PatchTSTV2(TslibBaseModel):
 
         # Channel Independence: merge Batch and Var dimension
         # [Batch * total_vars, seq_len, 1]
-        enc_in = combined.permute(0, 2, 1).reshape(
-            batch_size * total_vars, 1, self.context_length
-        )
+        seq_len = combined.size(1)
+        enc_in = combined.permute(0, 2, 1).reshape(batch_size * total_vars, 1, seq_len)
+
+        # Pad sequence if necessary to match the expected patch_num
+        total_pad_len = max(0, self.context_length + self.pad_len - seq_len)
+        if total_pad_len > 0:
+            import torch.nn.functional as F
+
+            enc_in = F.pad(enc_in, (0, total_pad_len))
 
         # Embedding
         # [Batch * total_vars, patch_num, d_model]

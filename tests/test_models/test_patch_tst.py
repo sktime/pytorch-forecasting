@@ -395,3 +395,56 @@ def test_model_forward_output(dataloaders_with_covariates):
         assert (
             pred_tensor.shape == expected_shape
         ), f"MultiLoss target {i}: Expected {expected_shape}, got {pred_tensor.shape}"
+
+
+def test_non_divisible_sequence_length():
+    """
+    Test PatchTST when the sequence length is not a multiple of patch_size.
+    This simulates edge cases where max_encoder_length is not perfectly
+    divisible by patch_len, verifying the internal padding logic prevents errors.
+    """
+    # Create dataset with max_encoder_length=13 (not divisible by 4)
+    data = pd.DataFrame(
+        {
+            "target": np.random.rand(100),
+            "group_id": np.zeros(100),
+            "time_idx": np.arange(100),
+        }
+    )
+    dataset = TimeSeriesDataSet(
+        data=data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=13,
+        max_prediction_length=5,
+        time_varying_unknown_reals=["target"],
+        time_varying_known_reals=[],
+    )
+
+    # patch_len=4, stride=4. 13 % 4 = 1, so it requires padding
+    forecaster = PatchTST.from_dataset(
+        dataset,
+        patch_len=4,
+        stride=4,
+        d_model=16,
+        n_heads=2,
+        e_layers=1,
+    )
+
+    dataloader = dataset.to_dataloader(train=False, batch_size=4)
+    batch = next(iter(dataloader))
+    x, y = batch
+
+    # The model should run without RuntimeError
+    # (maximum size for tensor at dimension 2 is x but size is y)
+    with torch.no_grad():
+        out = forecaster(x)
+
+    prediction = out["prediction"]
+
+    # Verify final shape matches exactly [batch_size, prediction_length, n_quantiles]
+    assert prediction.shape == (x["encoder_cont"].shape[0], 5, 1), (
+        f"Expected prediction shape (batch_size, prediction_length, 1), "
+        f"but got {prediction.shape}"
+    )

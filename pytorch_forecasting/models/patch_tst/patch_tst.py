@@ -8,6 +8,7 @@ import warnings
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
@@ -142,10 +143,17 @@ class PatchTST(BaseModelWithCovariates):
         )
 
         # compute number of patches
-        seq_len = self.hparams.context_length
+        rem = self.hparams.context_length % self.hparams.patch_len
+        self.pad_len = 0 if rem == 0 else self.hparams.patch_len - rem
+
         self.patch_num = (
             int(
-                (seq_len + self.hparams.padding_patch - self.hparams.patch_len)
+                (
+                    self.hparams.context_length
+                    + self.pad_len
+                    + self.hparams.padding_patch
+                    - self.hparams.patch_len
+                )
                 / self.hparams.stride
             )
             + 1
@@ -267,6 +275,13 @@ class PatchTST(BaseModelWithCovariates):
         enc_in = input_vector.permute(0, 2, 1).reshape(
             batch_size * total_vars, 1, seq_len
         )
+
+        # Pad sequence if necessary to match the expected patch_num
+        # This handles cases where seq_len is not perfectly divisible by patch_len
+        # or if a batch sequence is shorter than context_length.
+        total_pad_len = max(0, self.hparams.context_length + self.pad_len - seq_len)
+        if total_pad_len > 0:
+            enc_in = F.pad(enc_in, (0, total_pad_len))
 
         # [Batch * total_vars, PatchNum, d_model]
         enc_out = self.patch_embedding(enc_in)
