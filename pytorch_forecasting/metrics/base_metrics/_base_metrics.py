@@ -819,21 +819,21 @@ class MultiHorizonMetric(Metric):
     def __init__(self, reduction: str = "mean", **kwargs) -> None:
         super().__init__(reduction=reduction, **kwargs)
         if reduction == "none":
-            default_losses = default_lengths = []
+            default_losses, default_lengths = [], []
             dist_reduce_fx = "cat"
         else:
-            default_losses = 0.0
-            default_lengths = 0
+            default_losses = torch.tensor(0.0, dtype=torch.float)
+            default_lengths = torch.tensor(0, dtype=torch.long)
             dist_reduce_fx = "sum"
 
         self.add_state(
             "losses",
-            default=torch.tensor(default_losses, dtype=torch.float),
+            default=default_losses,
             dist_reduce_fx=dist_reduce_fx,
         )
         self.add_state(
             "lengths",
-            default=torch.tensor(default_lengths, dtype=torch.long),
+            default=default_lengths,
             dist_reduce_fx=dist_reduce_fx,
         )
 
@@ -893,12 +893,17 @@ class MultiHorizonMetric(Metric):
     def _update_losses_and_lengths(self, losses: torch.Tensor, lengths: torch.Tensor):
         losses = self.mask_losses(losses, lengths)
         if self.reduction == "none":
-            if self.losses.ndim == 0:
-                self.losses = losses
-                self.lengths = lengths
+            if isinstance(self.losses, list):
+                self.losses.append(losses)
+                self.lengths.append(lengths)
             else:
-                self.losses = torch.cat([self.losses, losses], dim=0)
-                self.lengths = torch.cat([self.lengths, lengths], dim=0)
+                # Fallback in case state has been automatically concatenated
+                if self.losses.ndim == 0:
+                    self.losses = losses
+                    self.lengths = lengths
+                else:
+                    self.losses = torch.cat([self.losses, losses], dim=0)
+                    self.lengths = torch.cat([self.lengths, lengths], dim=0)
         else:
             losses = losses.sum()
             if not torch.isfinite(losses):
@@ -908,7 +913,17 @@ class MultiHorizonMetric(Metric):
             self.lengths = self.lengths + lengths.sum()
 
     def compute(self):
-        loss = self.reduce_loss(self.losses, lengths=self.lengths)
+        losses = self.losses
+        lengths = self.lengths
+        if isinstance(losses, list):
+            if len(losses) > 0:
+                losses = torch.cat(losses, dim=0)
+                lengths = torch.cat(lengths, dim=0)
+            else:
+                losses = torch.empty((0,), dtype=torch.float, device=self.device)
+                lengths = torch.empty((0,), dtype=torch.long, device=self.device)
+
+        loss = self.reduce_loss(losses, lengths=lengths)
         return loss
 
     def mask_losses(
