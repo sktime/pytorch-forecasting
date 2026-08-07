@@ -147,6 +147,66 @@ def temporal_window_split(
     return _split_percentage(windows, series_timestamps, train_val_test_split)
 
 
+def group_time_split(
+    windows: list[tuple[int, int, int, int]],
+    series_timestamps: dict[int, np.ndarray],
+    train_val_test_split: tuple[float, float, float],
+    group_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
+) -> tuple[
+    list[tuple[int, int, int, int]],
+    list[tuple[int, int, int, int]],
+    list[tuple[int, int, int, int]],
+]:
+    """Group-Time-Split: First split by group, then temporally within train groups.
+
+    Phase 1 randomly assigns groups to train,val and test. Phase 2 applies a
+    temporal percentage split on windows that belong to train groups only.
+    Windows from val and test groups are held out entirely, so the model never
+    sees those groups during training,testing generalization to new groups.
+
+    Parameters
+    ----------
+    windows : list of (series_idx, start_idx, enc_len, pred_len)
+        All sliding windows across all series.
+    series_timestamps : dict mapping series_idx to np.ndarray of timestamps
+    train_val_test_split : temporal split ratios for train group only
+    group_split : group assignment ratios for Phase 1
+
+    Returns
+    -------
+    train_windows, val_windows, test_windows
+    """
+    if not windows:
+        return [], [], []
+
+    all_series = sorted(series_timestamps.keys())
+    total_groups = len(all_series)
+    train_group_ids, val_group_ids, test_group_ids = random_series_split(
+        total_groups, group_split
+    )
+
+    train_groups = {all_series[i] for i in train_group_ids.tolist()}
+    val_groups = {all_series[i] for i in val_group_ids.tolist()}
+    test_groups = {all_series[i] for i in test_group_ids.tolist()}
+
+    train_group_windows = [w for w in windows if w[0] in train_groups]
+    val_group_windows = [w for w in windows if w[0] in val_groups]
+    test_group_windows = [w for w in windows if w[0] in test_groups]
+
+    train_group_ts = {
+        s_idx: ts for s_idx, ts in series_timestamps.items() if s_idx in train_groups
+    }
+
+    if train_group_windows and train_group_ts:
+        t_win, v_win, te_win = _split_percentage(
+            train_group_windows, train_group_ts, train_val_test_split
+        )
+    else:
+        t_win, v_win, te_win = [], [], []
+
+    return t_win, v_win + val_group_windows, te_win + test_group_windows
+
+
 def _get_window_end_time(
     w: tuple[int, int, int, int],
     series_timestamps: dict[int, np.ndarray],
@@ -203,17 +263,28 @@ def _split_percentage(
     list[tuple[int, int, int, int]],
     list[tuple[int, int, int, int]],
 ]:
-    """Percentage mode: compute global cutoffs from the unified timeline.
+    """Percentage mode: compute cutoffs per series from each series' own timeline.
 
-    Pools all timestamps across every series into a single sorted timeline,
-    then picks cutoff values at the requested percentile positions. This
-    ensures a single global boundary so no cross-series leakage can occur,
-    and works with any comparable timestamp type (int, float, datetime64).
+    For each series, picks cutoff values at the requested percentile
+    positions within that series' unique timestamps. This ensures each
+    series contributes proportionally to train/val/test regardless of
+    its absolute timestamp range.
     """
-    all_ts = np.concatenate(list(series_timestamps.values()))
-    global_timeline = np.unique(all_ts)
+    series_cutoffs: dict[int, tuple | None] = {}
+    for s_idx, timestamps in series_timestamps.items():
+        unique_ts = np.unique(timestamps)
+        n = len(unique_ts)
+        if n <= 1:
+            series_cutoffs[s_idx] = None
+            continue
+        train_pos = min(int(np.round(train_val_test_split[0] * n)), n - 1)
+        val_pos = min(
+            int(np.round((train_val_test_split[0] + train_val_test_split[1]) * n)),
+            n - 1,
+        )
+        series_cutoffs[s_idx] = (unique_ts[train_pos], unique_ts[val_pos])
 
-    if len(global_timeline) <= 1:
+    if all(v is None for v in series_cutoffs.values()):
         total_w = len(windows)
         train_end = int(np.round(train_val_test_split[0] * total_w))
         if train_end == 0 and train_val_test_split[0] > 0 and total_w > 0:
@@ -222,23 +293,21 @@ def _split_percentage(
         val_end = min(val_end, total_w)
         return windows[:train_end], windows[train_end:val_end], windows[val_end:]
 
-    n = len(global_timeline)
-    train_pos = min(int(np.round(train_val_test_split[0] * n)), n - 1)
-    val_pos = min(
-        int(np.round((train_val_test_split[0] + train_val_test_split[1]) * n)),
-        n - 1,
-    )
-
-    train_cutoff = global_timeline[train_pos]
-    val_cutoff = global_timeline[val_pos]
-
     train_windows, val_windows, test_windows = [], [], []
     for w in windows:
+        s_idx = w[0]
+        cutoffs = series_cutoffs.get(s_idx)
         end_time = _get_window_end_time(w, series_timestamps)
-        if end_time <= train_cutoff:
+
+        if cutoffs is None:
             train_windows.append(w)
-        elif end_time <= val_cutoff:
-            val_windows.append(w)
         else:
-            test_windows.append(w)
+            train_cutoff, val_cutoff = cutoffs
+            if end_time <= train_cutoff:
+                train_windows.append(w)
+            elif end_time <= val_cutoff:
+                val_windows.append(w)
+            else:
+                test_windows.append(w)
+
     return train_windows, val_windows, test_windows

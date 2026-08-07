@@ -137,6 +137,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
         split_strategy: str = "random",
         temporal_cutoffs: dict[str, float] | None = None,
+        group_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
     ):
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
@@ -157,7 +158,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.train_val_test_split = train_val_test_split
         self.split_strategy = split_strategy
         self.temporal_cutoffs = temporal_cutoffs
-
+        self.group_split = group_split
         warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
             "rework of the "
@@ -993,6 +994,26 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._train_indices = torch.arange(total_series)
             self._val_indices = torch.arange(total_series)
             self._test_indices = torch.arange(total_series)
+            warn(
+                "Using split_strategy='temporal': all groups appear in "
+                "every fold. Consider adding the group column as a "
+                "known categorical feature so the model can leverage "
+                "group identity during training.",
+                UserWarning,
+                stacklevel=2,
+            )
+        elif self.split_strategy == "group_time":
+            self._train_indices = torch.arange(total_series)
+            self._val_indices = torch.arange(total_series)
+            self._test_indices = torch.arange(total_series)
+            warn(
+                "Using split_strategy='group_time': validation and test sets "
+                "contain unseen groups. Do NOT use the group column as a "
+                "categorical feature — the model cannot generalize embeddings "
+                "to groups it has never seen during training.",
+                UserWarning,
+                stacklevel=2,
+            )
         else:
             raise ValueError(f"Unknown split_strategy: {self.split_strategy}")
 
@@ -1083,6 +1104,47 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self.val_dataset = self._ProcessedEncoderDecoderDataset(
                         self, self.val_windows, preprocessed, self.add_relative_time_idx
                     )
+                elif self.split_strategy == "group_time":
+                    all_windows = self._create_windows(self._train_indices)
+                    series_timestamps = {}
+                    for idx in self._train_indices:
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
+                        sample = self.time_series_dataset[series_idx]
+                        series_timestamps[series_idx] = sample["t"]
+
+                    from pytorch_forecasting.data.splitters import group_time_split
+
+                    t_win, v_win, te_win = group_time_split(
+                        all_windows,
+                        series_timestamps,
+                        self.train_val_test_split,
+                        self.group_split,
+                    )
+                    self.train_windows, self.val_windows, self.test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
+
+                    all_indices = self._train_indices
+                    preprocessed = {
+                        idx.item(): self._preprocess_data(idx.item())
+                        for idx in all_indices
+                    }
+                    self._train_preprocessed = preprocessed
+                    self._val_preprocessed = preprocessed
+
+                    self.train_dataset = self._ProcessedEncoderDecoderDataset(
+                        self,
+                        self.train_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
+                    )
+                    self.val_dataset = self._ProcessedEncoderDecoderDataset(
+                        self, self.val_windows, preprocessed, self.add_relative_time_idx
+                    )
                 else:
                     self._train_preprocessed, self.train_windows, self.train_dataset = (
                         self._make_dataset(self._train_indices)
@@ -1112,6 +1174,23 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                             self.train_val_test_split,
                             series_timestamps,
                             self.temporal_cutoffs,
+                        )
+                elif self.split_strategy == "group_time":
+                    if not hasattr(self, "test_windows"):
+                        total_series = len(self.time_series_dataset)
+                        all_windows = self._create_windows(torch.arange(total_series))
+                        series_timestamps = {}
+                        for idx in range(total_series):
+                            sample = self.time_series_dataset[idx]
+                            series_timestamps[idx] = sample["t"]
+
+                        from pytorch_forecasting.data.splitters import group_time_split
+
+                        _, _, self.test_windows = group_time_split(
+                            all_windows,
+                            series_timestamps,
+                            self.train_val_test_split,
+                            self.group_split,
                         )
 
                     preprocessed = {

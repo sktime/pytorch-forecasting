@@ -7,6 +7,7 @@ import torch
 from pytorch_forecasting.data.splitters import (
     random_series_split,
     temporal_window_split,
+    group_time_split
 )
 
 
@@ -87,21 +88,6 @@ class TestTemporalWindowSplit:
                     f"max_val={max_val} > min_test={min_test}"
                 )
 
-    def test_all_windows_assigned_overlapping_series(self, overlapping_series_setup):
-        """Verify all windows are assigned and both series appear in train."""
-        windows, series_timestamps = overlapping_series_setup
-
-        train_w, val_w, test_w = temporal_window_split(
-            windows, (0.7, 0.15, 0.15), series_timestamps
-        )
-
-        total = len(train_w) + len(val_w) + len(test_w)
-        assert total == len(windows)
-
-        train_series = {w[0] for w in train_w}
-        assert 0 in train_series
-        assert 1 in train_series
-
     def test_single_series(self):
         """A single series should split correctly by time."""
         enc_len, pred_len = 3, 2
@@ -140,32 +126,6 @@ class TestTemporalWindowSplit:
         assert train_w == []
         assert val_w == []
         assert test_w == []
-
-    def test_non_overlapping_series(self):
-        """Non-overlapping series use a global cutoff across the combined range."""
-        enc_len, pred_len = 2, 1
-        # Series A: timestamps 0-23, Series B: timestamps 24-47
-        ts_a = np.arange(0, 24)
-        ts_b = np.arange(24, 48)
-
-        windows_a = [
-            (0, s, enc_len, pred_len) for s in range(24 - enc_len - pred_len + 1)
-        ]
-        windows_b = [
-            (1, s, enc_len, pred_len) for s in range(24 - enc_len - pred_len + 1)
-        ]
-        windows = windows_a + windows_b
-        series_timestamps = {0: ts_a, 1: ts_b}
-
-        train_w, val_w, test_w = temporal_window_split(
-            windows, (0.7, 0.15, 0.15), series_timestamps
-        )
-
-        total = len(train_w) + len(val_w) + len(test_w)
-        assert total == len(windows)
-
-        assert len(train_w) > 0
-        assert len(test_w) > 0
 
 
 class TestTemporalWindowSplitAbsoluteMode:
@@ -228,39 +188,15 @@ class TestTemporalWindowSplitAbsoluteMode:
 
 
 class TestTemporalWindowSplitPercentageMode:
-    """Tests for global percentage mode."""
+    """Tests for per-series percentage mode."""
 
-    def test_different_lifespans_global_cutoff(self):
-        """A global cutoff is applied across all series uniformly."""
-        enc_len, pred_len = 2, 1
+    def test_per_series_cutoff_ordering(self):
+        """Within each series, train windows must end before val, val before test.
 
-        # Series A: timestamps 0-23,  Series B: timestamps 100-123
-        ts_a = np.arange(0, 24)
-        ts_b = np.arange(100, 124)
-
-        windows_a = [
-            (0, s, enc_len, pred_len) for s in range(24 - enc_len - pred_len + 1)
-        ]
-        windows_b = [
-            (1, s, enc_len, pred_len) for s in range(24 - enc_len - pred_len + 1)
-        ]
-        windows = windows_a + windows_b
-        series_timestamps = {0: ts_a, 1: ts_b}
-
-        train_w, val_w, test_w = temporal_window_split(
-            windows,
-            (0.7, 0.15, 0.15),
-            series_timestamps,
-        )
-
-        total = len(train_w) + len(val_w) + len(test_w)
-        assert total == len(windows)
-
-        assert len(train_w) > 0
-        assert len(test_w) > 0
-
-    def test_global_cutoff_consistency(self):
-        """All train windows must end before all val/test windows globally."""
+        Per-series percentage split no longer guarantees a global cross-series
+        ordering (a train window in Series B may end later than a val window in
+        Series A). The invariant is per-series monotonicity only.
+        """
         enc_len, pred_len = 3, 2
         ts_a = np.arange(0, 20)
         ts_b = np.arange(10, 30)
@@ -283,15 +219,55 @@ class TestTemporalWindowSplitPercentageMode:
             end = min(start + enc + pred - 1, len(series_timestamps[s_idx]) - 1)
             return series_timestamps[s_idx][end]
 
-        if train_w and val_w:
-            max_train = max(get_end(w) for w in train_w)
-            min_val = min(get_end(w) for w in val_w)
-            assert max_train <= min_val
+        for s_idx in (0, 1):
+            s_train = [w for w in train_w if w[0] == s_idx]
+            s_val = [w for w in val_w if w[0] == s_idx]
+            s_test = [w for w in test_w if w[0] == s_idx]
 
-        if val_w and test_w:
-            max_val = max(get_end(w) for w in val_w)
-            min_test = min(get_end(w) for w in test_w)
-            assert max_val <= min_test
+            if s_train and s_val:
+                assert max(get_end(w) for w in s_train) <= min(
+                    get_end(w) for w in s_val
+                ), f"Series {s_idx}: train leaks into val"
+
+            if s_val and s_test:
+                assert max(get_end(w) for w in s_val) <= min(
+                    get_end(w) for w in s_test
+                ), f"Series {s_idx}: val leaks into test"
+
+    def test_per_series_proportional_split(self):
+        """Each series must contribute windows to all three folds.
+
+        This is the maintainer's core requirement: a series with timestamps
+        [1..10] and another with [11..20] should both be split 80/10/10
+        independently, not skewed by a global cutoff.
+        """
+        enc_len, pred_len = 1, 1
+        ts_g1 = np.arange(1, 11)  # [1..10]
+        ts_g2 = np.arange(11, 21)  # [11..20]
+
+        windows_g1 = [(0, s, enc_len, pred_len) for s in range(len(ts_g1) - 1)]
+        windows_g2 = [(1, s, enc_len, pred_len) for s in range(len(ts_g2) - 1)]
+        windows = windows_g1 + windows_g2
+        series_timestamps = {0: ts_g1, 1: ts_g2}
+
+        train_w, val_w, test_w = temporal_window_split(
+            windows, (0.8, 0.1, 0.1), series_timestamps
+        )
+
+        # Both series must appear in train
+        train_series = {w[0] for w in train_w}
+        assert 0 in train_series, "G1 must have training windows"
+        assert 1 in train_series, "G2 must have training windows"
+
+        # Both series must have some windows outside train (val or test)
+        g1_non_train = [w for w in val_w + test_w if w[0] == 0]
+        g2_non_train = [w for w in val_w + test_w if w[0] == 1]
+        assert len(g1_non_train) > 0, "G1 must have val/test windows"
+        assert len(g2_non_train) > 0, "G2 must have val/test windows"
+
+        # All windows must be assigned
+        total = len(train_w) + len(val_w) + len(test_w)
+        assert total == len(windows)
 
     def test_datetime_timestamps(self):
         """Percentage split should work with datetime64 timestamps."""
@@ -324,3 +300,83 @@ class TestTemporalWindowSplitPercentageMode:
                 series_timestamps,
                 temporal_cutoffs={"end_train": 5.0},
             )
+
+class TestGroupTimeSplit:
+    """Tests for the two-phase group-time split."""
+
+    def test_train_and_test_groups_are_disjoint(self):
+        """Groups in train must never appear in test (the core invariant)."""
+        ts = {i: np.arange(0, 20) for i in range(10)}
+        enc, pred = 2, 1
+        windows = [
+            (s_idx, s, enc, pred)
+            for s_idx in range(10)
+            for s in range(20 - enc - pred + 1)
+        ]
+
+        train_w, val_w, test_w = group_time_split(
+            windows, ts, (0.7, 0.15, 0.15), group_split=(0.6, 0.2, 0.2)
+        )
+
+        train_groups = {w[0] for w in train_w}
+        test_only_groups = {w[0] for w in test_w} - train_groups
+
+        assert len(test_only_groups) > 0, "There must be groups entirely held out for test"
+        assert train_groups.isdisjoint(test_only_groups), (
+            "Train and test groups from phase 1 must have no shared groups"
+        )
+
+    def test_all_windows_assigned(self):
+        """Every window must end up in exactly one fold."""
+        ts = {i: np.arange(0, 20) for i in range(5)}
+        enc, pred = 2, 1
+        windows = [
+            (s_idx, s, enc, pred)
+            for s_idx in range(5)
+            for s in range(20 - enc - pred + 1)
+        ]
+
+        train_w, val_w, test_w = group_time_split(
+            windows, ts, (0.7, 0.15, 0.15)
+        )
+        assert len(train_w) + len(val_w) + len(test_w) == len(windows)
+
+    def test_empty_windows(self):
+        """Empty input returns three empty lists."""
+        train_w, val_w, test_w = group_time_split([], {}, (0.7, 0.15, 0.15))
+        assert train_w == val_w == test_w == []
+
+    def test_train_group_windows_are_temporally_ordered(self):
+        """Within train groups, the temporal split must not leak."""
+        ts = {i: np.arange(0, 30) for i in range(6)}
+        enc, pred = 3, 2
+        windows = [
+            (s_idx, s, enc, pred)
+            for s_idx in range(6)
+            for s in range(30 - enc - pred + 1)
+        ]
+
+        train_w, val_w, test_w = group_time_split(
+            windows, ts, (0.7, 0.15, 0.15), group_split=(0.6, 0.2, 0.2)
+        )
+
+        def get_end(w):
+            s_idx, start, enc_, pred_ = w
+            end = min(start + enc_ + pred_ - 1, len(ts[s_idx]) - 1)
+            return ts[s_idx][end]
+
+        train_groups = {w[0] for w in train_w}
+        for s_idx in train_groups:
+            s_train = [w for w in train_w if w[0] == s_idx]
+            s_val = [w for w in val_w if w[0] == s_idx]
+            s_test = [w for w in test_w if w[0] == s_idx]
+
+            if s_train and s_val:
+                assert max(get_end(w) for w in s_train) <= min(
+                    get_end(w) for w in s_val
+                ), f"Series {s_idx}: temporal leakage train→val"
+
+            if s_val and s_test:
+                assert max(get_end(w) for w in s_val) <= min(
+                    get_end(w) for w in s_test
+                ), f"Series {s_idx}: temporal leakage val→test"
