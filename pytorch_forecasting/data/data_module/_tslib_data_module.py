@@ -334,7 +334,7 @@ class TslibDataModule(LightningDataModule):
         )  # noqa: E501
         self.kwargs = kwargs
 
-        warnings.warn(
+        warn(
             "TslibDataModule is experimental and subject to change. "
             "The API is not stable and may change without prior warning.",
             UserWarning,
@@ -386,7 +386,7 @@ class TslibDataModule(LightningDataModule):
             )
 
         if not has_continuous and not has_categorical and has_targets:
-            warnings.warn(
+            warn(
                 "No continuous or categorical features found. "
                 "Proceeding with pure univariate forecasting "
                 "using target history only.",
@@ -395,7 +395,7 @@ class TslibDataModule(LightningDataModule):
             return
 
         if not has_continuous:
-            warnings.warn(
+            warn(
                 "No continuous features found in the dataset. "
                 "Some models (TimeXer) requires continuous features. "
                 "Consider adding continuous featuresinto the dataset.",
@@ -403,7 +403,7 @@ class TslibDataModule(LightningDataModule):
             )
 
         if not has_categorical:
-            warnings.warn(
+            warn(
                 "No categorical features found in the dataset. "
                 "This may limit the model capabilities and and restrict "
                 "the usage to continuous features only.",
@@ -783,6 +783,7 @@ class TslibDataModule(LightningDataModule):
                         series_timestamps[series_idx] = sample["t"]
 
                     from pytorch_forecasting.data.splitters import group_time_split
+
                     t_win, v_win, te_win = group_time_split(
                         all_windows,
                         series_timestamps,
@@ -838,6 +839,7 @@ class TslibDataModule(LightningDataModule):
                         series_timestamps[idx] = sample["t"]
 
                     from pytorch_forecasting.data.splitters import group_time_split
+
                     _, _, self._test_windows = group_time_split(
                         all_windows,
                         series_timestamps,

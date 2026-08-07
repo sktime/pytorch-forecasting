@@ -5,9 +5,9 @@ import pytest
 import torch
 
 from pytorch_forecasting.data.splitters import (
+    group_time_split,
     random_series_split,
     temporal_window_split,
-    group_time_split
 )
 
 
@@ -301,6 +301,7 @@ class TestTemporalWindowSplitPercentageMode:
                 temporal_cutoffs={"end_train": 5.0},
             )
 
+
 class TestGroupTimeSplit:
     """Tests for the two-phase group-time split."""
 
@@ -321,10 +322,12 @@ class TestGroupTimeSplit:
         train_groups = {w[0] for w in train_w}
         test_only_groups = {w[0] for w in test_w} - train_groups
 
-        assert len(test_only_groups) > 0, "There must be groups entirely held out for test"
-        assert train_groups.isdisjoint(test_only_groups), (
-            "Train and test groups from phase 1 must have no shared groups"
-        )
+        assert (
+            len(test_only_groups) > 0
+        ), "There must be groups entirely held out for test"
+        assert train_groups.isdisjoint(
+            test_only_groups
+        ), "Train and test groups from phase 1 must have no shared groups"
 
     def test_all_windows_assigned(self):
         """Every window must end up in exactly one fold."""
@@ -336,9 +339,7 @@ class TestGroupTimeSplit:
             for s in range(20 - enc - pred + 1)
         ]
 
-        train_w, val_w, test_w = group_time_split(
-            windows, ts, (0.7, 0.15, 0.15)
-        )
+        train_w, val_w, test_w = group_time_split(windows, ts, (0.7, 0.15, 0.15))
         assert len(train_w) + len(val_w) + len(test_w) == len(windows)
 
     def test_empty_windows(self):
