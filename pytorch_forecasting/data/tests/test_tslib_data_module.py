@@ -426,7 +426,6 @@ def test_sequential_split_strategy(sample_timeseries_data):
     total_series = len(sample_timeseries_data)
     expected_train = int(total_series * 0.6)
     expected_val = int(total_series * 0.2)
-    expected_test = total_series - expected_train - expected_val
 
     # Check if indices are purely sequential
     import torch
