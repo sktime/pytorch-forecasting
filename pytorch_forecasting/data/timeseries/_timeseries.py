@@ -580,7 +580,8 @@ class TimeSeriesDataSet(Dataset):
         # add time index relative to prediction position
         if self.add_relative_time_idx:
             assert "relative_time_idx" not in data.columns, (
-                "relative_time_idx is a protected column and must not be present in data"
+                "relative_time_idx is a protected column and must not be present "
+                "in data"
             )
             if (
                 "relative_time_idx" not in self._time_varying_known_reals
@@ -684,7 +685,8 @@ class TimeSeriesDataSet(Dataset):
 
         for target in self.target_names:
             assert target not in self._time_varying_known_reals, (
-                f"target {target} should be an unknown continuous variable in the future"
+                f"target {target} should be an unknown continuous variable in the "
+                "future"
             )
 
         assert self.min_lag > 0, "lags should be positive"
