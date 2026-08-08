@@ -205,9 +205,9 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             loss = QuantileLoss()
         self.save_hyperparameters()
         # store loss function separately as it is a module
-        assert isinstance(loss, LightningMetric), (
-            "Loss has to be a PyTorch Lightning `Metric`"
-        )
+        assert isinstance(
+            loss, LightningMetric
+        ), "Loss has to be a PyTorch Lightning `Metric`"
         super().__init__(loss=loss, logging_metrics=logging_metrics, **kwargs)
 
         # processing inputs

@@ -591,9 +591,9 @@ class TimeSeriesDataSet(Dataset):
 
         # add decoder length to static real variables
         if self.add_encoder_length:
-            assert "encoder_length" not in data.columns, (
-                "encoder_length is a protected column and must not be present in data"
-            )
+            assert (
+                "encoder_length" not in data.columns
+            ), "encoder_length is a protected column and must not be present in data"
             if (
                 "encoder_length" not in self._time_varying_known_reals
                 and "encoder_length" not in self.reals
@@ -656,27 +656,27 @@ class TimeSeriesDataSet(Dataset):
 
     def _check_params(self):
         """Check parameters of self against assumptions."""
-        assert isinstance(self.max_encoder_length, int), (
-            "max encoder length must be integer"
-        )
-        assert self.min_encoder_length <= self.max_encoder_length, (
-            "max encoder length has to be larger equals min encoder length"
-        )
-        assert isinstance(self.min_encoder_length, int), (
-            "min encoder length must be integer"
-        )
-        assert isinstance(self.max_prediction_length, int), (
-            "max prediction length must be integer"
-        )
-        assert self.min_prediction_length <= self.max_prediction_length, (
-            "max prediction length has to be larger equals min prediction length"
-        )
-        assert self.min_prediction_length > 0, (
-            "min prediction length must be larger than 0"
-        )
-        assert isinstance(self.min_prediction_length, int), (
-            "min prediction length must be integer"
-        )
+        assert isinstance(
+            self.max_encoder_length, int
+        ), "max encoder length must be integer"
+        assert (
+            self.min_encoder_length <= self.max_encoder_length
+        ), "max encoder length has to be larger equals min encoder length"
+        assert isinstance(
+            self.min_encoder_length, int
+        ), "min encoder length must be integer"
+        assert isinstance(
+            self.max_prediction_length, int
+        ), "max prediction length must be integer"
+        assert (
+            self.min_prediction_length <= self.max_prediction_length
+        ), "max prediction length has to be larger equals min prediction length"
+        assert (
+            self.min_prediction_length > 0
+        ), "min prediction length must be larger than 0"
+        assert isinstance(
+            self.min_prediction_length, int
+        ), "min prediction length must be integer"
         msg = (
             f"add_encoder_length should be boolean or 'auto' "
             f"but found {self.add_encoder_length}"
@@ -1002,9 +1002,9 @@ class TimeSeriesDataSet(Dataset):
 
     def _validate_data(self, data: pd.DataFrame) -> None:
         """Validate assumptions on data.."""
-        assert data[self.time_idx].dtype.kind == "i", (
-            "Timeseries index should be of type integer"
-        )
+        assert (
+            data[self.time_idx].dtype.kind == "i"
+        ), "Timeseries index should be of type integer"
         # numeric categoricals which can cause issues in tensorborad logging
         category_columns = data.head(1).select_dtypes("category").columns
         object_columns = (
@@ -1154,9 +1154,9 @@ class TimeSeriesDataSet(Dataset):
                 )
 
         # save special variables
-        assert "__time_idx__" not in data.columns, (
-            "__time_idx__ is a protected column and must not be present in data"
-        )
+        assert (
+            "__time_idx__" not in data.columns
+        ), "__time_idx__ is a protected column and must not be present in data"
         data["__time_idx__"] = data[self.time_idx]  # save unscaled
         for target in self.target_names:
             msg = (
@@ -2148,9 +2148,9 @@ class TimeSeriesDataSet(Dataset):
         # fill in missing values (if not all time indices are specified)
         sequence_length = len(time)
         if sequence_length < index.sequence_length:
-            assert self.allow_missing_timesteps, (
-                "allow_missing_timesteps should be True if sequences have gaps"
-            )
+            assert (
+                self.allow_missing_timesteps
+            ), "allow_missing_timesteps should be True if sequences have gaps"
             repetitions = torch.cat(
                 [time[1:] - time[:-1], torch.ones(1, dtype=time.dtype)]
             )
@@ -2199,18 +2199,18 @@ class TimeSeriesDataSet(Dataset):
             sequence_length = len(target[0])
 
         # determine data window
-        assert sequence_length >= self.min_prediction_length, (
-            "Sequence length should be at least minimum prediction length"
-        )
+        assert (
+            sequence_length >= self.min_prediction_length
+        ), "Sequence length should be at least minimum prediction length"
         # determine prediction/decode length and encode length
         decoder_length = self.calculate_decoder_length(time[-1], sequence_length)
         encoder_length = sequence_length - decoder_length
-        assert decoder_length >= self.min_prediction_length, (
-            "Decoder length should be at least minimum prediction length"
-        )
-        assert encoder_length >= self.min_encoder_length, (
-            "Encoder length should be at least minimum encoder length"
-        )
+        assert (
+            decoder_length >= self.min_prediction_length
+        ), "Decoder length should be at least minimum prediction length"
+        assert (
+            encoder_length >= self.min_encoder_length
+        ), "Encoder length should be at least minimum encoder length"
 
         if self.randomize_length is not None:  # randomization improves generalization
             # modify encode and decode lengths
