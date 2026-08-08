@@ -1035,9 +1035,9 @@ class GroupNormalizer(TorchNormalizer):
         y = self.preprocess(y)
         eps = np.finfo(np.float16).eps
         if len(self._groups) == 0:
-            assert (
-                not self.scale_by_group
-            ), "No groups are defined, i.e. `scale_by_group=[]`"
+            assert not self.scale_by_group, (
+                "No groups are defined, i.e. `scale_by_group=[]`"
+            )
             if self.method == "standard":
                 self.norm_ = {
                     "center": np.mean(y),
@@ -1086,11 +1086,13 @@ class GroupNormalizer(TorchNormalizer):
                     .assign(
                         center=lambda x: x[self._method_kwargs.get("center", 0.5)],
                         scale=lambda x: (
-                            x[self._method_kwargs.get("upper", 0.75)]
-                            - x[self._method_kwargs.get("lower", 0.25)]
-                        )
-                        / 2.0
-                        + eps,
+                            (
+                                x[self._method_kwargs.get("upper", 0.75)]
+                                - x[self._method_kwargs.get("lower", 0.25)]
+                            )
+                            / 2.0
+                            + eps
+                        ),
                     )[["center", "scale"]]
                     for g in self._groups
                 }
@@ -1134,11 +1136,13 @@ class GroupNormalizer(TorchNormalizer):
                     .assign(
                         center=lambda x: x[self._method_kwargs.get("center", 0.5)],
                         scale=lambda x: (
-                            x[self._method_kwargs.get("upper", 0.75)]
-                            - x[self._method_kwargs.get("lower", 0.25)]
-                        )
-                        / 2.0
-                        + eps,
+                            (
+                                x[self._method_kwargs.get("upper", 0.75)]
+                                - x[self._method_kwargs.get("lower", 0.25)]
+                            )
+                            / 2.0
+                            + eps
+                        ),
                     )[["center", "scale"]]
                 )
             if not self.center:  # swap center and scale
@@ -1274,9 +1278,9 @@ class GroupNormalizer(TorchNormalizer):
         else:
             # filter group names
             group_names = [name for name in group_names if name in self._groups]
-        assert len(group_names) == len(
-            self._groups
-        ), "Passed groups and fitted do not match"
+        assert len(group_names) == len(self._groups), (
+            "Passed groups and fitted do not match"
+        )
 
         if len(self._groups) == 0:
             params = np.array([self.norm_["center"], self.norm_["scale"]])

@@ -94,9 +94,9 @@ class mLSTMCell(nn.Module):
         """
 
         batch_size = x.size(0)
-        assert (
-            x.dim() == 2
-        ), f"Input should be 2D (batch_size, input_size), got {x.dim()}D"
+        assert x.dim() == 2, (
+            f"Input should be 2D (batch_size, input_size), got {x.dim()}D"
+        )
         assert h_prev.size() == (
             batch_size,
             self.hidden_size,

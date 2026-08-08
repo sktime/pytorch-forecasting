@@ -328,17 +328,17 @@ def test_create_windows(tslib_data_module):
 
         assert isinstance(start_idx, int), "start_idx should be an integer."
 
-        assert (
-            context_length == tslib_data_module.context_length
-        ), "context_length should match the datamodule's context_length."
+        assert context_length == tslib_data_module.context_length, (
+            "context_length should match the datamodule's context_length."
+        )
 
-        assert (
-            prediction_length == tslib_data_module.prediction_length
-        ), "prediction_length should match the datamodule's prediction_length."
+        assert prediction_length == tslib_data_module.prediction_length, (
+            "prediction_length should match the datamodule's prediction_length."
+        )
 
-        assert (
-            0 <= series_idx < len(tslib_data_module.time_series_dataset)
-        ), "series_idx should be within the range of the dataset length."
+        assert 0 <= series_idx < len(tslib_data_module.time_series_dataset), (
+            "series_idx should be within the range of the dataset length."
+        )
 
         min_required_length = context_length + prediction_length
 
@@ -352,15 +352,15 @@ def test_create_windows(tslib_data_module):
             series_length = len(sample["y"])
         else:
             series_length = len(sample)
-        assert (
-            start_idx + min_required_length <= series_length
-        ), "Window extended beyond series length."
+        assert start_idx + min_required_length <= series_length, (
+            "Window extended beyond series length."
+        )
 
     all_indices = torch.arange(len(tslib_data_module.time_series_dataset))
     all_windows = tslib_data_module._create_windows(all_indices)
-    assert len(all_windows) >= len(
-        train_windows
-    ), "Should have more windows than all indices."
+    assert len(all_windows) >= len(train_windows), (
+        "Should have more windows than all indices."
+    )
 
     empty_windows = tslib_data_module._create_windows(torch.tensor([]))
 
@@ -439,9 +439,9 @@ def test_different_split_ratios(sample_timeseries_data):
         + len(dm_custom._val_indices)
         + len(dm_custom._test_indices)
     )
-    assert (
-        total_split == total_series
-    ), "Total split indices should match the dataset length."
+    assert total_split == total_series, (
+        "Total split indices should match the dataset length."
+    )
 
 
 def test_preprocess_data(tslib_data_module, sample_timeseries_data):
@@ -527,6 +527,6 @@ def test_multivariate_target():
 
     x, y = dm.train_dataset[0]
 
-    assert (
-        y.shape[-1] == 2
-    ), "Target should have two dimensions for n_features for multivariate target."
+    assert y.shape[-1] == 2, (
+        "Target should have two dimensions for n_features for multivariate target."
+    )

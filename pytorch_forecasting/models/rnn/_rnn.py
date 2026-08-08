@@ -148,9 +148,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             " be the same apart from target variable"
         )
         for targeti in to_list(target):
-            assert (
-                targeti in time_varying_reals_encoder
-            ), f"target {targeti} has to be real"  # todo: remove this restriction
+            assert targeti in time_varying_reals_encoder, (
+                f"target {targeti} has to be real"
+            )  # todo: remove this restriction
         assert (isinstance(target, str) and isinstance(loss, MultiHorizonMetric)) or (
             isinstance(target, tuple | list)
             and isinstance(loss, MultiLoss)
@@ -174,9 +174,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             self.output_projector = nn.Linear(
                 self.hparams.hidden_size, self.hparams.output_size
             )
-            assert not isinstance(
-                self.loss, QuantileLoss
-            ), "QuantileLoss does not work with recurrent network"
+            assert not isinstance(self.loss, QuantileLoss), (
+                "QuantileLoss does not work with recurrent network"
+            )
         else:  # multi target
             self.output_projector = nn.ModuleList(
                 [
@@ -185,9 +185,9 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
                 ]
             )
             for l in self.loss:
-                assert not isinstance(
-                    l, QuantileLoss
-                ), "QuantileLoss does not work with recurrent network"
+                assert not isinstance(l, QuantileLoss), (
+                    "QuantileLoss does not work with recurrent network"
+                )
 
     @classmethod
     def from_dataset(
@@ -213,14 +213,11 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
                 dataset=dataset, kwargs=kwargs, default_loss=MAE()
             )
         )
-        assert (
-            not isinstance(dataset.target_normalizer, NaNLabelEncoder)
-            and (
-                not isinstance(dataset.target_normalizer, MultiNormalizer)
-                or all(
-                    not isinstance(normalizer, NaNLabelEncoder)
-                    for normalizer in dataset.target_normalizer
-                )
+        assert not isinstance(dataset.target_normalizer, NaNLabelEncoder) and (
+            not isinstance(dataset.target_normalizer, MultiNormalizer)
+            or all(
+                not isinstance(normalizer, NaNLabelEncoder)
+                for normalizer in dataset.target_normalizer
             )
         ), (
             "target(s) should be continuous - categorical targets are not supported"

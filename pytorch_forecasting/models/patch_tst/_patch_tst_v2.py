@@ -120,12 +120,7 @@ class PatchTSTV2(TslibBaseModel):
         self.pad_len = 0 if rem == 0 else self.patch_len - rem
 
         self.patch_num = int(
-            (
-                self.context_length
-                + self.pad_len
-                + self.padding
-                - self.patch_len
-            )
+            (self.context_length + self.pad_len + self.padding - self.patch_len)
             / self.stride
             + 1
         )

@@ -340,9 +340,9 @@ def test_model_forward_output(dataloaders_with_covariates):
         loss=loss,
     )
 
-    assert (
-        prediction.shape == expected_shape
-    ), f"Expected output shape {expected_shape}, but got {prediction.shape}"
+    assert prediction.shape == expected_shape, (
+        f"Expected output shape {expected_shape}, but got {prediction.shape}"
+    )
 
     quantile_loss = QuantileLoss(quantiles=[0.1, 0.5, 0.9])
     model_quantile = PatchTST.from_dataset(
@@ -364,7 +364,7 @@ def test_model_forward_output(dataloaders_with_covariates):
         loss=quantile_loss,
     )
     assert prediction_quantile.shape == expected_shape_quantile, (
-        f"Expected {expected_shape_quantile}, " f"got {prediction_quantile.shape}"
+        f"Expected {expected_shape_quantile}, got {prediction_quantile.shape}"
     )
 
     multi_loss = MultiLoss([MAE(), MAE()])
@@ -392,9 +392,9 @@ def test_model_forward_output(dataloaders_with_covariates):
     for i, (pred_tensor, expected_shape) in enumerate(
         zip(prediction_multi, expected_shapes_multi)
     ):
-        assert (
-            pred_tensor.shape == expected_shape
-        ), f"MultiLoss target {i}: Expected {expected_shape}, got {pred_tensor.shape}"
+        assert pred_tensor.shape == expected_shape, (
+            f"MultiLoss target {i}: Expected {expected_shape}, got {pred_tensor.shape}"
+        )
 
 
 def test_non_divisible_sequence_length():

@@ -59,9 +59,9 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         assert os.path.exists(best_model_path)
 
         dm_cfg_path = Path(best_model_path).parent / "model_cfg.pkl"
-        assert (
-            dm_cfg_path.exists()
-        ), "datamodule_cfg.pkl was not saved alongside checkpoint"
+        assert dm_cfg_path.exists(), (
+            "datamodule_cfg.pkl was not saved alongside checkpoint"
+        )
 
         pkg_loaded = object_pkg(ckpt_path=best_model_path)
 
@@ -82,17 +82,17 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         raw_out = pkg.predict(predict_data, mode="raw")
         raw_pred_tensor = raw_out["prediction"]
         assert any(isinstance(v, torch.Tensor) for v in raw_out.values())
-        assert (
-            raw_pred_tensor.ndim == 3
-        ), f"Prediction must be 3D, got {raw_pred_tensor.ndim}D"
+        assert raw_pred_tensor.ndim == 3, (
+            f"Prediction must be 3D, got {raw_pred_tensor.ndim}D"
+        )
 
         # mode="quantiles"
         quantile_out = pkg.predict(predict_data, mode="quantiles")
         quanitle_pred_tensor = quantile_out["prediction"]
         assert isinstance(quanitle_pred_tensor, torch.Tensor)
-        assert (
-            quanitle_pred_tensor.ndim == 3
-        ), f"Prediction must be 3D, got {quanitle_pred_tensor.ndim}D"
+        assert quanitle_pred_tensor.ndim == 3, (
+            f"Prediction must be 3D, got {quanitle_pred_tensor.ndim}D"
+        )
 
         # mode="prediction"
         pred_out = pkg.predict(predict_data, mode="prediction")

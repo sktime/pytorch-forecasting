@@ -553,18 +553,18 @@ def test_multivariate_target_scale(normalizer_list):
     x, y = dm.train_dataset[0]
     target_scale = x["target_scale"]
 
-    assert isinstance(
-        target_scale, list
-    ), f"expected list for multi-target, got {type(target_scale)}"
+    assert isinstance(target_scale, list), (
+        f"expected list for multi-target, got {type(target_scale)}"
+    )
     assert len(target_scale) == 2, f"expected 2 scale values, got {len(target_scale)}"
 
     for i, scale in enumerate(target_scale):
-        assert isinstance(
-            scale, torch.Tensor
-        ), f"target_scale[{i}] should be a Tensor, got {type(scale)}"
-        assert (
-            scale.shape == ()
-        ), f"target_scale[{i}] should be scalar, got shape {scale.shape}"
+        assert isinstance(scale, torch.Tensor), (
+            f"target_scale[{i}] should be a Tensor, got {type(scale)}"
+        )
+        assert scale.shape == (), (
+            f"target_scale[{i}] should be scalar, got shape {scale.shape}"
+        )
         assert torch.isfinite(scale), f"target_scale[{i}] is not finite: {scale}"
         assert scale > 0, f"target_scale[{i}] should be positive, got {scale}"
 
@@ -618,9 +618,9 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
     assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
 
     if normalizer is not None and not isinstance(normalizer, EncoderNormalizer):
-        assert (
-            dm_with_norm._target_normalizer_fitted
-        ), "Target normalizer should be fitted"
+        assert dm_with_norm._target_normalizer_fitted, (
+            "Target normalizer should be fitted"
+        )
     if normalizer is None:
         dm_with_norm._target_normalizer = None
         dm_with_norm._target_normalizer_fitted = False

@@ -100,9 +100,9 @@ class Metric(LightningMetric):
         """
         if y_pred.ndim == 3:
             if self.quantiles is None:
-                assert (
-                    y_pred.size(-1) == 1
-                ), "Prediction should only have one extra dimension"
+                assert y_pred.size(-1) == 1, (
+                    "Prediction should only have one extra dimension"
+                )
                 y_pred = y_pred[..., 0]
             else:
                 y_pred = y_pred.mean(-1)
@@ -282,9 +282,9 @@ class MultiLoss(LightningMetric):
         assert len(metrics) > 0, "at least one metric has to be specified"
         if weights is None:
             weights = [1.0 for _ in metrics]
-        assert len(weights) == len(
-            metrics
-        ), "Number of weights has to match number of metrics"
+        assert len(weights) == len(metrics), (
+            "Number of weights has to match number of metrics"
+        )
 
         self.metrics = [
             convert_torchmetric_to_pytorch_forecasting_metric(m) for m in metrics
@@ -561,9 +561,9 @@ class CompositeMetric(LightningMetric):
             metrics = []
         if weights is None:
             weights = [1.0 for _ in metrics]
-        assert len(weights) == len(
-            metrics
-        ), "Number of weights has to match number of metrics"
+        assert len(weights) == len(metrics), (
+            "Number of weights has to match number of metrics"
+        )
 
         self._metrics = list(metrics)
         self._weights = list(weights)

@@ -208,19 +208,19 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                     for xi in x.values():
                         check(xi)
                 else:
-                    assert (
-                        pred_len == x.shape[0]
-                    ), "first dimension should be prediction length"
+                    assert pred_len == x.shape[0], (
+                        "first dimension should be prediction length"
+                    )
 
             check(predictions.output)
             if isinstance(predictions.output, torch.Tensor):
-                assert (
-                    predictions.output.ndim == 2
-                ), "shape of predictions should be batch_size x timesteps"
+                assert predictions.output.ndim == 2, (
+                    "shape of predictions should be batch_size x timesteps"
+                )
             else:
-                assert all(
-                    p.ndim == 2 for p in predictions.output
-                ), "shape of predictions should be batch_size x timesteps"
+                assert all(p.ndim == 2 for p in predictions.output), (
+                    "shape of predictions should be batch_size x timesteps"
+                )
             check(predictions.x)
             check(predictions.index)
 

@@ -662,7 +662,9 @@ Maintenance update widening compatibility ranges and consolidating dependencies:
   ```python
   def forward(self, x):
       normalized_prediction = self.module(x)
-      prediction = self.transform_output(prediction=normalized_prediction, target_scale=x["target_scale"])
+      prediction = self.transform_output(
+          prediction=normalized_prediction, target_scale=x["target_scale"]
+      )
       return self.to_network_output(prediction=prediction)
   ```
 
