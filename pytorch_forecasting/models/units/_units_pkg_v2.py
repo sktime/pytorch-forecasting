@@ -50,7 +50,7 @@ class UniTS_pkg_v2(Base_pkg):
             instance. ``create_test_instance`` uses the first (or only) dictionary in
             ``params``.
         """
-        from pytorch_forecasting.metrics import NormalDistributionLoss, QuantileLoss
+        from pytorch_forecasting.metrics import QuantileLoss
 
         params = [
             {},
