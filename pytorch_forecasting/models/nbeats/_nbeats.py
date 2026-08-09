@@ -86,6 +86,15 @@ class NBeats(NBeatsAdapter):
         nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
     **kwargs
         Additional arguments forwarded to :py:class:`~BaseModel`.
+
+    Examples
+    --------
+    Create a model from a configured :class:`TimeSeriesDataSet` (see the
+    `N-BEATS example
+    <https://github.com/sktime/pytorch-forecasting/blob/main/examples/nbeats.py>`_
+    for a complete example):
+
+    >>> model = NBeats.from_dataset(training_dataset, context_length=24)  # doctest: +SKIP
     """  # noqa: E501
 
     @classmethod

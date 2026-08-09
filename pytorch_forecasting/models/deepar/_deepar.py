@@ -35,7 +35,15 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
-    """DeepAR: Probabilistic forecasting with autoregressive recurrent networks."""
+    """DeepAR: Probabilistic forecasting with autoregressive recurrent networks.
+
+    Examples
+    --------
+    Create a model from a configured :class:`TimeSeriesDataSet` (see the
+    :doc:`DeepAR tutorial <tutorials/deepar>` for a complete example):
+
+    >>> model = DeepAR.from_dataset(training_dataset, hidden_size=16)  # doctest: +SKIP
+    """
 
     @classmethod
     def _pkg(cls):
