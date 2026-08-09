@@ -32,6 +32,7 @@ from pytorch_forecasting.layers._encoders import (
     Encoder,
     EncoderLayer,
 )
+from pytorch_forecasting.layers._mlp import FullyConnectedModule
 from pytorch_forecasting.layers._normalization import RevIN, SeasonalLayerNorm
 from pytorch_forecasting.layers._output._flatten_head import (
     FlattenHead,
@@ -48,6 +49,7 @@ from pytorch_forecasting.layers._recurrent._slstm import (
 )
 
 __all__ = [
+    "AttentionLayer",
     "AutoCorrelation",
     "AutoCorrelationLayer",
     "AutoformerDecoder",
@@ -62,10 +64,10 @@ __all__ = [
     "FixedEmbedding",
     "FlattenHead",
     "FullAttention",
-    "AttentionLayer",
+    "FullyConnectedModule",
     "PositionalEmbedding",
-    "RevIN",
     "ResidualBlock",
+    "RevIN",
     "SeasonalLayerNorm",
     "SeriesDecomposition",
     "TemporalEmbedding",
