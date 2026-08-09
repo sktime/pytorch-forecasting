@@ -27,6 +27,53 @@ class DecoderMLP(BaseModelWithCovariates):
     """MLP on the decoder.
 
     MLP that predicts output only based on information available in the decoder.
+
+    Examples
+    --------
+    Train on a small synthetic time series and make predictions:
+
+    >>> import pandas as pd
+    >>> import torch
+    >>> from lightning.pytorch import Trainer
+    >>> from pytorch_forecasting import DecoderMLP, TimeSeriesDataSet
+    >>> _ = torch.manual_seed(0)
+    >>> data = pd.DataFrame(
+    ...     {
+    ...         "time_idx": range(12),
+    ...         "series": ["A"] * 12,
+    ...         "target": [float(i) for i in range(12)],
+    ...     }
+    ... )
+    >>> dataset = TimeSeriesDataSet(
+    ...     data,
+    ...     time_idx="time_idx",
+    ...     target="target",
+    ...     group_ids=["series"],
+    ...     max_encoder_length=4,
+    ...     max_prediction_length=2,
+    ...     time_varying_known_reals=["time_idx"],
+    ...     time_varying_unknown_reals=["target"],
+    ... )
+    >>> dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
+    >>> model = DecoderMLP.from_dataset(
+    ...     dataset, hidden_size=8, n_hidden_layers=1, dropout=0.0
+    ... )
+    >>> trainer_kwargs = dict(
+    ...     accelerator="cpu",
+    ...     logger=False,
+    ...     enable_progress_bar=False,
+    ...     enable_model_summary=False,
+    ... )
+    >>> trainer = Trainer(fast_dev_run=True, **trainer_kwargs)
+    >>> trainer.fit(model, train_dataloaders=dataloader)
+    >>> predictions = model.predict(
+    ...     dataset,
+    ...     fast_dev_run=True,
+    ...     batch_size=4,
+    ...     trainer_kwargs=trainer_kwargs,
+    ... )
+    >>> predictions.shape
+    torch.Size([4, 2])
     """
 
     @classmethod
