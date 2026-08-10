@@ -267,13 +267,11 @@ def coerce_to_pytorch_forecasting_metric(
     Metric or torch.nn.Module
         Loss/metric usable in ptf training (``forward(y_pred, y_actual)``).
     """
-    if isinstance(metric, Metric | MultiLoss | CompositeMetric):
-        return metric
-
     from pytorch_forecasting.metrics.nn_loss_adapter import NNLossAdapter
 
-    if isinstance(metric, NNLossAdapter):
+    if isinstance(metric, (Metric, MultiLoss, CompositeMetric, NNLossAdapter)):
         return metric
+
     # bare torch.nn loss (nn.Module, but not a torchmetrics Metric)
     if isinstance(metric, torch.nn.Module) and not isinstance(metric, LightningMetric):
         return NNLossAdapter(metric)

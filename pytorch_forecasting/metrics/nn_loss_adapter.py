@@ -68,13 +68,13 @@ class NNLossAdapter(MultiHorizonMetric):
 
         Returns
         -------
-        {"point", "class", "gaussian_nll"}
+        Literal["point", "class", "gaussian_nll"]
             ``"class"`` for ``CrossEntropyLoss`` / ``NLLLoss``,
             ``"gaussian_nll"`` for ``GaussianNLLLoss``, else ``"point"``.
         """
         if isinstance(loss, _CLASS_LOSSES):
             return "class"
-        if isinstance(loss, _GAUSSIAN_NLL_LOSSES):
+        elif isinstance(loss, _GAUSSIAN_NLL_LOSSES):
             return "gaussian_nll"
         return "point"
 
@@ -112,13 +112,46 @@ class NNLossAdapter(MultiHorizonMetric):
 
         if mode == "class":
             return per_elem.view(batch_size, time_idx)
-        if per_elem.ndim == 0:
+        elif per_elem.ndim == 0:
             # defensive: some losses ignore reduction="none"
             return per_elem.expand(batch_size, time_idx)
         return per_elem
 
-    def update(self, y_pred, target):
-        """Update metric state; reject multi-target lists with a clear error."""
+    def update(
+        self,
+        y_pred: torch.Tensor | list[torch.Tensor],
+        target: torch.Tensor
+        | tuple[torch.Tensor, torch.Tensor | None]
+        | tuple[list[torch.Tensor], torch.Tensor | None],
+    ) -> None:
+        """Accumulate batch loss into metric state.
+
+        Parameters
+        ----------
+        y_pred : torch.Tensor or list of torch.Tensor
+            Network prediction for a single target.
+
+            * point: ``[B, T, 1]`` or ``[B, T]``
+            * class: ``[B, T, C]`` logits
+            * gaussian_nll: ``[B, T, 2]`` as ``(mean, raw_variance)``
+
+            A list of prediction tensors is not supported; use
+            :class:`~pytorch_forecasting.metrics.MultiLoss` for multi-target.
+        target : torch.Tensor or tuple
+            Ground truth. Either a tensor ``[B, T]``, or
+            ``(target, weight)`` where ``weight`` is ``[B, T]`` or ``None``.
+            A list of target tensors is not supported.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If ``target`` (or the first element of ``(target, weight)``) is a
+            list of tensors.
+        """
         # MultiHorizonMetric unpacks (target, weight) before calling loss();
         # catch list targets here so the message is useful.
         raw_target = target
@@ -164,7 +197,7 @@ class NNLossAdapter(MultiHorizonMetric):
         if mode == "point":
             if y_pred.ndim != 3:
                 return y_pred, target
-            if y_pred.size(-1) != 1:
+            elif y_pred.size(-1) != 1:
                 raise ValueError(
                     "Error inNNLossAdapter for point prediction (H=1): "
                     f"Got y_pred shape {list(y_pred.shape)} with "
@@ -181,7 +214,7 @@ class NNLossAdapter(MultiHorizonMetric):
                     "Classification losses expect logits of shape "
                     f"(batch, time, classes), got {tuple(y_pred.shape)}."
                 )
-            if target.ndim != 2:
+            elif target.ndim != 2:
                 raise ValueError(
                     "Classification targets must have shape (batch, time), "
                     f"got {tuple(target.shape)}."
@@ -189,17 +222,19 @@ class NNLossAdapter(MultiHorizonMetric):
             return y_pred.reshape(-1, y_pred.size(-1)), target.reshape(-1).long()
 
         # gaussian_nll
-        if y_pred.ndim != 3 or y_pred.size(-1) != 2:
-            raise ValueError(
-                "GaussianNLLLoss expects predictions of shape "
-                f"(batch, time, 2) as (mean, raw_variance); got {tuple(y_pred.shape)}."
-            )
-        if target.ndim != 2:
-            raise ValueError(
-                "GaussianNLL targets must have shape (batch, time), "
-                f"got {tuple(target.shape)}."
-            )
-        return y_pred, target
+        else:
+            if y_pred.ndim != 3 or y_pred.size(-1) != 2:
+                raise ValueError(
+                    "GaussianNLLLoss expects predictions of shape "
+                    "(batch, time, 2) as (mean, raw_variance), "
+                    f"got {tuple(y_pred.shape)}."
+                )
+            elif target.ndim != 2:
+                raise ValueError(
+                    "GaussianNLL targets must have shape (batch, time), "
+                    f"got {tuple(target.shape)}."
+                )
+            return y_pred, target
 
     def _call_loss(
         self,
@@ -233,7 +268,7 @@ class NNLossAdapter(MultiHorizonMetric):
             mean = y_pred[..., 0]
             var = F.softplus(y_pred[..., 1]) + 1e-6
             return self._loss(mean, target, var)
-        if mode == "class" and isinstance(self._loss, nn.NLLLoss):
+        elif mode == "class" and isinstance(self._loss, nn.NLLLoss):
             # NLLLoss expects log-probabilities
             return self._loss(F.log_softmax(y_pred, dim=-1), target)
         return self._loss(y_pred, target)
@@ -261,9 +296,9 @@ class NNLossAdapter(MultiHorizonMetric):
         mode = self._mode
         if mode == "class" and y_pred.ndim == 3:
             return y_pred.argmax(dim=-1)
-        if mode == "gaussian_nll" and y_pred.ndim == 3 and y_pred.size(-1) == 2:
+        elif mode == "gaussian_nll" and y_pred.ndim == 3 and y_pred.size(-1) == 2:
             return y_pred[..., 0]
-        if y_pred.ndim == 3 and y_pred.size(-1) == 1:
+        elif y_pred.ndim == 3 and y_pred.size(-1) == 1:
             return y_pred.squeeze(-1)
         return y_pred
 
