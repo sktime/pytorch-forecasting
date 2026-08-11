@@ -8,10 +8,8 @@ import torch.nn as nn
 from torch.optim import Optimizer
 
 from pytorch_forecasting.layers import RevIN
-from pytorch_forecasting.layers._blocks._modern_tcn_block import (
-    Flatten_Head,
-    ModernTCNBlock,
-)
+from pytorch_forecasting.layers._blocks._modern_tcn_block import ModernTCNBlock
+from pytorch_forecasting.layers._head._flatten_head import Flatten_Head
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
