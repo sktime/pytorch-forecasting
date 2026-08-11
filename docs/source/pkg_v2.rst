@@ -100,3 +100,4 @@ See the detailed API documentation for the available V2 Package classes below:
    models.tide._tide_dsipts._tide_v2_pkg.TIDE_pkg_v2
    models.timexer._timexer_pkg_v2.TimeXer_pkg_v2
    models.mlp._decodermlp_pkg_v2.DecoderMLP_pkg_v2
+   models.modern_tcn._modern_tcn_pkg_v2.ModernTCN_pkg_v2
