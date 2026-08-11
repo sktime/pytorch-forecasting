@@ -689,18 +689,22 @@ class CompositeMetric(LightningMetric):
         return self._metrics[0].to_quantiles(y_pred, **kwargs)
 
     def __add__(self, metric: LightningMetric):
+        new_metrics = list(self._metrics)
+        new_weights = list(self._weights)
         if isinstance(metric, self.__class__):
-            self._metrics.extend(metric._metrics)
-            self._weights.extend(metric._weights)
+            new_metrics.extend(metric._metrics)
+            new_weights.extend(metric._weights)
         else:
-            self._metrics.append(metric)
-            self._weights.append(1.0)
+            new_metrics.append(metric)
+            new_weights.append(1.0)
 
-        return self
+        result = CompositeMetric(metrics=new_metrics, weights=new_weights)
+        return result
 
     def __mul__(self, multiplier: float):
-        self._weights = [w * multiplier for w in self._weights]
-        return self
+        new_weights = [w * multiplier for w in self._weights]
+        result = CompositeMetric(metrics=list(self._metrics), weights=new_weights)
+        return result
 
     __rmul__ = __mul__
 
