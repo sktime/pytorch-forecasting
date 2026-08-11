@@ -73,13 +73,21 @@ class ModernTCN_pkg_v2(Base_pkg):
                 "patch_size": 4,
                 "use_revin": False,
             },
+            {
+                "d_model": 16,
+                "kernel_size": 7,
+                "small_kernel_size": 3,
+                "n_blocks": 1,
+                "d_ff": 32,
+                "patch_size": 4,
+                "individual": True,
+                "use_revin": False,
+            },
         ]
 
-        default_dm_cfg = {"max_encoder_length": 8, "max_prediction_length": 2}
-
         for param in params:
-            current_dm_cfg = param.get("datamodule_cfg", {})
-            default_dm_cfg.update(current_dm_cfg)
-            param["datamodule_cfg"] = default_dm_cfg
+            dm_cfg = {"max_encoder_length": 8, "max_prediction_length": 2}
+            dm_cfg.update(param.get("datamodule_cfg", {}))
+            param["datamodule_cfg"] = dm_cfg
 
         return params

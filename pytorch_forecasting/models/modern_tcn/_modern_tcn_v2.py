@@ -8,7 +8,10 @@ import torch.nn as nn
 from torch.optim import Optimizer
 
 from pytorch_forecasting.layers import RevIN
-from pytorch_forecasting.layers._blocks._modern_tcn_block import ModernTCNBlock
+from pytorch_forecasting.layers._blocks._modern_tcn_block import (
+    Flatten_Head,
+    ModernTCNBlock,
+)
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -27,17 +30,36 @@ class ModernTCN(BaseModel):
     d_model : int
         Embedding dimension per patch.
     kernel_size : int
-        Kernel size for the depthwise convolution.
+        Large kernel size for the reparameterizable depthwise convolution.
+    small_kernel_size : int
+        Small kernel size for the parallel branch in ReparamLargeKernelConv.
     n_blocks : int
-        Number of ModernTCN blocks.
+        Number of ModernTCN encoder blocks.
     d_ff : int
-        Hidden dimension in the pointwise conv FFN.
+        Hidden dimension in the pointwise conv FFNs.
     patch_size : int
-        Number of time steps per patch.
+        Number of time steps per patch (controls stem stride).
     dropout : float
-        Dropout rate.
+        Dropout rate applied inside each encoder block.
+    head_dropout : float
+        Dropout rate applied inside the Flatten_Head projection.
+    individual : bool
+        If True, uses a separate linear projection per variable in the head.
     use_revin : bool
-        Whether to use RevIN normalization.
+        Whether to apply Reversible Instance Normalization before the encoder.
+    logging_metrics : list[nn.Module] or None
+        Additional metrics to log during training.
+    optimizer : Optimizer or str or None
+        Optimizer or name of optimizer (default: ``"adam"``).
+    optimizer_params : dict or None
+        Additional keyword arguments passed to the optimizer constructor.
+    lr_scheduler : str or None
+        Name of a learning rate scheduler recognised by Lightning.
+    lr_scheduler_params : dict or None
+        Additional keyword arguments passed to the scheduler constructor.
+    metadata : dict or None
+        Dataset metadata injected by the package layer (encoder lengths,
+        target dim, etc.).
     """
 
     @classmethod
@@ -54,10 +76,13 @@ class ModernTCN(BaseModel):
         loss: nn.Module,
         d_model: int = 64,
         kernel_size: int = 51,
+        small_kernel_size: int = 5,
         n_blocks: int = 2,
         d_ff: int = 256,
         patch_size: int = 8,
         dropout: float = 0.1,
+        head_dropout: float = 0.1,
+        individual: bool = False,
         use_revin: bool = True,
         logging_metrics: list[nn.Module] | None = None,
         optimizer: Optimizer | str | None = "adam",
@@ -96,18 +121,31 @@ class ModernTCN(BaseModel):
         if self.use_revin:
             self.revin = RevIN(num_features=self.n_channels)
 
-        self.patch_embed = nn.Linear(patch_size, d_model)
+        self.stem = nn.Sequential(
+            nn.Conv1d(1, d_model, kernel_size=patch_size, stride=patch_size),
+            nn.BatchNorm1d(d_model),
+        )
 
         self.blocks = nn.ModuleList(
             [
-                ModernTCNBlock(d_model, kernel_size, d_ff, dropout)
+                ModernTCNBlock(
+                    d_model,
+                    kernel_size,
+                    small_kernel_size,
+                    d_ff,
+                    self.n_channels,
+                    dropout,
+                )
                 for _ in range(n_blocks)
             ]
         )
 
-        self.head = nn.Linear(
-            self.n_patches * d_model,
-            self.prediction_length * self.n_quantiles,
+        self.head = Flatten_Head(
+            individual=individual,
+            n_vars=self.n_channels,
+            nf=d_model * self.n_patches,
+            target_window=self.prediction_length * self.n_quantiles,
+            head_dropout=head_dropout,
         )
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -125,20 +163,23 @@ class ModernTCN(BaseModel):
         B, L, C = input_data.shape
 
         x_enc = input_data.permute(0, 2, 1)
-        x_enc = x_enc.reshape(B, C, self.n_patches, self.patch_size)
-        x_enc = self.patch_embed(x_enc)
-        x_enc = x_enc.permute(0, 1, 3, 2)
-        x_enc = x_enc.reshape(B * C, self.d_model, self.n_patches)
-
-        for block in self.blocks:
-            x_enc = block(x_enc)
+        x_enc = x_enc.reshape(B * C, 1, L)
+        x_enc = self.stem(x_enc)
 
         x_enc = x_enc.reshape(B, C, self.d_model, self.n_patches)
-        x_enc = x_enc.reshape(B, C, -1)
+        for block in self.blocks:
+            x_enc = block(x_enc)
 
         out = self.head(x_enc)
         out = out.reshape(B, C, self.prediction_length, self.n_quantiles)
         out = out.permute(0, 2, 1, 3)
+
+        if self.use_revin:
+            out = out.permute(0, 1, 3, 2)
+            out = out.reshape(B, self.prediction_length * self.n_quantiles, C)
+            out = self.revin(out, mode="denorm")
+            out = out.reshape(B, self.prediction_length, self.n_quantiles, C)
+            out = out.permute(0, 1, 3, 2)
 
         target_indices = list(range(self.n_cont_features, C))
         out = out[:, :, target_indices, :]
