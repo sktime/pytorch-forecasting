@@ -47,3 +47,4 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.samformer._samformer_v2.Samformer
    models.tide._tide_dsipts._tide_v2.TIDE
    models.timexer._timexer_v2.TimeXer
+   models.modern_tcn._modern_tcn_v2.ModernTCN

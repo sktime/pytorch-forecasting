@@ -1,80 +1,85 @@
-"""
-Packages container for ModernTcn model.
-"""
+"""ModernTCN package container."""
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class ModernTcn_pkg_v2(Base_pkg):
-    """ModernTcn package container."""
+class ModernTCN_pkg_v2(Base_pkg):
+    """
+    ModernTCN package container
+
+    GitHub Repository:https://github.com/luodhhh/ModernTCN
+
+    Research Paper: https://openreview.net/forum?id=vpJMJerXHU
+
+    """
 
     _tags = {
-        "info:name": "ModernTcn",
+        "info:name": "ModernTCN",
+        "authors": ["Muhammad-Rebaal", "luodhhh"],
         "info:compute": 2,
-        "authors": ["Muhammad-Rebaal"],
+        "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
-        "capability:flexible_history_length": True,
+        "capability:flexible_history_length": False,
         "capability:cold_start": False,
     }
 
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.modern_tcn._modern_tcn_v2 import ModernTcn
+        from pytorch_forecasting.models.modern_tcn._modern_tcn_v2 import ModernTCN
 
-        return ModernTcn
+        return ModernTCN
 
     @classmethod
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
-        from pytorch_forecasting.data.data_module import TslibDataModule
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
+        )
 
-        return TslibDataModule
+        return EncoderDecoderTimeSeriesDataModule
 
     @classmethod
     def get_test_train_params(cls):
-        """
-        Return testing parameter settings for the trainer.
-
-        Parameters
-        ----------
-        params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class
-        """
-
-        from pytorch_forecasting.metrics import SMAPE
+        """Return testing parameter settings."""
+        from pytorch_forecasting.metrics import QuantileLoss
 
         params = [
             {},
-            dict(moving_avg=25, individual=False, logging_metrics=[SMAPE()]),
-            dict(
-                moving_avg=4,
-                individual=True,
-            ),
-            dict(
-                moving_avg=5,
-                individual=False,
-                logging_metrics=[SMAPE()],
-            ),
-            dict(
-                optimizer="adamw",
-                lr_scheduler="cosine_annealing",
-                lr_scheduler_params={"T_max": 5},
-            ),
-            dict(
-                optimizer="adagrad",
-                optimizer_params={"lr": 1e-3},
-            ),
+            {
+                "d_model": 16,
+                "kernel_size": 3,
+                "n_blocks": 1,
+                "d_ff": 32,
+                "patch_size": 4,
+                "use_revin": False,
+            },
+            {
+                "d_model": 8,
+                "kernel_size": 3,
+                "n_blocks": 1,
+                "d_ff": 16,
+                "patch_size": 2,
+                "use_revin": True,
+            },
+            {
+                "loss": QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+                "d_model": 16,
+                "kernel_size": 3,
+                "n_blocks": 1,
+                "d_ff": 32,
+                "patch_size": 4,
+                "use_revin": False,
+            },
         ]
 
-        default_dm_cfg = {"context_length": 8, "prediction_length": 2}
+        default_dm_cfg = {"max_encoder_length": 8, "max_prediction_length": 2}
 
         for param in params:
             current_dm_cfg = param.get("datamodule_cfg", {})
             default_dm_cfg.update(current_dm_cfg)
-
             param["datamodule_cfg"] = default_dm_cfg
 
         return params
