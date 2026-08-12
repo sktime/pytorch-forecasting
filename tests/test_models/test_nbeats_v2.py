@@ -16,23 +16,31 @@ from pytorch_forecasting.models.nbeats._nbeats_v2 import NBeats_v2
 @pytest.fixture
 def sample_dataset():
     """Create sample univariate dataset and datamodule for testing NBeats v2."""
-    n_samples = 100
-    time_idx = np.arange(n_samples)
-    trend = 0.05 * time_idx
-    seasonality = 5 * np.sin(2 * np.pi * time_idx / 12)
-    noise = np.random.normal(0, 0.5, n_samples)
-    values = trend + seasonality + noise
+    n_samples = 60
+    n_series = 4
+    data_list = []
 
-    series = pd.DataFrame(
-        {
-            "time_idx": time_idx,
-            "series_id": 0,
-            "value": values,
-        }
-    )
+    for i in range(n_series):
+        time_idx = np.arange(n_samples)
+        trend = 0.05 * time_idx + i
+        seasonality = 5 * np.sin(2 * np.pi * time_idx / 12)
+        noise = np.random.normal(0, 0.5, n_samples)
+        values = trend + seasonality + noise
+
+        data_list.append(
+            pd.DataFrame(
+                {
+                    "time_idx": time_idx,
+                    "series_id": f"s_{i}",
+                    "value": values.astype(np.float32),
+                }
+            )
+        )
+
+    df = pd.concat(data_list, ignore_index=True)
 
     ts = TimeSeries(
-        series,
+        df,
         time="time_idx",
         group=["series_id"],
         target=["value"],
@@ -43,9 +51,14 @@ def sample_dataset():
     )
 
     dm = EncoderDecoderTimeSeriesDataModule(
-        ts, max_encoder_length=16, max_prediction_length=4, batch_size=4
+        ts,
+        max_encoder_length=16,
+        max_prediction_length=4,
+        batch_size=4,
+        train_val_test_split=(0.5, 0.25, 0.25),
     )
-    dm.setup()
+    dm.setup("fit")
+    dm.setup("test")
     return {"data_module": dm, "time_series": ts}
 
 
