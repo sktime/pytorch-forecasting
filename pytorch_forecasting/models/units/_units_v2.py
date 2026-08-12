@@ -11,7 +11,7 @@ from torch.optim import Optimizer
 
 from pytorch_forecasting.layers._blocks import _TransformerBlock
 from pytorch_forecasting.layers._embeddings import _PatchEmbedding, _PositionalEmbedding
-from pytorch_forecasting.metrics import DistributionLoss, QuantileLoss
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -159,19 +159,15 @@ class UniTS(BaseModel):
         self.norm = nn.LayerNorm(self.d_model)
 
         self.n_quantiles = None
-        self.n_dist_args = None
+        # TODO: add DistributionLoss support
 
         if isinstance(self.loss, QuantileLoss):
             self.n_quantiles = len(self.loss.quantiles)
 
-        elif isinstance(self.loss, DistributionLoss):
-            self.n_dist_args = len(self.loss.distribution_arguments)
         output_dim = self.prediction_length * self.target_dim
 
         if self.n_quantiles is not None:
             output_dim = self.prediction_length * self.target_dim * self.n_quantiles
-        elif self.n_dist_args is not None:
-            output_dim = self.prediction_length * self.target_dim * self.n_dist_args
 
         self.head = nn.Sequential(
             nn.Flatten(start_dim=1),
@@ -211,13 +207,7 @@ class UniTS(BaseModel):
                 out = raw.view(
                     B, self.prediction_length, self.target_dim, self.n_quantiles
                 )
-        elif self.n_dist_args is not None:
-            if self.target_dim == 1:
-                out = raw.view(B, self.prediction_length, self.n_dist_args)
-            else:
-                out = raw.view(
-                    B, self.prediction_length, self.target_dim, self.n_dist_args
-                )
+        # TODO: add DistributionLoss output reshape
         else:
             out = raw.view(B, self.prediction_length, self.target_dim)
 
