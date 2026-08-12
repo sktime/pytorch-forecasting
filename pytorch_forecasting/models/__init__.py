@@ -15,6 +15,7 @@ from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
 from pytorch_forecasting.models.nhits import NHiTS
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.rnn import RecurrentNetwork
+from pytorch_forecasting.models.softs import SOFTS, SOFTS_pkg_v2
 from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
@@ -44,4 +45,6 @@ __all__ = [
     "TimeXer",
     "UniTS",
     "xLSTMTime",
+    "SOFTS",
+    "SOFTS_pkg_v2",
 ]
