@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
 import pytest
+from skbase.utils.dependencies import _check_soft_dependencies
 import torch
-from torch import nn
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import (
     EncoderDecoderTimeSeriesDataModule,
-    TslibDataModule,
 )
 from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 from pytorch_forecasting.models.nbeats._nbeats_pkg_v2 import NBeats_pkg_v2
@@ -162,6 +161,10 @@ def test_nbeats_v2_training_step(sample_dataset):
     assert "test_loss" in test_out
 
 
+@pytest.mark.skipif(
+    not _check_soft_dependencies("matplotlib", severity="none"),
+    reason="skip test if required package matplotlib not installed",
+)
 def test_nbeats_v2_interpretation_plot(sample_dataset):
     """Test interpretation plotting."""
     import matplotlib.pyplot as plt

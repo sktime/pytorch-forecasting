@@ -542,6 +542,9 @@ class NBeats_v2(BaseModel):
         matplotlib.figure.Figure
             Figure with the interpretation plots.
         """
+        from pytorch_forecasting.utils._dependencies import _check_matplotlib
+
+        _check_matplotlib("plot_interpretation")
         import matplotlib.pyplot as plt
 
         if ax is None:
