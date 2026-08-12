@@ -48,3 +48,4 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.tide._tide_dsipts._tide_v2.TIDE
    models.timexer._timexer_v2.TimeXer
    models.mlp._decodermlp_v2.DecoderMLP_v2
+   models.nbeats._nbeats_v2.NBeats_v2

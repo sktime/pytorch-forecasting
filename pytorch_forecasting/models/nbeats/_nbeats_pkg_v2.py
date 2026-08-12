@@ -1,30 +1,53 @@
-"""NBeats package container."""
+"""NBeats v2 package container."""
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
 class NBeats_pkg_v2(Base_pkg):
-    """NBeats package container."""
+    """
+    NBeats v2 package container.
+
+    Acts as an orchestrator for the N-BEATS v2 model, providing a streamlined
+    configuration-driven interface for dataset handling, model instantiation,
+    training, and inference.
+    """
 
     _tags = {
-        "info:name": "NBeats",
-        "authors": ["jdb78"],
+        "info:name": "NBeats_v2",
+        "info:compute": 1,
+        "authors": ["jdb78", "harshsomankar123-tech"],
+        "info:y_type": ["numeric"],
         "capability:exogenous": False,
         "capability:multivariate": False,
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
     def get_cls(cls):
-        """Get model class."""
-        from pytorch_forecasting.models.nbeats._nbeats_v2 import NBeats
+        """
+        Get the underlying model class.
 
-        return NBeats
+        Returns
+        -------
+        type
+            The ``NBeats_v2`` class.
+        """
+        from pytorch_forecasting.models.nbeats._nbeats_v2 import NBeats_v2
+
+        return NBeats_v2
 
     @classmethod
     def get_datamodule_cls(cls):
-        """Get the underlying DataModule class."""
+        """
+        Get the underlying DataModule class.
+
+        Returns
+        -------
+        type
+            The ``EncoderDecoderTimeSeriesDataModule`` class.
+        """
         from pytorch_forecasting.data.data_module import (
             EncoderDecoderTimeSeriesDataModule,
         )
@@ -33,15 +56,15 @@ class NBeats_pkg_v2(Base_pkg):
 
     @classmethod
     def get_test_train_params(cls):
-        """Return testing parameter settings for the trainer.
+        """
+        Return testing parameter settings for the trainer.
 
         Returns
         -------
-        params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class
-            Each dict are parameters to construct an "interesting" test instance, i.e.,
-            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
-            `create_test_instance` uses the first (or only) dictionary in `params`
+        params : list[dict]
+            Parameters to create testing instances of the package.
+            Each dictionary contains parameters passed to instantiate
+            the package and the underlying model.
         """
         from pytorch_forecasting.metrics import QuantileLoss
 

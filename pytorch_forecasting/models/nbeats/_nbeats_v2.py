@@ -1,6 +1,11 @@
 """
-N-Beats model for timeseries forecasting without covariates.
+N-BEATS model for time series forecasting for pytorch-forecasting v2.
 """
+
+########################################################################################
+# Disclaimer: This implementation is based on the new v2 data pipeline and is
+# experimental, please use with care.
+########################################################################################
 
 from typing import Any, Optional, Union
 import warnings
@@ -19,18 +24,85 @@ from pytorch_forecasting.metrics import MASE, Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class NBeats(BaseModel):
+class NBeats_v2(BaseModel):
     """
-    Initialize NBeats Model v2.
+    N-BEATS: Neural basis expansion analysis for interpretable time series forecasting.
 
-    Based on the article
-    `N-BEATS: Neural basis expansion analysis for interpretable time series
-        forecasting <http://arxiv.org/abs/1905.10437>`_.
+    An architecture based on backward and forward residual links and a deep stack of
+    fully-connected layers with basis expansion. It decomposes forecasts into trend,
+    seasonality, and generic components without relying on manual feature engineering.
+
+    Parameters
+    ----------
+    loss : Metric
+        Loss function used for model training and evaluation (e.g. MAE, SMAPE,
+        QuantileLoss, MASE).
+    stack_types : Optional[list[str]], default=None
+        Types of stacks in the network architecture. Each element must be one of
+        ``"generic"``, ``"trend"``, or ``"seasonality"``.
+        Defaults to ``["trend", "seasonality"]`` if None.
+    num_blocks : Optional[list[int]], default=None
+        Number of blocks per stack. Must have the same length as ``stack_types``.
+        Defaults to ``[3, 3]`` if None.
+    num_block_layers : Optional[list[int]], default=None
+        Number of fully connected layers per block for each stack.
+        Must have the same length as ``stack_types``. Defaults to ``[3, 3]`` if None.
+    widths : Optional[list[int]], default=None
+        Hidden layer width of the fully connected layers for each stack.
+        Must have the same length as ``stack_types``. Defaults to ``[32, 512]`` if None.
+    sharing : Optional[list[bool]], default=None
+        Whether weights are shared across blocks in a stack.
+        Must have the same length as ``stack_types``.
+        Defaults to ``[True, True]`` if None.
+    expansion_coefficient_lengths : Optional[list[int]], default=None
+        Expansion coefficient length per stack: degree of polynomial for trend stacks,
+        minimum period for seasonality stacks, and theta dimension for generic stacks.
+        Defaults to ``[3, 7]`` if None.
+    dropout : float, default=0.1
+        Dropout probability applied across fully connected layers in the blocks.
+        Must be non-negative and <= 0.3.
+    backcast_loss_ratio : float, default=0.0
+        Weight ratio for the backcast loss component relative to the forecast loss.
+        0.0 disables backcast loss calculation.
+    logging_metrics : Optional[list[nn.Module]], default=None
+        Metrics to log during training, validation, and testing.
+    optimizer : Optional[Union[Optimizer, str]], default="adam"
+        Optimizer to use for training (name string or optimizer class).
+    optimizer_params : Optional[dict], default=None
+        Parameters forwarded to the optimizer constructor.
+    lr_scheduler : Optional[str], default=None
+        Learning rate scheduler name string.
+    lr_scheduler_params : Optional[dict], default=None
+        Parameters forwarded to the learning rate scheduler constructor.
+    metadata : Optional[dict], default=None
+        Metadata dictionary extracted from ``EncoderDecoderTimeSeriesDataModule``
+        containing ``max_encoder_length`` (lookback window) and
+        ``max_prediction_length`` (forecast horizon).
+    **kwargs : Any
+        Additional keyword arguments forwarded to ``BaseModel``.
+
+    References
+    ----------
+    .. [1] Boris N. Oreshkin, Dmitry Carpov, Nicolas Chapados, Yoshua Bengio.
+       "N-BEATS: Neural basis expansion analysis for interpretable time series
+       forecasting." ICLR 2020. https://arxiv.org/abs/1905.10437
+
+    Notes
+    -----
+    This model implements the v2 interface for ``pytorch-forecasting``, decoupling
+    data preparation from the neural network logic.
     """
 
     @classmethod
     def _pkg(cls):
-        """Package for the model."""
+        """
+        Package class containing the model.
+
+        Returns
+        -------
+        type
+            The corresponding ``NBeats_pkg_v2`` package container class.
+        """
         from pytorch_forecasting.models.nbeats._nbeats_pkg_v2 import NBeats_pkg_v2
 
         return NBeats_pkg_v2
@@ -86,7 +158,7 @@ class NBeats(BaseModel):
         )
 
         warnings.warn(
-            "NBeats is an experimental model implemented on BaseModelV2. "
+            "NBeats_v2 is an experimental model implemented on BaseModelV2. "
             "It is an unstable version and may be subject to unannounced changes. "
             "Please use with caution.",
             UserWarning,
@@ -147,7 +219,22 @@ class NBeats(BaseModel):
         y_hat: torch.Tensor,
         target_scale: torch.Tensor | dict[str, torch.Tensor] | None,
     ) -> torch.Tensor:
-        """Transform output scale."""
+        """
+        Rescale network outputs back to the original scale of the target variable.
+
+        Parameters
+        ----------
+        y_hat : torch.Tensor
+            Normalized predictions of shape ``(batch_size, timesteps)`` or
+            ``(batch_size, timesteps, ...)``.
+        target_scale : Union[torch.Tensor, dict[str, torch.Tensor], None]
+            Scaling parameters containing either center/scale tensors or direct scale.
+
+        Returns
+        -------
+        torch.Tensor
+            Rescaled predictions matching the original data scale.
+        """
         if target_scale is None:
             return y_hat
 
@@ -166,7 +253,28 @@ class NBeats(BaseModel):
         return y_hat * scale
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """Pass forward of network."""
+        """
+        Network forward pass decomposing the input sequence into backcast and forecast.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing batch tensors. Must include ``"target_past"`` or
+            ``"encoder_cont"`` representing the historical target sequence. Optionally
+            includes ``"target_scale"`` for denormalization.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary containing:
+            - ``"prediction"``: Output forecasts of shape
+              ``(batch_size, prediction_length, n_quantiles)``
+            - ``"backcast"``: Reconstructed backcast of shape
+              ``(batch_size, context_length, n_quantiles)``
+            - ``"trend"``: Trend decomposition across all timesteps
+            - ``"seasonality"``: Seasonality decomposition across all timesteps
+            - ``"generic"``: Generic decomposition across all timesteps
+        """
         # target_past is the target history (backcast input)
         target = x.get("target_past", None)
         if target is None:
@@ -261,7 +369,26 @@ class NBeats(BaseModel):
         y: torch.Tensor,
         prefix: str,
     ) -> torch.Tensor:
-        """Compute the combined loss (forecast loss + optional backcast loss)."""
+        """
+        Compute combined loss with forecast loss and optional backcast loss.
+
+        Parameters
+        ----------
+        y_hat_dict : dict[str, torch.Tensor]
+            Output dictionary from forward pass containing ``"prediction"`` and
+            ``"backcast"``.
+        x : dict[str, torch.Tensor]
+            Input batch dictionary containing ``"target_past"``.
+        y : torch.Tensor
+            Ground truth forecast target tensor.
+        prefix : str
+            Stage prefix for logging (e.g. ``"train"``, ``"val"``, ``"test"``).
+
+        Returns
+        -------
+        torch.Tensor
+            Scalar combined loss tensor.
+        """
         y_hat = y_hat_dict["prediction"]
         y_target = y.squeeze(-1) if y.ndim == 3 and y.size(-1) == 1 else y
         loss = self.loss(y_hat, y_target)
@@ -306,7 +433,21 @@ class NBeats(BaseModel):
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor], torch.Tensor], batch_idx: int
     ) -> STEP_OUTPUT:
-        """Training step for the model."""
+        """
+        Execute training step on a batch.
+
+        Parameters
+        ----------
+        batch : tuple[dict[str, torch.Tensor], torch.Tensor]
+            Tuple containing input features dictionary ``x`` and target tensor ``y``.
+        batch_idx : int
+            Index of the current training batch.
+
+        Returns
+        -------
+        STEP_OUTPUT
+            Dictionary containing the training loss.
+        """
         x, y = batch
         y_hat_dict = self(x)
         loss = self._compute_combined_loss(y_hat_dict, x, y, prefix="train")
@@ -319,7 +460,21 @@ class NBeats(BaseModel):
     def validation_step(
         self, batch: tuple[dict[str, torch.Tensor], torch.Tensor], batch_idx: int
     ) -> STEP_OUTPUT:
-        """Validation step for the model."""
+        """
+        Execute validation step on a batch.
+
+        Parameters
+        ----------
+        batch : tuple[dict[str, torch.Tensor], torch.Tensor]
+            Tuple containing input features dictionary ``x`` and target tensor ``y``.
+        batch_idx : int
+            Index of the current validation batch.
+
+        Returns
+        -------
+        STEP_OUTPUT
+            Dictionary containing the validation loss.
+        """
         x, y = batch
         y_hat_dict = self(x)
         loss = self._compute_combined_loss(y_hat_dict, x, y, prefix="val")
@@ -332,7 +487,21 @@ class NBeats(BaseModel):
     def test_step(
         self, batch: tuple[dict[str, torch.Tensor], torch.Tensor], batch_idx: int
     ) -> STEP_OUTPUT:
-        """Test step for the model."""
+        """
+        Execute test step on a batch.
+
+        Parameters
+        ----------
+        batch : tuple[dict[str, torch.Tensor], torch.Tensor]
+            Tuple containing input features dictionary ``x`` and target tensor ``y``.
+        batch_idx : int
+            Index of the current test batch.
+
+        Returns
+        -------
+        STEP_OUTPUT
+            Dictionary containing the test loss.
+        """
         x, y = batch
         y_hat_dict = self(x)
         loss = self._compute_combined_loss(y_hat_dict, x, y, prefix="test")
@@ -350,7 +519,29 @@ class NBeats(BaseModel):
         ax=None,
         plot_seasonality_and_generic_on_secondary_axis: bool = False,
     ):
-        """Plot decomposition into trend, seasonality and generic forecast."""
+        """
+        Plot decomposition into trend, seasonality and generic components.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Input dictionary containing ``"target_past"`` and optional
+            ``"decoder_target"``.
+        output : dict[str, torch.Tensor]
+            Model forward output dictionary containing ``"prediction"``,
+            ``"backcast"``, ``"trend"``, ``"seasonality"``, and ``"generic"``.
+        idx : int
+            Index of the specific sample in the batch to plot.
+        ax : Optional[matplotlib.axes.Axes], default=None
+            Array of two matplotlib axes. If None, a new figure is created.
+        plot_seasonality_and_generic_on_secondary_axis : bool, default=False
+            Whether to plot seasonality and generic components on a secondary y-axis.
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure with the interpretation plots.
+        """
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -366,8 +557,6 @@ class NBeats(BaseModel):
         decoder_target = x.get("decoder_target", None)
         if decoder_target is None:
             # Fallback if decoder_target is not in batch (e.g. at prediction time)
-            # Try self.predict or use dummy/zeros if available.
-            # During plotting we can pass actual decoder_target.
             decoder_target = torch.zeros(
                 (target_past.size(0), self.prediction_length), device=target_past.device
             )
