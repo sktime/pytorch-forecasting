@@ -76,7 +76,7 @@ class BaseModel(LightningModule):
         super().__init__()
 
         # wrap bare nn losses; recurse into MultiLoss children via the converter
-        self.loss = coerce_to_pytorch_forecasting_metric(loss)
+        self.loss = loss
         self.logging_metrics = nn.ModuleList(
             logging_metrics if logging_metrics is not None else []
         )
@@ -87,6 +87,9 @@ class BaseModel(LightningModule):
             lr_scheduler_params if lr_scheduler_params is not None else {}
         )
         self.model_name = self.__class__.__name__
+
+        self._loss = coerce_to_pytorch_forecasting_metric(self.loss)
+
         warn(
             f"The Model '{self.model_name}' is part of an experimental rework"
             "of the pytorch-forecasting model layer, scheduled for release with v2.0.0."
@@ -169,18 +172,18 @@ class BaseModel(LightningModule):
         """Converts raw model output to point forecasts."""
         # todo: add MultiLoss support
         try:
-            out = self.loss.to_prediction(out["prediction"], **kwargs)
+            out = self._loss.to_prediction(out["prediction"], **kwargs)
         except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_prediction(out["prediction"])
+            out = self._loss.to_prediction(out["prediction"])
         return out
 
     def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
         """Converts raw model output to quantile forecasts."""
         # todo: add MultiLoss support
         try:
-            out = self.loss.to_quantiles(out["prediction"], **kwargs)
+            out = self._loss.to_quantiles(out["prediction"], **kwargs)
         except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_quantiles(out["prediction"])
+            out = self._loss.to_quantiles(out["prediction"])
         return out
 
     def training_step(
@@ -204,7 +207,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._loss(y_hat, y)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
@@ -232,7 +235,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._loss(y_hat, y)
         self.log(
             "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -260,7 +263,7 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
+        loss = self._loss(y_hat, y)
         self.log(
             "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
