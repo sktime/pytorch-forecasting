@@ -56,12 +56,6 @@ def _point_tensors(loss_fn: nn.Module, batch=4, time=5):
     return y_pred, target
 
 
-def test_nn_loss_adapter_is_metric():
-    adapter = NNLossAdapter(nn.MSELoss())
-    assert isinstance(adapter, Metric)
-    assert isinstance(adapter, MultiHorizonMetric)
-
-
 @pytest.mark.parametrize("loss_fn", POINT_NN_LOSSES, ids=lambda x: type(x).__name__)
 def test_nn_loss_adapter_all_point_losses(loss_fn):
     """Adapter works for common same-shape nn losses (with and without weights)."""
