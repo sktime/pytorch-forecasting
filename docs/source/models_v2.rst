@@ -104,7 +104,7 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
 .. code-block:: python
 
     from pytorch_forecasting.data.timeseries import TimeSeries
-    from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+    from pytorch_forecasting.data.data_module.encoder_decoder import EncoderDecoderTimeSeriesDataModule
     from pytorch_forecasting.metrics import MAE, SMAPE
     from pytorch_forecasting.models.temporal_fusion_transformer._tft_v2 import TFT
     from lightning.pytorch import Trainer

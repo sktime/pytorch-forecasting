@@ -9,30 +9,60 @@ How to use this implementation template to implement a new estimator:
     - if the name has more than one word (like Encoder-Decoder Data Module), the name of
     the file should be created by separating these words by a underscore (_).
     For eg, for Encoder-Decoder Data Module, the name of the file would be
-    _encoder_decoder_data_module.py.
+    encoder_decoder/_encoder_decoder_data_module.py.
 - work through all the "todo" comments below
 - fill in code for mandatory methods, and optionally for optional methods
 - change docstrings for functions and the file
 - once complete: use as a local library, or contribute to pytorch-forecasting via PR
 
-Mandatory methods to implement:
-    _prepare_metadata - method to create metadata
-    metadata - property to access the metadata
-    _preprocess_data - method to preprocess data
-    setup - method to setup the ML pipeline
+Mandatory methods to implement (abstract on BaseTimeSeriesDataModule):
+    _prepare_metadata
+        Derive model-init metadata (shapes, feature counts, window lengths, etc.)
+        from the D1 TimeSeries and datamodule hyper-parameters.
+    _context_length
+        Return encoder/context window size.
+    _prediction_length
+        Return decoder/prediction window size.
+    _create_windows(indices)
+        Build sliding-window index tuples
+        ``(series_idx, start_idx, context_length, prediction_length)`` for the
+        given series indices. Skip series shorter than context + prediction.
+    _preprocess_data(series_idx)
+        Load and prepare one series (tensorize, mask, split features, etc.).
+    _build_dataset(indices)
+        Preprocess series at indices, create windows, return a processed
+        ``torch.utils.data.Dataset`` that exposes ``.windows``.
+    _ensure_split()
+        Split series indices into train, validation, and test tensors using
+        ``self.train_val_test_split`` once and cache them.
+        Cache them in ``self._train_indices``, ``self._val_indices``, and
+        ``self._test_indices``.
+    collate_fn(batch)
+        Static method that stacks dataset samples into the ``(x, y)`` batch
+        layout expected by your model's ``forward`` pass.
+
+Provided by BaseTimeSeriesDataModule (override only when needed):
+    metadata (property)
+        Lazy cache around ``_prepare_metadata()``.
+    setup(stage)
+        Calls ``_ensure_split()``, builds windows/datasets per stage
+        (``fit``, ``test``, ``predict``) via ``_build_dataset(indices)``.
+    train_dataloader / val_dataloader / test_dataloader / predict_dataloader
+        Standard Lightning dataloaders wired to ``collate_fn``.
 """
 
 # todo: write an informative docstring for the file or module, remove the above
-from typing import Any
 
-from lightning.pytorch import LightningDataModule
 import torch
+from torch.utils.data import Dataset
+
+from pytorch_forecasting.data.data_module import BaseTimeSeriesDataModule
 
 # todo: add any necessary imports here
 # import soft dependencies only inside methods of the class, not at the top of the file
 
 
-class MyDataModule(LightningDataModule):
+class MyDataModule(BaseTimeSeriesDataModule):
     """Custom DataModule.
     todo: write docstring.
 
@@ -58,20 +88,19 @@ class MyDataModule(LightningDataModule):
         # IMPORTANT: the self.params should never be overwritten or mutated from now on
         # for handling defaults etc, write to other attributes, e.g., self._paramc
         self.paramc = paramc
-        # leave this as is
+        # leave this as is — pass time_series_dataset (D1 TimeSeries) and
+        # other base kwargs here
         super().__init__()
-        # create anyother required params after this
-        # must have this arg in self
-        self._metadata = None
+        # create any other required params after this
 
     # implement this is mandatory
-    def _prepare_metadata(self):
+    def _prepare_metadata(self) -> dict:
         """Prepare metadata for model initialisation.
 
         Returns
         -------
         dict
-            dictionary containing the params required to initialise the model.
+            Dictionary containing the params required to initialise the model.
             # todo: add all the keys that the dict has
         """
         # collect all the keys that are required for the model initialisation and
@@ -90,36 +119,102 @@ class MyDataModule(LightningDataModule):
         # data module - you might need to perform any basic operation on the data to
         # derive this info.
 
-    # implement this is mandatory
-    @property
-    def metadata(self):
-        """Compute metadata for model initialization.
+    def _context_length(self) -> int:
+        """Return encoder/context window length."""
+        # todo: return the context window length
 
-        This property returns a dictionary containing the shapes and key information
-        related to the time series model.
-        # todo add all the keys that the metadata has"""
-        # you can keep this method as it is. It just takes _prepare_metadata() to create
-        # this property
-        if self._metadata is None:
-            self._metadata = self._prepare_metadata()
-        return self._metadata
+    def _prediction_length(self) -> int:
+        """Return decoder/prediction window length."""
+        # todo: return the prediction window length
 
-    # implement this is mandatory
-    def _preprocess_data(self, series_idx: torch.Tensor) -> list[dict[str, Any]]:
-        """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
+    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
+        """Generate sliding windows for training, validation, and testing.
 
-        Preprocessing steps
-        --------------------
-        # todo: document all the processing steps
+        Parameters
+        ----------
+        indices : torch.Tensor
+            The indices of the time series data to be processed.
+
+        Returns
+        -------
+        list of tuple[int, int, int, int]
+            Each tuple is ``(series_idx, start_idx, context_length, prediction_length)``
+            Series shorter than context + prediction are skipped.
         """
-        # Add the preprocessing of data here that would be then passed to a private
-        # _Mydataset class, see datamodule/_dataset.py for more info.
+        # todo: return the sliding-window index tuples
 
-    # implement this is mandatory
-    def setup(self, stage: str) -> None:
-        """Setup the DataModule.
-        todo: implement the DataModule.setup() method. Add complete docstring."""
-        # implement the setup method and handle different stages of the ML pipeline
-        # (train, test, predict, validation etc) accordingly.
+    def _preprocess_data(self, series_idx) -> dict:
+        """Load and prepare one series before window slicing.
+        Composes coercion, feature splitting, and global normalization.
 
-    # If needed create collate_fn, dataloader methods and other required helping methods
+        Parameters
+        ----------
+        series_idx : int or torch.Tensor
+            The index of the time series data to be processed.
+
+        Returns
+        -------
+        dict of features of series item.
+        """
+        # todo: return the per-series dict (features, target, time_mask, ...)
+
+    def _build_dataset(self, indices: torch.Tensor) -> Dataset:
+        """Preprocess series at *indices*, create windows, and return a Dataset.
+
+        Implementations typically call ``_preprocess_data``, ``_create_windows``,
+        then wrap the result in a format-specific processed ``Dataset``. The
+        returned dataset must expose a ``.windows`` attribute so base ``setup()``
+        can cache window lists on the data module.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            Series indices for this split (train, val, test, or predict).
+
+        Returns
+        -------
+        Dataset
+            A dataset that contains the processed data for the split.
+        """
+        # todo: return your private _MyDataset with a .windows attribute
+
+    def _ensure_split(
+        self,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Split series indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
+
+        Sets
+        -------
+        sets the following attributes:
+
+        - ``_train_indices``
+        - ``_val_indices``
+        - ``_test_indices``
+
+        Returns
+        -------
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+            The train, validation, and test indices.
+        """
+        # todo: implement using self.train_val_test_split
+
+    @staticmethod
+    def collate_fn(batch):
+        """Stack samples from dataset into a model-ready batch.
+
+        Parameters
+        ----------
+        batch : list of tuple[dict, target]
+            Samples as returned by the processed dataset.
+
+        Returns
+        -------
+        tuple[dict, target]
+            Collated ``x`` dict and ``y`` (tensor or list of tensors for multivariate).
+        """
+        # todo: implement
+
+    # Optional overrides:
+    # - train_shuffle (property) — return False to disable training shuffle

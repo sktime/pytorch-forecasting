@@ -86,14 +86,35 @@ If needed, copy data_module.py and _dataset.py to your target directory.
 
 ### Data Module (`data_module.py`)
 
-Inherits from `LightningDataModule`. Implement the following:
+Inherits from `BaseTimeSeriesDataModule`. Implement the following:
 
-**Mandatory Methods:**
+**Mandatory methods:**
 
 * `_prepare_metadata()`: Derives the metadata required for model initialization from the raw data/parameters.
-* `metadata`: Property that returns `_metadata`, invoking `_prepare_metadata()` if null.
-* `_preprocess_data(series_idx)`: Contains logic to transform raw series before dataset consumption.
-* `setup(stage: str)`: Standard Lightning method to instantiate train/val/test splits.
+* `_context_length()` / `_prediction_length()`: Return window sizes for the unified test suite.
+* `_create_windows(indices)`: Build sliding-window index tuples.
+* `_preprocess_data(series_idx)`: Preprocessing logic for one series before windowing.
+* `_build_dataset(indices)`: Preprocess series, create windows, return a processed `Dataset` with `.windows`.
+* `_ensure_split()`: Split series indices into train, validation, and test sets.
+        Split series indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
+* `collate_fn(batch)`: Stack samples into model-ready batches.
+
+
+#### Package Configuration (`_datamodule_pkg.py`)
+
+The package file serves to register your custom Data Module with the PyTorch Forecasting extension test suite and makes it discoverable by the unified test harness. Your class must inherit from `_BasePtDataModule` and implement the following methods and attributes:
+
+- `get_cls()`: Imports and returns your Data Module class.
+- `get_datamodule_test_params()`: Produces a list of parameter dictionaries for instantiating your Data Module in different configurations. The first dictionary should always be empty (`{}`) to check default parameter handling. Additional parameterizations can be included to test edge cases.
+
+**Tags (`_tags`):**
+Dictionary defining framework integration rules. Tags are inherited from parent class if they are not set.
+
+- `info:name` (human-readable model name matching the class)
+- `batch_format` (str: labels the batch layout, e.g. `"encoder_decoder"` or `"tslib"` — used by tests to select format-specific assertions)
+- `tests:skip_by_name` (list of str: names of tests to skip for this data module)
+
 
 ### Dataset (`_dataset.py`)
 
