@@ -35,7 +35,36 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class DeepAR(AutoRegressiveBaseModelWithCovariates):
-    """DeepAR: Probabilistic forecasting with autoregressive recurrent networks."""
+    """DeepAR: Probabilistic forecasting with autoregressive recurrent networks.
+
+    Examples
+    --------
+    Create a dataset, train a model, and predict the validation horizon:
+
+    >>> import lightning.pytorch as pl
+    >>> from pytorch_forecasting import DeepAR, TimeSeriesDataSet
+    >>> from pytorch_forecasting.data.examples import generate_ar_data
+    >>> data = generate_ar_data(seasonality=10.0, timesteps=120, n_series=4)
+    >>> cutoff = data["time_idx"].max() - 6
+    >>> training = TimeSeriesDataSet(
+    ...     data[lambda x: x.time_idx <= cutoff],
+    ...     time_idx="time_idx",
+    ...     target="value",
+    ...     group_ids=["series"],
+    ...     max_encoder_length=24,
+    ...     max_prediction_length=6,
+    ...     time_varying_unknown_reals=["value"],
+    ... )
+    >>> validation = TimeSeriesDataSet.from_dataset(
+    ...     training, data, min_prediction_idx=cutoff + 1
+    ... )
+    >>> model = DeepAR.from_dataset(training, hidden_size=16)
+    >>> trainer = pl.Trainer(max_epochs=1, logger=False, enable_checkpointing=False)
+    >>> trainer.fit(model, training.to_dataloader(train=True, batch_size=32))
+    >>> predictions = model.predict(
+    ...     validation.to_dataloader(train=False, batch_size=32)
+    ... )
+    """
 
     @classmethod
     def _pkg(cls):
