@@ -359,10 +359,9 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             quantile_pred = metric.to_quantiles(y_pred)
             # for quantile metrics, the original predictions should match the result of
             # `to_quantiles`, since it does not take in the `quantiles` argument.
-            assert torch.allclose(quantile_pred, y_pred), (
-                "Quantile prediction does not match the original predictions in "
-                f"{metric_type}."
-            )
+            assert torch.allclose(
+                quantile_pred, y_pred
+            ), f"Quantile prediction does not match the original predictions in {metric_type}."  # noqa: E501
 
             expected_shape = self._get_expected_output_shape_quantiles(
                 batch_size, prediction_length, output_dim, metric_type

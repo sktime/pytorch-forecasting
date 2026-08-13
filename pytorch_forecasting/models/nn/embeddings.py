@@ -111,10 +111,9 @@ class MultiEmbedding(nn.Module):
                 "but only if not already in categorical_groups."
             )
         else:
-            assert x_categoricals is None and len(categorical_groups) == 0, (
-                "If embedding_sizes is not a dictionary, categorical_groups and "
-                "x_categoricals must be empty."
-            )
+            assert (
+                x_categoricals is None and len(categorical_groups) == 0
+            ), "If embedding_sizes is not a dictionary, categorical_groups and x_categoricals must be empty."  # noqa: E501
             # number embeddings based on order
             embedding_sizes = {
                 str(name): size for name, size in enumerate(embedding_sizes)

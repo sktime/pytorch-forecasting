@@ -579,10 +579,9 @@ class TimeSeriesDataSet(Dataset):
 
         # add time index relative to prediction position
         if self.add_relative_time_idx:
-            assert "relative_time_idx" not in data.columns, (
-                "relative_time_idx is a protected column and must not be present "
-                "in data"
-            )
+            assert (
+                "relative_time_idx" not in data.columns
+            ), "relative_time_idx is a protected column and must not be present in data"
             if (
                 "relative_time_idx" not in self._time_varying_known_reals
                 and "relative_time_idx" not in self.reals
@@ -624,10 +623,8 @@ class TimeSeriesDataSet(Dataset):
             # filtering for min_prediction_idx will be done on subsequence level,
             # ensuring that minimal decoder index is always >= min_prediction_idx
             data = data[
-                lambda x: (
-                    x[self.time_idx]
-                    >= self.min_prediction_idx - self.max_encoder_length - self.max_lag
-                )
+                lambda x: x[self.time_idx]
+                >= self.min_prediction_idx - self.max_encoder_length - self.max_lag
             ]
         data = data.sort_values(self.group_ids + [self.time_idx])
 
@@ -684,10 +681,9 @@ class TimeSeriesDataSet(Dataset):
         assert isinstance(self.add_encoder_length, bool), msg
 
         for target in self.target_names:
-            assert target not in self._time_varying_known_reals, (
-                f"target {target} should be an unknown continuous variable in the "
-                "future"
-            )
+            assert (
+                target not in self._time_varying_known_reals
+            ), f"target {target} should be an unknown continuous variable in the future"
 
         assert self.min_lag > 0, "lags should be positive"
 
@@ -1829,14 +1825,12 @@ class TimeSeriesDataSet(Dataset):
         # filter too short sequences
         df_index = df_index[
             # sequence must be at least of minimal prediction length
-            lambda x: (
-                (x.sequence_length >= min_sequence_length)
-                &
-                # prediction must be for minimal prediction index + length of prediction
-                (
-                    x["sequence_length"] + x["time"]
-                    >= self.min_prediction_idx + self.min_prediction_length
-                )
+            lambda x: (x.sequence_length >= min_sequence_length)
+            &
+            # prediction must be for minimal prediction index + length of prediction
+            (
+                x["sequence_length"] + x["time"]
+                >= self.min_prediction_idx + self.min_prediction_length
             )
         ]
 
@@ -1846,10 +1840,8 @@ class TimeSeriesDataSet(Dataset):
             # filter all elements that are longer
             # than the allowed maximum sequence length
             df_index = df_index[
-                lambda x: (
-                    (x["time_last"] - x["time"] + 1 <= max_sequence_length)
-                    & (x["sequence_length"] >= min_sequence_length)
-                )
+                lambda x: (x["time_last"] - x["time"] + 1 <= max_sequence_length)
+                & (x["sequence_length"] >= min_sequence_length)
             ]
             # choose longest sequence
             df_index = df_index.loc[
@@ -1960,14 +1952,12 @@ class TimeSeriesDataSet(Dataset):
                 time_idx_first=self.data["time"][index_start].numpy(),
                 time_idx_last=self.data["time"][index_last].numpy(),
                 # prediction index is last time index - decoder length + 1
-                time_idx_first_prediction=lambda x: (
-                    x.time_idx_last
-                    - self.calculate_decoder_length(
-                        time_last=x.time_idx_last,
-                        sequence_length=x.time_idx_last - x.time_idx_first + 1,
-                    )
-                    + 1
-                ),
+                time_idx_first_prediction=lambda x: x.time_idx_last
+                - self.calculate_decoder_length(
+                    time_last=x.time_idx_last,
+                    sequence_length=x.time_idx_last - x.time_idx_first + 1,
+                )
+                + 1,
             )
         )
         return index
