@@ -156,19 +156,36 @@ class TimeSeries(Dataset):
 
         if self.categorical_encoders is False:
             self._categorical_encoders = {}
-        else:
+
+        elif self.categorical_encoders is None:
+            self._categorical_encoders = {
+                col: NaNLabelEncoder(add_nan=True) for col in self._cat
+            }
+
+        elif isinstance(self.categorical_encoders, dict):
+            # Check if the keys belong to cat
+            invalid_keys = set(self.categorical_encoders) - set(self._cat)
+            if invalid_keys:
+                raise ValueError(
+                    f"categorical_encoders contains keys not listed in `cat`: {sorted(invalid_keys)}. "
+                    f"Allowed columns: {self._cat}."
+                )
             self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
             for col in self._cat:
                 if col not in self._categorical_encoders:
                     self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
+
+        else:
+            raise TypeError(
+                f"categorical_encoders must be a dict, False, or None. "
+                f"Got: {type(self.categorical_encoders).__name__!r}."
+            )
 
         # Fit and transform categorical columns to integer codes
         for col, encoder in self._categorical_encoders.items():
             if not hasattr(encoder, "classes_") or len(encoder.classes_) == 0:
                 encoder.fit(self.data[col])
 
-            # NaNLabelEncoder.transform() returns numpy ints directly.
-            # D1's __getitem__ converts to tensors later via torch.tensor().
             self.data[col] = encoder.transform(self.data[col])
 
             if self.data_future is not None and col in self.data_future.columns:
