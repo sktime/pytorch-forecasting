@@ -164,11 +164,12 @@ class TimeSeries(Dataset):
 
         elif isinstance(self.categorical_encoders, dict):
             # Check if the keys belong to cat
-            invalid_keys = set(self.categorical_encoders) - set(self._cat)
-            if invalid_keys:
+            invalid_cols = set(self.categorical_encoders) - set(self._cat)
+            if invalid_cols:
+                invalid_sorted_cols = sorted(invalid_cols)
                 raise ValueError(
-                    f"categorical_encoders contains keys not listed in `cat`: {sorted(invalid_keys)}. "
-                    f"Allowed columns: {self._cat}."
+                    f"categorical_encoders contains columns "
+                    f"not listed in `cat`: {invalid_sorted_cols}."
                 )
             self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
             for col in self._cat:
