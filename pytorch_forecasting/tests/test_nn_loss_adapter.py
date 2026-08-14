@@ -177,13 +177,13 @@ def test_base_model_auto_wrap():
             return {"prediction": torch.randn(4, 5, 1)}
 
     model = SimpleModel(loss=nn.MSELoss())
-    assert isinstance(model.loss, NNLossAdapter)
+    assert isinstance(model._loss, NNLossAdapter)
 
     model_ptf = SimpleModel(loss=MAE())
-    assert isinstance(model_ptf.loss, MAE)
+    assert isinstance(model_ptf._loss, MAE)
 
     model_multi = SimpleModel(loss=MultiLoss([MAE()]))
-    assert isinstance(model_multi.loss, MultiLoss)
+    assert isinstance(model_multi._loss, MultiLoss)
 
 
 def test_multiloss_mixed_ptf_and_nn_loss():
@@ -207,9 +207,9 @@ def test_multiloss_mixed_ptf_and_nn_loss():
             return {"prediction": torch.randn(4, 5, 1)}
 
     model = SimpleModel(loss=MultiLoss([MAE(), nn.L1Loss()]))
-    assert isinstance(model.loss, MultiLoss)
-    assert isinstance(model.loss.metrics[0], MAE)
-    assert isinstance(model.loss.metrics[1], NNLossAdapter)
+    assert isinstance(model._loss, MultiLoss)
+    assert isinstance(model._loss.metrics[0], MAE)
+    assert isinstance(model._loss.metrics[1], NNLossAdapter)
 
 
 def test_composite_metric_with_nn_loss_adapter():
