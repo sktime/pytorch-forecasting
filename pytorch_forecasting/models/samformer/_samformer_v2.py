@@ -65,10 +65,12 @@ class Samformer(BaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
+            metadata=metadata,
         )
 
-        self.save_hyperparameters(ignore=["loss", "logging_metrics", "optimizer"])
-        self.metadata = metadata
+        self.save_hyperparameters(
+            ignore=["loss", "logging_metrics", "optimizer", "metadata"]
+        )
         self.n_quantiles = 1
 
         if hasattr(loss, "quantiles") and loss.quantiles is not None:
