@@ -80,15 +80,15 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
         # mode="raw"
         raw_out = pkg.predict(predict_data, mode="raw")
-        raw_pred_tensor = raw_out["prediction"]
-        assert any(isinstance(v, torch.Tensor) for v in raw_out.values())
+        raw_pred_tensor = raw_out["prediction"][0]
+        assert any(isinstance(v[0], torch.Tensor) for v in raw_out.values())
         assert (
             raw_pred_tensor.ndim == 3
         ), f"Prediction must be 3D, got {raw_pred_tensor.ndim}D"
 
         # mode="quantiles"
         quantile_out = pkg.predict(predict_data, mode="quantiles")
-        quanitle_pred_tensor = quantile_out["prediction"]
+        quanitle_pred_tensor = quantile_out["prediction"][0]
         assert isinstance(quanitle_pred_tensor, torch.Tensor)
         assert (
             quanitle_pred_tensor.ndim == 3
@@ -96,7 +96,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
         # mode="prediction"
         pred_out = pkg.predict(predict_data, mode="prediction")
-        pred_tensor = pred_out["prediction"]
+        pred_tensor = pred_out["prediction"][0]
         assert isinstance(pred_tensor, torch.Tensor)
         assert pred_tensor.ndim == 2, f"Prediction must be 3D, got {pred_tensor.ndim}D"
 

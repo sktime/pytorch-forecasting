@@ -147,7 +147,6 @@ class TslibBaseModel(BaseModel):
 
         if "target" in x:
             y_hat["target"] = x["target"]
-
         return y_hat
 
     def transform_output(

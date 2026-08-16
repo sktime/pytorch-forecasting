@@ -18,6 +18,12 @@ NUM_LAYERS_TEST = 1
 DROPOUT_TEST = 0.1
 
 
+def _move_to_device(val, device):
+    if isinstance(val, list):
+        return [v.to(device) for v in val]
+    return val.to(device)
+
+
 def get_default_test_metadata(
     enc_cont=2,
     enc_cat=1,
@@ -224,7 +230,7 @@ def test_forward_pass_configs(
     model = TFT(**model_params, metadata=metadata)
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    _move_to_device(model, device)
     x = create_tft_input_batch_for_test(
         metadata, batch_size=BATCH_SIZE_TEST, device=device
     )
@@ -360,15 +366,14 @@ def test_model_with_datamodule_integration(
     tft_init_args["output_size"] = model_metadata_from_dm["target"]
     model = TFT(**tft_init_args, metadata=model_metadata_from_dm)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    _move_to_device(model, device)
     model.eval()
 
     train_loader = dm.train_dataloader()
     batch_x, batch_y = next(iter(train_loader))
 
     actual_batch_size = batch_x["encoder_cont"].shape[0]
-    batch_x = {k: v.to(device) for k, v in batch_x.items()}
-    batch_y = batch_y.to(device)
+    batch_x = {k: _move_to_device(v, device) for k, v in batch_x.items()}
 
     assert batch_x["encoder_cont"].shape[2] == model_metadata_from_dm["encoder_cont"]
     assert batch_x["encoder_cat"].shape[2] == model_metadata_from_dm["encoder_cat"]
@@ -391,7 +396,7 @@ def test_model_with_datamodule_integration(
         model_metadata_from_dm["target"],
     )
     assert not torch.isnan(predictions).any()
-    assert batch_y.shape == (
+    assert batch_y[0][0].shape == (
         actual_batch_size,
         MAX_PREDICTION_LENGTH_TEST,
     )

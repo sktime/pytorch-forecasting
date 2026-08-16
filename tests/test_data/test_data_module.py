@@ -247,8 +247,7 @@ def test_processed_dataset(data_module):
 
     assert x["decoder_cat"].shape[1] == known_cat_count
     assert x["decoder_cont"].shape[1] == known_cont_count
-
-    assert y.shape[0] == data_module.max_prediction_length
+    assert y[0][0].shape[0] == data_module.max_prediction_length
 
 
 def test_collate_fn(data_module):
@@ -263,7 +262,10 @@ def test_collate_fn(data_module):
     x_batch, y_batch = data_module.collate_fn(batch)
 
     for key in x_batch:
-        assert x_batch[key].shape[0] == batch_size
+        if isinstance(x_batch[key], list):
+            assert x_batch[key][0].shape[0] == batch_size
+        else:
+            assert x_batch[key].shape[0] == batch_size
 
     metadata = data_module.time_series_metadata
     known_cat_count = len(
@@ -286,8 +288,8 @@ def test_collate_fn(data_module):
 
     assert x_batch["decoder_cat"].shape[2] == known_cat_count
     assert x_batch["decoder_cont"].shape[2] == known_cont_count
-    assert y_batch.shape[0] == batch_size
-    assert y_batch.shape[1] == data_module.max_prediction_length
+    assert y_batch[0][0].shape[0] == batch_size
+    assert y_batch[0][0].shape[1] == data_module.max_prediction_length
 
 
 def test_full_dataloader_iteration(data_module):
@@ -326,8 +328,8 @@ def test_full_dataloader_iteration(data_module):
     assert x_batch["decoder_cat"].shape[2] == known_cat_count
     assert x_batch["decoder_cont"].shape[0] == data_module.batch_size
     assert x_batch["decoder_cont"].shape[2] == known_cont_count
-    assert y_batch.shape[0] == data_module.batch_size
-    assert y_batch.shape[1] == data_module.max_prediction_length
+    assert y_batch[0][0].shape[0] == data_module.batch_size
+    assert y_batch[0][0].shape[1] == data_module.max_prediction_length
 
 
 def test_variable_encoder_lengths(sample_timeseries_data):
@@ -491,8 +493,8 @@ def test_multivariate_target(normalizer_list):
 
     x, y = dm.train_dataset[0]
     assert len(y) == 2
-    assert y[0].shape == (dm.max_prediction_length,)
-    assert y[1].shape == (dm.max_prediction_length,)
+    assert y[0][0].shape == (dm.max_prediction_length,)
+    assert y[0][1].shape == (dm.max_prediction_length,)
     assert x["target_past"].shape == (dm.max_encoder_length, 2)
     if normalizer_list is None:
         dm._target_normalizer = None
@@ -614,7 +616,7 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
 
     x_no_norm, y_no_norm = dm_no_norm.train_dataset[0]
     x_with_norm, y_with_norm = dm_with_norm.train_dataset[0]
-    assert y_with_norm.shape == y_no_norm.shape
+    assert y_with_norm[0][0].shape == y_no_norm[0][0].shape
     assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
 
     if normalizer is not None and not isinstance(normalizer, EncoderNormalizer):

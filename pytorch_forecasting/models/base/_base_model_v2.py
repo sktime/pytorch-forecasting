@@ -160,107 +160,163 @@ class BaseModel(LightningModule):
 
         return predict_callback.result
 
-    def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
-        """Converts raw model output to point forecasts."""
-        # todo: add MultiLoss support
-        try:
-            out = self.loss.to_prediction(out["prediction"], **kwargs)
-        except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_prediction(out["prediction"])
-        return out
-
-    def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
-        """Converts raw model output to quantile forecasts."""
-        # todo: add MultiLoss support
-        try:
-            out = self.loss.to_quantiles(out["prediction"], **kwargs)
-        except TypeError:  # in case passed kwargs do not exist
-            out = self.loss.to_quantiles(out["prediction"])
-        return out
-
-    def training_step(
-        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
-    ) -> STEP_OUTPUT:
-        """
-        Training step for the model.
+    def _convert_output(
+        self,
+        out: dict[str, Any],
+        metric_fn_name: str,
+        use_metric: bool = False,
+        **kwargs,
+    ) -> list[torch.Tensor]:
+        """Convert inputs for prediction/quantiles.
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
-            Batch of data containing input and target tensors.
-        batch_idx : int
-            Index of the batch.
-
-        Returns
-        -------
-        STEP_OUTPUT
-            Dictionary containing the loss and other metrics.
+        out : dict
+            Network output dict with key "prediction".
+        metric_fn_name : str
+            Name of the Metric method to invoke: "to_prediction" or "to_quantiles".
+        use_metric : bool, default = False
+            If True, use loss metric for conversion.
+            If False, take mean over prediction directly.
         """
-        x, y = batch
-        y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
-        self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
-        )
-        self.log_metrics(y_hat, y, prefix="train")
-        return {"loss": loss}
+        pred = self._coerce_y_hat_for_loss(out["prediction"])
 
-    def validation_step(
-        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
-    ) -> STEP_OUTPUT:
-        """
-        Validation step for the model.
+        if not use_metric:
+            if isinstance(self.loss, MultiLoss):
+                return [
+                    getattr(Metric, metric_fn_name)(sub_loss, pred[idx], **kwargs)
+                    for idx, sub_loss in enumerate(self.loss)
+                ]
+            pred_out = getattr(Metric, metric_fn_name)(self.loss, pred, **kwargs)
+            return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
+
+        bound_fn = getattr(self.loss, metric_fn_name)
+        pred_out = bound_fn(pred, **kwargs) if kwargs else bound_fn(pred)
+        return pred_out if isinstance(pred_out, (list, tuple)) else [pred_out]
+
+    def to_prediction(
+        self, out: dict[str, Any], use_metric: bool = False, **kwargs
+    ) -> list[torch.Tensor] | torch.Tensor:
+        """Converts raw model output to point forecasts.
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
-            Batch of data containing input and target tensors.
-        batch_idx : int
-            Index of the batch.
-
-        Returns
-        -------
-        STEP_OUTPUT
-            Dictionary containing the loss and other metrics.
+        out : dict
+            Network output dict with key ``"prediction"``.
+        use_metric : bool, default = False
+            If True, use loss metric for conversion.
+            If False, take mean over prediction directly.
+        **kwargs
+            Passed on to the metric's ``to_prediction``.
         """
-        x, y = batch
-        y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
-        loss = self.loss(y_hat, y)
-        self.log(
-            "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
-        )
-        self.log_metrics(y_hat, y, prefix="val")
-        return {"val_loss": loss}
+        return self._convert_output(out, "to_prediction", use_metric, **kwargs)
 
-    def test_step(
-        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
-    ) -> STEP_OUTPUT:
-        """
-        Test step for the model.
+    def to_quantiles(
+        self, out: dict[str, Any], use_metric: bool = False, **kwargs
+    ) -> list[torch.Tensor] | torch.Tensor:
+        """Converts raw model output to quantile forecasts.
 
         Parameters
         ----------
-        batch : Tuple[Dict[str, torch.Tensor]]
-            Batch of data containing input and target tensors.
-        batch_idx : int
-            Index of the batch.
-
-        Returns
-        -------
-        STEP_OUTPUT
-            Dictionary containing the loss and other metrics.
+        out : dict
+            Network output dict.
+        use_metric : bool, default = False
+            If True, use loss metric for conversion.
+            If False, take mean over prediction directly.
+        **kwargs
+            Passed on to the metric's ``to_quantiles``.
         """
+        return self._convert_output(out, "to_quantiles", use_metric, **kwargs)
+
+    def _coerce_targets_for_loss(self, y):
+        """Coerce target outputs to match loss function expectations."""
+        y_targets, y_weights = y
+        if not isinstance(y_targets, (list, tuple)):
+            y_targets = [y_targets]
+        n_targets = len(y_targets)
+
+        if isinstance(self.loss, MultiLoss):
+            if len(self.loss) != n_targets:
+                raise ValueError(
+                    f"MultiLoss holds {len(self.loss)} metrics but the data "
+                    f"provides {n_targets} target(s) - these have to match."
+                )
+            return list(y_targets), y_weights
+
+        if n_targets > 1:
+            raise ValueError(
+                f"The data provides {n_targets} targets, which requires the loss "
+                f"to be a MultiLoss, but found {self.loss.__class__.__name__}. "
+                f"Use MultiLoss([...]) with one metric per target."
+            )
+        return y_targets[0], y_weights
+
+    def _coerce_y_hat_for_loss(self, y_hat):
+        """Coerce the network output to match loss function expectations."""
+        if not isinstance(self.loss, MultiLoss):
+            if isinstance(y_hat, (list, tuple)):
+                if len(y_hat) != 1:
+                    raise ValueError(
+                        f"The model returned {len(y_hat)} predictions, which "
+                        f"requires the loss to be a MultiLoss, but found "
+                        f"{self.loss.__class__.__name__}."
+                    )
+                return y_hat[0]
+            return y_hat
+
+        n_metrics = len(self.loss)
+        if isinstance(y_hat, (list, tuple)):
+            if len(y_hat) != n_metrics:
+                raise ValueError(
+                    f"MultiLoss holds {n_metrics} metrics but the model returned "
+                    f"{len(y_hat)} predictions - these have to match."
+                )
+            return list(y_hat)
+
+        if n_metrics == 1:
+            return [y_hat]
+        if y_hat.size(-1) != n_metrics:
+            raise ValueError(
+                f"MultiLoss holds {n_metrics} metrics, so the model has to return "
+                f"one prediction per target, either as a list or as a tensor whose "
+                f"last dimension is {n_metrics}, but got shape "
+                f"{tuple(y_hat.shape)}."
+            )
+        return list(torch.split(y_hat, 1, dim=-1))
+
+    def _step(self, batch, batch_idx):
+        """Shared step logic for train, val, and test."""
         x, y = batch
+        y = self._coerce_targets_for_loss(y)
         y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
+        y_hat = self._coerce_y_hat_for_loss(y_hat_dict["prediction"])
         loss = self.loss(y_hat, y)
+        return {"loss": loss, "y_hat": y_hat, "y": y}
+
+    def training_step(self, batch, batch_idx):
+        step_out = self._step(batch, batch_idx)
+
         self.log(
-            "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            "train_loss", step_out["loss"], on_step=True, on_epoch=True, prog_bar=True
         )
-        self.log_metrics(y_hat, y, prefix="test")
-        return {"test_loss": loss}
+        self.log_metrics(step_out["y_hat"], step_out["y"], prefix="train")
+        return step_out["loss"]
+
+    def validation_step(self, batch, batch_idx):
+        step_out = self._step(batch, batch_idx)
+
+        self.log(
+            "val_loss", step_out["loss"], on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log_metrics(step_out["y_hat"], step_out["y"], prefix="val")
+        return step_out
+
+    def test_step(self, batch, batch_idx):
+        step_out = self._step(batch, batch_idx)
+
+        self.log("test_loss", step_out["loss"], on_step=False, on_epoch=True)
+        self.log_metrics(step_out["y_hat"], step_out["y"], prefix="test")
+        return step_out
 
     def predict_step(
         self,
@@ -286,8 +342,7 @@ class BaseModel(LightningModule):
             Predicted output tensor.
         """
         x, _ = batch
-        y_hat = self(x)
-        return y_hat
+        return self(x)
 
     def configure_optimizers(self) -> dict:
         """
@@ -379,13 +434,24 @@ class BaseModel(LightningModule):
         prefix : str
             Prefix for the logged metrics (e.g., "train", "val", "test").
         """
+        if not self.logging_metrics:
+            return
+
+        target, weight = y
+
+        is_multi = isinstance(self.loss, MultiLoss)
+        y_hat_list = y_hat if is_multi else [y_hat]
+        target_list = target if is_multi else [target]
+
         for metric in self.logging_metrics:
-            metric_value = metric(y_hat, y)
-            self.log(
-                f"{prefix}_{metric.__class__.__name__}",
-                metric_value,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                logger=True,
-            )
+            for idx, (yh, yt) in enumerate(zip(y_hat_list, target_list)):
+                metric_value = metric(yh, (yt, weight))
+                tag = f"target{idx}_" if is_multi else ""
+                self.log(
+                    f"{tag}{prefix}_{metric.__class__.__name__}",
+                    metric_value,
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=True,
+                    logger=True,
+                )

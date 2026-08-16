@@ -23,7 +23,7 @@ def _integration(
     assert isinstance(predictions, dict)
     assert "prediction" in predictions
 
-    pred_tensor = predictions["prediction"]
+    pred_tensor = predictions["prediction"][0]
     assert isinstance(pred_tensor, torch.Tensor)
     assert pred_tensor.ndim == 3, f"Prediction must be 3D, got {pred_tensor.ndim}D"
 
