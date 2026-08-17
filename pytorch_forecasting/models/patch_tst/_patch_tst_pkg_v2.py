@@ -1,15 +1,14 @@
 """PatchTST package container for V2."""
 
-from pytorch_forecasting.models.base._base_object import _BasePtForecaster
+from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class PatchTSTV2_pkg(_BasePtForecaster):
+class PatchTSTV2_pkg_v2(Base_pkg):
     """PatchTST package container for V2."""
 
     _tags = {
         "info:name": "PatchTSTV2",
         "info:compute": 3,
-        "info:pred_type": ["point", "quantile"],
         "info:y_type": ["numeric"],
         "authors": ["nareshmethuku"],
         "capability:exogenous": True,
@@ -28,9 +27,25 @@ class PatchTSTV2_pkg(_BasePtForecaster):
         return PatchTSTV2
 
     @classmethod
-    def get_base_test_params(cls):
-        """
-        Return testing parameter settings for the trainer.
+    def get_datamodule_cls(cls):
+        """Get the underlying DataModule class."""
+        from pytorch_forecasting.data.data_module import (
+            EncoderDecoderTimeSeriesDataModule,
+        )
+
+        return EncoderDecoderTimeSeriesDataModule
+
+    @classmethod
+    def get_test_train_params(cls):
+        """Return testing parameter settings for the trainer.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
         """
         from pytorch_forecasting.data.encoders import GroupNormalizer
 
@@ -41,6 +56,7 @@ class PatchTSTV2_pkg(_BasePtForecaster):
                 "patch_len": 4,
                 "stride": 4,
                 "dropout": 0.1,
+                "datamodule_cfg": {"max_encoder_length": 8, "max_prediction_length": 3},
             },
             {
                 "hidden_size": 32,
@@ -48,6 +64,7 @@ class PatchTSTV2_pkg(_BasePtForecaster):
                 "patch_len": 8,
                 "stride": 8,
                 "dropout": 0.2,
+                "datamodule_cfg": {"max_encoder_length": 16, "max_prediction_length": 3},
             },
             {
                 "hidden_size": 16,
@@ -55,6 +72,7 @@ class PatchTSTV2_pkg(_BasePtForecaster):
                 "patch_len": 2,
                 "stride": 2,
                 "dropout": 0.1,
+                "datamodule_cfg": {"max_encoder_length": 4, "max_prediction_length": 2},
             },
             {
                 "hidden_size": 24,
@@ -62,48 +80,9 @@ class PatchTSTV2_pkg(_BasePtForecaster):
                 "patch_len": 4,
                 "stride": 2,
                 "dropout": 0.15,
-                "data_loader_kwargs": dict(
-                    target_normalizer=GroupNormalizer(
-                        groups=["agency", "sku"], transformation="softplus"
-                    ),
+                "datamodule_cfg": dict(
+                    max_encoder_length=6,
+                    max_prediction_length=3,
                 ),
             },
         ]
-
-    @classmethod
-    def _get_test_dataloaders_from(cls, params):
-        """
-        Get dataloaders from parameters.
-        """
-        loss = params.get("loss", None)
-        data_loader_kwargs = params.get("data_loader_kwargs", {})
-
-        from pytorch_forecasting.metrics import (
-            NegativeBinomialDistributionLoss,
-            PoissonLoss,
-            TweedieLoss,
-        )
-        from pytorch_forecasting.tests._conftest import make_dataloaders
-        from pytorch_forecasting.tests._data_scenarios import data_with_covariates
-
-        dwc = data_with_covariates()
-
-        if isinstance(loss, NegativeBinomialDistributionLoss):
-            dwc = dwc.assign(volume=lambda x: x.volume.round())
-
-        dwc = dwc.copy()
-        if isinstance(loss, TweedieLoss | PoissonLoss):
-            dwc["target"] = dwc["volume"].clip(1e-3, 1.0)
-        else:
-            dwc["target"] = dwc["volume"]
-
-        data_loader_default_kwargs = dict(
-            target="target",
-            time_varying_known_reals=["price_actual"],
-            time_varying_unknown_reals=["target"],
-            static_categoricals=["agency"],
-            add_relative_time_idx=True,
-        )
-        data_loader_default_kwargs.update(data_loader_kwargs)
-        dataloaders_w_covariates = make_dataloaders(dwc, **data_loader_default_kwargs)
-        return dataloaders_w_covariates

@@ -10,10 +10,10 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class PatchTSTV2(TslibBaseModel):
+class PatchTSTV2(BaseModel):
     """
     An implementation of PatchTST model for v2 of pytorch-forecasting.
 
@@ -58,10 +58,10 @@ class PatchTSTV2(TslibBaseModel):
     def _pkg(cls):
         """Package containing the model."""
         from pytorch_forecasting.models.patch_tst._patch_tst_pkg_v2 import (
-            PatchTSTV2_pkg,
+            PatchTSTV2_pkg_v2,
         )
 
-        return PatchTSTV2_pkg
+        return PatchTSTV2_pkg_v2
 
     def __init__(
         self,
@@ -89,11 +89,19 @@ class PatchTSTV2(TslibBaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
-            metadata=metadata,
         )
 
+        self.metadata = metadata or {}
+
+        # Set properties required by the model from metadata
+        self.context_length = self.metadata.get("max_encoder_length", 0)
+        self.prediction_length = self.metadata.get("max_prediction_length", 0)
+        
+        # In BaseModelV2, continuous variable counts are in 'encoder_cont'
+        self.cont_dim = self.metadata.get("encoder_cont", 0)
+
         warn.warn(
-            "PatchTST is an experimental model implemented on TslibBaseModelV2. "
+            "PatchTST is an experimental model implemented on BaseModelV2. "
             "It is an unstable version and may be subject to unannounced changes."
         )
 
@@ -163,24 +171,28 @@ class PatchTSTV2(TslibBaseModel):
         """
         Forward pass.
         """
-        batch_size = x["history_cont"].shape[0]
+        batch_size = x.get("encoder_cont", torch.empty(1)).shape[0]
 
         # Combine endogenous and exogenous variables as continuous covariates
-        history_target = x.get(
-            "history_target",
+        encoder_target = x.get(
+            "encoder_target",
             torch.zeros(batch_size, self.context_length, 1, device=self.device),
         )
-        history_cont = x.get(
-            "history_cont",
+        # Handle the case where encoder_target might not have a feature dimension
+        if encoder_target.dim() == 2:
+            encoder_target = encoder_target.unsqueeze(-1)
+            
+        encoder_cont = x.get(
+            "encoder_cont",
             torch.empty(batch_size, self.context_length, 0, device=self.device),
         )
 
         # [Batch, seq_len, total_vars]
-        combined = torch.cat([history_target, history_cont], dim=-1)
+        combined = torch.cat([encoder_target, encoder_cont], dim=-1)
         total_vars = combined.shape[-1]
 
         # Determine target dimension for slicing at the end
-        target_dim = history_target.shape[-1]
+        target_dim = encoder_target.shape[-1]
 
         # Channel Independence: merge Batch and Var dimension
         # [Batch * total_vars, seq_len, 1]
@@ -229,8 +241,5 @@ class PatchTSTV2(TslibBaseModel):
         Forward pass.
         """
         prediction = self._forecast(x)
-
-        if "target_scale" in x:
-            prediction = self.transform_output(prediction, x["target_scale"])
 
         return {"prediction": prediction}
