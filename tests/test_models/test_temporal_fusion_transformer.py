@@ -32,6 +32,14 @@ from pytorch_forecasting.models.temporal_fusion_transformer.tuning import (
 )
 
 
+class LossFactory:
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __call__(self, dataset):
+        return self.fn(dataset)
+
+
 def test_integration(multiple_dataloaders_with_covariates, tmp_path):
     _integration(
         multiple_dataloaders_with_covariates,
@@ -45,7 +53,7 @@ def test_non_causal_attention(dataloaders_with_covariates, tmp_path):
         dataloaders_with_covariates,
         tmp_path,
         causal_attention=False,
-        loss=TweedieLoss(),
+        loss_spec=TweedieLoss(),
         trainer_kwargs=dict(accelerator="cpu"),
     )
 
@@ -66,7 +74,16 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     _integration(
         dataloaders_with_covariates,
         tmp_path,
-        loss=NegativeBinomialDistributionLoss(),
+        loss_spec=NegativeBinomialDistributionLoss(),
+    )
+
+
+def test_multiloss_explicit(dataloaders_multi_target, tmp_path):
+    _integration(
+        dataloaders_multi_target,
+        tmp_path,
+        loss_spec=MultiLoss([QuantileLoss(), QuantileLoss()]),
+        trainer_kwargs=dict(accelerator="cpu"),
     )
 
 
@@ -74,39 +91,26 @@ def test_distribution_loss(data_with_covariates, tmp_path):
     not _check_soft_dependencies("cpflows", severity="none"),
     reason="Test skipped if required package cpflows not available",
 )
-def test_mqf2_loss(data_with_covariates, tmp_path):
-    data_with_covariates = data_with_covariates.assign(
-        volume=lambda x: x.volume.round()
-    )
-    dataloaders_with_covariates = make_dataloaders(
-        data_with_covariates,
-        target="volume",
-        time_varying_known_reals=["price_actual"],
-        time_varying_unknown_reals=["volume"],
-        static_categoricals=["agency"],
-        add_relative_time_idx=True,
-        target_normalizer=GroupNormalizer(
-            groups=["agency", "sku"], center=False, transformation="log1p"
-        ),
-    )
-
-    prediction_length = dataloaders_with_covariates[
-        "train"
-    ].dataset.min_prediction_length
+def test_mqf2_loss(dataloaders_for_mqf2, tmp_path):
+    prediction_length = dataloaders_for_mqf2["train"].dataset.min_prediction_length
 
     _integration(
-        dataloaders_with_covariates,
+        dataloaders_for_mqf2,
         tmp_path,
-        loss=MQF2DistributionLoss(prediction_length=prediction_length),
+        loss_spec=MQF2DistributionLoss(prediction_length=prediction_length),
         learning_rate=1e-3,
         trainer_kwargs=dict(accelerator="cpu"),
     )
 
 
-def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs):
+def _integration(dataloader, tmp_path, loss_spec=None, trainer_kwargs=None, **kwargs):
     train_dataloader = dataloader["train"]
     val_dataloader = dataloader["val"]
     test_dataloader = dataloader["test"]
+    if isinstance(loss_spec, LossFactory):
+        loss = loss_spec(train_dataloader.dataset)
+    else:
+        loss = loss_spec
 
     early_stop_callback = EarlyStopping(
         monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode="min"
@@ -176,10 +180,7 @@ def _integration(dataloader, tmp_path, loss=None, trainer_kwargs=None, **kwargs)
                 train_dataloaders=train_dataloader,
                 val_dataloaders=val_dataloader,
             )
-            # todo: testing somehow disables grad computation
-            # even though it is explicitly turned on -
-            #       loss is calculated as "grad" for MQF2
-            if not isinstance(net.loss, MQF2DistributionLoss):
+            if not getattr(net.loss, "skip_trainer_test", False):
                 test_outputs = trainer.test(net, dataloaders=test_dataloader)
                 assert len(test_outputs) > 0
 
