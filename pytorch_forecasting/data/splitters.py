@@ -182,7 +182,6 @@ def group_time_split(
     # sort for deterministic group indexing
     all_series = sorted(series_timestamps.keys())
     total_groups = len(all_series)
-    
     # phase 1: random split at the series level
     train_group_ids, val_group_ids, test_group_ids = random_series_split(
         total_groups, group_split
@@ -293,8 +292,9 @@ def _split_percentage(
         tuple[list[tuple[int, int, int, int]],
               list[tuple[int, int, int, int]],
               list[tuple[int, int, int, int]]]:
-            A tuple containing three separate lists of windows representing the finalized
-            training windows, validation windows, and test windows, respectively.
+            A tuple containing three separate lists of windows representing the
+            finalized training windows, validation windows, and test windows,
+            respectively.
     """
     series_cutoffs: dict[int, tuple | None] = {}
     for s_idx, timestamps in series_timestamps.items():
