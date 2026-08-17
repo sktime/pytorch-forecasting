@@ -11,7 +11,12 @@ from pytorch_forecasting.models.base import (
 from pytorch_forecasting.models.baseline import Baseline
 from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.models.mlp import DecoderMLP
-from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
+from pytorch_forecasting.models.nbeats import (
+    NBeats,
+    NBeats_pkg_v2,
+    NBeats_v2,
+    NBeatsKAN,
+)
 from pytorch_forecasting.models.nhits import NHiTS
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.rnn import RecurrentNetwork
@@ -25,6 +30,8 @@ from pytorch_forecasting.models.xlstm import xLSTMTime
 
 __all__ = [
     "NBeats",
+    "NBeats_v2",
+    "NBeats_pkg_v2",
     "NBeatsKAN",
     "NHiTS",
     "TemporalFusionTransformer",
