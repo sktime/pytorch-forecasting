@@ -11,6 +11,7 @@ from pytorch_forecasting.models.base import (
 from pytorch_forecasting.models.baseline import Baseline
 from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.models.mlp import DecoderMLP
+from pytorch_forecasting.models.moirai import Moirai, MoiraiMoE
 from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
 from pytorch_forecasting.models.nhits import NHiTS
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
@@ -40,6 +41,8 @@ __all__ = [
     "GRU",
     "MultiEmbedding",
     "DecoderMLP",
+    "Moirai",
+    "MoiraiMoE",
     "TiDEModel",
     "TimeXer",
     "xLSTMTime",
