@@ -96,8 +96,8 @@ See the detailed API documentation for the available V2 Package classes below:
 
    models.temporal_fusion_transformer._tft_pkg_v2.TFT_pkg_v2
    models.dlinear._dlinear_pkg_v2.DLinear_pkg_v2
-   models.samformer._samformer_v2_pkg.Samformer_pkg_v2
-   models.tide._tide_dsipts._tide_v2_pkg.TIDE_pkg_v2
+   models.samformer._samformer_pkg_v2.Samformer_pkg_v2
+   models.tide._tide_dsipts._tide_pkg_v2.TIDE_pkg_v2
    models.timexer._timexer_pkg_v2.TimeXer_pkg_v2
    models.mlp._decodermlp_pkg_v2.DecoderMLP_pkg_v2
    models.softs._softs_pkg_v2.SOFTS_pkg_v2
