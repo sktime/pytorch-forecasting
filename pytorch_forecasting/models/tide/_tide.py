@@ -91,40 +91,63 @@ class TiDEModel(BaseModelWithCovariates):
         hidden_size : int, default=128
             Size of hidden layers in the encoder and decoder.
             Typically ranges from 32 to 128 when no covariates are used.
-        temporal_width_future (int): Width of the output layer in the residual block for future covariate projections.
-            If set to 0, bypasses feature projection and uses raw feature data. Defaults to 4.
-        temporal_hidden_size_future (int): Width of the hidden layer in the residual block for future covariate
-            projections. Defaults to 32.
-        temporal_decoder_hidden (int): Width of the layers in the temporal decoder. Defaults to 32.
-        use_layer_norm (bool): Whether to apply layer normalization in residual blocks. Defaults to False.
-        dropout (float): Dropout probability for fully connected layers. Defaults to 0.1.
-        output_size: Union[int, List[int]]: included as its required by deduce_default_output_parameters in
-            from_dataset function. Defaults to 1.
-        static_categoricals (List[str]): names of static categorical variables
-        static_reals (List[str]): names of static continuous variables
-        time_varying_categoricals_encoder (List[str]): names of categorical variables for encoder
-        time_varying_categoricals_decoder (List[str]): names of categorical variables for decoder
-        time_varying_reals_encoder (List[str]): names of continuous variables for encoder
-        time_varying_reals_decoder (List[str]): names of continuous variables for decoder
-        x_reals (List[str]): order of continuous variables in tensor passed to forward function
-        x_categoricals (List[str]): order of categorical variables in tensor passed to forward function
-        embedding_sizes (Dict[str, Tuple[int, int]]): dictionary mapping categorical variables to tuple of integers
-            where the first integer denotes the number of categorical classes and the second the embedding size
-        embedding_labels (Dict[str, List[str]]): dictionary mapping (string) indices to list of categorical labels
-        embedding_paddings (List[str]): names of categorical variables for which label 0 is always mapped to an
-            embedding vector filled with zeros
-        categorical_groups (Dict[str, List[str]]): dictionary of categorical variables that are grouped together and
-            can also take multiple values simultaneously (e.g. holiday during octoberfest). They should be implemented
-            as bag of embeddings
-        logging_metrics (nn.ModuleList[MultiHorizonMetric]): list of metrics that are logged during training.
-            Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])
+        temporal_width_future : int, default=4
+            Width of the output layer in the residual block for future covariate
+            projections. If set to 0, bypasses feature projection and uses raw feature
+            data.
+        temporal_hidden_size_future : int, default=32
+            Width of the hidden layer in the residual block for future covariate
+            projections.
+        temporal_decoder_hidden : int, default=32
+            Width of the layers in the temporal decoder.
+        use_layer_norm : bool, default=False
+            Whether to apply layer normalization in residual blocks.
+        dropout : float, default=0.1
+            Dropout probability for fully connected layers.
+        output_size : int or list of int, default=1
+            Included as it is required by ``deduce_default_output_parameters`` in the
+            ``from_dataset`` method.
+        static_categoricals : list of str, optional
+            Names of static categorical variables.
+        static_reals : list of str, optional
+            Names of static continuous variables.
+        time_varying_categoricals_encoder : list of str, optional
+            Names of categorical variables for the encoder.
+        time_varying_categoricals_decoder : list of str, optional
+            Names of categorical variables for the decoder.
+        time_varying_reals_encoder : list of str, optional
+            Names of continuous variables for the encoder.
+        time_varying_reals_decoder : list of str, optional
+            Names of continuous variables for the decoder.
+        x_reals : list of str, optional
+            Order of continuous variables in tensor passed to the forward function.
+        x_categoricals : list of str, optional
+            Order of categorical variables in tensor passed to the forward function.
+        embedding_sizes : dict of str to tuple of int, optional
+            Dictionary mapping categorical variables to a tuple of integers where the
+            first integer denotes the number of categorical classes and the second the
+            embedding size.
+        embedding_labels : dict of str to list of str, optional
+            Dictionary mapping (string) indices to list of categorical labels.
+        embedding_paddings : list of str, optional
+            Names of categorical variables for which label 0 is always mapped to an
+            embedding vector filled with zeros.
+        categorical_groups : dict of str to list of str, optional
+            Dictionary of categorical variables that are grouped together and can also
+            take multiple values simultaneously (e.g. holiday during Oktoberfest).
+            They should be implemented as bag of embeddings.
+        logging_metrics : nn.ModuleList, optional
+            List of metrics that are logged during training. Defaults to
+            ``nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()])``.
         **kwargs
-            Allows optional arguments to configure pytorch_lightning.Module, pytorch_lightning.Trainer, and
-            pytorch-forecasting's :class:BaseModelWithCovariates.
+            Optional arguments to configure ``pytorch_lightning.Module``,
+            ``pytorch_lightning.Trainer``, and pytorch-forecasting's
+            :class:`BaseModelWithCovariates`.
 
-        Note:
-            The model supports future covariates and static covariates.
-        """  # noqa: E501
+        Notes
+        -----
+        The model supports future covariates and static covariates.
+        """
         if static_categoricals is None:
             static_categoricals = []
         if static_reals is None:
@@ -186,8 +209,10 @@ class TiDEModel(BaseModelWithCovariates):
     def decoder_covariate_size(self) -> int:
         """Decoder covariates size.
 
-        Returns:
-            int: size of time-dependent covariates used by the decoder
+        Returns
+        -------
+        int
+            Size of time-dependent covariates used by the decoder.
         """
         return len(
             set(self.hparams.time_varying_reals_decoder) - set(self.target_names)
@@ -200,8 +225,10 @@ class TiDEModel(BaseModelWithCovariates):
     def encoder_covariate_size(self) -> int:
         """Encoder covariate size.
 
-        Returns:
-            int: size of time-dependent covariates used by the encoder
+        Returns
+        -------
+        int
+            Size of time-dependent covariates used by the encoder.
         """
         return len(
             set(self.hparams.time_varying_reals_encoder) - set(self.target_names)
@@ -214,8 +241,10 @@ class TiDEModel(BaseModelWithCovariates):
     def static_size(self) -> int:
         """Static covariate size.
 
-        Returns:
-            int: size of static covariates
+        Returns
+        -------
+        int
+            Size of static covariates.
         """
         return len(self.hparams.static_reals) + sum(
             self.embeddings.output_size[name]
@@ -224,16 +253,19 @@ class TiDEModel(BaseModelWithCovariates):
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):
-        """
-        Convenience function to create network from
-        :py:class`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
+        """Convenience function to create network from a ``TimeSeriesDataSet``.
 
-        Args:
-            dataset (TimeSeriesDataSet): dataset where sole predictor is the target.
-            **kwargs: additional arguments to be passed to `__init__` method.
+        Parameters
+        ----------
+        dataset : TimeSeriesDataSet
+            Dataset where the sole predictor is the target.
+        **kwargs
+            Additional arguments to be passed to ``__init__``.
 
-        Returns:
-            TiDE
+        Returns
+        -------
+        TiDEModel
+            Initialized ``TiDEModel`` instance.
         """
 
         # validate arguments
@@ -270,15 +302,18 @@ class TiDEModel(BaseModelWithCovariates):
         return super().from_dataset(dataset, **new_kwargs)
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """
-        Pass forward of network.
+        """Pass forward of network.
 
-        Args:
-            x (Dict[str, torch.Tensor]): input from dataloader generated from
-                :py:class:~pytorch_forecasting.data.timeseries.TimeSeriesDataSet.
+        Parameters
+        ----------
+        x : dict of str to torch.Tensor
+            Input from dataloader generated from
+            :py:class:`~pytorch_forecasting.data.timeseries.TimeSeriesDataSet`.
 
-        Returns:
-            Dict[str, torch.Tensor]: output of model
+        Returns
+        -------
+        dict of str to torch.Tensor
+            Output of model.
         """
 
         # target
