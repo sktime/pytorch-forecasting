@@ -405,6 +405,7 @@ class NaNLabelEncoder(
                             "unknown classes which were set to NaN"
                         ),
                         UserWarning,
+                        stacklevel=3,
                     )
 
             encoded = [self.classes_.get(v, 0) for v in y]
@@ -675,6 +676,7 @@ class TorchNormalizer(
                 "scale is below 1e-7 - consider not centering "
                 "the data or using data with higher variance for numerical stability",
                 UserWarning,
+                stacklevel=3,
             )
 
     def transform(
