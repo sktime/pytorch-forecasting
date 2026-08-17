@@ -4,10 +4,11 @@ Developer Guide
 ===============
 
 This guide is for people who want to **develop** ``pytorch-forecasting``,
-meaning contributing code rather than just using the library. It covers both
-**v1** (stable, still maintained) and **v2** (the active redesign), and is
-organised around the architecture and the v1 → v2 transition, since that is
-where most current contribution happens.
+meaning contributing code rather than just using the library. It is written for
+the **v2** API: v2 is where all new development happens, and new estimators
+should be contributed there. **v1 is in maintenance mode** and receives bug
+fixes only; see :doc:`api` for the v1 reference and :doc:`migration_v1_to_v2`
+for moving off it.
 
 ``pytorch-forecasting`` is part of the `sktime <https://www.sktime.net>`_
 ecosystem. Project-wide conventions that are not specific to this package
@@ -28,12 +29,11 @@ and are linked rather than repeated here:
 Overview
 --------
 
-A contribution to ``pytorch-forecasting`` is usually a new **estimator**: a
-model, a data module, or a metric, most often for the v2 API. Whatever you add
-follows a small set of shared conventions and, where one exists, an official
-extension template. This guide walks through setting up your environment, the
-architecture (so the conventions make sense), and how to add, verify, and submit
-a contribution.
+A contribution to ``pytorch-forecasting`` is usually a new **estimator**: a v2
+model, a v2 data module, or a metric. Whatever you add follows a small set of
+shared conventions and, where one exists, an official extension template. This
+guide walks through setting up your environment, the architecture (so the
+conventions make sense), and how to add, verify, and submit a contribution.
 
 Setup / CI
 ----------
@@ -114,13 +114,13 @@ Tests live in two directories (configured in ``[tool.pytest.ini_options]``):
 Coverage output lands in ``htmlcov/``; the terminal report shows missing lines
 per file (``--cov-report=term-missing:skip-covered``).
 
-**Registry auto-discovery.** Both the v1 registry (``TestAllPtForecasters``)
-and the v2 registry (``TestAllPtForecastersV2``) discover estimators through
-``all_objects``. A correctly registered model is therefore picked up and tested
-automatically, so you rarely need to write a per-model test file. What you do
-need to provide is ``get_test_train_params`` on the package class: keep every
-configuration small (minimal sequence length, tiny hidden sizes) so the
-registry-driven tests stay fast in CI.
+**Registry auto-discovery.** The v2 test suite (``TestAllPtForecastersV2``)
+discovers estimators through the ``all_objects`` registry. A correctly
+registered model is therefore picked up and tested automatically, so you rarely
+need to write a per-model test file. What you do need to provide is
+``get_test_train_params`` on the package class: keep every configuration small
+(minimal sequence length, tiny hidden sizes) so the registry-driven tests stay
+fast in CI.
 
 Continuous integration
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -136,31 +136,16 @@ Extension library
 
 The `extension_templates/ <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates>`_
 directory holds the official copy-and-fill templates for every recognised
-contribution type (v2 model, v2 data module, metric, v1 network). See
+contribution type (v2 model, v2 data module, metric). See
 `Adding a contribution`_ for details and code skeletons.
 
 Architecture
 ------------
 
-v1 architecture
-~~~~~~~~~~~~~~~
-
-In v1, ``TimeSeriesDataSet`` handles ingestion, preprocessing, and batching, and
-the model is built from it via ``Model.from_dataset(...)``; this tight
-dataset-to-model coupling is what v2 unwinds (full v1 reference: :doc:`api`).
-
-.. mermaid::
-
-   flowchart TD
-       raw["Raw data (pandas DataFrame)"] --> tsds["TimeSeriesDataSet<br/>ingest + preprocess + batch"]
-       tsds -->|from_dataset| model["BaseModel<br/>network + forward + training"]
-       model --- pkg["_BasePtForecaster<br/>tags + metadata"]
-
-v2 architecture
-~~~~~~~~~~~~~~~
-
-v2 splits that monolith into four decoupled layers (Dataset, DataModule, Model,
-Package), where the model is driven by a ``metadata`` dict instead of
+v2 splits the v1 monolith, in which ``TimeSeriesDataSet`` handled ingestion,
+preprocessing, and batching and the model was built from it via
+``Model.from_dataset(...)``, into four decoupled layers (Dataset, DataModule,
+Model, Package), where the model is driven by a ``metadata`` dict instead of
 ``from_dataset`` (full reference: :doc:`api_v2`).
 
 .. mermaid::
@@ -183,12 +168,9 @@ Runnable end-to-end examples are in the v2 tutorials
    available for production pipelines. Feedback is welcome in
    `issue #1736 <https://github.com/sktime/pytorch-forecasting/issues/1736>`_.
 
-v1 to v2
-~~~~~~~~
-
-The model-implementation differences (data layer split, ``from_dataset`` to
-``metadata``, the new package base, unchanged ``forward``) are compared item by
-item in :doc:`migration_v1_to_v2`.
+The model-implementation differences from v1 (data layer split, ``from_dataset``
+to ``metadata``, the new package base, unchanged ``forward``) are compared item
+by item in :doc:`migration_v1_to_v2`.
 
 Adding a contribution
 ---------------------
@@ -318,6 +300,9 @@ tslib models (e.g. ``TimeXer``, ``DLinear``).
        def get_test_train_params(cls):
            return [{}, {"paramb": "other"}]   # first {} tests defaults; keep small
 
+Place reusable submodules in a ``layers/`` subfolder to keep the model file
+focused.
+
 **Add a new v2 data module** (`extension_templates/v2/data_module/ <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v2/data_module>`_):
 a D2 ``LightningDataModule`` (mandatory: ``_prepare_metadata``, the ``metadata``
 property, ``_preprocess_data``, ``setup``) plus a private ``Dataset``
@@ -369,39 +354,12 @@ implement ``loss``:
            # todo: compute and return the unreduced loss tensor
            ...
 
-**Add a new v1 network** (`extension_templates/v1/network/ <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v1/network>`_):
-v1 is still maintained. Subclass the ``BaseModel`` variant that matches your
-model: ``BaseModel`` (no covariates, not autoregressive),
-``BaseModelWithCovariates`` (static / time-varying covariates),
-``AutoRegressiveBaseModel`` (autoregressive, no covariates), or
-``AutoRegressiveBaseModelWithCovariates`` (autoregressive with covariates, e.g.
-DeepAR, TFT). Mandatory methods: ``__init__``, ``_pkg``, ``from_dataset`` (kept
-in v1, reads sizes from a ``TimeSeriesDataSet``), and ``forward`` (returns via
-``self.to_network_output(prediction=...)``):
+.. note::
 
-.. code-block:: python
-
-   class ExampleNetwork(BaseModel):
-       def __init__(self, hidden_size: int = 16, **kwargs):
-           self.save_hyperparameters()
-           super().__init__(**kwargs)
-
-       @classmethod
-       def _pkg(cls):
-           from extension_templates.v1.network._model_pkg import ExampleNetwork_pkg
-           return ExampleNetwork_pkg
-
-       @classmethod
-       def from_dataset(cls, dataset, **kwargs):
-           # derive dataset-dependent kwargs, then delegate
-           return super().from_dataset(dataset, **kwargs)
-
-       def forward(self, x: dict[str, torch.Tensor], **kwargs) -> dict[str, torch.Tensor]:
-           # return via self.to_network_output(prediction=...)
-           ...
-
-Place reusable submodules in a ``layers/`` subfolder to keep the model file
-focused.
+   New models should be contributed to v2. v1 is in maintenance mode: it accepts
+   bug fixes, but new networks are no longer added there. If you have a v1 model
+   you want in the library, port it to v2 following `Migrating a v1 model to
+   v2`_.
 
 Migrating a v1 model to v2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
