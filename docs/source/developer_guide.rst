@@ -139,25 +139,24 @@ its package automatically. The result maps each ``test[fixture]`` to
 ``"PASSED"`` or to the exception raised. Failures are collected rather than
 raised unless ``raise_exceptions=True``.
 
-.. warning::
-
-   Dispatch is driven by the ``object_type`` tag. If it matches no registered
-   scitype, no test class is found and nothing runs, but the call still prints
-   ``All tests PASSED!`` and returns an empty dict. Confirm the result is
-   non-empty before trusting a green run.
-
 **What the generic tests cover.** ``TestAllPtForecastersV2`` checks the
-interface contract:
+interface contract: construction, training, prediction, checkpoint round-trip,
+output shapes, and the package naming convention.
 
-* the doctests in the class docstring run,
-* the estimator trains and predicts end to end,
-* a checkpoint round-trips,
-* the ``raw`` / ``quantiles`` / ``prediction`` modes return the expected shapes,
-* the package class follows the ``<Model>_pkg_v2`` naming convention.
+**Common pitfalls.**
 
-It does not check numerical correctness, and it does not verify the
-``capability:*`` tags, which are declarative metadata for discovery that no test
-reads. Cover both with tests you write yourself.
+* **A wrong** ``object_type`` **tag passes silently.** ``"forecaster_v2"`` instead
+  of ``"forecaster_pytorch_v2"`` matches no registered scitype, so no test class
+  is found and nothing runs, yet the call still prints ``All tests PASSED!``.
+  Check ``len(results) > 0`` before trusting a green run.
+* **The** ``capability:*`` **tags are never verified.** Declaring
+  ``"capability:multivariate": True`` does not cause multivariate behaviour to be
+  tested; no test reads these tags.
+* **Numerical correctness is not checked.** The suite asserts on shapes, not on
+  values, so a model returning plausible nonsense passes. Add your own test, for
+  example that a constant input series produces a constant forecast.
+* **Only** ``SMAPE`` **is used as the loss.** Add ``{"loss": QuantileLoss()}`` to
+  ``get_test_train_params`` to cover another one.
 
 .. note::
 
