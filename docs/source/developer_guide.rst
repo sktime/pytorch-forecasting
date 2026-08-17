@@ -160,6 +160,18 @@ verify the ``capability:*`` tags: those are declarative metadata used for
 discovery, and no test reads them. Numerical correctness, and any behaviour
 specific to your architecture, need tests you write yourself.
 
+.. note::
+
+   **Known gap, remove this note once resolved.** The loss-compatibility matrix
+   in ``pytorch_forecasting/tests/_loss_mapping.py`` selects test losses from the
+   ``info:pred_type`` and ``info:y_type`` tags, but no v2 package declares
+   ``info:pred_type`` yet, so no loss is selected and every v2 model is currently
+   tested with the ``SMAPE`` fallback only. To have your model exercised under a
+   different loss, pass ``loss=`` explicitly in a ``get_test_train_params``
+   entry; declaring the tag has no effect for v2 today. ``get_base_test_params``
+   and the per-loss normalizer settings in ``LOSS_SPECIFIC_PARAMS`` are likewise
+   v1-only paths.
+
 Continuous integration
 ~~~~~~~~~~~~~~~~~~~~~~
 
