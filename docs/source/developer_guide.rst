@@ -116,8 +116,8 @@ per file (``--cov-report=term-missing:skip-covered``).
 
 **Registry auto-discovery.** The v2 test suite (``TestAllPtForecastersV2``)
 discovers estimators through the ``all_objects`` registry. A correctly
-registered model is therefore picked up and tested automatically, so you rarely
-need to write a per-model test file. What you do need to provide is
+registered model is therefore picked up and tested automatically, so the generic
+checks need no per-model test file of their own. What you do need to provide is
 ``get_test_train_params`` on the package class: keep every configuration small
 (minimal sequence length, tiny hidden sizes) so the registry-driven tests stay
 fast in CI.
