@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers._scinet import SCINetCore
+from pytorch_forecasting.layers._encoders._scinet_encoder import SCITree
 from pytorch_forecasting.metrics import MAE, Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
@@ -123,15 +123,15 @@ class SCINet_v2(BaseModel):
                 f"Reduce num_levels or adjust context_length."
             )
 
-        self.model = SCINetCore(
-            context_length=self.context_length,
-            prediction_length=self.prediction_length,
-            n_channels=self.n_channels,
-            num_stacks=num_stacks,
-            num_levels=num_levels,
-            hid_size=hid_size,
-            kernel_size=kernel_size,
-            dropout=dropout,
+        self.trees = nn.ModuleList(
+            [
+                SCITree(self.n_channels, num_levels, hid_size, kernel_size, dropout)
+                for _ in range(num_stacks)
+            ]
+        )
+        self.fc = nn.Linear(
+            self.context_length * self.n_channels,
+            self.prediction_length * self.n_channels,
         )
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -154,5 +154,12 @@ class SCINet_v2(BaseModel):
               ``(batch_size, prediction_length, n_channels)``
         """
         enc = x["target_past"]
-        prediction = self.model(enc)
+
+        for tree in self.trees:
+            enc = tree(enc) + enc  # residual connection
+
+        batch_size = enc.shape[0]
+        prediction = self.fc(enc.reshape(batch_size, -1)).reshape(
+            batch_size, self.prediction_length, self.n_channels
+        )
         return {"prediction": prediction}
