@@ -6,7 +6,8 @@ import torch
 
 
 def random_series_split(
-    total_series: int, train_val_test_split: tuple[float, float, float]
+    total_series: int,
+    train_val_test_split: tuple[float, float, float],
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Randomly splits the dataset at the series (group) level.
@@ -47,9 +48,6 @@ def stratified_series_split(
     labels = []
 
     # Extract the stratify label for each series.
-    # For time series, this is usually a static feature or majority target class.
-    # In this basic implementation, we assume we stratify on the first static
-    # categorical feature.
     for i in range(total_series):
         sample = time_series_dataset[i]
         st = sample.get("st")
@@ -110,6 +108,7 @@ def temporal_window_split(
     - **Percentage mode** (default, when ``temporal_cutoffs`` is None):
       Computes cutoffs from a global timeline across all series,
       ensuring a single boundary that prevents cross-series leakage.
+
     Parameters
     ----------
     windows : list of (series_idx, start_idx, enc_len, pred_len)
@@ -127,6 +126,7 @@ def temporal_window_split(
         Windows in between go to validation.
         If ``start_test`` is not provided, it defaults to ``end_train``
         (no gap between val and test).
+
     Returns
     -------
     train_windows, val_windows, test_windows
@@ -179,24 +179,31 @@ def group_time_split(
     if not windows:
         return [], [], []
 
+    # sort for deterministic group indexing
     all_series = sorted(series_timestamps.keys())
     total_groups = len(all_series)
+    
+    # phase 1: random split at the series level
     train_group_ids, val_group_ids, test_group_ids = random_series_split(
         total_groups, group_split
     )
 
+    # map split indices back to actual series IDs
     train_groups = {all_series[i] for i in train_group_ids.tolist()}
     val_groups = {all_series[i] for i in val_group_ids.tolist()}
     test_groups = {all_series[i] for i in test_group_ids.tolist()}
 
+    # partition windows by their group assignment
     train_group_windows = [w for w in windows if w[0] in train_groups]
     val_group_windows = [w for w in windows if w[0] in val_groups]
     test_group_windows = [w for w in windows if w[0] in test_groups]
 
+    # isolate timestamps exclusively for the train groups
     train_group_ts = {
         s_idx: ts for s_idx, ts in series_timestamps.items() if s_idx in train_groups
     }
 
+    # phase 2: temporal percentage split within the train groups
     if train_group_windows and train_group_ts:
         t_win, v_win, te_win = _split_percentage(
             train_group_windows, train_group_ts, train_val_test_split
@@ -204,6 +211,7 @@ def group_time_split(
     else:
         t_win, v_win, te_win = [], [], []
 
+    # combine temporally split val/test windows with fully held-out val/test groups
     return t_win, v_win + val_group_windows, te_win + test_group_windows
 
 
@@ -269,9 +277,28 @@ def _split_percentage(
     positions within that series' unique timestamps. This ensures each
     series contributes proportionally to train/val/test regardless of
     its absolute timestamp range.
+
+    Parameters
+    ----------
+        windows (list[tuple[int, int, int, int]]): A list containing data windows,
+            where each window is represented by a tuple of 4 integers.
+        series_timestamps (dict[int, np.ndarray]): A dictionary mapping a time
+            series index (integer) to a NumPy array of all timestamps for that series.
+        train_val_test_split (tuple[float, float, float]): A tuple containing three
+            floats representing the requested percentage proportions for the training,
+            validation, and test datasets, respectively (e.g., (0.7, 0.2, 0.1)).
+
+    Returns
+    -------
+        tuple[list[tuple[int, int, int, int]],
+              list[tuple[int, int, int, int]],
+              list[tuple[int, int, int, int]]]:
+            A tuple containing three separate lists of windows representing the finalized
+            training windows, validation windows, and test windows, respectively.
     """
     series_cutoffs: dict[int, tuple | None] = {}
     for s_idx, timestamps in series_timestamps.items():
+        # deduplicate so percentile positions reflect distinct time steps
         unique_ts = np.unique(timestamps)
         n = len(unique_ts)
         if n <= 1:
@@ -284,6 +311,7 @@ def _split_percentage(
         )
         series_cutoffs[s_idx] = (unique_ts[train_pos], unique_ts[val_pos])
 
+    # fallback: no series had enough timestamps for proper cutoffs, split by count
     if all(v is None for v in series_cutoffs.values()):
         total_w = len(windows)
         train_end = int(np.round(train_val_test_split[0] * total_w))
@@ -299,6 +327,7 @@ def _split_percentage(
         cutoffs = series_cutoffs.get(s_idx)
         end_time = _get_window_end_time(w, series_timestamps)
 
+        # unsplittable series default to train
         if cutoffs is None:
             train_windows.append(w)
         else:

@@ -689,10 +689,6 @@ class TslibDataModule(LightningDataModule):
             If None, the data module will be setup for training.
         """
 
-        # TODO: Add support for temporal/random/group splits.
-        # Currently, it only supports random splits.
-        # Handle the case where the dataset is empty.
-
         total_series = len(self.time_series_dataset)
 
         if total_series == 0:
