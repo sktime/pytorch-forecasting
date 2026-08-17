@@ -906,7 +906,11 @@ class MultiHorizonMetric(Metric):
         else:
             losses = losses.sum()
             if not torch.isfinite(losses):
-                losses = torch.tensor(1e9, device=losses.device)
+                # Replace non-finite loss with 1e9 while preserving grad_fn so that
+                # loss.backward() can still be called by the training loop.
+                # torch.tensor() would create a new leaf with requires_grad=False,
+                # breaking autograd; torch.nan_to_num keeps the computation graph.
+                losses = torch.nan_to_num(losses, nan=1e9, posinf=1e9, neginf=-1e9)
                 warnings.warn("Loss is not finite. Resetting it to 1e9")
             self.losses = self.losses + losses
             self.lengths = self.lengths + lengths.sum()
