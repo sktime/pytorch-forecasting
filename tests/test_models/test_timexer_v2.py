@@ -3,7 +3,6 @@ Basic test framework for TimeXer v2 model.
 TODO:
 - Add tests for testing the scaling of features, once that is implemented in the D1/D2
   level.
-- Add tests for the M mode (multiple series) once that is implemented.
 """
 
 import numpy as np
@@ -393,3 +392,56 @@ def test_integration_with_datamodule(model, basic_tslib_data_module):
             assert test_output["prediction"].shape[1] == model.prediction_length
         except StopIteration:
             print("Test set is empty, skipping test testing")
+
+
+from pytorch_forecasting.models.timexer._timexer_pkg_v2 import TimeXer_pkg_v2
+
+
+def test_m_mode(sample_multivariate_multi_series_data):
+    """Test M mode (multiple series) with TimeXer model."""
+    df = sample_multivariate_multi_series_data
+    dataset = TimeSeries(
+        data=df,
+        time="time_idx",
+        target=["target1", "target2"],  # M mode uses multiple targets
+        group=["group_id"],
+        num=["temperature", "humidity", "pressure", "wind_speed"],
+        known=["temperature", "humidity", "pressure", "wind_speed", "time_idx"],
+    )
+
+    pkg = TimeXer_pkg_v2(
+        model_cfg=dict(
+            loss=MAE(),
+            hidden_size=64,
+            n_heads=8,
+            e_layers=2,
+            d_ff=256,
+            dropout=0.1,
+            patch_length=4,
+        ),
+        datamodule_cfg=dict(
+            batch_size=2,
+            context_length=12,
+            prediction_length=8,
+            train_val_test_split=(0.7, 0.15, 0.15),
+        ),
+        trainer_cfg=dict(
+            fast_dev_run=True,
+        ),
+    )
+
+    # Build datamodule and model under the hood to test forward pass
+    pkg.datamodule = pkg._build_datamodule(dataset)
+    pkg.datamodule.setup(stage="fit")
+
+    pkg._build_model(metadata=pkg.datamodule.metadata, **pkg.model_cfg)
+
+    train_dataloader = pkg.datamodule.train_dataloader()
+    batch = next(iter(train_dataloader))[0]
+
+    pkg.model.eval()
+    with torch.no_grad():
+        output = pkg.model(batch)
+
+    predictions = output["prediction"]
+    assert predictions.shape == (2, 8, 2)
