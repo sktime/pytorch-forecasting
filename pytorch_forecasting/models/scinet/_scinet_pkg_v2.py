@@ -3,11 +3,11 @@
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class SCINet_v2_pkg_v2(Base_pkg):
+class SCINet_pkg_v2(Base_pkg):
     """SCINet v2 package container."""
 
     _tags = {
-        "info:name": "SCINet_v2",
+        "info:name": "SCINet",
         "info:compute": 2,
         "authors": ["echo-xiao"],
         "capability:exogenous": False,
@@ -23,12 +23,12 @@ class SCINet_v2_pkg_v2(Base_pkg):
 
         Returns
         -------
-        SCINet_v2 : type
+        SCINet : type
             The model class.
         """
-        from pytorch_forecasting.models.scinet._scinet_v2 import SCINet_v2
+        from pytorch_forecasting.models.scinet._scinet_v2 import SCINet
 
-        return SCINet_v2
+        return SCINet
 
     @classmethod
     def get_datamodule_cls(cls):

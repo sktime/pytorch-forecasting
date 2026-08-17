@@ -9,7 +9,7 @@ from pytorch_forecasting.metrics import MAE, Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class SCINet_v2(BaseModel):
+class SCINet(BaseModel):
     """SCINet v2 model for time series forecasting.
 
     Based on the paper
@@ -69,12 +69,12 @@ class SCINet_v2(BaseModel):
 
         Returns
         -------
-        SCINet_v2_pkg_v2 : type
+        SCINet_pkg_v2 : type
             Package class associated with this model.
         """
-        from pytorch_forecasting.models.scinet._scinet_pkg_v2 import SCINet_v2_pkg_v2
+        from pytorch_forecasting.models.scinet._scinet_pkg_v2 import SCINet_pkg_v2
 
-        return SCINet_v2_pkg_v2
+        return SCINet_pkg_v2
 
     def __init__(
         self,
