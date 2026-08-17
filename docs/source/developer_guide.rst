@@ -114,18 +114,16 @@ Tests live in two directories (configured in ``[tool.pytest.ini_options]``):
 Coverage output lands in ``htmlcov/``; the terminal report shows missing lines
 per file (``--cov-report=term-missing:skip-covered``).
 
-**Registry auto-discovery.** The v2 test suite (``TestAllPtForecastersV2``)
-discovers estimators through the ``all_objects`` registry. A correctly
-registered model is therefore picked up and tested automatically, so the generic
-checks need no per-model test file of their own. What you do need to provide is
-``get_test_train_params`` on the package class: keep every configuration small
-(minimal sequence length, tiny hidden sizes) so the registry-driven tests stay
-fast in CI.
+**The v2 test suite.** ``TestAllPtForecastersV2`` discovers estimators through
+the ``all_objects`` registry, so a correctly registered model is picked up
+automatically and needs no per-model test file. It checks the interface
+contract: the docstring doctests, training and prediction end to end, a
+checkpoint round-trip, the output shapes of each predict mode, and the package
+naming convention. The parameter sets it runs come from
+``get_test_train_params`` on the package class.
 
-**Running the checks locally.** ``check_estimator`` runs the same conformance
-suite as CI, against a single estimator. CI discovers every registered estimator
-and runs them in bulk; ``check_estimator`` runs them on yours alone, and works
-before it is registered.
+**Running the checks locally.** ``check_estimator`` runs that same suite against
+a single estimator, and works before it is registered.
 
 .. code-block:: python
 
@@ -139,10 +137,6 @@ its package automatically. The result maps each ``test[fixture]`` to
 ``"PASSED"`` or to the exception raised. Failures are collected rather than
 raised unless ``raise_exceptions=True``.
 
-**What the generic tests cover.** ``TestAllPtForecastersV2`` checks the
-interface contract: construction, training, prediction, checkpoint round-trip,
-output shapes, and the package naming convention.
-
 **Common pitfalls.**
 
 * **A wrong** ``object_type`` **tag passes silently.** ``"forecaster_v2"`` instead
@@ -155,19 +149,21 @@ output shapes, and the package naming convention.
 * **Numerical correctness is not checked.** The suite asserts on shapes, not on
   values, so a model returning plausible nonsense passes. Add your own test, for
   example that a constant input series produces a constant forecast.
-* **Only** ``SMAPE`` **is used as the loss.** Add ``{"loss": QuantileLoss()}`` to
-  ``get_test_train_params`` to cover another one.
+* **Only** ``SMAPE`` **is used as the loss**, and declaring ``info:pred_type`` to
+  change that currently breaks fixture generation. See the note below.
 
 .. note::
 
    **Known gap, remove this note once resolved.** The loss-compatibility matrix
    in ``pytorch_forecasting/tests/_loss_mapping.py`` selects test losses from the
-   ``info:pred_type`` and ``info:y_type`` tags. No v2 package declares
-   ``info:pred_type``, so no loss is selected and every v2 model is tested with
-   the ``SMAPE`` fallback only. To exercise your model under a different loss,
-   pass ``loss=`` in a ``get_test_train_params`` entry; the tag has no effect for
-   v2 today. ``get_base_test_params`` and the per-loss normalizer settings in
-   ``LOSS_SPECIFIC_PARAMS`` are likewise v1-only paths.
+   ``info:pred_type`` and ``info:y_type`` tags, but the surrounding wiring is
+   v1-only. No v2 package declares ``info:pred_type``, so no loss is selected and
+   every v2 model is tested with the ``SMAPE`` fallback. Declaring the tag does
+   not help: the selection path then calls ``get_base_test_params``, which
+   ``Base_pkg`` does not define, so fixture generation raises ``AttributeError``.
+   Note that the v2 model template still lists ``info:pred_type``. Until this is
+   wired up for v2, add the loss to a ``get_test_train_params`` entry instead,
+   for example ``{"loss": QuantileLoss()}``.
 
 Docs
 ~~~~
@@ -252,8 +248,8 @@ Conventions every contribution follows
   ``forecaster_pytorch_v1``.)
 * **Passes** ``check_estimator`` (run it before opening a PR; see `Test`_).
 * **Provides** ``get_test_train_params``: the first entry must be ``{}`` so
-  default construction is tested, and every entry must be low-compute so CI does
-  not time out.
+  default construction is tested, and every entry must be low-compute (minimal
+  sequence length, tiny hidden sizes) so CI does not time out.
 * **Guarded soft-dependency imports**: import any non-core package *inside the
   method that needs it*, not at module top level, so the core still imports.
 
@@ -282,14 +278,6 @@ from the template at ``extension_templates/v2/model_simple/model_pkg.py``):
        # Soft dependencies required to run this model (empty if none).
        "python_dependencies": [],
    }
-
-Validate interface compatibility before opening a PR:
-
-.. code-block:: python
-
-   from pytorch_forecasting.utils._estimator_checks import check_estimator
-
-   check_estimator(MyModel_pkg)
 
 Official templates
 ~~~~~~~~~~~~~~~~~~
