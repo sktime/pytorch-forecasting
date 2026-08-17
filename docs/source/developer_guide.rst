@@ -149,6 +149,17 @@ when you need a traceback.
    prints ``All tests PASSED!`` with an empty result dict. Check that the
    returned dict is non-empty before trusting a green run.
 
+**What the generic tests cover.** ``TestAllPtForecastersV2`` checks the
+interface contract: that the doctests in the class docstring run, that the
+estimator trains and predicts end to end, that a checkpoint round-trips, that
+the ``raw`` / ``quantiles`` / ``prediction`` modes return the expected shapes,
+and that the package class follows the ``<Model>_pkg_v2`` naming convention.
+
+It does not check that your model computes the right numbers, and it does not
+verify the ``capability:*`` tags: those are declarative metadata used for
+discovery, and no test reads them. Numerical correctness, and any behaviour
+specific to your architecture, need tests you write yourself.
+
 Continuous integration
 ~~~~~~~~~~~~~~~~~~~~~~
 
