@@ -170,6 +170,19 @@ reads. Cover both with tests you write yourself.
    v2 today. ``get_base_test_params`` and the per-loss normalizer settings in
    ``LOSS_SPECIFIC_PARAMS`` are likewise v1-only paths.
 
+Docs
+~~~~
+
+The documentation is built with Sphinx:
+
+.. code-block:: bash
+
+   cd docs && make html
+
+The rendered HTML lands in ``docs/build/html``. Build it locally before opening
+a pull request that touches documentation, and check that your change adds no
+new warnings.
+
 Continuous integration
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -238,7 +251,7 @@ Conventions every contribution follows
   per-estimator test file is needed. (v2 estimators carry the ``object_type``
   tag ``forecaster_pytorch_v2``, distinguishing them from v1's
   ``forecaster_pytorch_v1``.)
-* **Passes** ``check_estimator`` (run it before opening a PR; see below).
+* **Passes** ``check_estimator`` (run it before opening a PR; see `Test`_).
 * **Provides** ``get_test_train_params``: the first entry must be ``{}`` so
   default construction is tested, and every entry must be low-compute so CI does
   not time out.
@@ -454,18 +467,15 @@ such work still follows the conventions above but needs design alignment with
 the maintainers first. Open a discussion on the relevant issue or on Discord and
 review the current `Roadmap`_ before starting.
 
-Verifying and submitting
-------------------------
+Submitting
+----------
 
-Before opening a pull request, run the local checks described in `Setup / CI`_:
-the test suite (``pytest``), ``pre-commit run --all-files``, and a docs build
-(``cd docs && make html``), plus ``check_estimator`` on your package class (see
-`Conventions every contribution follows`_). ReadTheDocs builds a preview for
-every PR, linked in the PR checks.
+Run the local checks in `Setup / CI`_ before opening a pull request. Then branch
+off ``main`` in your fork, open a pull request against ``main`` of
+``sktime/pytorch-forecasting`` referencing the issue (``Closes #NNNN``), and
+ensure all CI jobs pass before merge. ReadTheDocs builds a preview for every PR,
+linked in the PR checks.
 
-Then submit: branch off ``main`` in your fork, open a pull request against
-``main`` of ``sktime/pytorch-forecasting`` referencing the issue
-(``Closes #NNNN``), and ensure all CI jobs (see `Setup / CI`_) pass before merge.
 See :doc:`installation` (*Submitting pull request best practices*) for the PR
 checklist, and the
 `sktime developer guide <https://www.sktime.net/en/stable/developer_guide.html>`_
