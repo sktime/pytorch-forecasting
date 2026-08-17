@@ -123,11 +123,9 @@ checks need no per-model test file of their own. What you do need to provide is
 fast in CI.
 
 **Running the checks locally.** ``check_estimator`` runs the same conformance
-suite that CI runs, against a single estimator. It is not an extra set of tests;
-the difference is only how they are triggered. CI discovers every registered
-estimator and runs them in bulk, while ``check_estimator`` runs them against
-yours alone and works *before* your estimator is registered, which makes it the
-fastest local feedback loop while writing a model.
+suite as CI, against a single estimator. CI discovers every registered estimator
+and runs them in bulk; ``check_estimator`` runs them on yours alone, and works
+before it is registered.
 
 .. code-block:: python
 
@@ -136,41 +134,41 @@ fastest local feedback loop while writing a model.
    results = check_estimator(MyModel_pkg)                # summary printout
    check_estimator(MyModel_pkg, raise_exceptions=True)   # raise, for debugging
 
-Either the model class or the package class may be passed; the model class is
-resolved to its package automatically. The return value maps each
-``test[fixture]`` to ``"PASSED"`` or to the exception raised. Failures are
-collected rather than raised unless ``raise_exceptions=True``, so pass that flag
-when you need a traceback.
+Pass either the model class or the package class; the model class resolves to
+its package automatically. The result maps each ``test[fixture]`` to
+``"PASSED"`` or to the exception raised. Failures are collected rather than
+raised unless ``raise_exceptions=True``.
 
 .. warning::
 
-   Dispatch is driven by the ``object_type`` tag. If it does not match a
-   registered scitype, no test class is found, nothing runs, and the run still
-   prints ``All tests PASSED!`` with an empty result dict. Check that the
-   returned dict is non-empty before trusting a green run.
+   Dispatch is driven by the ``object_type`` tag. If it matches no registered
+   scitype, no test class is found and nothing runs, but the call still prints
+   ``All tests PASSED!`` and returns an empty dict. Confirm the result is
+   non-empty before trusting a green run.
 
 **What the generic tests cover.** ``TestAllPtForecastersV2`` checks the
-interface contract: that the doctests in the class docstring run, that the
-estimator trains and predicts end to end, that a checkpoint round-trips, that
-the ``raw`` / ``quantiles`` / ``prediction`` modes return the expected shapes,
-and that the package class follows the ``<Model>_pkg_v2`` naming convention.
+interface contract:
 
-It does not check that your model computes the right numbers, and it does not
-verify the ``capability:*`` tags: those are declarative metadata used for
-discovery, and no test reads them. Numerical correctness, and any behaviour
-specific to your architecture, need tests you write yourself.
+* the doctests in the class docstring run,
+* the estimator trains and predicts end to end,
+* a checkpoint round-trips,
+* the ``raw`` / ``quantiles`` / ``prediction`` modes return the expected shapes,
+* the package class follows the ``<Model>_pkg_v2`` naming convention.
+
+It does not check numerical correctness, and it does not verify the
+``capability:*`` tags, which are declarative metadata for discovery that no test
+reads. Cover both with tests you write yourself.
 
 .. note::
 
    **Known gap, remove this note once resolved.** The loss-compatibility matrix
    in ``pytorch_forecasting/tests/_loss_mapping.py`` selects test losses from the
-   ``info:pred_type`` and ``info:y_type`` tags, but no v2 package declares
-   ``info:pred_type`` yet, so no loss is selected and every v2 model is currently
-   tested with the ``SMAPE`` fallback only. To have your model exercised under a
-   different loss, pass ``loss=`` explicitly in a ``get_test_train_params``
-   entry; declaring the tag has no effect for v2 today. ``get_base_test_params``
-   and the per-loss normalizer settings in ``LOSS_SPECIFIC_PARAMS`` are likewise
-   v1-only paths.
+   ``info:pred_type`` and ``info:y_type`` tags. No v2 package declares
+   ``info:pred_type``, so no loss is selected and every v2 model is tested with
+   the ``SMAPE`` fallback only. To exercise your model under a different loss,
+   pass ``loss=`` in a ``get_test_train_params`` entry; the tag has no effect for
+   v2 today. ``get_base_test_params`` and the per-loss normalizer settings in
+   ``LOSS_SPECIFIC_PARAMS`` are likewise v1-only paths.
 
 Continuous integration
 ~~~~~~~~~~~~~~~~~~~~~~
