@@ -160,18 +160,20 @@ class BaseModel(LightningModule):
 
         return predict_callback.result
 
-    def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+    def to_prediction(
+        self, out: dict[str, Any], **kwargs
+    ) -> torch.Tensor | list[torch.Tensor]:
         """Converts raw model output to point forecasts."""
-        # todo: add MultiLoss support
         try:
             out = self.loss.to_prediction(out["prediction"], **kwargs)
         except TypeError:  # in case passed kwargs do not exist
             out = self.loss.to_prediction(out["prediction"])
         return out
 
-    def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
+    def to_quantiles(
+        self, out: dict[str, Any], **kwargs
+    ) -> torch.Tensor | list[torch.Tensor]:
         """Converts raw model output to quantile forecasts."""
-        # todo: add MultiLoss support
         try:
             out = self.loss.to_quantiles(out["prediction"], **kwargs)
         except TypeError:  # in case passed kwargs do not exist
@@ -365,27 +367,52 @@ class BaseModel(LightningModule):
             raise ValueError(f"Scheduler {self.lr_scheduler} not supported.")
 
     def log_metrics(
-        self, y_hat: torch.Tensor, y: torch.Tensor, prefix: str = "val"
+        self,
+        y_hat: torch.Tensor | list[torch.Tensor],
+        y: torch.Tensor | list[torch.Tensor],
+        prefix: str = "val",
     ) -> None:
         """
         Log additional metrics during training, validation, or testing.
 
         Parameters
         ----------
-        y_hat : torch.Tensor
-            Predicted output tensor.
-        y : torch.Tensor
-            Target output tensor.
+        y_hat : Union[torch.Tensor, list[torch.Tensor]]
+            Predicted output tensor or list of predicted outputs for multi-target.
+        y : Union[torch.Tensor, list[torch.Tensor]]
+            Target output tensor or list of target outputs for multi-target.
         prefix : str
             Prefix for the logged metrics (e.g., "train", "val", "test").
         """
-        for metric in self.logging_metrics:
-            metric_value = metric(y_hat, y)
-            self.log(
-                f"{prefix}_{metric.__class__.__name__}",
-                metric_value,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                logger=True,
-            )
+        if isinstance(y_hat, (list, tuple)):
+            if not isinstance(y_hat, (list, tuple)):
+                y_hat = [y_hat]
+            if not isinstance(y, (list, tuple)):
+                y = [y]
+
+            for idx, (y_hat_part, y_part) in enumerate(zip(y_hat, y)):
+                target_tag = f"target_{idx}_"
+                if hasattr(self, "target_names") and idx < len(self.target_names):
+                    target_tag = f"{self.target_names[idx]}_"
+
+                for metric in self.logging_metrics:
+                    metric_value = metric(y_hat_part, y_part)
+                    self.log(
+                        f"{prefix}_{target_tag}{metric.__class__.__name__}",
+                        metric_value,
+                        on_step=False,
+                        on_epoch=True,
+                        prog_bar=True,
+                        logger=True,
+                    )
+        else:
+            for metric in self.logging_metrics:
+                metric_value = metric(y_hat, y)
+                self.log(
+                    f"{prefix}_{metric.__class__.__name__}",
+                    metric_value,
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=True,
+                    logger=True,
+                )
