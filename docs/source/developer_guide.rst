@@ -122,6 +122,33 @@ need to write a per-model test file. What you do need to provide is
 (minimal sequence length, tiny hidden sizes) so the registry-driven tests stay
 fast in CI.
 
+**Running the checks locally.** ``check_estimator`` runs the same conformance
+suite that CI runs, against a single estimator. It is not an extra set of tests;
+the difference is only how they are triggered. CI discovers every registered
+estimator and runs them in bulk, while ``check_estimator`` runs them against
+yours alone and works *before* your estimator is registered, which makes it the
+fastest local feedback loop while writing a model.
+
+.. code-block:: python
+
+   from pytorch_forecasting.utils import check_estimator
+
+   results = check_estimator(MyModel_pkg)                # summary printout
+   check_estimator(MyModel_pkg, raise_exceptions=True)   # raise, for debugging
+
+Either the model class or the package class may be passed; the model class is
+resolved to its package automatically. The return value maps each
+``test[fixture]`` to ``"PASSED"`` or to the exception raised. Failures are
+collected rather than raised unless ``raise_exceptions=True``, so pass that flag
+when you need a traceback.
+
+.. warning::
+
+   Dispatch is driven by the ``object_type`` tag. If it does not match a
+   registered scitype, no test class is found, nothing runs, and the run still
+   prints ``All tests PASSED!`` with an empty result dict. Check that the
+   returned dict is non-empty before trusting a green run.
+
 Continuous integration
 ~~~~~~~~~~~~~~~~~~~~~~
 
