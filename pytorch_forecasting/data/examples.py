@@ -17,11 +17,15 @@ def _get_data_by_filename(fname: str) -> Path:
     """
     Download file or used cached version.
 
-    Args:
-        fname (str): name of file to download
+    Parameters
+    ----------
+        fname : str
+            name of file to download
 
-    Returns:
-        Path: path at which file lives
+    Returns
+    -------
+        Path
+            path at which file lives
     """
     full_fname = DATA_PATH.joinpath(fname)
 
@@ -43,8 +47,11 @@ def get_stallion_data() -> pd.DataFrame:
     * ``volume`` is the demand
     * ``date`` is the month of the demand.
 
-    Returns:
-        pd.DataFrame: data
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the Stallion demand dataset with columns such as
+        ``agency``, ``sku``, ``date`` and ``volume``.
     """
     fname = _get_data_by_filename("stallion.parquet")
     return pd.read_parquet(fname)
@@ -69,19 +76,30 @@ def generate_ar_data(
     * ``time_idx``: time index
     * ``value``: target value
 
-    Args:
-        n_series (int, optional): Number of series. Defaults to 10.
-        timesteps (int, optional): Number of timesteps. Defaults to 400.
-        seasonality (float, optional): Normalized frequency, i.e. frequency is ``seasonality / timesteps``.
+    Parameters
+    ----------
+        n_series : int, optional
+            Number of series. Defaults to 10.
+        timesteps : int, optional
+            Number of timesteps. Defaults to 400.
+        seasonality : float, optional
+            Normalized frequency, i.e. frequency is ``seasonality / timesteps``.
             Defaults to 3.0.
-        trend (float, optional): Trend multiplier (seasonality is multiplied with 1.0). Defaults to 3.0.
-        noise (float, optional): Level of gaussian noise. Defaults to 0.1.
-        level (float, optional): Level multiplier (level is a constant to be added to timeseries). Defaults to 1.0.
-        exp (bool, optional): If to return exponential of timeseries values. Defaults to False.
-        seed (int, optional): Random seed. Defaults to 213.
+        trend : float, optional
+            Trend multiplier (seasonality is multiplied with 1.0). Defaults to 3.0.
+        noise : float, optional
+            Level of gaussian noise. Defaults to 0.1.
+        level : float, optional
+            Level multiplier (level is a constant to be added to timeseries). Defaults to 1.0.
+        exp : bool, optional
+            If to return exponential of timeseries values. Defaults to False.
+        seed : int, optional
+            Random seed. Defaults to 213.
 
-    Returns:
-        pd.DataFrame: data
+    Returns
+    -------
+        pd.DataFrame
+            generated autoregressive time series dataframe with columns ``series``, ``time_idx``, and ``value``.
     """  # noqa: E501
     # sample parameters
     np.random.seed(seed)
