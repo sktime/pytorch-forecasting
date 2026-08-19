@@ -366,11 +366,33 @@ class TestAllPtForecasters(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
     object_type_filter = "forecaster_pytorch_v1"
 
+    def test_class_has_doctest_example(self, object_class):
+        """Check that the class has a docstring, with doctest example in it."""
+        docstring = object_class.__doc__
+
+        assert docstring is not None, f"{object_class.__name__} has no docstring"
+        msg = f"{object_class.__name__} docstring has no doctest example"
+        assert ">>>" in docstring, msg
+
     def test_doctest_examples(self, object_class):
         """Runs doctests for estimator class."""
         from skbase.utils.doctest_run import run_doctest
 
         run_doctest(object_class, name=f"class {object_class.__name__}")
+
+    def test_pkg_has_doctest_example(self, object_pkg):
+        """Check that the package has a docstring, with doctest example in it."""
+        docstring = object_pkg.__doc__
+
+        assert docstring is not None, f"{object_pkg.__name__} has no docstring"
+        msg = f"{object_pkg.__name__} docstring has no doctest example"
+        assert ">>>" in docstring, msg
+
+    def test_pkg_doctest_examples(self, object_pkg):
+        """Runs doctests for the estimator package class."""
+        from skbase.utils.doctest_run import run_doctest
+
+        run_doctest(object_pkg, name=f"class {object_pkg.__name__}")
 
     def test_integration(
         self,
