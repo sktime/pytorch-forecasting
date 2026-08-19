@@ -4,7 +4,16 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class DecoderMLP_pkg(_BasePtForecaster):
-    """DecoderMLP package container."""
+    """DecoderMLP package container.
+
+    Examples
+    --------
+    Resolve the package container to the user-facing model class:
+
+    >>> from pytorch_forecasting.models.mlp import DecoderMLP_pkg
+    >>> DecoderMLP_pkg.get_cls().__name__
+    'DecoderMLP'
+    """
 
     _tags = {
         "info:name": "DecoderMLP",
