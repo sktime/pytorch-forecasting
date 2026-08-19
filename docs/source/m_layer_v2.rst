@@ -48,3 +48,6 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.tide._tide_dsipts._tide_v2.TIDE
    models.timexer._timexer_v2.TimeXer
    models.mlp._decodermlp_v2.DecoderMLP_v2
+   models.softs._softs_v2.SOFTS
+   models.scinet._scinet_v2.SCINet_v2
+   models.patch_tst._patch_tst_v2.PatchTSTV2

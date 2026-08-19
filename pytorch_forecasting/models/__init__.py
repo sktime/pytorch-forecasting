@@ -20,6 +20,8 @@ from pytorch_forecasting.models.patch_tst import (
     PatchTSTV2_pkg_v2,
 )
 from pytorch_forecasting.models.rnn import RecurrentNetwork
+from pytorch_forecasting.models.scinet import SCINet_pkg_v2, SCINet_v2
+from pytorch_forecasting.models.softs import SOFTS, SOFTS_pkg_v2
 from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
@@ -50,4 +52,8 @@ __all__ = [
     "TiDEModel",
     "TimeXer",
     "xLSTMTime",
+    "SOFTS",
+    "SOFTS_pkg_v2",
+    "SCINet_v2",
+    "SCINet_pkg_v2",
 ]
