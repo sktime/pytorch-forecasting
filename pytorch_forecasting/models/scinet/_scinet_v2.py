@@ -9,7 +9,7 @@ from pytorch_forecasting.metrics import MAE, Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class SCINet(BaseModel):
+class SCINet_v2(BaseModel):
     """SCINet v2 model for time series forecasting.
 
     Based on the paper
@@ -78,7 +78,6 @@ class SCINet(BaseModel):
 
     def __init__(
         self,
-        *,
         num_stacks: int = 1,
         num_levels: int = 3,
         hid_size: int = 1,
