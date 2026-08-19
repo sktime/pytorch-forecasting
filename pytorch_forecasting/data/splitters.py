@@ -4,6 +4,12 @@ from warnings import warn
 import numpy as np
 import torch
 
+from pytorch_forecasting.data.split import (
+    classify_windows_by_cutoffs,
+    compute_split_boundaries,
+    get_window_end_time,
+)
+
 
 def random_series_split(
     total_series: int,
@@ -15,19 +21,10 @@ def random_series_split(
     same fold.
     """
     split_indices = torch.randperm(total_series)
-
-    train_size = int(np.round(train_val_test_split[0] * total_series))
-    if train_size == 0 and train_val_test_split[0] > 0 and total_series > 0:
-        train_size = 1
-
-    val_size = int(np.round(train_val_test_split[1] * total_series))
-    # ensure we don't exceed total_series
-    if train_size + val_size > total_series:
-        val_size = total_series - train_size
-
-    train_indices = split_indices[:train_size]
-    val_indices = split_indices[train_size : train_size + val_size]
-    test_indices = split_indices[train_size + val_size :]
+    train_end, val_end = compute_split_boundaries(total_series, train_val_test_split)
+    train_indices = split_indices[:train_end]
+    val_indices = split_indices[train_end:val_end]
+    test_indices = split_indices[val_end:]
 
     return train_indices, val_indices, test_indices
 
@@ -214,21 +211,6 @@ def group_time_split(
     return t_win, v_win + val_group_windows, te_win + test_group_windows
 
 
-def _get_window_end_time(
-    w: tuple[int, int, int, int],
-    series_timestamps: dict[int, np.ndarray],
-):
-    """Compute the real-world end timestamp of a window.
-
-    Returns the raw timestamp value (int, float, or datetime64) so that
-    comparisons work regardless of the timestamp dtype.
-    """
-    series_idx, start_idx, enc_len, pred_len = w
-    timestamps = series_timestamps[series_idx]
-    end_idx = min(start_idx + enc_len + pred_len - 1, len(timestamps) - 1)
-    return timestamps[end_idx]
-
-
 def _split_absolute(
     windows: list[tuple[int, int, int, int]],
     series_timestamps: dict[int, np.ndarray],
@@ -251,7 +233,7 @@ def _split_absolute(
         )
     train_windows, val_windows, test_windows = [], [], []
     for w in windows:
-        end_time = _get_window_end_time(w, series_timestamps)
+        end_time = get_window_end_time(w, series_timestamps)
         if end_time <= end_train:
             train_windows.append(w)
         elif end_time >= start_test:
@@ -279,22 +261,17 @@ def _split_percentage(
 
     Parameters
     ----------
-        windows (list[tuple[int, int, int, int]]): A list containing data windows,
-            where each window is represented by a tuple of 4 integers.
-        series_timestamps (dict[int, np.ndarray]): A dictionary mapping a time
-            series index (integer) to a NumPy array of all timestamps for that series.
-        train_val_test_split (tuple[float, float, float]): A tuple containing three
-            floats representing the requested percentage proportions for the training,
-            validation, and test datasets, respectively (e.g., (0.7, 0.2, 0.1)).
+    windows : list of (series_idx, start_idx, enc_len, pred_len)
+        All sliding windows across all series.
+    series_timestamps : dict mapping series_idx to np.ndarray of timestamps
+        The actual time values for each series.
+    train_val_test_split : (train_ratio, val_ratio, test_ratio)
+        Proportions for the three folds.
 
     Returns
     -------
-        tuple[list[tuple[int, int, int, int]],
-              list[tuple[int, int, int, int]],
-              list[tuple[int, int, int, int]]]:
-            A tuple containing three separate lists of windows representing the
-            finalized training windows, validation windows, and test windows,
-            respectively.
+    train_windows, val_windows, test_windows
+        Three lists of window tuples.
     """
     series_cutoffs: dict[int, tuple | None] = {}
     for s_idx, timestamps in series_timestamps.items():
@@ -313,30 +290,9 @@ def _split_percentage(
 
     # fallback: no series had enough timestamps for proper cutoffs, split by count
     if all(v is None for v in series_cutoffs.values()):
-        total_w = len(windows)
-        train_end = int(np.round(train_val_test_split[0] * total_w))
-        if train_end == 0 and train_val_test_split[0] > 0 and total_w > 0:
-            train_end = 1
-        val_end = train_end + int(np.round(train_val_test_split[1] * total_w))
-        val_end = min(val_end, total_w)
+        train_end, val_end = compute_split_boundaries(
+            len(windows), train_val_test_split
+        )
         return windows[:train_end], windows[train_end:val_end], windows[val_end:]
 
-    train_windows, val_windows, test_windows = [], [], []
-    for w in windows:
-        s_idx = w[0]
-        cutoffs = series_cutoffs.get(s_idx)
-        end_time = _get_window_end_time(w, series_timestamps)
-
-        # unsplittable series default to train
-        if cutoffs is None:
-            train_windows.append(w)
-        else:
-            train_cutoff, val_cutoff = cutoffs
-            if end_time <= train_cutoff:
-                train_windows.append(w)
-            elif end_time <= val_cutoff:
-                val_windows.append(w)
-            else:
-                test_windows.append(w)
-
-    return train_windows, val_windows, test_windows
+    return classify_windows_by_cutoffs(windows, series_timestamps, series_cutoffs)
