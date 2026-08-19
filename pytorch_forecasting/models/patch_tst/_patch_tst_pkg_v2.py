@@ -56,7 +56,10 @@ class PatchTSTV2_pkg_v2(Base_pkg):
                 "patch_len": 4,
                 "stride": 4,
                 "dropout": 0.1,
-                "datamodule_cfg": {"max_encoder_length": 8, "max_prediction_length": 3},
+                "datamodule_cfg": {
+                    "max_encoder_length": 16,
+                    "max_prediction_length": 3,
+                },
             },
             {
                 "hidden_size": 32,
@@ -64,7 +67,10 @@ class PatchTSTV2_pkg_v2(Base_pkg):
                 "patch_len": 8,
                 "stride": 8,
                 "dropout": 0.2,
-                "datamodule_cfg": {"max_encoder_length": 16, "max_prediction_length": 3},
+                "datamodule_cfg": {
+                    "max_encoder_length": 16,
+                    "max_prediction_length": 3,
+                },
             },
             {
                 "hidden_size": 16,

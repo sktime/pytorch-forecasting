@@ -96,7 +96,7 @@ class PatchTSTV2(BaseModel):
         # Set properties required by the model from metadata
         self.context_length = self.metadata.get("max_encoder_length", 0)
         self.prediction_length = self.metadata.get("max_prediction_length", 0)
-        
+
         # In BaseModelV2, continuous variable counts are in 'encoder_cont'
         self.cont_dim = self.metadata.get("encoder_cont", 0)
 
@@ -181,7 +181,7 @@ class PatchTSTV2(BaseModel):
         # Handle the case where encoder_target might not have a feature dimension
         if encoder_target.dim() == 2:
             encoder_target = encoder_target.unsqueeze(-1)
-            
+
         encoder_cont = x.get(
             "encoder_cont",
             torch.empty(batch_size, self.context_length, 0, device=self.device),
