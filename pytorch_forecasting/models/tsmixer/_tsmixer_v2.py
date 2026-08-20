@@ -48,3 +48,53 @@ class TSMixerBlock(nn.Module):
         x = x + self.channel(x)
 
         return x
+
+
+class TSMixer(TslibBaseModel):
+
+    @classmethod
+    def _pkg(cls):
+        """Package containing the model."""
+        from pytorch_forecasting.models.tsmixer._tsmixer_pkg_v2 import TSMixer_pkg_v2
+
+        return TSMixer_pkg_v2
+
+    def __init__(
+        self,
+        loss: nn.Module,
+        d_model: int = 64,
+        e_layers: int = 2,
+        dropout: float = 0.1,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(
+            loss=loss,
+            logging_metrics=logging_metrics,
+            optimizer=optimizer,
+            optimizer_params=optimizer_params,
+            lr_scheduler=lr_scheduler,
+            lr_scheduler_params=lr_scheduler_params,
+            metadata=metadata,
+        )
+
+        warnings.warn(
+            "TSMixer is an experimental model implemented on TslibBaseModelV2. "
+            "It is an unstable version and may be subject to unannounced changes. "
+            "Please use with caution."
+        )
+
+        self.d_model = d_model
+        self.e_layers = e_layers
+        self.dropout = dropout
+
+        self.save_hyperparameters(
+            ignore=["loss", "logging_metrics", "metadata"]
+        )
+
+        self._init_network()
