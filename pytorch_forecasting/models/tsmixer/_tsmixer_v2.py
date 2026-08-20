@@ -132,3 +132,25 @@ class TSMixer(TslibBaseModel):
         )
 
         self._init_network()
+
+    def _init_network(self):
+        """Initialize the TSMixer network components."""
+
+        self.enc_in = self.cont_dim + self.target_dim
+
+        self.model = nn.ModuleList(
+            [
+                TSMixerBlock(
+                    sequence_length=self.context_length,
+                    num_features=self.enc_in,
+                    hidden_dim=self.d_model,
+                    dropout=self.dropout,
+                )
+                for _ in range(self.e_layers)
+            ]
+        )
+
+        self.projection = nn.Linear(
+            self.context_length,
+            self.prediction_length,
+        )
