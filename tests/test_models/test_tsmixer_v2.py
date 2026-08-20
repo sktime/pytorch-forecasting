@@ -215,3 +215,29 @@ def test_logging_metrics_device_propagation(model_with_logging_metrics):
             val = getattr(metric, state_name)
             if isinstance(val, torch.Tensor):
                 assert val.device.type == "meta"
+
+
+def test_prepare_input_data(sample_dataset):
+    """Test preparation of continuous and target historical data."""
+
+    dm = sample_dataset["data_module"]
+    batch = next(iter(dm.train_dataloader()))[0]  # One sample batch
+
+    model = TSMixer(
+        loss=MAE(),
+        metadata=dm.metadata,
+    )
+
+    input_data, target_indices = model._prepare_input_data(batch)
+
+    assert input_data.shape[-1] == (
+        batch["history_cont"].shape[-1]
+        + batch["history_target"].shape[-1]
+    )
+
+    assert target_indices.tolist() == [
+        batch["history_cont"].shape[-1]
+    ]
+
+    assert target_indices.dtype == torch.long
+    assert target_indices.device == input_data.device
