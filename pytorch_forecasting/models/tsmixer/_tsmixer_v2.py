@@ -210,27 +210,25 @@ class TSMixer(TslibBaseModel):
         """Prepare input data and target indices for model input."""
 
         available_features = []
-        target_indices = []
         current_idx = 0
 
         if "history_cont" in x and x["history_cont"].size(-1) > 0:
             available_features.append(x["history_cont"])
             current_idx += x["history_cont"].size(-1)
 
-        if "history_target" in x and x["history_target"].size(-1) > 0:
-            n_targets = x["history_target"].size(-1)
-            target_indices = list(range(current_idx, current_idx + n_targets))
-            available_features.append(x["history_target"])
+        if "history_target" not in x or x["history_target"].size(-1) == 0:
+            raise ValueError("No target history found in the input dictionary.")
 
-        if not available_features:
-            raise ValueError("No valid input features found in the input dictionary.")
+        n_targets = x["history_target"].size(-1)
+        target_indices = list(range(current_idx, current_idx + n_targets))
+        available_features.append(x["history_target"])
 
         input_data = torch.cat(available_features, dim=-1)
 
-        target_indices = (
-            torch.tensor(target_indices, dtype=torch.long, device=input_data.device)
-            if target_indices
-            else None
+        target_indices = torch.tensor(
+            target_indices,
+            dtype=torch.long,
+            device=input_data.device
         )
 
         return input_data, target_indices
