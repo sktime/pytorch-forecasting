@@ -3,6 +3,12 @@ TSMixer model for PyTorch Forecasting.
 -------------------------------------------
 """
 
+#################################################
+# NOTE: This is an experimental implementation  #
+# of TSMixer for PyTorch Forecasting v2.         #
+# It is an unstable API and subject to change.  #
+#################################################
+
 from typing import Any
 import warnings
 
