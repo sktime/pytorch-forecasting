@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
 
 
@@ -150,9 +151,16 @@ class TSMixer(TslibBaseModel):
             ]
         )
 
+        self.n_quantiles = None
+        output_dim = self.prediction_length
+
+        if isinstance(self._loss, QuantileLoss):
+            self.n_quantiles = len(self._loss.quantiles)
+            output_dim *= self.n_quantiles
+
         self.projection = nn.Linear(
             self.context_length,
-            self.prediction_length,
+            output_dim,
         )
     
     def _encoder(self, x: torch.Tensor, target_indices: torch.Tensor | None) -> torch.Tensor:
@@ -171,8 +179,11 @@ class TSMixer(TslibBaseModel):
         Returns
         -------
         torch.Tensor
-            Forecast tensor of shape
-            (batch_size, prediction_length, n_targets).
+            Forecast tensor.
+                For point forecasts, returns shape
+                (batch_size, prediction_length, n_targets).
+                For quantile forecasts, returns shape
+                (batch_size, prediction_length, n_quantiles).
         """
 
         for block in self.model:
@@ -183,9 +194,17 @@ class TSMixer(TslibBaseModel):
         if target_indices is not None:
             output = output[:, target_indices, :]
 
-        output = output.transpose(1, 2)
+        if self.n_quantiles is None:
+            return output.transpose(1, 2)
 
-        return output
+        if output.shape[1] != 1:
+            raise ValueError("Quantile forecasting currently only supports a single target.")
+
+        return output.squeeze(1).reshape(
+            output.shape[0],
+            self.prediction_length,
+            self.n_quantiles,
+        )
 
     def _prepare_input_data(self, x: dict[str, torch.Tensor]):
         """Prepare input data and target indices for model input."""
