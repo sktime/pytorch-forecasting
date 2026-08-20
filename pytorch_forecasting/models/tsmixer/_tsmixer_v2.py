@@ -128,9 +128,7 @@ class TSMixer(TslibBaseModel):
         self.e_layers = e_layers
         self.dropout = dropout
 
-        self.save_hyperparameters(
-            ignore=["loss", "logging_metrics", "metadata"]
-        )
+        self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
         self._init_network()
 
@@ -162,8 +160,10 @@ class TSMixer(TslibBaseModel):
             self.context_length,
             output_dim,
         )
-    
-    def _encoder(self, x: torch.Tensor, target_indices: torch.Tensor | None) -> torch.Tensor:
+
+    def _encoder(
+        self, x: torch.Tensor, target_indices: torch.Tensor | None
+    ) -> torch.Tensor:
         """
         Encode the input time series through the TSMixer blocks.
 
@@ -198,7 +198,9 @@ class TSMixer(TslibBaseModel):
             return output.transpose(1, 2)
 
         if output.shape[1] != 1:
-            raise ValueError("Quantile forecasting currently only supports a single target.")
+            raise ValueError(
+                "Quantile forecasting currently only supports a single target."
+            )
 
         return output.squeeze(1).reshape(
             output.shape[0],
@@ -226,9 +228,7 @@ class TSMixer(TslibBaseModel):
         input_data = torch.cat(available_features, dim=-1)
 
         target_indices = torch.tensor(
-            target_indices,
-            dtype=torch.long,
-            device=input_data.device
+            target_indices, dtype=torch.long, device=input_data.device
         )
 
         return input_data, target_indices

@@ -42,7 +42,8 @@ class TSMixer_pkg_v2(Base_pkg):
         Returns
         -------
         list[dict]
-            Parameter configurations used to create testing instances of the TSMixer class.
+            Parameter configurations used to create testing instances of the TSMixer
+            class.
         """
 
         import torch.nn as nn

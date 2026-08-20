@@ -6,7 +6,7 @@ from torch import nn
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import TslibDataModule
-from pytorch_forecasting.metrics import MAE, QuantileLoss, SMAPE
+from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
 from pytorch_forecasting.models.tsmixer._tsmixer_v2 import TSMixer
 
 
@@ -231,16 +231,14 @@ def test_prepare_input_data(sample_dataset):
     input_data, target_indices = model._prepare_input_data(batch)
 
     assert input_data.shape[-1] == (
-        batch["history_cont"].shape[-1]
-        + batch["history_target"].shape[-1]
+        batch["history_cont"].shape[-1] + batch["history_target"].shape[-1]
     )
 
-    assert target_indices.tolist() == [
-        batch["history_cont"].shape[-1]
-    ]
+    assert target_indices.tolist() == [batch["history_cont"].shape[-1]]
 
     assert target_indices.dtype == torch.long
     assert target_indices.device == input_data.device
+
 
 def test_prepare_input_data_error_for_no_history(sample_dataset):
     """Test _prepare_input_data without the required history."""
@@ -254,9 +252,7 @@ def test_prepare_input_data_error_for_no_history(sample_dataset):
     )
 
     batch_without_target = {
-        key: value
-        for key, value in batch.items()
-        if key != "history_target"
+        key: value for key, value in batch.items() if key != "history_target"
     }
 
     with pytest.raises(
@@ -264,6 +260,7 @@ def test_prepare_input_data_error_for_no_history(sample_dataset):
         match="No target history found in the input dictionary.",
     ):
         model._prepare_input_data(batch_without_target)
+
 
 def test_quantile_loss_error_on_multiple_targets(sample_dataset):
     """Test error for quantile forecasting with multiple targets."""
