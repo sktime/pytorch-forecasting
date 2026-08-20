@@ -215,3 +215,27 @@ class TSMixer(TslibBaseModel):
         )
 
         return input_data, target_indices
+
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """
+        Forward pass of the TSMixer model.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing input tensors.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary containing the model prediction.
+        """
+
+        input_data, target_indices = self._prepare_input_data(x)
+
+        prediction = self._encoder(input_data, target_indices)
+
+        if "target_scale" in x and hasattr(self, "transform_output"):
+            prediction = self.transform_output(prediction, x["target_scale"])
+
+        return {"prediction": prediction}
