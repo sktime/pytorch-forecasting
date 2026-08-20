@@ -154,3 +154,35 @@ class TSMixer(TslibBaseModel):
             self.context_length,
             self.prediction_length,
         )
+    
+    def _encoder(self, x: torch.Tensor, target_indices: torch.Tensor | None) -> torch.Tensor:
+        """
+        Encode the input time series through the TSMixer blocks.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input data to the encoder via tensor of shape
+            (batch_size, context_length, n_features).
+        target_indices : torch.Tensor or None
+            Indices of target features to extract from the output.
+            If None, all features are returned.
+
+        Returns
+        -------
+        torch.Tensor
+            Forecast tensor of shape
+            (batch_size, prediction_length, n_targets).
+        """
+
+        for block in self.model:
+            x = block(x)
+
+        output = self.projection(x.transpose(1, 2))
+
+        if target_indices is not None:
+            output = output[:, target_indices, :]
+
+        output = output.transpose(1, 2)
+
+        return output
