@@ -520,7 +520,30 @@ class TslibDataModule(LightningDataModule):
             "features": self.features,
         }
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
+
+    def get_categorical_encoders(self) -> dict:
+        """Return fitted categorical encoders from the D1 layer.
+
+        Used when creating a new ``TimeSeries`` for prediction to ensure
+        the same category-to-integer mapping, preventing data leakage.
+
+        Example
+        -------
+        >>> dm.setup(stage="fit")
+        >>> fitted = dm.get_categorical_encoders()
+        >>> ts_predict = TimeSeries(..., categorical_encoders=fitted)
+
+        Returns
+        -------
+        dict
+            Column names to fitted ``NaNLabelEncoder`` objects.
+        """
+        return self.time_series_dataset._categorical_encoders.copy()
 
     @property
     def metadata(self) -> dict[str, Any]:
@@ -582,10 +605,12 @@ class TslibDataModule(LightningDataModule):
         # scaling and normalization
         target_scale = {}
 
+        # Ensure categorical slices are purely
+        # long format integers for PyTorch Embeddings
         categorical_features = (
-            features[:, self.categorical_indices]
+            features[:, self.categorical_indices].long()
             if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
+            else torch.zeros((features.shape[0], 0), dtype=torch.long)
         )
 
         continuous_features = (

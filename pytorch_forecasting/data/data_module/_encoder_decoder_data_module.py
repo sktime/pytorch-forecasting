@@ -148,7 +148,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
         self.target_normalizer = target_normalizer
-        self.categorical_encoders = categorical_encoders
         self.scalers = scalers
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -311,7 +310,30 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             }
         )
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
+
+    def get_categorical_encoders(self) -> dict:
+        """Return fitted categorical encoders from the D1 layer.
+
+        Used when creating a new ``TimeSeries`` for prediction to ensure
+        the same category-to-integer mapping, preventing data leakage.
+
+        Example
+        -------
+        >>> dm.setup(stage="fit")
+        >>> fitted = dm.get_categorical_encoders()
+        >>> ts_predict = TimeSeries(..., categorical_encoders=fitted)
+
+        Returns
+        -------
+        dict
+            Column names to fitted encoder objects.
+        """
+        return self.time_series_dataset._categorical_encoders.copy()
 
     @property
     def metadata(self):
@@ -397,9 +419,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         """Split feature tensor into categorical and continuous subsets."""
         n_timesteps = features.shape[0]
         categorical = (
-            features[:, self.categorical_indices]
+            features[:, self.categorical_indices].long()
             if self.categorical_indices
-            else torch.zeros((n_timesteps, 0))
+            else torch.zeros((n_timesteps, 0), dtype=torch.long)
         )
         continuous = (
             features[:, self.continuous_indices]
