@@ -285,3 +285,30 @@ def test_quantile_loss_error_on_multiple_targets(sample_dataset):
         match="Quantile forecasting currently only supports a single target.",
     ):
         model._encoder(x, target_indices)
+
+
+def test_forward_with_target_scale(sample_dataset):
+    """Test that prediction uses target scaling when target_scale is provided."""
+    dm = sample_dataset["data_module"]
+    batch = next(iter(dm.train_dataloader()))[0]
+
+    model = TSMixer(
+        loss=MAE(),
+        metadata=dm.metadata,
+    )
+
+    batch["target_scale"] = torch.ones(batch["history_target"].shape[0], 2)
+
+    captured = {}
+
+    def mock_transform_output(prediction, target_scale):
+        captured["prediction"] = prediction
+        captured["target_scale"] = target_scale
+        return prediction + 1
+
+    model.transform_output = mock_transform_output
+
+    prediction = model(batch)["prediction"]
+
+    assert torch.equal(captured["target_scale"], batch["target_scale"])
+    assert torch.allclose(prediction, captured["prediction"] + 1)
