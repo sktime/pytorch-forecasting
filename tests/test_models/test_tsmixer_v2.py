@@ -241,3 +241,50 @@ def test_prepare_input_data(sample_dataset):
 
     assert target_indices.dtype == torch.long
     assert target_indices.device == input_data.device
+
+def test_prepare_input_data_error_for_no_history(sample_dataset):
+    """Test _prepare_input_data without the required history."""
+
+    dm = sample_dataset["data_module"]
+    batch = next(iter(dm.train_dataloader()))[0]
+
+    model = TSMixer(
+        loss=MAE(),
+        metadata=dm.metadata,
+    )
+
+    batch_without_target = {
+        key: value
+        for key, value in batch.items()
+        if key != "history_target"
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="No target history found in the input dictionary.",
+    ):
+        model._prepare_input_data(batch_without_target)
+
+def test_quantile_loss_error_on_multiple_targets(sample_dataset):
+    """Test error for quantile forecasting with multiple targets."""
+
+    dm = sample_dataset["data_module"]
+
+    model = TSMixer(
+        loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]),
+        metadata=dm.metadata,
+    )
+
+    batch_size = dm.batch_size
+    context_length = dm.metadata["context_length"]
+    n_features = model.enc_in
+
+    x = torch.randn(batch_size, context_length, n_features)
+
+    target_indices = torch.tensor([0, 1], dtype=torch.long)
+
+    with pytest.raises(
+        ValueError,
+        match="Quantile forecasting currently only supports a single target.",
+    ):
+        model._encoder(x, target_indices)
