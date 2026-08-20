@@ -51,6 +51,40 @@ class TSMixerBlock(nn.Module):
 
 
 class TSMixer(TslibBaseModel):
+    """
+    TSMixer: An All-MLP Architecture for Time Series Forecasting.
+
+    TSMixer is a lightweight time series forecasting model made of stacked
+    multilayer perceptrons.
+
+    Parameters
+    ----------
+    loss : nn.Module
+        Loss function for training step.
+    d_model : int, default=64
+        Hidden dimension of the temporal and channel mixing MLPs.
+    e_layers : int, default=2
+        Number of stacked TSMixer blocks.
+    dropout : float, default=0.1
+        Dropout probability used within the mixer blocks.
+    logging_metrics : Optional[list[nn.Module]], default=None
+        List of metrics to log during training, validation and testing.
+    optimizer : Optional[Union[Optimizer, str]], default="adam"
+        Optimizer used for training.
+    optimizer_params : Optional[dict], default=None
+        Parameters passed to the optimizer.
+    lr_scheduler : Optional[str], default=None
+        Learning rate scheduler utilised.
+    lr_scheduler_params : Optional[dict], default=None
+        Parameters passed to the learning rate scheduler.
+    metadata : Optional[dict], default=None
+        Metadata for the model from TslibDataModule.
+
+    References
+    ----------
+    [1] TSMixer: An All-MLP Architecture for Time Series Forecasting (https://arxiv.org/abs/2303.06053).
+    [2] https://github.com/thuml/Time-Series-Library/blob/main/models/TSMixer.py
+    """
 
     @classmethod
     def _pkg(cls):
