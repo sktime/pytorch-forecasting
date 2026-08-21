@@ -51,3 +51,6 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.softs._softs_v2.SOFTS
    models.scinet._scinet_v2.SCINet_v2
    models.patch_tst._patch_tst_v2.PatchTST_v2
+   models.nbeats._nbeats_adapter_v2.NBeatsAdapterV2
+   models.nbeats._nbeats_v2.NBeats
+   models.nbeats._nbeatskan_v2.NBeatsKAN_v2
