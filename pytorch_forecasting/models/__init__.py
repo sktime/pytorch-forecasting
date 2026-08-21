@@ -20,7 +20,11 @@ from pytorch_forecasting.models.patch_tst import (
     PatchTST_pkg_v2,
     PatchTST_v2,
 )
-from pytorch_forecasting.models.rnn import RecurrentNetwork
+from pytorch_forecasting.models.rnn import (
+    RecurrentNetwork,
+    RecurrentNetwork_pkg_v2,
+    RecurrentNetwork_v2,
+)
 from pytorch_forecasting.models.scinet import SCINet_pkg_v2, SCINet_v2
 from pytorch_forecasting.models.softs import SOFTS, SOFTS_pkg_v2
 from pytorch_forecasting.models.temporal_fusion_transformer import (
@@ -40,6 +44,8 @@ __all__ = [
     "PatchTST_pkg_v2",
     "TemporalFusionTransformer",
     "RecurrentNetwork",
+    "RecurrentNetwork_v2",
+    "RecurrentNetwork_pkg_v2",
     "DeepAR",
     "BaseModel",
     "Baseline",
