@@ -4,7 +4,7 @@ Experimental data module for integrating `tslib` time series deep learning libra
 
 from collections.abc import Callable
 from typing import Any, Optional
-import warnings
+from warnings import warn
 
 from lightning.pytorch import LightningDataModule
 import numpy as np
@@ -309,6 +309,9 @@ class TslibDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
+        split_strategy: str = "random",
+        temporal_cutoffs: dict[str, float] | None = None,
+        group_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
@@ -323,12 +326,15 @@ class TslibDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
+        self.split_strategy = split_strategy
+        self.temporal_cutoffs = temporal_cutoffs
+        self.group_split = group_split
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
         self.kwargs = kwargs
 
-        warnings.warn(
+        warn(
             "TslibDataModule is experimental and subject to change. "
             "The API is not stable and may change without prior warning.",
             UserWarning,
@@ -380,7 +386,7 @@ class TslibDataModule(LightningDataModule):
             )
 
         if not has_continuous and not has_categorical and has_targets:
-            warnings.warn(
+            warn(
                 "No continuous or categorical features found. "
                 "Proceeding with pure univariate forecasting "
                 "using target history only.",
@@ -389,7 +395,7 @@ class TslibDataModule(LightningDataModule):
             return
 
         if not has_continuous:
-            warnings.warn(
+            warn(
                 "No continuous features found in the dataset. "
                 "Some models (TimeXer) requires continuous features. "
                 "Consider adding continuous featuresinto the dataset.",
@@ -397,7 +403,7 @@ class TslibDataModule(LightningDataModule):
             )
 
         if not has_categorical:
-            warnings.warn(
+            warn(
                 "No categorical features found in the dataset. "
                 "This may limit the model capabilities and and restrict "
                 "the usage to continuous features only.",
@@ -683,10 +689,6 @@ class TslibDataModule(LightningDataModule):
             If None, the data module will be setup for training.
         """
 
-        # TODO: Add support for temporal/random/group splits.
-        # Currently, it only supports random splits.
-        # Handle the case where the dataset is empty.
-
         total_series = len(self.time_series_dataset)
 
         if total_series == 0:
@@ -695,34 +697,104 @@ class TslibDataModule(LightningDataModule):
                 "Please provide a non-empty dataset."
             )
 
-        # this is a very rudimentary way to handle the splits when
-        # the dataset is of size equal to 1 or 2.
-        self._indices = torch.randperm(total_series)
-        if total_series == 1:
-            self._train_indices = self._indices
-            self._val_indices = self._indices
-            self._test_indices = self._indices
-        elif total_series == 2:
-            self._train_indices = self._indices[0:1]
-            self._val_indices = self._indices[1:2]
-            self._test_indices = self._indices[1:2]
+        from pytorch_forecasting.data.splitters import (
+            random_series_split,
+            stratified_series_split,
+            temporal_window_split,
+        )
+
+        if self.split_strategy in ["random", "group"]:
+            self._train_indices, self._val_indices, self._test_indices = (
+                random_series_split(total_series, self.train_val_test_split)
+            )
+        elif self.split_strategy == "stratified":
+            self._train_indices, self._val_indices, self._test_indices = (
+                stratified_series_split(
+                    self.time_series_dataset,
+                    target_idx=0,
+                    train_val_test_split=self.train_val_test_split,
+                )
+            )
+        elif self.split_strategy == "temporal":
+            self._train_indices = torch.arange(total_series)
+            self._val_indices = torch.arange(total_series)
+            self._test_indices = torch.arange(total_series)
+            warn(
+                "Using split_strategy='temporal': all groups appear in "
+                "every fold. Consider adding the group column as a "
+                "known categorical feature so the model can leverage "
+                "group identity during training.",
+                UserWarning,
+                stacklevel=2,
+            )
+        elif self.split_strategy == "group_time":
+            self._train_indices = torch.arange(total_series)
+            self._val_indices = torch.arange(total_series)
+            self._test_indices = torch.arange(total_series)
+            warn(
+                "Using split_strategy='group_time': validation and test sets "
+                "contain unseen groups. Do NOT use the group column as a "
+                "categorical feature — the model cannot generalize embeddings "
+                "to groups it has never seen during training.",
+                UserWarning,
+                stacklevel=2,
+            )
         else:
-            self._train_size = int(self.train_val_test_split[0] * total_series)
-            self._val_size = int(self.train_val_test_split[1] * total_series)
-
-            self._train_indices = self._indices[: self._train_size]
-            self._val_indices = self._indices[
-                self._train_size : self._train_size + self._val_size
-            ]
-
-            self._test_indices = self._indices[
-                self._train_size + self._val_size : total_series
-            ]
+            raise ValueError(f"Unknown split_strategy: {self.split_strategy}")
 
         if stage == "fit" or stage is None:
-            if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
-                self._train_windows = self._create_windows(self._train_indices)
-                self._val_windows = self._create_windows(self._val_indices)
+            if not hasattr(self, "_train_windows") or not hasattr(self, "_val_windows"):
+                if self.split_strategy == "temporal":
+                    all_windows = self._create_windows(self._train_indices)
+
+                    series_timestamps = {}
+                    for idx in self._train_indices:
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
+                        sample = self.time_series_dataset[series_idx]
+                        series_timestamps[series_idx] = sample["t"]
+
+                    t_win, v_win, te_win = temporal_window_split(
+                        all_windows,
+                        self.train_val_test_split,
+                        series_timestamps,
+                        self.temporal_cutoffs,
+                    )
+
+                    self._train_windows, self._val_windows, self._test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
+                elif self.split_strategy == "group_time":
+                    all_windows = self._create_windows(self._train_indices)
+
+                    series_timestamps = {}
+                    for idx in self._train_indices:
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
+                        sample = self.time_series_dataset[series_idx]
+                        series_timestamps[series_idx] = sample["t"]
+
+                    from pytorch_forecasting.data.splitters import group_time_split
+
+                    t_win, v_win, te_win = group_time_split(
+                        all_windows,
+                        series_timestamps,
+                        self.train_val_test_split,
+                        self.group_split,
+                    )
+
+                    self._train_windows, self._val_windows, self._test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
+                else:
+                    self._train_windows = self._create_windows(self._train_indices)
+                    self._val_windows = self._create_windows(self._val_indices)
 
                 self.train_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,
@@ -730,16 +802,49 @@ class TslibDataModule(LightningDataModule):
                     windows=self._train_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
-
                 self.val_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,
                     data_module=self,
                     windows=self._val_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
+
         elif stage == "test":
-            if not hasattr(self, "_test_dataset"):
-                self._test_windows = self._create_windows(self._test_indices)
+            if not hasattr(self, "_test_windows") or self.test_dataset is None:
+                if self.split_strategy == "temporal":
+                    all_windows = self._create_windows(torch.arange(total_series))
+
+                    series_timestamps = {}
+                    for idx in range(total_series):
+                        sample = self.time_series_dataset[idx]
+                        series_timestamps[idx] = sample["t"]
+
+                    _, _, self._test_windows = temporal_window_split(
+                        all_windows,
+                        self.train_val_test_split,
+                        series_timestamps,
+                        self.temporal_cutoffs,
+                    )
+
+                elif self.split_strategy == "group_time":
+                    all_windows = self._create_windows(torch.arange(total_series))
+
+                    series_timestamps = {}
+                    for idx in range(total_series):
+                        sample = self.time_series_dataset[idx]
+                        series_timestamps[idx] = sample["t"]
+
+                    from pytorch_forecasting.data.splitters import group_time_split
+
+                    _, _, self._test_windows = group_time_split(
+                        all_windows,
+                        series_timestamps,
+                        self.train_val_test_split,
+                        self.group_split,
+                    )
+
+                else:
+                    self._test_windows = self._create_windows(self._test_indices)
 
                 self.test_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,

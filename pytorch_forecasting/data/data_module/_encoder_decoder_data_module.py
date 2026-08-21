@@ -135,6 +135,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
+        split_strategy: str = "random",
+        temporal_cutoffs: dict[str, float] | None = None,
+        group_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
     ):
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
@@ -153,7 +156,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
-
+        self.split_strategy = split_strategy
+        self.temporal_cutoffs = temporal_cutoffs
+        self.group_split = group_split
         warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
             "rework of the "
@@ -959,21 +964,60 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._target_normalizer = ScalerAdapter(normalizer)
 
     def _ensure_split(self):
-        """Compute train/val/test indices once and cache them."""
-        if hasattr(self, "_split_indices"):
+        """
+        Compute train/val/test indices once and cache them,
+        respecting split_strategy.
+        """
+        if hasattr(self, "_split_done"):
             return
 
+        from pytorch_forecasting.data.splitters import (
+            random_series_split,
+            stratified_series_split,
+        )
+
         total_series = len(self.time_series_dataset)
-        self._split_indices = torch.randperm(total_series)
 
-        self._train_size = int(self.train_val_test_split[0] * total_series)
-        self._val_size = int(self.train_val_test_split[1] * total_series)
+        if self.split_strategy in ["random", "group"]:
+            self._train_indices, self._val_indices, self._test_indices = (
+                random_series_split(total_series, self.train_val_test_split)
+            )
+        elif self.split_strategy == "stratified":
+            self._train_indices, self._val_indices, self._test_indices = (
+                stratified_series_split(
+                    self.time_series_dataset,
+                    target_idx=0,
+                    train_val_test_split=self.train_val_test_split,
+                )
+            )
+        elif self.split_strategy == "temporal":
+            self._train_indices = torch.arange(total_series)
+            self._val_indices = torch.arange(total_series)
+            self._test_indices = torch.arange(total_series)
+            warn(
+                "Using split_strategy='temporal': all groups appear in "
+                "every fold. Consider adding the group column as a "
+                "known categorical feature so the model can leverage "
+                "group identity during training.",
+                UserWarning,
+                stacklevel=2,
+            )
+        elif self.split_strategy == "group_time":
+            self._train_indices = torch.arange(total_series)
+            self._val_indices = torch.arange(total_series)
+            self._test_indices = torch.arange(total_series)
+            warn(
+                "Using split_strategy='group_time': validation and test sets "
+                "contain unseen groups. Do NOT use the group column as a "
+                "categorical feature — the model cannot generalize embeddings "
+                "to groups it has never seen during training.",
+                UserWarning,
+                stacklevel=2,
+            )
+        else:
+            raise ValueError(f"Unknown split_strategy: {self.split_strategy}")
 
-        self._train_indices = self._split_indices[: self._train_size]
-        self._val_indices = self._split_indices[
-            self._train_size : self._train_size + self._val_size
-        ]
-        self._test_indices = self._split_indices[self._train_size + self._val_size :]
+        self._split_done = True
 
     def _make_dataset(self, indices: torch.Tensor):
         """Preprocess a set of series indices into a windowed Dataset.
@@ -1017,23 +1061,161 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             if not self._feature_scalers_fitted:
                 self._fit_scalers(self._train_indices)
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
-                self._train_preprocessed, self.train_windows, self.train_dataset = (
-                    self._make_dataset(self._train_indices)
-                )
-                self._val_preprocessed, self.val_windows, self.val_dataset = (
-                    self._make_dataset(self._val_indices)
-                )
+                if self.split_strategy == "temporal":
+                    # Build all windows, then split them by timestamp
+                    all_windows = self._create_windows(self._train_indices)
+                    series_timestamps = {}
+                    for idx in self._train_indices:
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
+                        sample = self.time_series_dataset[series_idx]
+                        series_timestamps[series_idx] = sample["t"]
+
+                    from pytorch_forecasting.data.splitters import temporal_window_split
+
+                    t_win, v_win, te_win = temporal_window_split(
+                        all_windows,
+                        self.train_val_test_split,
+                        series_timestamps,
+                        self.temporal_cutoffs,
+                    )
+                    self.train_windows, self.val_windows, self.test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
+
+                    # Preprocess ALL series (train, val, test share the same series)
+                    all_indices = self._train_indices
+                    preprocessed = {
+                        idx.item(): self._preprocess_data(idx.item())
+                        for idx in all_indices
+                    }
+                    self._train_preprocessed = preprocessed
+                    self._val_preprocessed = preprocessed
+
+                    self.train_dataset = self._ProcessedEncoderDecoderDataset(
+                        self,
+                        self.train_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
+                    )
+                    self.val_dataset = self._ProcessedEncoderDecoderDataset(
+                        self, self.val_windows, preprocessed, self.add_relative_time_idx
+                    )
+                elif self.split_strategy == "group_time":
+                    all_windows = self._create_windows(self._train_indices)
+                    series_timestamps = {}
+                    for idx in self._train_indices:
+                        series_idx = (
+                            idx.item() if isinstance(idx, torch.Tensor) else idx
+                        )
+                        sample = self.time_series_dataset[series_idx]
+                        series_timestamps[series_idx] = sample["t"]
+
+                    from pytorch_forecasting.data.splitters import group_time_split
+
+                    t_win, v_win, te_win = group_time_split(
+                        all_windows,
+                        series_timestamps,
+                        self.train_val_test_split,
+                        self.group_split,
+                    )
+                    self.train_windows, self.val_windows, self.test_windows = (
+                        t_win,
+                        v_win,
+                        te_win,
+                    )
+
+                    all_indices = self._train_indices
+                    preprocessed = {
+                        idx.item(): self._preprocess_data(idx.item())
+                        for idx in all_indices
+                    }
+                    self._train_preprocessed = preprocessed
+                    self._val_preprocessed = preprocessed
+
+                    self.train_dataset = self._ProcessedEncoderDecoderDataset(
+                        self,
+                        self.train_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
+                    )
+                    self.val_dataset = self._ProcessedEncoderDecoderDataset(
+                        self, self.val_windows, preprocessed, self.add_relative_time_idx
+                    )
+                else:
+                    self._train_preprocessed, self.train_windows, self.train_dataset = (
+                        self._make_dataset(self._train_indices)
+                    )
+                    self._val_preprocessed, self.val_windows, self.val_dataset = (
+                        self._make_dataset(self._val_indices)
+                    )
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
-                self._test_preprocessed, self.test_windows, self.test_dataset = (
-                    self._make_dataset(self._test_indices)
-                )
+                if self.split_strategy == "temporal":
+                    if not hasattr(self, "test_windows"):
+                        # Recompute temporal test windows if fit wasn't called first
+                        total_series = len(self.time_series_dataset)
+                        all_windows = self._create_windows(torch.arange(total_series))
+                        series_timestamps = {}
+                        for idx in range(total_series):
+                            sample = self.time_series_dataset[idx]
+                            series_timestamps[idx] = sample["t"]
+
+                        from pytorch_forecasting.data.splitters import (
+                            temporal_window_split,
+                        )
+
+                        _, _, self.test_windows = temporal_window_split(
+                            all_windows,
+                            self.train_val_test_split,
+                            series_timestamps,
+                            self.temporal_cutoffs,
+                        )
+                elif self.split_strategy == "group_time":
+                    if not hasattr(self, "test_windows"):
+                        total_series = len(self.time_series_dataset)
+                        all_windows = self._create_windows(torch.arange(total_series))
+                        series_timestamps = {}
+                        for idx in range(total_series):
+                            sample = self.time_series_dataset[idx]
+                            series_timestamps[idx] = sample["t"]
+
+                        from pytorch_forecasting.data.splitters import group_time_split
+
+                        _, _, self.test_windows = group_time_split(
+                            all_windows,
+                            series_timestamps,
+                            self.train_val_test_split,
+                            self.group_split,
+                        )
+
+                    preprocessed = {
+                        idx: self._preprocess_data(idx)
+                        for idx in {w[0] for w in self.test_windows}
+                    }
+                    self.test_dataset = self._ProcessedEncoderDecoderDataset(
+                        self,
+                        self.test_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
+                    )
+                else:
+                    self._test_preprocessed, self.test_windows, self.test_dataset = (
+                        self._make_dataset(self._test_indices)
+                    )
+
         elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
-            self._predict_preprocessed, self.predict_windows, self.predict_dataset = (
-                self._make_dataset(predict_indices)
-            )
+            if not hasattr(self, "predict_dataset"):
+                predict_indices = torch.arange(len(self.time_series_dataset))
+                (
+                    self._predict_preprocessed,
+                    self.predict_windows,
+                    self.predict_dataset,
+                ) = self._make_dataset(predict_indices)
 
     def train_dataloader(self):
         return DataLoader(
