@@ -3,11 +3,11 @@
 from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
-class PatchTSTV2_pkg_v2(Base_pkg):
+class PatchTST_pkg_v2(Base_pkg):
     """PatchTST package container for V2."""
 
     _tags = {
-        "info:name": "PatchTSTV2",
+        "info:name": "PatchTST_v2",
         "info:compute": 3,
         "info:y_type": ["numeric"],
         "authors": ["nareshmethuku"],
@@ -22,9 +22,9 @@ class PatchTSTV2_pkg_v2(Base_pkg):
     @classmethod
     def get_cls(cls):
         """Get model class."""
-        from pytorch_forecasting.models.patch_tst._patch_tst_v2 import PatchTSTV2
+        from pytorch_forecasting.models.patch_tst._patch_tst_v2 import PatchTST_v2
 
-        return PatchTSTV2
+        return PatchTST_v2
 
     @classmethod
     def get_datamodule_cls(cls):

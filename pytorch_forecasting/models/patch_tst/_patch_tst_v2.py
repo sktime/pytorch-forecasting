@@ -13,7 +13,7 @@ from torch.optim import Optimizer
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
-class PatchTSTV2(BaseModel):
+class PatchTST_v2(BaseModel):
     """
     An implementation of PatchTST model for v2 of pytorch-forecasting.
 

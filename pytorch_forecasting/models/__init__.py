@@ -17,7 +17,8 @@ from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.patch_tst import (
     PatchTST,
     PatchTST_pkg,
-    PatchTSTV2_pkg_v2,
+    PatchTST_pkg_v2,
+    PatchTST_v2,
 )
 from pytorch_forecasting.models.rnn import RecurrentNetwork
 from pytorch_forecasting.models.scinet import SCINet_pkg_v2, SCINet_v2
@@ -34,8 +35,9 @@ __all__ = [
     "NBeatsKAN",
     "NHiTS",
     "PatchTST",
+    "PatchTST_v2",
     "PatchTST_pkg",
-    "PatchTSTV2_pkg_v2",
+    "PatchTST_pkg_v2",
     "TemporalFusionTransformer",
     "RecurrentNetwork",
     "DeepAR",
