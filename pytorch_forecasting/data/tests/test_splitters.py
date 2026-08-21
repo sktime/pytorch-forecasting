@@ -235,11 +235,10 @@ class TestTemporalWindowSplitPercentageMode:
                 ), f"Series {s_idx}: val leaks into test"
 
     def test_per_series_proportional_split(self):
-        """Each series must contribute windows to all three folds.
-
-        This is the maintainer's core requirement: a series with timestamps
-        [1..10] and another with [11..20] should both be split 80/10/10
-        independently, not skewed by a global cutoff.
+        """
+        Each series must contribute windows to all three folds.
+        A series with timestamps [1..10] and another with [11..20] should
+        both be split 80/10/10 independently, not skewed by a global cutoff.
         """
         enc_len, pred_len = 1, 1
         ts_g1 = np.arange(1, 11)  # [1..10]
@@ -286,20 +285,6 @@ class TestTemporalWindowSplitPercentageMode:
         total = len(train_w) + len(val_w) + len(test_w)
         assert total == len(windows)
         assert len(train_w) > 0
-
-    def test_warning_on_conflicting_params(self):
-        """A warning should fire when both cutoffs and custom split are given."""
-        timestamps = np.arange(0, 10)
-        windows = [(0, 0, 2, 1)]
-        series_timestamps = {0: timestamps}
-
-        with pytest.warns(UserWarning, match="temporal_cutoffs"):
-            temporal_window_split(
-                windows,
-                (0.5, 0.25, 0.25),
-                series_timestamps,
-                temporal_cutoffs={"end_train": 5.0},
-            )
 
 
 class TestGroupTimeSplit:

@@ -1,5 +1,11 @@
+"""
+Splitting strategies for train/val/test partitioning of time series data.
+
+Provides random, stratified, temporal, and group-time splitting functions
+consumed by the data modules.
+"""
+
 from typing import Any
-from warnings import warn
 
 import numpy as np
 import torch
@@ -7,7 +13,6 @@ import torch
 from pytorch_forecasting.data.split import (
     classify_windows_by_cutoffs,
     compute_split_boundaries,
-    get_window_end_time,
 )
 
 
@@ -103,8 +108,9 @@ def temporal_window_split(
     - **Absolute mode** (when ``temporal_cutoffs`` is provided):
       Uses global timestamp boundaries. All series share the same cutoffs.
     - **Percentage mode** (default, when ``temporal_cutoffs`` is None):
-      Computes cutoffs from a global timeline across all series,
-      ensuring a single boundary that prevents cross-series leakage.
+      Computes cutoffs per series from each series' own timeline,
+      so every series contributes proportionally to train/val/test
+      regardless of its absolute timestamp range.
 
     Parameters
     ----------
@@ -123,6 +129,7 @@ def temporal_window_split(
         Windows in between go to validation.
         If ``start_test`` is not provided, it defaults to ``end_train``
         (no gap between val and test).
+        When provided, ``train_val_test_split`` is ignored.
 
     Returns
     -------
@@ -131,14 +138,6 @@ def temporal_window_split(
     """
     if not windows:
         return [], [], []
-    if temporal_cutoffs is not None and train_val_test_split != (0.7, 0.15, 0.15):
-        warn(
-            "Both 'temporal_cutoffs' and a custom 'train_val_test_split' were "
-            "provided. 'temporal_cutoffs' takes precedence and the percentage "
-            "split will be ignored.",
-            UserWarning,
-            stacklevel=2,
-        )
     if temporal_cutoffs is not None:
         return _split_absolute(windows, series_timestamps, temporal_cutoffs)
     return _split_percentage(windows, series_timestamps, train_val_test_split)
@@ -220,10 +219,11 @@ def _split_absolute(
     list[tuple[int, int, int, int]],
     list[tuple[int, int, int, int]],
 ]:
-    """Absolute mode: split using user-specified timestamp boundaries.
+    """Split windows using explicit timestamp boundaries.
 
-    The user says: "train ends at time X, test starts at time Y."
-    Everything between X and Y is validation.
+    Windows ending at or before ``end_train`` go to train.
+    Windows starting at or after ``start_test`` go to test.
+    Anything in between is validation.
     """
     end_train = temporal_cutoffs["end_train"]
     start_test = temporal_cutoffs.get("start_test", end_train)
@@ -231,16 +231,12 @@ def _split_absolute(
         raise ValueError(
             f"start_test ({start_test}) must be >= end_train ({end_train})"
         )
-    train_windows, val_windows, test_windows = [], [], []
-    for w in windows:
-        end_time = get_window_end_time(w, series_timestamps)
-        if end_time <= end_train:
-            train_windows.append(w)
-        elif end_time >= start_test:
-            test_windows.append(w)
-        else:
-            val_windows.append(w)
-    return train_windows, val_windows, test_windows
+
+    # Build a uniform cutoff map, all series share the same boundaries
+    all_series = {w[0] for w in windows}
+    cutoffs_map = {s_idx: (end_train, start_test) for s_idx in all_series}
+
+    return classify_windows_by_cutoffs(windows, series_timestamps, cutoffs_map)
 
 
 def _split_percentage(

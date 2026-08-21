@@ -37,9 +37,7 @@ def classify_windows_by_cutoffs(
         ``{series_idx: (train_cutoff, val_cutoff)}`` or ``None``
         for unsplittable series (those default to train).
     """
-    train_w: list[tuple[int, int, int, int]] = []
-    val_w: list[tuple[int, int, int, int]] = []
-    test_w: list[tuple[int, int, int, int]] = []
+    train_w, val_w, test_w = [], [], []
 
     for w in windows:
         s_idx = w[0]
