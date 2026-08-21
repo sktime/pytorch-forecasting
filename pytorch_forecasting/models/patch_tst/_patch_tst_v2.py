@@ -58,10 +58,10 @@ class PatchTST_v2(BaseModel):
     def _pkg(cls):
         """Package containing the model."""
         from pytorch_forecasting.models.patch_tst._patch_tst_pkg_v2 import (
-            PatchTSTV2_pkg_v2,
+            PatchTST_pkg_v2,
         )
 
-        return PatchTSTV2_pkg_v2
+        return PatchTST_pkg_v2
 
     def __init__(
         self,
