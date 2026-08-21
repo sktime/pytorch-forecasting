@@ -48,7 +48,7 @@ from pytorch_forecasting.metrics import (
     coerce_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.metrics.base_metrics import Metric
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.layers._embeddings import MultiEmbedding
 from pytorch_forecasting.utils import (
     InitialParameterRepresenterMixIn,
     OutputMixIn,
