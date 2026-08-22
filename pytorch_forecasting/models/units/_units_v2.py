@@ -10,7 +10,10 @@ import torch.nn as nn
 from torch.optim import Optimizer
 
 from pytorch_forecasting.layers._blocks import _TransformerBlock
-from pytorch_forecasting.layers._embeddings import _PatchEmbedding, _PositionalEmbedding
+from pytorch_forecasting.layers._embeddings import (
+    UNITS_PatchEmbedding,
+    _PositionalEmbedding,
+)
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
@@ -137,7 +140,7 @@ class UniTS(BaseModel):
     def _init_network(self):
         """Initialise model layers."""
 
-        self.patch_embedding = _PatchEmbedding(
+        self.patch_embedding = UNITS_PatchEmbedding(
             patch_len=self.patch_len,
             stride=self.stride,
             d_model=self.d_model,

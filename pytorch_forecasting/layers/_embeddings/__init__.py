@@ -6,7 +6,10 @@ from pytorch_forecasting.layers._embeddings._data_embedding import (
     DataEmbedding_inverted,
 )
 from pytorch_forecasting.layers._embeddings._en_embedding import EnEmbedding
-from pytorch_forecasting.layers._embeddings._patch_embedding import _PatchEmbedding
+from pytorch_forecasting.layers._embeddings._patch_embedding import (
+    PatchEmbedding,
+    UNITS_PatchEmbedding,
+)
 from pytorch_forecasting.layers._embeddings._positional_embedding import (
     PositionalEmbedding,
     _PositionalEmbedding,
@@ -16,8 +19,10 @@ from pytorch_forecasting.layers._embeddings._sub_nn import embedding_cat_variabl
 __all__ = [
     "PositionalEmbedding",
     "_PositionalEmbedding",
-    "_PatchEmbedding",
+    "UNITS_PatchEmbedding",
     "DataEmbedding_inverted",
     "EnEmbedding",
+    "PositionalEmbedding",
     "embedding_cat_variables",
+    "PatchEmbedding",
 ]
