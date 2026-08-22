@@ -1,10 +1,37 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import StandardScaler
 import torch
 
+from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.data_module import TslibDataModule
+from pytorch_forecasting.data.encoders import TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
+
+
+def _make_ts(n_series: int = 20, length: int = 40, offset: float = 100.0) -> TimeSeries:
+    """合成数据集:连续特征 ``x`` 远离 0(~offset),便于看出标准化;目标 ``y`` 是正弦。"""
+    rows = []
+    for i in range(n_series):
+        for t in range(length):
+            rows.append(
+                {
+                    "series_id": i,
+                    "time_idx": t,
+                    "x": offset + 10.0 * np.sin(t / 5.0) + i,
+                    "y": np.sin(t / 5.0),
+                }
+            )
+    df = pd.DataFrame(rows)
+    return TimeSeries(
+        data=df,
+        time="time_idx",
+        target="y",
+        group=["series_id"],
+        num=["x"],
+        unknown=["x"],
+    )
 
 
 @pytest.fixture(scope="session")
@@ -530,3 +557,148 @@ def test_multivariate_target():
     assert (
         y.shape[-1] == 2
     ), "Target should have two dimensions for n_features for multivariate target."
+
+
+def test_init_wraps_scalers_in_adapter_and_sets_flags():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    assert isinstance(dm._scalers["x"], ScalerAdapter)
+    assert isinstance(dm._target_normalizer, ScalerAdapter)
+    assert dm._feature_scalers_fitted is False
+    assert dm._target_normalizer_fitted is False
+    assert dm._preprocess_cache == {}
+
+
+def test_fit_scalers_standardizes_train_feature():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    train_idx = torch.arange(len(ds))  # 本单测在全部序列上 fit
+    dm._fit_scalers(train_idx)
+
+    assert dm._feature_scalers_fitted is True
+    # transform 原始 train 列,检查已标准化(~0 均值,~1 标准差)
+    names = dm.time_series_metadata["cols"]["x"]
+    oi = dm.continuous_indices[names.index("x") if "x" in names else 0]
+    raw = torch.cat([ds[i.item()]["x"][:, oi] for i in train_idx], dim=0)
+    scaled = dm._scalers["x"].transform(raw)
+    assert abs(float(scaled.mean())) < 1e-3
+    assert abs(float(scaled.std()) - 1.0) < 1e-2
+
+
+def test_fit_target_normalizer_sets_flag():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    dm._fit_target_normalizer(torch.arange(len(ds)))
+    assert dm._target_normalizer_fitted is True
+
+
+def test_normalize_features_scales_only_configured_columns():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    # before fit: no-op
+    raw_cont = ds[0]["x"][:, dm.continuous_indices]
+    assert torch.equal(dm._normalize_features(raw_cont), raw_cont)
+
+    # after fit: scaled
+    dm._fit_scalers(torch.arange(len(ds)))
+    scaled = dm._normalize_features(raw_cont)
+    assert not torch.equal(scaled, raw_cont)
+    # magnitude drops from ~100 toward ~0
+    assert abs(float(scaled.mean())) < abs(float(raw_cont.mean()))
+
+
+def test_normalize_target_is_noop_until_fitted():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    tgt = ds[0]["y"].float()
+    assert torch.equal(dm._normalize_target(tgt), tgt)  # not yet fitted
+    dm._fit_target_normalizer(torch.arange(len(ds)))
+    assert dm._normalize_target(tgt).shape == tgt.shape
+
+
+def test_preprocess_data_scales_and_caches():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    dm._fit_scalers(torch.arange(len(ds)))
+
+    out1 = dm._preprocess_data(0)
+    cont = out1["features"]["continuous"]
+    # x was originally ~100; after scaling it should be near 0
+    assert abs(float(cont[:, 0].mean())) < 5.0
+    # cache: second call must return the exact same object
+    out2 = dm._preprocess_data(0)
+    assert out1 is out2
+
+
+def test_setup_fit_produces_scaled_samples():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        target_normalizer=TorchNormalizer(),
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    assert dm._feature_scalers_fitted is True
+    assert dm._target_normalizer_fitted is True
+
+    # retrieve encoder continuous features; x should be standardized
+    x, _ = dm.train_dataset[0]
+    hist = x["history_cont"]
+    assert abs(float(hist[:, 0].mean())) < 5.0  # unscaled value was ~100
+
+
+def test_no_scalers_leaves_data_untouched():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    out = dm._preprocess_data(0)
+    raw_cont = ds[0]["x"][:, dm.continuous_indices].float()
+    # when no scaler is configured, continuous features must be byte-identical to raw
+    assert torch.allclose(out["features"]["continuous"], raw_cont)
+    # target_scale is not produced (out of scope for this PR)
+    assert "target_scale" not in out

@@ -13,6 +13,7 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
@@ -341,7 +342,19 @@ class TslibDataModule(LightningDataModule):
 
         self._metadata = None
 
-        self.scalers = scalers or {}
+        # wrap in the unified adapter so we speak one fit/transform interface
+        self._target_normalizer = (
+            ScalerAdapter(self._target_normalizer)
+            if self._target_normalizer is not None
+            else None
+        )
+        self._scalers = {
+            name: ScalerAdapter(scaler) for name, scaler in (scalers or {}).items()
+        }
+        self._target_normalizer_fitted = False
+        self._feature_scalers_fitted = False
+        self._preprocess_cache = {}
+
         self.shuffle = shuffle
 
         self.continuous_indices = []
@@ -537,6 +550,55 @@ class TslibDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
+    def _fit_target_normalizer(self, train_indices):
+        """Fit the target normalizer on the training targets only."""
+        if self._target_normalizer is None or self._target_normalizer_fitted:
+            return
+        targets = [self.time_series_dataset[idx.item()]["y"] for idx in train_indices]
+        if not targets:
+            return
+        self._target_normalizer.fit(torch.cat(targets, dim=0))
+        self._target_normalizer_fitted = True
+
+    def _fit_scalers(self, train_indices):
+        """Fit each named continuous-feature scaler on the training data only."""
+        if not self._scalers or not self.continuous_indices:
+            return
+        names = self.time_series_metadata["cols"]["x"]
+        for orig_idx in self.continuous_indices:
+            name = names[orig_idx]
+            if name not in self._scalers:
+                continue
+            column = [
+                self.time_series_dataset[idx.item()]["x"][:, orig_idx]
+                for idx in train_indices
+            ]
+            if not column:
+                continue
+            self._scalers[name].fit(torch.cat(column, dim=0))
+        self._feature_scalers_fitted = True
+
+    def _normalize_target(self, target):
+        """Apply the fitted target normalizer (no-op until fitted)."""
+        if self._target_normalizer is None or not self._target_normalizer_fitted:
+            return target
+        return self._target_normalizer.transform(target)
+
+    def _normalize_features(self, continuous):
+        """Apply fitted continuous-feature scalers (no-op until fitted).
+
+        ``continuous`` columns are ordered by ``self.continuous_indices``.
+        """
+        if not self._feature_scalers_fitted or not self.continuous_indices:
+            return continuous
+        names = self.time_series_metadata["cols"]["x"]
+        out = continuous.clone()
+        for pos, orig_idx in enumerate(self.continuous_indices):
+            name = names[orig_idx]
+            if name in self._scalers:
+                out[:, pos] = self._scalers[name].transform(continuous[:, pos])
+        return out
+
     def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
         """
         Process the the time series data at the given index, before feeding it
@@ -559,9 +621,14 @@ class TslibDataModule(LightningDataModule):
         - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
 
-        series = self.time_series_dataset[idx]
+        # cache: a series is transformed once, not per window
+        i = idx.item() if isinstance(idx, torch.Tensor) else idx
+        if i in self._preprocess_cache:
+            return self._preprocess_cache[i]
+
+        series = self.time_series_dataset[i]
         if series is None:
-            raise ValueError(f"series at index {idx} is None. Check the dataset.")
+            raise ValueError(f"series at index {i} is None. Check the dataset.")
         target = series["y"]
         features = series["x"]
         timestep = series["t"]
@@ -594,6 +661,10 @@ class TslibDataModule(LightningDataModule):
             else torch.zeros((features.shape[0], 0))
         )
 
+        # apply fitted scalers / normalizers (no-op until fitted)
+        continuous_features = self._normalize_features(continuous_features)
+        target = self._normalize_target(target)
+
         res = {
             "features": {
                 "categorical": categorical_features,
@@ -611,6 +682,7 @@ class TslibDataModule(LightningDataModule):
         if target_scale:
             res["target_scale"] = target_scale
 
+        self._preprocess_cache[i] = res
         return res
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
@@ -718,6 +790,11 @@ class TslibDataModule(LightningDataModule):
             self._test_indices = self._indices[
                 self._train_size + self._val_size : total_series
             ]
+
+        self._preprocess_cache = {}
+        if stage is None or stage == "fit":
+            self._fit_target_normalizer(self._train_indices)
+            self._fit_scalers(self._train_indices)
 
         if stage == "fit" or stage is None:
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
