@@ -9,6 +9,8 @@ from pytorch_forecasting.models.base import (
     BaseModelWithCovariates,
 )
 from pytorch_forecasting.models.baseline import Baseline
+from pytorch_forecasting.models.baseline._baseline_pkg_v2 import Baseline_pkg_v2
+from pytorch_forecasting.models.baseline._baseline_v2 import Baseline_v2
 from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.models.mlp import DecoderMLP
 from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
@@ -43,6 +45,8 @@ __all__ = [
     "DeepAR",
     "BaseModel",
     "Baseline",
+    "Baseline_v2",
+    "Baseline_pkg_v2",
     "BaseModelWithCovariates",
     "AutoRegressiveBaseModel",
     "AutoRegressiveBaseModelWithCovariates",
