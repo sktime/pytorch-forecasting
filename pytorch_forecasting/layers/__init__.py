@@ -15,7 +15,6 @@ from pytorch_forecasting.layers._embeddings import (
     PatchEmbedding,
     PositionalEmbedding,
     UNITS_PatchEmbedding,
-    _PositionalEmbedding,
     embedding_cat_variables,
 )
 from pytorch_forecasting.layers._encoders import (
@@ -50,7 +49,6 @@ __all__ = [
     "PositionalEmbedding",
     "PatchEmbedding",
     "UNITS_PatchEmbedding",
-    "_PositionalEmbedding",
     "_TransformerBlock",
     "Encoder",
     "EncoderLayer",

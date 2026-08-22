@@ -11,8 +11,8 @@ from torch.optim import Optimizer
 
 from pytorch_forecasting.layers._blocks import _TransformerBlock
 from pytorch_forecasting.layers._embeddings import (
+    PositionalEmbedding,
     UNITS_PatchEmbedding,
-    _PositionalEmbedding,
 )
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
@@ -158,7 +158,9 @@ class UniTS(BaseModel):
             ]
         )
 
-        self.pos_enc = _PositionalEmbedding(d_model=self.d_model, dropout=self.dropout)
+        self.pos_enc = PositionalEmbedding(
+            d_model=self.d_model, dropout=self.dropout, add_x=True
+        )
         self.norm = nn.LayerNorm(self.d_model)
 
         self.n_quantiles = None
