@@ -7,13 +7,14 @@ from pytorch_forecasting.layers._attention import (
     FullAttention,
     TriangularCausalMask,
 )
-from pytorch_forecasting.layers._blocks import ResidualBlock
+from pytorch_forecasting.layers._blocks import ResidualBlock, _TransformerBlock
 from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.layers._embeddings import (
     DataEmbedding_inverted,
     EnEmbedding,
     PatchEmbedding,
     PositionalEmbedding,
+    UNITS_PatchEmbedding,
     embedding_cat_variables,
 )
 from pytorch_forecasting.layers._encoders import (
@@ -47,6 +48,8 @@ __all__ = [
     "EnEmbedding",
     "PositionalEmbedding",
     "PatchEmbedding",
+    "UNITS_PatchEmbedding",
+    "_TransformerBlock",
     "Encoder",
     "EncoderLayer",
     "FlattenHead",
