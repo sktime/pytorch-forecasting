@@ -726,3 +726,38 @@ def test_group_normalizer_uses_groups():
         mean1 = target1["target"].mean().abs()
         assert mean0 < 1.0, "Group 0 target should be normalized near 0"
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
+
+
+def test_encoder_normalizer_scales_decoder_target(sample_timeseries_data):
+    """`y` must be normalized with the same per-sequence stats as `target_past`.
+
+    `EncoderNormalizer` fits per encoder window, so `target_past` and `y` in the
+    same sample have to end up on the same scale. Regression test for the target
+    staying on the raw scale while `target_past` was normalized.
+    """
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=15,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer=EncoderNormalizer(),
+    )
+    dm.setup(stage="fit")
+
+    series_idx, start_idx, enc_length, pred_length = dm.train_dataset.windows[0]
+    data = dm.train_dataset.preprocessed_data[series_idx]
+    decoder_indices = slice(start_idx + enc_length, start_idx + enc_length + pred_length)
+    raw_y = data["target"][decoder_indices]
+
+    x, y = dm.train_dataset[0]
+
+    normalizer = dm._target_normalizer
+    expected_y = normalizer.transform(raw_y)
+
+    assert not torch.allclose(y, raw_y.squeeze(-1)), (
+        "y should not equal the raw, un-normalized target"
+    )
+    assert torch.allclose(y, expected_y.squeeze(-1), atol=1e-5), (
+        "y should be normalized with the same fitted per-sequence stats used for "
+        "target_past"
+    )
