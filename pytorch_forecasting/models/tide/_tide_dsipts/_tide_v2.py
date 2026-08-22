@@ -86,7 +86,6 @@ class TIDE(BaseModel):
         self.optim = optim
         self.optim_config = optim_config
         self.scheduler_config = scheduler_config
-        self.loss = loss
 
         self.hidden_size = hidden_size  # r
         self.d_model = d_model  # r^tilde
