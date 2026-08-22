@@ -22,7 +22,7 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.nhits.sub_modules import NHiTS as NHiTSModule
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.layers._embeddings import MultiEmbedding
 from pytorch_forecasting.utils import create_mask, to_list
 from pytorch_forecasting.utils._dependencies import _check_matplotlib
 

@@ -20,7 +20,7 @@ from pytorch_forecasting.metrics import (
 )
 from pytorch_forecasting.models.base import BaseModelWithCovariates
 from pytorch_forecasting.models.mlp.submodules import FullyConnectedModule
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.layers._embeddings import MultiEmbedding
 
 
 class DecoderMLP(BaseModelWithCovariates):
