@@ -4,6 +4,12 @@ on:
   release:
     types: [published]
 
+# Least privilege by default. This workflow builds the artifact that is published
+# to PyPI, so the token it carries is the most valuable one in the repository.
+# `upload_wheels` declares its own `id-token: write` for Trusted Publishing.
+permissions:
+  contents: read
+
 jobs:
   check_tag:
     name: Check tag
@@ -17,8 +23,14 @@ jobs:
           python-version: '3.11'
 
       - shell: bash
+        # The tag name is passed through `env` rather than expanded directly into
+        # the script. A `${{ ... }}` expansion is substituted as text before bash
+        # sees it, so a tag containing shell metacharacters would run as code; as
+        # an environment variable it is only ever data.
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="${RELEASE_TAG}"
           GH_TAG_NAME="${TAG#v}"
           PY_VERSION=$(python - <<'PY'
           import pathlib, tomllib
