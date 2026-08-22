@@ -126,12 +126,17 @@ class NBeatsAdapterV2(TslibBaseModel):
             "generic": generic,
         }
 
-    def training_step(
-        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
-    ) -> dict[str, torch.Tensor]:
-        """Training step with optional backcast loss (v1 ``step`` parity)."""
-        x, y = batch
-        out = self(x)
+    def _compute_loss(
+        self,
+        x: dict[str, torch.Tensor],
+        y: torch.Tensor,
+        out: dict[str, torch.Tensor],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Forecast loss plus optional backcast term (v1 ``step`` parity).
+
+        Applied for train / val / test (not predict), matching v1's
+        ``not self.predicting`` guard on the shared ``step()``.
+        """
         y_hat = out["prediction"]
         loss = self.loss(y_hat, y)
 
@@ -147,14 +152,88 @@ class NBeatsAdapterV2(TslibBaseModel):
             backcast_weight = backcast_weight / (backcast_weight + 1)
             forecast_weight = 1 - backcast_weight
 
-            # Compute backcast term directly (avoid Metric.update state / shape quirks).
-            # v1 used self.loss(backcast, encoder_target); v2 BaseModel losses are
-            # wired for forecast horizon shapes only.
             backcast_loss = (backcast - encoder_target).abs().mean() * backcast_weight
             loss = loss * forecast_weight + backcast_loss
 
+        return loss, y_hat
+
+    def training_step(
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
+    ) -> dict[str, torch.Tensor]:
+        """
+        Training step for the model with optional backcast loss.
+
+        Parameters
+        ----------
+        batch : Tuple[Dict[str, torch.Tensor]]
+            Batch of data containing input and target tensors.
+        batch_idx : int
+            Index of the batch.
+
+        Returns
+        -------
+        STEP_OUTPUT
+            Dictionary containing the loss and other metrics.
+        """
+        x, y = batch
+        out = self(x)
+        loss, y_hat = self._compute_loss(x, y, out)
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
         self.log_metrics(y_hat, y, prefix="train")
         return {"loss": loss}
+
+    def validation_step(
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
+    ) -> dict[str, torch.Tensor]:
+        """
+        Validation step for the model with optional backcast loss.
+
+        Parameters
+        ----------
+        batch : Tuple[Dict[str, torch.Tensor]]
+            Batch of data containing input and target tensors.
+        batch_idx : int
+            Index of the batch.
+
+        Returns
+        -------
+        STEP_OUTPUT
+            Dictionary containing the loss and other metrics.
+        """
+        x, y = batch
+        out = self(x)
+        loss, y_hat = self._compute_loss(x, y, out)
+        self.log(
+            "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log_metrics(y_hat, y, prefix="val")
+        return {"val_loss": loss}
+
+    def test_step(
+        self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
+    ) -> dict[str, torch.Tensor]:
+        """
+        Test step for the model with optional backcast loss.
+
+        Parameters
+        ----------
+        batch : Tuple[Dict[str, torch.Tensor]]
+            Batch of data containing input and target tensors.
+        batch_idx : int
+            Index of the batch.
+
+        Returns
+        -------
+        STEP_OUTPUT
+            Dictionary containing the loss and other metrics.
+        """
+        x, y = batch
+        out = self(x)
+        loss, y_hat = self._compute_loss(x, y, out)
+        self.log(
+            "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+        )
+        self.log_metrics(y_hat, y, prefix="test")
+        return {"test_loss": loss}
