@@ -797,9 +797,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
 
-            # `target_past` above is normalized per-sequence using stats fit on the encoder
-            # window; apply that same fitted normalizer to the decoder target, otherwise `y`
-            # stays on the raw scale while the model is trained to predict the normalized one
+            # `target_past` above is normalized per-sequence using stats fit on the
+            # encoder window; apply that same fitted normalizer to the decoder target,
+            # otherwise `y` stays raw while the model is trained to predict normalized
             if normalizer is not None and normalizer.fit_per_sequence:
                 y = normalizer.transform_sequence(y)
 
