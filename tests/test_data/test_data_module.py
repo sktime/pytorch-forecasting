@@ -763,3 +763,25 @@ def test_encoder_normalizer_scales_decoder_target(sample_timeseries_data):
         "y should be normalized with the same fitted per-sequence stats used for "
         "target_past"
     )
+
+
+def test_transform_sequence_multi_target_matches_fit_transform_sequence():
+    """transform_sequence() should reuse the fit from fit_transform_sequence().
+
+    Same per-sequence stats, no re-fitting, on a genuinely multi-target
+    (n_targets=2) input.
+    """
+    from pytorch_forecasting.adapters.scaler_adapters import ScalerAdapter
+
+    normalizer = MultiNormalizer([EncoderNormalizer(), EncoderNormalizer()])
+    adapter = ScalerAdapter(normalizer)
+
+    encoder_window = torch.rand(10, 2)
+    fitted = adapter.fit_transform_sequence(encoder_window)
+
+    # transforming the same window again (now already fitted) must reproduce
+    # the exact same result, without fitting a second time
+    result = adapter.transform_sequence(encoder_window)
+
+    assert result.shape == (10, 2)
+    assert torch.allclose(result, fitted)

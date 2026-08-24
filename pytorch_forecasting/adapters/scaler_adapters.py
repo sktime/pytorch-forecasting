@@ -229,8 +229,6 @@ class ScalerAdapter:
             )
 
         t = _to_tensor(data)
-        if t.ndim == 1:
-            t = t.unsqueeze(-1)
 
         columns = []
         for idx, sub in enumerate(self._sub_adapters):
