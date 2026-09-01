@@ -9,6 +9,7 @@ from pytorch_forecasting.models.base import (
     BaseModelWithCovariates,
 )
 from pytorch_forecasting.models.baseline import Baseline
+from pytorch_forecasting.models.foundation import FoundationModelWrapper
 from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.models.frets import FreTS, FreTS_pkg_v2
 from pytorch_forecasting.models.mlp import DecoderMLP
@@ -52,6 +53,7 @@ __all__ = [
     "GRU",
     "MultiEmbedding",
     "DecoderMLP",
+    "FoundationModelWrapper",
     "TiDEModel",
     "TimeXer",
     "xLSTMTime",
