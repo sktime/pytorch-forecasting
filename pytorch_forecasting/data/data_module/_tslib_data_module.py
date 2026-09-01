@@ -3,6 +3,8 @@ Experimental data module for integrating `tslib` time series deep learning libra
 """
 
 from collections.abc import Callable
+from pathlib import Path
+import pickle
 from typing import Any, Optional
 import warnings
 
@@ -670,6 +672,92 @@ class TslibDataModule(LightningDataModule):
                     )
 
         return windows
+
+    def save_artifacts(
+        self, artifact_dir: Path, include: list[str] = [], exclude: list[str] = []
+    ):
+        """Save data module artifacts.
+
+        Parameters
+        ----------
+        artifact_dir : Path
+            Path to save artifacts.
+        exclude : list[str], default=None
+            The list of artifacts that need to be excluded from saving.
+
+        Saves
+        -----
+        datamodule's metadata.
+
+        Returns
+        -------
+        dict
+            A dictionary containing artifacts with keys as the "type" of artifact
+            while the values are the paths where they are saved.
+
+        Raises
+        ------
+        UserWarning
+            If some artifact that is to be stored but the datamodule doesnt have them.
+        """
+        artifact_dir = Path(artifact_dir)
+        saved_artifacts: dict[str, Path] = {}
+
+        if "datamodule_metadata" not in exclude:
+            metadata = self.metadata
+            if metadata:
+                metadata_dir = artifact_dir / "metadata"
+                metadata_dir.mkdir(parents=True, exist_ok=True)
+                metadata_path = metadata_dir / "datamodule_metadata.pkl"
+                with open(metadata_path, "wb") as f:
+                    pickle.dump(metadata, f)
+                saved_artifacts["datamodule_metadata"] = metadata_path
+
+        return saved_artifacts
+
+    def load_artifacts(self, artifacts: dict[str, Any]):
+        """Save data module artifacts.
+
+        Parameters
+        ----------
+        artifacts : dict
+            Dictionary mapping artifact names to their file paths.
+            Expected keys (all optional):
+
+            - ``"datamodule_metadata"``: Path to pickled metadata dict.
+
+        exclude : list[str], default=None
+            The list of artifacts that need to be excluded from saving.
+
+        Loads
+        -----
+        metadata : dict
+            Metadata loaded from ``artifacts["datamodule_metadata"]``.
+
+        Returns
+        -------
+        dict
+            A dictionary containing artifacts with keys as the "type" of artifact
+            while the values are the paths where they are saved.
+
+        Raises
+        ------
+        FileNotFoundError
+            If a path specified in ``artifacts`` does not exist.
+        UserWarning
+            If a key is present in ``artifacts`` but the file doesn't exist.
+        """
+        metadata_path = artifacts.get("datamodule_metadata")
+        if metadata_path is not None:
+            metadata_path = Path(metadata_path)
+            if not metadata_path.exists():
+                warnings.warn(
+                    f"Metadata file not found at {metadata_path}. "
+                    "Skipping metadata load."
+                )
+            else:
+                with open(metadata_path, "rb") as f:
+                    self._metadata = pickle.load(f)  # noqa: S301
 
     def setup(self, stage: str | None = None) -> None:
         """
