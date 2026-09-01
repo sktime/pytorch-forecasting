@@ -60,7 +60,7 @@ class _TslibDataset(Dataset):
     def __len__(self) -> int:
         return len(self.windows)
 
-    def __getitem__(self, idx: int) -> dict[str, Any]:
+    def __getitem__(self, idx: int):
         """
         Get the processed dataset item at the given index.
 
@@ -224,14 +224,16 @@ class _TslibDataset(Dataset):
 
         if "target_scale" in processed_data:
             x["target_scale"] = processed_data["target_scale"]
+        weights = processed_data.get("weights", None)
+        future_weight = (
+            weights[future_indices]
+            if weights is not None
+            else torch.ones(prediction_length, dtype=torch.float32)
+        )
 
         y = processed_data["target"][future_indices]
-        if self.data_module.n_targets > 1:
-            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
-        else:
-            y = y.squeeze(-1)
 
-        return x, y
+        return x, y, future_weight
 
 
 class TslibDataModule(LightningDataModule):
@@ -566,6 +568,7 @@ class TslibDataModule(LightningDataModule):
         features = series["x"]
         timestep = series["t"]
         cutoff_time = series["cutoff_time"]
+        weights = series.get("weights", None)
 
         mask_timestep = torch.tensor(timestep <= cutoff_time, dtype=torch.bool)
 
@@ -578,6 +581,9 @@ class TslibDataModule(LightningDataModule):
             features = features.detach().clone().float()
         else:
             features = torch.tensor(features, dtype=torch.float32)
+
+        if weights is not None:
+            weights = weights.float()
 
         # scaling and normalization
         target_scale = {}
@@ -600,6 +606,7 @@ class TslibDataModule(LightningDataModule):
                 "continuous": continuous_features,
             },
             "target": target,
+            "weights": weights,
             "static": series["st"],
             "group": series.get("group", torch.tensor([0])),
             "length": len(series),
@@ -862,7 +869,9 @@ class TslibDataModule(LightningDataModule):
         }
 
         if "target_scale" in batch[0][0]:
-            x_batch["target_scale"] = torch.stack([x["target_scale"] for x, _ in batch])
+            x_batch["target_scale"] = torch.stack(
+                [x["target_scale"] for x, _, _ in batch]
+            )
 
         if "history_relative_time_idx" in batch[0][0]:
             x_batch["history_relative_time_idx"] = torch.stack(
@@ -880,13 +889,7 @@ class TslibDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        if isinstance(batch[0][1], list | tuple):
-            num_targets = len(batch[0][1])
-            y_batch = []
-            for i in range(num_targets):
-                target_tensors = [sample_y[i] for _, sample_y in batch]
-                stacked_target = torch.stack(target_tensors)
-                y_batch.append(stacked_target)
-        else:
-            y_batch = torch.stack([y for _, y in batch])
-        return x_batch, y_batch
+        y_batch = torch.stack([y for _, y, _ in batch])
+        weight_batch = torch.stack([w for _, _, w in batch])
+
+        return x_batch, y_batch, weight_batch
