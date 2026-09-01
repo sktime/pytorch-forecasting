@@ -849,9 +849,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
 
             attention = masked_op(attention, dim=0, op=reduction)
         else:
-            attention = attention / masked_op(attention, dim=1, op="sum").unsqueeze(
-                -1
-            )  # renormalize
+            denom = masked_op(
+                attention, dim=1, op="sum"
+            ).clamp(min=1e-8).unsqueeze(-1)
+            attention = attention / denom  # renormalize
 
         interpretation = dict(
             attention=attention.masked_fill(torch.isnan(attention), 0.0),
@@ -939,7 +940,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         # attention
         fig, ax = plt.subplots()
         attention = interpretation["attention"].detach().cpu()
-        attention = attention / attention.sum(-1).unsqueeze(-1)
+        attention = attention / attention.sum(-1).clamp(min=1e-8).unsqueeze(-1)
         ax.plot(
             np.arange(
                 -self.hparams.max_encoder_length,
@@ -956,7 +957,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         def make_selection_plot(title, values, labels):
             fig, ax = plt.subplots(figsize=(7, len(values) * 0.25 + 2))
             order = np.argsort(values)
-            values = values / values.sum(-1).unsqueeze(-1)
+            values = values / values.sum(-1).clamp(min=1e-8).unsqueeze(-1)
             ax.barh(
                 np.arange(len(values)),
                 values[order] * 100,
@@ -1006,7 +1007,10 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
         attention_occurrences = (
             interpretation["encoder_length_histogram"][1:].flip(0).float().cumsum(0)
         )
-        attention_occurrences = attention_occurrences / attention_occurrences.max()
+        attention_occurrences = (
+            attention_occurrences
+            / attention_occurrences.max().clamp(min=1e-8)
+        )
         attention_occurrences = torch.cat(
             [
                 attention_occurrences,
@@ -1022,7 +1026,7 @@ class TemporalFusionTransformer(BaseModelWithCovariates):
             "attention"
         ] / attention_occurrences.pow(2).clamp(1.0)
         interpretation["attention"] = (
-            interpretation["attention"] / interpretation["attention"].sum()
+            interpretation["attention"] / interpretation["attention"].sum().clamp(min=1e-8)
         )
 
         mpl_available = _check_matplotlib("log_interpretation", raise_error=False)
