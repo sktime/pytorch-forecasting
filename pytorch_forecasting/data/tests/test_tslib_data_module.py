@@ -409,6 +409,40 @@ def test_dataloader_pipeline(tslib_data_module):
     assert y_batch.shape[1] == tslib_data_module.prediction_length
 
 
+def test_sequential_split_strategy(sample_timeseries_data):
+    """Test the TslibDataModule with sequential split strategy."""
+
+    dm_seq = TslibDataModule(
+        time_series_dataset=sample_timeseries_data,
+        context_length=8,
+        prediction_length=4,
+        batch_size=2,
+        train_val_test_split=(0.6, 0.2, 0.2),
+        train_val_test_split_strategy="sequential",
+    )
+
+    dm_seq.setup(stage="fit")
+
+    total_series = len(sample_timeseries_data)
+    expected_train = int(total_series * 0.6)
+    expected_val = int(total_series * 0.2)
+
+    # Check if indices are purely sequential
+    import torch
+
+    assert torch.all(
+        dm_seq._train_indices == torch.arange(0, expected_train)
+    ), "Train indices should be sequential."
+    assert torch.all(
+        dm_seq._val_indices
+        == torch.arange(expected_train, expected_train + expected_val)
+    ), "Val indices should be sequential."
+    assert torch.all(
+        dm_seq._test_indices
+        == torch.arange(expected_train + expected_val, total_series)
+    ), "Test indices should be sequential."
+
+
 def test_different_split_ratios(sample_timeseries_data):
     """Test the TslibDataModule with different train/val/test split ratios."""
 
@@ -528,5 +562,5 @@ def test_multivariate_target():
     x, y = dm.train_dataset[0]
 
     assert (
-        y.shape[-1] == 2
-    ), "Target should have two dimensions for n_features for multivariate target."
+        isinstance(y, list) and len(y) == 2
+    ), "Target should be a list of two tensors for multivariate target."
