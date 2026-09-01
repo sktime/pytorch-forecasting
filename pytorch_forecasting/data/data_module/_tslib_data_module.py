@@ -24,6 +24,18 @@ from pytorch_forecasting.utils._coerce import _coerce_to_dict
 NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
+def _time_values_to_tensor(values: np.ndarray) -> torch.Tensor:
+    """Convert a numpy array of time values to a torch tensor.
+
+    ``torch.as_tensor`` rejects ``datetime64`` arrays outright, so datetime-like
+    time axes (as opposed to plain integer/float time steps) are viewed as their
+    underlying int64 ticks first.
+    """
+    if np.issubdtype(values.dtype, np.datetime64):
+        values = values.astype("int64")
+    return torch.as_tensor(values)
+
+
 class _TslibDataset(Dataset):
     """
     Dataset class for `tslib` time series dataset.
@@ -192,8 +204,12 @@ class _TslibDataset(Dataset):
         history_target = processed_data["target"][history_indices]
         future_target = processed_data["target"][future_indices]
 
-        # history_time_idx = processed_data["timestep"][history_indices]
-        # future_time_idx = processed_data["timestep"][future_indices]
+        history_time_idx = _time_values_to_tensor(
+            processed_data["timestep"][history_indices]
+        )
+        future_time_idx = _time_values_to_tensor(
+            processed_data["timestep"][future_indices]
+        )
 
         x = {
             "history_cont": history_cont,
@@ -205,10 +221,8 @@ class _TslibDataset(Dataset):
             "history_mask": history_mask,
             "future_mask": future_mask,
             "groups": processed_data["group"],
-            "history_time_idx": torch.arange(context_length),
-            "future_time_idx": torch.arange(
-                context_length, context_length + prediction_length
-            ),
+            "history_time_idx": history_time_idx,
+            "future_time_idx": future_time_idx,
             "history_target": history_target,
             "future_target": future_target,
             "future_target_len": torch.tensor(prediction_length),
