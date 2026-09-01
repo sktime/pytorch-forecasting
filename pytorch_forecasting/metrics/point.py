@@ -14,20 +14,26 @@ class PoissonLoss(MultiHorizonMetric):
     Poisson loss for count data.
 
     The loss will take the exponential of the network output before it is returned as prediction.
-    Target normalizer should therefore have no "reverse" transformation, e.g.
-    for the :py:class:`~data.timeseries.TimeSeriesDataSet` initialization, one could use:
+
+    Notes
+    -----
+    The target normalizer should not apply a reverse transformation. For example,
+    when initializing :py:class:`~data.timeseries.TimeSeriesDataSet`, use:
 
     .. code-block:: python
 
         from pytorch_forecasting import TimeSeriesDataSet, EncoderNormalizer
 
         dataset = TimeSeriesDataSet(
-            target_normalizer=EncoderNormalizer(transformation=dict(forward=torch.log1p))
+        target_normalizer=EncoderNormalizer(
+            transformation=dict(forward=torch.log1p)
         )
+    )
 
-    Note that in this example, the data is log1p-transformed before normalized but not re-transformed.
-    The PoissonLoss applies this "exp"-re-transformation on the network output after it has been de-normalized.
-    The result is the model prediction.
+    In this example, the data is transformed using ``log1p`` before normalization
+    but is not reverse-transformed afterward. The PoissonLoss applies the exponential
+    transformation to the network output after it has been de-normalized, producing
+    the final prediction.
     """  # noqa: E501
 
     def loss(
@@ -72,9 +78,15 @@ class PoissonLoss(MultiHorizonMetric):
 
 class SMAPE(MultiHorizonMetric):
     """
-    Symmetric mean absolute percentage. Assumes ``y >= 0``.
+    Symmetric mean absolute percentage.
+    Assumes ``y >= 0``.
 
-    Defined as ``2*(y - y_pred).abs() / (y.abs() + y_pred.abs())``
+    Notes
+    -----
+    Defined as:
+
+    .. math::
+        2*(y - y_pred).abs() / (y.abs() + y_pred.abs())
     """
 
     def loss(
@@ -87,9 +99,15 @@ class SMAPE(MultiHorizonMetric):
 
 class MAPE(MultiHorizonMetric):
     """
-    Mean absolute percentage. Assumes ``y >= 0``.
+    Mean absolute percentage.
+    Assumes ``y >= 0``.
 
-    Defined as ``(y - y_pred).abs() / y.abs()``
+    Notes
+    -----
+    Defined as:
+
+    .. math::
+        (y - y_pred).abs() / y.abs()
     """
 
     def loss(
@@ -103,7 +121,12 @@ class MAE(MultiHorizonMetric):
     """
     Mean average absolute error.
 
-    Defined as ``(y_pred - target).abs()``
+    Notes
+    -----
+
+    Defined as:
+    .. math::
+        (y_pred - target).abs()
     """
 
     def loss(
@@ -130,11 +153,15 @@ class CrossEntropy(MultiHorizonMetric):
 
         Returns best label
 
-        Args:
-            y_pred (torch.Tensor): prediction output of network
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            prediction output of network
 
-        Returns:
-            torch.Tensor: point prediction
+        Returns
+        -------
+        torch.Tensor
+            point prediction
         """
         return y_pred.argmax(dim=-1)
 
@@ -144,10 +171,13 @@ class CrossEntropy(MultiHorizonMetric):
         """
         Convert network prediction into a quantile prediction.
 
-        Args:
-            y_pred (torch.Tensor): prediction output of network
-            quantiles (list[float], optional): quantiles for probability range. Defaults to quantiles as
-                as defined in the class initialization.
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            prediction output of network
+        quantiles : list[float], optional
+            quantiles for probability range. Defaults to quantiles as
+            as defined in the class initialization.
 
         Returns:
             torch.Tensor: prediction quantiles
@@ -159,11 +189,15 @@ class RMSE(MultiHorizonMetric):
     """
     Root mean square error.
 
-    Defined as `sqrt(mean((y_pred - target)**2))`.
+    Notes
+    -----
+    Defined as:
+    .. math::
+        sqrt(mean((y_pred - target)**2))
 
-    Note: The square root is applied during the reduction step via
-    the `sqrt-mean` strategy, while the `loss` method calculates
-    the squared error.
+    The square root is applied during the reduction step via the
+    ``sqrt-mean`` strategy, while the ``loss`` method calculates the
+    squared error.
     """
 
     def __init__(self, reduction="sqrt-mean", **kwargs):
@@ -180,8 +214,14 @@ class MASE(MultiHorizonMetric):
     """
     Mean absolute scaled error
 
-    Defined as ``(y_pred - target).abs() / (all_targets[:, :-1] - all_targets[:, 1:]).mean(1)``.
-    ``all_targets`` are here the concatenated encoder and decoder targets
+    Notes
+    -----
+    Defined as:
+
+    .. math::
+        (y_pred - target).abs() / (all_targets[:, :-1] - all_targets[:, 1:]).mean(1)
+
+    where ``all_targets`` refers to the concatenated encoder and decoder targets.
     """  # noqa: E501
 
     def update(
@@ -194,13 +234,18 @@ class MASE(MultiHorizonMetric):
         """
         Update metric that handles masking of values.
 
-        Args:
-            y_pred (Dict[str, torch.Tensor]): network output
-            target (Tuple[Union[torch.Tensor, rnn.PackedSequence], torch.Tensor]): tuple of actual values and weights
-            encoder_target (Union[torch.Tensor, rnn.PackedSequence]): historic actual values
-            encoder_lengths (torch.Tensor): optional encoder lengths, not necessary if encoder_target
-                is rnn.PackedSequence. Assumed encoder_target is torch.Tensor
-
+        Parameters
+        ---------
+        y_pred : dict[str, torch.Tensor]
+            Network output.
+        target : tuple[Union[torch.Tensor, rnn.PackedSequence], torch.Tensor]
+            Tuple containing actual values and corresponding weights.
+        encoder_target : Union[torch.Tensor, rnn.PackedSequence]
+            Historic actual values.
+        encoder_lengths : torch.Tensor, optional
+            Encoder lengths. Not required if ``encoder_target`` is a
+            ``rnn.PackedSequence``. Assumes ``encoder_target`` is a
+            ``torch.Tensor`` if provided.
         Returns:
             torch.Tensor: loss as a single number for backpropagation
         """  # noqa: E501
@@ -309,8 +354,11 @@ class TweedieLoss(MultiHorizonMetric):
     loss in insurance, or for any target that might be tweedie-distributed.
 
     The loss will take the exponential of the network output before it is returned as prediction.
+
+    Notes
+    -----
     Target normalizer should therefore have no "reverse" transformation, e.g.
-    for the :py:class:`~data.timeseries.TimeSeriesDataSet` initialization, one could use:
+    for the :py:class:`~data.timeseries.TimeSeriesDataSet` initialization, use:
 
     .. code-block:: python
 
@@ -327,12 +375,16 @@ class TweedieLoss(MultiHorizonMetric):
 
     def __init__(self, reduction="mean", p: float = 1.5, **kwargs):
         """
-        Args:
-            p (float, optional): tweedie variance power which is greater equal
-                1.0 and smaller 2.0. Close to ``2`` shifts to
-                Gamma distribution and close to ``1`` shifts to Poisson distribution.
-                Defaults to 1.5.
-            reduction (str, optional): How to reduce the loss. Defaults to "mean".
+
+        Parameters
+        ----------
+        p : float, optiona
+            Tweedie variance power. Must be greater than or equal to 1.0 and
+            less than 2.0. Values close to ``2`` approach the Gamma distribution,
+            while values close to ``1`` approach the Poisson distribution.
+            Defaults to 1.5.
+        reduction : str, optional
+            Method used to reduce the loss. Defaults to ``"mean"``.
         """
         super().__init__(reduction=reduction, **kwargs)
         assert 1 <= p < 2, "p must be in range [1, 2]"
