@@ -11,6 +11,7 @@ def _setup_pkg_and_data(
     estimator_cls: type[Base_pkg],
     trainer_kwargs: dict[str, Any],
     tmp_path: str,
+    data_scenario: str = "with_covariates",
 ) -> tuple[Base_pkg, dict[str, TimeSeries], dict[str, Any]]:
     """
     Helper to initialize the Package, Datasets, and Configs.
@@ -50,7 +51,9 @@ def _setup_pkg_and_data(
         "logger": logger,
     }
 
-    test_data = estimator_cls.get_test_dataset_from(**default_datamodule_cfg)
+    test_data = estimator_cls.get_test_dataset_from(
+        data_scenario=data_scenario, **default_datamodule_cfg
+    )
 
     pkg = estimator_cls(
         model_cfg=model_cfg,

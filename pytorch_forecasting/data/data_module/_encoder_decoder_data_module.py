@@ -302,8 +302,17 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             metadata["static_categorical_features"] = 0
             metadata["static_continuous_features"] = 0
 
+        categorical_cardinalities = []
+        for idx in self.categorical_indices:
+            col = self.time_series_metadata["cols"]["x"][idx]
+            max_val = self.time_series_dataset.data[col].max()
+            cardinality = int(max_val) + 1 if not pd.isna(max_val) else 1
+            cardinality = max(1, cardinality)
+            categorical_cardinalities.append(cardinality)
+
         metadata.update(
             {
+                "categorical_cardinalities": categorical_cardinalities,
                 "max_encoder_length": self.max_encoder_length,
                 "max_prediction_length": self.max_prediction_length,
                 "min_encoder_length": self._min_encoder_length,

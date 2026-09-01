@@ -122,18 +122,25 @@ class Base_pkg(_BasePtForecasterV2):
         raise NotImplementedError("Subclasses must implement `get_datamodule_cls`.")
 
     @classmethod
-    def get_test_dataset_from(cls, **kwargs):
+    def get_test_dataset_from(cls, data_scenario="with_covariates", **kwargs):
         """
         Creates and returns D1 TimeSeries dataSet objects for testing.
         """
         from pytorch_forecasting.tests._data_scenarios import (
             data_with_covariates_v2,
             make_datasets_v2,
+            make_datasets_v2_with_categoricals,
+            make_datasets_v2_without_covariates,
         )
 
         raw_data = data_with_covariates_v2()
 
-        datasets_info = make_datasets_v2(raw_data, **kwargs)
+        if data_scenario == "without_covariates":
+            datasets_info = make_datasets_v2_without_covariates(raw_data, **kwargs)
+        elif data_scenario == "with_categoricals":
+            datasets_info = make_datasets_v2_with_categoricals(raw_data, **kwargs)
+        else:
+            datasets_info = make_datasets_v2(raw_data, **kwargs)
 
         return {
             "train": datasets_info["training_dataset"],
