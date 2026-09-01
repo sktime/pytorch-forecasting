@@ -91,12 +91,14 @@ class TFT(BaseModel):
         else:
             self.static_context_linear = None
 
+        lstm_dropout = dropout if num_layers > 1 else 0.0
+
         _lstm_encoder_input_actual_dim = self.encoder_input_dim
         self.lstm_encoder = nn.LSTM(
             input_size=max(1, _lstm_encoder_input_actual_dim),
             hidden_size=hidden_size,
             num_layers=num_layers,
-            dropout=dropout,
+            dropout=lstm_dropout,
             batch_first=True,
         )
 
@@ -105,7 +107,7 @@ class TFT(BaseModel):
             input_size=max(1, _lstm_decoder_input_actual_dim),
             hidden_size=hidden_size,
             num_layers=num_layers,
-            dropout=dropout,
+            dropout=lstm_dropout,
             batch_first=True,
         )
 
