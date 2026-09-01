@@ -330,7 +330,7 @@ class TiDEModel(BaseModelWithCovariates):
             # from (batch size, seq len, output_dim) to
             # (output_dim, batch size, seq len)
             prediction = prediction.permute(2, 0, 1)
-            prediction = [i.clone().detach().requires_grad_(True) for i in prediction]
+            prediction = list(prediction)
 
         # rescale predictions into target space
         prediction = self.transform_output(prediction, target_scale=x["target_scale"])
