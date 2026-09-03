@@ -1568,7 +1568,11 @@ class MultiNormalizer(TorchNormalizer):
                                 for key, val in kwargs.items()
                             }
                             results.append(getattr(norm, name)(*new_args, **new_kwargs))
-                        return results
+                        return (
+                            all(results)
+                            if name == "__sklearn_is_fitted__"
+                            else results
+                        )
 
                     return func
                 else:
