@@ -626,6 +626,138 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
         dm_with_norm._target_normalizer_fitted = False
 
 
+def _trending_timeseries(n_targets=1):
+    """Deterministic strongly-trending series.
+
+    A trend makes the decoder window sit well away from the encoder window's mean,
+    so "normalized with the encoder window's parameters" is distinguishable both
+    from "left raw" and from "re-fitted on the decoder window".
+    """
+    rows = []
+    for g in range(3):
+        for t in range(60):
+            base = 500.0 + 20.0 * t + 100.0 * g
+            row = {
+                "group": g,
+                "time": pd.Timestamp("2020-01-01") + pd.Timedelta(days=t),
+                "target1": base,
+                "feature1": float(t % 5),
+            }
+            if n_targets > 1:
+                row["target2"] = base * 2.0
+            rows.append(row)
+    df = pd.DataFrame(rows)
+    return TimeSeries(
+        data=df,
+        time="time",
+        target="target1" if n_targets == 1 else ["target1", "target2"],
+        group=["group"],
+        num=["feature1"],
+    )
+
+
+def _make_dm(ts, normalizer):
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=20,
+        max_prediction_length=5,
+        batch_size=2,
+        target_normalizer=normalizer,
+    )
+    dm.setup(stage="fit")
+    return dm
+
+
+def _raw_window(dm, idx=0):
+    """Raw (pre-normalization) encoder and decoder targets for dataset item ``idx``.
+
+    Read from the data module's own cache so the comparison always refers to the
+    same window as ``dm.train_dataset[idx]``, independent of how series are split.
+    """
+    dataset = dm.train_dataset
+    series_idx, start, enc_length, pred_length = dataset.windows[idx]
+    raw = dataset.preprocessed_data[series_idx]["target_original"]
+    end = start + enc_length + pred_length
+    return raw[start : start + enc_length], raw[start + enc_length : end]
+
+
+def test_encoder_normalizer_normalizes_decoder_target():
+    """`y` must be normalized when using EncoderNormalizer.
+
+    Regression test for #2360: ``target_past`` was normalized in ``__getitem__``
+    but ``y`` was returned raw, so the target sat in a different space than the
+    encoder input.
+    """
+    dm = _make_dm(_trending_timeseries(), EncoderNormalizer())
+    _, y = dm.train_dataset[0]
+    raw_past, raw_y = _raw_window(dm)
+
+    # y must no longer be the raw decoder target.
+    assert not torch.allclose(
+        y, raw_y.squeeze(-1)
+    ), "y is still raw - decoder target was not normalized by EncoderNormalizer"
+
+    # y must equal the raw decoder target transformed with the parameters fitted
+    # on this item's encoder window.
+    reference = EncoderNormalizer()
+    reference.fit(raw_past.squeeze(-1))
+    expected = reference.transform(raw_y.squeeze(-1))
+
+    assert torch.allclose(y, expected, atol=1e-4), (
+        f"y not transformed with encoder-window parameters: "
+        f"got {y.tolist()}, expected {expected.tolist()}"
+    )
+
+
+def test_encoder_normalizer_decoder_target_does_not_refit():
+    """`y` must be transformed with encoder parameters, not re-fitted.
+
+    Re-fitting the normalizer on the decoder window would leak future information
+    into the scaling and would put `y` in a different space than ``target_past``.
+    On a trending series a re-fit would force `y` to zero mean / unit variance.
+    """
+    dm = _make_dm(_trending_timeseries(), EncoderNormalizer())
+    _, y = dm.train_dataset[0]
+
+    assert abs(float(y.mean())) > 0.5, (
+        "y appears re-fitted on the decoder window (mean collapsed to ~0); "
+        "it must reuse the parameters fitted on the encoder window"
+    )
+
+
+def test_encoder_normalizer_normalizes_decoder_target_multivariate():
+    """Per-sequence sub-normalizers normalize `y`; others are left untouched.
+
+    The decoder target must receive exactly the same treatment as ``target_past``
+    column by column, so the two stay in the same space.
+    """
+    # target1 -> per-sequence (EncoderNormalizer), target2 -> not per-sequence.
+    dm = _make_dm(
+        _trending_timeseries(n_targets=2), [EncoderNormalizer(), TorchNormalizer()]
+    )
+    x, y = dm.train_dataset[0]
+    raw_past, raw_y = _raw_window(dm)
+
+    assert len(y) == 2
+
+    # Per-sequence column: transformed with this item's encoder-window parameters.
+    reference = EncoderNormalizer()
+    reference.fit(raw_past[:, 0])
+    expected = reference.transform(raw_y[:, 0])
+    assert torch.allclose(
+        y[0], expected, atol=1e-4
+    ), "per-sequence decoder target not transformed with encoder-window parameters"
+
+    # Non-per-sequence column: `target_past` is passed through untouched by
+    # fit_transform_sequence, so `y` must be passed through untouched too.
+    assert torch.allclose(
+        x["target_past"][:, 1], raw_past[:, 1], atol=1e-4
+    ), "unexpected: non-per-sequence encoder target was altered"
+    assert torch.allclose(
+        y[1], raw_y[:, 1], atol=1e-4
+    ), "non-per-sequence decoder target must be left untouched, matching target_past"
+
+
 @pytest.mark.parametrize(
     "scaler_type",
     [
