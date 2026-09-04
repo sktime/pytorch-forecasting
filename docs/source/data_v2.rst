@@ -36,6 +36,20 @@ The D2 Layer sits on top of D1 and is implemented as a PyTorch Lightning ``Light
 * **Batching:** Creating and managing the ``train_dataloader``, ``val_dataloader``, and ``test_dataloader``.
 * **Model Initialization Metadata:** Dynamically collecting necessary architectural information (such as the number of categorical variables, embedding sizes, and vocabulary states) required to properly instantiate the Forecasting models in the Model Layer.
 
+Sequence-local target normalization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When :class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` is used with
+:class:`~pytorch_forecasting.data.data_module.EncoderDecoderTimeSeriesDataModule`,
+its normalization parameters are fitted independently for each sample using
+only that sample's encoder target window. The fitted parameters are then reused
+to transform both ``target_past`` and the decoder target ``y``.
+
+The decoder target is not included when fitting the normalizer. This prevents
+future target leakage while ensuring that model inputs and supervised targets
+use the same scale. For multi-target data, this behavior applies only to target
+columns configured with a sequence-local normalizer.
+
 
 **Model Compatibility**
 

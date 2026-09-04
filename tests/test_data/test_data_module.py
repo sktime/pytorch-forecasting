@@ -626,6 +626,31 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
         dm_with_norm._target_normalizer_fitted = False
 
 
+def test_encoder_normalizer_applies_to_decoder_target(sample_timeseries_data):
+    """Test that decoder targets use the encoder-fitted normalization."""
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=15,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer=EncoderNormalizer(),
+    )
+    dm.setup(stage="fit")
+
+    dataset = dm.train_dataset
+    series_idx, start_idx, enc_length, pred_length = dataset.windows[0]
+    decoder_start = start_idx + enc_length
+    raw_decoder_target = dataset.preprocessed_data[series_idx]["target"][
+        decoder_start : decoder_start + pred_length
+    ].clone()
+
+    _, y = dataset[0]
+    expected = dm._target_normalizer.transform_sequence(raw_decoder_target).squeeze(-1)
+
+    torch.testing.assert_close(y, expected)
+    assert not torch.allclose(y, raw_decoder_target.squeeze(-1))
+
+
 @pytest.mark.parametrize(
     "scaler_type",
     [
