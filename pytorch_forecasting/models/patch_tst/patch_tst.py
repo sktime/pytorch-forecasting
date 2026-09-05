@@ -19,7 +19,7 @@ from pytorch_forecasting.layers import (
 from pytorch_forecasting.metrics import MAE, MAPE, RMSE, SMAPE, MultiLoss, QuantileLoss
 from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
 from pytorch_forecasting.models.base import BaseModelWithCovariates
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.layers._embeddings import MultiEmbedding
 
 
 class PatchTST(BaseModelWithCovariates):

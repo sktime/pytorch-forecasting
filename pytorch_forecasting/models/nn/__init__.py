@@ -1,4 +1,4 @@
-from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
+from pytorch_forecasting.layers._embeddings import MultiEmbedding
 from pytorch_forecasting.models.nn.rnn import GRU, LSTM, HiddenState, get_rnn
 from pytorch_forecasting.utils import TupleOutputMixIn
 

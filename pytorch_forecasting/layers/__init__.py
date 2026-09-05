@@ -12,8 +12,10 @@ from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.layers._embeddings import (
     DataEmbedding_inverted,
     EnEmbedding,
+    MultiEmbedding,
     PatchEmbedding,
     PositionalEmbedding,
+    TimeDistributedEmbeddingBag,
     embedding_cat_variables,
 )
 from pytorch_forecasting.layers._encoders import (
@@ -45,8 +47,10 @@ __all__ = [
     "TriangularCausalMask",
     "DataEmbedding_inverted",
     "EnEmbedding",
+    "MultiEmbedding",
     "PositionalEmbedding",
     "PatchEmbedding",
+    "TimeDistributedEmbeddingBag",
     "Encoder",
     "EncoderLayer",
     "FlattenHead",
