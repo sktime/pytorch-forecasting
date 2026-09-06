@@ -11,6 +11,7 @@ class TimeXer_pkg(_BasePtForecaster):
     The package container resolves to the user-facing TimeXer model:
 
     >>> from pytorch_forecasting.models import TimeXer
+    >>> from pytorch_forecasting.models.timexer import TimeXer_pkg
     >>> TimeXer_pkg.get_cls() is TimeXer
     True
     """
