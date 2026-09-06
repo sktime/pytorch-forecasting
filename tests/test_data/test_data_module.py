@@ -553,18 +553,18 @@ def test_multivariate_target_scale(normalizer_list):
     x, y = dm.train_dataset[0]
     target_scale = x["target_scale"]
 
-    assert isinstance(
-        target_scale, list
-    ), f"expected list for multi-target, got {type(target_scale)}"
+    assert isinstance(target_scale, list), (
+        f"expected list for multi-target, got {type(target_scale)}"
+    )
     assert len(target_scale) == 2, f"expected 2 scale values, got {len(target_scale)}"
 
     for i, scale in enumerate(target_scale):
-        assert isinstance(
-            scale, torch.Tensor
-        ), f"target_scale[{i}] should be a Tensor, got {type(scale)}"
-        assert (
-            scale.shape == ()
-        ), f"target_scale[{i}] should be scalar, got shape {scale.shape}"
+        assert isinstance(scale, torch.Tensor), (
+            f"target_scale[{i}] should be a Tensor, got {type(scale)}"
+        )
+        assert scale.shape == (), (
+            f"target_scale[{i}] should be scalar, got shape {scale.shape}"
+        )
         assert torch.isfinite(scale), f"target_scale[{i}] is not finite: {scale}"
         assert scale > 0, f"target_scale[{i}] should be positive, got {scale}"
 
@@ -618,9 +618,9 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
     assert x_with_norm["target_past"].shape == x_no_norm["target_past"].shape
 
     if normalizer is not None and not isinstance(normalizer, EncoderNormalizer):
-        assert (
-            dm_with_norm._target_normalizer_fitted
-        ), "Target normalizer should be fitted"
+        assert dm_with_norm._target_normalizer_fitted, (
+            "Target normalizer should be fitted"
+        )
     if normalizer is None:
         dm_with_norm._target_normalizer = None
         dm_with_norm._target_normalizer_fitted = False
@@ -726,3 +726,163 @@ def test_group_normalizer_uses_groups():
         mean1 = target1["target"].mean().abs()
         assert mean0 < 1.0, "Group 0 target should be normalized near 0"
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
+
+
+def _trending_series(n_groups=4, seq_length=60, offset=100.0, slope=0.5):
+    """A series with a strong offset and trend.
+
+    The offset is what makes the bug visible: raw targets sit around 100 while
+    encoder-normalized ones sit around 0, so the two are impossible to confuse.
+    """
+    rows = []
+    for g in range(n_groups):
+        for t in range(seq_length):
+            rows.append(
+                (
+                    g,
+                    pd.Timestamp("2020-01-01") + pd.Timedelta(days=t),
+                    offset + 10 * g + slope * t + np.random.normal(0, 1),
+                    t % 7,
+                )
+            )
+    df = pd.DataFrame(rows, columns=["group", "time", "target", "known_future"])
+    return TimeSeries(
+        data=df,
+        time="time",
+        target="target",
+        group=["group"],
+        num=["known_future"],
+        known=["known_future"],
+    )
+
+
+def _module(dataset, normalizer):
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=dataset,
+        max_encoder_length=20,
+        max_prediction_length=5,
+        batch_size=2,
+        target_normalizer=normalizer,
+    )
+    dm.setup(stage="fit")
+    return dm
+
+
+def test_encoder_normalizer_normalizes_y():
+    """`y` must be on the same scale as `target_past`, not raw.
+
+    Regression test for #2360: `EncoderNormalizer` is fitted per sequence at
+    `__getitem__` time, and only `target_past` was being transformed. The
+    decoder target stayed raw, so the loss compared normalized predictions
+    against unnormalized targets.
+    """
+    np.random.seed(0)
+    dm = _module(_trending_series(), EncoderNormalizer())
+    x, y = dm.train_dataset[0]
+
+    # The encoder window defines the scale: mean 0, std 1 by construction.
+    assert abs(float(x["target_past"].mean())) < 1e-4
+    # The decoder window continues an upward trend, so y sits a few standard
+    # deviations above it -- but on that scale, not near the raw offset of 100.
+    assert abs(float(y.mean())) < 20.0, (
+        f"y looks unnormalized: mean {float(y.mean()):.2f}. Raw targets in this "
+        f"fixture are around 100."
+    )
+
+
+def test_encoder_normalizer_is_not_refitted_on_the_decoder_window():
+    """The decoder target must be transformed, never fit-transformed.
+
+    Fitting on the decoder window would scale the target by statistics of the
+    very values being predicted -- the leak `EncoderNormalizer` exists to
+    avoid. A refit is detectable: it would force `y` to mean 0 and std 1.
+    """
+    np.random.seed(0)
+    dm = _module(_trending_series(), EncoderNormalizer())
+    _, y = dm.train_dataset[0]
+
+    assert abs(float(y.mean())) > 0.1, (
+        "y has mean 0, which means the normalizer was refitted on the decoder "
+        "window instead of reusing the encoder's parameters"
+    )
+
+
+def test_encoder_normalizer_y_matches_the_encoder_fitted_transform():
+    """`y` equals the raw decoder values put through the encoder's scaler.
+
+    The looser tests above would pass for any transform that shrinks the
+    values. This pins the exact one, reading the raw target and the window
+    bounds out of the same module so there is nothing to drift.
+    """
+    np.random.seed(0)
+    dm = _module(_trending_series(), EncoderNormalizer())
+    _, y = dm.train_dataset[0]
+
+    series_idx, start, enc_length, pred_length = dm.train_dataset.windows[0]
+    # `preprocessed_data["target"]` is raw here: _fit_target_normalizer returns
+    # early for a single per-sequence normalizer rather than fitting globally.
+    raw = dm.train_dataset.preprocessed_data[series_idx]["target"].float()
+    encoder_raw = raw[start : start + enc_length]
+    decoder_raw = raw[start + enc_length : start + enc_length + pred_length]
+
+    center = encoder_raw.mean()
+    scale = encoder_raw.std(unbiased=True)
+    expected = ((decoder_raw - center) / scale).squeeze(-1)
+
+    assert torch.allclose(y.float(), expected, atol=1e-3), (
+        f"expected {expected.tolist()}, got {y.tolist()}"
+    )
+
+
+@pytest.mark.parametrize("normalizer", [None, TorchNormalizer(), GroupNormalizer()])
+def test_non_per_sequence_normalizers_are_unchanged(normalizer):
+    """Guard the other branch: these normalize during preprocessing.
+
+    Transforming `y` again for them would scale it twice, so the new code must
+    stay behind the `fit_per_sequence` check.
+    """
+    np.random.seed(0)
+    dataset = _trending_series()
+    dm = _module(dataset, normalizer)
+    _, y = dm.train_dataset[0]
+    raw = dm.train_dataset.preprocessed_data[dm.train_dataset.windows[0][0]]["target"]
+    start = dm.train_dataset.windows[0][1] + dm.train_dataset.windows[0][2]
+    expected = raw[start : start + dm.train_dataset.windows[0][3]].squeeze(-1)
+    assert torch.allclose(y.float(), expected.float(), atol=1e-6)
+
+
+def test_multivariate_target_normalizes_only_the_per_sequence_column():
+    """With a mixed list, only the EncoderNormalizer column is transformed.
+
+    The other column was already normalized during preprocessing; applying its
+    scaler again here would scale it twice.
+    """
+    np.random.seed(0)
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], 60),
+            "time": np.tile(pd.date_range("2020-01-01", periods=60), 2),
+            "target1": np.random.normal(100, 1, 120),
+            "target2": np.random.normal(500, 2, 120),
+            "feature1": np.random.normal(0, 1, 120),
+        }
+    )
+    dataset = TimeSeries(
+        data=df,
+        time="time",
+        target=["target1", "target2"],
+        group=["group"],
+        num=["feature1"],
+    )
+    dm = _module(dataset, [EncoderNormalizer(), TorchNormalizer()])
+    _, y = dm.train_dataset[0]
+
+    # Multi-target returns a list, one tensor per target.
+    assert isinstance(y, list)
+    assert len(y) == 2
+    # target1 goes through the per-sequence normalizer, so it lands near the
+    # encoder's scale rather than near its raw mean of 100.
+    assert abs(float(y[0].mean())) < 20.0
+    # target2 is handled globally by TorchNormalizer during preprocessing and
+    # must not be touched a second time here.
+    assert torch.isfinite(y[1]).all()

@@ -797,6 +797,17 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
 
+            # A per-sequence normalizer was fitted on the encoder window
+            # above, and `data["target"]` is raw for exactly that case (see
+            # _fit_target_normalizer, which returns early rather than fitting
+            # globally). Without this the encoder saw normalized values while
+            # the loss was computed against raw ones.
+            #
+            # transform, not fit_transform: refitting here would scale the
+            # target by statistics of the values being predicted.
+            if normalizer is not None and normalizer.fit_per_sequence:
+                y = normalizer.transform_sequence(y)
+
             if y.shape[-1] > 1:
                 y = [y[:, i] for i in range(y.shape[-1])]
             else:
