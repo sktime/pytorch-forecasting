@@ -121,8 +121,46 @@ class NBeatsKAN(NBeatsAdapter):
 
     Examples
     --------
-    See the full example in:
-    `examples/nbeats_with_kan.py`
+    Create a univariate dataset, train an NBeatsKAN model, and make predictions:
+
+    >>> import lightning.pytorch as pl
+    >>> from pytorch_forecasting import TimeSeriesDataSet
+    >>> from pytorch_forecasting.data.examples import generate_ar_data
+    >>> from pytorch_forecasting.models import NBeatsKAN
+    >>> data = generate_ar_data(n_series=3, timesteps=40)
+    >>> max_encoder_length = 12
+    >>> max_prediction_length = 3
+    >>> training = TimeSeriesDataSet(
+    ...     data[data.time_idx < 34],
+    ...     time_idx="time_idx",
+    ...     target="value",
+    ...     group_ids=["series"],
+    ...     max_encoder_length=max_encoder_length,
+    ...     max_prediction_length=max_prediction_length,
+    ...     time_varying_unknown_reals=["value"],
+    ... )
+    >>> validation = TimeSeriesDataSet.from_dataset(
+    ...     training, data, min_prediction_idx=34, stop_randomization=True
+    ... )
+    >>> train_dataloader = training.to_dataloader(train=True, batch_size=8)
+    >>> validation_dataloader = validation.to_dataloader(train=False, batch_size=8)
+    >>> model = NBeatsKAN.from_dataset(
+    ...     training,
+    ...     stack_types=["generic"],
+    ...     num_blocks=[1],
+    ...     num_block_layers=[2],
+    ...     widths=[16],
+    ...     expansion_coefficient_lengths=[8],
+    ...     num=3,
+    ...     k=2,
+    ... )
+    >>> trainer = pl.Trainer(max_epochs=1, limit_train_batches=1)
+    >>> trainer.fit(  # doctest: +SKIP
+    ...     model,
+    ...     train_dataloaders=train_dataloader,
+    ...     val_dataloaders=validation_dataloader,
+    ... )
+    >>> predictions = model.predict(validation_dataloader)  # doctest: +SKIP
 
     Notes
     --------

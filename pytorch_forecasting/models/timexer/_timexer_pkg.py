@@ -4,7 +4,16 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class TimeXer_pkg(_BasePtForecaster):
-    """TimeXer package container."""
+    """TimeXer package container.
+
+    Examples
+    --------
+    The package container resolves to the user-facing TimeXer model:
+
+    >>> from pytorch_forecasting.models import TimeXer
+    >>> TimeXer_pkg.get_cls() is TimeXer
+    True
+    """
 
     _tags = {
         "info:name": "TimeXer",

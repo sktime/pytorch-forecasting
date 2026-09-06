@@ -4,7 +4,17 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class NBeatsKAN_pkg(_BasePtForecaster):
-    """NBeatsKAN package container."""
+    """NBeatsKAN package container.
+
+    Examples
+    --------
+    The package container resolves to the user-facing NBeatsKAN model:
+
+    >>> from pytorch_forecasting.models import NBeatsKAN
+    >>> from pytorch_forecasting.models.nbeats import NBeatsKAN_pkg
+    >>> NBeatsKAN_pkg.get_cls() is NBeatsKAN
+    True
+    """
 
     _tags = {
         "info:name": "NBeatsKAN",

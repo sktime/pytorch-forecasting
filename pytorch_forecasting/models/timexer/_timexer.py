@@ -38,7 +38,54 @@ from pytorch_forecasting.models.timexer.sub_modules import (
 
 
 class TimeXer(BaseModelWithCovariates):
-    """TimeXer model for time series forecasting with exogenous variables."""
+    """TimeXer model for time series forecasting with exogenous variables.
+
+    Examples
+    --------
+    Create a dataset with a known exogenous variable, initialize TimeXer from
+    it, and use a Lightning trainer to fit the model and make predictions:
+
+    >>> import lightning.pytorch as pl
+    >>> from pytorch_forecasting import TimeSeriesDataSet
+    >>> from pytorch_forecasting.models import TimeXer
+    >>> from pytorch_forecasting.data.examples import generate_ar_data
+    >>> data = generate_ar_data(n_series=3, timesteps=40)
+    >>> data["exogenous"] = data["time_idx"] / 40
+    >>> max_encoder_length = 12
+    >>> max_prediction_length = 3
+    >>> training = TimeSeriesDataSet(
+    ...     data[data.time_idx < 34],
+    ...     time_idx="time_idx",
+    ...     target="value",
+    ...     group_ids=["series"],
+    ...     max_encoder_length=max_encoder_length,
+    ...     max_prediction_length=max_prediction_length,
+    ...     time_varying_known_reals=["exogenous"],
+    ...     time_varying_unknown_reals=["value"],
+    ... )
+    >>> validation = TimeSeriesDataSet.from_dataset(
+    ...     training, data, min_prediction_idx=34, stop_randomization=True
+    ... )
+    >>> train_dataloader = training.to_dataloader(train=True, batch_size=8)
+    >>> validation_dataloader = validation.to_dataloader(train=False, batch_size=8)
+    >>> model = TimeXer.from_dataset(
+    ...     training,
+    ...     context_length=max_encoder_length,
+    ...     prediction_length=max_prediction_length,
+    ...     hidden_size=16,
+    ...     n_heads=2,
+    ...     e_layers=1,
+    ...     d_ff=32,
+    ...     patch_length=4,
+    ... )
+    >>> trainer = pl.Trainer(max_epochs=1, limit_train_batches=1)
+    >>> trainer.fit(  # doctest: +SKIP
+    ...     model,
+    ...     train_dataloaders=train_dataloader,
+    ...     val_dataloaders=validation_dataloader,
+    ... )
+    >>> predictions = model.predict(validation_dataloader)  # doctest: +SKIP
+    """
 
     @classmethod
     def _pkg(cls):
