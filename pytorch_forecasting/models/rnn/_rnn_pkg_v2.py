@@ -60,8 +60,6 @@ class RecurrentNetwork_pkg_v2(Base_pkg):
 
         for param in params:
             current_dm_cfg = param.get("datamodule_cfg", {})
-            if isinstance(current_dm_cfg, dict):
-                default_dm_cfg.update(current_dm_cfg)
-            param["datamodule_cfg"] = default_dm_cfg.copy()
+            param["datamodule_cfg"] = {**default_dm_cfg, **current_dm_cfg}
 
         return params
