@@ -94,7 +94,6 @@ def basic_metadata(basic_data_module):
     return basic_data_module.metadata
 
 
-
 def test_d_model_not_divisible_by_n_heads(basic_metadata):
     """d_model % n_heads != 0 must raise ValueError."""
     with pytest.raises(ValueError, match="d_model"):
