@@ -4,7 +4,75 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class DeepAR_pkg(_BasePtForecaster):
-    """DeepAR package container."""
+    """DeepAR package container.
+
+    Examples
+    --------
+    >>> # Usage example for DeepAR (v1 API)
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> from pytorch_forecasting import DeepAR, TimeSeriesDataSet
+    >>> from pytorch_forecasting.data import NaNLabelEncoder
+    >>> from pytorch_forecasting.data.examples import generate_ar_data
+    >>> from pytorch_forecasting.metrics import MultivariateNormalDistributionLoss
+    >>>
+    >>> # Generate synthetic time series data
+    >>> data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10, seed=42)
+    >>> data["static"] = 2
+    >>> data = data.astype(dict(series=str))
+    >>>
+    >>> # Define time series parameters
+    >>> max_encoder_length = 60
+    >>> max_prediction_length = 20
+    >>> training_cutoff = data["time_idx"].max() - max_prediction_length
+    >>>
+    >>> # Create training dataset
+    >>> training = TimeSeriesDataSet(
+    ...     data[lambda x: x.time_idx <= training_cutoff],
+    ...     time_idx="time_idx",
+    ...     target="value",
+    ...     categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
+    ...     group_ids=["series"],
+    ...     static_categoricals=["series"],
+    ...     time_varying_unknown_reals=["value"],
+    ...     max_encoder_length=max_encoder_length,
+    ...     max_prediction_length=max_prediction_length,
+    ... )
+    >>>
+    >>> # Create validation dataset
+    >>> validation = TimeSeriesDataSet.from_dataset(
+    ...     training, data, min_prediction_idx=training_cutoff + 1
+    ... )
+    >>>
+    >>> # Create dataloaders
+    >>> batch_size = 32
+    >>> train_dataloader = training.to_dataloader(
+    ...     train=True, batch_size=batch_size, num_workers=0
+    ... )
+    >>> val_dataloader = validation.to_dataloader(
+    ...     train=False, batch_size=batch_size, num_workers=0
+    ... )
+    >>>
+    >>> # Initialize DeepAR model from dataset
+    >>> model = DeepAR.from_dataset(
+    ...     training,
+    ...     learning_rate=1e-2,
+    ...     hidden_size=16,
+    ...     rnn_layers=2,
+    ...     loss=MultivariateNormalDistributionLoss(rank=10),
+    ...     optimizer="Adam",
+    ... )
+    >>>
+    >>> # Training with Lightning - skip in doctest
+    >>> # import lightning as L  # doctest: +SKIP
+    >>> # trainer = L.Trainer(max_epochs=1, accelerator="cpu")  # doctest: +SKIP
+    >>> # trainer.fit(model, train_dataloaders=train_dataloader,  # doctest: +SKIP
+    >>> #             val_dataloaders=val_dataloader)  # doctest: +SKIP
+    >>>
+    >>> # Make predictions - skip in doctest
+    >>> # predictions = model.predict(val_dataloader,  # doctest: +SKIP
+    >>> #             trainer_kwargs=dict(accelerator="cpu"))  # doctest: +SKIP
+    """
 
     _tags = {
         "info:name": "DeepAR",
