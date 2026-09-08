@@ -9,10 +9,9 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers._blocks import _TransformerBlock
-from pytorch_forecasting.layers._embeddings import (
-    PositionalEmbedding,
-    UNITS_PatchEmbedding,
+from pytorch_forecasting.layers import (
+    PatchEmbedding,
+    TransformerBlock,
 )
 from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
@@ -140,10 +139,11 @@ class UniTS(BaseModel):
     def _init_network(self):
         """Initialise model layers."""
 
-        self.patch_embedding = UNITS_PatchEmbedding(
+        self.patch_embedding = PatchEmbedding(
+            d_model=self.d_model,
             patch_len=self.patch_len,
             stride=self.stride,
-            d_model=self.d_model,
+            padding=0,
             dropout=self.dropout,
         )
 
@@ -153,21 +153,18 @@ class UniTS(BaseModel):
 
         self.encoder = nn.ModuleList(
             [
-                _TransformerBlock(self.d_model, self.n_heads, self.d_ff, self.dropout)
+                TransformerBlock(self.d_model, self.n_heads, self.d_ff, self.dropout)
                 for _ in range(self.e_layers)
             ]
         )
 
-        self.pos_enc = PositionalEmbedding(
-            d_model=self.d_model, dropout=self.dropout, add_x=True
-        )
         self.norm = nn.LayerNorm(self.d_model)
 
         self.n_quantiles = None
         # TODO: add DistributionLoss support
 
-        if isinstance(self.loss, QuantileLoss):
-            self.n_quantiles = len(self.loss.quantiles)
+        if isinstance(self._loss, QuantileLoss):
+            self.n_quantiles = len(self._loss.quantiles)
 
         output_dim = self.prediction_length * self.target_dim
 
@@ -180,11 +177,10 @@ class UniTS(BaseModel):
         )
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """
-        Forward logic passing data through the abstracted layers.
-        """
+        """Forward logic passing data through the abstracted layers."""
         target = x["target_past"]
-        B = target.size(0)
+        if target.ndim == 2:
+            target = target.unsqueeze(-1)
 
         cont = x.get("encoder_cont")
         if cont is not None and cont.size(-1) > 0:
@@ -192,10 +188,13 @@ class UniTS(BaseModel):
         else:
             src = target
 
-        patch_emb = self.patch_embedding(src)
+        B, T, C = src.shape
+        src_flat = src.permute(0, 2, 1).reshape(B * C, 1, T)
+        patch_emb = self.patch_embedding(src_flat)
+
+        patch_emb = patch_emb.view(B, C, -1, self.d_model).mean(dim=1)
 
         seq = torch.cat([self.prompt_tokens.expand(B, -1, -1), patch_emb], dim=1)
-        seq = self.pos_enc(seq)
 
         for layer in self.encoder:
             seq = layer(seq)

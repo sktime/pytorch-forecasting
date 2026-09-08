@@ -10,7 +10,7 @@ from pytorch_forecasting.layers._attention import (
 from pytorch_forecasting.layers._blocks import (
     FreTSCore,
     ResidualBlock,
-    _TransformerBlock,
+    TransformerBlock,
 )
 from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.layers._embeddings import (
@@ -18,7 +18,6 @@ from pytorch_forecasting.layers._embeddings import (
     EnEmbedding,
     PatchEmbedding,
     PositionalEmbedding,
-    UNITS_PatchEmbedding,
     embedding_cat_variables,
 )
 from pytorch_forecasting.layers._encoders import (
@@ -52,8 +51,7 @@ __all__ = [
     "EnEmbedding",
     "PositionalEmbedding",
     "PatchEmbedding",
-    "UNITS_PatchEmbedding",
-    "_TransformerBlock",
+    "TransformerBlock",
     "Encoder",
     "EncoderLayer",
     "FlattenHead",

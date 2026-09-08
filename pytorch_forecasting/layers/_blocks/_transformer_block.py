@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 
-class _TransformerBlock(nn.Module):
+class TransformerBlock(nn.Module):
     """
     Pre-norm transformer encoder block (MHSA + FFN).
 
