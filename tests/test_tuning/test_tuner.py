@@ -85,37 +85,44 @@ class TestInitAndValidation:
         assert "context_length" in tuner._metadata
 
     def test_accepts_raw_timeseries_dataset(self, dummy_ts):
-        tuner = HyperparameterTuner(model_cls=TFT, data=dummy_ts)
+        """Raw TimeSeries requires explicit datamodule_cls."""
+        tuner = HyperparameterTuner(
+            model_cls=TFT,
+            data=dummy_ts,
+            datamodule_cls=EncoderDecoderTimeSeriesDataModule,
+        )
         assert tuner.datamodule is not None
         assert "max_encoder_length" in tuner._metadata
 
-    def test_invalid_data_type_raises(self):
-        with pytest.raises(TypeError, match="data must be"):
-            HyperparameterTuner(model_cls=TFT, data=[1, 2, 3])
+    def test_raw_timeseries_without_datamodule_cls_raises(self, dummy_ts):
+        """Passing raw TimeSeries without datamodule_cls raises ValueError."""
+        with pytest.raises(ValueError, match="'datamodule_cls' must be specified"):
+            HyperparameterTuner(model_cls=TFT, data=dummy_ts)
 
-    def test_typo_in_fixed_hparams_raises(self, encoder_decoder_datamodule):
-        with pytest.raises(ValueError, match="hiddne_size"):
+    def test_invalid_datamodule_cls_type_raises(self, dummy_ts):
+        """Passing a non-subclass of LightningDataModule raises TypeError."""
+        with pytest.raises(
+            TypeError, match="must be a subclass of LightningDataModule"
+        ):
+            HyperparameterTuner(model_cls=TFT, data=dummy_ts, datamodule_cls=str)
+
+    def test_mismatched_datamodule_instance_raises(self, tslib_datamodule):
+        """
+        Passing a prebuilt DataModule that contradicts
+        explicit datamodule_cls raises TypeError.
+        """
+        with pytest.raises(
+            TypeError,
+            match=(
+                "Expected datamodule of type EncoderDecoderTimeSeriesDataModule, "
+                "got TslibDataModule"
+            ),
+        ):
             HyperparameterTuner(
-                model_cls=TFT, data=encoder_decoder_datamodule, hiddne_size=128
+                model_cls=TFT,
+                data=tslib_datamodule,
+                datamodule_cls=EncoderDecoderTimeSeriesDataModule,
             )
-
-    def test_mismatched_datamodule_tslib_to_tft_raises(self, tslib_datamodule):
-        with pytest.raises(
-            TypeError,
-            match="TFT requires a EncoderDecoderTimeSeriesDataModule, "
-            "got TslibDataModule",
-        ):
-            HyperparameterTuner(model_cls=TFT, data=tslib_datamodule)
-
-    def test_mismatched_datamodule_encdec_to_dlinear_raises(
-        self, encoder_decoder_datamodule
-    ):
-        with pytest.raises(
-            TypeError,
-            match="DLinear requires a TslibDataModule, "
-            "got EncoderDecoderTimeSeriesDataModule",
-        ):
-            HyperparameterTuner(model_cls=DLinear, data=encoder_decoder_datamodule)
 
 
 class TestHyperparameterDiscovery:

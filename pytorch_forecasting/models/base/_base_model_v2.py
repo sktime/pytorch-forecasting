@@ -102,14 +102,6 @@ class BaseModel(LightningModule):
             UserWarning,
         )
 
-    @classmethod
-    def get_datamodule_cls(cls):
-        from pytorch_forecasting.data.data_module import (
-            EncoderDecoderTimeSeriesDataModule,
-        )
-
-        return EncoderDecoderTimeSeriesDataModule
-
     @classproperty
     def pkg(cls):
         """Package class for the model."""

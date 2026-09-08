@@ -13,6 +13,7 @@ class HyperparameterTuner:
         self,
         model_cls,
         data,
+        datamodule_cls: type[LightningDataModule] | None = None,
         **fixed_hparams,
     ):
         """Set up the tuner, build the datamodule once, and validate inputs.
@@ -23,8 +24,10 @@ class HyperparameterTuner:
             The model class directly (e.g., DLinear, TFT).
         data : TimeSeries or LightningDataModule
             Dataset to split and reuse across all trials. If passing a
-            TimeSeries, the tuner internally resolves the appropriate
-            DataModule class.
+            TimeSeries, ``datamodule_cls`` must be provided.
+        datamodule_cls : type[LightningDataModule], optional
+            The DataModule class to construct when ``data`` is a TimeSeries,
+            or against which to validate when ``data`` is a prebuilt DataModule.
         **fixed_hparams
             Any model parameter that should stay constant, e.g.
             ``hidden_size=128``.
@@ -33,23 +36,41 @@ class HyperparameterTuner:
         self.fixed_hparams = fixed_hparams
         self._validate_fixed_hparams()
 
-        expected_dm_cls = model_cls.get_datamodule_cls()
-
-        if isinstance(data, TimeSeries):
-            self.datamodule = expected_dm_cls(data)
-            self.datamodule.setup(stage="fit")
-        elif isinstance(data, LightningDataModule):
-            if not isinstance(data, expected_dm_cls):
+        # 1. Validate datamodule_cls if provided
+        if datamodule_cls is not None:
+            if not (
+                isinstance(datamodule_cls, type)
+                and issubclass(datamodule_cls, LightningDataModule)
+            ):
                 raise TypeError(
-                    f"{model_cls.__name__} requires a {expected_dm_cls.__name__}, "
+                    f"datamodule_cls must be a subclass of LightningDataModule, "
+                    f"got {datamodule_cls}."
+                )
+
+        # 2. Handle data input
+        if isinstance(data, TimeSeries):
+            if datamodule_cls is None:
+                raise ValueError(
+                    "When passing a TimeSeries dataset, 'datamodule_cls' must "
+                    "be specified: "
+                    "(e.g., datamodule_cls=EncoderDecoderTimeSeriesDataModule)."
+                )
+            self.datamodule = datamodule_cls(data)
+            self.datamodule.setup(stage="fit")
+
+        elif isinstance(data, LightningDataModule):
+            if datamodule_cls is not None and not isinstance(data, datamodule_cls):
+                raise TypeError(
+                    f"Expected datamodule of type {datamodule_cls.__name__}, "
                     f"got {type(data).__name__}."
                 )
             data.setup("fit")
             self.datamodule = data
+
         else:
             raise TypeError(
                 f"data must be a TimeSeries dataset or LightningDataModule, "
-                f"got {type(data).__name__}"
+                f"got {type(data).__name__}."
             )
 
         self._metadata = self.datamodule.metadata

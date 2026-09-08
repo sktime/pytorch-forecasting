@@ -91,12 +91,6 @@ class TslibBaseModel(BaseModel):
         # feature-mode
         self.features = self.metadata.get("features", "MS")
 
-    @classmethod
-    def get_datamodule_cls(cls):
-        from pytorch_forecasting.data.data_module import TslibDataModule
-
-        return TslibDataModule
-
     def _init_network(self):
         """
         Initialize the network architecture.
