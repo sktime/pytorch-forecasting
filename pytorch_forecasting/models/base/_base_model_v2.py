@@ -109,7 +109,7 @@ class BaseModel(LightningModule):
         return cls._pkg()
 
     @property
-    def output_size(self) -> int:
+    def step_output_size(self) -> int:
         """
         Number of outputs predicted per time horizon step.
 
