@@ -2,7 +2,6 @@
 Reparameterizable Large Kernel Convolution.
 """
 
-import torch
 import torch.nn as nn
 
 
