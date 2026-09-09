@@ -4,7 +4,6 @@
 # in the version-2.
 ########################################################################################
 
-
 from typing import Any, Optional, Union
 from warnings import warn
 
@@ -18,7 +17,9 @@ from torch.utils.data import DataLoader
 
 from pytorch_forecasting.callbacks.predict import PredictCallback
 from pytorch_forecasting.metrics import (
+    DistributionLoss,
     Metric,
+    QuantileLoss,
     coerce_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.utils._classproperty import classproperty
@@ -106,6 +107,78 @@ class BaseModel(LightningModule):
     def pkg(cls):
         """Package class for the model."""
         return cls._pkg()
+
+    @property
+    def output_size(self) -> int:
+        """
+        Number of outputs predicted per time horizon step.
+
+        Returns
+        -------
+        int
+            1 for point predictions,
+            number of quantiles for QuantileLoss,
+            number of distribution parameters for DistributionLoss.
+        """
+        if isinstance(self._loss, QuantileLoss):
+            return len(self._loss.quantiles)
+        elif isinstance(self._loss, DistributionLoss):
+            return len(self._loss.distribution_arguments)
+        return 1
+
+    def transform_output(
+        self,
+        prediction: torch.Tensor,
+        target_scale: dict[str, torch.Tensor] | torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """
+        Transform raw network predictions to real scale and valid parameter domains.
+
+        Parameters
+        ----------
+        prediction : torch.Tensor
+            Raw network output tensor.
+        target_scale : dict or torch.Tensor, optional
+            Scale and center information from dataset/normalizer.
+
+        Returns
+        -------
+        torch.Tensor
+            Transformed predictions or distribution parameters.
+        """
+        if target_scale is None:
+            return prediction
+
+        if isinstance(target_scale, dict):
+            scale = target_scale["scale"]
+            center = target_scale["center"]
+
+            if scale.dim() == 1:
+                scale = scale.unsqueeze(-1)
+            if center.dim() == 1:
+                center = center.unsqueeze(-1)
+            combined = torch.cat([center, scale], dim=-1)
+        else:
+            combined = target_scale
+            center = target_scale[..., 0:1]
+            scale = target_scale[..., 1:2]
+
+        if isinstance(self._loss, DistributionLoss):
+            if self.target_normalizer is None:
+                raise ValueError(
+                    f"{type(self._loss).__name__} requires a target_normalizer "
+                    "in model metadata."
+                )
+            return self._loss.rescale_parameters(
+                parameters=prediction,
+                target_scale=combined,
+                encoder=self.target_normalizer,
+            )
+
+        while scale.dim() < prediction.dim():
+            scale = scale.unsqueeze(1)
+            center = center.unsqueeze(1)
+        return prediction * scale + center
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
