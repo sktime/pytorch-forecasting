@@ -1008,7 +1008,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         """
         self._ensure_split()
 
-        if stage == "fit" or stage is None:
+        if stage is None or stage == "fit":
             self._resolve_target_normalizer(self._train_indices)
             if not self._target_normalizer_fitted:
                 self._fit_target_normalizer(self._train_indices)

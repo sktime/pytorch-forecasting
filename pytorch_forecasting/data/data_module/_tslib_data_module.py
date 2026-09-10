@@ -695,7 +695,7 @@ class TslibDataModule(LightningDataModule):
         )
 
         # Window Splitting & Dataset Creation
-        if stage == "fit" or stage is None:
+        if stage is None or stage == "fit":
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
                 if self.splitter.has_window_split:
                     all_windows = self._create_windows(self._train_indices)
