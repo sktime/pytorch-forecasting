@@ -27,6 +27,72 @@ class DecoderMLP(BaseModelWithCovariates):
     """MLP on the decoder.
 
     MLP that predicts output only based on information available in the decoder.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> from pytorch_forecasting import DecoderMLP, TimeSeriesDataSet
+    >>> from pytorch_forecasting.data import NaNLabelEncoder
+    >>> from pytorch_forecasting.data.examples import generate_ar_data
+    >>> from pytorch_forecasting.metrics import QuantileLoss
+    >>>
+    >>> # Generate synthetic time series data
+    >>> data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10, seed=42)
+    >>> data["static"] = 2
+    >>> data = data.astype(dict(series=str))
+    >>>
+    >>> # Define time series parameters
+    >>> max_encoder_length = 60
+    >>> max_prediction_length = 20
+    >>> training_cutoff = data["time_idx"].max() - max_prediction_length
+    >>>
+    >>> # Create training dataset
+    >>> training = TimeSeriesDataSet(
+    ...     data[lambda x: x.time_idx <= training_cutoff],
+    ...     time_idx="time_idx",
+    ...     target="value",
+    ...     categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
+    ...     group_ids=["series"],
+    ...     static_categoricals=["series"],
+    ...     time_varying_unknown_reals=["value"],
+    ...     max_encoder_length=max_encoder_length,
+    ...     max_prediction_length=max_prediction_length,
+    ... )
+    >>>
+    >>> # Create validation dataset
+    >>> validation = TimeSeriesDataSet.from_dataset(
+    ...     training, data, min_prediction_idx=training_cutoff + 1
+    ... )
+    >>>
+    >>> # Create dataloaders
+    >>> batch_size = 32
+    >>> train_dataloader = training.to_dataloader(
+    ...     train=True, batch_size=batch_size, num_workers=0
+    ... )
+    >>> val_dataloader = validation.to_dataloader(
+    ...     train=False, batch_size=batch_size, num_workers=0
+    ... )
+    >>>
+    >>> # Initialize DecoderMLP model from dataset
+    >>> model = DecoderMLP.from_dataset(
+    ...     training,
+    ...     learning_rate=1e-2,
+    ...     hidden_size=16,
+    ...     n_hidden_layers=2,
+    ...     loss=QuantileLoss(),
+    ...     optimizer="Adam",
+    ... )
+    >>>
+    >>> # Training with Lightning
+    >>> import lightning as L
+    >>> trainer = L.Trainer(max_epochs=1, accelerator="cpu")
+    >>> trainer.fit(model, train_dataloaders=train_dataloader,
+    >>>             val_dataloaders=val_dataloader)
+    >>>
+    >>> # Make predictions
+    >>> predictions = model.predict(val_dataloader,
+    >>>             trainer_kwargs=dict(accelerator="cpu"))
     """
 
     @classmethod
