@@ -10,7 +10,7 @@
 from pathlib import Path
 import pickle
 from typing import Any
-from warnings import warn
+import warnings
 
 from lightning.pytorch import LightningDataModule
 import numpy as np
@@ -157,7 +157,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.scalers = scalers
         self.batch_size = batch_size
         self.num_workers = num_workers
-        warn(
+        warnings.warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
             "rework of the "
             "pytorch-forecasting data layer, "
@@ -928,7 +928,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         for target in target_names:
             if data_properties["target_type"][target] == "categorical":
                 if self.add_target_scales:
-                    warn(
+                    warnings.warn(
                         "Target scales will be only added for continuous targets",
                         UserWarning,
                     )

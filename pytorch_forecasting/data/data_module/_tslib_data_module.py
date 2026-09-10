@@ -4,7 +4,7 @@ Experimental data module for integrating `tslib` time series deep learning libra
 
 from collections.abc import Callable
 from typing import Any
-from warnings import warn
+import warnings
 
 from lightning.pytorch import LightningDataModule
 import numpy as np
@@ -333,7 +333,7 @@ class TslibDataModule(LightningDataModule):
         )  # noqa: E501
         self.kwargs = kwargs
 
-        warn(
+        warnings.warn(
             "TslibDataModule is experimental and subject to change. "
             "The API is not stable and may change without prior warning.",
             UserWarning,
@@ -385,7 +385,7 @@ class TslibDataModule(LightningDataModule):
             )
 
         if not has_continuous and not has_categorical and has_targets:
-            warn(
+            warnings.warn(
                 "No continuous or categorical features found. "
                 "Proceeding with pure univariate forecasting "
                 "using target history only.",
@@ -394,7 +394,7 @@ class TslibDataModule(LightningDataModule):
             return
 
         if not has_continuous:
-            warn(
+            warnings.warn(
                 "No continuous features found in the dataset. "
                 "Some models (TimeXer) requires continuous features. "
                 "Consider adding continuous featuresinto the dataset.",
@@ -402,7 +402,7 @@ class TslibDataModule(LightningDataModule):
             )
 
         if not has_categorical:
-            warn(
+            warnings.warn(
                 "No categorical features found in the dataset. "
                 "This may limit the model capabilities and and restrict "
                 "the usage to continuous features only.",
