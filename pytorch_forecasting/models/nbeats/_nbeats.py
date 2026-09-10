@@ -109,7 +109,13 @@ class NBeats(NBeatsAdapter):
     ...     training, data, min_prediction_idx=cutoff + 1
     ... )
     >>> model = NBeats.from_dataset(training, context_length=24)
-    >>> trainer = pl.Trainer(max_epochs=1, logger=False, enable_checkpointing=False)
+    >>> trainer = pl.Trainer(
+    ...     max_epochs=1,
+    ...     logger=False,
+    ...     enable_checkpointing=False,
+    ...     enable_progress_bar=False,
+    ...     enable_model_summary=False,
+    ... )
     >>> trainer.fit(model, training.to_dataloader(train=True, batch_size=32))
     >>> predictions = model.predict(
     ...     validation.to_dataloader(train=False, batch_size=32)
