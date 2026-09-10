@@ -99,7 +99,7 @@ class TimeSeries(Dataset):
 
         Pass pre-fitted encoders from training to ensure consistent
         encoding at prediction time.  See
-        ``DataModule.get_categorical_encoders()`` for retrieving fitted
+        ``TimeSeries.get_categorical_encoders()`` for retrieving fitted
         encoders.
     """
 
@@ -279,6 +279,24 @@ class TimeSeries(Dataset):
             self.metadata["categorical_cardinalities"] = {
                 col: int(self.data[col].nunique()) for col in self._cat
             }
+
+    def get_categorical_encoders(self) -> dict:
+        """Return fitted categorical encoders from the dataset.
+
+        Used when creating a new ``TimeSeries`` for prediction to ensure
+        the same category-to-integer mapping, preventing data leakage.
+
+        Example
+        -------
+        >>> fitted = dataset.get_categorical_encoders()
+        >>> ts_predict = TimeSeries(..., categorical_encoders=fitted)
+
+        Returns
+        -------
+        dict
+            Column names to fitted categorical encoders.
+        """
+        return self._categorical_encoders.copy()
 
     def __len__(self) -> int:
         """Return number of time series in the dataset."""

@@ -316,25 +316,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         return metadata
 
-    def get_categorical_encoders(self) -> dict:
-        """Return fitted categorical encoders from the D1 layer.
-
-        Used when creating a new ``TimeSeries`` for prediction to ensure
-        the same category-to-integer mapping, preventing data leakage.
-
-        Example
-        -------
-        >>> dm.setup(stage="fit")
-        >>> fitted = dm.get_categorical_encoders()
-        >>> ts_predict = TimeSeries(..., categorical_encoders=fitted)
-
-        Returns
-        -------
-        dict
-            Column names to fitted encoder objects.
-        """
-        return self.time_series_dataset._categorical_encoders.copy()
-
     @property
     def metadata(self):
         """Compute metadata for model initialization.
