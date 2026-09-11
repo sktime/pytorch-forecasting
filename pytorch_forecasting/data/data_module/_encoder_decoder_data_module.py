@@ -112,6 +112,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         ``RandomSplitter((0.7, 0.15, 0.15))``. See
         :py:mod:`pytorch_forecasting.data.split.splitters` for available
         splitters such as ``TemporalSplitter``, ``GroupTimeSplitter``, etc.
+        Takes precedence over ``train_val_test_split`` when both are provided.
+    train_val_test_split : tuple[float, ...] or None, default=None
+        Convenience shorthand for ``RandomSplitter(train_val_test_split)``.
+        Accepts a 3-tuple ``(train, val, test)`` or a 2-tuple ``(train, val)``
+        (test fraction is set to 0 in the latter case). Ignored when
+        ``splitter`` is explicitly provided.
     """
 
     def __init__(
@@ -140,6 +146,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         splitter: BaseSplitter | None = None,
+        train_val_test_split: tuple[float, ...] | None = None,
     ):
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
@@ -189,7 +196,16 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._min_encoder_length = min_encoder_length or max_encoder_length
         self._categorical_encoders = _coerce_to_dict(categorical_encoders)
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
-        self.splitter = splitter or RandomSplitter()
+        self.train_val_test_split = train_val_test_split
+        if splitter is not None:
+            self.splitter = splitter
+        elif train_val_test_split is not None:
+            split = tuple(train_val_test_split)
+            if len(split) == 2:
+                split = (split[0], split[1], 0.0)
+            self.splitter = RandomSplitter(split)
+        else:
+            self.splitter = RandomSplitter()
         self.categorical_indices = []
         self.continuous_indices = []
         self._metadata = None

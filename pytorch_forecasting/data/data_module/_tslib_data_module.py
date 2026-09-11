@@ -288,6 +288,12 @@ class TslibDataModule(LightningDataModule):
         ``RandomSplitter((0.7, 0.15, 0.15))``. See
         :py:mod:`pytorch_forecasting.data.split.splitters` for available
         splitters such as ``TemporalSplitter``, ``GroupTimeSplitter``, etc.
+        Takes precedence over ``train_val_test_split`` when both are provided.
+    train_val_test_split : tuple[float, ...] or None, default=None
+        Convenience shorthand for ``RandomSplitter(train_val_test_split)``.
+        Accepts a 3-tuple ``(train, val, test)`` or a 2-tuple ``(train, val)``
+        (test fraction is set to 0 in the latter case). Ignored when
+        ``splitter`` is explicitly provided.
     collate_fn : Optional[callable], default=None
         Custom collate function for the dataloader.
     """  # noqa: E501
@@ -314,6 +320,7 @@ class TslibDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         splitter: BaseSplitter | None = None,
+        train_val_test_split: tuple[float, ...] | None = None,
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
@@ -327,7 +334,16 @@ class TslibDataModule(LightningDataModule):
         self.add_target_scales = add_target_scales
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.splitter = splitter or RandomSplitter()
+        self.train_val_test_split = train_val_test_split
+        if splitter is not None:
+            self.splitter = splitter
+        elif train_val_test_split is not None:
+            split = tuple(train_val_test_split)
+            if len(split) == 2:
+                split = (split[0], split[1], 0.0)
+            self.splitter = RandomSplitter(split)
+        else:
+            self.splitter = RandomSplitter()
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
