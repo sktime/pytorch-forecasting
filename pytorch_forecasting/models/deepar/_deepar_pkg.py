@@ -4,7 +4,15 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class DeepAR_pkg(_BasePtForecaster):
-    """DeepAR package container."""
+    """DeepAR package container.
+
+    Examples
+    --------
+    The package container resolves to the user-facing model class:
+
+    >>> DeepAR_pkg.get_cls().__name__
+    'DeepAR'
+    """
 
     _tags = {
         "info:name": "DeepAR",
