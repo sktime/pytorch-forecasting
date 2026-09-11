@@ -49,16 +49,17 @@ class Samformer_pkg_v2(Base_pkg):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
 
+        import torch.nn as nn
+
         from pytorch_forecasting.metrics import QuantileLoss
 
         params = [
             {
-                # "loss": nn.MSELoss(),
+                "loss": nn.MSELoss(),
                 "hidden_size": 32,
                 "use_revin": False,
             },
             {
-                # "loss": nn.MSELoss(),
                 "hidden_size": 16,
                 "use_revin": True,
                 "out_channels": 1,

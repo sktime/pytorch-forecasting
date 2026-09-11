@@ -55,3 +55,4 @@ See the detailed API documentation for the V1 Package classes below:
    models.rnn._rnn_pkg.RecurrentNetwork_pkg
    models.temporal_fusion_transformer._tft_pkg.TemporalFusionTransformer_pkg
    models.tide._tide_pkg.TiDEModel_pkg
+   models.patch_tst._patch_tst_pkg.PatchTST_pkg

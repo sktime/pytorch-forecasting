@@ -197,8 +197,8 @@ class TimeXer(TslibBaseModel):
 
         self.n_quantiles = None
 
-        if hasattr(self.loss, "quantiles") and self.loss.quantiles is not None:
-            self.n_quantiles = len(self.loss.quantiles)
+        if hasattr(self._loss, "quantiles") and self._loss.quantiles is not None:
+            self.n_quantiles = len(self._loss.quantiles)
 
         if self.hidden_size % self.n_heads != 0:
             raise ValueError(

@@ -590,3 +590,28 @@ def test_QuantileLoss_to_prediction_fallback():
     y_pred_2d = torch.tensor([[10.0, 20.0]])
     result_2d = loss_no_median.to_prediction(y_pred_2d)
     assert torch.equal(result_2d, y_pred_2d)
+
+
+def test_composite_metric_immutability():
+    metric1 = SMAPE()
+    metric2 = MAE()
+
+    base = metric1 + metric2
+    original_len = len(base._metrics)
+    variant = base + SMAPE()
+
+    assert base is not variant
+    assert len(base._metrics) == original_len
+    assert len(variant._metrics) == original_len + 1
+
+    original_weights = list(base._weights)
+    scaled = base * 2.0
+
+    assert base is not scaled
+    assert base._weights == original_weights
+    assert scaled._weights == [w * 2.0 for w in original_weights]
+
+    rscaled = 3.0 * base
+    assert base is not rscaled
+    assert base._weights == original_weights
+    assert rscaled._weights == [w * 3.0 for w in original_weights]

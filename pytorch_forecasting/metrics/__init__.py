@@ -26,7 +26,7 @@ from pytorch_forecasting.metrics.base_metrics import (
     MultiHorizonMetric,
     MultiLoss,
     MultivariateDistributionLoss,
-    convert_torchmetric_to_pytorch_forecasting_metric,
+    coerce_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.metrics.distributions import (
     BetaDistributionLoss,
@@ -37,6 +37,7 @@ from pytorch_forecasting.metrics.distributions import (
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
 )
+from pytorch_forecasting.metrics.nn_loss_adapter import NNLossAdapter
 from pytorch_forecasting.metrics.point import (
     MAE,
     MAPE,
@@ -50,12 +51,13 @@ from pytorch_forecasting.metrics.point import (
 from pytorch_forecasting.metrics.quantile import QuantileLoss
 
 __all__ = [
+    "NNLossAdapter",
     "MultiHorizonMetric",
     "DistributionLoss",
     "MultivariateDistributionLoss",
     "MultiLoss",
     "Metric",
-    "convert_torchmetric_to_pytorch_forecasting_metric",
+    "coerce_to_pytorch_forecasting_metric",
     "MAE",
     "MAPE",
     "MASE",
