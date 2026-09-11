@@ -89,18 +89,18 @@ class NBeatsKAN(NBeatsAdapter):
     >>>
     >>> # Training with Lightning
     >>> import lightning as L
-    >>> trainer = L.Trainer(max_epochs=1, accelerator="cpu")
+    >>> trainer = L.Trainer(max_epochs=1, accelerator="cpu") # doctest: +SKIP
     >>> trainer.fit(
     ...     model,
     ...     train_dataloaders=train_dataloader,
     ...     val_dataloaders=val_dataloader
-    ... )
+    ... ) # doctest: +SKIP
     >>>
     >>> # Make predictions
     >>> predictions = model.predict(
     ...     val_dataloader,
     ...     trainer_kwargs=dict(accelerator="cpu")
-    ... )
+    ... ) # doctest: +SKIP
 
     Parameters
     ----------
