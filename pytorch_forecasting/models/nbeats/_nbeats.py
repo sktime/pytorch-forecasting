@@ -88,12 +88,17 @@ class NBeats(NBeatsAdapter):
     >>> # Training with Lightning
     >>> import lightning as L
     >>> trainer = L.Trainer(max_epochs=1, accelerator="cpu")
-    >>> trainer.fit(model, train_dataloaders=train_dataloader,
-    >>>             val_dataloaders=val_dataloader)
+    >>> trainer.fit(
+    ...     model,
+    ...     train_dataloaders=train_dataloader,
+    ...     val_dataloaders=val_dataloader
+    ... )
     >>>
     >>> # Make predictions
-    >>> predictions = model.predict(val_dataloader,
-    >>>            trainer_kwargs=dict(accelerator="cpu"))
+    >>> predictions = model.predict(
+    ...     val_dataloader,
+    ...     trainer_kwargs=dict(accelerator="cpu")
+    ... )
 
 
     Parameters
