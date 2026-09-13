@@ -29,8 +29,67 @@ class NBeats(NBeatsAdapter):
     The :py:class:`~pytorch_forecasting.models.nhits.NHiTS` network has recently
     shown to consistently outperform N-BEATS.
 
+    Parameters
+    ----------
+    stack_types : list of str
+        One of the following values “generic”, “seasonality” or “trend”.
+        A list of strings of length 1 or `num_stacks`. Default and recommended
+        value for generic mode is ["generic"]. Recommended value for interpretable
+        mode is ["trend","seasonality"].
+    num_blocks : list of int
+        The number of blocks per stack. Length 1 or `num_stacks`. Default for
+        generic mode is [1], interpretable mode is [3].
+    num_block_layers : list of int
+        Number of fully connected layers with ReLU activation per block. Length 1
+        or `num_stacks`. Default [4] for both modes.
+    width : list of int
+        Widths of fully connected layers with ReLU activation. List length 1 or
+        `num_stacks`. Default [512] for generic; [256, 2048] for interpretable.
+    sharing : list of bool
+        Whether weights are shared across blocks in a stack. List length 1 or
+        `num_stacks`. Default [False] for generic; [True] for interpretable.
+    expansion_coefficient_length : list of int
+        If type is "G", length of expansion coefficient; if "T", degree of
+        polynomial; if "S", minimum period (e.g., 2 for every timestep). List
+        length 1 or `num_stacks`. Default [32] for generic; [3] for interpretable.
+    prediction_length : int
+        Length of the forecast horizon.
+    context_length : int
+        Number of time units conditioning the predictions (lookback period).
+        Should be between 1-10x `prediction_length`.
+    dropout : float
+        Dropout probability applied in the network. Helps prevent overfitting.
+        Default is 0.1.
+    learning_rate : float
+        Learning rate used by the optimizer during training. Default is 1e-2.
+    log_interval : int
+        Interval (in steps) at which training logs are recorded. If -1, logging
+        is disabled. Default is -1.
+    log_gradient_flow : bool
+        Whether to log gradient flow during training. Useful for diagnosing
+        vanishing/exploding gradients. Default is False.
+    log_val_interval : int
+        Interval (in steps) at which validation metrics are logged. If None,
+        uses default logging behavior. Default is None.
+    weight_decay : float
+        Weight decay (L2 regularization) coefficient used by the optimizer to
+        reduce overfitting. Default is 1e-3.
+    loss
+        Loss to optimize. Defaults to `MASE()`.
+    reduce_on_plateau_patience : int
+        Patience after which learning rate is reduced by factor of 10.
+    backcast_loss_ratio : float
+        Weight of backcast loss relative to forecast loss. 1.0 gives equal weight;
+        default 0.0 means no backcast loss.
+    logging_metrics : nn.ModuleList of MultiHorizonMetric
+        List of metrics logged during training. Defaults to
+        nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
+    **kwargs
+        Additional arguments forwarded to :py:class:`~BaseModel`.
+
     Examples
     --------
+
     >>> import pandas as pd
     >>> import numpy as np
     >>> from pytorch_forecasting import NBeats, TimeSeriesDataSet
@@ -99,65 +158,6 @@ class NBeats(NBeatsAdapter):
     ...     val_dataloader,
     ...     trainer_kwargs=dict(accelerator="cpu")
     ... ) # doctest: +SKIP
-
-
-    Parameters
-    ----------
-    stack_types : list of str
-        One of the following values “generic”, “seasonality” or “trend”.
-        A list of strings of length 1 or `num_stacks`. Default and recommended
-        value for generic mode is ["generic"]. Recommended value for interpretable
-        mode is ["trend","seasonality"].
-    num_blocks : list of int
-        The number of blocks per stack. Length 1 or `num_stacks`. Default for
-        generic mode is [1], interpretable mode is [3].
-    num_block_layers : list of int
-        Number of fully connected layers with ReLU activation per block. Length 1
-        or `num_stacks`. Default [4] for both modes.
-    width : list of int
-        Widths of fully connected layers with ReLU activation. List length 1 or
-        `num_stacks`. Default [512] for generic; [256, 2048] for interpretable.
-    sharing : list of bool
-        Whether weights are shared across blocks in a stack. List length 1 or
-        `num_stacks`. Default [False] for generic; [True] for interpretable.
-    expansion_coefficient_length : list of int
-        If type is "G", length of expansion coefficient; if "T", degree of
-        polynomial; if "S", minimum period (e.g., 2 for every timestep). List
-        length 1 or `num_stacks`. Default [32] for generic; [3] for interpretable.
-    prediction_length : int
-        Length of the forecast horizon.
-    context_length : int
-        Number of time units conditioning the predictions (lookback period).
-        Should be between 1-10x `prediction_length`.
-    dropout : float
-        Dropout probability applied in the network. Helps prevent overfitting.
-        Default is 0.1.
-    learning_rate : float
-        Learning rate used by the optimizer during training. Default is 1e-2.
-    log_interval : int
-        Interval (in steps) at which training logs are recorded. If -1, logging
-        is disabled. Default is -1.
-    log_gradient_flow : bool
-        Whether to log gradient flow during training. Useful for diagnosing
-        vanishing/exploding gradients. Default is False.
-    log_val_interval : int
-        Interval (in steps) at which validation metrics are logged. If None,
-        uses default logging behavior. Default is None.
-    weight_decay : float
-        Weight decay (L2 regularization) coefficient used by the optimizer to
-        reduce overfitting. Default is 1e-3.
-    loss
-        Loss to optimize. Defaults to `MASE()`.
-    reduce_on_plateau_patience : int
-        Patience after which learning rate is reduced by factor of 10.
-    backcast_loss_ratio : float
-        Weight of backcast loss relative to forecast loss. 1.0 gives equal weight;
-        default 0.0 means no backcast loss.
-    logging_metrics : nn.ModuleList of MultiHorizonMetric
-        List of metrics logged during training. Defaults to
-        nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
-    **kwargs
-        Additional arguments forwarded to :py:class:`~BaseModel`.
     """  # noqa: E501
 
     @classmethod
