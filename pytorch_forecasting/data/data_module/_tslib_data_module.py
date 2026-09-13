@@ -9,19 +9,13 @@ import warnings
 from lightning.pytorch import LightningDataModule
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.preprocessing import StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from pytorch_forecasting.data.encoders import (
-    EncoderNormalizer,
-    NaNLabelEncoder,
-    TorchNormalizer,
-)
+from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
-
-NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
 class _TslibDataset(Dataset):
@@ -266,12 +260,27 @@ class TslibDataModule(LightningDataModule):
         Whether to allow the relative time index to be used with the model.
     add_target_scales: bool = False
         Whether to add target scaling info.
-    target_normalizer :
-        Union[NORMALIZER, str, list[NORMALIZER], tuple[NORMALIZER], None],
-         default="auto"
-        Normalizer for the target variable. If "auto", uses `RobustScaler`.
-    scalers : Optional[dict[str, Union[StandardScaler, RobustScaler, TorchNormalizer]]], default=None #noqa: E501
-        Dictionary of feature scalers.
+    target_normalizer : Union[StandardScaler, str, None], default=None
+        Scaler for the target variable, fit on the training split only.
+
+        Mirrors ``thuml``'s data layer, which fits a single global
+        ``sklearn`` ``StandardScaler`` on the train segment, so only
+        ``StandardScaler`` is accepted; anything else raises
+        ``NotImplementedError``.
+
+        ``None`` (the default) and ``"auto"`` both mean "do not normalize the
+        target". ``"auto"`` does not resolve to a scaler yet because the
+        inverse transform is not implemented (see below).
+
+        .. warning::
+            Passing a scaler explicitly normalizes the target, but the
+            inverse transform is **not implemented yet**: ``target_scale`` is
+            never emitted, so models cannot map predictions back to the
+            original scale. Tracked in issue #2359.
+    scalers : Optional[dict[str, StandardScaler]], default=None
+        Scalers for continuous features, keyed by column name and fit on the
+        training split only. Only ``sklearn`` ``StandardScaler`` is accepted,
+        for the same reason as ``target_normalizer``.
     shuffle : bool, default=True
         Whether to shuffle the data at every epoch.
     window_stride : int, default=1
@@ -295,15 +304,8 @@ class TslibDataModule(LightningDataModule):
         freq: str = "h",
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
-        target_normalizer: NORMALIZER
-        | str
-        | list[NORMALIZER]
-        | tuple[NORMALIZER]
-        | None = "auto",  # noqa: E501
-        scalers: dict[
-            str, StandardScaler | RobustScaler | TorchNormalizer | EncoderNormalizer
-        ]
-        | None = None,  # noqa: E501
+        target_normalizer: StandardScaler | str | None = None,
+        scalers: dict[str, StandardScaler] | None = None,
         shuffle: bool = True,
         window_stride: int = 1,
         batch_size: int = 32,
@@ -334,14 +336,28 @@ class TslibDataModule(LightningDataModule):
             UserWarning,
         )
 
-        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
-            self._target_normalizer = RobustScaler()
-        else:
-            self._target_normalizer = target_normalizer
+        self.target_normalizer = target_normalizer
+        self.scalers = scalers
 
         self._metadata = None
 
-        self.scalers = scalers or {}
+        # "auto" resolves to "no normalization" for now: the inverse transform
+        # (``target_scale``) is not implemented yet, tracked in issue #2359.
+        if target_normalizer is None or (
+            isinstance(target_normalizer, str) and target_normalizer.lower() == "auto"
+        ):
+            self._target_normalizer = None
+        else:
+            # wrap in the unified adapter so we speak one fit/transform interface
+            self._target_normalizer = ScalerAdapter(target_normalizer)
+
+        self._scalers = {
+            name: ScalerAdapter(scaler)
+            for name, scaler in _coerce_to_dict(scalers).items()
+        }
+        self._target_normalizer_fitted = False
+        self._feature_scalers_fitted = False
+
         self.shuffle = shuffle
 
         self.continuous_indices = []
@@ -363,6 +379,46 @@ class TslibDataModule(LightningDataModule):
                 self.continuous_indices.append(idx)
 
         self._validate_indices()
+        self._reject_unsupported_scalers()
+
+    def _reject_unsupported_scalers(self):
+        """Reject scaler setups outside this data module's supported range.
+
+        ``TslibDataModule`` mirrors ``thuml``'s data layer, which hardcodes a
+        single ``sklearn`` ``StandardScaler`` fit once on the training split.
+        Anything else -- other sklearn scalers, ``pytorch-forecasting``
+        normalizers, group-aware or per-sequence normalizers, multivariate
+        targets -- needs machinery this data module does not have, so reject it
+        explicitly rather than failing deep inside the scaler stack, or worse,
+        silently producing wrongly scaled data.
+
+        Raises
+        ------
+        NotImplementedError
+            If a scaler other than ``StandardScaler`` is configured, or if a
+            target normalizer is combined with a multivariate target.
+        """
+        named = [("target_normalizer", self.target_normalizer)]
+        named += [
+            (f"scalers[{name!r}]", scaler)
+            for name, scaler in _coerce_to_dict(self.scalers).items()
+        ]
+        for label, scaler in named:
+            if scaler is None or isinstance(scaler, str):
+                # None and "auto" already resolve to "no normalization"
+                continue
+            if not isinstance(scaler, StandardScaler):
+                raise NotImplementedError(
+                    f"{label}: TslibDataModule only supports sklearn "
+                    f"StandardScaler, got {type(scaler).__name__}. It mirrors "
+                    "thuml's data layer, which fits a single global "
+                    "StandardScaler on the training split."
+                )
+
+        if self.n_targets > 1 and self._target_normalizer is not None:
+            raise NotImplementedError(
+                "target_normalizer is not supported for multivariate targets."
+            )
 
     def _validate_indices(self):
         """
@@ -537,14 +593,63 @@ class TslibDataModule(LightningDataModule):
             self._metadata = self._prepare_metadata()
         return self._metadata
 
-    def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
+    def _fit_target_normalizer(self, train_indices):
+        """Fit the target normalizer on the training targets only."""
+        if self._target_normalizer is None or self._target_normalizer_fitted:
+            return
+        targets = [self.time_series_dataset[idx.item()]["y"] for idx in train_indices]
+        if not targets:
+            return
+        self._target_normalizer.fit(torch.cat(targets, dim=0))
+        self._target_normalizer_fitted = True
+
+    def _fit_scalers(self, train_indices):
+        """Fit each named continuous-feature scaler on the training data only."""
+        if not self._scalers or not self.continuous_indices:
+            return
+        names = self.time_series_metadata["cols"]["x"]
+        for orig_idx in self.continuous_indices:
+            name = names[orig_idx]
+            if name not in self._scalers:
+                continue
+            column = [
+                self.time_series_dataset[idx.item()]["x"][:, orig_idx]
+                for idx in train_indices
+            ]
+            if not column:
+                continue
+            self._scalers[name].fit(torch.cat(column, dim=0))
+        self._feature_scalers_fitted = True
+
+    def _normalize_target(self, target):
+        """Apply the fitted target normalizer (no-op until fitted)."""
+        if self._target_normalizer is None or not self._target_normalizer_fitted:
+            return target
+        return self._target_normalizer.transform(target)
+
+    def _normalize_features(self, continuous):
+        """Apply fitted continuous-feature scalers (no-op until fitted).
+
+        ``continuous`` columns are ordered by ``self.continuous_indices``.
+        """
+        if not self._feature_scalers_fitted or not self.continuous_indices:
+            return continuous
+        names = self.time_series_metadata["cols"]["x"]
+        out = continuous.clone()
+        for pos, orig_idx in enumerate(self.continuous_indices):
+            name = names[orig_idx]
+            if name in self._scalers:
+                out[:, pos] = self._scalers[name].transform(continuous[:, pos])
+        return out
+
+    def _preprocess_data(self, idx: int | torch.Tensor) -> dict[str, Any]:
         """
         Process the the time series data at the given index, before feeding it
         to the `_TslibDataset` class.
 
         Parameters
         ----------
-        idx : torch.Tensor
+        idx : int or torch.Tensor
             The index of the time series data to be processed.
 
         Returns
@@ -557,11 +662,14 @@ class TslibDataModule(LightningDataModule):
         - The target data `y` and features `x` are converted to torch.float32 tensors.
         - The timepoints before the cutoff time are masked off.
         - Splits data into categorical and continuous features, which are grouped based on the indices.
+        - Configured scalers are applied here; they are a no-op until fitted.
         """  # noqa: E501
 
-        series = self.time_series_dataset[idx]
+        i = idx.item() if isinstance(idx, torch.Tensor) else idx
+
+        series = self.time_series_dataset[i]
         if series is None:
-            raise ValueError(f"series at index {idx} is None. Check the dataset.")
+            raise ValueError(f"series at index {i} is None. Check the dataset.")
         target = series["y"]
         features = series["x"]
         timestep = series["t"]
@@ -593,6 +701,10 @@ class TslibDataModule(LightningDataModule):
             if self.continuous_indices
             else torch.zeros((features.shape[0], 0))
         )
+
+        # apply fitted scalers / normalizers (no-op until fitted)
+        continuous_features = self._normalize_features(continuous_features)
+        target = self._normalize_target(target)
 
         res = {
             "features": {
@@ -671,22 +783,20 @@ class TslibDataModule(LightningDataModule):
 
         return windows
 
-    def setup(self, stage: str | None = None) -> None:
-        """
-        Setup the data module by preparing the datasets for training,
-        testing and validation.
+    def _ensure_split(self) -> None:
+        """Compute train/val/test indices once and cache them.
 
-        Parameters
-        ----------
-        stage: Optional[str]
-            The stage of the data module. This can be "fit", "test" or "predict".
-            If None, the data module will be setup for training.
+        ``setup`` is called once per stage by Lightning, so recomputing the
+        random permutation on every call would hand ``trainer.test()`` a
+        different split than ``trainer.fit()`` used. Since the scalers are fit
+        on ``_train_indices``, that would leak training statistics into the
+        test set. Compute the split on the first call and reuse it afterwards.
         """
+        if hasattr(self, "_indices"):
+            return
 
         # TODO: Add support for temporal/random/group splits.
         # Currently, it only supports random splits.
-        # Handle the case where the dataset is empty.
-
         total_series = len(self.time_series_dataset)
 
         if total_series == 0:
@@ -718,6 +828,28 @@ class TslibDataModule(LightningDataModule):
             self._test_indices = self._indices[
                 self._train_size + self._val_size : total_series
             ]
+
+    def setup(self, stage: str | None = None) -> None:
+        """
+        Setup the data module by preparing the datasets for training,
+        testing and validation.
+
+        Parameters
+        ----------
+        stage: Optional[str]
+            The stage of the data module. This can be "fit", "test" or "predict".
+            If None, the data module will be setup for training.
+        """
+
+        self._ensure_split()
+
+        # Scalers are always fit on ``_train_indices``, which ``_ensure_split``
+        # keeps stable across stages. Fitting here rather than only under
+        # ``stage == "fit"`` means a standalone ``setup("test")`` still yields
+        # scaled data instead of silently passing the raw values through.
+        self._fit_target_normalizer(self._train_indices)
+        if not self._feature_scalers_fitted:
+            self._fit_scalers(self._train_indices)
 
         if stage == "fit" or stage is None:
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
