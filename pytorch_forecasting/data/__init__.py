@@ -6,11 +6,7 @@ utilities, and batching tools required to transform raw time series data
 into model-ready PyTorch datasets.
 """
 
-from pytorch_forecasting.data._metadata import (
-    EncDecDataModuleMetadata,
-    TimeSeriesMetadata,
-    TslibDataModuleMetadata,
-)
+from pytorch_forecasting.data._metadata import TimeSeriesMetadata
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     GroupNormalizer,
@@ -25,8 +21,6 @@ __all__ = [
     "TimeSeriesDataSet",
     "TimeSeries",
     "TimeSeriesMetadata",
-    "EncDecDataModuleMetadata",
-    "TslibDataModuleMetadata",
     "NaNLabelEncoder",
     "GroupNormalizer",
     "TorchNormalizer",
