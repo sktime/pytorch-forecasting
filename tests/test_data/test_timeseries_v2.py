@@ -92,6 +92,109 @@ def test_init_with_features_categorization(sample_data):
     assert ts.metadata["col_type"]["feature2"] == "F"
 
 
+def test_init_with_known_unknown(sample_data):
+    """Test known and unknown features classification.
+
+    Checks if the known and unknown feature categorization is correctly set
+    and stored in metadata."""
+    ts = TimeSeries(
+        data=sample_data,
+        time="timestamp",
+        target="target_value",
+        known=["feature1"],
+        unknown=["feature2", "feature3"],
+    )
+
+    assert ts.known == ["feature1"]
+    assert ts.unknown == ["feature2", "feature3"]
+    assert ts.metadata["col_known"]["feature1"] == "K"
+    assert ts.metadata["col_known"]["feature2"] == "U"
+
+
+def test_init_with_weight(sample_data):
+    """Test initialization with weight parameter.
+
+    Verifies that the weight column is stored correctly and excluded
+    from the feature columns."""
+    ts = TimeSeries(
+        data=sample_data, time="timestamp", target="target_value", weight="weight"
+    )
+
+    assert ts.weight == "weight"
+    assert "weight" not in ts.feature_cols
+
+
+def test_getitem_basic(sample_data):
+    """Test __getitem__ with basic configuration.
+
+    Checks the output structure of a single time series without grouping,
+    ensuring x, y are tensors of correct shapes."""
+    ts = TimeSeries(data=sample_data, time="timestamp", target="target_value")
+
+    result = ts[0]
+    assert torch.is_tensor(result["y"])
+    assert torch.is_tensor(result["x"])
+    assert "t" in result
+    assert "cutoff_time" in result
+    assert len(result["y"]) == 10  # 10 data points
+    assert result["y"].shape == (10, 1)  # One target variable
+    assert result["x"].shape[1] == 6  # Six feature columns
+
+
+def test_getitem_with_groups(sample_data):
+    """Test __getitem__ with groups parameter.
+
+    Verifies the per-group access using index and checks that each group
+    has the correct number of time steps."""
+    ts = TimeSeries(
+        data=sample_data, time="timestamp", target="target_value", group=["group_id"]
+    )
+
+    # group (1)
+    result_g1 = ts[0]
+    assert len(result_g1["t"]) == 5  # 5 data points in group 1
+
+    # group (2)
+    result_g2 = ts[1]
+    assert len(result_g2["t"]) == 5  # 5 data points in group 2
+
+
+def test_getitem_with_static(sample_data):
+    """Test __getitem__ with static features.
+
+    Ensures static features are included in the output and correctly
+    mapped per group."""
+    ts = TimeSeries(
+        data=sample_data,
+        time="timestamp",
+        target="target_value",
+        group=["group_id"],
+        static=["static_feat"],
+    )
+
+    result_g1 = ts[0]
+    result_g2 = ts[1]
+
+    assert torch.is_tensor(result_g1["st"])
+    assert result_g1["st"].item() == 10  # Static feature for group 1
+    assert result_g2["st"].item() == 20  # Static feature for group 2
+
+
+def test_getitem_with_weight(sample_data):
+    """Test __getitem__ with weight parameter.
+
+    Validates that weights are correctly returned in the output and have the
+    expected length and type."""
+    ts = TimeSeries(
+        data=sample_data, time="timestamp", target="target_value", weight="weight"
+    )
+
+    result = ts[0]
+    assert "weights" in result
+    assert torch.is_tensor(result["weights"])
+    assert len(result["weights"]) == 10
+
+
 def test_infer_num_cat_from_dtypes():
     """Test the dtype split used when num and cat are not given.
 
@@ -234,6 +337,21 @@ def test_different_future_groups(sample_data):
     assert 3 not in ts._group_ids
 
 
+def test_multiple_targets(sample_data):
+    """Test handling of multiple target variables.
+
+    Verifies that multiple target columns are handled and returned
+    as the correct shape in the output."""
+    sample_data["target_value2"] = np.cos(np.arange(10)) + 5
+
+    ts = TimeSeries(
+        data=sample_data, time="timestamp", target=["target_value", "target_value2"]
+    )
+
+    result = ts[0]
+    assert result["y"].shape == (10, 2)  # Two target variables
+
+
 def test_empty_groups():
     """Test handling of empty groups.
 
@@ -252,6 +370,66 @@ def test_empty_groups():
     )
 
     assert len(ts) == 1  # Only one group
+
+
+def test_metadata_structure(sample_data):
+    """Test the structure of metadata.
+
+    Ensures the metadata dictionary includes the expected keys and
+    correct mappings of feature roles."""
+    ts = TimeSeries(
+        data=sample_data,
+        time="timestamp",
+        target="target_value",
+        num=["feature1", "feature2", "feature3"],
+        cat=[],  # No categorical features
+        static=["static_feat"],
+        known=["feature1"],
+        unknown=["feature2", "feature3"],
+    )
+
+    metadata = ts.get_metadata()
+
+    assert "cols" in metadata
+    assert "col_type" in metadata
+    assert "col_known" in metadata
+
+    assert metadata["cols"]["y"] == ["target_value"]
+    assert set(metadata["cols"]["x"]) == {
+        "feature1",
+        "feature2",
+        "feature3",
+        "group_id",
+        "weight",
+        "static_feat",
+    }
+    assert metadata["cols"]["st"] == ["static_feat"]
+
+    assert metadata["col_type"]["feature1"] == "F"
+    assert metadata["col_type"]["feature2"] == "F"
+
+    assert metadata["col_known"]["feature1"] == "K"
+    assert metadata["col_known"]["feature2"] == "U"
+
+
+def test_group_index():
+    """Ensure group indices are contiguous and deterministic.
+
+    Regression guard: older code used `hash(str(group_id))`, which could yield
+    non-contiguous ids and unstable mappings.
+    """
+
+    data = []
+    for gid in ["aa", "bb", "cc", "dd"]:
+        for t in range(3):
+            data.append({"gid": gid, "time": t, "target": t})
+
+    df = pd.DataFrame(data)
+    ts = TimeSeries(data=df, time="time", target="target", group=["gid"])
+
+    group_indices = [int(ts[i]["group"][0]) for i in range(len(ts))]
+
+    assert group_indices == list(range(len(ts)))
 
 
 def test_to_pandas_with_future_data(sample_data, future_data):
