@@ -3,34 +3,21 @@ Experimental data module for integrating `tslib` time series deep learning libra
 """
 
 from collections.abc import Callable
-import inspect
-from typing import Any, Optional
+from typing import Any
 import warnings
 
-from lightning.pytorch import LightningDataModule
-import numpy as np
-import pandas as pd
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 from pytorch_forecasting.data._metadata import TslibDataModuleMetadata
-from pytorch_forecasting.data.encoders import (
-    EncoderNormalizer,
-    NaNLabelEncoder,
-    TorchNormalizer,
+from pytorch_forecasting.data.data_module.base_data_module import (
+    NORMALIZER,
+    BaseTimeSeriesDataModule,
 )
+from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
-from pytorch_forecasting.utils._coerce import _coerce_to_dict
-from pytorch_forecasting.utils._validation import (
-    _check_fractions,
-    _check_positive,
-    _check_type,
-)
-
-NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
-
-_WRAP_HINT = "Wrap the data frame first, e.g. TimeSeries(df, time=..., target=...)."
+from pytorch_forecasting.utils._validation import _check_positive
 
 
 class _TslibDataset(Dataset):
@@ -243,7 +230,7 @@ class _TslibDataset(Dataset):
         return x, y
 
 
-class TslibDataModule(LightningDataModule):
+class TslibDataModule(BaseTimeSeriesDataModule):
     """
     Experimental data module for integrating `tslib` time series into
     PyTorch Forecasting.
@@ -322,76 +309,26 @@ class TslibDataModule(LightningDataModule):
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
-        super().__init__()
-
-        self.time_series = time_series
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.freq = freq
-        self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
-        self.target_normalizer = target_normalizer
         self.scalers = scalers
         self.shuffle = shuffle
         self.window_stride = window_stride
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.train_val_test_split = train_val_test_split
-        self.collate_fn = (
-            collate_fn if collate_fn is not None else self.__class__.collate_fn
-        )  # noqa: E501
+        if collate_fn is not None:
+            self.collate_fn = collate_fn
         self.kwargs = kwargs
 
-        self._validate_init_params()
-
-        self._init_kwargs = {
-            name: getattr(self, name)
-            for name in inspect.signature(type(self).__init__).parameters
-            if name not in ("self", "time_series", "kwargs")
-        }
-        self._init_kwargs.update(self.kwargs)
-
-        warnings.warn(
-            "TslibDataModule is experimental and subject to change. "
-            "The API is not stable and may change without prior warning.",
-            UserWarning,
+        super().__init__(
+            time_series=time_series,
+            target_normalizer=target_normalizer,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            train_val_test_split=train_val_test_split,
+            add_relative_time_idx=add_relative_time_idx,
         )
-
-        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
-            self._target_normalizer = RobustScaler()
-        else:
-            self._target_normalizer = target_normalizer
-
-        self._metadata = None
-
-        self.continuous_indices = []
-        self.categorical_indices = []
-
-        self.train_dataset = None
-        self.val_dataset = None
-        self.test_dataset = None
-
-        # without data there is no schema, so column positions and target count
-        # cannot be derived yet
-        self.time_series_metadata = None
-        self.n_targets = None
-        if time_series is not None:
-            self._bind_time_series()
-
-    def _bind_time_series(self):
-        """Derive the schema-dependent state from the attached data."""
-        self.time_series_metadata = self.time_series.get_metadata()
-        self.n_targets = len(self.time_series_metadata["cols"]["y"])
-
-        self.categorical_indices = []
-        self.continuous_indices = []
-        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
-            if self.time_series_metadata["col_type"].get(col) == "C":
-                self.categorical_indices.append(idx)
-            else:
-                self.continuous_indices.append(idx)
-
-        self._validate_indices()
+        self._init_kwargs.update(self.kwargs)
 
     def _validate_init_params(self):
         """Check the constructor arguments.
@@ -405,61 +342,19 @@ class TslibDataModule(LightningDataModule):
             positive, or ``train_val_test_split`` is not three non-negative
             fractions summing to 1.
         """
-        _check_type(
-            self.time_series,
-            TimeSeries,
-            "time_series",
-            allow_none=True,
-            hint=_WRAP_HINT,
-        )
+        super()._validate_init_params()
         _check_positive(self.context_length, "context_length")
         _check_positive(self.prediction_length, "prediction_length")
         _check_positive(self.window_stride, "window_stride")
-        _check_fractions(self.train_val_test_split, "train_val_test_split")
 
-    def _check_has_data(self, action: str):
-        """Raise if an operation needs data and none is attached.
+    def _bind_time_series(self):
+        """Derive the schema-dependent state from the attached data."""
+        super()._bind_time_series()
+        self._validate_indices()
 
-        Parameters
-        ----------
-        action : str
-            What was attempted, named in the error message.
-
-        Raises
-        ------
-        RuntimeError
-            If the module was constructed without data.
-        """
-        if self.time_series is None:
-            raise RuntimeError(
-                f"{type(self).__name__} was constructed without data, so "
-                f"{action} is not available. Attach data with "
-                "`.with_data(time_series)`, which returns a new module, or "
-                "pass `time_series` to the constructor."
-            )
-
-    def with_data(self, data: TimeSeries) -> "TslibDataModule":
-        """Return a copy of this module holding ``data``, without refitting.
-
-        Same parameters, new data.
-
-        Parameters
-        ----------
-        data : TimeSeries
-            The data to attach.
-
-        Returns
-        -------
-        TslibDataModule
-            A new module, configured identically.
-
-        Raises
-        ------
-        TypeError
-            If ``data`` is not a :class:`TimeSeries`.
-        """
-        _check_type(data, TimeSeries, "data", hint=_WRAP_HINT)
-        return type(self)(time_series=data, **self._init_kwargs)
+    @property
+    def train_shuffle(self) -> bool:
+        return self.shuffle
 
     def _validate_indices(self):
         """
@@ -617,22 +512,6 @@ class TslibDataModule(LightningDataModule):
             features=self.features,
         )
 
-    @property
-    def metadata(self) -> TslibDataModuleMetadata:
-        """ "
-        Compute the metadata via the `_prepare_metadata` method.
-        This method is called when the `metadata` property is accessed for the first.
-        Returns
-        -------
-        dict
-            Metadata for the data module. Refer to the `_prepare_metadata` method for
-            the keys and values in the metadata dictionary.
-        """
-        self._check_has_data("`metadata`")
-        if self._metadata is None:
-            self._metadata = self._prepare_metadata()
-        return self._metadata
-
     def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
         """
         Process the the time series data at the given index, before feeding it
@@ -767,157 +646,12 @@ class TslibDataModule(LightningDataModule):
 
         return windows
 
-    def setup(self, stage: str | None = None) -> None:
-        """
-        Setup the data module by preparing the datasets for training,
-        testing and validation.
-
-        Parameters
-        ----------
-        stage: Optional[str]
-            The stage of the data module. This can be "fit", "test" or "predict".
-            If None, the data module will be setup for training.
-        """
-
-        # TODO: Add support for temporal/random/group splits.
-        # Currently, it only supports random splits.
-        # Handle the case where the dataset is empty.
-
-        self._check_has_data("`setup`")
-        total_series = len(self.time_series)
-
-        if total_series == 0:
-            raise ValueError(
-                "The time series dataset is empty. "
-                "Please provide a non-empty dataset."
-            )
-
-        # this is a very rudimentary way to handle the splits when
-        # the dataset is of size equal to 1 or 2.
-        self._indices = torch.randperm(total_series)
-        if total_series == 1:
-            self._train_indices = self._indices
-            self._val_indices = self._indices
-            self._test_indices = self._indices
-        elif total_series == 2:
-            self._train_indices = self._indices[0:1]
-            self._val_indices = self._indices[1:2]
-            self._test_indices = self._indices[1:2]
-        else:
-            self._train_size = int(self.train_val_test_split[0] * total_series)
-            self._val_size = int(self.train_val_test_split[1] * total_series)
-
-            self._train_indices = self._indices[: self._train_size]
-            self._val_indices = self._indices[
-                self._train_size : self._train_size + self._val_size
-            ]
-
-            self._test_indices = self._indices[
-                self._train_size + self._val_size : total_series
-            ]
-
-        if stage == "fit" or stage is None:
-            if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
-                self._train_windows = self._create_windows(self._train_indices)
-                self._val_windows = self._create_windows(self._val_indices)
-
-                self.train_dataset = _TslibDataset(
-                    dataset=self.time_series,
-                    data_module=self,
-                    windows=self._train_windows,
-                    add_relative_time_idx=self.add_relative_time_idx,
-                )
-
-                self.val_dataset = _TslibDataset(
-                    dataset=self.time_series,
-                    data_module=self,
-                    windows=self._val_windows,
-                    add_relative_time_idx=self.add_relative_time_idx,
-                )
-        elif stage == "test":
-            if not hasattr(self, "_test_dataset"):
-                self._test_windows = self._create_windows(self._test_indices)
-
-                self.test_dataset = _TslibDataset(
-                    dataset=self.time_series,
-                    data_module=self,
-                    windows=self._test_windows,
-                    add_relative_time_idx=self.add_relative_time_idx,
-                )
-
-        elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series))
-            self._predict_windows = self._create_windows(predict_indices)
-
-            self.predict_dataset = _TslibDataset(
-                dataset=self.time_series,
-                data_module=self,
-                windows=self._predict_windows,
-                add_relative_time_idx=self.add_relative_time_idx,
-            )
-
-    def train_dataloader(self) -> DataLoader:
-        """
-        Create the train dataloader.
-
-        Returns
-        -------
-        DataLoader
-            The train dataloader.
-        """
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def val_dataloader(self) -> DataLoader:
-        """
-        Create the validation dataloader.
-        Returns
-        -------
-        DataLoader
-            The validation dataloader.
-        """
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        """
-        Create the test dataloader.
-
-        Returns
-        -------
-        DataLoader
-            The test dataloader.
-        """
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def predict_dataloader(self) -> DataLoader:
-        """
-        Create the prediction dataloader.
-
-        Returns
-        -------
-        DataLoader
-            The prediction dataloader.
-        """
-        return DataLoader(
-            self.predict_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
+    def _build_dataset(self, indices: torch.Tensor) -> Dataset:
+        return _TslibDataset(
+            dataset=self.time_series,
+            data_module=self,
+            windows=self._create_windows(indices),
+            add_relative_time_idx=self.add_relative_time_idx,
         )
 
     @staticmethod
