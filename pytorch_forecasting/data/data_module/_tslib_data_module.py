@@ -3,7 +3,7 @@ Experimental data module for integrating `tslib` time series deep learning libra
 """
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 import warnings
 
 from lightning.pytorch import LightningDataModule
@@ -18,6 +18,7 @@ from pytorch_forecasting.data.encoders import (
     NaNLabelEncoder,
     TorchNormalizer,
 )
+from pytorch_forecasting.data.split.splitters import BaseSplitter, RandomSplitter
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
@@ -281,8 +282,18 @@ class TslibDataModule(LightningDataModule):
         Batch size for dataloader.
     num_workers : int, default=0
         Number of workers for dataloader.
-    train_val_test_split : tuple, default=(0.7, 0.15, 0.15)
-        Proportions for train, validation, and test dataset splits.
+    splitter : BaseSplitter or None, default=None
+        Splitting strategy for partitioning series and/or windows into
+        train/val/test folds. If ``None``, defaults to
+        ``RandomSplitter((0.7, 0.15, 0.15))``. See
+        :py:mod:`pytorch_forecasting.data.split.splitters` for available
+        splitters such as ``TemporalSplitter``, ``GroupTimeSplitter``, etc.
+        Takes precedence over ``train_val_test_split`` when both are provided.
+    train_val_test_split : tuple[float, ...] or None, default=None
+        Convenience shorthand for ``RandomSplitter(train_val_test_split)``.
+        Accepts a 3-tuple ``(train, val, test)`` or a 2-tuple ``(train, val)``
+        (test fraction is set to 0 in the latter case). Ignored when
+        ``splitter`` is explicitly provided.
     collate_fn : Optional[callable], default=None
         Custom collate function for the dataloader.
     """  # noqa: E501
@@ -308,7 +319,8 @@ class TslibDataModule(LightningDataModule):
         window_stride: int = 1,
         batch_size: int = 32,
         num_workers: int = 0,
-        train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
+        splitter: BaseSplitter | None = None,
+        train_val_test_split: tuple[float, ...] | None = None,
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
@@ -323,6 +335,15 @@ class TslibDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
+        if splitter is not None:
+            self.splitter = splitter
+        elif train_val_test_split is not None:
+            split = tuple(train_val_test_split)
+            if len(split) == 2:
+                split = (split[0], split[1], 0.0)
+            self.splitter = RandomSplitter(split)
+        else:
+            self.splitter = RandomSplitter()
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
@@ -675,18 +696,7 @@ class TslibDataModule(LightningDataModule):
         """
         Setup the data module by preparing the datasets for training,
         testing and validation.
-
-        Parameters
-        ----------
-        stage: Optional[str]
-            The stage of the data module. This can be "fit", "test" or "predict".
-            If None, the data module will be setup for training.
         """
-
-        # TODO: Add support for temporal/random/group splits.
-        # Currently, it only supports random splits.
-        # Handle the case where the dataset is empty.
-
         total_series = len(self.time_series_dataset)
 
         if total_series == 0:
@@ -695,34 +705,24 @@ class TslibDataModule(LightningDataModule):
                 "Please provide a non-empty dataset."
             )
 
-        # this is a very rudimentary way to handle the splits when
-        # the dataset is of size equal to 1 or 2.
-        self._indices = torch.randperm(total_series)
-        if total_series == 1:
-            self._train_indices = self._indices
-            self._val_indices = self._indices
-            self._test_indices = self._indices
-        elif total_series == 2:
-            self._train_indices = self._indices[0:1]
-            self._val_indices = self._indices[1:2]
-            self._test_indices = self._indices[1:2]
-        else:
-            self._train_size = int(self.train_val_test_split[0] * total_series)
-            self._val_size = int(self.train_val_test_split[1] * total_series)
+        # Split Series
+        self._train_indices, self._val_indices, self._test_indices = (
+            self.splitter.split_series(total_series, self.time_series_dataset)
+        )
 
-            self._train_indices = self._indices[: self._train_size]
-            self._val_indices = self._indices[
-                self._train_size : self._train_size + self._val_size
-            ]
-
-            self._test_indices = self._indices[
-                self._train_size + self._val_size : total_series
-            ]
-
-        if stage == "fit" or stage is None:
-            if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
-                self._train_windows = self._create_windows(self._train_indices)
-                self._val_windows = self._create_windows(self._val_indices)
+        # Window Splitting & Dataset Creation
+        if stage is None or stage == "fit":
+            if self.train_dataset is None or self.val_dataset is None:
+                if self.splitter.has_window_split:
+                    all_windows = self._create_windows(self._train_indices)
+                    self._train_windows, self._val_windows, self._test_windows = (
+                        self.splitter.split_windows(
+                            all_windows, self.time_series_dataset
+                        )
+                    )
+                else:
+                    self._train_windows = self._create_windows(self._train_indices)
+                    self._val_windows = self._create_windows(self._val_indices)
 
                 self.train_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,
@@ -737,9 +737,16 @@ class TslibDataModule(LightningDataModule):
                     windows=self._val_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
+
         elif stage == "test":
-            if not hasattr(self, "_test_dataset"):
-                self._test_windows = self._create_windows(self._test_indices)
+            if not hasattr(self, "_test_windows") or self.test_dataset is None:
+                if self.splitter.has_window_split:
+                    all_windows = self._create_windows(torch.arange(total_series))
+                    _, _, self._test_windows = self.splitter.split_windows(
+                        all_windows, self.time_series_dataset
+                    )
+                else:
+                    self._test_windows = self._create_windows(self._test_indices)
 
                 self.test_dataset = _TslibDataset(
                     dataset=self.time_series_dataset,
