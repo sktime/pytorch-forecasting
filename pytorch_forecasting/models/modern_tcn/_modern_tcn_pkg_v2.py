@@ -4,14 +4,7 @@ from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
 class ModernTCN_pkg_v2(Base_pkg):
-    """
-    ModernTCN package container
-
-    GitHub Repository:https://github.com/luodhhh/ModernTCN
-
-    Research Paper: https://openreview.net/forum?id=vpJMJerXHU
-
-    """
+    """ModernTCN package container"""
 
     _tags = {
         "info:name": "ModernTCN",

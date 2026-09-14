@@ -17,10 +17,6 @@ class ModernTCN(BaseModel):
     """
     ModernTCN: A Modern Pure Convolution Structure for General Time Series Analysis.
 
-    GitHub Repository:https://github.com/luodhhh/ModernTCN
-
-    Research Paper: https://openreview.net/forum?id=vpJMJerXHU
-
     Parameters
     ----------
     loss : nn.Module
@@ -58,6 +54,11 @@ class ModernTCN(BaseModel):
     metadata : dict or None
         Dataset metadata injected by the package layer (encoder lengths,
         target dim, etc.).
+
+    References
+    ----------
+    [1] ModernTCN: A Modern Pure Convolution Structure for General Time Series Analysis (https://arxiv.org/abs/2401.17593).
+    [2] https://github.com/luodhhh/ModernTCN
     """
 
     @classmethod
@@ -147,7 +148,18 @@ class ModernTCN(BaseModel):
         )
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """Forward pass of ModernTCN."""
+        """Forward pass of ModernTCN.
+
+        Parameters
+        ----------
+        x : dict[str, torch.Tensor]
+            Dictionary containing input tensors
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Dictionary with a 'prediction' tensor containing the model's forecast
+        """
         encoder_cont = x["encoder_cont"]
         target = x["target_past"]
         if target.ndim == 2:
