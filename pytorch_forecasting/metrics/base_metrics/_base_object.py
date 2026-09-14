@@ -78,3 +78,15 @@ class _BasePtMetric(_BaseObject):
         from pytorch_forecasting.data import TorchNormalizer
 
         return TorchNormalizer()
+
+    @classmethod
+    def get_default_params(cls):
+        """Return extra keyword arguments used by the test-framework
+        for the fixtures of tests for models.
+
+        Returns
+        -------
+        dict
+            Trainer, dataloader, or data-preparation kwargs for integration tests.
+        """
+        return {}
