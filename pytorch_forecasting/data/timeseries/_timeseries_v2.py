@@ -10,6 +10,7 @@ from warnings import warn
 import numpy as np
 import pandas as pd
 import torch
+from torch.utils.data import Dataset
 
 from pytorch_forecasting.data._metadata import TimeSeriesMetadata
 from pytorch_forecasting.utils._coerce import _coerce_to_list
@@ -26,7 +27,7 @@ from pytorch_forecasting.utils._validation import _check_column_names, _check_ty
 #######################################################################################
 
 
-class TimeSeries:
+class TimeSeries(Dataset):
     """Time series data stored in a pandas DataFrame, plus its schema.
 
     Parameters
