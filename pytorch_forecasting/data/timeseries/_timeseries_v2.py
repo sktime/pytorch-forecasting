@@ -17,7 +17,7 @@ from pytorch_forecasting.utils._coerce import _coerce_to_list
 from pytorch_forecasting.utils._validation import _check_column_names, _check_type
 
 #######################################################################################
-# Disclaimer: This datatype is still work in progress and experimental, please
+# Disclaimer: This dataset is still work in progress and experimental, please
 # use with care. This class is a basic skeleton of how the data-handling pipeline may
 # look like in the future.
 # This class is the standard input and output type of the v2 API - a data
@@ -28,7 +28,7 @@ from pytorch_forecasting.utils._validation import _check_column_names, _check_ty
 
 
 class TimeSeries(Dataset):
-    """Time series data stored in a pandas DataFrame, plus its schema.
+    """PyTorch Dataset for time series data stored in pandas DataFrame.
 
     Parameters
     ----------
