@@ -730,8 +730,8 @@ def test_group_normalizer_uses_groups():
     group0_idx = ts._group_to_idx[0]
     group1_idx = ts._group_to_idx[1]
 
-    target0 = dm._train_preprocessed.get(group0_idx)
-    target1 = dm._train_preprocessed.get(group1_idx)
+    target0 = dm.train_dataset.preprocessed_data.get(group0_idx)
+    target1 = dm.train_dataset.preprocessed_data.get(group1_idx)
 
     if target0 is not None and target1 is not None:
         mean0 = target0["target"].mean().abs()
