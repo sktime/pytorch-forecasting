@@ -6,20 +6,23 @@
 # For now, this pipeline handles the simplest situation: The whole data can be loaded
 # into the memory.
 #######################################################################################
-
-from pathlib import Path
-import pickle
-from typing import Any, Optional, Union
+from typing import Any
 from warnings import warn
 
-from lightning.pytorch import LightningDataModule
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
 from pytorch_forecasting.adapters import ScalerAdapter
+from pytorch_forecasting.data.data_module.base._base_data_module import (
+    NORMALIZER,
+    BaseTimeSeriesDataModule,
+)
+from pytorch_forecasting.data.data_module.encoder_decoder._encoder_decoder_dataset import (  # noqa: E501
+    _ProcessedEncoderDecoderDataset,
+)
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     MultiNormalizer,
@@ -29,10 +32,8 @@ from pytorch_forecasting.data.encoders import (
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
-NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
-
-class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
+class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
     """
     Lightning DataModule for processing time series data in an encoder-decoder format.
 
@@ -136,84 +137,68 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
-        self.time_series_dataset = time_series_dataset
+        super().__init__(
+            time_series_dataset=time_series_dataset,
+            target_normalizer=target_normalizer,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            train_val_test_split=train_val_test_split,
+            add_relative_time_idx=add_relative_time_idx,
+        )
+
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
         self.max_prediction_length = max_prediction_length
         self.min_prediction_length = min_prediction_length
         self.min_prediction_idx = min_prediction_idx
         self.allow_missing_timesteps = allow_missing_timesteps
-        self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
-        self.target_normalizer = target_normalizer
         self.categorical_encoders = categorical_encoders
         self.scalers = scalers
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.train_val_test_split = train_val_test_split
 
-        warn(
-            "EncoderDecoderTimeSeriesDataModule is part of an experimental "
-            "rework of the "
-            "pytorch-forecasting data layer, "
-            "scheduled for release with v2.0.0. "
-            "The API is not stable and may change without prior warning. "
-            "For beta testing, but not for stable production use. "
-            "Feedback and suggestions are very welcome in "
-            "pytorch-forecasting issue 1736, "
-            "https://github.com/sktime/pytorch-forecasting/issues/1736",
-            UserWarning,
-        )
-
-        super().__init__()
-
-        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
-            self._target_normalizer = None
-            self._auto_normalizer = True
-        elif isinstance(target_normalizer, (tuple, list)):
-            self._target_normalizer = ScalerAdapter(
-                MultiNormalizer(list(target_normalizer))
-            )
-            self._auto_normalizer = False
-        else:
-            self._target_normalizer = ScalerAdapter(self.target_normalizer)
-            self._auto_normalizer = False
-
-        self.time_series_metadata = time_series_dataset.get_metadata()
         self._min_prediction_length = min_prediction_length or max_prediction_length
         self._min_encoder_length = min_encoder_length or max_encoder_length
         self._categorical_encoders = _coerce_to_dict(categorical_encoders)
-        self.n_targets = len(self.time_series_metadata["cols"]["y"])
-
-        self.categorical_indices = []
-        self.continuous_indices = []
-        self._metadata = None
+        self._scalers = _coerce_to_dict(scalers)
         self._target_normalizer_fitted = False
         self._feature_scalers_fitted = False
-
-        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
-            if self.time_series_metadata["col_type"].get(col) == "C":
-                self.categorical_indices.append(idx)
-            else:
-                self.continuous_indices.append(idx)
 
         self._scalers = {
             k: ScalerAdapter(v) for k, v in _coerce_to_dict(scalers).items()
         }
         self._build_cont_scalers()
 
-    def _build_cont_scalers(self):
-        """Pre-resolve continuous feature scalers to (position, adapter) pairs."""
-        self._cont_scalers = [
-            (i, self._scalers[name])
-            for i, name in enumerate(
-                self.time_series_metadata["cols"]["x"][idx]
-                for idx in self.continuous_indices
-            )
-            if name in self._scalers
-        ]
+    def _context_length(self) -> int:
+        return self.max_encoder_length
+
+    def _prediction_length(self) -> int:
+        return self.max_prediction_length
+
+    def _build_dataset(self, indices: torch.Tensor) -> Dataset:
+        """Preprocess series, create windows, and wrap them in a Dataset.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            Series indices for this split.
+
+        Returns
+        -------
+        Dataset
+            ``_ProcessedEncoderDecoderDataset`` over the split windows.
+        """
+        preprocessed = {
+            idx.item(): self._preprocess_data(idx.item()) for idx in indices
+        }
+        windows = self._create_windows(indices)
+        return _ProcessedEncoderDecoderDataset(
+            self,
+            windows,
+            preprocessed,
+            self.add_relative_time_idx,
+        )
 
     def _prepare_metadata(self):
         """Prepare metadata for model initialisation.
@@ -313,36 +298,41 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         return metadata
 
-    @property
-    def metadata(self):
-        """Compute metadata for model initialization.
+    # region Preprocessing
 
-        This property returns a dictionary containing the shapes and key information
-        related to the time series model. The metadata includes:
+    # TODO: once TSLib preprocessing is done,
+    # we need to work on refactoring of preprocessing logic.
+    # https://github.com/sktime/pytorch-forecasting/issues/2330
 
-        * ``encoder_cat``: Number of categorical variables in the encoder.
-        * ``encoder_cont``: Number of continuous variables in the encoder.
-        * ``decoder_cat``: Number of categorical variables in the decoder that are
-                            known in advance.
-        * ``decoder_cont``:  Number of continuous variables in the decoder that are
-                            known in advance.
-        * ``target``: Number of target variables.
+    def _build_cont_scalers(self):
+        """Pre-resolve continuous feature scalers to (position, adapter) pairs."""
+        self._cont_scalers = [
+            (i, self._scalers[name])
+            for i, name in enumerate(
+                self.time_series_metadata["cols"]["x"][idx]
+                for idx in self.continuous_indices
+            )
+            if name in self._scalers
+        ]
 
-        If static features are present, the following keys are added:
-
-        * ``static_categorical_features``: Number of static categorical features
-        * ``static_continuous_features``: Number of static continuous features
-
-        It also contains the following information:
-
-        * ``max_encoder_length``: maximum encoder length
-        * ``max_prediction_length``: maximum prediction length
-        * ``min_encoder_length``: minimum encoder length
-        * ``min_prediction_length``: minimum prediction length
-        """
-        if self._metadata is None:
-            self._metadata = self._prepare_metadata()
-        return self._metadata
+    def _coerce_target_normalizer(
+        self,
+        target_normalizer: NORMALIZER
+        | str
+        | list[NORMALIZER]
+        | tuple[NORMALIZER]
+        | None,
+    ):
+        _target_normalizer = None
+        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
+            self._auto_normalizer = True
+        elif isinstance(target_normalizer, (tuple, list)):
+            _target_normalizer = ScalerAdapter(MultiNormalizer(list(target_normalizer)))
+            self._auto_normalizer = False
+        else:
+            _target_normalizer = ScalerAdapter(self.target_normalizer)
+            self._auto_normalizer = False
+        return _target_normalizer
 
     def _get_group_dataframe(
         self, series_idx: int, n_timesteps: int
@@ -478,6 +468,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "length": len(target),
             "time_mask": time_mask,
             "times": times,
+            "timestep": times,
             "cutoff_time": sample["cutoff_time"],
         }
 
@@ -552,256 +543,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             adapter.fit(feat_data, X)
 
         self._feature_scalers_fitted = True
-
-    class _ProcessedEncoderDecoderDataset(Dataset):
-        """PyTorch Dataset for processed encoder-decoder time series data.
-
-        Parameters
-        ----------
-        data_module : EncoderDecoderTimeSeriesDataModule
-            The data module handling preprocessing and metadata configuration.
-        windows : List[Tuple[int, int, int, int]]
-            List of window tuples containing
-            (series_idx, start_idx, enc_length, pred_length).
-        add_relative_time_idx : bool, default=False
-            Whether to include relative time indices.
-        preprocessed_data : Optional[dict[int, dict[str, Any]]], default=None
-            Preprocessed data for all time series indices on input dataset.
-        """
-
-        def __init__(
-            self,
-            data_module: "EncoderDecoderTimeSeriesDataModule",
-            windows: list[tuple[int, int, int, int]],
-            preprocessed_data: dict[int, dict[str, Any]],
-            add_relative_time_idx: bool = False,
-        ):
-            self.data_module = data_module
-            self.windows = windows
-            self.preprocessed_data = preprocessed_data
-            self.add_relative_time_idx = add_relative_time_idx
-
-        def __len__(self):
-            return len(self.windows)
-
-        def __getitem__(self, idx):
-            """Retrieve a processed time series window for dataloader input.
-
-            Parameters
-            ----------
-            idx : int
-                Index of the window to retrieve from the dataset.
-
-            Returns
-            -------
-            x : dict
-                Dictionary containing model inputs:
-
-                * ``encoder_cat`` : tensor of shape (enc_length, n_cat_features)
-                  Categorical features for the encoder.
-                * ``encoder_cont`` : tensor of shape (enc_length, n_cont_features)
-                  Continuous features for the encoder.
-                * ``decoder_cat`` : tensor of shape (pred_length, n_cat_features)
-                  Categorical features for the decoder.
-                * ``decoder_cont`` : tensor of shape (pred_length, n_cont_features)
-                  Continuous features for the decoder.
-                * ``encoder_lengths`` : tensor of shape (1,)
-                  Length of the encoder sequence.
-                * ``decoder_lengths`` : tensor of shape (1,)
-                  Length of the decoder sequence.
-                * ``decoder_target_lengths`` : tensor of shape (1,)
-                  Length of the decoder target sequence.
-                * ``groups`` : tensor of shape (1,)
-                  Group identifier for the time series instance.
-                * ``encoder_time_idx`` : tensor of shape (enc_length,)
-                  Time indices for the encoder sequence.
-                * ``decoder_time_idx`` : tensor of shape (pred_length,)
-                  Time indices for the decoder sequence.
-                * ``target_past`` : torch.Tensor of shape (enc_length,)
-                  Historical target values for the encoder sequence.
-                * ``target_scale`` : tensor of shape (1,)
-                  Scaling factor for the target values.
-                * ``encoder_mask`` : tensor of shape (enc_length,)
-                  Boolean mask indicating valid encoder time points.
-                * ``decoder_mask`` : tensor of shape (pred_length,)
-                  Boolean mask indicating valid decoder time points.
-
-                  If static features are present, the following keys are added:
-
-                * ``static_categorical_features`` : tensor of shape
-                                                    (1, n_static_cat_features), optional
-                  Static categorical features, if available.
-                * ``static_continuous_features`` : tensor of shape (1, 0), optional
-                  Placeholder for static continuous features (currently empty).
-
-            y : torch.Tensor or list of torch.Tensor
-                Target values for the decoder sequence.
-                If ``n_targets`` > 1, a list of tensors each of shape (pred_length,)
-                is returned. Otherwise, a tensor of shape (pred_length,) is returned.
-            """
-            series_idx, start_idx, enc_length, pred_length = self.windows[idx]
-            data = self.preprocessed_data[series_idx]
-
-            end_idx = start_idx + enc_length + pred_length
-            encoder_indices = slice(start_idx, start_idx + enc_length)
-            decoder_indices = slice(start_idx + enc_length, end_idx)
-
-            target_past = data["target"][encoder_indices]
-
-            # apply encoder normalizer on target_past.
-            normalizer = self.data_module._target_normalizer
-            if normalizer is not None and normalizer.fit_per_sequence:
-                target_past = (
-                    self.data_module._target_normalizer.fit_transform_sequence(
-                        target_past
-                    )
-                )
-
-            target_original_past = data["target_original"][encoder_indices]
-            valid_mask = ~torch.isnan(target_original_past)
-            abs_vals = target_original_past.abs().masked_fill(~valid_mask, 0.0)
-            counts = valid_mask.sum(dim=0).clamp(min=1)
-            target_scale_vec = abs_vals.sum(dim=0) / counts
-            target_scale_vec = torch.where(
-                (target_scale_vec == 0) | torch.isnan(target_scale_vec),
-                torch.ones_like(target_scale_vec),
-                target_scale_vec,
-            )
-
-            if self.data_module.n_targets > 1:
-                target_scale = [
-                    target_scale_vec[i] for i in range(self.data_module.n_targets)
-                ]
-            else:
-                target_scale = target_scale_vec.squeeze(0)
-
-            encoder_mask = (
-                data["time_mask"][encoder_indices]
-                if "time_mask" in data
-                else torch.ones(enc_length, dtype=torch.bool)
-            )
-            decoder_mask = (
-                data["time_mask"][decoder_indices]
-                if "time_mask" in data
-                else torch.zeros(pred_length, dtype=torch.bool)
-            )
-
-            encoder_cat = data["features"]["categorical"][encoder_indices]
-
-            encoder_cont = data["features"]["continuous"][encoder_indices]
-
-            # apply encoder normalizer on cont features (assuming the presence of
-            # EncoderNormalizer)
-            for feat_idx, adapter in self.data_module._cont_scalers:
-                if adapter.fit_per_sequence:
-                    encoder_cont[:, feat_idx] = adapter.fit_transform_sequence(
-                        encoder_cont[:, feat_idx]
-                    )
-
-            features = data["features"]
-            metadata = self.data_module.time_series_metadata
-
-            known_cat_indices = [
-                i
-                for i, col in enumerate(metadata["cols"]["x"])
-                if metadata["col_type"].get(col) == "C"
-                and metadata["col_known"].get(col) == "K"
-            ]
-
-            known_cont_indices = [
-                i
-                for i, col in enumerate(metadata["cols"]["x"])
-                if metadata["col_type"].get(col) == "F"
-                and metadata["col_known"].get(col) == "K"
-            ]
-
-            cat_map = {
-                orig_idx: i
-                for i, orig_idx in enumerate(self.data_module.categorical_indices)
-            }
-            cont_map = {
-                orig_idx: i
-                for i, orig_idx in enumerate(self.data_module.continuous_indices)
-            }
-
-            mapped_known_cat_indices = [
-                cat_map[idx] for idx in known_cat_indices if idx in cat_map
-            ]
-            mapped_known_cont_indices = [
-                cont_map[idx] for idx in known_cont_indices if idx in cont_map
-            ]
-
-            decoder_cat = (
-                features["categorical"][decoder_indices][:, mapped_known_cat_indices]
-                if mapped_known_cat_indices
-                else torch.zeros((pred_length, 0))
-            )
-
-            decoder_cont = (
-                features["continuous"][decoder_indices][:, mapped_known_cont_indices]
-                if mapped_known_cont_indices
-                else torch.zeros((pred_length, 0))
-            )
-
-            x = {
-                "encoder_cat": encoder_cat,
-                "encoder_cont": encoder_cont,
-                "decoder_cat": decoder_cat,
-                "decoder_cont": decoder_cont,
-                "encoder_lengths": torch.tensor(enc_length),
-                "decoder_lengths": torch.tensor(pred_length),
-                "decoder_target_lengths": torch.tensor(pred_length),
-                "groups": data["group"],
-                "target_past": target_past,
-                "encoder_time_idx": torch.arange(enc_length),
-                "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
-                "target_scale": target_scale,
-                "encoder_mask": encoder_mask,
-                "decoder_mask": decoder_mask,
-            }
-            if data["static"] is not None:
-                raw_st_tensor = data.get("static")
-                static_col_names = self.data_module.time_series_metadata["cols"]["st"]
-
-                is_categorical_mask = torch.tensor(
-                    [
-                        self.data_module.time_series_metadata["col_type"].get(col_name)
-                        == "C"
-                        for col_name in static_col_names
-                    ],
-                    dtype=torch.bool,
-                )
-
-                is_continuous_mask = ~is_categorical_mask
-
-                st_cat_values_for_item = raw_st_tensor[is_categorical_mask]
-                st_cont_values_for_item = raw_st_tensor[is_continuous_mask]
-
-                if st_cat_values_for_item.shape[0] > 0:
-                    x["static_categorical_features"] = st_cat_values_for_item.unsqueeze(
-                        0
-                    )
-                else:
-                    x["static_categorical_features"] = torch.zeros(
-                        (1, 0), dtype=torch.float32
-                    )
-
-                if st_cont_values_for_item.shape[0] > 0:
-                    x["static_continuous_features"] = st_cont_values_for_item.unsqueeze(
-                        0
-                    )
-                else:
-                    x["static_continuous_features"] = torch.zeros(
-                        (1, 0), dtype=torch.float32
-                    )
-
-            y = data["target"][decoder_indices]
-
-            if y.shape[-1] > 1:
-                y = [y[:, i] for i in range(y.shape[-1])]
-            else:
-                y = y.squeeze(-1)
-            return x, y
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
@@ -958,11 +699,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         normalizer = self._get_auto_normalizer(data_properties)
         self._target_normalizer = ScalerAdapter(normalizer)
 
-    def _ensure_split(self):
-        """Compute train/val/test indices once and cache them."""
+    def _ensure_split(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Split data indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
+        """
         if hasattr(self, "_split_indices"):
             return
-
+        # this is a very rudimentary way to handle the splits when
+        # the dataset is of size equal to 1 or 2.
         total_series = len(self.time_series_dataset)
         self._split_indices = torch.randperm(total_series)
 
@@ -974,27 +719,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._train_size : self._train_size + self._val_size
         ]
         self._test_indices = self._split_indices[self._train_size + self._val_size :]
-
-    def _make_dataset(self, indices: torch.Tensor):
-        """Preprocess a set of series indices into a windowed Dataset.
-
-        Returns
-        -------
-        preprocessed : dict
-            preprocessed dictionary of series indices.
-        windows : list
-            list of (series_idx, start_idx, enc_length, pred_length)
-        dataset : Dataset
-            dataset wrapping the windows over the preprocessed cache
-        """
-        preprocessed = {
-            idx.item(): self._preprocess_data(idx.item()) for idx in indices
-        }
-        windows = self._create_windows(indices)
-        dataset = self._ProcessedEncoderDecoderDataset(
-            self, windows, preprocessed, self.add_relative_time_idx
-        )
-        return preprocessed, windows, dataset
 
     def setup(self, stage: str | None = None):
         """Prepare the datasets for training, validation, testing, or prediction.
@@ -1016,60 +740,40 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self._fit_target_normalizer(self._train_indices)
             if not self._feature_scalers_fitted:
                 self._fit_scalers(self._train_indices)
-            if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
-                self._train_preprocessed, self.train_windows, self.train_dataset = (
-                    self._make_dataset(self._train_indices)
-                )
-                self._val_preprocessed, self.val_windows, self.val_dataset = (
-                    self._make_dataset(self._val_indices)
-                )
-
+            if self.train_dataset is None or self.val_dataset is None:
+                self.train_dataset = self._build_dataset(self._train_indices)
+                self.val_dataset = self._build_dataset(self._val_indices)
+                self.train_windows = self.train_dataset.windows
+                self._train_preprocessed = self.train_dataset.preprocessed_data
+                self.val_windows = self.val_dataset.windows
+                self._val_preprocessed = self.val_dataset.preprocessed_data
         elif stage == "test":
-            if not hasattr(self, "test_dataset"):
-                self._test_preprocessed, self.test_windows, self.test_dataset = (
-                    self._make_dataset(self._test_indices)
-                )
+            if self.test_dataset is None:
+                self.test_dataset = self._build_dataset(self._test_indices)
+                self.test_windows = self.test_dataset.windows
+                self._test_preprocessed = self.test_dataset.preprocessed_data
         elif stage == "predict":
             predict_indices = torch.arange(len(self.time_series_dataset))
-            self._predict_preprocessed, self.predict_windows, self.predict_dataset = (
-                self._make_dataset(predict_indices)
-            )
+            self.predict_dataset = self._build_dataset(predict_indices)
+            self.predict_windows = self.predict_dataset.windows
+            self._predict_preprocessed = self.predict_dataset.preprocessed_data
 
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=True,
-            collate_fn=self.collate_fn,
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def predict_dataloader(self):
-        return DataLoader(
-            self.predict_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
+    # endregion
 
     @staticmethod
     def collate_fn(batch):
+        """Stack encoder-decoder samples into batched ``x`` and ``y``.
+
+        Parameters
+        ----------
+        batch : list of tuple[dict, target]
+            Samples from ``_ProcessedEncoderDecoderDataset`` dataset.
+
+        Returns
+        -------
+        tuple[dict, torch.Tensor or list[torch.Tensor]]
+            Collated inputs and targets. Multivariate targets become a list of tensors.
+        """
         x_batch = {
             "encoder_cat": torch.stack([x["encoder_cat"] for x, _ in batch]),
             "encoder_cont": torch.stack([x["encoder_cont"] for x, _ in batch]),
@@ -1087,6 +791,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "encoder_mask": torch.stack([x["encoder_mask"] for x, _ in batch]),
             "decoder_mask": torch.stack([x["decoder_mask"] for x, _ in batch]),
         }
+
+        if "static_categorical_features" in batch[0][0]:
+            x_batch["static_categorical_features"] = torch.stack(
+                [x["static_categorical_features"] for x, _ in batch]
+            )
+            x_batch["static_continuous_features"] = torch.stack(
+                [x["static_continuous_features"] for x, _ in batch]
+            )
+
         if isinstance(batch[0][0]["target_scale"], list | tuple):
             num_targets = len(batch[0][0]["target_scale"])
             target_scale = [
@@ -1097,14 +810,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             target_scale = torch.stack([x["target_scale"] for x, _ in batch])
 
         x_batch["target_scale"] = target_scale
-
-        if "static_categorical_features" in batch[0][0]:
-            x_batch["static_categorical_features"] = torch.stack(
-                [x["static_categorical_features"] for x, _ in batch]
-            )
-            x_batch["static_continuous_features"] = torch.stack(
-                [x["static_continuous_features"] for x, _ in batch]
-            )
 
         if isinstance(batch[0][1], list | tuple):
             num_targets = len(batch[0][1])
