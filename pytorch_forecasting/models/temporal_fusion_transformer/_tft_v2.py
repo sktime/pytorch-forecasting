@@ -247,14 +247,14 @@ class TFT(BaseModel):
                 -1, sequence.size(1), -1
             )
 
-            attended_output = self.self_attention(
+            attended_output, _ = self.self_attention(
                 sequence + expanded_static_context,
                 sequence,
                 sequence,
                 need_weights=False,
             )
         else:
-            attended_output = self.self_attention(
+            attended_output, _ = self.self_attention(
                 sequence, sequence, sequence, need_weights=False
             )
 
