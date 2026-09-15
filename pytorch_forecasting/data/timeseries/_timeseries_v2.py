@@ -312,17 +312,19 @@ class TimeSeries(Dataset):
         """
         time = self._time
         feature_cols = self.feature_cols
-        target = self._target
-        known = self._known
-        static = self._static
-        group = self._group
+        _target = self._target
+        _known = self._known
+        _static = self._static
+        _group = self._group
+        _groups = self._groups
+        _group_ids = self._group_ids
         weight = self.weight
         data_future = self.data_future
 
-        group_id = self._group_ids[index]
+        group_id = _group_ids[index]
 
-        if group:
-            mask = self._groups[group_id]
+        if _group:
+            mask = _groups[group_id]
             data = self.data.loc[mask]
         else:
             data = self.data
@@ -331,7 +333,7 @@ class TimeSeries(Dataset):
 
         # PyTorch wants writeable arrays
         data_vals = data[time].to_numpy(copy=True)
-        data_tgt_vals = data[target].to_numpy(copy=True)
+        data_tgt_vals = data[_target].to_numpy(copy=True)
         data_feat_vals = data[feature_cols].to_numpy(copy=True)
 
         result = {
@@ -341,14 +343,14 @@ class TimeSeries(Dataset):
             "group": torch.tensor([self._group_to_idx[group_id]], dtype=torch.long),
             # PyTorch wants writeable arrays
             "st": torch.tensor(
-                data[static].iloc[0].to_numpy(copy=True) if static else []
+                data[_static].iloc[0].to_numpy(copy=True) if _static else []
             ),
             "cutoff_time": cutoff_time,
         }
 
         if data_future is not None:
-            if group:
-                group_arg = group[0] if len(group) == 1 else group
+            if _group:
+                group_arg = _group[0] if len(_group) == 1 else _group
                 future_mask = self.data_future.groupby(group_arg).groups[group_id]
                 future_data = self.data_future.loc[future_mask]
             else:
@@ -362,7 +364,7 @@ class TimeSeries(Dataset):
 
             num_timepoints = len(combined_times)
             x_merged = np.full((num_timepoints, len(feature_cols)), np.nan)
-            y_merged = np.full((num_timepoints, len(target)), np.nan)
+            y_merged = np.full((num_timepoints, len(_target)), np.nan)
 
             current_time_indices = {t: i for i, t in enumerate(combined_times)}
             for i, t in enumerate(data_vals):
@@ -373,7 +375,7 @@ class TimeSeries(Dataset):
             for i, t in enumerate(data_fut_vals):
                 if t in current_time_indices:
                     idx = current_time_indices[t]
-                    for j, col in enumerate(known):
+                    for j, col in enumerate(_known):
                         if col in feature_cols:
                             feature_idx = feature_cols.index(col)
                             # PyTorch wants writeable arrays
