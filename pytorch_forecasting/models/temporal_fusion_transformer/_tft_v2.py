@@ -247,11 +247,16 @@ class TFT(BaseModel):
                 -1, sequence.size(1), -1
             )
 
-            attended_output, _ = self.self_attention(
-                sequence + expanded_static_context, sequence, sequence
+            attended_output = self.self_attention(
+                sequence + expanded_static_context,
+                sequence,
+                sequence,
+                need_weights=False,
             )
         else:
-            attended_output, _ = self.self_attention(sequence, sequence, sequence)
+            attended_output = self.self_attention(
+                sequence, sequence, sequence, need_weights=False
+            )
 
         decoder_attended = attended_output[:, -self.max_prediction_length :, :]
 
