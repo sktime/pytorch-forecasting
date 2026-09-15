@@ -5,9 +5,9 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [v2-dev]
   pull_request:
-    branches: [main]
+    branches: [v2-dev]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

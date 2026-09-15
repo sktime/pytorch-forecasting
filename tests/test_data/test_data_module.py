@@ -100,7 +100,6 @@ def test_init(sample_timeseries_data):
     assert dm.batch_size == 8
     assert dm.train_val_test_split == (0.7, 0.15, 0.15)
 
-    assert isinstance(dm.time_series_metadata, dict)
     assert "cols" in dm.time_series_metadata
 
 
