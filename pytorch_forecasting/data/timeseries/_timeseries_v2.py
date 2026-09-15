@@ -10,13 +10,14 @@ from warnings import warn
 import numpy as np
 import pandas as pd
 import torch
+from torch.utils.data import Dataset
 
 from pytorch_forecasting.data._metadata import TimeSeriesMetadata
 from pytorch_forecasting.utils._coerce import _coerce_to_list
 from pytorch_forecasting.utils._validation import _check_column_names, _check_type
 
 #######################################################################################
-# Disclaimer: This datatype is still work in progress and experimental, please
+# Disclaimer: This dataset is still work in progress and experimental, please
 # use with care. This class is a basic skeleton of how the data-handling pipeline may
 # look like in the future.
 # This class is the standard input and output type of the v2 API - a data
@@ -26,8 +27,8 @@ from pytorch_forecasting.utils._validation import _check_column_names, _check_ty
 #######################################################################################
 
 
-class TimeSeries:
-    """Time series data stored in a pandas DataFrame, plus its schema.
+class TimeSeries(Dataset):
+    """PyTorch Dataset for time series data stored in pandas DataFrame.
 
     Parameters
     ----------
@@ -311,17 +312,19 @@ class TimeSeries:
         """
         time = self._time
         feature_cols = self.feature_cols
-        target = self._target
-        known = self._known
-        static = self._static
-        group = self._group
+        _target = self._target
+        _known = self._known
+        _static = self._static
+        _group = self._group
+        _groups = self._groups
+        _group_ids = self._group_ids
         weight = self.weight
         data_future = self.data_future
 
-        group_id = self._group_ids[index]
+        group_id = _group_ids[index]
 
-        if group:
-            mask = self._groups[group_id]
+        if _group:
+            mask = _groups[group_id]
             data = self.data.loc[mask]
         else:
             data = self.data
@@ -330,7 +333,7 @@ class TimeSeries:
 
         # PyTorch wants writeable arrays
         data_vals = data[time].to_numpy(copy=True)
-        data_tgt_vals = data[target].to_numpy(copy=True)
+        data_tgt_vals = data[_target].to_numpy(copy=True)
         data_feat_vals = data[feature_cols].to_numpy(copy=True)
 
         result = {
@@ -340,14 +343,14 @@ class TimeSeries:
             "group": torch.tensor([self._group_to_idx[group_id]], dtype=torch.long),
             # PyTorch wants writeable arrays
             "st": torch.tensor(
-                data[static].iloc[0].to_numpy(copy=True) if static else []
+                data[_static].iloc[0].to_numpy(copy=True) if _static else []
             ),
             "cutoff_time": cutoff_time,
         }
 
         if data_future is not None:
-            if group:
-                group_arg = group[0] if len(group) == 1 else group
+            if _group:
+                group_arg = _group[0] if len(_group) == 1 else _group
                 future_mask = self.data_future.groupby(group_arg).groups[group_id]
                 future_data = self.data_future.loc[future_mask]
             else:
@@ -361,7 +364,7 @@ class TimeSeries:
 
             num_timepoints = len(combined_times)
             x_merged = np.full((num_timepoints, len(feature_cols)), np.nan)
-            y_merged = np.full((num_timepoints, len(target)), np.nan)
+            y_merged = np.full((num_timepoints, len(_target)), np.nan)
 
             current_time_indices = {t: i for i, t in enumerate(combined_times)}
             for i, t in enumerate(data_vals):
@@ -372,7 +375,7 @@ class TimeSeries:
             for i, t in enumerate(data_fut_vals):
                 if t in current_time_indices:
                     idx = current_time_indices[t]
-                    for j, col in enumerate(known):
+                    for j, col in enumerate(_known):
                         if col in feature_cols:
                             feature_idx = feature_cols.index(col)
                             # PyTorch wants writeable arrays
