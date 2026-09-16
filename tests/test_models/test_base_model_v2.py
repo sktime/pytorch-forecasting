@@ -3,7 +3,7 @@ import warnings
 import pytest
 import torch
 
-from pytorch_forecasting.metrics import MAE
+from pytorch_forecasting.metrics import MAE, QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -122,3 +122,50 @@ def test_optimizer_instance():
     model.optimizer = opt
     cfg = model.configure_optimizers()
     assert cfg["optimizer"] is opt
+
+
+def test_step_output_size_point_loss():
+    """Point loss (MAE) produces a single output per timestep."""
+    model = _make_model(loss=MAE())
+    assert model.step_output_size == 1
+
+
+def test_step_output_size_quantile_loss():
+    """QuantileLoss with 3 quantiles needs 3 outputs per timestep."""
+    model = _make_model(loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]))
+    assert model.step_output_size == 3
+
+
+def test_transform_output_none_is_identity():
+    """No target_scale means predictions pass through untouched."""
+    model = _make_model()
+    raw = torch.randn(2, 6, 1)
+    assert torch.equal(model.transform_output(raw, None), raw)
+
+
+def test_transform_output_dict_target_scale():
+    """Dict target_scale applies affine denormalization correctly."""
+    model = _make_model()
+    raw = torch.randn(4, 12, 1)
+    center = torch.tensor([10.0, 20.0, 30.0, 40.0])
+    scale = torch.tensor([2.0, 3.0, 4.0, 5.0])
+    target_scale = {"center": center, "scale": scale}
+
+    result = model.transform_output(raw, target_scale)
+
+    assert result.shape == raw.shape
+    assert torch.allclose(result[0], raw[0] * 2.0 + 10.0)
+    assert torch.allclose(result[3], raw[3] * 5.0 + 40.0)
+
+
+def test_transform_output_plain_tensor_target_scale():
+    """Plain tensor target_scale correctly applies affine denormalization."""
+    model = _make_model()
+    raw = torch.randn(4, 12, 1)
+    target_scale = torch.tensor([[10.0, 2.0], [20.0, 3.0], [30.0, 4.0], [40.0, 5.0]])
+
+    result = model.transform_output(raw, target_scale)
+
+    assert result.shape == raw.shape
+    assert torch.allclose(result[0], raw[0] * 2.0 + 10.0)
+    assert torch.allclose(result[2], raw[2] * 4.0 + 30.0)
