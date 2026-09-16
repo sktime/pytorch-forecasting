@@ -27,6 +27,56 @@ from pytorch_forecasting.utils import apply_to_list, to_list
 
 
 class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
+    """
+    Recurrent network for time series forecasting.
+
+    Supports LSTM and GRU cells for autoregressive multi-horizon forecasting.
+
+    Examples:
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> from lightning.pytorch import Trainer
+        >>> from pytorch_forecasting import TimeSeriesDataSet
+        >>> from pytorch_forecasting.models import RecurrentNetwork
+        >>>
+        >>> # Generate toy sequential data
+        >>> data = pd.DataFrame(
+        ...     {
+        ...         "time_idx": np.tile(np.arange(30), 2),
+        ...         "target": np.random.randn(60),
+        ...         "group": np.repeat(["A", "B"], 30),
+        ...     }
+        ... )
+        >>>
+        >>> training = TimeSeriesDataSet(
+        ...     data,
+        ...     time_idx="time_idx",
+        ...     target="target",
+        ...     group_ids=["group"],
+        ...     min_encoder_length=5,
+        ...     max_encoder_length=5,
+        ...     min_prediction_length=2,
+        ...     max_prediction_length=2,
+        ...     time_varying_unknown_reals=["target"],
+        ... )
+        >>> dataloader = training.to_dataloader(batch_size=4)
+        >>>
+        >>> model = RecurrentNetwork.from_dataset(
+        ...     training,
+        ...     cell_type="LSTM",
+        ...     hidden_size=8,
+        ... )
+        >>> trainer = Trainer(
+        ...     fast_dev_run=True,
+        ...     accelerator="cpu",
+        ...     enable_model_summary=False,
+        ...     enable_progress_bar=False,
+        ...     logger=False,
+        ... )
+        >>> trainer.fit(model, dataloader)
+        >>> predictions = model.predict(dataloader)
+    """
+
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
