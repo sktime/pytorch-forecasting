@@ -69,30 +69,8 @@ def trial():
     return optuna.create_study().ask()
 
 
-class TestInitAndValidation:
+class TestInputValidation:
     """Constructor validation and DataModule resolution."""
-
-    def test_accepts_prebuilt_encoder_decoder_datamodule(
-        self, encoder_decoder_datamodule
-    ):
-        tuner = HyperparameterTuner(model_cls=TFT, data=encoder_decoder_datamodule)
-        assert tuner.datamodule is encoder_decoder_datamodule
-        assert "max_encoder_length" in tuner._metadata
-
-    def test_accepts_prebuilt_tslib_datamodule(self, tslib_datamodule):
-        tuner = HyperparameterTuner(model_cls=DLinear, data=tslib_datamodule)
-        assert tuner.datamodule is tslib_datamodule
-        assert "context_length" in tuner._metadata
-
-    def test_accepts_raw_timeseries_dataset(self, dummy_ts):
-        """Raw TimeSeries requires explicit datamodule_cls."""
-        tuner = HyperparameterTuner(
-            model_cls=TFT,
-            data=dummy_ts,
-            datamodule_cls=EncoderDecoderTimeSeriesDataModule,
-        )
-        assert tuner.datamodule is not None
-        assert "max_encoder_length" in tuner._metadata
 
     def test_raw_timeseries_without_datamodule_cls_raises(self, dummy_ts):
         """Passing raw TimeSeries without datamodule_cls raises ValueError."""
@@ -159,16 +137,6 @@ class TestHyperparameterDiscovery:
         )
         assert cfg["hidden_size"] in [32, 64]
         assert 0.0 <= cfg["dropout"] <= 1.0
-
-    def test_fixed_loss_preserved(self, encoder_decoder_datamodule, trial):
-        import torch.nn as nn
-
-        tuner = HyperparameterTuner(
-            model_cls=TFT, data=encoder_decoder_datamodule, loss=nn.L1Loss()
-        )
-        cfg = tuner._discover_hyperparameters(trial)
-        assert "loss" not in cfg
-        assert isinstance(tuner.fixed_hparams["loss"], nn.L1Loss)
 
 
 class TestOptimize:

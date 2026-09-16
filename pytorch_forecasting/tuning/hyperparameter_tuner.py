@@ -31,6 +31,44 @@ class HyperparameterTuner:
         **fixed_hparams
             Any model parameter that should stay constant, e.g.
             ``hidden_size=128``.
+
+        Examples
+        --------
+        Tune TFT with a prebuilt DataModule:
+
+        >>> from pytorch_forecasting.tuning import HyperparameterTuner
+        >>> from pytorch_forecasting.models.temporal_fusion_transformer._tft_v2 import(
+        ...     TFT,
+        ... )
+
+        >>> tuner = HyperparameterTuner(
+        ...     model_cls=TFT,
+        ...     data=encoder_decoder_dm,
+        ...     hidden_size=8,
+        ...     attention_head_size=2,
+        ...     output_size=1,
+        ... )
+
+        >>> study = tuner.optimize(n_trials=20, max_epochs=5)
+        >>> print(study.best_trial.params)
+
+        Tune DLinear from a raw TimeSeries dataset:
+
+        >>> from pytorch_forecasting.models.dlinear._dlinear_v2 import DLinear
+        >>> from pytorch_forecasting.data.data_module import TslibDataModule
+
+        >>> tuner = HyperparameterTuner(
+        ...     model_cls=DLinear,
+        ...     data=my_timeseries,
+        ...     datamodule_cls=TslibDataModule,
+        ... )
+
+        >>> study = tuner.optimize(
+        ...     n_trials=50,
+        ...     max_epochs=10,
+        ...     custom_ranges={"moving_avg": [5, 15, 25]},
+        ... )
+        >>> print(study.best_trial.params)
         """
         self.model_cls = model_cls
         self.fixed_hparams = fixed_hparams
