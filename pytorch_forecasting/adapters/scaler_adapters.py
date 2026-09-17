@@ -161,6 +161,50 @@ class ScalerAdapter:
     def fit_transform(self, data: ArrayLike, X: pd.DataFrame = None) -> torch.Tensor:
         return self.fit(data, X).transform(data, X)
 
+    def transform_sequence(
+        self, data: ArrayLike, X: pd.DataFrame = None
+    ) -> torch.Tensor:
+        """Transform with the per-sequence sub-normalizers, without refitting.
+
+        The companion to ``fit_transform_sequence``. That call fits the
+        per-sequence normalizers on the encoder window; this one applies the
+        parameters it fitted to a *different* window of the same sequence --
+        the decoder window -- so encoder and target end up on one scale.
+
+        It must not refit. Fitting on the decoder window would scale the
+        target by statistics of the values being predicted, which is the
+        leak ``EncoderNormalizer`` exists to avoid.
+
+        Sub-normalizers that are not per-sequence are left alone, exactly as
+        in ``fit_transform_sequence``: preprocessing has already applied
+        their global state, and transforming again would scale twice.
+
+        Parameters
+        ----------
+        data : tensor, ndarray, or Series
+            Shape ``(length,)`` or ``(length, n_targets)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Same shape as input.
+        """
+        if not self.is_multi:
+            return (
+                self.transform(data, X) if self.fit_per_sequence else _to_tensor(data)
+            )
+
+        t = _to_tensor(data)
+        if t.ndim == 1:
+            t = t.unsqueeze(-1)
+
+        columns = []
+        for idx, sub in enumerate(self._sub_adapters):
+            col = t[:, idx]
+            col = sub.transform(col, X) if sub.fit_per_sequence else col
+            columns.append(col.unsqueeze(-1))
+        return torch.cat(columns, dim=-1)
+
     def fit_transform_sequence(
         self, data: ArrayLike, X: pd.DataFrame = None
     ) -> torch.Tensor:
