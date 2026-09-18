@@ -67,7 +67,9 @@ class Samformer(BaseModel):
             lr_scheduler_params=lr_scheduler_params,
         )
 
-        self.save_hyperparameters(ignore=["loss", "logging_metrics", "optimizer"])
+        self.save_hyperparameters(
+            ignore=["loss", "logging_metrics", "optimizer", "metadata"]
+        )
         self.metadata = metadata
         self.n_quantiles = 1
 

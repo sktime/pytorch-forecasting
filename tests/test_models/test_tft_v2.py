@@ -311,7 +311,7 @@ def timeseries_obj_for_test(sample_pandas_data_for_test):
 def data_module_for_test(timeseries_obj_for_test):
     """Initialize and sets up an EncoderDecoderTimeSeriesDataModule."""
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=timeseries_obj_for_test,
+        time_series=timeseries_obj_for_test,
         batch_size=BATCH_SIZE_TEST,
         max_encoder_length=MAX_ENCODER_LENGTH_TEST,
         max_prediction_length=MAX_PREDICTION_LENGTH_TEST,
