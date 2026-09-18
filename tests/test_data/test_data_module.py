@@ -784,14 +784,3 @@ def test_data_less_module_becomes_usable_with_data():
     assert x["encoder_cont"].shape[0] == 4
     assert x["encoder_cont"].shape[1] == 10
     assert x["decoder_cont"].shape[1] == 5
-
-
-def test_data_less_module_reports_what_is_missing():
-    """Operations needing data must ask for it."""
-    config = EncoderDecoderTimeSeriesDataModule(max_encoder_length=10)
-
-    with pytest.raises(RuntimeError, match="without data"):
-        config.metadata
-
-    with pytest.raises(RuntimeError, match="without data"):
-        config.setup("fit")

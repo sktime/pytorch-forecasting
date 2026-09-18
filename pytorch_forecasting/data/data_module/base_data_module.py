@@ -103,21 +103,21 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         self._target_normalizer = self._coerce_target_normalizer(target_normalizer)
         self._metadata = None
 
-        self.train_windows: list | None = None
-        self.val_windows: list | None = None
-        self.test_windows: list | None = None
-        self.predict_windows: list | None = None
-        self.train_dataset: Dataset | None = None
-        self.val_dataset: Dataset | None = None
-        self.test_dataset: Dataset | None = None
-        self.predict_dataset: Dataset | None = None
+        self.train_windows = None
+        self.val_windows = None
+        self.test_windows = None
+        self.predict_windows = None
+        self.train_dataset = None
+        self.val_dataset = None
+        self.test_dataset = None
+        self.predict_dataset = None
 
         # without data there is no schema, so column positions and target count
         # cannot be derived yet
-        self.time_series_metadata: TimeSeriesMetadata | None = None
-        self.n_targets: int | None = None
-        self.categorical_indices: list[int] = []
-        self.continuous_indices: list[int] = []
+        self.time_series_metadata = None
+        self.n_targets = None
+        self.categorical_indices = []
+        self.continuous_indices = []
         if time_series is not None:
             self._bind_time_series()
 

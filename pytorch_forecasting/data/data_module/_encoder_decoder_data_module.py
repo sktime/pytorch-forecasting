@@ -143,17 +143,23 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
+        self.time_series = time_series
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
         self.max_prediction_length = max_prediction_length
         self.min_prediction_length = min_prediction_length
         self.min_prediction_idx = min_prediction_idx
         self.allow_missing_timesteps = allow_missing_timesteps
+        self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
+        self.target_normalizer = target_normalizer
         self.categorical_encoders = categorical_encoders
         self.scalers = scalers
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.train_val_test_split = train_val_test_split
 
         self._min_prediction_length = min_prediction_length or max_prediction_length
         self._min_encoder_length = min_encoder_length or max_encoder_length
@@ -166,12 +172,12 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         self._feature_scalers_fitted = False
 
         super().__init__(
-            time_series=time_series,
-            target_normalizer=target_normalizer,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            train_val_test_split=train_val_test_split,
-            add_relative_time_idx=add_relative_time_idx,
+            time_series=self.time_series,
+            target_normalizer=self.target_normalizer,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            train_val_test_split=self.train_val_test_split,
+            add_relative_time_idx=self.add_relative_time_idx,
         )
 
     def _coerce_target_normalizer(self, target_normalizer):
