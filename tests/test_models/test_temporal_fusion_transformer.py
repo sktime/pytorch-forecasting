@@ -382,6 +382,21 @@ def test_prediction_actual_by_variable_categorical_averages():
             10.0 * days.index(label) + 1.0
         ), label
 
+    # the same averages for a continuous variable, grouped by bin
+    assert (x["decoder_lengths"] == x["decoder_lengths"].max()).all()
+    bins, std = 95, 2.0
+    positive_bins = (bins - 1) // 2
+    idx = model.hparams.x_reals.index("target")
+    keys = (x["decoder_cont"][..., idx].flatten() * positive_bins / std).round().clamp(
+        -positive_bins, positive_bins
+    ).long() + positive_bins
+    y = x["decoder_target"].flatten()
+    binned = result["average"]["actual"]["target"]
+    for key in keys.unique():
+        assert binned[key].item() == pytest.approx(
+            y[keys == key].mean().item(), rel=1e-5
+        ), key.item()
+
 
 @pytest.mark.parametrize(
     "kwargs",
