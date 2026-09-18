@@ -54,4 +54,5 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.scinet._scinet_v2.SCINet_v2
    models.patch_tst._patch_tst_v2.PatchTST_v2
    models.frets._frets_v2.FreTS
+   models.modern_tcn._modern_tcn_v2.ModernTCN
    models.units._units_v2.UniTS
