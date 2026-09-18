@@ -1,10 +1,45 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 
+from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.data_module import TslibDataModule
+from pytorch_forecasting.data.encoders import (
+    EncoderNormalizer,
+    GroupNormalizer,
+    TorchNormalizer,
+)
 from pytorch_forecasting.data.timeseries import TimeSeries
+
+
+def _make_ts(n_series: int = 20, length: int = 40, offset: float = 100.0) -> TimeSeries:
+    """Synthetic dataset whose continuous feature ``x`` sits far from zero.
+
+    ``x`` is centred around ``offset`` so the effect of standardisation is easy
+    to see, while the target ``y`` is a plain sine wave.
+    """
+    rows = []
+    for i in range(n_series):
+        for t in range(length):
+            rows.append(
+                {
+                    "series_id": i,
+                    "time_idx": t,
+                    "x": offset + 10.0 * np.sin(t / 5.0) + i,
+                    "y": np.sin(t / 5.0),
+                }
+            )
+    df = pd.DataFrame(rows)
+    return TimeSeries(
+        data=df,
+        time="time_idx",
+        target="y",
+        group=["series_id"],
+        num=["x"],
+        unknown=["x"],
+    )
 
 
 @pytest.fixture(scope="session")
@@ -527,6 +562,306 @@ def test_multivariate_target():
 
     x, y = dm.train_dataset[0]
 
-    assert (
-        y.shape[-1] == 2
-    ), "Target should have two dimensions for n_features for multivariate target."
+    # for multivariate targets ``__getitem__`` returns one tensor per target
+    assert len(y) == 2, "Expected one target tensor per target column."
+    assert all(
+        t.shape == (4,) for t in y
+    ), "Each target tensor should have shape (prediction_length,)."
+
+
+def test_init_wraps_scalers_in_adapter_and_sets_flags():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        target_normalizer=StandardScaler(),
+        batch_size=8,
+    )
+    assert isinstance(dm._scalers["x"], ScalerAdapter)
+    assert isinstance(dm._target_normalizer, ScalerAdapter)
+    assert dm._feature_scalers_fitted is False
+    assert dm._target_normalizer_fitted is False
+
+
+def test_fit_scalers_uses_train_split_only():
+    """Statistics must come from the train split, not from each series itself."""
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    assert dm._feature_scalers_fitted is True
+
+    names = dm.time_series_metadata["cols"]["x"]
+    orig_idx = dm.continuous_indices[names.index("x")]
+
+    def raw_column(indices):
+        return torch.cat([ds[i.item()]["x"][:, orig_idx] for i in indices], dim=0)
+
+    train_raw = raw_column(dm._train_indices)
+    test_raw = raw_column(dm._test_indices)
+
+    # the train column standardizes to ~0 mean / ~1 std ...
+    train_scaled = dm._scalers["x"].transform(train_raw)
+    assert abs(float(train_scaled.mean())) < 1e-3
+    assert abs(float(train_scaled.std()) - 1.0) < 1e-2
+
+    # ... while the test column does not, precisely because the statistics
+    # are the train split's rather than its own.
+    test_scaled = dm._scalers["x"].transform(test_raw)
+    expected = (test_raw - train_raw.mean()) / train_raw.std(unbiased=False)
+    assert torch.allclose(test_scaled.float(), expected.float(), atol=1e-4)
+
+
+def test_fit_target_normalizer_sets_flag():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=StandardScaler(),
+        batch_size=8,
+    )
+    dm._fit_target_normalizer(torch.arange(len(ds)))
+    assert dm._target_normalizer_fitted is True
+
+
+def test_normalize_features_scales_only_configured_columns():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    # before fit: no-op
+    raw_cont = ds[0]["x"][:, dm.continuous_indices]
+    assert torch.equal(dm._normalize_features(raw_cont), raw_cont)
+
+    # after fit: scaled
+    dm._fit_scalers(torch.arange(len(ds)))
+    scaled = dm._normalize_features(raw_cont)
+    assert not torch.equal(scaled, raw_cont)
+    # magnitude drops from ~100 toward ~0
+    assert abs(float(scaled.mean())) < abs(float(raw_cont.mean()))
+
+
+def test_normalize_target_is_noop_until_fitted():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=StandardScaler(),
+        batch_size=8,
+    )
+    tgt = ds[0]["y"].float()
+    assert torch.equal(dm._normalize_target(tgt), tgt)  # not yet fitted
+    dm._fit_target_normalizer(torch.arange(len(ds)))
+    assert dm._normalize_target(tgt).shape == tgt.shape
+
+
+def test_preprocess_data_scales_features():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    dm._fit_scalers(torch.arange(len(ds)))
+
+    cont = dm._preprocess_data(0)["features"]["continuous"]
+    # x was originally ~100; after scaling it should be near 0
+    assert abs(float(cont[:, 0].mean())) < 5.0
+
+
+def test_setup_fit_produces_scaled_samples():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        target_normalizer=StandardScaler(),
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    assert dm._feature_scalers_fitted is True
+    assert dm._target_normalizer_fitted is True
+
+    # retrieve encoder continuous features; x should be standardized
+    x, _ = dm.train_dataset[0]
+    hist = x["history_cont"]
+    assert abs(float(hist[:, 0].mean())) < 5.0  # unscaled value was ~100
+
+
+def test_no_scalers_leaves_data_untouched():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    out = dm._preprocess_data(0)
+    raw_cont = ds[0]["x"][:, dm.continuous_indices].float()
+    # when no scaler is configured, continuous features must be byte-identical to raw
+    assert torch.allclose(out["features"]["continuous"], raw_cont)
+    # target_scale is not produced (out of scope for this PR)
+    assert "target_scale" not in out
+
+
+def test_split_is_computed_once_and_cached():
+    """The split must not be redrawn on every ``setup`` call.
+
+    Lightning calls ``setup`` once per stage. Redrawing the permutation would
+    move series the scalers were fit on into the test split.
+    """
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+    train_indices = dm._train_indices.clone()
+
+    dm.setup(stage="test")
+
+    assert torch.equal(train_indices, dm._train_indices)
+    assert not set(train_indices.tolist()) & set(dm._test_indices.tolist())
+
+
+def test_repeated_setup_is_idempotent():
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    probe = torch.tensor([100.0])
+
+    dm.setup(stage="fit")
+    before = dm._scalers["x"].transform(probe)
+    dm.setup(stage="fit")
+
+    assert torch.allclose(before, dm._scalers["x"].transform(probe))
+
+
+def test_setup_test_alone_still_scales():
+    """``setup("test")`` without a preceding ``setup("fit")`` must still scale."""
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": StandardScaler()},
+        batch_size=8,
+    )
+    dm.setup(stage="test")
+
+    assert dm._feature_scalers_fitted is True
+    x, _ = dm.test_dataset[0]
+    # unscaled values are ~100
+    assert abs(float(x["history_cont"][:, 0].mean())) < 5.0
+
+
+@pytest.mark.parametrize("target_normalizer", [None, "auto"])
+def test_target_is_not_normalized_by_default(target_normalizer):
+    """``None`` and ``"auto"`` both mean "leave the target alone".
+
+    The inverse transform is not implemented yet, so normalizing by default
+    would hand models predictions they cannot map back (see issue #2359).
+    """
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=target_normalizer,
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+
+    assert dm._target_normalizer is None
+    series_idx = dm._train_indices[0].item()
+    raw = ds[series_idx]["y"].float()
+    assert torch.equal(dm._preprocess_data(series_idx)["target"], raw)
+
+
+@pytest.mark.parametrize(
+    "scaler",
+    [
+        RobustScaler(),
+        TorchNormalizer(),
+        EncoderNormalizer(),
+        GroupNormalizer(groups=["series_id"]),
+        [TorchNormalizer()],
+    ],
+)
+def test_rejects_scalers_other_than_standard_scaler(scaler):
+    ds = _make_ts()
+    with pytest.raises(NotImplementedError, match="StandardScaler"):
+        TslibDataModule(
+            time_series_dataset=ds,
+            context_length=16,
+            prediction_length=4,
+            target_normalizer=scaler,
+            batch_size=8,
+        )
+
+
+def test_rejects_target_normalizer_for_multivariate_target():
+    df = pd.DataFrame(
+        {
+            "series_id": np.repeat([0, 1], 40),
+            "time_idx": np.tile(np.arange(40), 2),
+            "x": np.random.normal(0, 1, 80),
+            "y1": np.random.normal(0, 1, 80),
+            "y2": np.random.normal(0, 1, 80),
+        }
+    )
+    ds = TimeSeries(
+        data=df,
+        time="time_idx",
+        target=["y1", "y2"],
+        group=["series_id"],
+        num=["x"],
+        unknown=["x"],
+    )
+    with pytest.raises(NotImplementedError, match="multivariate"):
+        TslibDataModule(
+            time_series_dataset=ds,
+            context_length=16,
+            prediction_length=4,
+            target_normalizer=StandardScaler(),
+            batch_size=8,
+        )
+
+
+def test_constructor_params_are_preserved():
+    ds = _make_ts()
+    scalers = {"x": StandardScaler()}
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers=scalers,
+        batch_size=8,
+    )
+    assert dm.scalers is scalers
+    assert dm.target_normalizer is None
