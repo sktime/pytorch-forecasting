@@ -46,6 +46,9 @@ class BaseModel(LightningModule):
         "cosine_annealing", "cosine_annealing_warm_restarts".
     lr_scheduler_params : Optional[Dict], optional
         Parameters for the learning rate scheduler.
+    metadata : Optional[dict], default=None
+        Datamodule metadata used to construct the model (feature dims, lengths,
+        etc.).
     """
 
     _OPTIMIZER_REGISTRY = {
@@ -72,6 +75,7 @@ class BaseModel(LightningModule):
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
+        metadata: dict | None = None,
     ):
         super().__init__()
 
@@ -86,6 +90,7 @@ class BaseModel(LightningModule):
         self.lr_scheduler_params = (
             lr_scheduler_params if lr_scheduler_params is not None else {}
         )
+        self.metadata = metadata or {}
         self.model_name = self.__class__.__name__
 
         self._loss = coerce_to_pytorch_forecasting_metric(self.loss)
