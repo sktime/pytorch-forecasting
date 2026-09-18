@@ -309,10 +309,16 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
+        self.time_series = time_series
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.freq = freq
+        self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
+        self.target_normalizer = target_normalizer
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.train_val_test_split = train_val_test_split
         self.scalers = scalers
         self.shuffle = shuffle
         self.window_stride = window_stride
@@ -321,12 +327,12 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         self.kwargs = kwargs
 
         super().__init__(
-            time_series=time_series,
-            target_normalizer=target_normalizer,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            train_val_test_split=train_val_test_split,
-            add_relative_time_idx=add_relative_time_idx,
+            time_series=self.time_series,
+            target_normalizer=self.target_normalizer,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            train_val_test_split=self.train_val_test_split,
+            add_relative_time_idx=self.add_relative_time_idx,
         )
         self._init_kwargs.update(self.kwargs)
 
