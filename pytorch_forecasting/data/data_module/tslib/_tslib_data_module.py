@@ -3,238 +3,27 @@ Experimental data module for integrating `tslib` time series deep learning libra
 """
 
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 import warnings
 
-from lightning.pytorch import LightningDataModule
-import numpy as np
-import pandas as pd
 from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
+from pytorch_forecasting.data.data_module.base._base_data_module import (
+    NORMALIZER,
+    BaseTimeSeriesDataModule,
+)
+from pytorch_forecasting.data.data_module.tslib._tslib_dataset import _TslibDataset
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
     TorchNormalizer,
 )
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
-from pytorch_forecasting.utils._coerce import _coerce_to_dict
-
-NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
-class _TslibDataset(Dataset):
-    """
-    Dataset class for `tslib` time series dataset.
-
-    Parameters
-    ----------
-    dataset : TimeSeries
-        The time series dataset to be used for training and validation.
-    data_module : TslibDataModule
-        The data module that contains the metadata and other configurations for the
-        dataset.
-    windows: list[tuple[int, int, int, int]]
-        A list of tuples where each tuple contains:
-            - series_idx: Index of time series in the dataset
-            - start_idx: Start index of the window
-            - context_length: Length of the context/encoder window
-            - prediction_length: Length of the prediction/decoder window
-    add_relative_time_idx: bool
-        Whether to add relative time index to the dataset.
-    """
-
-    def __init__(
-        self,
-        dataset: TimeSeries,
-        data_module: "TslibDataModule",
-        windows: list[tuple[int, int, int, int]],
-        add_relative_time_idx: bool = False,
-    ):
-        self.dataset = dataset
-        self.data_module = data_module
-        self.windows = windows
-        self.add_relative_time_idx = add_relative_time_idx
-
-    def __len__(self) -> int:
-        return len(self.windows)
-
-    def __getitem__(self, idx: int) -> dict[str, Any]:
-        """
-        Get the processed dataset item at the given index.
-
-        Parameters
-        ----------
-        idx : int
-            The index of the dataset item to be retrieved.
-
-        Returns
-        -------
-        x : dict[str, torch.Tensor]
-            Dict containing processed inputs for the model, with the following keys:
-
-            * ``history_cont`` : torch.Tensor of shape
-                                    (context_length, n_history_cont_features)
-                Continuous features for the encoder (historical data).
-            * ``history_cat`` : torch.Tensor of shape
-                                    (context_length, n_history_cat_features)
-                Categorical features for the encoder (historical data).
-            * ``future_cont`` : torch.Tensor of shape
-                                    (prediction_length, n_future_cont_features)
-                Known continuous features for the decoder (future data).
-            * ``future_cat`` : torch.Tensor of shape
-                                    (prediction_length, n_future_cat_features)
-                Known categorical features for the decoder (future data).
-            * ``history_length`` : torch.Tensor of shape (1,)
-                Length of the encoder sequence.
-            * ``future_length`` : torch.Tensor of shape (1,)
-                Length of the decoder sequence.
-            * ``history_mask`` : torch.Tensor of shape (context_length,)
-                Boolean mask indicating valid encoder time points.
-            * ``future_mask`` : torch.Tensor of shape (prediction_length,)
-                Boolean mask indicating valid decoder time points.
-            * ``groups`` : torch.Tensor of shape (1,)
-                Group identifier for the time series instance.
-            * ``history_time_idx`` : torch.Tensor of shape (context_length,)
-                Time indices for the encoder sequence.
-            * ``future_time_idx`` : torch.Tensor of shape (prediction_length,)
-                Time indices for the decoder sequence.
-            * ``history_target`` : torch.Tensor of shape (context_length,)
-                Historical target values for the encoder sequence.
-            * ``future_target`` : torch.Tensor of shape (prediction_length,)
-                Target values for the decoder sequence.
-            * ``future_target_len`` : torch.Tensor of shape (1,)
-                Length of the decoder target sequence.
-
-            Optional fields, depending on dataset configuration:
-
-            * ``history_relative_time_idx`` : torch.Tensor of shape (context_length,),
-                                                optional
-                Relative time indices for the encoder sequence, present if
-                `add_relative_time_idx` is True.
-            * ``future_relative_time_idx`` : torch.Tensor of shape (prediction_length,),
-                                                optional
-                Relative time indices for the decoder sequence, present if
-                `add_relative_time_idx` is True.
-            * ``static_categorical_features`` : torch.Tensor of shape
-                                                (1, n_static_features), optional
-                Static categorical features if available.
-            * ``static_continuous_features`` : torch.Tensor of shape
-                                                (1, n_static_features), optional
-                Static continuous features if available.
-            * ``target_scale`` : torch.Tensor of shape (1,), optional
-                Scaling factor for the target values if provided by the dataset.
-
-        y : torch.Tensor or list of torch.Tensor
-            Target values for the decoder sequence.
-            If ``n_targets`` > 1, a list of tensors each of shape (prediction_length,)
-            is returned. Otherwise, a tensor of shape (prediction_length,) is returned.
-        """
-
-        series_idx, start_idx, context_length, prediction_length = self.windows[idx]
-
-        processed_data = self.data_module._preprocess_data(series_idx)
-
-        continuous_features = processed_data["features"]["continuous"]
-        categorical_features = processed_data["features"]["categorical"]
-
-        end_idx = start_idx + context_length + prediction_length
-        history_indices = slice(start_idx, start_idx + context_length)
-        future_indices = slice(start_idx + context_length, end_idx)
-
-        metadata = self.data_module.metadata
-
-        history_cont = continuous_features[history_indices]
-        history_cat = categorical_features[history_indices]
-
-        future_cont = continuous_features[future_indices]
-        future_cat = categorical_features[future_indices]
-
-        known_features = set(metadata["feature_names"]["known"])
-        continuous_feature_names = metadata["feature_names"]["continuous"]
-        categorical_feature_names = metadata["feature_names"]["categorical"]
-
-        # use masking to filter out known and unknown features.
-        cont_known_mask = torch.tensor(
-            [feat in known_features for feat in continuous_feature_names],
-            dtype=torch.bool,
-        )
-
-        cat_known_mask = torch.tensor(
-            [feat in known_features for feat in categorical_feature_names],
-            dtype=torch.bool,
-        )
-
-        future_cont = (
-            future_cont[:, cont_known_mask]
-            if len(cont_known_mask) > 0
-            else torch.zeros((future_cont.shape[0], 0))
-        )  # noqa: E501
-        future_cat = (
-            future_cat[:, cat_known_mask]
-            if len(cat_known_mask) > 0
-            else torch.zeros((future_cat.shape[0], 0))
-        )  # noqa: E501
-
-        history_mask = (
-            processed_data["time_mask"][history_indices]
-            if "time_mask" in processed_data
-            else torch.ones(context_length, dtype=torch.bool)
-        )
-
-        future_mask = (
-            processed_data["time_mask"][future_indices]
-            if "time_mask" in processed_data
-            else torch.ones(prediction_length, dtype=torch.bool)
-        )
-
-        history_target = processed_data["target"][history_indices]
-        future_target = processed_data["target"][future_indices]
-
-        # history_time_idx = processed_data["timestep"][history_indices]
-        # future_time_idx = processed_data["timestep"][future_indices]
-
-        x = {
-            "history_cont": history_cont,
-            "history_cat": history_cat,
-            "future_cont": future_cont,
-            "future_cat": future_cat,
-            "history_length": torch.tensor(context_length),
-            "future_length": torch.tensor(prediction_length),
-            "history_mask": history_mask,
-            "future_mask": future_mask,
-            "groups": processed_data["group"],
-            "history_time_idx": torch.arange(context_length),
-            "future_time_idx": torch.arange(
-                context_length, context_length + prediction_length
-            ),
-            "history_target": history_target,
-            "future_target": future_target,
-            "future_target_len": torch.tensor(prediction_length),
-        }
-
-        if self.add_relative_time_idx:
-            x["history_relative_time_idx"] = torch.arange(-context_length, 0)
-            x["future_relative_time_idx"] = torch.arange(0, prediction_length)
-
-        if processed_data["static"] is not None:
-            x["static_categorical_features"] = processed_data["static"].unsqueeze(0)
-            x["static_continuous_features"] = processed_data["static"].unsqueeze(0)
-
-        if "target_scale" in processed_data:
-            x["target_scale"] = processed_data["target_scale"]
-
-        y = processed_data["target"][future_indices]
-        if self.data_module.n_targets > 1:
-            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
-        else:
-            y = y.squeeze(-1)
-
-        return x, y
-
-
-class TslibDataModule(LightningDataModule):
+class TslibDataModule(BaseTimeSeriesDataModule):
     """
     Experimental data module for integrating `tslib` time series into
     PyTorch Forecasting.
@@ -312,57 +101,64 @@ class TslibDataModule(LightningDataModule):
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(
+            time_series_dataset=time_series_dataset,
+            target_normalizer=target_normalizer,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            train_val_test_split=train_val_test_split,
+            add_relative_time_idx=add_relative_time_idx,
+        )
 
-        self.time_series_dataset = time_series_dataset
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.freq = freq
-        self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.train_val_test_split = train_val_test_split
-        self.collate_fn = (
-            collate_fn if collate_fn is not None else self.__class__.collate_fn
-        )  # noqa: E501
-        self.kwargs = kwargs
-
-        warnings.warn(
-            "TslibDataModule is experimental and subject to change. "
-            "The API is not stable and may change without prior warning.",
-            UserWarning,
-        )
-
-        if isinstance(target_normalizer, str) and target_normalizer.lower() == "auto":
-            self._target_normalizer = RobustScaler()
-        else:
-            self._target_normalizer = target_normalizer
-
-        self._metadata = None
-
         self.scalers = scalers or {}
         self.shuffle = shuffle
-
-        self.continuous_indices = []
-        self.categorical_indices = []
-
-        self.train_dataset = None
-        self.val_dataset = None
-        self.test_dataset = None
-
         self.window_stride = window_stride
-
-        self.time_series_metadata = time_series_dataset.get_metadata()
-        self.n_targets = len(self.time_series_metadata["cols"]["y"])
-
-        for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
-            if self.time_series_metadata["col_type"].get(col) == "C":
-                self.categorical_indices.append(idx)
-            else:
-                self.continuous_indices.append(idx)
+        self.kwargs = kwargs
+        self.collate_fn = (
+            collate_fn if collate_fn is not None else self.__class__.collate_fn
+        )
 
         self._validate_indices()
+
+    def _context_length(self) -> int:
+        return self.context_length
+
+    def _prediction_length(self) -> int:
+        return self.prediction_length
+
+    @property
+    def train_shuffle(self) -> bool:
+        """Return whether to shuffle at the training dataloader."""
+        return self.shuffle
+
+    def _build_dataset(self, indices: torch.Tensor) -> Dataset:
+        """Create windows for *indices* and wrap them in a ``_TslibDataset``.
+
+        Parameters
+        ----------
+        indices : torch.Tensor
+            Series indices for this split.
+
+        Returns
+        -------
+        Dataset
+            ``_TslibDataset`` over the split windows.
+        """
+        preprocessed = {
+            idx.item(): self._preprocess_data(idx.item()) for idx in indices
+        }
+        windows = self._create_windows(indices)
+        return _TslibDataset(
+            dataset=self.time_series_dataset,
+            data_module=self,
+            windows=windows,
+            add_relative_time_idx=self.add_relative_time_idx,
+            preprocessed_data=preprocessed,
+        )
 
     def _validate_indices(self):
         """
@@ -522,35 +318,21 @@ class TslibDataModule(LightningDataModule):
 
         return metadata
 
-    @property
-    def metadata(self) -> dict[str, Any]:
-        """ "
-        Compute the metadata via the `_prepare_metadata` method.
-        This method is called when the `metadata` property is accessed for the first.
-        Returns
-        -------
-        dict
-            Metadata for the data module. Refer to the `_prepare_metadata` method for
-            the keys and values in the metadata dictionary.
-        """
-        if self._metadata is None:
-            self._metadata = self._prepare_metadata()
-        return self._metadata
-
-    def _preprocess_data(self, idx: torch.Tensor) -> list[dict[str, Any]]:
-        """
-        Process the the time series data at the given index, before feeding it
+    def _preprocess_data(self, series_idx) -> dict[str, Any]:
+        """Process the the time series data at the given index, before feeding it
         to the `_TslibDataset` class.
 
         Parameters
         ----------
-        idx : torch.Tensor
+        series_idx : int or torch.Tensor
             The index of the time series data to be processed.
 
         Returns
         -------
-        dict[str, torch.Tensor]
-            A dictionary containing the processed data.
+        dict
+            Keys: ``features`` (categorical/continuous), ``target``, ``static``,
+            ``group``, ``length``, ``time_mask``, ``cutoff_time``, ``times``,
+            ``timestep``.
 
         Notes
         -----
@@ -558,10 +340,14 @@ class TslibDataModule(LightningDataModule):
         - The timepoints before the cutoff time are masked off.
         - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
-
-        series = self.time_series_dataset[idx]
+        series = self.time_series_dataset[series_idx]
         if series is None:
-            raise ValueError(f"series at index {idx} is None. Check the dataset.")
+            raise ValueError(
+                f"Error in {type(self).__name__} _preprocess_data: "
+                f"series at index {series_idx} is None."
+                " Check the dataset."
+            )
+
         target = series["y"]
         features = series["x"]
         timestep = series["t"]
@@ -579,39 +365,28 @@ class TslibDataModule(LightningDataModule):
         else:
             features = torch.tensor(features, dtype=torch.float32)
 
-        # scaling and normalization
-        target_scale = {}
-
-        categorical_features = (
+        categorical = (
             features[:, self.categorical_indices]
             if self.categorical_indices
             else torch.zeros((features.shape[0], 0))
         )
-
-        continuous_features = (
+        continuous = (
             features[:, self.continuous_indices]
             if self.continuous_indices
             else torch.zeros((features.shape[0], 0))
         )
 
-        res = {
-            "features": {
-                "categorical": categorical_features,
-                "continuous": continuous_features,
-            },
+        return {
+            "features": {"categorical": categorical, "continuous": continuous},
             "target": target,
-            "static": series["st"],
+            "static": series.get("st", None),
             "group": series.get("group", torch.tensor([0])),
-            "length": len(series),
+            "length": len(target),
             "time_mask": mask_timestep,
+            "times": timestep,
             "cutoff_time": cutoff_time,
             "timestep": timestep,
         }
-
-        if target_scale:
-            res["target_scale"] = target_scale
-
-        return res
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """
@@ -671,32 +446,15 @@ class TslibDataModule(LightningDataModule):
 
         return windows
 
-    def setup(self, stage: str | None = None) -> None:
+    def _ensure_split(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Setup the data module by preparing the datasets for training,
-        testing and validation.
-
-        Parameters
-        ----------
-        stage: Optional[str]
-            The stage of the data module. This can be "fit", "test" or "predict".
-            If None, the data module will be setup for training.
+        Split data indices into train, val, and test sets based on the
+        train_val_test_split ratio once and cache them.
         """
-
-        # TODO: Add support for temporal/random/group splits.
-        # Currently, it only supports random splits.
-        # Handle the case where the dataset is empty.
+        if hasattr(self, "_indices"):
+            return
 
         total_series = len(self.time_series_dataset)
-
-        if total_series == 0:
-            raise ValueError(
-                "The time series dataset is empty. "
-                "Please provide a non-empty dataset."
-            )
-
-        # this is a very rudimentary way to handle the splits when
-        # the dataset is of size equal to 1 or 2.
         self._indices = torch.randperm(total_series)
         if total_series == 1:
             self._train_indices = self._indices
@@ -718,110 +476,6 @@ class TslibDataModule(LightningDataModule):
             self._test_indices = self._indices[
                 self._train_size + self._val_size : total_series
             ]
-
-        if stage == "fit" or stage is None:
-            if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
-                self._train_windows = self._create_windows(self._train_indices)
-                self._val_windows = self._create_windows(self._val_indices)
-
-                self.train_dataset = _TslibDataset(
-                    dataset=self.time_series_dataset,
-                    data_module=self,
-                    windows=self._train_windows,
-                    add_relative_time_idx=self.add_relative_time_idx,
-                )
-
-                self.val_dataset = _TslibDataset(
-                    dataset=self.time_series_dataset,
-                    data_module=self,
-                    windows=self._val_windows,
-                    add_relative_time_idx=self.add_relative_time_idx,
-                )
-        elif stage == "test":
-            if not hasattr(self, "_test_dataset"):
-                self._test_windows = self._create_windows(self._test_indices)
-
-                self.test_dataset = _TslibDataset(
-                    dataset=self.time_series_dataset,
-                    data_module=self,
-                    windows=self._test_windows,
-                    add_relative_time_idx=self.add_relative_time_idx,
-                )
-
-        elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
-            self._predict_windows = self._create_windows(predict_indices)
-
-            self.predict_dataset = _TslibDataset(
-                dataset=self.time_series_dataset,
-                data_module=self,
-                windows=self._predict_windows,
-                add_relative_time_idx=self.add_relative_time_idx,
-            )
-
-    def train_dataloader(self) -> DataLoader:
-        """
-        Create the train dataloader.
-
-        Returns
-        -------
-        DataLoader
-            The train dataloader.
-        """
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def val_dataloader(self) -> DataLoader:
-        """
-        Create the validation dataloader.
-        Returns
-        -------
-        DataLoader
-            The validation dataloader.
-        """
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        """
-        Create the test dataloader.
-
-        Returns
-        -------
-        DataLoader
-            The test dataloader.
-        """
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
-
-    def predict_dataloader(self) -> DataLoader:
-        """
-        Create the prediction dataloader.
-
-        Returns
-        -------
-        DataLoader
-            The prediction dataloader.
-        """
-        return DataLoader(
-            self.predict_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            collate_fn=self.collate_fn,
-        )
 
     @staticmethod
     def collate_fn(batch):
