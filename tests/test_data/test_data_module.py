@@ -728,35 +728,9 @@ def test_group_normalizer_uses_groups():
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
 
 
-def _trending_series(n_groups=4, seq_length=60, offset=100.0, slope=0.5):
-    """A series with a strong offset and trend.
-
-    The offset is what makes the bug visible: raw targets sit around 100 while
-    encoder-normalized ones sit around 0, so the two are impossible to confuse.
-    """
-    rows = []
-    for g in range(n_groups):
-        for t in range(seq_length):
-            rows.append(
-                (
-                    g,
-                    pd.Timestamp("2020-01-01") + pd.Timedelta(days=t),
-                    offset + 10 * g + slope * t + np.random.normal(0, 1),
-                    t % 7,
-                )
-            )
-    df = pd.DataFrame(rows, columns=["group", "time", "target", "known_future"])
-    return TimeSeries(
-        data=df,
-        time="time",
-        target="target",
-        group=["group"],
-        num=["known_future"],
-        known=["known_future"],
-    )
-
-
 def _module(dataset, normalizer):
+    """Build a module over `dataset`; the shared `data_module` fixture pins no
+    target_normalizer, and these tests need to vary it."""
     dm = EncoderDecoderTimeSeriesDataModule(
         time_series_dataset=dataset,
         max_encoder_length=20,
@@ -768,95 +742,67 @@ def _module(dataset, normalizer):
     return dm
 
 
-def test_encoder_normalizer_normalizes_y():
-    """`y` must be on the same scale as `target_past`, not raw.
+def _window_targets(dm):
+    """Raw encoder and decoder targets for the module's first window."""
+    series_idx, start, enc_length, pred_length = dm.train_dataset.windows[0]
+    raw = dm.train_dataset.preprocessed_data[series_idx]["target"].float()
+    return (
+        raw[start : start + enc_length],
+        raw[start + enc_length : start + enc_length + pred_length],
+    )
+
+
+def test_encoder_normalizer_normalizes_y(sample_timeseries_data):
+    """`y` must be the decoder window put through the encoder's scaler.
 
     Regression test for #2360: `EncoderNormalizer` is fitted per sequence at
-    `__getitem__` time, and only `target_past` was being transformed. The
-    decoder target stayed raw, so the loss compared normalized predictions
-    against unnormalized targets.
+    `__getitem__` time and only `target_past` was transformed, so the loss
+    compared normalized predictions against raw targets.
     """
-    np.random.seed(0)
-    dm = _module(_trending_series(), EncoderNormalizer())
+    dm = _module(sample_timeseries_data, EncoderNormalizer())
     x, y = dm.train_dataset[0]
+    encoder_raw, decoder_raw = _window_targets(dm)
 
-    # The encoder window defines the scale: mean 0, std 1 by construction.
+    expected = (
+        (decoder_raw - encoder_raw.mean()) / encoder_raw.std(unbiased=True)
+    ).squeeze(-1)
+
     assert abs(float(x["target_past"].mean())) < 1e-4
-    # The decoder window continues an upward trend, so y sits a few standard
-    # deviations above it -- but on that scale, not near the raw offset of 100.
-    assert abs(float(y.mean())) < 20.0, (
-        f"y looks unnormalized: mean {float(y.mean()):.2f}. Raw targets in this "
-        f"fixture are around 100."
-    )
-
-
-def test_encoder_normalizer_is_not_refitted_on_the_decoder_window():
-    """The decoder target must be transformed, never fit-transformed.
-
-    Fitting on the decoder window would scale the target by statistics of the
-    very values being predicted -- the leak `EncoderNormalizer` exists to
-    avoid. A refit is detectable: it would force `y` to mean 0 and std 1.
-    """
-    np.random.seed(0)
-    dm = _module(_trending_series(), EncoderNormalizer())
-    _, y = dm.train_dataset[0]
-
-    assert abs(float(y.mean())) > 0.1, (
-        "y has mean 0, which means the normalizer was refitted on the decoder "
-        "window instead of reusing the encoder's parameters"
-    )
-
-
-def test_encoder_normalizer_y_matches_the_encoder_fitted_transform():
-    """`y` equals the raw decoder values put through the encoder's scaler.
-
-    The looser tests above would pass for any transform that shrinks the
-    values. This pins the exact one, reading the raw target and the window
-    bounds out of the same module so there is nothing to drift.
-    """
-    np.random.seed(0)
-    dm = _module(_trending_series(), EncoderNormalizer())
-    _, y = dm.train_dataset[0]
-
-    series_idx, start, enc_length, pred_length = dm.train_dataset.windows[0]
-    # `preprocessed_data["target"]` is raw here: _fit_target_normalizer returns
-    # early for a single per-sequence normalizer rather than fitting globally.
-    raw = dm.train_dataset.preprocessed_data[series_idx]["target"].float()
-    encoder_raw = raw[start : start + enc_length]
-    decoder_raw = raw[start + enc_length : start + enc_length + pred_length]
-
-    center = encoder_raw.mean()
-    scale = encoder_raw.std(unbiased=True)
-    expected = ((decoder_raw - center) / scale).squeeze(-1)
-
     assert torch.allclose(
         y.float(), expected, atol=1e-3
     ), f"expected {expected.tolist()}, got {y.tolist()}"
+    assert not torch.allclose(
+        y.float(), decoder_raw.squeeze(-1), atol=1e-3
+    ), "y is still raw"
+
+
+def test_encoder_normalizer_is_not_refitted_on_the_decoder_window(
+    sample_timeseries_data,
+):
+    """Refitting would scale the target by the values being predicted -- the
+    leak `EncoderNormalizer` exists to avoid. It is detectable: a refit forces
+    `y` to mean 0 and std 1."""
+    dm = _module(sample_timeseries_data, EncoderNormalizer())
+    _, y = dm.train_dataset[0]
+
+    assert (
+        abs(float(y.mean())) > 0.1
+    ), "y has mean 0, so the normalizer was refitted on the decoder window"
 
 
 @pytest.mark.parametrize("normalizer", [None, TorchNormalizer(), GroupNormalizer()])
-def test_non_per_sequence_normalizers_are_unchanged(normalizer):
-    """Guard the other branch: these normalize during preprocessing.
-
-    Transforming `y` again for them would scale it twice, so the new code must
-    stay behind the `fit_per_sequence` check.
-    """
-    np.random.seed(0)
-    dataset = _trending_series()
-    dm = _module(dataset, normalizer)
+def test_non_per_sequence_normalizers_are_unchanged(normalizer, sample_timeseries_data):
+    """These normalize during preprocessing, so transforming `y` again would
+    scale it twice; the new code must stay behind the `fit_per_sequence` check."""
+    dm = _module(sample_timeseries_data, normalizer)
     _, y = dm.train_dataset[0]
-    raw = dm.train_dataset.preprocessed_data[dm.train_dataset.windows[0][0]]["target"]
-    start = dm.train_dataset.windows[0][1] + dm.train_dataset.windows[0][2]
-    expected = raw[start : start + dm.train_dataset.windows[0][3]].squeeze(-1)
-    assert torch.allclose(y.float(), expected.float(), atol=1e-6)
+    _, decoder_raw = _window_targets(dm)
+
+    assert torch.allclose(y.float(), decoder_raw.squeeze(-1), atol=1e-6)
 
 
 def test_multivariate_target_normalizes_only_the_per_sequence_column():
-    """With a mixed list, only the EncoderNormalizer column is transformed.
-
-    The other column was already normalized during preprocessing; applying its
-    scaler again here would scale it twice.
-    """
+    """With a mixed list, only the EncoderNormalizer column is transformed."""
     np.random.seed(0)
     df = pd.DataFrame(
         {
@@ -877,12 +823,9 @@ def test_multivariate_target_normalizes_only_the_per_sequence_column():
     dm = _module(dataset, [EncoderNormalizer(), TorchNormalizer()])
     _, y = dm.train_dataset[0]
 
-    # Multi-target returns a list, one tensor per target.
-    assert isinstance(y, list)
-    assert len(y) == 2
-    # target1 goes through the per-sequence normalizer, so it lands near the
-    # encoder's scale rather than near its raw mean of 100.
+    assert isinstance(y, list) and len(y) == 2
+    # target1 is per-sequence, so it lands near the encoder's scale rather
+    # than near its raw mean of 100.
     assert abs(float(y[0].mean())) < 20.0
-    # target2 is handled globally by TorchNormalizer during preprocessing and
-    # must not be touched a second time here.
+    # target2 was normalized during preprocessing and must not be touched again.
     assert torch.isfinite(y[1]).all()

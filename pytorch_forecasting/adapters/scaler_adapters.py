@@ -164,20 +164,13 @@ class ScalerAdapter:
     def transform_sequence(
         self, data: ArrayLike, X: pd.DataFrame = None
     ) -> torch.Tensor:
-        """Transform with the per-sequence sub-normalizers, without refitting.
+        """Apply the per-sequence sub-normalizers without refitting.
 
-        The companion to ``fit_transform_sequence``. That call fits the
-        per-sequence normalizers on the encoder window; this one applies the
-        parameters it fitted to a *different* window of the same sequence --
-        the decoder window -- so encoder and target end up on one scale.
-
-        It must not refit. Fitting on the decoder window would scale the
-        target by statistics of the values being predicted, which is the
-        leak ``EncoderNormalizer`` exists to avoid.
-
-        Sub-normalizers that are not per-sequence are left alone, exactly as
-        in ``fit_transform_sequence``: preprocessing has already applied
-        their global state, and transforming again would scale twice.
+        The companion to ``fit_transform_sequence``, which fits on the encoder
+        window; this applies those parameters to the decoder window. Refitting
+        here would scale the target by statistics of the values being
+        predicted. Non-per-sequence sub-normalizers are left alone, as in
+        ``fit_transform_sequence``.
 
         Parameters
         ----------
