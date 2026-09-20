@@ -1,23 +1,24 @@
 from typing import Any
 
+from lightning import Trainer
 from lightning.pytorch.loggers import TensorBoardLogger
 
-from pytorch_forecasting.base._base_pkg import Base_pkg
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.metrics import SMAPE
+from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 
 
 def _setup_pkg_and_data(
-    estimator_cls: type[Base_pkg],
+    estimator_cls: type[BaseForecaster],
     trainer_kwargs: dict[str, Any],
     tmp_path: str,
-) -> tuple[Base_pkg, dict[str, TimeSeries], dict[str, Any]]:
+) -> tuple[BaseForecaster, dict[str, TimeSeries], dict[str, Any]]:
     """
     Helper to initialize the Package, Datasets, and Configs.
 
     Returns
     -------
-    pkg : Base_pkg
+    pkg : BaseForecaster
         The initialized model package.
     test_data : dict
         Dictionary containing 'train' and 'predict' TimeSeries datasets.
@@ -53,9 +54,9 @@ def _setup_pkg_and_data(
     test_data = estimator_cls.get_test_dataset_from(**default_datamodule_cfg)
 
     pkg = estimator_cls(
-        model_cfg=model_cfg,
-        trainer_cfg=trainer_cfg,
-        datamodule_cfg=default_datamodule_cfg,
+        **model_cfg,
+        trainer=Trainer(**trainer_cfg),
+        datamodule=estimator_cls.get_datamodule_cls()(**default_datamodule_cfg),
     )
 
     return pkg, test_data, default_datamodule_cfg

@@ -2,10 +2,10 @@
 Packages container for DLinear model.
 """
 
-from pytorch_forecasting.base._base_pkg import Base_pkg
+from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 
 
-class DLinear_pkg_v2(Base_pkg):
+class DLinear_pkg_v2(BaseForecaster):
     """DLinear package container."""
 
     _tags = {
