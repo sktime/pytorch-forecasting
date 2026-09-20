@@ -1,9 +1,9 @@
 """PatchTST package container for V2."""
 
-from pytorch_forecasting.base._base_pkg import Base_pkg
+from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 
 
-class PatchTST_pkg_v2(Base_pkg):
+class PatchTST_pkg_v2(BaseForecaster):
     """PatchTST package container for V2."""
 
     _tags = {

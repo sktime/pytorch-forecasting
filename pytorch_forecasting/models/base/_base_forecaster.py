@@ -13,64 +13,50 @@ from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class Base_pkg(_BasePtForecasterV2):
+class BaseForecaster(_BasePtForecasterV2):
     """
-    Base model package class acting as a high-level wrapper for the Lightning workflow.
+    Base forecaster class acting as a high-level wrapper for the Lightning workflow.
 
-    This class simplifies the user experience by managing model, datamodule, and trainer
-    configurations, and providing streamlined ``fit`` and ``predict`` methods.
+    Model parameters are flattened into the concrete subclass's ``__init__``; the
+    model is built inside ``fit`` from the datamodule's ``metadata``. The class
+    manages model, datamodule and trainer, and provides streamlined ``fit`` and
+    ``predict`` methods.
 
     Parameters
     ----------
-    model_cfg : dict, optional
-        Model configs for the initialisation of the model. Required if not loading
-        from a checkpoint. Defaults to ``{}``.
-    trainer_cfg : dict, optional
-        Configs to initialise ``lightning.Trainer``. Defaults to {}.
-    datamodule_cfg : Union[dict, str, Path], optional
-        Configs to initialise a ``LightningDataModule``.
-
-        - If dict, the keys and values are used as configuration parameters.
-        - If str or Path, it should be a path to a ``.pkl`` file containing
-          the serialized configuration dictionary. Required for reproducibility
-          when loading a model for inference. Defaults to {}.
-
+    trainer : lightning.Trainer, optional
+        Trainer used by ``fit`` when none is passed there. Defaults to ``Trainer()``.
+    datamodule : LightningDataModule, optional
+        A configured but data-less datamodule; ``fit`` attaches the data with
+        ``with_data``. Defaults to ``get_datamodule_cls()()``, or to the
+        ``datamodule_cfg.pkl`` saved next to ``ckpt_path`` if loading.
     ckpt_path : Union[str, Path], optional
-        Path to the checkpoint from which to load the model. If provided, `model_cfg`
-        is ignored. Defaults to None.
+        Path to the checkpoint from which to load the model. Defaults to None.
     """
 
     def __init__(
         self,
-        model_cfg: dict[str, Any] | str | Path | None = None,
-        trainer_cfg: dict[str, Any] | str | Path | None = None,
-        datamodule_cfg: dict[str, Any] | str | Path | None = None,
+        trainer: Trainer | None = None,
+        datamodule: Any = None,
         ckpt_path: str | Path | None = None,
     ):
-        self.ckpt_path = Path(ckpt_path) if ckpt_path else None
-        self.model_cfg = self._load_config(
-            model_cfg, ckpt_path=self.ckpt_path, auto_file_name="model_cfg.pkl"
-        )
-        print(self.model_cfg)
+        self.trainer = trainer
+        self.datamodule = datamodule
+        self.ckpt_path = ckpt_path
+        super().__init__()
 
-        self.datamodule_cfg = self._load_config(
-            datamodule_cfg,
-            ckpt_path=self.ckpt_path,
-            auto_file_name="datamodule_cfg.pkl",
+        self._loaded_datamodule_cfg = self._load_config(
+            None, ckpt_path=self.ckpt_path, auto_file_name="datamodule_cfg.pkl"
         )
-        self.trainer_cfg = self._load_config(trainer_cfg)
         self.metadata = self._load_config(
             None, ckpt_path=self.ckpt_path, auto_file_name="metadata.pkl"
         )
 
         self.model = None
-        self.trainer = None
-        self.datamodule = None
+        self.trainer_ = None
+        self.datamodule_ = None
         if self.ckpt_path:
-            print(self.metadata)
             self._build_model(metadata=self.metadata, **self.model_cfg)
-        else:
-            self.model = None
 
     @staticmethod
     def _load_config(
@@ -97,7 +83,6 @@ class Base_pkg(_BasePtForecasterV2):
             raise FileNotFoundError(f"Configuration file not found: {path}")
 
         suffix = path.suffix.lower()
-        print(suffix)
 
         if suffix in [".yaml", ".yml"]:
             with open(path) as f:
@@ -120,6 +105,25 @@ class Base_pkg(_BasePtForecasterV2):
     def get_datamodule_cls(cls):
         """Get the underlying DataModule class."""
         raise NotImplementedError("Subclasses must implement `get_datamodule_cls`.")
+
+    def get_model_params(self) -> dict[str, Any]:
+        """Return the kwargs for ``get_cls()``, excluding ``metadata``."""
+        raise NotImplementedError("Subclasses must implement `get_model_params`.")
+
+    @property
+    def model_cfg(self) -> dict[str, Any]:
+        """Model kwargs, as passed to ``get_cls()``."""
+        return self.get_model_params()
+
+    @property
+    def datamodule_cfg(self) -> dict[str, Any]:
+        """Constructor kwargs of the datamodule, fitted one preferred."""
+        dm = self.datamodule_ if self.datamodule_ is not None else self.datamodule
+        if dm is None:
+            return self._loaded_datamodule_cfg
+        if hasattr(dm, "_init_kwargs"):
+            return dm._init_kwargs
+        return dict(getattr(dm, "hparams", {}))
 
     @classmethod
     def get_test_dataset_from(cls, **kwargs):
@@ -147,17 +151,23 @@ class Base_pkg(_BasePtForecasterV2):
             self.model = model_cls.load_from_checkpoint(
                 self.ckpt_path, metadata=metadata, **kwargs
             )
-        elif self.model_cfg:
-            self.model = model_cls(**self.model_cfg, metadata=metadata)
         else:
-            self.model = None
+            self.model = model_cls(**self.model_cfg, metadata=metadata)
 
     def _build_datamodule(self, data: TimeSeries) -> LightningDataModule:
-        """Constructs a DataModule from a D1 layer object."""
-        if not self.datamodule_cfg:
-            raise ValueError("`datamodule_cfg` must be provided to build a datamodule.")
-        datamodule_cls = self.get_datamodule_cls()
-        return datamodule_cls(data, **self.datamodule_cfg)
+        """Attach ``data`` to the datamodule, reusing fitted transforms if fitted."""
+        dm = self.datamodule_ if self.datamodule_ is not None else self.datamodule
+        if dm is None:
+            dm = self.get_datamodule_cls()(**self._loaded_datamodule_cfg)
+        return dm.with_data(data)
+
+    def _resolve_trainer(self, trainer: Trainer | None) -> Trainer:
+        """``fit``'s trainer > ``__init__``'s trainer > default ``Trainer()``."""
+        if trainer is not None:
+            return trainer
+        if self.trainer is not None:
+            return self.trainer
+        return Trainer()
 
     def _load_dataloader(
         self, data: TimeSeries | LightningDataModule | DataLoader
@@ -188,14 +198,14 @@ class Base_pkg(_BasePtForecasterV2):
         with open(output_dir / "model_cfg.pkl", "wb") as f:
             pickle.dump(self.model_cfg, f)
 
-        if self.datamodule is not None and hasattr(self.datamodule, "metadata"):
+        if self.datamodule_ is not None and hasattr(self.datamodule_, "metadata"):
             with open(output_dir / "metadata.pkl", "wb") as f:
-                pickle.dump(self.datamodule.metadata, f)
+                pickle.dump(self.datamodule_.metadata, f)
 
     def fit(
         self,
         data: TimeSeries | LightningDataModule,
-        # todo: we should create a base data_module for different data_modules
+        trainer: Trainer | None = None,
         save_ckpt: bool = True,
         ckpt_dir: str | Path = "checkpoints",
         ckpt_kwargs: dict[str, Any] | None = None,
@@ -209,6 +219,8 @@ class Base_pkg(_BasePtForecasterV2):
         data : Union[TimeSeries, LightningDataModule]
             The data to fit on (D1 or D2 layer). This object is responsible
             for providing both training and validation data.
+        trainer : lightning.Trainer, optional
+            Overrides the trainer given to ``__init__`` for this call only.
         save_ckpt : bool, default=True
             If True, save the best model checkpoint and the `datamodule_cfg`.
         ckpt_dir : Union[str, Path], default="checkpoints"
@@ -224,20 +236,18 @@ class Base_pkg(_BasePtForecasterV2):
             The path to the best model checkpoint if `save_ckpt=True`, else None.
         """
         if isinstance(data, TimeSeries):
-            self.datamodule = self._build_datamodule(data)
+            self.datamodule_ = self._build_datamodule(data)
         else:
-            self.datamodule = data
-        self.datamodule.setup(stage="fit")
+            self.datamodule_ = data
+        self.datamodule_.setup(stage="fit")
 
         if self.model is None:
-            if not self.model_cfg:
-                raise RuntimeError(
-                    "`model_cfg` must be provided to train from scratch."
-                )
-            metadata = self.datamodule.metadata
+            # the model is built only here, because only now are its input
+            # shapes known - they come from the metadata of the data module
+            metadata = self.datamodule_.metadata
             self._build_model(metadata)
 
-        callbacks = self.trainer_cfg.get("callbacks", []).copy()
+        self.trainer_ = self._resolve_trainer(trainer)
         checkpoint_cb = None
         if save_ckpt:
             ckpt_dir = Path(ckpt_dir)
@@ -252,13 +262,9 @@ class Base_pkg(_BasePtForecasterV2):
             if ckpt_kwargs:
                 default_ckpt_kwargs.update(ckpt_kwargs)
             checkpoint_cb = ModelCheckpoint(**default_ckpt_kwargs)
-            callbacks.append(checkpoint_cb)
-        trainer_init_cfg = self.trainer_cfg.copy()
-        trainer_init_cfg.pop("callbacks", None)
+            self.trainer_.callbacks.append(checkpoint_cb)
 
-        self.trainer = Trainer(**trainer_init_cfg, callbacks=callbacks)
-
-        self.trainer.fit(self.model, datamodule=self.datamodule, **trainer_fit_kwargs)
+        self.trainer_.fit(self.model, datamodule=self.datamodule_, **trainer_fit_kwargs)
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             self._save_artifact(best_model_path.parent)
@@ -295,7 +301,7 @@ class Base_pkg(_BasePtForecasterV2):
         """
         if self.model is None:
             raise RuntimeError(
-                "Model is not initialized. Provide `model_cfg` or `ckpt_path`."
+                "Model is not initialized. Call `fit` or pass `ckpt_path`."
             )
 
         dataloader = self._load_dataloader(data)

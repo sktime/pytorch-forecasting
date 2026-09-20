@@ -2,12 +2,12 @@ from typing import Any
 
 import torch
 
-from pytorch_forecasting.base._base_pkg import Base_pkg
 from pytorch_forecasting.data import TimeSeries
+from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 
 
 def _integration(
-    pkg: Base_pkg,
+    pkg: BaseForecaster,
     test_data: dict[str, TimeSeries],
     datamodule_cfg: dict[str, Any],
     **kwargs,

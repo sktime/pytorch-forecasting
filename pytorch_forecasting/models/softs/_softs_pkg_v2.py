@@ -2,10 +2,10 @@
 Packages container for SOFTS model.
 """
 
-from pytorch_forecasting.base._base_pkg import Base_pkg
+from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 
 
-class SOFTS_pkg_v2(Base_pkg):
+class SOFTS_pkg_v2(BaseForecaster):
     """
     SOFTS package container.
     Reference : https://arxiv.org/abs/2404.14197

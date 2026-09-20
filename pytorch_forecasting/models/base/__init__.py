@@ -1,5 +1,6 @@
 """Base classes for pytorch-foercasting models."""
 
+from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 from pytorch_forecasting.models.base._base_model import (
     AutoRegressiveBaseModel,
     AutoRegressiveBaseModelWithCovariates,
@@ -19,6 +20,7 @@ __all__ = [
     "_BasePtForecasterV2",
     "AutoRegressiveBaseModel",
     "AutoRegressiveBaseModelWithCovariates",
+    "BaseForecaster",
     "BaseModel",
     "BaseModelWithCovariates",
     "Prediction",

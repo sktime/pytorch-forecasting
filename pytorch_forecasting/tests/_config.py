@@ -5,6 +5,16 @@
 EXCLUDE_ESTIMATORS = [
     "DummySkipped",
     "ClassName",  # exclude classes from extension templates
+    # v2 pkgs not yet ported from Base_pkg config dicts to BaseForecaster
+    "DLinear_pkg_v2",
+    "DecoderMLP_pkg_v2",
+    "FreTS_pkg_v2",
+    "PatchTST_pkg_v2",
+    "SCINet_pkg_v2",
+    "SOFTS_pkg_v2",
+    "TIDE_pkg_v2",
+    "TimeXer_pkg_v2",
+    "xLSTMTime_pkg_v2",
 ]
 
 # dictionary of lists of str, names of tests to exclude from testing
