@@ -7,7 +7,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg import (
     TemporalFusionTransformer_pkg,
 )
 from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
-    TFT_pkg_v2,
+    TFTForecaster,
 )
 from pytorch_forecasting.models.temporal_fusion_transformer.sub_modules import (
     AddNorm,

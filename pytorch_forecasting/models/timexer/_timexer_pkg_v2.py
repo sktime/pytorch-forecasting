@@ -2,10 +2,10 @@
 Metadata container for TimeXer v2.
 """
 
-from pytorch_forecasting.base._base_pkg import Base_pkg
+from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 
 
-class TimeXer_pkg_v2(Base_pkg):
+class TimeXer_pkg_v2(BaseForecaster):
     """TimeXer metadata container."""
 
     _tags = {

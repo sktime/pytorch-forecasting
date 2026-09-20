@@ -270,10 +270,14 @@ def test_nn_loss_adapter_list_pred_error():
 
 def test_tft_cross_entropy_on_discrete_target(tmp_path):
     """TFT + CrossEntropyLoss works when the target is discrete class labels."""
+    from lightning import Trainer
     from lightning.pytorch.loggers import TensorBoardLogger
 
+    from pytorch_forecasting.data.data_module import (
+        EncoderDecoderTimeSeriesDataModule,
+    )
     from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
-        TFT_pkg_v2,
+        TFTForecaster,
     )
     from pytorch_forecasting.tests._data_scenarios import (
         data_with_covariates_v2,
@@ -292,23 +296,21 @@ def test_tft_cross_entropy_on_discrete_target(tmp_path):
         "train_val_test_split": (0.8, 0.2),
         "add_relative_time_idx": True,
     }
-    pkg = TFT_pkg_v2(
-        model_cfg=dict(
-            loss=nn.CrossEntropyLoss(),
-            output_size=n_classes,
-            hidden_size=16,
-            attention_head_size=2,
+    pkg = TFTForecaster(
+        loss=nn.CrossEntropyLoss(),
+        output_size=n_classes,
+        hidden_size=16,
+        attention_head_size=2,
+        trainer=Trainer(
+            max_epochs=1,
+            limit_train_batches=2,
+            limit_val_batches=1,
+            accelerator="cpu",
+            enable_checkpointing=False,
+            logger=TensorBoardLogger(str(tmp_path)),
+            default_root_dir=str(tmp_path),
         ),
-        trainer_cfg={
-            "max_epochs": 1,
-            "limit_train_batches": 2,
-            "limit_val_batches": 1,
-            "accelerator": "cpu",
-            "enable_checkpointing": False,
-            "logger": TensorBoardLogger(str(tmp_path)),
-            "default_root_dir": str(tmp_path),
-        },
-        datamodule_cfg=dm_cfg,
+        datamodule=EncoderDecoderTimeSeriesDataModule(**dm_cfg),
     )
     pkg.fit(datasets["training_dataset"], save_ckpt=False)
 

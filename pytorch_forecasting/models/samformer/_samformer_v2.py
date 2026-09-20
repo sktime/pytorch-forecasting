@@ -36,10 +36,10 @@ class Samformer(BaseModel):
     def _pkg(cls):
         """Return the package class for this model."""
         from pytorch_forecasting.models.samformer._samformer_v2_pkg import (
-            Samformer_pkg_v2,
+            SamformerForecaster,
         )
 
-        return Samformer_pkg_v2
+        return SamformerForecaster
 
     def __init__(
         self,
