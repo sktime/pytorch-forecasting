@@ -251,6 +251,61 @@ def test_processed_dataset(data_module):
     assert y.shape[0] == data_module.max_prediction_length
 
 
+def test_predict_index_uses_original_time_and_group(data_module):
+    """Prediction indices use the first decoder time and original group id."""
+    data_module.setup(stage="predict")
+    dataset = data_module.predict_dataset
+    batch = [dataset[i] for i in range(3)]
+    x_batch, _ = data_module.collate_fn(batch)
+
+    index = dataset.x_to_index(x_batch)
+
+    expected_times = []
+    expected_groups = []
+    for window_idx in x_batch["__window_idx"].tolist():
+        series_idx, start_idx, enc_length, _ = dataset.windows[window_idx]
+        expected_times.append(
+            dataset.preprocessed_data[series_idx]["times"][start_idx + enc_length]
+        )
+        expected_groups.append(data_module.time_series_dataset._group_ids[series_idx])
+
+    assert index["time"].tolist() == expected_times
+    assert index["group"].tolist() == expected_groups
+    assert index["time"].dtype == data_module.time_series_dataset.data["time"].dtype
+
+
+def test_predict_index_without_groups_has_only_time_column():
+    """Ungrouped series do not expose a synthetic group in prediction indices."""
+    df = pd.DataFrame(
+        {
+            "time": pd.date_range("2024-01-01", periods=40, freq="D"),
+            "target": np.arange(40, dtype=float),
+            "known": np.arange(40, dtype=float),
+        }
+    )
+    ts = TimeSeries(
+        data=df,
+        time="time",
+        target="target",
+        num=["known"],
+        known=["known"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=8,
+        max_prediction_length=4,
+        batch_size=2,
+    )
+    dm.setup(stage="predict")
+    batch = [dm.predict_dataset[0]]
+    x_batch, _ = dm.collate_fn(batch)
+
+    index = dm.predict_dataset.x_to_index(x_batch)
+
+    assert list(index.columns) == ["time"]
+    assert index.loc[0, "time"] == df.loc[8, "time"]
+
+
 def test_collate_fn(data_module):
     """Test the collate function that combines batch samples.
 
