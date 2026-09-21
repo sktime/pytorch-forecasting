@@ -56,14 +56,14 @@ dependencies = [
 all_extras = [
   "cpflows",
   "matplotlib<3.12.0",
-  "optuna >=3.1.0,<5.0.0",
+  "optuna >=3.1.0,<6.0.0",
   "optuna-integration",
   "pytorch_optimizer >=2.5.1,<4.0.0",
   "statsmodels",
 ]
 
 tuning = [
-  "optuna >=3.1.0,<5.0.0",
+  "optuna >=3.1.0,<6.0.0",
   "optuna-integration",
   "statsmodels",
 ]
@@ -119,7 +119,7 @@ docs = [
 github-actions = ["pytest-github-actions-annotate-failures<0.4.3"]
 
 [tool.setuptools.packages.find]
-exclude = ["build_tools"]
+include = ["pytorch_forecasting", "pytorch_forecasting.*"]
 
 [build-system]
 build-backend = "setuptools.build_meta"
