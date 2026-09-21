@@ -340,12 +340,14 @@ class NHiTS_v2(BaseModel):
         forecast_loss = self._call_loss(out["prediction"], y, encoder_target)
 
         if self._backcast_loss_ratio > 0.0:
-            # The backcast reconstructs the encoder-window target; reuse that
-            # window as the scaling reference for scale-dependent losses. Only
-            # reached for point forecasts (guarded in __init__).
-            backcast_loss = self._call_loss(
-                out["backcast"], encoder_target, encoder_target
-            )
+            # The backcast reconstructs the encoder window, so the encoder
+            # target is what it is scored against. Scale-dependent losses take
+            # the future target as their scaling reference here: MASE builds its
+            # denominator from the scaling series concatenated with the target,
+            # and v1 NHiTS pairs the encoder window with the decoder target in
+            # exactly this way. Only reached for point forecasts (guarded in
+            # __init__).
+            backcast_loss = self._call_loss(out["backcast"], encoder_target, y)
             # Same weighting as v1 NHiTS: scale the ratio by prediction over
             # context length, normalize it, and give the forecast the
             # complementary weight.

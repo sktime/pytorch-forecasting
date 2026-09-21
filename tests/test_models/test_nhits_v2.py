@@ -24,7 +24,7 @@ import torch
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
-from pytorch_forecasting.metrics import MAE, QuantileLoss
+from pytorch_forecasting.metrics import MAE, MASE, QuantileLoss
 from pytorch_forecasting.models import NHiTS as NHiTS_v1
 from pytorch_forecasting.models.nhits._nhits_v2 import NHiTS_v2
 from pytorch_forecasting.utils import create_mask
@@ -608,23 +608,78 @@ def test_nhits_v1_v2_wrapper_outputs_match(loss_cls):
     )
 
 
-def test_nhits_v1_v2_weighted_loss_matches():
+def _v1_losses(loss_cls, out_v1, x_v1, y):
+    """Compute the forecast and backcast loss the way v1 NHiTS does.
+
+    For a scale-dependent loss the two terms use different scaling series: the
+    forecast is scaled by the encoder window, while the backcast, which is
+    scored against that same encoder window, is scaled by the decoder target.
+
+    Parameters
+    ----------
+    loss_cls : type
+        Loss class to instantiate.
+    out_v1 : dict[str, torch.Tensor]
+        Output of the v1 wrapper.
+    x_v1 : dict[str, torch.Tensor]
+        Batch fed to the v1 wrapper.
+    y : torch.Tensor
+        Future target.
+
+    Returns
+    -------
+    forecast_loss : torch.Tensor
+        Scalar forecast loss.
+    backcast_loss : torch.Tensor
+        Scalar backcast loss.
+    """
+    if loss_cls is MASE:
+        forecast_loss = loss_cls()(
+            out_v1["prediction"],
+            y,
+            encoder_target=x_v1["encoder_target"],
+            encoder_lengths=x_v1["encoder_lengths"],
+        )
+        backcast_loss = loss_cls()(
+            out_v1["backcast"],
+            x_v1["encoder_target"],
+            encoder_target=y,
+            encoder_lengths=x_v1["decoder_lengths"],
+        )
+        return forecast_loss, backcast_loss
+    return (
+        loss_cls()(out_v1["prediction"], y),
+        loss_cls()(out_v1["backcast"], x_v1["encoder_target"]),
+    )
+
+
+@pytest.mark.parametrize("loss_cls", [MAE, MASE], ids=["mae", "mase"])
+def test_nhits_v1_v2_weighted_loss_matches(loss_cls):
     """The weighted loss must match the value v1 computes on the same batch.
 
-    This reproduces the v1 combination, backcast loss against the encoder
-    history plus the v1 weights, from the v1 wrapper output, and compares it
-    against ``_compute_loss`` of v2 on the equivalent input. It covers the
+    This reproduces the v1 combination from the v1 wrapper output and compares
+    it against ``_compute_loss`` of v2 on the equivalent input, covering the
     backcast convention and the weighting together, end to end through both
     wrappers.
+
+    MASE is covered as well as MAE because it is the default loss and the only
+    one of the two that reads the scaling series, so a mismatch in which series
+    is handed to the backcast term is invisible under MAE.
+
+    Parameters
+    ----------
+    loss_cls : type
+        Loss class under test.
     """
     ratio = 0.5
-    model_v1, model_v2, x_v1, x_v2 = _make_aligned_v1_v2(MAE, backcast_loss_ratio=ratio)
+    model_v1, model_v2, x_v1, x_v2 = _make_aligned_v1_v2(
+        loss_cls, backcast_loss_ratio=ratio
+    )
     y = x_v1["decoder_target"]
 
     with torch.no_grad():
         out_v1 = model_v1(x_v1)
-        forecast_loss_v1 = MAE()(out_v1["prediction"], y)
-        backcast_loss_v1 = MAE()(out_v1["backcast"], x_v1["encoder_target"])
+        forecast_loss_v1, backcast_loss_v1 = _v1_losses(loss_cls, out_v1, x_v1, y)
 
         loss_v2, _ = model_v2._compute_loss(x_v2, y, "val")
 
