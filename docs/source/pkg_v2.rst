@@ -96,8 +96,8 @@ See the detailed API documentation for the available V2 Package classes below:
 
    models.temporal_fusion_transformer._tft_pkg_v2.TFT_pkg_v2
    models.dlinear._dlinear_pkg_v2.DLinear_pkg_v2
-   models.samformer._samformer_v2_pkg.Samformer_pkg_v2
-   models.tide._tide_dsipts._tide_v2_pkg.TIDE_pkg_v2
+   models.samformer._samformer_pkg_v2.Samformer_pkg_v2
+   models.tide._tide_dsipts._tide_pkg_v2.TIDE_pkg_v2
    models.timexer._timexer_pkg_v2.TimeXer_pkg_v2
    models.tsmixer._tsmixer_pkg_v2.TSMixer_pkg_v2
    models.xlstm._xlstm_pkg_v2.xLSTMTime_pkg_v2
@@ -106,3 +106,5 @@ See the detailed API documentation for the available V2 Package classes below:
    models.scinet._scinet_pkg_v2.SCINet_pkg_v2
    models.patch_tst._patch_tst_pkg_v2.PatchTST_pkg_v2
    models.frets._frets_pkg_v2.FreTS_pkg_v2
+   models.modern_tcn._modern_tcn_pkg_v2.ModernTCN_pkg_v2
+   models.units._units_pkg_v2.UniTS_pkg_v2
