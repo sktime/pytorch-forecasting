@@ -56,10 +56,9 @@ class NHiTS_v2(BaseModel):
         Dropout probability applied in the MLP layers.
     backcast_loss_ratio : float, default=0.0
         Weight of the backcast loss relative to the forecast loss.
-        When 0, only the forecast loss is used.
-        When > 0, the total loss is
-        ``(1 - backcast_loss_ratio) * forecast_loss
-        + backcast_loss_ratio * backcast_loss``.
+        When 0, only the forecast loss is used. A weight of 1.0 weights
+        forecast and backcast loss equally, regardless of the backcast and
+        forecast lengths, matching the v1 ``NHiTS`` behaviour.
     loss : Metric, optional
         Loss to optimise. Defaults to
         :class:`~pytorch_forecasting.metrics.MASE`.
@@ -149,8 +148,7 @@ class NHiTS_v2(BaseModel):
         output_size = [n_outputs_per_target] * n_targets
 
         # The backcast is single-valued per target and cannot be scored by a
-        # quantile loss, so mixing it with backcast regularization is disallowed
-        # (mirrors the v1 NHiTS constraint).
+        # quantile loss, so mixing it with backcast regularization is disallowed.
         if backcast_loss_ratio > 0.0 and n_outputs_per_target > 1:
             raise ValueError(
                 "backcast_loss_ratio > 0 is only supported for point forecasts "
@@ -342,9 +340,16 @@ class NHiTS_v2(BaseModel):
             backcast_loss = self._call_loss(
                 out["backcast"], encoder_target, encoder_target
             )
-            loss = (
-                1 - self._backcast_loss_ratio
-            ) * forecast_loss + self._backcast_loss_ratio * backcast_loss
+            # Same weighting as v1 NHiTS: the ratio is scaled by the ratio of
+            # prediction to context length and then normalized, so that
+            # ``backcast_loss_ratio=1`` weights forecast and backcast equally
+            # regardless of the two window lengths.
+            backcast_weight = (
+                self._backcast_loss_ratio * self.prediction_length / self.context_length
+            )
+            backcast_weight = backcast_weight / (backcast_weight + 1)
+            forecast_weight = 1 - backcast_weight
+            loss = forecast_weight * forecast_loss + backcast_weight * backcast_loss
         else:
             loss = forecast_loss
 
