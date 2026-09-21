@@ -54,6 +54,9 @@ The general setup for training and testing a model is
 
 The :ref:`Tutorials <tutorials>` section provides detailed guidance and examples on how to use models and implement new ones.
 
+If you want to contribute to the library rather than just use it, see the
+:doc:`developer guide <developer_guide>`.
+
 
 Example
 --------
