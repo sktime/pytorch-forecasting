@@ -1,7 +1,12 @@
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.preprocessing import (
+    MinMaxScaler,
+    PowerTransformer,
+    RobustScaler,
+    StandardScaler,
+)
 import torch
 
 from pytorch_forecasting.adapters import ScalerAdapter
@@ -9,6 +14,7 @@ from pytorch_forecasting.data.data_module import TslibDataModule
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     GroupNormalizer,
+    NaNLabelEncoder,
     TorchNormalizer,
 )
 from pytorch_forecasting.data.timeseries import TimeSeries
@@ -643,11 +649,11 @@ def test_normalize_features_scales_only_configured_columns():
     )
     # before fit: no-op
     raw_cont = ds[0]["x"][:, dm.continuous_indices]
-    assert torch.equal(dm._normalize_features(raw_cont), raw_cont)
+    assert torch.equal(dm._normalize_features(raw_cont, 0), raw_cont)
 
     # after fit: scaled
     dm._fit_scalers(torch.arange(len(ds)))
-    scaled = dm._normalize_features(raw_cont)
+    scaled = dm._normalize_features(raw_cont, 0)
     assert not torch.equal(scaled, raw_cont)
     # magnitude drops from ~100 toward ~0
     assert abs(float(scaled.mean())) < abs(float(raw_cont.mean()))
@@ -663,9 +669,9 @@ def test_normalize_target_is_noop_until_fitted():
         batch_size=8,
     )
     tgt = ds[0]["y"].float()
-    assert torch.equal(dm._normalize_target(tgt), tgt)  # not yet fitted
+    assert torch.equal(dm._normalize_target(tgt, 0), tgt)  # not yet fitted
     dm._fit_target_normalizer(torch.arange(len(ds)))
-    assert dm._normalize_target(tgt).shape == tgt.shape
+    assert dm._normalize_target(tgt, 0).shape == tgt.shape
 
 
 def test_preprocess_data_scales_features():
@@ -780,19 +786,14 @@ def test_setup_test_alone_still_scales():
     assert abs(float(x["history_cont"][:, 0].mean())) < 5.0
 
 
-@pytest.mark.parametrize("target_normalizer", [None, "auto"])
-def test_target_is_not_normalized_by_default(target_normalizer):
-    """``None`` and ``"auto"`` both mean "leave the target alone".
-
-    The inverse transform is not implemented yet, so normalizing by default
-    would hand models predictions they cannot map back (see issue #2359).
-    """
+def test_target_is_not_normalized_by_default():
+    """``None`` means "leave the target alone"."""
     ds = _make_ts()
     dm = TslibDataModule(
         time_series_dataset=ds,
         context_length=16,
         prediction_length=4,
-        target_normalizer=target_normalizer,
+        target_normalizer=None,
         batch_size=8,
     )
     dm.setup(stage="fit")
@@ -803,39 +804,19 @@ def test_target_is_not_normalized_by_default(target_normalizer):
     assert torch.equal(dm._preprocess_data(series_idx)["target"], raw)
 
 
-@pytest.mark.parametrize(
-    "scaler",
-    [
-        RobustScaler(),
-        TorchNormalizer(),
-        EncoderNormalizer(),
-        GroupNormalizer(groups=["series_id"]),
-        [TorchNormalizer()],
-    ],
-)
-def test_rejects_scalers_other_than_standard_scaler(scaler):
-    ds = _make_ts()
-    with pytest.raises(NotImplementedError, match="StandardScaler"):
-        TslibDataModule(
-            time_series_dataset=ds,
-            context_length=16,
-            prediction_length=4,
-            target_normalizer=scaler,
-            batch_size=8,
-        )
-
-
-def test_rejects_target_normalizer_for_multivariate_target():
+def _multivariate_ts() -> TimeSeries:
+    """Two series, two targets, one continuous feature."""
+    rng = np.random.default_rng(0)
     df = pd.DataFrame(
         {
             "series_id": np.repeat([0, 1], 40),
             "time_idx": np.tile(np.arange(40), 2),
-            "x": np.random.normal(0, 1, 80),
-            "y1": np.random.normal(0, 1, 80),
-            "y2": np.random.normal(0, 1, 80),
+            "x": rng.normal(0, 1, 80),
+            "y1": rng.normal(0, 1, 80),
+            "y2": rng.normal(5, 2, 80),
         }
     )
-    ds = TimeSeries(
+    return TimeSeries(
         data=df,
         time="time_idx",
         target=["y1", "y2"],
@@ -843,14 +824,240 @@ def test_rejects_target_normalizer_for_multivariate_target():
         num=["x"],
         unknown=["x"],
     )
-    with pytest.raises(NotImplementedError, match="multivariate"):
-        TslibDataModule(
-            time_series_dataset=ds,
-            context_length=16,
-            prediction_length=4,
-            target_normalizer=StandardScaler(),
-            batch_size=8,
-        )
+
+
+@pytest.mark.parametrize(
+    "target_normalizer",
+    [
+        StandardScaler(),
+        RobustScaler(),
+        MinMaxScaler(),
+        PowerTransformer(),
+        TorchNormalizer(),
+        EncoderNormalizer(),
+        GroupNormalizer(groups=["series_id"]),
+    ],
+    ids=[
+        "StandardScaler",
+        "RobustScaler",
+        "MinMaxScaler",
+        "PowerTransformer",
+        "TorchNormalizer",
+        "EncoderNormalizer",
+        "GroupNormalizer",
+    ],
+)
+def test_accepts_the_same_target_normalizers_as_encoder_decoder(target_normalizer):
+    """The configuration surface matches ``EncoderDecoderTimeSeriesDataModule``."""
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=target_normalizer,
+        batch_size=8,
+    )
+    assert isinstance(dm._target_normalizer, ScalerAdapter)
+
+    dm.setup(stage="fit")
+    x, y = dm.train_dataset[0]
+
+    assert x["history_target"].shape == (16, 1)
+    assert y.shape == (4,)
+    assert torch.isfinite(x["history_target"]).all()
+
+
+@pytest.mark.parametrize(
+    "scaler",
+    [
+        StandardScaler(),
+        RobustScaler(),
+        MinMaxScaler(),
+        PowerTransformer(),
+        TorchNormalizer(),
+        EncoderNormalizer(),
+        GroupNormalizer(groups=["series_id"]),
+    ],
+    ids=[
+        "StandardScaler",
+        "RobustScaler",
+        "MinMaxScaler",
+        "PowerTransformer",
+        "TorchNormalizer",
+        "EncoderNormalizer",
+        "GroupNormalizer",
+    ],
+)
+def test_accepts_the_same_feature_scalers_as_encoder_decoder(scaler):
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": scaler},
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+
+    x, _ = dm.train_dataset[0]
+    hist = x["history_cont"]
+    assert hist.shape == (16, 1)
+    assert torch.isfinite(hist).all()
+    # raw ``x`` sits around 100; every supported scaler pulls it near zero
+    assert abs(float(hist.mean())) < 5.0
+
+
+def test_encoder_normalizer_is_fit_per_history_window():
+    """``EncoderNormalizer`` has no global state; it re-fits on each window."""
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        scalers={"x": EncoderNormalizer()},
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+
+    # the global pass leaves the series untouched ...
+    series_idx = dm._train_indices[0].item()
+    raw_cont = ds[series_idx]["x"][:, dm.continuous_indices].float()
+    processed = dm._preprocess_data(series_idx)["features"]["continuous"]
+    assert torch.allclose(processed, raw_cont)
+
+    # ... and the history window is standardised inside __getitem__
+    x, _ = dm.train_dataset[0]
+    assert abs(float(x["history_cont"].mean())) < 1e-4
+
+    # the per-window write must not leak back into the shared series tensor
+    assert torch.allclose(
+        dm._preprocess_data(series_idx)["features"]["continuous"], raw_cont
+    )
+
+
+def test_list_of_normalizers_is_wrapped_in_multi_normalizer():
+    ds = _multivariate_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=[TorchNormalizer(), TorchNormalizer()],
+        batch_size=8,
+    )
+    assert dm._target_normalizer.is_multi
+
+    dm.setup(stage="fit")
+    x, y = dm.train_dataset[0]
+
+    assert x["history_target"].shape == (16, 2)
+    assert isinstance(y, list) and len(y) == 2
+
+
+def test_multivariate_target_accepts_a_single_normalizer():
+    ds = _multivariate_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=StandardScaler(),
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+
+    x, _ = dm.train_dataset[0]
+    assert x["history_target"].shape == (16, 2)
+    assert torch.isfinite(x["history_target"]).all()
+
+
+def test_nan_label_encoder_on_a_categorical_target():
+    df = pd.DataFrame(
+        {
+            "series_id": np.repeat([0, 1], 40),
+            "time_idx": np.tile(np.arange(40), 2),
+            "x": np.arange(80, dtype=float),
+            # the D1 layer builds tensors directly, so categories must be numeric
+            "y": np.tile([3, 7], 40),
+        }
+    )
+    ds = TimeSeries(
+        data=df,
+        time="time_idx",
+        target="y",
+        group=["series_id"],
+        num=["x"],
+        cat=["y"],
+        unknown=["x"],
+    )
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer=NaNLabelEncoder(),
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+
+    assert dm._target_normalizer.is_label_encoder
+    x, _ = dm.train_dataset[0]
+    assert set(x["history_target"].flatten().tolist()) <= {0.0, 1.0}
+
+
+def test_auto_resolves_a_normalizer_from_the_training_data():
+    """``"auto"`` picks a normalizer the same way ``EncoderDecoder`` does."""
+    ds = _make_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer="auto",
+        batch_size=8,
+    )
+    # unresolved until the training split is known
+    assert dm._target_normalizer is None
+
+    dm.setup(stage="fit")
+
+    assert isinstance(dm._target_normalizer, ScalerAdapter)
+    # context_length <= 20 and the dataset has groups -> GroupNormalizer
+    assert isinstance(dm._target_normalizer._scaler, GroupNormalizer)
+
+    series_idx = dm._train_indices[0].item()
+    raw = ds[series_idx]["y"].float()
+    assert not torch.equal(dm._preprocess_data(series_idx)["target"], raw)
+
+
+def test_auto_picks_encoder_normalizer_for_long_context():
+    ds = _make_ts(length=80)
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=32,
+        prediction_length=4,
+        target_normalizer="auto",
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+
+    assert isinstance(dm._target_normalizer._scaler, EncoderNormalizer)
+    # per-sequence normalizers have no global state to fit
+    assert dm._target_normalizer_fitted is False
+
+    x, _ = dm.train_dataset[0]
+    assert abs(float(x["history_target"].mean())) < 1e-4
+
+
+def test_auto_resolves_multi_normalizer_for_multivariate_target():
+    ds = _multivariate_ts()
+    dm = TslibDataModule(
+        time_series_dataset=ds,
+        context_length=16,
+        prediction_length=4,
+        target_normalizer="auto",
+        batch_size=8,
+    )
+    dm.setup(stage="fit")
+
+    assert dm._target_normalizer.is_multi
+    assert len(dm._target_normalizer._scaler.normalizers) == 2
 
 
 def test_constructor_params_are_preserved():
