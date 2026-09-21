@@ -56,9 +56,11 @@ class NHiTS_v2(BaseModel):
         Dropout probability applied in the MLP layers.
     backcast_loss_ratio : float, default=0.0
         Weight of the backcast loss relative to the forecast loss.
-        When 0, only the forecast loss is used. A weight of 1.0 weights
-        forecast and backcast loss equally, regardless of the backcast and
-        forecast lengths, matching the v1 ``NHiTS`` behaviour.
+        When 0, only the forecast loss is used. When greater than 0, the
+        backcast weight is ``w = ratio * prediction_length / context_length``
+        normalized as ``w / (w + 1)``, and the forecast receives the
+        complementary weight ``1 - w / (w + 1)``. This matches the weighting
+        used by the v1 ``NHiTS``.
     loss : Metric, optional
         Loss to optimise. Defaults to
         :class:`~pytorch_forecasting.metrics.MASE`.
@@ -147,8 +149,6 @@ class NHiTS_v2(BaseModel):
             n_outputs_per_target = 1
         output_size = [n_outputs_per_target] * n_targets
 
-        # The backcast is single-valued per target and cannot be scored by a
-        # quantile loss, so mixing it with backcast regularization is disallowed.
         if backcast_loss_ratio > 0.0 and n_outputs_per_target > 1:
             raise ValueError(
                 "backcast_loss_ratio > 0 is only supported for point forecasts "
@@ -248,7 +248,8 @@ class NHiTS_v2(BaseModel):
             * ``"prediction"`` : tensor of shape
               ``(batch_size, prediction_length, 1)``
             * ``"backcast"`` : tensor of shape
-              ``(batch_size, context_length, 1)``
+              ``(batch_size, context_length, 1)``, the reconstruction of the
+              encoder window
             * ``"block_forecasts"`` : stacked block forecast contributions
             * ``"block_backcasts"`` : stacked block backcast contributions
         """
@@ -278,13 +279,18 @@ class NHiTS_v2(BaseModel):
         if st_parts:
             x_s = torch.cat(st_parts, dim=-1)  # (batch, static_size)
 
-        forecast, backcast, block_forecasts, block_backcasts = self.model(
+        forecast, residual, block_forecasts, block_backcasts = self.model(
             encoder_y=target,
             encoder_mask=encoder_mask,
             encoder_x_t=encoder_x_t,
             decoder_x_t=decoder_x_t,
             x_s=x_s,
         )
+        # NHiTSModule returns the residual left after all blocks have subtracted
+        # their backcasts, not the reconstruction itself. Convert it the same way
+        # the v1 NHiTS wrapper does, so that "backcast" is the reconstruction of
+        # the encoder window and can be scored directly against the history.
+        backcast = target - residual
 
         return {
             "prediction": forecast,
@@ -334,16 +340,15 @@ class NHiTS_v2(BaseModel):
         forecast_loss = self._call_loss(out["prediction"], y, encoder_target)
 
         if self._backcast_loss_ratio > 0.0:
-            # The backcast reconstructs the encoder-window target; reuse it as the
-            # scaling reference for scale-dependent losses. Only reached for point
-            # forecasts (guarded in __init__).
+            # The backcast reconstructs the encoder-window target; reuse that
+            # window as the scaling reference for scale-dependent losses. Only
+            # reached for point forecasts (guarded in __init__).
             backcast_loss = self._call_loss(
                 out["backcast"], encoder_target, encoder_target
             )
-            # Same weighting as v1 NHiTS: the ratio is scaled by the ratio of
-            # prediction to context length and then normalized, so that
-            # ``backcast_loss_ratio=1`` weights forecast and backcast equally
-            # regardless of the two window lengths.
+            # Same weighting as v1 NHiTS: scale the ratio by prediction over
+            # context length, normalize it, and give the forecast the
+            # complementary weight.
             backcast_weight = (
                 self._backcast_loss_ratio * self.prediction_length / self.context_length
             )
