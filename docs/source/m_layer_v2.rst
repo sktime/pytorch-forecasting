@@ -56,3 +56,4 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.frets._frets_v2.FreTS
    models.modern_tcn._modern_tcn_v2.ModernTCN
    models.units._units_v2.UniTS
+   models.nhits._nhits_v2.NHiTS_v2
