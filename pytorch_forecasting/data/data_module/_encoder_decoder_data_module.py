@@ -7,6 +7,7 @@
 # into the memory.
 #######################################################################################
 
+from dataclasses import dataclass, fields
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
@@ -19,6 +20,7 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from pytorch_forecasting._proto._timeseries_datatype import TimeSeries_datatype
 from pytorch_forecasting.adapters import ScalerAdapter
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
@@ -32,6 +34,79 @@ from pytorch_forecasting.utils._coerce import _coerce_to_dict
 NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
 
 
+@dataclass(frozen=True)
+class DataModuleMetadata:
+    """Shapes and lengths a model needs to build its layers.
+
+    This is the contract between the data module and the model layer: a model
+    is initialised with the ``metadata`` of the data module it will be trained
+    on, and reads its input dimensions from it.
+
+    Frozen, so that a model cannot mutate shapes that another model may share.
+    Supports mapping-style access (``metadata["encoder_cont"]``,
+    ``metadata.get("target", 1)``) for compatibility with the ``dict`` this
+    replaces.
+
+    Parameters
+    ----------
+    encoder_cat : int
+        Number of categorical variables in the encoder.
+    encoder_cont : int
+        Number of continuous variables in the encoder.
+    decoder_cat : int
+        Number of categorical variables in the decoder that are known
+        in advance.
+    decoder_cont : int
+        Number of continuous variables in the decoder that are known
+        in advance.
+    target : int
+        Number of target variables.
+    static_categorical_features : int
+        Number of static categorical features.
+    static_continuous_features : int
+        Number of static continuous features.
+    max_encoder_length : int
+        Maximum encoder length.
+    max_prediction_length : int
+        Maximum prediction length.
+    min_encoder_length : int
+        Minimum encoder length.
+    min_prediction_length : int
+        Minimum prediction length.
+    """
+
+    encoder_cat: int
+    encoder_cont: int
+    decoder_cat: int
+    decoder_cont: int
+    target: int
+    static_categorical_features: int
+    static_continuous_features: int
+    max_encoder_length: int
+    max_prediction_length: int
+    min_encoder_length: int
+    min_prediction_length: int
+
+    def __getitem__(self, key: str) -> Any:
+        if key not in self.keys():
+            raise KeyError(key)
+        return getattr(self, key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key not in self.keys():
+            return default
+        return getattr(self, key)
+
+    def keys(self) -> list[str]:
+        return [f.name for f in fields(self)]
+
+    def __contains__(self, key: object) -> bool:
+        return key in self.keys()
+
+    def __iter__(self):
+        return iter(self.keys())
+
+
 class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
     """
     Lightning DataModule for processing time series data in an encoder-decoder format.
@@ -42,8 +117,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
     Parameters
     ----------
-    time_series_dataset : TimeSeries
+    time_series_dataset : TimeSeries, optional, default=None
         The dataset containing time series data.
+        If neither this nor ``timeseries_datatype`` is given, the module holds
+        only its configuration, and the data is supplied later via
+        ``with_data``.
     max_encoder_length : int, default=30
         Maximum length of the encoder input sequence.
     min_encoder_length : Optional[int], default=None
@@ -107,11 +185,19 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         Number of workers for DataLoader.
     train_val_test_split : tuple, default=(0.7, 0.15, 0.15)
         Proportions for train, validation, and test dataset splits.
+    timeseries_datatype : TimeSeries_datatype, optional, default=None
+        Prototype alternative to ``time_series_dataset``, from
+        ``pytorch_forecasting._proto``. Accepted here so that the reworked
+        data layer can be tried out against this data module; it exposes the
+        same ``get_metadata``, ``__len__`` and ``__getitem__`` interface, so
+        everything downstream is unchanged.
+        At most one of ``time_series_dataset`` or ``timeseries_datatype``
+        should be given.
     """
 
     def __init__(
         self,
-        time_series_dataset: TimeSeries,
+        time_series_dataset: TimeSeries | None = None,
         max_encoder_length: int = 30,
         min_encoder_length: int | None = None,
         max_prediction_length: int = 1,
@@ -135,8 +221,28 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
+        timeseries_datatype: Optional["TimeSeries_datatype"] = None,  # noqa: F821
     ):
-        self.time_series_dataset = time_series_dataset
+        # constructor arguments as they were given, so that ``with_data`` can
+        # rebuild the module without having to guess which attribute each one
+        # ended up in. The data itself is excluded - it is what gets replaced.
+        self._init_kwargs = {
+            name: value
+            for name, value in locals().items()
+            if name
+            not in (
+                "self",
+                "__class__",  # present because ``__init__`` calls ``super()``
+                "time_series_dataset",
+                "timeseries_datatype",
+            )
+        }
+
+        self.timeseries_datatype = timeseries_datatype
+
+        self.time_series_dataset = (
+            time_series_dataset if timeseries_datatype is None else timeseries_datatype
+        )
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
         self.max_prediction_length = max_prediction_length
@@ -181,11 +287,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._target_normalizer = ScalerAdapter(self.target_normalizer)
             self._auto_normalizer = False
 
-        self.time_series_metadata = time_series_dataset.get_metadata()
         self._min_prediction_length = min_prediction_length or max_prediction_length
         self._min_encoder_length = min_encoder_length or max_encoder_length
         self._categorical_encoders = _coerce_to_dict(categorical_encoders)
-        self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
         self.categorical_indices = []
         self.continuous_indices = []
@@ -193,15 +297,27 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._target_normalizer_fitted = False
         self._feature_scalers_fitted = False
 
+        self._scalers = {
+            k: ScalerAdapter(v) for k, v in _coerce_to_dict(scalers).items()
+        }
+
+        # the data may be supplied later, via ``with_data`` - until then the
+        # module carries only its configuration
+        if self.time_series_dataset is None:
+            self.time_series_metadata = None
+            self.n_targets = None
+            self._cont_scalers = []
+            return
+
+        self.time_series_metadata = self.time_series_dataset.get_metadata()
+        self.n_targets = len(self.time_series_metadata["cols"]["y"])
+
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
             if self.time_series_metadata["col_type"].get(col) == "C":
                 self.categorical_indices.append(idx)
             else:
                 self.continuous_indices.append(idx)
 
-        self._scalers = {
-            k: ScalerAdapter(v) for k, v in _coerce_to_dict(scalers).items()
-        }
         self._build_cont_scalers()
 
     def _build_cont_scalers(self):
@@ -215,13 +331,52 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             if name in self._scalers
         ]
 
+    def with_data(
+        self,
+        data: Union[TimeSeries, "TimeSeries_datatype"],  # noqa: F821
+    ) -> "EncoderDecoderTimeSeriesDataModule":
+        """Return a copy of this module, with the same params, holding new data.
+
+        Fitted transforms - the target normalizer and the feature scalers -
+        are carried over as they are and are **not** refitted on ``data``.
+        This is what makes the result usable for prediction on new data: the
+        new data is scaled with the statistics seen during training, rather
+        than with its own.
+
+        Parameters
+        ----------
+        data : TimeSeries or TimeSeries_datatype
+            The data the returned module should hold.
+
+        Returns
+        -------
+        EncoderDecoderTimeSeriesDataModule
+            New instance of the same class, with the same configuration.
+        """
+        kwargs = dict(self._init_kwargs)
+        if isinstance(data, TimeSeries):
+            kwargs["time_series_dataset"] = data
+        else:
+            kwargs["timeseries_datatype"] = data
+
+        new = type(self)(**kwargs)
+
+        new._target_normalizer = self._target_normalizer
+        new._target_normalizer_fitted = self._target_normalizer_fitted
+        new._auto_normalizer = self._auto_normalizer
+        new._scalers = self._scalers
+        new._feature_scalers_fitted = self._feature_scalers_fitted
+        new._build_cont_scalers()
+
+        return new
+
     def _prepare_metadata(self):
         """Prepare metadata for model initialisation.
 
         Returns
         -------
-        dict
-            dictionary containing the following keys:
+        DataModuleMetadata
+            dataclass containing the following fields:
 
             * ``encoder_cat``: Number of categorical variables in the encoder.
                 Computed as ``len(self.categorical_indices)``, which counts the
@@ -277,13 +432,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         )
 
         target_count = len(self.time_series_metadata["cols"]["y"])
-        metadata = {
-            "encoder_cat": encoder_cat_count,
-            "encoder_cont": encoder_cont_count,
-            "decoder_cat": decoder_cat_count,
-            "decoder_cont": decoder_cont_count,
-            "target": target_count,
-        }
+
         if self.time_series_metadata["cols"]["st"]:
             static_cat_count = len(
                 [
@@ -295,30 +444,32 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             static_cont_count = (
                 len(self.time_series_metadata["cols"]["st"]) - static_cat_count
             )
-
-            metadata["static_categorical_features"] = static_cat_count
-            metadata["static_continuous_features"] = static_cont_count
         else:
-            metadata["static_categorical_features"] = 0
-            metadata["static_continuous_features"] = 0
+            static_cat_count = 0
+            static_cont_count = 0
 
-        metadata.update(
-            {
-                "max_encoder_length": self.max_encoder_length,
-                "max_prediction_length": self.max_prediction_length,
-                "min_encoder_length": self._min_encoder_length,
-                "min_prediction_length": self._min_prediction_length,
-            }
+        return DataModuleMetadata(
+            encoder_cat=encoder_cat_count,
+            encoder_cont=encoder_cont_count,
+            decoder_cat=decoder_cat_count,
+            decoder_cont=decoder_cont_count,
+            target=target_count,
+            static_categorical_features=static_cat_count,
+            static_continuous_features=static_cont_count,
+            max_encoder_length=self.max_encoder_length,
+            max_prediction_length=self.max_prediction_length,
+            min_encoder_length=self._min_encoder_length,
+            min_prediction_length=self._min_prediction_length,
         )
-
-        return metadata
 
     @property
     def metadata(self):
         """Compute metadata for model initialization.
 
-        This property returns a dictionary containing the shapes and key information
-        related to the time series model. The metadata includes:
+        This property returns a :class:`DataModuleMetadata` containing the shapes
+        and key information related to the time series model. It supports
+        mapping-style access, so ``metadata["encoder_cat"]`` and
+        ``metadata.get("target", 1)`` work as before. The metadata includes:
 
         * ``encoder_cat``: Number of categorical variables in the encoder.
         * ``encoder_cont``: Number of continuous variables in the encoder.
