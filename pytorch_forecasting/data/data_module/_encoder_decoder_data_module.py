@@ -797,6 +797,12 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
 
+            # `data["target"]` is raw for per-sequence normalizers, so `y`
+            # needs the scale fitted on the encoder window above. transform,
+            # not fit_transform: refitting would leak the decoder window.
+            if normalizer is not None and normalizer.fit_per_sequence:
+                y = normalizer.transform_sequence(y)
+
             if y.shape[-1] > 1:
                 y = [y[:, i] for i in range(y.shape[-1])]
             else:
