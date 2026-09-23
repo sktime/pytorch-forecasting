@@ -48,7 +48,7 @@ class TIDE_pkg_v2(Base_pkg):
         """
         import torch.nn as nn
 
-        from pytorch_forecasting.metrics import MAE, MAPE
+        from pytorch_forecasting.metrics import MAE, MAPE, NormalDistributionLoss
 
         params = [
             dict(
@@ -76,6 +76,14 @@ class TIDE_pkg_v2(Base_pkg):
                 dropout_rate=0.1,
                 datamodule_cfg=dict(max_encoder_length=4, max_prediction_length=2),
                 loss=MAPE(),
+            ),
+            dict(
+                hidden_size=16,
+                d_model=8,
+                n_add_enc=1,
+                n_add_dec=1,
+                dropout_rate=0.1,
+                loss=NormalDistributionLoss(),
             ),
         ]
         default_dm_cfg = {"max_encoder_length": 4, "max_prediction_length": 3}

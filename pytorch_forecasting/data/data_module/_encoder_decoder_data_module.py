@@ -308,6 +308,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "max_prediction_length": self.max_prediction_length,
                 "min_encoder_length": self._min_encoder_length,
                 "min_prediction_length": self._min_prediction_length,
+                "target_normalizer": self.target_normalizer,
             }
         )
 

@@ -3,7 +3,7 @@ import warnings
 import pytest
 import torch
 
-from pytorch_forecasting.metrics import MAE, QuantileLoss
+from pytorch_forecasting.metrics import MAE, QuantileLoss, NormalDistributionLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -135,6 +135,10 @@ def test_step_output_size_quantile_loss():
     model = _make_model(loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]))
     assert model.step_output_size == 3
 
+def test_step_output_size_distribution_loss():
+    """DistributionLoss needs multiple outputs per timestep (e.g. 2 for Normal)."""
+    model = _make_model(loss=NormalDistributionLoss())
+    assert model.step_output_size == 2
 
 def test_transform_output_none_is_identity():
     """No target_scale means predictions pass through untouched."""

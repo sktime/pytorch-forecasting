@@ -159,9 +159,18 @@ class BaseModel(LightningModule):
                 center = center.unsqueeze(-1)
             combined = torch.cat([center, scale], dim=-1)
         else:
-            combined = target_scale
-            center = target_scale[..., 0:1]
-            scale = target_scale[..., 1:2]
+            if target_scale.dim() == 1 or (
+                target_scale.dim() == 2 and target_scale.size(-1) != 2
+            ):
+                scale = target_scale
+                if scale.dim() == 1:
+                    scale = scale.unsqueeze(-1)
+                center = torch.zeros_like(scale)
+                combined = torch.cat([center, scale], dim=-1)
+            else:
+                combined = target_scale
+                center = target_scale[..., 0:1]
+                scale = target_scale[..., 1:2]
 
         if isinstance(self._loss, DistributionLoss):
             if self.target_normalizer is None:
