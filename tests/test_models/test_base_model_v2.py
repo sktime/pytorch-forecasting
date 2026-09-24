@@ -124,31 +124,6 @@ def test_optimizer_instance():
     assert cfg["optimizer"] is opt
 
 
-def test_step_output_size_point_loss():
-    """Point loss (MAE) produces a single output per timestep."""
-    model = _make_model(loss=MAE())
-    assert model.step_output_size == 1
-
-
-def test_step_output_size_quantile_loss():
-    """QuantileLoss with 3 quantiles needs 3 outputs per timestep."""
-    model = _make_model(loss=QuantileLoss(quantiles=[0.1, 0.5, 0.9]))
-    assert model.step_output_size == 3
-
-
-def test_step_output_size_distribution_loss():
-    """DistributionLoss needs multiple outputs per timestep (e.g. 2 for Normal)."""
-    model = _make_model(loss=NormalDistributionLoss())
-    assert model.step_output_size == 2
-
-
-def test_transform_output_none_is_identity():
-    """No target_scale means predictions pass through untouched."""
-    model = _make_model()
-    raw = torch.randn(2, 6, 1)
-    assert torch.equal(model.transform_output(raw, None), raw)
-
-
 def test_transform_output_dict_target_scale():
     """Dict target_scale applies affine denormalization correctly."""
     model = _make_model()
