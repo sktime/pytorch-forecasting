@@ -114,6 +114,7 @@ class UniTS(BaseModel):
         self.context_length = self.metadata.get("max_encoder_length", 0)
         self.prediction_length = self.metadata.get("max_prediction_length", 0)
         self.target_dim = self.metadata.get("target", 1)
+        self.target_normalizer = self.metadata.get("target_normalizer", None)
 
         if d_model % n_heads != 0:
             raise ValueError(
@@ -160,16 +161,7 @@ class UniTS(BaseModel):
 
         self.norm = nn.LayerNorm(self.d_model)
 
-        self.n_quantiles = None
-        # TODO: add DistributionLoss support
-
-        if isinstance(self._loss, QuantileLoss):
-            self.n_quantiles = len(self._loss.quantiles)
-
-        output_dim = self.prediction_length * self.target_dim
-
-        if self.n_quantiles is not None:
-            output_dim = self.prediction_length * self.target_dim * self.n_quantiles
+        output_dim = self.prediction_length * self.target_dim * self.step_output_size
 
         self.head = nn.Sequential(
             nn.Flatten(start_dim=1),
@@ -204,15 +196,17 @@ class UniTS(BaseModel):
 
         raw = self.head(patch_out)
 
-        if self.n_quantiles is not None:
+        if self.step_output_size > 1:
             if self.target_dim == 1:
-                out = raw.view(B, self.prediction_length, self.n_quantiles)
+                out = raw.view(B, self.prediction_length, self.step_output_size)
             else:
                 out = raw.view(
-                    B, self.prediction_length, self.target_dim, self.n_quantiles
+                    B, self.prediction_length, self.target_dim, self.step_output_size
                 )
-        # TODO: add DistributionLoss output reshape
         else:
             out = raw.view(B, self.prediction_length, self.target_dim)
+
+        if "target_scale" in x and hasattr(self, "transform_output"):
+            out = self.transform_output(out, x["target_scale"])
 
         return {"prediction": out}

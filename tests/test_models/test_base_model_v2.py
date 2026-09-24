@@ -3,7 +3,8 @@ import warnings
 import pytest
 import torch
 
-from pytorch_forecasting.metrics import MAE
+from pytorch_forecasting.data.encoders import EncoderNormalizer
+from pytorch_forecasting.metrics import MAE, NormalDistributionLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -122,3 +123,46 @@ def test_optimizer_instance():
     model.optimizer = opt
     cfg = model.configure_optimizers()
     assert cfg["optimizer"] is opt
+
+
+def test_transform_output_dict_target_scale():
+    """Dict target_scale applies affine denormalization correctly."""
+    model = _make_model()
+    raw = torch.randn(4, 12, 1)
+    center = torch.tensor([10.0, 20.0, 30.0, 40.0])
+    scale = torch.tensor([2.0, 3.0, 4.0, 5.0])
+    target_scale = {"center": center, "scale": scale}
+
+    result = model.transform_output(raw, target_scale)
+
+    assert result.shape == raw.shape
+    assert torch.allclose(result[0], raw[0] * 2.0 + 10.0)
+    assert torch.allclose(result[3], raw[3] * 5.0 + 40.0)
+
+
+def test_transform_output_plain_tensor_target_scale():
+    """Plain tensor target_scale correctly applies affine denormalization."""
+    model = _make_model()
+    raw = torch.randn(4, 12, 1)
+    target_scale = torch.tensor([[10.0, 2.0], [20.0, 3.0], [30.0, 4.0], [40.0, 5.0]])
+
+    result = model.transform_output(raw, target_scale)
+
+    assert result.shape == raw.shape
+    assert torch.allclose(result[0], raw[0] * 2.0 + 10.0)
+    assert torch.allclose(result[2], raw[2] * 4.0 + 30.0)
+
+
+def test_transform_output_distribution_loss():
+    """DistributionLoss path rescales parameters via the loss function."""
+
+    model = _make_model(loss=NormalDistributionLoss())
+    model.target_normalizer = EncoderNormalizer()
+
+    raw = torch.randn(2, 4, 2)
+    target_scale = torch.tensor([[5.0, 2.0], [3.0, 1.5]])
+
+    result = model.transform_output(raw, target_scale)
+
+    assert result.shape == (2, 4, 4)
+    assert not torch.equal(result[..., 2:], raw)

@@ -94,7 +94,8 @@ class TIDE(BaseModel):
         self.past_channels = metadata["encoder_cont"]  # psat_vars
         self.future_channels = metadata["decoder_cont"]  # fut_vars
         self.output_channels = metadata["target"]  # target_vars
-        self.mul = 1
+        self.target_normalizer = metadata.get("target_normalizer", None)
+        self.mul = self.step_output_size
         self.use_quantiles = False
         self.outLinear = nn.Linear(d_model, self.output_channels)
 
@@ -283,14 +284,31 @@ class TIDE(BaseModel):
             (dense_dec.view(B, self.future_steps, self.d_model), proj_fut), dim=2
         )
         temp_dec_output = self.temporal_decoder(temp_dec_input, False)
-        temp_dec_output = temp_dec_output.view(
-            B, self.future_steps, self.output_channels
-        )
-
-        linear_regr = self.linear_target(y_past.view(B, -1))
-        linear_output = linear_regr.view(B, self.future_steps, self.output_channels)
+        if self.mul > 1:
+            if self.output_channels == 1:
+                temp_dec_output = temp_dec_output.view(B, self.future_steps, self.mul)
+                linear_regr = self.linear_target(y_past.view(B, -1))
+                linear_output = linear_regr.view(B, self.future_steps, self.mul)
+            else:
+                temp_dec_output = temp_dec_output.view(
+                    B, self.future_steps, self.output_channels, self.mul
+                )
+                linear_regr = self.linear_target(y_past.view(B, -1))
+                linear_output = linear_regr.view(
+                    B, self.future_steps, self.output_channels, self.mul
+                )
+        else:
+            temp_dec_output = temp_dec_output.view(
+                B, self.future_steps, self.output_channels
+            )
+            linear_regr = self.linear_target(y_past.view(B, -1))
+            linear_output = linear_regr.view(B, self.future_steps, self.output_channels)
 
         output = temp_dec_output + linear_output
+
+        if "target_scale" in batch and hasattr(self, "transform_output"):
+            output = self.transform_output(output, batch["target_scale"])
+
         return {"prediction": output}
 
     # function to concat embedded categorical variables
