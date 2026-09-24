@@ -3,7 +3,7 @@ import warnings
 import pytest
 import torch
 
-from pytorch_forecasting.metrics import MAE, NormalDistributionLoss, QuantileLoss
+from pytorch_forecasting.metrics import MAE
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
