@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from pytorch_forecasting.data.data_module import TslibDataModule
+from pytorch_forecasting.data.split.splitters import RandomSplitter
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -90,7 +91,8 @@ def test_init(sample_timeseries_data):
     assert tslib_dm.context_length == 32
     assert tslib_dm.prediction_length == 16
     assert tslib_dm.batch_size == 8
-    assert tslib_dm.train_val_test_split == (0.7, 0.15, 0.15)
+    assert isinstance(tslib_dm.splitter, RandomSplitter)
+    assert tslib_dm.splitter.train_val_test_split == (0.7, 0.15, 0.15)
 
     assert isinstance(tslib_dm.time_series_metadata, dict)
     assert "cols" in tslib_dm.time_series_metadata
@@ -418,7 +420,7 @@ def test_different_split_ratios(sample_timeseries_data):
         context_length=8,
         prediction_length=4,
         batch_size=2,
-        train_val_test_split=custom_split,
+        splitter=RandomSplitter(custom_split),
     )
 
     dm_custom.setup(stage="fit")
@@ -432,7 +434,7 @@ def test_different_split_ratios(sample_timeseries_data):
     assert len(dm_custom._val_indices) == expected_val
     assert len(dm_custom._test_indices) == expected_test
 
-    assert dm_custom.train_val_test_split == custom_split
+    assert dm_custom.splitter.train_val_test_split == custom_split
 
     total_split = (
         len(dm_custom._train_indices)
