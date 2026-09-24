@@ -1,6 +1,4 @@
-"""
-Series Decomposition Block for time series forecasting models.
-"""
+"""Series Decomposition Block for time series forecasting models."""
 
 import torch
 import torch.nn as nn
@@ -10,8 +8,7 @@ from pytorch_forecasting.layers._filter._moving_avg_filter import MovingAvg
 
 
 class SeriesDecomposition(nn.Module):
-    """
-    Series decomposition block from Autoformer.
+    """Series decomposition block from Autoformer.
 
     Decomposes time series into trend and seasonal components using
     moving average filtering.
