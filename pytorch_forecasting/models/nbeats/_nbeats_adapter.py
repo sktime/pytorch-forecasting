@@ -193,7 +193,12 @@ class NBeatsAdapter(BaseModel):
             forecast_weight = 1 - backcast_weight
             if isinstance(self.loss, MASE):
                 backcast_loss = (
-                    self.loss(backcast, x["encoder_target"], x["decoder_target"])
+                    self.loss(
+                        backcast,
+                        (x["encoder_target"], None),
+                        encoder_target=x["decoder_target"],
+                        encoder_lengths=x["decoder_lengths"],
+                    )
                     * backcast_weight
                 )
             else:
