@@ -3,7 +3,8 @@ import warnings
 import pytest
 import torch
 
-from pytorch_forecasting.metrics import MAE
+from pytorch_forecasting.data.encoders import EncoderNormalizer
+from pytorch_forecasting.metrics import MAE, NormalDistributionLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -150,3 +151,18 @@ def test_transform_output_plain_tensor_target_scale():
     assert result.shape == raw.shape
     assert torch.allclose(result[0], raw[0] * 2.0 + 10.0)
     assert torch.allclose(result[2], raw[2] * 4.0 + 30.0)
+
+
+def test_transform_output_distribution_loss():
+    """DistributionLoss path rescales parameters via the loss function."""
+
+    model = _make_model(loss=NormalDistributionLoss())
+    model.target_normalizer = EncoderNormalizer()
+
+    raw = torch.randn(2, 4, 2)
+    target_scale = torch.tensor([[5.0, 2.0], [3.0, 1.5]])
+
+    result = model.transform_output(raw, target_scale)
+
+    assert result.shape == (2, 4, 4)
+    assert not torch.equal(result[..., 2:], raw)
