@@ -216,3 +216,113 @@ def test_prediction_length(max_prediction_length: int):
         return_index=True,
         return_decoder_lengths=True,
     )
+
+
+def test_nhits_static_reals_forward():
+    """Regression test for #2281: NHiTS.forward() must not raise NameError
+    when the dataset introduces static real variables (e.g. via
+    add_target_scales=True) but has no time-varying encoder covariates,
+    i.e. encoder_covariate_size == 0 < static_size.
+    """
+    n_timeseries = 10
+    time_points = 30
+    data = pd.DataFrame(
+        {
+            "target": np.random.rand(time_points * n_timeseries),
+            "time_idx": np.tile(np.arange(time_points), n_timeseries),
+            "group_id": np.repeat(np.arange(n_timeseries), time_points),
+        }
+    )
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        time_varying_unknown_reals=["target"],
+        max_encoder_length=10,
+        max_prediction_length=5,
+        add_target_scales=True,
+    )
+    dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
+    model = NHiTS.from_dataset(dataset, hidden_size=8)
+
+    assert model.static_size > 0, "static_size should be > 0"
+    assert model.encoder_covariate_size == 0, "encoder_covariate_size should be 0"
+
+    batch, _ = next(iter(dataloader))
+    # must not raise NameError on encoder_features
+    output = model(batch)
+    assert hasattr(output, "prediction"), "output must contain prediction"
+
+
+def test_nhits_static_reals_with_covariates_forward():
+    """Regression test for #2281: NHiTS.forward() must succeed when the
+    dataset has both static reals and time-varying encoder covariates,
+    ensuring the fix does not break the combined case.
+    """
+    n_timeseries = 10
+    time_points = 30
+    data = pd.DataFrame(
+        {
+            "target": np.random.rand(time_points * n_timeseries),
+            "covariate": np.random.rand(time_points * n_timeseries),
+            "time_idx": np.tile(np.arange(time_points), n_timeseries),
+            "group_id": np.repeat(np.arange(n_timeseries), time_points),
+        }
+    )
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        time_varying_unknown_reals=["target"],
+        time_varying_known_reals=["covariate"],
+        max_encoder_length=10,
+        max_prediction_length=5,
+        add_target_scales=True,
+    )
+    dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
+    model = NHiTS.from_dataset(dataset, hidden_size=8)
+
+    assert model.static_size > 0
+    assert model.encoder_covariate_size > 0
+
+    batch, _ = next(iter(dataloader))
+    output = model(batch)
+    assert hasattr(output, "prediction")
+
+
+def test_nhits_static_reals_training():
+    """Regression test for #2281: NHiTS must train successfully when
+    the dataset uses add_target_scales=True and no time-varying encoder
+    covariates, verifying that gradients flow through correctly.
+    """
+    n_timeseries = 10
+    time_points = 30
+    data = pd.DataFrame(
+        {
+            "target": np.random.rand(time_points * n_timeseries),
+            "time_idx": np.tile(np.arange(time_points), n_timeseries),
+            "group_id": np.repeat(np.arange(n_timeseries), time_points),
+        }
+    )
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        time_varying_unknown_reals=["target"],
+        max_encoder_length=10,
+        max_prediction_length=5,
+        add_target_scales=True,
+    )
+    train_dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
+    model = NHiTS.from_dataset(dataset, hidden_size=8)
+    trainer = pl.Trainer(
+        accelerator="cpu",
+        max_epochs=2,
+        limit_train_batches=3,
+        enable_checkpointing=False,
+        logger=False,
+    )
+    trainer.fit(model, train_dataloaders=train_dataloader)
