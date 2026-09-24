@@ -342,6 +342,62 @@ def test_actual_vs_predicted_plot(model, dataloaders_with_covariates):
     model.plot_prediction_actual_by_variable(averages)
 
 
+def test_prediction_actual_by_variable_categorical_averages():
+    """Regression test for #1788: per-category actuals must match the data."""
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    data = pd.DataFrame(
+        [
+            dict(
+                group=str(g),
+                time_idx=t,
+                day=days[(t + g) % 5],
+                target=10.0 * ((t + g) % 5) + 1.0,
+            )
+            for g in range(3)
+            for t in range(30)
+        ]
+    )
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group"],
+        max_encoder_length=5,
+        max_prediction_length=5,
+        time_varying_known_categoricals=["day"],
+        time_varying_unknown_reals=["target"],
+    )
+    model = TemporalFusionTransformer.from_dataset(
+        dataset, hidden_size=4, attention_head_size=1
+    )
+    x, _ = next(iter(dataset.to_dataloader(train=False, batch_size=64)))
+
+    result = model.calculate_prediction_actual_by_variable(
+        x, x["decoder_target"], log_scale=False
+    )
+
+    actual = result["average"]["actual"]["day"]
+    for label, code in model.hparams.embedding_labels["day"].items():
+        assert actual[code].item() == pytest.approx(
+            10.0 * days.index(label) + 1.0
+        ), label
+
+    # the same averages for a continuous variable, grouped by bin
+    assert (x["decoder_lengths"] == x["decoder_lengths"].max()).all()
+    bins, std = 95, 2.0
+    positive_bins = (bins - 1) // 2
+    idx = model.hparams.x_reals.index("target")
+    keys = (x["decoder_cont"][..., idx].flatten() * positive_bins / std).round().clamp(
+        -positive_bins, positive_bins
+    ).long() + positive_bins
+    y = x["decoder_target"].flatten()
+    binned = result["average"]["actual"]["target"]
+    for key in keys.unique():
+        assert binned[key].item() == pytest.approx(
+            y[keys == key].mean().item(), rel=1e-5
+        ), key.item()
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

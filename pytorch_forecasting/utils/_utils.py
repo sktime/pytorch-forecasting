@@ -85,7 +85,15 @@ def groupby_apply(
         raise ValueError(
             f"Unknown reduction '{reduction}'. Expected one of {{'mean', 'sum'}}."
         )
-    uniques, counts = keys.unique(return_counts=True)
+    if keys.shape != values.shape:
+        raise ValueError(
+            f"keys and values must have the same shape, got {tuple(keys.shape)} "
+            f"and {tuple(values.shape)}."
+        )
+    # split_with_sizes below assumes values are contiguous per key
+    sorted_keys, order = keys.sort()
+    values = values[order]
+    uniques, counts = sorted_keys.unique_consecutive(return_counts=True)
     groups = torch.stack(
         [reduce(item) for item in torch.split_with_sizes(values, tuple(counts))]
     )
