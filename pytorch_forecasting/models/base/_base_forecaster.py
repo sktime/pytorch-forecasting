@@ -5,6 +5,7 @@ from typing import Any, Optional, Union
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.core.datamodule import LightningDataModule
+from skbase.base import BaseEstimator
 import torch
 from torch.utils.data import DataLoader
 import yaml
@@ -13,7 +14,7 @@ from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
 
 
-class BaseForecaster(_BasePtForecasterV2):
+class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
     """
     Base forecaster class acting as a high-level wrapper for the Lightning workflow.
 
@@ -155,8 +156,8 @@ class BaseForecaster(_BasePtForecasterV2):
             self.model = model_cls(**self.model_cfg, metadata=metadata)
 
     def _build_datamodule(self, data: TimeSeries) -> LightningDataModule:
-        """Attach ``data`` to the datamodule, reusing fitted transforms if fitted."""
-        dm = self.datamodule_ if self.datamodule_ is not None else self.datamodule
+        """Attach ``data`` to the configured datamodule, with no fitted transforms."""
+        dm = self.datamodule
         if dm is None:
             dm = self.get_datamodule_cls()(**self._loaded_datamodule_cfg)
         return dm.with_data(data)
@@ -169,24 +170,14 @@ class BaseForecaster(_BasePtForecasterV2):
             return self.trainer
         return Trainer()
 
-    def _load_dataloader(
-        self, data: TimeSeries | LightningDataModule | DataLoader
-    ) -> DataLoader:
-        """Converts various data input types into a DataLoader for prediction."""
-        if isinstance(data, TimeSeries):  # D1 Layer
-            dm = self._build_datamodule(data)
-            dm.setup(stage="predict")
-            return dm.predict_dataloader()
-        elif isinstance(data, LightningDataModule):  # D2 Layer
-            data.setup(stage="predict")
-            return data.predict_dataloader()
-        elif isinstance(data, DataLoader):
-            return data
+    def _load_dataloader(self, data: TimeSeries) -> DataLoader:
+        """Build the prediction dataloader, with the transforms fitted in ``fit``."""
+        if self.is_fitted:
+            dm = self.datamodule_.with_data(data)
         else:
-            raise TypeError(
-                f"Unsupported data type for prediction: {type(data).__name__}. "
-                "Expected TimeSeriesDataSet, LightningDataModule, or DataLoader."
-            )
+            dm = self._build_datamodule(data)
+        dm.setup(stage="predict")
+        return dm.predict_dataloader()
 
     def _save_artifact(self, output_dir: Path):
         """Save all configuration artifacts."""
@@ -204,7 +195,7 @@ class BaseForecaster(_BasePtForecasterV2):
 
     def fit(
         self,
-        data: TimeSeries | LightningDataModule,
+        data: TimeSeries,
         trainer: Trainer | None = None,
         save_ckpt: bool = True,
         ckpt_dir: str | Path = "checkpoints",
@@ -216,9 +207,9 @@ class BaseForecaster(_BasePtForecasterV2):
 
         Parameters
         ----------
-        data : Union[TimeSeries, LightningDataModule]
-            The data to fit on (D1 or D2 layer). This object is responsible
-            for providing both training and validation data.
+        data : TimeSeries
+            The data to fit on. The datamodule splits it into training and
+            validation data.
         trainer : lightning.Trainer, optional
             Overrides the trainer given to ``__init__`` for this call only.
         save_ckpt : bool, default=True
@@ -235,17 +226,12 @@ class BaseForecaster(_BasePtForecasterV2):
         Optional[Path]
             The path to the best model checkpoint if `save_ckpt=True`, else None.
         """
-        if isinstance(data, TimeSeries):
-            self.datamodule_ = self._build_datamodule(data)
-        else:
-            self.datamodule_ = data
-        self.datamodule_.setup(stage="fit")
+        self.datamodule_ = self._build_datamodule(data)
 
-        if self.model is None:
-            # the model is built only here, because only now are its input
-            # shapes known - they come from the metadata of the data module
-            metadata = self.datamodule_.metadata
-            self._build_model(metadata)
+        # the model is built only here, because only now are its input
+        # shapes known - they come from the metadata of the data module
+        metadata = self.datamodule_.metadata
+        self._build_model(metadata)
 
         self.trainer_ = self._resolve_trainer(trainer)
         checkpoint_cb = None
@@ -265,6 +251,7 @@ class BaseForecaster(_BasePtForecasterV2):
             self.trainer_.callbacks.append(checkpoint_cb)
 
         self.trainer_.fit(self.model, datamodule=self.datamodule_, **trainer_fit_kwargs)
+        self._is_fitted = True
         if save_ckpt and checkpoint_cb:
             best_model_path = Path(checkpoint_cb.best_model_path)
             self._save_artifact(best_model_path.parent)
@@ -274,7 +261,7 @@ class BaseForecaster(_BasePtForecasterV2):
 
     def predict(
         self,
-        data: TimeSeries | LightningDataModule | DataLoader,
+        data: TimeSeries,
         output_dir: str | Path | None = None,
         **kwargs,
     ) -> dict[str, torch.Tensor] | None:
@@ -286,8 +273,9 @@ class BaseForecaster(_BasePtForecasterV2):
 
         Parameters
         ----------
-        data : Union[TimeSeries, LightningDataModule, DataLoader]
-            The data to predict on (D1, D2, or DataLoader).
+        data : TimeSeries
+            The data to predict on. If the datamodule has a target normalizer
+            or scalers, the data is scaled with the ones fitted in ``fit``.
         **kwargs :
             Additional keyword arguments passed directly to the model's ``.predict()``
             method. This includes `mode`, `return_info`, `output_dir`, and any
