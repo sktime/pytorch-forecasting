@@ -52,12 +52,15 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
         self.metadata = self._load_config(
             None, ckpt_path=self.ckpt_path, auto_file_name="metadata.pkl"
         )
+        self._loaded_model_cfg = self._load_config(
+            None, ckpt_path=self.ckpt_path, auto_file_name="model_cfg.pkl"
+        )
 
         self.model = None
         self.trainer_ = None
         self.datamodule_ = None
         if self.ckpt_path:
-            self._build_model(metadata=self.metadata, **self.model_cfg)
+            self._build_model(metadata=self.metadata)
 
     @staticmethod
     def _load_config(
@@ -145,12 +148,12 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
             "predict": datasets_info["validation_dataset"],
         }
 
-    def _build_model(self, metadata: dict, **kwargs):
+    def _build_model(self, metadata: dict):
         """Instantiates the model, either from a checkpoint or from config."""
         model_cls = self.get_cls()
         if self.ckpt_path:
             self.model = model_cls.load_from_checkpoint(
-                self.ckpt_path, metadata=metadata, **kwargs
+                self.ckpt_path, metadata=metadata, **self._loaded_model_cfg
             )
         else:
             self.model = model_cls(**self.model_cfg, metadata=metadata)
