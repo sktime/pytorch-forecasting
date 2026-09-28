@@ -108,3 +108,4 @@ See the detailed API documentation for the available V2 Package classes below:
    models.frets._frets_pkg_v2.FreTS_pkg_v2
    models.modern_tcn._modern_tcn_pkg_v2.ModernTCN_pkg_v2
    models.units._units_pkg_v2.UniTS_pkg_v2
+   models.nhits._nhits_pkg_v2.NHiTS_pkg_v2
