@@ -3,6 +3,7 @@ Experimental data module for integrating `tslib` time series deep learning libra
 """
 
 from collections.abc import Callable
+import inspect
 from typing import Any, Optional
 import warnings
 
@@ -13,6 +14,7 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from pytorch_forecasting.data._metadata import TslibDataModuleMetadata
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     NaNLabelEncoder,
@@ -20,8 +22,15 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
+from pytorch_forecasting.utils._validation import (
+    _check_fractions,
+    _check_positive,
+    _check_type,
+)
 
 NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
+
+_WRAP_HINT = "Wrap the data frame first, e.g. TimeSeries(df, time=..., target=...)."
 
 
 class _TslibDataset(Dataset):
@@ -245,9 +254,10 @@ class TslibDataModule(LightningDataModule):
 
     Parameters
     ----------
-    time_series_dataset: TimeSeries
-        The time series dataset to be used for training and validation. This is the
-        newly implemented D1 layer.
+    time_series: TimeSeries, optional, default=None
+        The input data. If ``None``, the module is a configuration only: it carries
+        its parameters, and data is attached later with
+        :meth:`with_data`, which reuses any transforms already fitted here.
     context_length: int
         The length of the context window for the model. This is the number of time steps
         used as input to the model.
@@ -289,9 +299,9 @@ class TslibDataModule(LightningDataModule):
 
     def __init__(
         self,
-        time_series_dataset: TimeSeries,
-        context_length: int,
-        prediction_length: int,
+        time_series: TimeSeries | None = None,
+        context_length: int = 30,
+        prediction_length: int = 1,
         freq: str = "h",
         add_relative_time_idx: bool = False,
         add_target_scales: bool = False,
@@ -314,12 +324,16 @@ class TslibDataModule(LightningDataModule):
     ) -> None:
         super().__init__()
 
-        self.time_series_dataset = time_series_dataset
+        self.time_series = time_series
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.freq = freq
         self.add_relative_time_idx = add_relative_time_idx
         self.add_target_scales = add_target_scales
+        self.target_normalizer = target_normalizer
+        self.scalers = scalers
+        self.shuffle = shuffle
+        self.window_stride = window_stride
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
@@ -327,6 +341,15 @@ class TslibDataModule(LightningDataModule):
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
         self.kwargs = kwargs
+
+        self._validate_init_params()
+
+        self._init_kwargs = {
+            name: getattr(self, name)
+            for name in inspect.signature(type(self).__init__).parameters
+            if name not in ("self", "time_series", "kwargs")
+        }
+        self._init_kwargs.update(self.kwargs)
 
         warnings.warn(
             "TslibDataModule is experimental and subject to change. "
@@ -341,9 +364,6 @@ class TslibDataModule(LightningDataModule):
 
         self._metadata = None
 
-        self.scalers = scalers or {}
-        self.shuffle = shuffle
-
         self.continuous_indices = []
         self.categorical_indices = []
 
@@ -351,11 +371,20 @@ class TslibDataModule(LightningDataModule):
         self.val_dataset = None
         self.test_dataset = None
 
-        self.window_stride = window_stride
+        # without data there is no schema, so column positions and target count
+        # cannot be derived yet
+        self.time_series_metadata = None
+        self.n_targets = None
+        if time_series is not None:
+            self._bind_time_series()
 
-        self.time_series_metadata = time_series_dataset.get_metadata()
+    def _bind_time_series(self):
+        """Derive the schema-dependent state from the attached data."""
+        self.time_series_metadata = self.time_series.get_metadata()
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
+        self.categorical_indices = []
+        self.continuous_indices = []
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
             if self.time_series_metadata["col_type"].get(col) == "C":
                 self.categorical_indices.append(idx)
@@ -363,6 +392,74 @@ class TslibDataModule(LightningDataModule):
                 self.continuous_indices.append(idx)
 
         self._validate_indices()
+
+    def _validate_init_params(self):
+        """Check the constructor arguments.
+
+        Raises
+        ------
+        TypeError
+            If ``time_series`` is not a :class:`TimeSeries`.
+        ValueError
+            If a window length is not positive, ``window_stride`` is not
+            positive, or ``train_val_test_split`` is not three non-negative
+            fractions summing to 1.
+        """
+        _check_type(
+            self.time_series,
+            TimeSeries,
+            "time_series",
+            allow_none=True,
+            hint=_WRAP_HINT,
+        )
+        _check_positive(self.context_length, "context_length")
+        _check_positive(self.prediction_length, "prediction_length")
+        _check_positive(self.window_stride, "window_stride")
+        _check_fractions(self.train_val_test_split, "train_val_test_split")
+
+    def _check_has_data(self, action: str):
+        """Raise if an operation needs data and none is attached.
+
+        Parameters
+        ----------
+        action : str
+            What was attempted, named in the error message.
+
+        Raises
+        ------
+        RuntimeError
+            If the module was constructed without data.
+        """
+        if self.time_series is None:
+            raise RuntimeError(
+                f"{type(self).__name__} was constructed without data, so "
+                f"{action} is not available. Attach data with "
+                "`.with_data(time_series)`, which returns a new module, or "
+                "pass `time_series` to the constructor."
+            )
+
+    def with_data(self, data: TimeSeries) -> "TslibDataModule":
+        """Return a copy of this module holding ``data``, without refitting.
+
+        Same parameters, new data.
+
+        Parameters
+        ----------
+        data : TimeSeries
+            The data to attach.
+
+        Returns
+        -------
+        TslibDataModule
+            A new module, configured identically.
+
+        Raises
+        ------
+        TypeError
+            If ``data`` is not a :class:`TimeSeries`.
+        """
+        _check_type(data, TimeSeries, "data", hint=_WRAP_HINT)
+        return type(self)(time_series=data, **self._init_kwargs)
 
     def _validate_indices(self):
         """
@@ -404,7 +501,7 @@ class TslibDataModule(LightningDataModule):
                 UserWarning,
             )
 
-    def _prepare_metadata(self) -> dict[str, Any]:
+    def _prepare_metadata(self) -> TslibDataModuleMetadata:
         """
         Prepare metadata for `tslib` time series data module.
 
@@ -510,20 +607,18 @@ class TslibDataModule(LightningDataModule):
         else:
             self.features = "M"
 
-        metadata = {
-            "feature_names": feature_names,
-            "feature_indices": feature_indices,
-            "n_features": n_features,
-            "context_length": self.context_length,
-            "prediction_length": self.prediction_length,
-            "freq": self.freq,
-            "features": self.features,
-        }
-
-        return metadata
+        return TslibDataModuleMetadata(
+            feature_names=feature_names,
+            feature_indices=feature_indices,
+            n_features=n_features,
+            context_length=self.context_length,
+            prediction_length=self.prediction_length,
+            freq=self.freq,
+            features=self.features,
+        )
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) -> TslibDataModuleMetadata:
         """ "
         Compute the metadata via the `_prepare_metadata` method.
         This method is called when the `metadata` property is accessed for the first.
@@ -533,6 +628,7 @@ class TslibDataModule(LightningDataModule):
             Metadata for the data module. Refer to the `_prepare_metadata` method for
             the keys and values in the metadata dictionary.
         """
+        self._check_has_data("`metadata`")
         if self._metadata is None:
             self._metadata = self._prepare_metadata()
         return self._metadata
@@ -559,7 +655,7 @@ class TslibDataModule(LightningDataModule):
         - Splits data into categorical and continuous features, which are grouped based on the indices.
         """  # noqa: E501
 
-        series = self.time_series_dataset[idx]
+        series = self.time_series[idx]
         if series is None:
             raise ValueError(f"series at index {idx} is None. Check the dataset.")
         target = series["y"]
@@ -639,7 +735,7 @@ class TslibDataModule(LightningDataModule):
 
         for idx in indices:
             series_idx = idx.item() if isinstance(idx, torch.Tensor) else idx
-            sample = self.time_series_dataset[series_idx]
+            sample = self.time_series[series_idx]
             sequence_length = len(sample["t"])
 
             if sequence_length < min_seq_length:
@@ -687,7 +783,8 @@ class TslibDataModule(LightningDataModule):
         # Currently, it only supports random splits.
         # Handle the case where the dataset is empty.
 
-        total_series = len(self.time_series_dataset)
+        self._check_has_data("`setup`")
+        total_series = len(self.time_series)
 
         if total_series == 0:
             raise ValueError(
@@ -725,14 +822,14 @@ class TslibDataModule(LightningDataModule):
                 self._val_windows = self._create_windows(self._val_indices)
 
                 self.train_dataset = _TslibDataset(
-                    dataset=self.time_series_dataset,
+                    dataset=self.time_series,
                     data_module=self,
                     windows=self._train_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
 
                 self.val_dataset = _TslibDataset(
-                    dataset=self.time_series_dataset,
+                    dataset=self.time_series,
                     data_module=self,
                     windows=self._val_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
@@ -742,18 +839,18 @@ class TslibDataModule(LightningDataModule):
                 self._test_windows = self._create_windows(self._test_indices)
 
                 self.test_dataset = _TslibDataset(
-                    dataset=self.time_series_dataset,
+                    dataset=self.time_series,
                     data_module=self,
                     windows=self._test_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                 )
 
         elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
+            predict_indices = torch.arange(len(self.time_series))
             self._predict_windows = self._create_windows(predict_indices)
 
             self.predict_dataset = _TslibDataset(
-                dataset=self.time_series_dataset,
+                dataset=self.time_series,
                 data_module=self,
                 windows=self._predict_windows,
                 add_relative_time_idx=self.add_relative_time_idx,

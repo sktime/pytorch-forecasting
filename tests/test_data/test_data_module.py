@@ -15,11 +15,20 @@ from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
-@pytest.fixture
-def sample_timeseries_data():
-    """Create a sample time series dataset with only numerical values."""
-    num_groups = 10
-    seq_length = 100
+def make_timeseries(offset=0.0, scale=1.0, seed=None, num_groups=10, seq_length=100):
+    """Create a sample time series dataset with only numerical values.
+
+    Parameters
+    ----------
+    offset, scale : float, default=0.0, 1.0
+        Shift and spread applied to the target, so that two series with
+        distinguishable distributions can be built.
+    seed : int, optional
+        Seed for the random parts, for tests that need reproducible data.
+    num_groups, seq_length : int, default=10, 100
+        Number of series, and time steps per series.
+    """
+    rng = np.random.default_rng(seed)
 
     groups = []
     times = []
@@ -34,13 +43,13 @@ def sample_timeseries_data():
             groups.append(g)
             times.append(pd.Timestamp("2020-01-01") + pd.Timedelta(days=t))
 
-            value = 10 + 0.1 * t + 5 * np.sin(t / 10) + g * 2 + np.random.normal(0, 1)
-            values.append(value)
+            value = 10 + 0.1 * t + 5 * np.sin(t / 10) + g * 2 + rng.normal(0, 1)
+            values.append(value * scale + offset)
 
-            categorical_feature.append(np.random.choice([0, 1, 2]))
+            categorical_feature.append(rng.choice([0, 1, 2]))
 
-            continuous_feature1.append(np.random.normal(g, 1))
-            continuous_feature2.append(value * 0.5 + np.random.normal(0, 0.5))
+            continuous_feature1.append(rng.normal(g, 1))
+            continuous_feature2.append(value * 0.5 + rng.normal(0, 0.5))
 
             known_future.append(t % 7)
 
@@ -56,7 +65,7 @@ def sample_timeseries_data():
         }
     )
 
-    time_series = TimeSeries(
+    return TimeSeries(
         data=df,
         time="time",
         target="target",
@@ -66,14 +75,18 @@ def sample_timeseries_data():
         known=["known_future"],
     )
 
-    return time_series
+
+@pytest.fixture
+def sample_timeseries_data():
+    """Create a sample time series dataset with only numerical values."""
+    return make_timeseries()
 
 
 @pytest.fixture
 def data_module(sample_timeseries_data):
     """Create a data module instance."""
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=24,
         max_prediction_length=12,
         batch_size=4,
@@ -87,7 +100,7 @@ def test_init(sample_timeseries_data):
 
     Verifies hyperparameter assignment and basic time_series_metadata creation."""
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=24,
         max_prediction_length=12,
         batch_size=8,
@@ -334,7 +347,7 @@ def test_variable_encoder_lengths(sample_timeseries_data):
 
     Ensures random length behavior is respected and functional."""
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=24,
         min_encoder_length=12,
         max_prediction_length=12,
@@ -398,7 +411,7 @@ def test_with_static_features():
     )
 
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         max_encoder_length=2,
         max_prediction_length=1,
         batch_size=2,
@@ -426,7 +439,7 @@ def test_with_static_features():
 def test_different_train_val_test_split(sample_timeseries_data):
     """Test with different train/val/test split ratios."""
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=24,
         max_prediction_length=12,
         batch_size=4,
@@ -479,7 +492,7 @@ def test_multivariate_target(normalizer_list):
         num=["feature1", "feature2"],
     )
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         max_encoder_length=10,
         max_prediction_length=5,
         batch_size=4,
@@ -541,7 +554,7 @@ def test_multivariate_target_scale(normalizer_list):
         num=["feature1"],
     )
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         max_encoder_length=10,
         max_prediction_length=5,
         batch_size=4,
@@ -594,7 +607,7 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
     - Target is actually scaled.
     """
     dm_no_norm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=15,
         max_prediction_length=5,
         batch_size=4,
@@ -603,7 +616,7 @@ def test_target_normalizers(sample_timeseries_data, normalizer):
     dm_no_norm.setup(stage="fit")
 
     dm_with_norm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=15,
         max_prediction_length=5,
         batch_size=4,
@@ -652,7 +665,7 @@ def test_feature_scaling(sample_timeseries_data, scaler_type):
     }
 
     dm_no_scale = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=24,
         max_prediction_length=12,
         batch_size=4,
@@ -661,7 +674,7 @@ def test_feature_scaling(sample_timeseries_data, scaler_type):
     dm_no_scale.setup(stage="fit")
 
     dm_with_scale = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         max_encoder_length=24,
         max_prediction_length=12,
         batch_size=4,
@@ -706,7 +719,7 @@ def test_group_normalizer_uses_groups():
         num=["feature1"],
     )
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         max_encoder_length=10,
         max_prediction_length=5,
         batch_size=4,
@@ -725,3 +738,60 @@ def test_group_normalizer_uses_groups():
         mean1 = target1["target"].mean().abs()
         assert mean0 < 1.0, "Group 0 target should be normalized near 0"
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
+
+
+def test_with_data_does_not_refit_transforms():
+    """Prediction data must be scaled with the statistics from training."""
+    train = make_timeseries(seed=0)
+    shifted = make_timeseries(offset=1000.0, seed=1)
+
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series=train,
+        max_encoder_length=10,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer="auto",
+    )
+    dm.setup("fit")
+
+    x_train, _ = next(iter(dm.train_dataloader()))
+    assert abs(float(x_train["target_past"].mean())) < 5
+
+    predict_dm = dm.with_data(shifted)
+    predict_dm.setup("predict")
+    scaled = float(next(iter(predict_dm.predict_dataloader()))[0]["target_past"].mean())
+
+    assert 20 < scaled < 500, (
+        f"target_past mean {scaled:.1f}: expected the training statistics to be "
+        "reused; near 0 means they were refitted on the new data, near 1000 "
+        "means they were lost"
+    )
+
+
+def test_data_less_module_becomes_usable_with_data():
+    """A module built without data is a configuration, usable once given data."""
+    config = EncoderDecoderTimeSeriesDataModule(
+        max_encoder_length=10,
+        max_prediction_length=5,
+        batch_size=4,
+    )
+
+    dm = config.with_data(make_timeseries(seed=0))
+    dm.setup("fit")
+    x, y = next(iter(dm.train_dataloader()))
+
+    # the configuration carried over: window lengths shape the batch
+    assert x["encoder_cont"].shape[0] == 4
+    assert x["encoder_cont"].shape[1] == 10
+    assert x["decoder_cont"].shape[1] == 5
+
+
+def test_data_less_module_reports_what_is_missing():
+    """Operations needing data must ask for it."""
+    config = EncoderDecoderTimeSeriesDataModule(max_encoder_length=10)
+
+    with pytest.raises(RuntimeError, match="without data"):
+        config.metadata
+
+    with pytest.raises(RuntimeError, match="without data"):
+        config.setup("fit")

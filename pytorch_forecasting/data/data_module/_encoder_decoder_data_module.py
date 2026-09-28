@@ -7,6 +7,7 @@
 # into the memory.
 #######################################################################################
 
+import inspect
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
@@ -20,6 +21,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 from pytorch_forecasting.adapters import ScalerAdapter
+from pytorch_forecasting.data._metadata import EncDecDataModuleMetadata
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     MultiNormalizer,
@@ -28,8 +30,17 @@ from pytorch_forecasting.data.encoders import (
 )
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
+from pytorch_forecasting.utils._validation import (
+    _check_column_names,
+    _check_fractions,
+    _check_positive,
+    _check_type,
+    _check_within,
+)
 
 NORMALIZER = TorchNormalizer | EncoderNormalizer | NaNLabelEncoder
+
+_WRAP_HINT = "Wrap the data frame first, e.g. TimeSeries(df, time=..., target=...)."
 
 
 class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
@@ -42,8 +53,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
     Parameters
     ----------
-    time_series_dataset : TimeSeries
-        The dataset containing time series data.
+    time_series : TimeSeries, optional, default=None
+        The input data. If ``None``, the module is a configuration only: it carries
+        its parameters, and data is attached later with
+        :meth:`with_data`, which reuses any transforms already fitted here.
     max_encoder_length : int, default=30
         Maximum length of the encoder input sequence.
     min_encoder_length : Optional[int], default=None
@@ -111,7 +124,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
     def __init__(
         self,
-        time_series_dataset: TimeSeries,
+        time_series: TimeSeries | None = None,
         max_encoder_length: int = 30,
         min_encoder_length: int | None = None,
         max_prediction_length: int = 1,
@@ -136,7 +149,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
     ):
-        self.time_series_dataset = time_series_dataset
+        self.time_series = time_series
         self.max_encoder_length = max_encoder_length
         self.min_encoder_length = min_encoder_length
         self.max_prediction_length = max_prediction_length
@@ -153,6 +166,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
+
+        self._validate_init_params()
+
+        self._init_kwargs = {
+            name: getattr(self, name)
+            for name in inspect.signature(type(self).__init__).parameters
+            if name not in ("self", "time_series")
+        }
 
         warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
@@ -181,28 +202,160 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             self._target_normalizer = ScalerAdapter(self.target_normalizer)
             self._auto_normalizer = False
 
-        self.time_series_metadata = time_series_dataset.get_metadata()
         self._min_prediction_length = min_prediction_length or max_prediction_length
         self._min_encoder_length = min_encoder_length or max_encoder_length
         self._categorical_encoders = _coerce_to_dict(categorical_encoders)
-        self.n_targets = len(self.time_series_metadata["cols"]["y"])
 
         self.categorical_indices = []
         self.continuous_indices = []
+        self._cont_scalers = []
         self._metadata = None
         self._target_normalizer_fitted = False
         self._feature_scalers_fitted = False
 
+        self._scalers = {
+            k: ScalerAdapter(v) for k, v in _coerce_to_dict(scalers).items()
+        }
+
+        # without data there is no schema, so column positions and target count
+        # cannot be derived yet
+        self.time_series_metadata = None
+        self.n_targets = None
+        if time_series is not None:
+            self._bind_time_series()
+
+    def _bind_time_series(self):
+        """Derive the schema-dependent state from the attached data."""
+        self.time_series_metadata = self.time_series.get_metadata()
+        self.n_targets = len(self.time_series_metadata["cols"]["y"])
+
+        self.categorical_indices = []
+        self.continuous_indices = []
         for idx, col in enumerate(self.time_series_metadata["cols"]["x"]):
             if self.time_series_metadata["col_type"].get(col) == "C":
                 self.categorical_indices.append(idx)
             else:
                 self.continuous_indices.append(idx)
 
-        self._scalers = {
-            k: ScalerAdapter(v) for k, v in _coerce_to_dict(scalers).items()
-        }
+        self._validate_against_schema()
         self._build_cont_scalers()
+
+    def _validate_against_schema(self):
+        """Check the parameters that can only be checked once data is attached.
+
+        Raises
+        ------
+        ValueError
+            If the number of target normalizers does not match the number of
+            targets, or if ``scalers`` names a column that is not a continuous
+            feature.
+        """
+        cols = self.time_series_metadata["cols"]
+        normalizers = self.target_normalizer
+
+        is_list = isinstance(normalizers, (list, tuple))
+        if is_list and len(normalizers) != self.n_targets:
+            raise ValueError(
+                f"`target_normalizer` has {len(normalizers)} normalizers but the "
+                f"data has {self.n_targets} target(s) ({cols['y']}). Pass one "
+                "per target, or a single normalizer for all of them."
+            )
+
+        _check_column_names(
+            {"scalers": list(self.scalers or {})},
+            [cols["x"][idx] for idx in self.continuous_indices],
+            allowed_label="continuous features",
+            hint="Scalers apply to continuous features only.",
+        )
+
+    def _validate_init_params(self):
+        """Check the constructor arguments.
+
+        Raises
+        ------
+        TypeError
+            If ``time_series`` is not a :class:`TimeSeries`.
+        ValueError
+            If a window length is not positive, a minimum length exceeds its
+            maximum, or ``train_val_test_split`` is not three non-negative
+            fractions summing to 1.
+        """
+        _check_type(
+            self.time_series,
+            TimeSeries,
+            "time_series",
+            allow_none=True,
+            hint=_WRAP_HINT,
+        )
+        _check_positive(self.max_encoder_length, "max_encoder_length")
+        _check_positive(self.max_prediction_length, "max_prediction_length")
+        _check_within(
+            self.min_encoder_length,
+            self.max_encoder_length,
+            "min_encoder_length",
+            "max_encoder_length",
+        )
+        _check_within(
+            self.min_prediction_length,
+            self.max_prediction_length,
+            "min_prediction_length",
+            "max_prediction_length",
+        )
+        _check_fractions(self.train_val_test_split, "train_val_test_split")
+
+    def _check_has_data(self, action: str):
+        """Raise if an operation needs data and none is attached.
+
+        Parameters
+        ----------
+        action : str
+            What was attempted, named in the error message.
+
+        Raises
+        ------
+        RuntimeError
+            If the module was constructed without data.
+        """
+        if self.time_series is None:
+            raise RuntimeError(
+                f"{type(self).__name__} was constructed without data, so "
+                f"{action} is not available. Attach data with "
+                "`.with_data(time_series)`, which returns a new module, or "
+                "pass `time_series` to the constructor."
+            )
+
+    def with_data(self, data: TimeSeries) -> "EncoderDecoderTimeSeriesDataModule":
+        """Return a copy of this module holding ``data``, without refitting.
+
+        Same parameters and same fitted transforms with new data.
+
+        Parameters
+        ----------
+        data : TimeSeries
+            The data to attach.
+
+        Returns
+        -------
+        EncoderDecoderTimeSeriesDataModule
+            A new module, configured identically, carrying the transforms
+            fitted on this one.
+
+        Raises
+        ------
+        TypeError
+            If ``data`` is not a :class:`TimeSeries`.
+        """
+        _check_type(data, TimeSeries, "data", hint=_WRAP_HINT)
+
+        new = type(self)(time_series=data, **self._init_kwargs)
+
+        new._target_normalizer = self._target_normalizer
+        new._target_normalizer_fitted = self._target_normalizer_fitted
+        new._auto_normalizer = self._auto_normalizer
+        new._scalers = self._scalers
+        new._feature_scalers_fitted = self._feature_scalers_fitted
+        new._build_cont_scalers()
+        return new
 
     def _build_cont_scalers(self):
         """Pre-resolve continuous feature scalers to (position, adapter) pairs."""
@@ -276,42 +429,28 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             ]
         )
 
-        target_count = len(self.time_series_metadata["cols"]["y"])
-        metadata = {
-            "encoder_cat": encoder_cat_count,
-            "encoder_cont": encoder_cont_count,
-            "decoder_cat": decoder_cat_count,
-            "decoder_cont": decoder_cont_count,
-            "target": target_count,
-        }
-        if self.time_series_metadata["cols"]["st"]:
-            static_cat_count = len(
-                [
-                    col
-                    for col in self.time_series_metadata["cols"]["st"]
-                    if self.time_series_metadata["col_type"].get(col) == "C"
-                ]
-            )
-            static_cont_count = (
-                len(self.time_series_metadata["cols"]["st"]) - static_cat_count
-            )
-
-            metadata["static_categorical_features"] = static_cat_count
-            metadata["static_continuous_features"] = static_cont_count
-        else:
-            metadata["static_categorical_features"] = 0
-            metadata["static_continuous_features"] = 0
-
-        metadata.update(
-            {
-                "max_encoder_length": self.max_encoder_length,
-                "max_prediction_length": self.max_prediction_length,
-                "min_encoder_length": self._min_encoder_length,
-                "min_prediction_length": self._min_prediction_length,
-            }
+        static_cols = self.time_series_metadata["cols"]["st"]
+        static_cat_count = len(
+            [
+                col
+                for col in static_cols
+                if self.time_series_metadata["col_type"].get(col) == "C"
+            ]
         )
 
-        return metadata
+        return EncDecDataModuleMetadata(
+            encoder_cat=encoder_cat_count,
+            encoder_cont=encoder_cont_count,
+            decoder_cat=decoder_cat_count,
+            decoder_cont=decoder_cont_count,
+            target=len(self.time_series_metadata["cols"]["y"]),
+            static_categorical_features=static_cat_count,
+            static_continuous_features=len(static_cols) - static_cat_count,
+            max_encoder_length=self.max_encoder_length,
+            max_prediction_length=self.max_prediction_length,
+            min_encoder_length=self._min_encoder_length,
+            min_prediction_length=self._min_prediction_length,
+        )
 
     @property
     def metadata(self):
@@ -340,6 +479,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         * ``min_encoder_length``: minimum encoder length
         * ``min_prediction_length``: minimum prediction length
         """
+        self._check_has_data("`metadata`")
         if self._metadata is None:
             self._metadata = self._prepare_metadata()
         return self._metadata
@@ -362,7 +502,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             DataFrame with group columns repeated for each timestep,
             or None if no group columns are defined.
         """
-        ts = self.time_series_dataset
+        ts = self.time_series
         if not ts._group:
             return None
 
@@ -463,7 +603,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         Sequence-local normalization (EncoderNormalizer) is deferred to
         __getitem__.
         """
-        sample = self.time_series_dataset[series_idx]
+        sample = self.time_series[series_idx]
         target, features, times, time_mask = self._coerce_sample(sample)
         split = self._split_features(features)
         target, target_original = self._normalize_target(target, series_idx)
@@ -497,7 +637,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         all_groups = []
         for idx in train_indices:
             series_idx = idx.item()
-            sample = self.time_series_dataset[idx]
+            sample = self.time_series[idx]
             target = sample["y"]
             all_targets.append(target)
             n_timesteps = len(target)
@@ -536,7 +676,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             for idx in train_indices:
                 series_idx = idx.item()
-                sample = self.time_series_dataset[idx]
+                sample = self.time_series[idx]
                 feature_data = sample["x"][:, feat_idx]
                 feat_data.append(feature_data)
                 all_groups.append(
@@ -811,7 +951,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         List[Tuple[int, int, int, int]]
             A list of tuples, where each tuple consists of:
             - ``series_idx`` : int
-              Index of the time series in `time_series_dataset`.
+              Index of the time series in `time_series`.
             - ``start_idx`` : int
               Start index of the encoder window.
             - ``enc_length`` : int
@@ -823,7 +963,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
         for idx in indices:
             series_idx = idx.item()
-            sample = self.time_series_dataset[series_idx]
+            sample = self.time_series[series_idx]
             sequence_length = len(sample["y"])
 
             if sequence_length < self.max_encoder_length + self.max_prediction_length:
@@ -876,7 +1016,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         per_target = {name: [] for name in target_names}
 
         for idx in train_indices:
-            sample = self.time_series_dataset[idx.item()]
+            sample = self.time_series[idx.item()]
             target = sample["y"]
             for i, name in enumerate(target_names):
                 per_target[name].append(target[..., i] if target.ndim > 1 else target)
@@ -916,7 +1056,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             As returned by ``_compute_data_properties``.
         """
         target_names = self.time_series_metadata["cols"]["y"]
-        has_groups = bool(self.time_series_dataset._group)
+        has_groups = bool(self.time_series._group)
         use_encoder_normalizer = (
             self.max_encoder_length > 20 and self._min_encoder_length > 1
         )
@@ -952,7 +1092,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
     def _resolve_target_normalizer(self, train_indices: torch.Tensor) -> None:
         """Resolve target normalizer"""
-        if not self._auto_normalizer:
+        if not self._auto_normalizer or self._target_normalizer_fitted:
+            # an already fitted normalizer was carried over by `with_data`
+            # replacing it here would discard the training statistics
             return
         data_properties = self._compute_data_properties(train_indices)
         normalizer = self._get_auto_normalizer(data_properties)
@@ -963,7 +1105,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         if hasattr(self, "_split_indices"):
             return
 
-        total_series = len(self.time_series_dataset)
+        total_series = len(self.time_series)
         self._split_indices = torch.randperm(total_series)
 
         self._train_size = int(self.train_val_test_split[0] * total_series)
@@ -1008,6 +1150,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             - ``"predict"`` : Prepares the dataset for inference.
             - ``None`` : Prepares ``fit`` datasets.
         """
+        self._check_has_data("`setup`")
         self._ensure_split()
 
         if stage is None or stage == "fit":
@@ -1030,7 +1173,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     self._make_dataset(self._test_indices)
                 )
         elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
+            predict_indices = torch.arange(len(self.time_series))
             self._predict_preprocessed, self.predict_windows, self.predict_dataset = (
                 self._make_dataset(predict_indices)
             )
