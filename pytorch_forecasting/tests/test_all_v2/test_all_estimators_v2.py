@@ -10,7 +10,11 @@ from pytorch_forecasting.tests.test_all_estimators import (
     EstimatorFixtureGenerator,
     EstimatorPackageConfig,
 )
-from pytorch_forecasting.tests.test_all_v2._test_integration import _integration
+from pytorch_forecasting.tests.test_all_v2._testing_utils import (
+    _check_load,
+    _check_save,
+    _integration,
+)
 from pytorch_forecasting.tests.test_all_v2.utils import _setup_pkg_and_data
 
 # whether to test only estimators from modules that are changed w.r.t. main
@@ -43,39 +47,27 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
         shutil.rmtree(tmp_path, ignore_errors=True)
 
-    def test_checkpointing(self, object_pkg, trainer_kwargs, tmp_path):
-        """Test that the package can save a checkpoint and reload from it."""
+    def test_save_and_load(self, object_pkg, trainer_kwargs, tmp_path):
+        """Test that the package can save and load all the artifacts."""
         pkg, test_data, _ = _setup_pkg_and_data(object_pkg, trainer_kwargs, tmp_path)
 
         ckpt_dir = Path(tmp_path) / "checkpoints"
         best_model_path = pkg.fit(
             test_data["train"],
-            save_ckpt=True,
             ckpt_dir=ckpt_dir,
             ckpt_kwargs={"monitor": "train_loss_epoch"},
         )
 
-        assert best_model_path is not None
-        assert os.path.exists(best_model_path)
+        _check_save(ckpt_dir, best_model_path)
+        pkg_loaded = object_pkg.load(ckpt_dir)
 
-        dm_cfg_path = Path(best_model_path).parent / "model_cfg.pkl"
-        assert (
-            dm_cfg_path.exists()
-        ), "datamodule_cfg.pkl was not saved alongside checkpoint"
-
-        pkg_loaded = object_pkg(ckpt_path=best_model_path)
-
-        predictions = pkg_loaded.predict(test_data["predict"], mode="prediction")
-
-        assert predictions is not None
-        assert "prediction" in predictions
-        shutil.rmtree(tmp_path, ignore_errors=True)
+        _check_load(test_data, pkg_loaded, tmp_path)
 
     def test_predict_modes(self, object_pkg, trainer_kwargs, tmp_path):
         """Test different prediction modes and return_info."""
         pkg, test_data, _ = _setup_pkg_and_data(object_pkg, trainer_kwargs, tmp_path)
 
-        pkg.fit(test_data["train"], save_ckpt=False)
+        pkg.fit(test_data["train"])
         predict_data = test_data["predict"]
 
         # mode="raw"
