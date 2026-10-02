@@ -22,16 +22,8 @@ def _make_sample_timeseries():
     for g in range(num_groups):
         for t in range(seq_length):
             groups.append(g)
-            times.append(
-                pd.Timestamp("2020-01-01") + pd.Timedelta(days=t)
-            )
-            values.append(
-                10
-                + 0.1 * t
-                + 5 * np.sin(t / 10)
-                + g * 2
-                + rng.normal(0, 1)
-            )
+            times.append(pd.Timestamp("2020-01-01") + pd.Timedelta(days=t))
+            values.append(10 + 0.1 * t + 5 * np.sin(t / 10) + g * 2 + rng.normal(0, 1))
 
     df = pd.DataFrame(
         {
@@ -65,9 +57,7 @@ def _module(dataset, normalizer):
 
 
 def _window_targets(dm):
-    series_idx, start, enc_length, pred_length = (
-        dm.train_dataset.windows[0]
-    )
+    series_idx, start, enc_length, pred_length = dm.train_dataset.windows[0]
 
     raw = dm.train_dataset.preprocessed_data[series_idx]["target"].float()
 
@@ -86,8 +76,7 @@ def test_encoder_normalizer_scales_decoder_target():
     encoder_raw, decoder_raw = _window_targets(dm)
 
     expected = (
-        (decoder_raw - encoder_raw.mean())
-        / encoder_raw.std(unbiased=True)
+        (decoder_raw - encoder_raw.mean()) / encoder_raw.std(unbiased=True)
     ).squeeze(-1)
 
     # Encoder target was normalised.

@@ -161,7 +161,6 @@ class ScalerAdapter:
     def fit_transform(self, data: ArrayLike, X: pd.DataFrame = None) -> torch.Tensor:
         return self.fit(data, X).transform(data, X)
 
-
     def fit_transform_sequence(
         self, data: ArrayLike, X: pd.DataFrame = None
     ) -> torch.Tensor:
@@ -197,16 +196,13 @@ class ScalerAdapter:
 
         return result
 
-
     def transform_sequence(
         self, data: ArrayLike, X: pd.DataFrame = None
     ) -> torch.Tensor:
         """Transform a sequence using already fitted per-sequence normalizers."""
         if not self.is_multi:
             return (
-                self.transform(data, X)
-                if self.fit_per_sequence
-                else _to_tensor(data)
+                self.transform(data, X) if self.fit_per_sequence else _to_tensor(data)
             )
 
         t = _to_tensor(data)
