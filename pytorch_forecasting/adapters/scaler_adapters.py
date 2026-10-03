@@ -164,24 +164,7 @@ class ScalerAdapter:
     def fit_transform_sequence(
         self, data: ArrayLike, X: pd.DataFrame = None
     ) -> torch.Tensor:
-        """Fit-and-transform only per-sequence sub-normalizers; transform the rest.
-
-        Used at ``__getitem__`` time for encoder windows. Non-per-sequence
-        normalizers use their already-fitted global state.
-
-        For single-target adapters this collapses to fit_transform
-        (EncoderNormalizer) or transform (everything else).
-
-        Parameters
-        ----------
-        data : tensor, ndarray, or Series
-            Shape ``(enc_length,)`` or ``(enc_length, n_targets)``.
-
-        Returns
-        -------
-        torch.Tensor
-            Same shape as input.
-        """
+        """Fit per-sequence normalizers and transform the sequence."""
         if not self.is_multi:
             return (
                 self.fit_transform(data, X)
@@ -198,4 +181,36 @@ class ScalerAdapter:
             col = t[:, idx]
             col = sub.fit_transform(col, X) if sub.fit_per_sequence else col
             columns.append(col.unsqueeze(-1))
-        return torch.cat(columns, dim=-1)
+
+        result = torch.cat(columns, dim=-1)
+
+        if _to_tensor(data).ndim == 1 and result.shape[-1] == 1:
+            result = result.squeeze(-1)
+
+        return result
+
+    def transform_sequence(
+        self, data: ArrayLike, X: pd.DataFrame = None
+    ) -> torch.Tensor:
+        """Transform a sequence using already fitted per-sequence normalizers."""
+        if not self.is_multi:
+            return (
+                self.transform(data, X) if self.fit_per_sequence else _to_tensor(data)
+            )
+
+        t = _to_tensor(data)
+        if t.ndim == 1:
+            t = t.unsqueeze(-1)
+
+        columns = []
+        for idx, sub in enumerate(self._sub_adapters):
+            col = t[:, idx]
+            col = sub.transform(col, X) if sub.fit_per_sequence else col
+            columns.append(col.unsqueeze(-1))
+
+        result = torch.cat(columns, dim=-1)
+
+        if _to_tensor(data).ndim == 1 and result.shape[-1] == 1:
+            result = result.squeeze(-1)
+
+        return result
