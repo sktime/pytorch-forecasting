@@ -5,16 +5,16 @@ from typing import Any, Optional, Union
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.core.datamodule import LightningDataModule
-from skbase.base import BaseEstimator
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 import yaml
 
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.models.base._base_object import _BasePtForecasterV2
+from pytorch_forecasting.models.base._base_object import _BasePtObject_v2
 
 
-class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
+class BaseForecaster(_BasePtObject_v2):
     """
     Base forecaster class acting as a high-level wrapper for the Lightning workflow.
 
@@ -59,6 +59,7 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
         self.model = None
         self.trainer_ = None
         self.datamodule_ = None
+        self._is_fitted = False
         if self.ckpt_path:
             self._build_model(metadata=self.metadata)
 
@@ -148,6 +149,15 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
             "predict": datasets_info["validation_dataset"],
         }
 
+    def _check_is_fitted(self, method_name: str | None = None):
+        """Raise ``RuntimeError`` if ``fit`` has not been called."""
+        if not self._is_fitted:
+            caller = f"`{method_name}` " if method_name else ""
+            raise RuntimeError(
+                f"{type(self).__name__} is not fitted yet; {caller}requires "
+                "`fit` to be called first."
+            )
+
     def _build_model(self, metadata: dict):
         """Instantiates the model, either from a checkpoint or from config."""
         model_cls = self.get_cls()
@@ -175,12 +185,73 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
 
     def _load_dataloader(self, data: TimeSeries) -> DataLoader:
         """Build the prediction dataloader, with the transforms fitted in ``fit``."""
-        if self.is_fitted:
+        if self._is_fitted:
             dm = self.datamodule_.with_data(data)
         else:
             dm = self._build_datamodule(data)
         dm.setup(stage="predict")
         return dm.predict_dataloader()
+
+    @staticmethod
+    def _to_timeseries(
+        y: torch.Tensor | list[torch.Tensor],
+        windows: list | None,
+        metadata: Any | None,
+    ) -> TimeSeries:
+        """Move the pred tensors to ``TimeSeries``.
+
+        Parameters
+        ----------
+        y : torch.Tensor or list of torch.Tensor
+            Model output tensor.
+        windows : list of tuple, optional
+            One entry per window, ``(series_idx, start_idx, encoder_length,
+            prediction_length)``, as recorded by the prediction dataset. Used
+            to label each row with its source series and time position. If
+            ``None`` or its length differs from ``n_windows``, each window is
+            labelled as its own series with a horizon-local time index.
+        metadata : TimeSeriesMetadata or dict, optional
+            Schema of the input data.
+            We read only ``metadata["cols"]["y"]`` is read, to
+            name the target columns. Pass ``None`` when the last axis does not
+            hold targets, e.g. in quantile mode, so columns fall back to
+            ``y0, y1, ...``.
+
+        Returns
+        -------
+        TimeSeries
+            ``n_windows * prediction_length`` rows, one per forecast step, with
+            ``metadata.is_prediction=True`` and columns:
+
+            * ``_series`` : index of the source series (``series_idx`` of the
+              window), also the ``group`` of the ``TimeSeries``.
+            * ``_time_idx`` : position in that series,
+            * one column per output, the targets of the ``TimeSeries``. Named
+              after the targets in point mode when ``metadata`` is given, else
+              ``y0, y1, ...``. With several targets and quantile outputs the
+              columns are target-major, i.e. all quantiles of target 0, then
+              all quantiles of target 1.
+
+            Values are in the space of the fitted target normalizer.
+        """
+        if isinstance(y, (list, tuple)):
+            y = torch.stack(list(y), dim=2)
+        n_windows, pred_len = y.shape[:2]
+
+        if windows is None or len(windows) != n_windows:
+            series = np.repeat(np.arange(n_windows), pred_len)
+            t = np.tile(np.arange(pred_len), n_windows)
+        else:
+            series = np.repeat([w[0] for w in windows], pred_len)
+            t = np.concatenate(
+                [np.arange(s + enc, s + enc + pred_len) for _, s, enc, _ in windows]
+            )
+
+        return TimeSeries.from_tensors(
+            {"y": y.reshape(n_windows * pred_len, -1), "t": torch.as_tensor(t)},
+            metadata=metadata,
+            groups=series,
+        )
 
     def _save_artifact(self, output_dir: Path):
         """Save all configuration artifacts."""
@@ -265,9 +336,11 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
     def predict(
         self,
         data: TimeSeries,
+        mode: str = "prediction",
+        return_info: list[str] | None = None,
         output_dir: str | Path | None = None,
         **kwargs,
-    ) -> dict[str, torch.Tensor] | None:
+    ) -> TimeSeries | dict[str, torch.Tensor] | None:
         """
         Generate predictions by wrapping the model's predict method.
 
@@ -279,16 +352,32 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
         data : TimeSeries
             The data to predict on. If the datamodule has a target normalizer
             or scalers, the data is scaled with the ones fitted in ``fit``.
+        mode : str
+            The prediction mode ("prediction", "quantiles", or "raw").
+        return_info : list of str, optional
+            Extra keys to return next to the prediction, e.g. ``"x"``, ``"y"``,
+            ``"index"``. Forces the dict return form.
+        output_dir : str or Path, optional
+            If given, the result is pickled to ``predictions.pkl`` there and
+            ``None`` is returned.
         **kwargs :
-            Additional keyword arguments passed directly to the model's ``.predict()``
-            method. This includes `mode`, `return_info`, `output_dir`, and any
-            `trainer_kwargs`.
+            Passed on to the model's ``.predict()``, e.g. ``mode_kwargs`` and
+            ``trainer_kwargs``.
 
         Returns
         -------
-        Union[Dict[str, torch.Tensor], None]
-            A dictionary of prediction tensors, or `None` if `output_dir` is specified
-            in `**kwargs`.
+        TimeSeries or dict of str to torch.Tensor or None
+            For ``mode="prediction"`` and ``"quantiles"`` without ``return_info``,
+            a :class:`TimeSeries` with ``metadata.is_prediction=True`` and one row
+            per forecast step. ``_series`` is the source series of the window and
+            ``_time_idx`` the position in that series; windows that overlap repeat
+            a ``_time_idx`` within a ``_series``. Point mode names the target
+            columns after the targets; quantile mode uses ``y0, y1, ...``, one
+            per quantile. For ``mode="raw"`` or when ``return_info`` is given,
+            the model's dict. ``None`` if ``output_dir`` is given.
+
+            Values are in the space of the fitted target normalizer; no inverse
+            transform is applied yet.
         """
         if self.model is None:
             raise RuntimeError(
@@ -296,7 +385,15 @@ class BaseForecaster(_BasePtForecasterV2, BaseEstimator):
             )
 
         dataloader = self._load_dataloader(data)
-        predictions = self.model.predict(dataloader, **kwargs)
+        predictions = self.model.predict(
+            dataloader, mode=mode, return_info=return_info, **kwargs
+        )
+        if mode != "raw" and not return_info:
+            predictions = self._to_timeseries(
+                predictions["prediction"],
+                windows=getattr(dataloader.dataset, "windows", None),
+                metadata=data.get_metadata() if mode == "prediction" else None,
+            )
 
         if output_dir:
             output_path = Path(output_dir)

@@ -474,4 +474,5 @@ def test_refit_new_schema(forecaster_for_test, sample_pandas_data_for_test):
         narrow, mode="prediction", trainer_kwargs=TRAINER_KWARGS_TEST
     )
 
-    assert out["prediction"].shape[1] == MAX_PREDICTION_LENGTH_TEST
+    assert out.metadata.is_prediction
+    assert len(out.to_pandas()) % MAX_PREDICTION_LENGTH_TEST == 0
