@@ -2,10 +2,15 @@ import numpy as np
 import pandas as pd
 import torch
 
+from pytorch_forecasting.adapters.scaler_adapters import ScalerAdapter
 from pytorch_forecasting.data.data_module import (
     EncoderDecoderTimeSeriesDataModule,
 )
-from pytorch_forecasting.data.encoders import EncoderNormalizer
+from pytorch_forecasting.data.encoders import (
+    EncoderNormalizer,
+    MultiNormalizer,
+    TorchNormalizer,
+)
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -96,3 +101,50 @@ def test_encoder_normalizer_scales_decoder_target():
         decoder_raw.squeeze(-1),
         atol=1e-3,
     ), "y is still raw"
+
+
+def test_sequence_methods_leave_non_sequence_normalizer_unchanged():
+    data = torch.tensor([1.0, 2.0, 3.0])
+
+    adapter = ScalerAdapter(TorchNormalizer())
+
+    result = adapter.fit_transform_sequence(data)
+    torch.testing.assert_close(result, data)
+
+    adapter.fit(data)
+    result = adapter.transform_sequence(data)
+    torch.testing.assert_close(result, data)
+
+
+def test_sequence_methods_handle_multi_normalizer():
+    adapter = ScalerAdapter(
+        MultiNormalizer(
+            [
+                EncoderNormalizer(),
+                TorchNormalizer(),
+            ]
+        )
+    )
+
+    encoder = torch.tensor(
+        [
+            [1.0, 10.0],
+            [2.0, 20.0],
+            [3.0, 30.0],
+        ]
+    )
+
+    decoder = torch.tensor(
+        [
+            [4.0, 40.0],
+            [5.0, 50.0],
+        ]
+    )
+
+    encoded = adapter.fit_transform_sequence(encoder)
+
+    assert encoded.shape == encoder.shape
+
+    transformed = adapter.transform_sequence(decoder)
+
+    assert transformed.shape == decoder.shape
