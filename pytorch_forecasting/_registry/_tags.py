@@ -168,6 +168,337 @@ class capability__exogenous(_BaseTag):
     }
 
 
+class capability__multivariate(_BaseTag):
+    """Whether the model supports multiple target variables.
+
+    Possible values
+    ---------------
+    True   multivariate forecasting supported
+    False  univariate target only
+
+    Default
+    -------
+    No default. An undeclared tag reads back as ``None``, not ``False``.
+
+    Effect
+    ------
+    Read by the ``model_overview`` sphinx extension
+    (``docs/source/_ext/model_overview.py``), which fills the "Multiple
+    targets" column of the generated model overview table. No runtime code
+    branches on it.
+    """
+
+    _tags = {
+        "tag_name": "capability:multivariate",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": "bool",
+        "short_descr": "whether the model supports multivariate targets",
+    }
+
+
+class capability__pred_int(_BaseTag):
+    """Whether the model produces probabilistic prediction intervals.
+
+    Possible values
+    ---------------
+    True   prediction intervals supported
+    False  point forecasts only
+
+    Default
+    -------
+    No default. An undeclared tag reads back as ``None``, not ``False``.
+
+    Effect
+    ------
+    Read by the ``model_overview`` sphinx extension
+    (``docs/source/_ext/model_overview.py``), which fills the "Prediction
+    intervals" column of the generated model overview table. No runtime code
+    branches on it.
+    """
+
+    _tags = {
+        "tag_name": "capability:pred_int",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": "bool",
+        "short_descr": "whether the model supports prediction intervals",
+    }
+
+
+class capability__flexible_history_length(_BaseTag):
+    """Whether the model accepts a variable-length encoder history.
+
+    Possible values
+    ---------------
+    True   the model works with encoder windows of varying length
+    False  the model requires a fixed encoder length
+
+    Default
+    -------
+    No default. An undeclared tag reads back as ``None``, not ``False``.
+
+    Effect
+    ------
+    Read by the ``model_overview`` sphinx extension
+    (``docs/source/_ext/model_overview.py``), which fills the "Flexible
+    History Length" column of the generated model overview table. No runtime
+    code branches on it.
+    """
+
+    _tags = {
+        "tag_name": "capability:flexible_history_length",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": "bool",
+        "short_descr": "whether the model accepts variable-length history",
+    }
+
+
+class capability__cold_start(_BaseTag):
+    """Whether the model can forecast with little or no history.
+
+    Possible values
+    ---------------
+    True   the model produces forecasts for series it has not seen a long
+           history of
+    False  the model needs a full encoder history
+
+    Default
+    -------
+    No default. An undeclared tag reads back as ``None``, not ``False``.
+
+    Effect
+    ------
+    Read by the ``model_overview`` sphinx extension
+    (``docs/source/_ext/model_overview.py``), which fills the "Cold Start"
+    column of the generated model overview table. No runtime code branches
+    on it.
+    """
+
+    _tags = {
+        "tag_name": "capability:cold_start",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": "bool",
+        "short_descr": "whether the model can forecast with little history",
+    }
+
+
+# --------------------------
+# Forecaster information
+# --------------------------
+
+
+class info__name(_BaseTag):
+    """Human-readable model name.
+
+    Possible values
+    ---------------
+    Any str. By convention it matches the model class name, e.g. "NBeats"
+    for ``NBeats``, so that the documentation and the class agree.
+
+    Default
+    -------
+    No default. Forecaster packages must declare this tag.
+
+    Effect
+    ------
+    Backs the ``name`` property on ``_BasePtForecaster_Common``
+    (``models/base/_base_object.py``). The ``model_overview`` sphinx
+    extension also uses it to skip base and internal classes: an object
+    without this tag is left out of the model overview table.
+    """
+
+    _tags = {
+        "tag_name": "info:name",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": "str",
+        "short_descr": "human-readable model name, matching the class name",
+    }
+
+
+class info__compute(_BaseTag):
+    """Approximate compute cost of training the model.
+
+    Possible values
+    ---------------
+    1  lightweight, e.g. a plain MLP
+    3  medium
+    5  very heavy
+
+    Values between those anchors are allowed. Only 1 to 4 occur today.
+
+    Default
+    -------
+    No default. Forecaster packages must declare this tag.
+
+    Effect
+    ------
+    Read by the ``model_overview`` sphinx extension
+    (``docs/source/_ext/model_overview.py``), which fills the "Compute (1-5)"
+    column of the generated model overview table. No runtime code branches
+    on it, and nothing enforces the 1 to 5 range.
+    """
+
+    _tags = {
+        "tag_name": "info:compute",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": "int",
+        "short_descr": "approximate compute cost, 1 (light) to 5 (very heavy)",
+    }
+
+
+class info__pred_type(_BaseTag):
+    """Kinds of prediction the model produces.
+
+    Possible values
+    ---------------
+    "point"     deterministic point forecasts
+    "quantile"  probabilistic quantile forecasts
+    "distr"     a full predictive distribution, e.g. DeepAR
+
+    The value is a list; a model may declare more than one.
+
+    Default
+    -------
+    No default. An undeclared tag reads back as ``None``; consumers fall back
+    to an empty list. The v2 packages currently omit it, although the v2
+    extension template asks for it.
+
+    Effect
+    ------
+    Read by ``TestAllPtForecasters`` in ``tests/test_all_estimators.py`` to
+    pick the test data and the assertions a model is exercised with, and by
+    the ``model_overview`` sphinx extension to fill the "Probabilistic"
+    column.
+    """
+
+    _tags = {
+        "tag_name": "info:pred_type",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": ("list", ["point", "quantile", "distr"]),
+        "short_descr": "kinds of prediction the model produces",
+    }
+
+
+class info__y_type(_BaseTag):
+    """Kinds of target the model supports.
+
+    Possible values
+    ---------------
+    "numeric"   continuous or numeric target variables
+    "category"  categorical target variables, e.g. for classification losses
+
+    The value is a list; a model may declare more than one.
+
+    Default
+    -------
+    No default. An undeclared tag reads back as ``None``; consumers fall back
+    to an empty list.
+
+    Effect
+    ------
+    Read by ``TestAllPtForecasters`` in ``tests/test_all_estimators.py`` to
+    pick the test data and the assertions a model is exercised with, and by
+    the ``model_overview`` sphinx extension to fill the "Regression" and
+    "Classification" columns.
+    """
+
+    _tags = {
+        "tag_name": "info:y_type",
+        "parent_type": "forecaster_pytorch",
+        "tag_type": ("list", ["numeric", "category"]),
+        "short_descr": "kinds of target the model supports",
+    }
+
+
+# --------------------------
+# Packaging and testing
+# --------------------------
+
+
+class authors(_BaseTag):
+    """GitHub handles of the contributors of the object.
+
+    Possible values
+    ---------------
+    A list of str, each a GitHub handle. Handles of authors of code ported
+    from another package are included, so the list is attribution, not a
+    maintainer roster.
+
+    Default
+    -------
+    No default.
+
+    Effect
+    ------
+    Returned by ``all_objects(return_tags=["authors"])`` and shown in the
+    model overview table built by the ``model_overview`` sphinx extension.
+    No runtime code branches on it.
+    """
+
+    _tags = {
+        "tag_name": "authors",
+        "parent_type": "object",
+        "tag_type": ("list", "str"),
+        "short_descr": "GitHub handles of the contributors of the object",
+    }
+
+
+class python_dependencies(_BaseTag):
+    """External packages the object needs, beyond the core dependencies.
+
+    Possible values
+    ---------------
+    A list of str, each a PEP 440 requirement string, e.g. ``["cpflows"]``.
+    An empty list, or an absent tag, means the object runs on the core
+    dependencies alone.
+
+    Default
+    -------
+    No default; treated as no extra dependencies when absent.
+
+    Effect
+    ------
+    Consumed by the soft-dependency machinery in ``utils/_dependencies``,
+    which skips tests and raises an actionable import error when a declared
+    package is missing.
+    """
+
+    _tags = {
+        "tag_name": "python_dependencies",
+        "parent_type": "object",
+        "tag_type": ("list", "str"),
+        "short_descr": "external packages required by the object",
+    }
+
+
+class tests__skip_by_name(_BaseTag):
+    """Test cases to skip for this object, by full test name.
+
+    Possible values
+    ---------------
+    A list of str, each the name of a test as pytest reports it, including
+    the parametrisation, e.g.
+    ``"test_integration[NHiTS-base_params-0-NormalDistributionLoss]"``.
+    A bare test name such as ``"test_integration"`` skips every
+    parametrisation of that test.
+
+    Default
+    -------
+    No default; treated as an empty list when absent.
+
+    Effect
+    ------
+    Read by the fixture generator in ``tests/test_all_estimators.py``, which
+    drops the named cases from the generated test matrix for this object.
+    """
+
+    _tags = {
+        "tag_name": "tests:skip_by_name",
+        "parent_type": "object",
+        "tag_type": ("list", "str"),
+        "short_descr": "test cases to skip for this object, by full test name",
+    }
+
+
 OBJECT_TAG_REGISTER = []
 
 for _, _cl in inspect.getmembers(sys.modules[__name__], inspect.isclass):
