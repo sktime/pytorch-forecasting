@@ -1,0 +1,111 @@
+"""Tests for the tag register."""
+
+__author__ = ["echo-xiao"]
+
+import pytest
+
+from pytorch_forecasting._registry._tags import (
+    OBJECT_TAG_LIST,
+    OBJECT_TAG_REGISTER,
+    OBJECT_TAG_TABLE,
+    _BaseTag,
+    check_tag_is_valid,
+)
+
+
+def test_register_is_populated():
+    """Every register row is a 4-tuple and the table matches it."""
+    assert len(OBJECT_TAG_REGISTER) > 0
+    for row in OBJECT_TAG_REGISTER:
+        assert len(row) == 4
+        tag_name, parent_type, _, short_descr = row
+        assert isinstance(tag_name, str) and tag_name
+        assert isinstance(parent_type, str) and parent_type
+        assert isinstance(short_descr, str) and short_descr
+    assert OBJECT_TAG_TABLE.shape[0] == len(OBJECT_TAG_REGISTER)
+    assert set(OBJECT_TAG_LIST) == {row[0] for row in OBJECT_TAG_REGISTER}
+
+
+def test_base_tag_itself_not_registered():
+    """``_BaseTag`` is scaffolding, not a tag."""
+    assert "" not in OBJECT_TAG_LIST
+    assert _BaseTag.get_class_tags()["tag_name"] == ""
+
+
+@pytest.mark.parametrize(
+    "tag_name, tag_value",
+    [
+        ("object_type", "metric"),
+        ("object_type", ["forecaster_pytorch", "forecaster_pytorch_v1"]),
+        ("metric_type", "point"),
+        ("capability:exogenous", True),
+    ],
+)
+def test_check_tag_is_valid_accepts(tag_name, tag_value):
+    """Valid values pass without raising."""
+    check_tag_is_valid(tag_name, tag_value)
+
+
+@pytest.mark.parametrize(
+    "tag_name, tag_value, error",
+    [
+        ("not_a_tag", "whatever", KeyError),
+        ("object_type", "not_an_object_type", ValueError),
+        ("metric_type", "not_a_metric_type", ValueError),
+        ("metric_type", 42, ValueError),
+        ("capability:exogenous", "yes", ValueError),
+    ],
+)
+def test_check_tag_is_valid_rejects(tag_name, tag_value, error):
+    """Invalid names raise ``KeyError`` and invalid values raise ``ValueError``."""
+    with pytest.raises(error):
+        check_tag_is_valid(tag_name, tag_value)
+
+
+@pytest.mark.parametrize("row", OBJECT_TAG_REGISTER, ids=lambda r: r[0])
+def test_every_tag_type_is_supported(row):
+    """``check_tag_is_valid`` has an arm for every shape the register declares.
+
+    This is what lets ``check_tag_is_valid`` end without an unreachable
+    fallback branch.
+    """
+    tag_type = row[2]
+    if isinstance(tag_type, str):
+        assert tag_type in ("bool", "int", "str")
+        return
+    assert isinstance(tag_type, tuple) and len(tag_type) == 2
+    kind, allowed = tag_type
+    assert kind in ("str", "list")
+    if kind == "str":
+        assert isinstance(allowed, list) and all(isinstance(a, str) for a in allowed)
+    else:
+        assert allowed == "str" or (
+            isinstance(allowed, list) and all(isinstance(a, str) for a in allowed)
+        )
+
+
+@pytest.mark.parametrize("row", OBJECT_TAG_REGISTER, ids=lambda r: r[0])
+def test_every_tag_is_documented(row):
+    """Each tag class carries the sections asked for in review of #2334."""
+    tag_name = row[0]
+    cls = next(
+        c
+        for c in _BaseTag.__subclasses__()
+        if c.get_class_tags()["tag_name"] == tag_name
+    )
+    doc = cls.__doc__
+    assert doc is not None, f"{tag_name} has no docstring"
+    assert "Possible values" in doc, f"{tag_name} lacks a Possible values section"
+    assert "Effect" in doc, f"{tag_name} lacks an Effect section"
+    assert cls.get_class_tags()["short_descr"], f"{tag_name} has an empty short_descr"
+
+
+def test_tag_classes_are_not_returned_by_all_objects():
+    """Tag classes inherit ``_BaseObject`` and must not pollute the object lookup."""
+    from pytorch_forecasting._registry import all_objects
+
+    found = all_objects(return_names=False)
+    assert not any(
+        getattr(obj, "get_class_tags", lambda: {})().get("object_type") == "tag"
+        for obj in found
+    )

@@ -154,6 +154,7 @@ def all_objects(
         "contrib",
         "utils",
         "all",
+        "_registry",
     )
 
     result = []
