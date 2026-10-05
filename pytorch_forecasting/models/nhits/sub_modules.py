@@ -56,7 +56,9 @@ class IdentityBasis(nn.Module):
         elif "cubic" in self.interpolation_mode:
             batch_size = int(self.interpolation_mode.split("-")[-1])
             knots = knots[:, None, None, :]
-            forecast = torch.zeros((len(knots), self.forecast_size)).to(knots.device)
+            forecast = torch.zeros(
+                (len(knots), self.forecast_size), device=knots.device, dtype=knots.dtype
+            )
             n_batches = int(np.ceil(len(knots) / batch_size))
             for i in range(n_batches):
                 forecast_i = F.interpolate(
