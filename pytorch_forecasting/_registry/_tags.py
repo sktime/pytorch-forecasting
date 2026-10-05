@@ -135,6 +135,270 @@ class metric_type(_BaseTag):
     }
 
 
+class info__metric_name(_BaseTag):
+    """Human-readable metric name.
+
+    Possible values
+    ---------------
+    Any str. By convention it matches the metric class name, e.g. "MASE"
+    for ``MASE``.
+
+    Default
+    -------
+    No default. Metric packages declare it.
+
+    Effect
+    ------
+    Declarative only. No code in the repository reads this tag; unlike
+    ``info:name``, which backs the ``name`` property of forecaster packages,
+    this metric-side counterpart has no consumer. It is exposed through
+    ``all_objects(return_tags=["info:metric_name"])``.
+    """
+
+    _tags = {
+        "tag_name": "info:metric_name",
+        "parent_type": "metric",
+        "tag_type": "str",
+        "short_descr": "human-readable metric name, matching the class name",
+    }
+
+
+class requires__data_type(_BaseTag):
+    """Name of the test data fixture the metric is scored against.
+
+    Possible values
+    ---------------
+    "point_forecast"
+    "quantile_forecast"
+    "classification_forecast"
+    "beta_distribution_forecast"
+    "log_normal_distribution_forecast"
+    "mqf2_distribution_forecast"
+    "multivariate_normal_distribution_forecast"
+    "negative_binomial_distribution_forecast"
+    "normal_distribution_forecast"
+    "implicit_quantile_network_distribution_forecast"
+
+    Each value names a fixture defined in ``metrics/tests/conftest.py``.
+
+    Default
+    -------
+    No default. Metric packages must declare this tag.
+
+    Effect
+    ------
+    Read by ``TestAllMetrics`` in ``metrics/tests/test_all_metrics.py``,
+    where it selects the fixture that produces ``y_true`` and ``y_pred`` for
+    this metric. A value with no matching fixture makes the metric's whole
+    test class error out.
+    """
+
+    _tags = {
+        "tag_name": "requires:data_type",
+        "parent_type": "metric",
+        "tag_type": (
+            "str",
+            [
+                "point_forecast",
+                "quantile_forecast",
+                "classification_forecast",
+                "beta_distribution_forecast",
+                "log_normal_distribution_forecast",
+                "mqf2_distribution_forecast",
+                "multivariate_normal_distribution_forecast",
+                "negative_binomial_distribution_forecast",
+                "normal_distribution_forecast",
+                "implicit_quantile_network_distribution_forecast",
+            ],
+        ),
+        "short_descr": "name of the test data fixture the metric is scored against",
+    }
+
+
+class distribution_type(_BaseTag):
+    """Distribution family a distributional metric assumes.
+
+    Possible values
+    ---------------
+    "beta"
+    "implicit_quantile_network"
+    "log_normal"
+    "mqf2"
+    "multivariate_normal"
+    "negative_binomial"
+    "normal"
+
+    Default
+    -------
+    No default. Only distributional metric packages declare it.
+
+    Effect
+    ------
+    Read by ``TestAllMetrics`` in ``metrics/tests/test_all_metrics.py`` to
+    build distribution parameters of the right shape before scoring.
+    """
+
+    _tags = {
+        "tag_name": "distribution_type",
+        "parent_type": "metric",
+        "tag_type": (
+            "str",
+            [
+                "beta",
+                "implicit_quantile_network",
+                "log_normal",
+                "mqf2",
+                "multivariate_normal",
+                "negative_binomial",
+                "normal",
+            ],
+        ),
+        "short_descr": "distribution family a distributional metric assumes",
+    }
+
+
+class no_rescaling(_BaseTag):
+    """Whether the metric is scored on unrescaled predictions.
+
+    Possible values
+    ---------------
+    True   the metric is scored as is, without inverting the target
+           transformation first
+    False  the metric is scored after rescaling, the usual case
+
+    Default
+    -------
+    No default; treated as ``False`` when absent.
+
+    Effect
+    ------
+    Read by ``TestAllMetrics`` in ``metrics/tests/test_all_metrics.py``: when
+    ``True``, the test harness skips the rescaling step before scoring.
+    """
+
+    _tags = {
+        "tag_name": "no_rescaling",
+        "parent_type": "metric",
+        "tag_type": "bool",
+        "short_descr": "whether the metric is scored without rescaling",
+    }
+
+
+class capability__quantile_generation(_BaseTag):
+    """Whether the metric can turn its prediction into quantiles.
+
+    Possible values
+    ---------------
+    True   the metric exposes a quantile view of the prediction
+    False  it does not
+
+    Default
+    -------
+    No default; treated as ``False`` when absent.
+
+    Effect
+    ------
+    Declarative only. No code in the repository branches on this tag. It is
+    exposed for discovery through
+    ``all_objects(filter_tags={"capability:quantile_generation": True})``.
+    """
+
+    _tags = {
+        "tag_name": "capability:quantile_generation",
+        "parent_type": "metric",
+        "tag_type": "bool",
+        "short_descr": "whether the metric can generate quantiles",
+    }
+
+
+class shape__adds_quantile_dimension(_BaseTag):
+    """Whether the metric's output carries an extra trailing quantile axis.
+
+    Possible values
+    ---------------
+    True   the metric adds a trailing quantile dimension to its output
+    False  the output keeps the shape of the input
+
+    Default
+    -------
+    No default; treated as ``False`` when absent.
+
+    Effect
+    ------
+    Declarative only. No code in the repository branches on this tag. It is
+    exposed for discovery through
+    ``all_objects(filter_tags={"shape:adds_quantile_dimension": True})``.
+    """
+
+    _tags = {
+        "tag_name": "shape:adds_quantile_dimension",
+        "parent_type": "metric",
+        "tag_type": "bool",
+        "short_descr": "whether the metric output adds a quantile dimension",
+    }
+
+
+# --------------------------
+# Scaler strategies
+# --------------------------
+
+
+class is_label_encoder(_BaseTag):
+    """Whether the scaler strategy encodes labels rather than scaling values.
+
+    Possible values
+    ---------------
+    True   the strategy maps categorical labels to integer codes
+    False  the strategy applies a numeric transformation
+
+    Default
+    -------
+    No default; ``ScalerAdapter`` falls back to ``False`` when the tag is
+    absent and when no strategy is set.
+
+    Effect
+    ------
+    Read by ``ScalerAdapter`` in ``adapters/scaler_adapters.py``. It drives
+    ``ScalerAdapter.label_encoder_mask``, which tells the data pipeline which
+    sub-normalizers are label encoders and must not be rescaled numerically.
+    """
+
+    _tags = {
+        "tag_name": "is_label_encoder",
+        "parent_type": "scaler_strategy",
+        "tag_type": "bool",
+        "short_descr": "whether the strategy encodes labels instead of scaling",
+    }
+
+
+class fit_per_sequence(_BaseTag):
+    """Whether the scaler strategy is fitted separately for each sequence.
+
+    Possible values
+    ---------------
+    True   statistics are computed per sequence, as for an encoder normalizer
+    False  one set of statistics is fitted across the whole dataset
+
+    Default
+    -------
+    No default; ``ScalerAdapter`` falls back to ``False`` when the tag is
+    absent and when no strategy is set.
+
+    Effect
+    ------
+    Read by ``ScalerAdapter`` in ``adapters/scaler_adapters.py``. For a
+    multi-normalizer the adapter takes the logical or over its sub-adapters,
+    so one per-sequence sub-normalizer makes the whole adapter per-sequence.
+    """
+
+    _tags = {
+        "tag_name": "fit_per_sequence",
+        "parent_type": "scaler_strategy",
+        "tag_type": "bool",
+        "short_descr": "whether the strategy is fitted separately per sequence",
+    }
+
+
 # --------------------------
 # Forecaster capabilities
 # --------------------------

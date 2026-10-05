@@ -109,3 +109,35 @@ def test_tag_classes_are_not_returned_by_all_objects():
         getattr(obj, "get_class_tags", lambda: {})().get("object_type") == "tag"
         for obj in found
     )
+
+
+def _all_declared_tags():
+    """Yield (class, tag_name, tag_value) for every tag declared in the package."""
+    from pytorch_forecasting._registry import all_objects
+
+    for obj in all_objects(return_names=False):
+        for tag_name, tag_value in obj.get_class_tags().items():
+            yield obj, tag_name, tag_value
+
+
+def test_every_declared_tag_is_registered():
+    """A tag used in the package but missing from the register fails here."""
+    unregistered = {
+        tag_name
+        for _, tag_name, _ in _all_declared_tags()
+        if tag_name not in OBJECT_TAG_LIST
+    }
+    assert not unregistered, f"tags used but not registered: {sorted(unregistered)}"
+
+
+def test_every_declared_tag_value_is_valid():
+    """A value outside its declared tag_type fails here."""
+    failures = []
+    for obj, tag_name, tag_value in _all_declared_tags():
+        if tag_name not in OBJECT_TAG_LIST:
+            continue
+        try:
+            check_tag_is_valid(tag_name, tag_value)
+        except (KeyError, ValueError) as err:
+            failures.append(f"{obj.__name__}.{tag_name}: {err}")
+    assert not failures, "invalid tag values:\n" + "\n".join(failures)
