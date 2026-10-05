@@ -510,10 +510,18 @@ class TslibDataModule(LightningDataModule):
         else:
             self.features = "M"
 
+        categorical_cardinalities = []
+        for col in feature_names.get("categorical", []):
+            max_val = self.time_series_dataset.data[col].max()
+            cardinality = int(max_val) + 1 if not pd.isna(max_val) else 1
+            cardinality = max(1, cardinality)
+            categorical_cardinalities.append(cardinality)
+
         metadata = {
             "feature_names": feature_names,
             "feature_indices": feature_indices,
             "n_features": n_features,
+            "categorical_cardinalities": categorical_cardinalities,
             "context_length": self.context_length,
             "prediction_length": self.prediction_length,
             "freq": self.freq,
