@@ -141,3 +141,41 @@ def test_every_declared_tag_value_is_valid():
         except (KeyError, ValueError) as err:
             failures.append(f"{obj.__name__}.{tag_name}: {err}")
     assert not failures, "invalid tag values:\n" + "\n".join(failures)
+
+
+def test_all_tags_default_returns_register_rows():
+    """The default return is the register itself."""
+    from pytorch_forecasting._registry import all_tags
+
+    assert sorted(all_tags()) == sorted(OBJECT_TAG_REGISTER)
+
+
+def test_all_tags_names_only():
+    """``return_names=False`` gives tag names without duplicates."""
+    from pytorch_forecasting._registry import all_tags
+
+    assert sorted(all_tags(return_names=False)) == sorted(OBJECT_TAG_LIST)
+
+
+def test_all_tags_filters_by_parent_type():
+    """Expected values are written out on purpose: this is a tripwire.
+
+    Adding a scaler strategy tag should fail here, as a reminder to document
+    it in the register rather than only on the strategy class.
+    """
+    from pytorch_forecasting._registry import all_tags
+
+    result = all_tags(parent_types="scaler_strategy", return_names=False)
+    assert sorted(result) == ["fit_per_sequence", "is_label_encoder"]
+
+
+def test_all_tags_as_dataframe():
+    """The dataframe form names its columns."""
+    import pandas as pd
+
+    from pytorch_forecasting._registry import all_tags
+
+    result = all_tags(as_dataframe=True)
+    assert isinstance(result, pd.DataFrame)
+    assert list(result.columns) == ["name", "scitype", "type", "description"]
+    assert len(result) == len(OBJECT_TAG_REGISTER)

@@ -4,6 +4,9 @@ This module exports the following methods for registry lookup:
 
 all_objects(object_types, filter_tags)
     lookup and filtering of objects
+
+all_tags(parent_types)
+    lookup and filtering of object tags
 """
 
 # based on the sktime module of same name
@@ -53,7 +56,8 @@ def all_objects(
         * if False, estimator class name is removed from the ``all_objects`` return.
 
     filter_tags: dict of (str or list of str or re.Pattern), optional (default=None)
-        For a list of valid tag strings, use the registry.all_tags utility.
+        For a list of valid tag strings, use
+        ``pytorch_forecasting._registry.all_tags``.
 
         ``filter_tags`` subsets the returned objects as follows:
 
@@ -97,7 +101,8 @@ def all_objects(
 
     return_tags: str or list of str, optional (default=None)
         Names of tags to fetch and return each estimator's value of.
-        For a list of valid tag strings, use the ``registry.all_tags`` utility.
+        For a list of valid tag strings, use
+        ``pytorch_forecasting._registry.all_tags``.
         if str or list of str,
         the tag values named in return_tags will be fetched for each
         estimator and will be appended as either columns or tuple entries.
@@ -208,6 +213,61 @@ def all_objects(
     )
 
     return result
+
+
+def all_tags(
+    parent_types=None,
+    return_names=True,
+    as_dataframe=False,
+):
+    """Get a list of all object tags from pytorch_forecasting.
+
+    Parameters
+    ----------
+    parent_types : str or list of str, optional (default=None)
+        parent type to filter the tags by, e.g. ``"metric"``.
+        If None, tags for all parent types are returned.
+    return_names : bool, optional (default=True)
+        if True, return tuples ``(name, scitype, type, description)``;
+        if False, return tag names only, without duplicates.
+    as_dataframe : bool, optional (default=False)
+        if True, return a ``pd.DataFrame`` with one row per tag and columns
+        ``["name", "scitype", "type", "description"]``. Takes precedence
+        over ``return_names``.
+
+    Returns
+    -------
+    list of tuple, list of str, or pd.DataFrame
+        shape as described under ``return_names`` and ``as_dataframe``
+
+    Examples
+    --------
+    >>> from pytorch_forecasting._registry import all_tags
+    >>> metric_tags = all_tags(parent_types="metric", return_names=False)
+    >>> "metric_type" in metric_tags
+    True
+    """
+    import pandas as pd
+
+    from pytorch_forecasting._registry._tags import OBJECT_TAG_REGISTER
+
+    rows = list(OBJECT_TAG_REGISTER)
+
+    if parent_types is not None:
+        parent_types = _check_list_of_str_or_error(parent_types, "parent_types")
+        rows = [row for row in rows if row[1] in parent_types]
+
+    if as_dataframe:
+        return pd.DataFrame(rows, columns=["name", "scitype", "type", "description"])
+
+    if not return_names:
+        names = []
+        for row in rows:
+            if row[0] not in names:
+                names.append(row[0])
+        return names
+
+    return rows
 
 
 def _check_list_of_str_or_error(arg_to_check, arg_name):
