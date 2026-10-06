@@ -213,3 +213,30 @@ def test_all_objects_accepts_known_filter_tags():
 
     result = all_objects(filter_tags={"object_type": "metric"}, return_names=False)
     assert len(result) > 0
+
+
+def test_metric_type_enum_matches_test_all_metrics():
+    """The metric test suite hard-codes the same values; keep them in sync."""
+    import inspect
+
+    from pytorch_forecasting.metrics.tests import test_all_metrics
+
+    source = inspect.getsource(test_all_metrics.TestAllPtMetrics.test_metric_type)
+    registered = OBJECT_TAG_TABLE[OBJECT_TAG_TABLE[0] == "metric_type"].iloc[0, 2][1]
+    for value in registered:
+        assert f'"{value}"' in source, (
+            f"metric_type value {value!r} is in the register but not asserted in "
+            "TestAllPtMetrics.test_metric_type"
+        )
+
+
+def test_object_type_enum_covers_test_class_registry():
+    """Every scitype that dispatches to a test class must be a registered value."""
+    from pytorch_forecasting.tests.test_class_register import get_test_class_registry
+
+    registered = OBJECT_TAG_TABLE[OBJECT_TAG_TABLE[0] == "object_type"].iloc[0, 2][1]
+    for scitype in get_test_class_registry():
+        assert scitype in registered, (
+            f"{scitype!r} dispatches to a test class but is not a registered "
+            "object_type value"
+        )

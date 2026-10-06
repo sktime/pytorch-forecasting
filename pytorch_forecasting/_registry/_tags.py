@@ -118,7 +118,7 @@ class metric_type(_BaseTag):
 
     Effect
     ------
-    Read by ``TestAllMetrics`` in ``metrics/tests/test_all_metrics.py``:
+    Read by ``TestAllPtMetrics`` in ``metrics/tests/test_all_metrics.py``:
     "quantile" makes the test harness add a quantile dimension to ``y_pred``
     before scoring, and "quantile" and "point_classification" change which
     reduction assertions run.
@@ -187,7 +187,7 @@ class requires__data_type(_BaseTag):
 
     Effect
     ------
-    Read by ``TestAllMetrics`` in ``metrics/tests/test_all_metrics.py``,
+    Read by ``TestAllPtMetrics`` in ``metrics/tests/test_all_metrics.py``,
     where it selects the fixture that produces ``y_true`` and ``y_pred`` for
     this metric. A value with no matching fixture makes the metric's whole
     test class error out.
@@ -234,7 +234,7 @@ class distribution_type(_BaseTag):
 
     Effect
     ------
-    Read by ``TestAllMetrics`` in ``metrics/tests/test_all_metrics.py`` to
+    Read by ``TestAllPtMetrics`` in ``metrics/tests/test_all_metrics.py`` to
     build distribution parameters of the right shape before scoring.
     """
 
@@ -272,7 +272,7 @@ class no_rescaling(_BaseTag):
 
     Effect
     ------
-    Read by ``TestAllMetrics`` in ``metrics/tests/test_all_metrics.py``: when
+    Read by ``TestAllPtMetrics`` in ``metrics/tests/test_all_metrics.py``: when
     ``True``, the test harness skips the rescaling step before scoring.
     """
 
@@ -628,10 +628,11 @@ class info__pred_type(_BaseTag):
 
     Effect
     ------
-    Read by ``TestAllPtForecasters`` in ``tests/test_all_estimators.py`` to
-    pick the test data and the assertions a model is exercised with, and by
-    the ``model_overview`` sphinx extension to fill the "Probabilistic"
-    column.
+    Read by ``EstimatorFixtureGenerator._get_compatible_losses_for_model`` in
+    ``tests/test_all_estimators.py``, which passes it to
+    ``get_compatible_losses`` to decide which loss functions the model is
+    tested against. Also read by the ``model_overview`` sphinx extension to
+    fill the "Probabilistic" column.
     """
 
     _tags = {
@@ -659,10 +660,11 @@ class info__y_type(_BaseTag):
 
     Effect
     ------
-    Read by ``TestAllPtForecasters`` in ``tests/test_all_estimators.py`` to
-    pick the test data and the assertions a model is exercised with, and by
-    the ``model_overview`` sphinx extension to fill the "Regression" and
-    "Classification" columns.
+    Read by ``EstimatorFixtureGenerator._get_compatible_losses_for_model`` in
+    ``tests/test_all_estimators.py``, which passes it to
+    ``get_compatible_losses`` to decide which loss functions the model is
+    tested against. Also read by the ``model_overview`` sphinx extension to
+    fill the "Regression" and "Classification" columns.
     """
 
     _tags = {
@@ -751,8 +753,10 @@ class tests__skip_by_name(_BaseTag):
 
     Effect
     ------
-    Read by the fixture generator in ``tests/test_all_estimators.py``, which
-    drops the named cases from the generated test matrix for this object.
+    Read by ``EstimatorFixtureGenerator.is_excluded`` in
+    ``tests/test_all_estimators.py``, which drops the named cases from the
+    generated test matrix for this object. For a model class rather than a
+    package the tag is read from its ``pkg`` attribute.
     """
 
     _tags = {
