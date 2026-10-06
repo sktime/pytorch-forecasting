@@ -767,28 +767,35 @@ class tests__skip_by_name(_BaseTag):
     }
 
 
-OBJECT_TAG_REGISTER = []
+def _build_tag_register():
+    """Collect every tag class in this module into register rows.
 
-for _, _cl in inspect.getmembers(sys.modules[__name__], inspect.isclass):
-    if _cl is _BaseTag or not issubclass(_cl, _BaseTag):
-        continue
+    Returns
+    -------
+    list of tuple
+        one ``(tag_name, parent_type, tag_type, short_descr)`` per tag and
+        parent type; a tag declaring several parent types yields one row each
+    """
+    register = []
+    for _, cl in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+        if cl is _BaseTag or not issubclass(cl, _BaseTag):
+            continue
 
-    _cl_tags = _cl.get_class_tags()
-    _tag_name = _cl_tags["tag_name"]
-    _parent_type = _cl_tags["parent_type"]
-    _tag_type = _cl_tags["tag_type"]
-    _short_descr = _cl_tags["short_descr"]
+        cl_tags = cl.get_class_tags()
+        tag_name = cl_tags["tag_name"]
+        parent_type = cl_tags["parent_type"]
+        tag_type = cl_tags["tag_type"]
+        short_descr = cl_tags["short_descr"]
 
-    if isinstance(_parent_type, list):
-        for _p_type in _parent_type:
-            OBJECT_TAG_REGISTER.append(
-                (_tag_name, _p_type, _tag_type, _short_descr)
-            )
-    else:
-        OBJECT_TAG_REGISTER.append(
-            (_tag_name, _parent_type, _tag_type, _short_descr)
-        )
+        if isinstance(parent_type, list):
+            for p_type in parent_type:
+                register.append((tag_name, p_type, tag_type, short_descr))
+        else:
+            register.append((tag_name, parent_type, tag_type, short_descr))
+    return register
 
+
+OBJECT_TAG_REGISTER = _build_tag_register()
 OBJECT_TAG_TABLE = pd.DataFrame(OBJECT_TAG_REGISTER)
 OBJECT_TAG_LIST = OBJECT_TAG_TABLE[0].unique().tolist()
 
@@ -844,9 +851,7 @@ def check_tag_is_valid(tag_name, tag_value):
     # test_every_tag_type_is_supported, so there is no unreachable arm here
     if allowed == "str":
         values = [tag_value] if isinstance(tag_value, str) else tag_value
-        if not isinstance(values, list) or not all(
-            isinstance(x, str) for x in values
-        ):
+        if not isinstance(values, list) or not all(isinstance(x, str) for x in values):
             raise ValueError(f"{tag_name} must be a str or a list of str")
         return
 

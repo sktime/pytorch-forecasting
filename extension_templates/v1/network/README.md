@@ -55,25 +55,16 @@ A **private package container** that exposes metadata and links to the model cla
 
 #### About `_tags`
 
-Each tag in the template includes detailed comments explaining:
+At minimum, `_tags` should include `info:name`, `info:pred_type`,
+`info:y_type`, `info:compute`, `authors`, and the `capability:*` family, plus
+`python_dependencies` if the model needs packages beyond the core
+dependencies.
 
-- What the tag means.
-- What valid/possible values are.
-- How a contributor should choose them.
-
-At minimum, `_tags` should include:
-
-- `info:name` (human-readable model name matching the class)
-- `info:pred_type` (prediction types: e.g. `["point"]`, `["quantile"]`, `["distr"]`)
-- `info:y_type` (target type: e.g. `["numeric"]`, `["category"]`)
-- `info:compute` (integer representing compute intensity, 1 to 5)
-- `authors` (GitHub username list)
-- `python_dependencies` (list of external packages if needed)
-- `capability:exogenous` (bool: whether model supports exogenous variables)
-- `capability:multivariate` (bool: whether model supports multivariate targets)
-- `capability:pred_int` (bool: whether model supports prediction intervals)
-- `capability:flexible_history_length` (bool: whether model works with variable-length history)
-- `capability:cold_start` (bool: whether model makes predictions with little/no history)
+Every tag, its possible values, its default, and what in the package reads it
+are documented in the tag register, `pytorch_forecasting/_registry/_tags.py`,
+rendered at
+[Registry](https://pytorch-forecasting.readthedocs.io/en/latest/registry.html).
+The register is the single authority; tag semantics are not restated here.
 
 The class name of the package container **must match the model name**, e.g.:
 
