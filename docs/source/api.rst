@@ -15,5 +15,6 @@ API
     Models <models>
     Package <pkg>
     Metrics <metrics>
+    Registry <registry>
     Utils <utils>
     Tutorials <tutorials>
