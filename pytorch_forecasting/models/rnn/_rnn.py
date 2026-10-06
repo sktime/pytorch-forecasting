@@ -148,6 +148,58 @@ class RecurrentNetwork(AutoRegressiveBaseModelWithCovariates):
             loss (MultiHorizonMetric, optional): loss: loss function taking prediction and targets.
             logging_metrics (nn.ModuleList, optional): Metrics to log during training.
                 Defaults to nn.ModuleList([SMAPE(), MAE(), RMSE(), MAPE(), MASE()]).
+
+        Example:
+
+            >>> import lightning.pytorch as pl
+            >>> from pytorch_forecasting import RecurrentNetwork, TimeSeriesDataSet
+            >>> from pytorch_forecasting.data.examples import generate_ar_data
+            >>> data = generate_ar_data(n_series=10, timesteps=400, seed=42)
+            >>> max_encoder_length = 60
+            >>> max_prediction_length = 20
+            >>> training = TimeSeriesDataSet(
+            ...     data,
+            ...     time_idx="time_idx",
+            ...     target="value",
+            ...     group_ids=["series"],
+            ...     max_encoder_length=max_encoder_length,
+            ...     max_prediction_length=max_prediction_length,
+            ...     time_varying_unknown_reals=["value"],
+            ...     lags={"value": [12, 24]},
+            ...     add_relative_time_idx=True,
+            ...     add_target_scales=True,
+            ...     add_encoder_length=True,
+            ... )
+            >>> validation = TimeSeriesDataSet.from_dataset(
+            ...     training, data, predict=True, stop_randomization=True
+            ... )
+            >>> train_dataloader = training.to_dataloader(
+            ...     train=True, batch_size=32, num_workers=0
+            ... )
+            >>> val_dataloader = validation.to_dataloader(
+            ...     train=False, batch_size=32, num_workers=0
+            ... )
+            >>> rnn = RecurrentNetwork.from_dataset(
+            ...     training,
+            ...     cell_type="LSTM",
+            ...     hidden_size=32,
+            ...     rnn_layers=2,
+            ...     dropout=0.1,
+            ...     learning_rate=1e-3,
+            ...     log_interval=10,
+            ... )
+            >>> trainer = pl.Trainer(
+            ...     max_epochs=1,
+            ...     accelerator="cpu",
+            ...     enable_checkpointing=False,
+            ...     logger=False,
+            ... )
+            >>> trainer.fit(
+            ...     rnn,
+            ...     train_dataloaders=train_dataloader,
+            ...     val_dataloaders=val_dataloader,
+            ... )
+            >>> predictions = rnn.predict(val_dataloader)
         """  # noqa : E501
         if static_categoricals is None:
             static_categoricals = []
