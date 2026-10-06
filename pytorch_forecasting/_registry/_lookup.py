@@ -14,6 +14,7 @@ all_tags(parent_types)
 __author__ = ["fkiraly"]
 # all_objects is based on the sklearn utility all_estimators
 
+from difflib import get_close_matches
 from inspect import isclass
 from pathlib import Path
 
@@ -153,6 +154,8 @@ def all_objects(
     Adapted version of sktime's ``all_estimators``,
     which is an evolution of scikit-learn's ``all_estimators``
     """
+    _check_filter_tag_names(filter_tags)
+
     MODULES_TO_IGNORE = (
         "tests",
         "setup",
@@ -213,6 +216,40 @@ def all_objects(
     )
 
     return result
+
+
+def _check_filter_tag_names(filter_tags):
+    """Raise if ``filter_tags`` names a tag that is not in the register.
+
+    Parameters
+    ----------
+    filter_tags : None, str, or dict
+        the ``filter_tags`` argument of ``all_objects``, before any coercion
+
+    Raises
+    ------
+    KeyError
+        if a key of ``filter_tags`` is not a registered tag name
+    """
+    from pytorch_forecasting._registry._tags import OBJECT_TAG_LIST
+
+    if filter_tags is None:
+        return
+
+    if isinstance(filter_tags, str):
+        names = [filter_tags]
+    else:
+        names = list(filter_tags)
+
+    for name in names:
+        if name in OBJECT_TAG_LIST:
+            continue
+        msg = f"{name!r} is not a valid tag name."
+        close = get_close_matches(name, OBJECT_TAG_LIST, n=1)
+        if close:
+            msg += f" Did you mean {close[0]!r}?"
+        msg += " Use pytorch_forecasting._registry.all_tags() for the full list."
+        raise KeyError(msg)
 
 
 def all_tags(

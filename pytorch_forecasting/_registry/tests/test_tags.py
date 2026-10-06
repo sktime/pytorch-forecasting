@@ -179,3 +179,37 @@ def test_all_tags_as_dataframe():
     assert isinstance(result, pd.DataFrame)
     assert list(result.columns) == ["name", "scitype", "type", "description"]
     assert len(result) == len(OBJECT_TAG_REGISTER)
+
+
+def test_all_objects_rejects_unknown_filter_tag():
+    """A misspelt tag name is an error, not an empty result."""
+    from pytorch_forecasting._registry import all_objects
+
+    with pytest.raises(KeyError) as excinfo:
+        all_objects(filter_tags={"not_a_real_tag": True})
+    assert "not_a_real_tag" in str(excinfo.value)
+
+
+def test_all_objects_suggests_a_close_tag_name():
+    """The error names the tag the user probably meant."""
+    from pytorch_forecasting._registry import all_objects
+
+    with pytest.raises(KeyError) as excinfo:
+        all_objects(filter_tags={"capability:exogenus": True})
+    assert "capability:exogenous" in str(excinfo.value)
+
+
+def test_all_objects_rejects_unknown_filter_tag_given_as_str():
+    """``filter_tags`` may be a bare str, which is validated the same way."""
+    from pytorch_forecasting._registry import all_objects
+
+    with pytest.raises(KeyError):
+        all_objects(filter_tags="not_a_real_tag")
+
+
+def test_all_objects_accepts_known_filter_tags():
+    """Validation does not break the normal path."""
+    from pytorch_forecasting._registry import all_objects
+
+    result = all_objects(filter_tags={"object_type": "metric"}, return_names=False)
+    assert len(result) > 0
