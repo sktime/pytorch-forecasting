@@ -124,8 +124,8 @@ class DLinear(TslibBaseModel):
 
         self.n_quantiles = None
 
-        if isinstance(self.loss, QuantileLoss):
-            self.n_quantiles = len(self.loss.quantiles)
+        if isinstance(self._loss, QuantileLoss):
+            self.n_quantiles = len(self._loss.quantiles)
 
         output_dim = self.prediction_length
 

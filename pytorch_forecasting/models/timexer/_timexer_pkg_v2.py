@@ -48,6 +48,8 @@ class TimeXer_pkg_v2(Base_pkg):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        import torch.nn as nn
+
         from pytorch_forecasting.metrics import QuantileLoss
 
         params = [
@@ -55,6 +57,11 @@ class TimeXer_pkg_v2(Base_pkg):
             dict(
                 hidden_size=64,
                 n_heads=4,
+            ),
+            dict(
+                loss=nn.L1Loss(),
+                hidden_size=32,
+                n_heads=2,
             ),
             dict(datamodule_cfg=dict(context_length=12, prediction_length=3)),
             dict(

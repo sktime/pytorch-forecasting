@@ -45,7 +45,7 @@ from pytorch_forecasting.metrics import (
     MultiHorizonMetric,
     MultiLoss,
     QuantileLoss,
-    convert_torchmetric_to_pytorch_forecasting_metric,
+    coerce_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.metrics.base_metrics import Metric
 from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
@@ -543,19 +543,13 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
         if not hasattr(self, "loss"):
             if isinstance(loss, tuple | list):
                 self.loss = MultiLoss(
-                    metrics=[
-                        convert_torchmetric_to_pytorch_forecasting_metric(l)
-                        for l in loss
-                    ]
+                    metrics=[coerce_to_pytorch_forecasting_metric(l) for l in loss]
                 )
             else:
-                self.loss = convert_torchmetric_to_pytorch_forecasting_metric(loss)
+                self.loss = coerce_to_pytorch_forecasting_metric(loss)
         if not hasattr(self, "logging_metrics"):
             self.logging_metrics = nn.ModuleList(
-                [
-                    convert_torchmetric_to_pytorch_forecasting_metric(l)
-                    for l in logging_metrics
-                ]
+                [coerce_to_pytorch_forecasting_metric(l) for l in logging_metrics]
             )
         if not hasattr(self, "output_transformer"):
             self.output_transformer = output_transformer
