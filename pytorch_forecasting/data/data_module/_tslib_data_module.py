@@ -212,6 +212,7 @@ class _TslibDataset(Dataset):
             "history_target": history_target,
             "future_target": future_target,
             "future_target_len": torch.tensor(prediction_length),
+            "__window_idx": torch.tensor(idx),
         }
 
         if self.add_relative_time_idx:
@@ -232,6 +233,24 @@ class _TslibDataset(Dataset):
             y = y.squeeze(-1)
 
         return x, y
+
+    def x_to_index(self, x: dict[str, torch.Tensor]) -> pd.DataFrame:
+        """Decode prediction window metadata into original time and group ids."""
+        if "__window_idx" not in x:
+            raise KeyError("Prediction batch is missing private window metadata.")
+
+        rows = []
+        for window_idx in x["__window_idx"].tolist():
+            series_idx, start_idx, context_length, _ = self.windows[window_idx]
+            series = self.dataset[series_idx]
+            row = {self.dataset.time: series["t"][start_idx + context_length]}
+            if self.dataset._group:
+                group_id = self.dataset._group_ids[series_idx]
+                if not isinstance(group_id, tuple):
+                    group_id = (group_id,)
+                row.update(dict(zip(self.dataset._group, group_id)))
+            rows.append(row)
+        return pd.DataFrame(rows)
 
 
 class TslibDataModule(LightningDataModule):
@@ -859,6 +878,7 @@ class TslibDataModule(LightningDataModule):
             "future_target_len": torch.stack(
                 [x["future_target_len"] for x, _ in batch]
             ),
+            "__window_idx": torch.stack([x["__window_idx"] for x, _ in batch]),
         }
 
         if "target_scale" in batch[0][0]:

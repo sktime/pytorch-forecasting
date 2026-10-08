@@ -758,6 +758,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 "target_scale": target_scale,
                 "encoder_mask": encoder_mask,
                 "decoder_mask": decoder_mask,
+                "__window_idx": torch.tensor(idx),
             }
             if data["static"] is not None:
                 raw_st_tensor = data.get("static")
@@ -802,6 +803,28 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             else:
                 y = y.squeeze(-1)
             return x, y
+
+        def x_to_index(self, x: dict[str, torch.Tensor]) -> pd.DataFrame:
+            """Decode prediction window metadata into original time and group ids."""
+            if "__window_idx" not in x:
+                raise KeyError("Prediction batch is missing private window metadata.")
+
+            ts = self.data_module.time_series_dataset
+            rows = []
+            for window_idx in x["__window_idx"].tolist():
+                series_idx, start_idx, enc_length, _ = self.windows[window_idx]
+                row = {
+                    ts.time: self.preprocessed_data[series_idx]["times"][
+                        start_idx + enc_length
+                    ]
+                }
+                if ts._group:
+                    group_id = ts._group_ids[series_idx]
+                    if not isinstance(group_id, tuple):
+                        group_id = (group_id,)
+                    row.update(dict(zip(ts._group, group_id)))
+                rows.append(row)
+            return pd.DataFrame(rows)
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
@@ -1086,6 +1109,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "decoder_time_idx": torch.stack([x["decoder_time_idx"] for x, _ in batch]),
             "encoder_mask": torch.stack([x["encoder_mask"] for x, _ in batch]),
             "decoder_mask": torch.stack([x["decoder_mask"] for x, _ in batch]),
+            "__window_idx": torch.stack([x["__window_idx"] for x, _ in batch]),
         }
         if isinstance(batch[0][0]["target_scale"], list | tuple):
             num_targets = len(batch[0][0]["target_scale"])
