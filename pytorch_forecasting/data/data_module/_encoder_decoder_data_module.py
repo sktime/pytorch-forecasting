@@ -9,7 +9,7 @@
 
 from pathlib import Path
 import pickle
-from typing import Any, Optional, Union
+from typing import Any
 from warnings import warn
 
 from lightning.pytorch import LightningDataModule
@@ -26,6 +26,7 @@ from pytorch_forecasting.data.encoders import (
     NaNLabelEncoder,
     TorchNormalizer,
 )
+from pytorch_forecasting.data.split.splitters import BaseSplitter, RandomSplitter
 from pytorch_forecasting.data.timeseries import TimeSeries
 from pytorch_forecasting.utils._coerce import _coerce_to_dict
 
@@ -105,8 +106,18 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         Batch size for DataLoader.
     num_workers : int, default=0
         Number of workers for DataLoader.
-    train_val_test_split : tuple, default=(0.7, 0.15, 0.15)
-        Proportions for train, validation, and test dataset splits.
+    splitter : BaseSplitter or None, default=None
+        Splitting strategy for partitioning series and/or windows into
+        train/val/test folds. If ``None``, defaults to
+        ``RandomSplitter((0.7, 0.15, 0.15))``. See
+        :py:mod:`pytorch_forecasting.data.split.splitters` for available
+        splitters such as ``TemporalSplitter``, ``GroupTimeSplitter``, etc.
+        Takes precedence over ``train_val_test_split`` when both are provided.
+    train_val_test_split : tuple[float, ...] or None, default=None
+        Convenience shorthand for ``RandomSplitter(train_val_test_split)``.
+        Accepts a 3-tuple ``(train, val, test)`` or a 2-tuple ``(train, val)``
+        (test fraction is set to 0 in the latter case). Ignored when
+        ``splitter`` is explicitly provided.
     """
 
     def __init__(
@@ -134,7 +145,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         randomize_length: None | tuple[float, float] | bool = False,
         batch_size: int = 32,
         num_workers: int = 0,
-        train_val_test_split: tuple = (0.7, 0.15, 0.15),
+        splitter: BaseSplitter | None = None,
+        train_val_test_split: tuple[float, ...] | None = None,
     ):
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
@@ -152,8 +164,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.scalers = scalers
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.train_val_test_split = train_val_test_split
-
         warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
             "rework of the "
@@ -186,7 +196,16 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._min_encoder_length = min_encoder_length or max_encoder_length
         self._categorical_encoders = _coerce_to_dict(categorical_encoders)
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
-
+        self.train_val_test_split = train_val_test_split
+        if splitter is not None:
+            self.splitter = splitter
+        elif train_val_test_split is not None:
+            split = tuple(train_val_test_split)
+            if len(split) == 2:
+                split = (split[0], split[1], 0.0)
+            self.splitter = RandomSplitter(split)
+        else:
+            self.splitter = RandomSplitter()
         self.categorical_indices = []
         self.continuous_indices = []
         self._metadata = None
@@ -959,21 +978,16 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self._target_normalizer = ScalerAdapter(normalizer)
 
     def _ensure_split(self):
-        """Compute train/val/test indices once and cache them."""
-        if hasattr(self, "_split_indices"):
+        if hasattr(self, "_split_done"):
             return
 
         total_series = len(self.time_series_dataset)
-        self._split_indices = torch.randperm(total_series)
 
-        self._train_size = int(self.train_val_test_split[0] * total_series)
-        self._val_size = int(self.train_val_test_split[1] * total_series)
+        self._train_indices, self._val_indices, self._test_indices = (
+            self.splitter.split_series(total_series, self.time_series_dataset)
+        )
 
-        self._train_indices = self._split_indices[: self._train_size]
-        self._val_indices = self._split_indices[
-            self._train_size : self._train_size + self._val_size
-        ]
-        self._test_indices = self._split_indices[self._train_size + self._val_size :]
+        self._split_done = True
 
     def _make_dataset(self, indices: torch.Tensor):
         """Preprocess a set of series indices into a windowed Dataset.
@@ -1016,24 +1030,76 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 self._fit_target_normalizer(self._train_indices)
             if not self._feature_scalers_fitted:
                 self._fit_scalers(self._train_indices)
+
             if not hasattr(self, "train_dataset") or not hasattr(self, "val_dataset"):
-                self._train_preprocessed, self.train_windows, self.train_dataset = (
-                    self._make_dataset(self._train_indices)
-                )
-                self._val_preprocessed, self.val_windows, self.val_dataset = (
-                    self._make_dataset(self._val_indices)
-                )
+                if self.splitter.has_window_split:
+                    all_windows = self._create_windows(self._train_indices)
+
+                    self.train_windows, self.val_windows, self.test_windows = (
+                        self.splitter.split_windows(
+                            all_windows, self.time_series_dataset
+                        )
+                    )
+
+                    all_indices = self._train_indices
+                    preprocessed = {
+                        idx.item(): self._preprocess_data(idx.item())
+                        for idx in all_indices
+                    }
+                    self._train_preprocessed = preprocessed
+                    self._val_preprocessed = preprocessed
+
+                    self.train_dataset = self._ProcessedEncoderDecoderDataset(
+                        self,
+                        self.train_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
+                    )
+                    self.val_dataset = self._ProcessedEncoderDecoderDataset(
+                        self, self.val_windows, preprocessed, self.add_relative_time_idx
+                    )
+                else:
+                    self._train_preprocessed, self.train_windows, self.train_dataset = (
+                        self._make_dataset(self._train_indices)
+                    )
+                    self._val_preprocessed, self.val_windows, self.val_dataset = (
+                        self._make_dataset(self._val_indices)
+                    )
 
         elif stage == "test":
             if not hasattr(self, "test_dataset"):
-                self._test_preprocessed, self.test_windows, self.test_dataset = (
-                    self._make_dataset(self._test_indices)
-                )
+                if self.splitter.has_window_split:
+                    if not hasattr(self, "test_windows"):
+                        total_series = len(self.time_series_dataset)
+                        all_windows = self._create_windows(torch.arange(total_series))
+
+                        _, _, self.test_windows = self.splitter.split_windows(
+                            all_windows, self.time_series_dataset
+                        )
+
+                    preprocessed = {
+                        idx: self._preprocess_data(idx)
+                        for idx in {w[0] for w in self.test_windows}
+                    }
+                    self.test_dataset = self._ProcessedEncoderDecoderDataset(
+                        self,
+                        self.test_windows,
+                        preprocessed,
+                        self.add_relative_time_idx,
+                    )
+                else:
+                    self._test_preprocessed, self.test_windows, self.test_dataset = (
+                        self._make_dataset(self._test_indices)
+                    )
+
         elif stage == "predict":
-            predict_indices = torch.arange(len(self.time_series_dataset))
-            self._predict_preprocessed, self.predict_windows, self.predict_dataset = (
-                self._make_dataset(predict_indices)
-            )
+            if not hasattr(self, "predict_dataset"):
+                predict_indices = torch.arange(len(self.time_series_dataset))
+                (
+                    self._predict_preprocessed,
+                    self.predict_windows,
+                    self.predict_dataset,
+                ) = self._make_dataset(predict_indices)
 
     def train_dataloader(self):
         return DataLoader(
