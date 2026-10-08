@@ -309,6 +309,7 @@ class TslibDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
+        train_val_test_split_strategy: str = "random",
         collate_fn: Callable | None = None,
         **kwargs,
     ) -> None:
@@ -323,6 +324,7 @@ class TslibDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
+        self.train_val_test_split_strategy = train_val_test_split_strategy
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
@@ -683,8 +685,6 @@ class TslibDataModule(LightningDataModule):
             If None, the data module will be setup for training.
         """
 
-        # TODO: Add support for temporal/random/group splits.
-        # Currently, it only supports random splits.
         # Handle the case where the dataset is empty.
 
         total_series = len(self.time_series_dataset)
@@ -695,9 +695,17 @@ class TslibDataModule(LightningDataModule):
                 "Please provide a non-empty dataset."
             )
 
+        if self.train_val_test_split_strategy == "random":
+            self._indices = torch.randperm(total_series)
+        elif self.train_val_test_split_strategy == "sequential":
+            self._indices = torch.arange(total_series)
+        else:
+            raise ValueError(
+                f"Unknown split strategy: {self.train_val_test_split_strategy}"
+            )
+
         # this is a very rudimentary way to handle the splits when
         # the dataset is of size equal to 1 or 2.
-        self._indices = torch.randperm(total_series)
         if total_series == 1:
             self._train_indices = self._indices
             self._val_indices = self._indices

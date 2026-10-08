@@ -135,6 +135,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = 0,
         train_val_test_split: tuple = (0.7, 0.15, 0.15),
+        train_val_test_split_strategy: str = "random",
     ):
         self.time_series_dataset = time_series_dataset
         self.max_encoder_length = max_encoder_length
@@ -153,6 +154,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_val_test_split = train_val_test_split
+        self.train_val_test_split_strategy = train_val_test_split_strategy
 
         warn(
             "EncoderDecoderTimeSeriesDataModule is part of an experimental "
@@ -964,7 +966,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             return
 
         total_series = len(self.time_series_dataset)
-        self._split_indices = torch.randperm(total_series)
+        if self.train_val_test_split_strategy == "random":
+            self._split_indices = torch.randperm(total_series)
+        elif self.train_val_test_split_strategy == "sequential":
+            self._split_indices = torch.arange(total_series)
+        else:
+            raise ValueError(
+                f"Unknown split strategy: {self.train_val_test_split_strategy}"
+            )
 
         self._train_size = int(self.train_val_test_split[0] * total_series)
         self._val_size = int(self.train_val_test_split[1] * total_series)
