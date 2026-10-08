@@ -31,6 +31,13 @@ class Baseline(BaseModel):
         metric.compute()
     """
 
+    @classmethod
+    def _pkg(cls):
+        """Package for the model."""
+        from pytorch_forecasting.models._baseline_pkg import Baseline_pkg
+
+        return Baseline_pkg
+
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Network forward pass.
