@@ -8,8 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:sk
 
 
 from pytorch_forecasting import TimeSeriesDataSet  # isort:skip
-from pytorch_forecasting.data.examples import get_stallion_data  # isort:skip
-
+from pytorch_forecasting.data.examples import get_stallion_dummy_data  # isort:skip
 
 # for vscode debugging: https://stackoverflow.com/a/62563106/14121677
 if os.getenv("_PYTEST_RAISE", "0") != "0":
@@ -25,7 +24,7 @@ if os.getenv("_PYTEST_RAISE", "0") != "0":
 
 @pytest.fixture(scope="session")
 def test_data():
-    data = get_stallion_data()
+    data = get_stallion_dummy_data()
     data["month"] = data.date.dt.month.astype(str)
     data["log_volume"] = np.log1p(data.volume)
     data["weight"] = 1 + np.sqrt(data.volume)
