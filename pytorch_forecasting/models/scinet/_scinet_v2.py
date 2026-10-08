@@ -69,12 +69,14 @@ class SCINet_v2(BaseModel):
 
         Returns
         -------
-        SCINet_pkg_v2 : type
+        SCINetForecaster : type
             Package class associated with this model.
         """
-        from pytorch_forecasting.models.scinet._scinet_pkg_v2 import SCINet_pkg_v2
+        from pytorch_forecasting.models.scinet._scinet_forecaster_v2 import (
+            SCINetForecaster,
+        )
 
-        return SCINet_pkg_v2
+        return SCINetForecaster
 
     def __init__(
         self,

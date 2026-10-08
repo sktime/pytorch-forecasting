@@ -5,7 +5,7 @@ import inspect
 from pytorch_forecasting.base._base_object import _BaseObject
 
 
-class _BasePtForecaster_Common(_BaseObject):
+class _BasePtObject_common(_BaseObject):
     """Base class for all PyTorch Forecasting forecaster packages.
 
     This class points to model objects and contains metadata as tags.
@@ -104,7 +104,7 @@ class _BasePtForecaster_Common(_BaseObject):
         return objs, names
 
 
-class _BasePtForecaster(_BasePtForecaster_Common):
+class _BasePtForecaster(_BasePtObject_common):
     """Base class for PyTorch Forecasting v1 forecasters."""
 
     _tags = {
@@ -112,8 +112,8 @@ class _BasePtForecaster(_BasePtForecaster_Common):
     }
 
 
-class _BasePtForecasterV2(_BasePtForecaster_Common):
-    """Base class for PyTorch Forecasting v2 forecasters."""
+class _BasePtObject_v2(_BasePtObject_common):
+    """Base class for PyTorch Forecasting v2 objects."""
 
     _tags = {
         "object_type": "forecaster_pytorch_v2",

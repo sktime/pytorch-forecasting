@@ -19,9 +19,9 @@ class TIDE(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.tide._tide_dsipts import TIDE_pkg_v2
+        from pytorch_forecasting.models.tide._tide_dsipts import TIDEForecaster
 
-        return TIDE_pkg_v2
+        return TIDEForecaster
 
     def __init__(
         self,

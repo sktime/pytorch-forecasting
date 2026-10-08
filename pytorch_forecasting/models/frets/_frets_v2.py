@@ -65,12 +65,14 @@ class FreTS(BaseModel):
 
         Returns
         -------
-        FreTS_pkg_v2 : type
+        FreTSForecaster : type
             Package class associated with this model.
         """
-        from pytorch_forecasting.models.frets._frets_pkg_v2 import FreTS_pkg_v2
+        from pytorch_forecasting.models.frets._frets_forecaster_v2 import (
+            FreTSForecaster,
+        )
 
-        return FreTS_pkg_v2
+        return FreTSForecaster
 
     def __init__(
         self,

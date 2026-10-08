@@ -96,9 +96,11 @@ class TimeXer(TslibBaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.timexer._timexer_pkg_v2 import TimeXer_pkg_v2
+        from pytorch_forecasting.models.timexer._timexer_forecaster_v2 import (
+            TimeXerForecaster,
+        )
 
-        return TimeXer_pkg_v2
+        return TimeXerForecaster
 
     def __init__(
         self,

@@ -46,9 +46,11 @@ class SOFTS(BaseModel):
 
     @classmethod
     def _pkg(cls):
-        from pytorch_forecasting.models.softs._softs_pkg_v2 import SOFTS_pkg_v2
+        from pytorch_forecasting.models.softs._softs_forecaster_v2 import (
+            SOFTSForecaster,
+        )
 
-        return SOFTS_pkg_v2
+        return SOFTSForecaster
 
     def __init__(
         self,
