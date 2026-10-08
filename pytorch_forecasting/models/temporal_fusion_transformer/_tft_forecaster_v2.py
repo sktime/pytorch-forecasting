@@ -1,4 +1,4 @@
-"""TFT forecaster: user-facing estimator for the v2 Temporal Fusion Transformer."""
+"""TFT forecaster."""
 
 from pathlib import Path
 from typing import Any

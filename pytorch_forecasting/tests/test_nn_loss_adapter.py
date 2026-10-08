@@ -276,7 +276,7 @@ def test_tft_cross_entropy_on_discrete_target(tmp_path):
     from pytorch_forecasting.data.data_module import (
         EncoderDecoderTimeSeriesDataModule,
     )
-    from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
+    from pytorch_forecasting.models.temporal_fusion_transformer import (
         TFTForecaster,
     )
     from pytorch_forecasting.tests._data_scenarios import (
