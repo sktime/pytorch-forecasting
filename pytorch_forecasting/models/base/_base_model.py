@@ -54,7 +54,6 @@ from pytorch_forecasting.utils import (
     OutputMixIn,
     TupleOutputMixIn,
     apply_to_list,
-    concat_sequences,
     create_mask,
     detach,
     get_embedding_size,
@@ -388,11 +387,26 @@ class PredictCallback(BasePredictionWriter):
             if self.return_decoder_lengths:
                 output["decoder_lengths"] = torch.cat(self._decode_lengths, dim=0)
             if self.return_y:
-                y = concat_sequences([yi[0] for yi in self._y])
+                y0_list = [yi[0] for yi in self._y]
+                if isinstance(y0_list[0], list | tuple):
+                    y = [
+                        _torch_cat_na([y0[idx] for y0 in y0_list])
+                        for idx in range(len(y0_list[0]))
+                    ]
+                else:
+                    y = _torch_cat_na(y0_list)
+
                 if self._y[-1][1] is None:
                     weight = None
                 else:
-                    weight = concat_sequences([yi[1] for yi in self._y])
+                    w_list = [yi[1] for yi in self._y]
+                    if isinstance(w_list[0], list | tuple):
+                        weight = [
+                            _torch_cat_na([w[idx] for w in w_list])
+                            for idx in range(len(w_list[0]))
+                        ]
+                    else:
+                        weight = _torch_cat_na(w_list)
 
                 output["y"] = (y, weight)
             if isinstance(output, dict):
