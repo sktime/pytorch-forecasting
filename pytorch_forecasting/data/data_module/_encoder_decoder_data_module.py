@@ -636,6 +636,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y : torch.Tensor or list of torch.Tensor
                 Target values for the decoder sequence.
+                When an ``EncoderNormalizer`` is configured, the target is
+                transformed using parameters fitted exclusively on the
+                corresponding encoder sequence.
                 If ``n_targets`` > 1, a list of tensors each of shape (pred_length,)
                 is returned. Otherwise, a tensor of shape (pred_length,) is returned.
             """
@@ -647,15 +650,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             decoder_indices = slice(start_idx + enc_length, end_idx)
 
             target_past = data["target"][encoder_indices]
+            target_future = data["target"][decoder_indices]
 
-            # apply encoder normalizer on target_past.
+            # Fit the encoder normalizer on target_past, then apply the fitted
+            # state to both the encoder and decoder targets.
             normalizer = self.data_module._target_normalizer
             if normalizer is not None and normalizer.fit_per_sequence:
-                target_past = (
-                    self.data_module._target_normalizer.fit_transform_sequence(
-                        target_past
-                    )
-                )
+                target_past = normalizer.fit_transform_sequence(target_past)
+                target_future = normalizer.transform_sequence(target_future)
 
             target_original_past = data["target_original"][encoder_indices]
             valid_mask = ~torch.isnan(target_original_past)
@@ -795,7 +797,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                         (1, 0), dtype=torch.float32
                     )
 
-            y = data["target"][decoder_indices]
+            y = target_future
 
             if y.shape[-1] > 1:
                 y = [y[:, i] for i in range(y.shape[-1])]
