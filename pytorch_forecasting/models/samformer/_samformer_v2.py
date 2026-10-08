@@ -30,6 +30,12 @@ class Samformer(BaseModel):
         Whether to use Reverse Instance Normalization. Default is True.
     persistence_weight : float, optional
         Weight for persistence baseline. Default is 0.0.
+    metadata : dict
+        Dataset metadata produced by
+        :class:`~pytorch_forecasting.data.data_module\
+.EncoderDecoderTimeSeriesDataModule`.
+        Must contain ``"max_encoder_length"``, ``"max_prediction_length"``,
+        and ``"encoder_cont"``.
     """
 
     @classmethod
@@ -58,6 +64,9 @@ class Samformer(BaseModel):
         metadata: dict | None = None,
         **kwargs,
     ):
+        if metadata is None:
+            raise ValueError("metadata is required")
+
         super().__init__(
             loss=loss,
             logging_metrics=logging_metrics,
