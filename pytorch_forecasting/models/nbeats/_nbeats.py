@@ -89,75 +89,37 @@ class NBeats(NBeatsAdapter):
 
     Examples
     --------
+    Create a dataset, train a model, and predict the validation horizon:
 
-    >>> import pandas as pd
-    >>> import numpy as np
+    >>> import lightning.pytorch as pl
     >>> from pytorch_forecasting import NBeats, TimeSeriesDataSet
-    >>> from pytorch_forecasting.data import NaNLabelEncoder
     >>> from pytorch_forecasting.data.examples import generate_ar_data
-    >>>
-    >>> # Generate synthetic time series data
-    >>> data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10, seed=42)
-    >>> data["static"] = 2
-    >>> data = data.astype(dict(series=str))
-    >>>
-    >>> # Define time series parameters
-    >>> max_encoder_length = 150
-    >>> max_prediction_length = 20
-    >>> training_cutoff = data["time_idx"].max() - max_prediction_length
-    >>>
-    >>> # Create training dataset
+    >>> data = generate_ar_data(seasonality=10.0, timesteps=120, n_series=4)
+    >>> cutoff = data["time_idx"].max() - 6
     >>> training = TimeSeriesDataSet(
-    ...     data[lambda x: x.time_idx < training_cutoff],
+    ...     data[lambda x: x.time_idx <= cutoff],
     ...     time_idx="time_idx",
     ...     target="value",
-    ...     categorical_encoders={"series": NaNLabelEncoder().fit(data.series)},
     ...     group_ids=["series"],
-    ...     min_encoder_length=max_encoder_length,
-    ...     max_encoder_length=max_encoder_length,
-    ...     max_prediction_length=max_prediction_length,
-    ...     min_prediction_length=max_prediction_length,
+    ...     max_encoder_length=24,
+    ...     max_prediction_length=6,
     ...     time_varying_unknown_reals=["value"],
-    ...     randomize_length=None,
-    ...     add_relative_time_idx=False,
-    ...     add_target_scales=False,
     ... )
-    >>>
-    >>> # Create validation dataset
     >>> validation = TimeSeriesDataSet.from_dataset(
-    ...     training, data, min_prediction_idx=training_cutoff
+    ...     training, data, min_prediction_idx=cutoff + 1
     ... )
-    >>>
-    >>> # Create dataloaders
-    >>> batch_size = 32
-    >>> train_dataloader = training.to_dataloader(
-    ...     train=True, batch_size=batch_size, num_workers=0
+    >>> model = NBeats.from_dataset(training, context_length=24)
+    >>> trainer = pl.Trainer(
+    ...     max_epochs=1,
+    ...     logger=False,
+    ...     enable_checkpointing=False,
+    ...     enable_progress_bar=False,
+    ...     enable_model_summary=False,
     ... )
-    >>> val_dataloader = validation.to_dataloader(
-    ...     train=False, batch_size=batch_size, num_workers=0
-    ... )
-    >>>
-    >>> # Initialize NBeats model from dataset
-    >>> model = NBeats.from_dataset(
-    ...     training,
-    ...     learning_rate=3e-2,
-    ...     weight_decay=1e-2,
-    ... )
-    >>>
-    >>> # Training with Lightning
-    >>> import lightning as L
-    >>> trainer = L.Trainer(max_epochs=1, accelerator="cpu") # doctest: +SKIP
-    >>> trainer.fit(
-    ...     model,
-    ...     train_dataloaders=train_dataloader,
-    ...     val_dataloaders=val_dataloader
-    ... ) # doctest: +SKIP
-    >>>
-    >>> # Make predictions
+    >>> trainer.fit(model, training.to_dataloader(train=True, batch_size=32))
     >>> predictions = model.predict(
-    ...     val_dataloader,
-    ...     trainer_kwargs=dict(accelerator="cpu")
-    ... ) # doctest: +SKIP
+    ...     validation.to_dataloader(train=False, batch_size=32)
+    ... )
     """  # noqa: E501
 
     @classmethod
