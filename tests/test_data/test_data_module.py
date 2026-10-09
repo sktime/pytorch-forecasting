@@ -726,3 +726,57 @@ def test_group_normalizer_uses_groups():
         mean1 = target1["target"].mean().abs()
         assert mean0 < 1.0, "Group 0 target should be normalized near 0"
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
+
+
+def test_encoder_normalizer_scales_decoder_target():
+    """EncoderNormalizer must scale y with the encoder-window fit.
+
+    Regression for #2360: target_past was sequence-normalized, but the
+    decoder target stayed in the raw scale.
+    """
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], 40),
+            "time": np.tile(pd.date_range("2020-01-01", periods=40), 2),
+            "target": np.concatenate(
+                [
+                    np.linspace(100, 140, 40),
+                    np.linspace(-50, -10, 40),
+                ]
+            ),
+            "feature": np.arange(80, dtype=float),
+        }
+    )
+    ts = TimeSeries(
+        data=df,
+        time="time",
+        target="target",
+        group=["group"],
+        num=["feature"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=10,
+        max_prediction_length=5,
+        batch_size=2,
+        target_normalizer=EncoderNormalizer(),
+    )
+    dm.setup("fit")
+
+    x, y = dm.train_dataset[0]
+    series_idx, start_idx, enc_length, pred_length = dm.train_dataset.windows[0]
+    raw = dm.train_dataset.preprocessed_data[series_idx]["target"]
+    raw_past = raw[start_idx : start_idx + enc_length]
+    raw_y = raw[start_idx + enc_length : start_idx + enc_length + pred_length]
+
+    assert not torch.allclose(y, raw_y.squeeze(-1))
+    assert not torch.allclose(x["target_past"], raw_past)
+
+    past = raw_past.squeeze(-1)
+    future = raw_y.squeeze(-1)
+    center = past.mean()
+    scale = past.std(unbiased=True) + torch.finfo(past.dtype).eps
+    expected_y = (future - center) / scale
+    expected_past = (past - center) / scale
+    assert torch.allclose(y, expected_y, atol=1e-5)
+    assert torch.allclose(x["target_past"].squeeze(-1), expected_past, atol=1e-5)

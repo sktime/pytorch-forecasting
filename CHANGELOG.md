@@ -37,6 +37,7 @@ release focusing on:
 
 ### Fixes
 
+* [BUG] Normalize decoder targets when using `EncoderNormalizer` in `EncoderDecoderTimeSeriesDataModule` (#2360) @HarshRajSinghania
 * [BUG] Corrected typo in `AggregationMetric.reset()` from metrics to metric (#2252) @Muhammad-Rebaal
 * [BUG] correct inverted condition for `n_plotting_samples` default in `DeepAR` (#2257) @haoyu-haoyu
 * [BUG] Fix PyTorch warning when slicing tensor with non-writable numpy arrays (#2276) @andersendsa
