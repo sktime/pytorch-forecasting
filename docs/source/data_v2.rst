@@ -43,7 +43,7 @@ Because different forecasting architectures require specific input shapes and st
 
 Each model is optimally designed to be compatible with one or more specific DataModules. You can easily verify which DataModule pairs correctly with your chosen model by checking the compatibility overview table in the **:doc:`v2 Models <models_v2>`** documentation.
 
-.. autoclass:: pytorch_forecasting.data.data_module._tslib_data_module.TslibDataModule
+.. autoclass:: pytorch_forecasting.data.data_module.tslib.TslibDataModule
    :noindex:
    :members: __init__
 
@@ -66,5 +66,5 @@ See the detailed API documentation for the V2 data classes below:
    data.samplers.TimeSynchronizedBatchSampler
    data.samplers.GroupedSampler
    data.timeseries._timeseries_v2.TimeSeries
-   data.data_module._encoder_decoder_data_module.EncoderDecoderTimeSeriesDataModule
-   data.data_module._tslib_data_module.TslibDataModule
+   data.data_module.encoder_decoder.EncoderDecoderTimeSeriesDataModule
+   data.data_module.tslib.TslibDataModule
