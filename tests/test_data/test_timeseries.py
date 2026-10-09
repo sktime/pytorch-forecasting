@@ -460,6 +460,7 @@ def test_check_nas(test_data):
     "kwargs",
     [
         dict(target="volume"),
+        dict(target="agency"),
         dict(target="agency", scalers={"volume": EncoderNormalizer()}),
         dict(target="volume", target_normalizer=EncoderNormalizer()),
         dict(target=["volume", "agency"]),
