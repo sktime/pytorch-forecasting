@@ -203,12 +203,11 @@ class ScalerAdapter:
     def transform_sequence(
         self, data: ArrayLike, X: pd.DataFrame = None
     ) -> torch.Tensor:
-        """Transform with per-sequence state from ``fit_transform_sequence``.
+        """Transform with parameters already fitted on the encoder window.
 
-        Does not re-fit. Non-per-sequence columns are returned unchanged,
-        matching ``fit_transform_sequence`` (those columns are already
-        globally transformed, or left raw when the parent adapter is
-        per-sequence).
+        Companion to ``fit_transform_sequence``. Per-sequence normalizers
+        (``EncoderNormalizer``) are not refit; other columns are left unchanged
+        because global normalizers were already applied during preprocessing.
 
         Parameters
         ----------
@@ -220,10 +219,10 @@ class ScalerAdapter:
         torch.Tensor
             Same shape as input.
         """
+        if not self.fit_per_sequence:
+            return _to_tensor(data)
         if not self.is_multi:
-            return (
-                self.transform(data, X) if self.fit_per_sequence else _to_tensor(data)
-            )
+            return self.transform(data, X)
 
         t = _to_tensor(data)
         if t.ndim == 1:

@@ -647,15 +647,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             decoder_indices = slice(start_idx + enc_length, end_idx)
 
             target_past = data["target"][encoder_indices]
+            # Decoder target is normalized later with the same per-sequence fit.
+            decoder_target = data["target"][decoder_indices]
 
-            # EncoderNormalizer is fit on the encoder window only, then applied
-            # to both the encoder history and the decoder target. Fitting on y
-            # would leak the forecast horizon into the scale.
+            # EncoderNormalizer is fit on the encoder window only. The decoder
+            # target must use that same fit, otherwise y stays on the raw scale.
             normalizer = self.data_module._target_normalizer
-            y = data["target"][decoder_indices]
             if normalizer is not None and normalizer.fit_per_sequence:
                 target_past = normalizer.fit_transform_sequence(target_past)
-                y = normalizer.transform_sequence(y)
+                decoder_target = normalizer.transform_sequence(decoder_target)
 
             target_original_past = data["target_original"][encoder_indices]
             valid_mask = ~torch.isnan(target_original_past)
@@ -794,6 +794,8 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                     x["static_continuous_features"] = torch.zeros(
                         (1, 0), dtype=torch.float32
                     )
+
+            y = decoder_target
 
             if y.shape[-1] > 1:
                 y = [y[:, i] for i in range(y.shape[-1])]

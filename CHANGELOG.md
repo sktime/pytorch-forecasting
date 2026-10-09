@@ -1,5 +1,11 @@
 # Release Notes
 
+## Unreleased
+
+### Fixes
+
+* [BUG] Normalize decoder target when `EncoderNormalizer` is used in `EncoderDecoderTimeSeriesDataModule` (#2360)
+
 ## v1.8.0 and v2.0-beta-2
 release focusing on:
 - A new shared documentation for v1 and v2.0-beta
@@ -37,7 +43,6 @@ release focusing on:
 
 ### Fixes
 
-* [BUG] Normalize decoder targets when using `EncoderNormalizer` in `EncoderDecoderTimeSeriesDataModule` (#2360) @HarshRajSinghania
 * [BUG] Corrected typo in `AggregationMetric.reset()` from metrics to metric (#2252) @Muhammad-Rebaal
 * [BUG] correct inverted condition for `n_plotting_samples` default in `DeepAR` (#2257) @haoyu-haoyu
 * [BUG] Fix PyTorch warning when slicing tensor with non-writable numpy arrays (#2276) @andersendsa
