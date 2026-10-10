@@ -6,7 +6,7 @@ version = "1.8.0"            # is being replaced automatically
 authors = [
   {name = "Jan Beitner"},
 ]
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.10,<3.16"
 classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
