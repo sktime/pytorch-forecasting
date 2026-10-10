@@ -16,7 +16,6 @@ class PatchTST_pkg_v2(Base_pkg):
         "capability:pred_int": True,
         "capability:flexible_history_length": True,
         "capability:cold_start": False,
-        "tests:skip_by_name": ["test_integration"],
     }
 
     @classmethod
