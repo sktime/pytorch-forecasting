@@ -36,6 +36,7 @@ class TFT(BaseModel):
         dropout: float = 0.1,
         metadata: dict | None = None,
         output_size: int = 1,
+        attention_need_weights: bool = False,
     ):
         super().__init__(
             loss=loss,
@@ -53,6 +54,7 @@ class TFT(BaseModel):
         self.dropout = dropout
         self.metadata = metadata
         self.output_size = output_size
+        self.attention_need_weights = attention_need_weights
 
         self.max_encoder_length = self.metadata["max_encoder_length"]
         self.max_prediction_length = self.metadata["max_prediction_length"]
@@ -248,10 +250,15 @@ class TFT(BaseModel):
             )
 
             attended_output, _ = self.self_attention(
-                sequence + expanded_static_context, sequence, sequence
+                sequence + expanded_static_context,
+                sequence,
+                sequence,
+                need_weights=self.attention_need_weights,
             )
         else:
-            attended_output, _ = self.self_attention(sequence, sequence, sequence)
+            attended_output, _ = self.self_attention(
+                sequence, sequence, sequence, need_weights=self.attention_need_weights
+            )
 
         decoder_attended = attended_output[:, -self.max_prediction_length :, :]
 
