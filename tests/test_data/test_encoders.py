@@ -57,6 +57,16 @@ def test_NaNLabelEncoder_add():
     assert encoder2.transform(np.array(["d"]))[0] == 3, "d must be encoded as 3"
 
 
+def test_NaNLabelEncoder_add_with_nan():
+    encoder = NaNLabelEncoder(add_nan=True, warn=False)
+    encoder.fit(np.array(["a", "b", "c"]))
+    encoder.fit(np.array(["d"]), overwrite=False)
+    assert encoder.transform(np.array(["d"]))[0] == 4, "d must be encoded as 4"
+    assert sorted(encoder.classes_.values()) == list(range(len(encoder.classes_)))
+    data = np.array(["a", "b", "c", "d"])
+    assert np.array_equal(encoder.inverse_transform(encoder.transform(data)), data)
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

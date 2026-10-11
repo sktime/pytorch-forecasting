@@ -341,10 +341,7 @@ class NaNLabelEncoder(
         -------
         NaNLabelEncoder: self
         """
-        if not overwrite and hasattr(self, "classes_"):
-            offset = len(self.classes_)
-        else:
-            offset = 0
+        if overwrite or not hasattr(self, "classes_"):
             self.classes_ = {}
 
         # determine new classes
@@ -354,11 +351,9 @@ class NaNLabelEncoder(
             else:
                 nan = "nan"
             self.classes_[nan] = 0
-            idx = 1
-        else:
-            idx = 0
 
-        idx += offset
+        # next free code - an already present nan class is counted only once
+        idx = len(self.classes_)
         for val in np.unique(y):
             if val not in self.classes_:
                 self.classes_[val] = idx
