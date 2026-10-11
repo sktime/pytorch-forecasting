@@ -131,30 +131,44 @@ Creating a fork and cloning the repository
 Setting up an editable virtual environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Set up a new virtual environment. Our instructions will go through the commands to set up a ``conda`` environment which is recommended for ``pytorch-forecasting`` development.
-The process will be similar for ``venv`` or other virtual environment managers.
+1. Set up a new virtual environment. We recommend using ``uv`` (a fast Python package manager) or standard ``venv``.
 
-  .. warning::
-       Using ``conda`` via one of the commercial distributions such as Anaconda
-       is in general not free for commercial use and may incur significant costs or liabilities.
-       Consider using free distributions and channels for package management,
-       and be aware of applicable terms and conditions.
+   **Using `uv` (recommended):**
 
-In the ``conda`` terminal:
+   .. code-block:: bash
 
-2. Navigate to your local pytorch-forecasting folder, :code:`cd pytorch-forecasting` or similar
+       uv venv .venv --python 3.11
+       source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-3. Create a new environment with a supported python version: :code:`conda create -n pytorch-forecasting-dev python=3.11` (or :code:`python=3.12` etc)
+   **Using `venv` (standard library):**
 
-   .. warning::
-       If you already have an environment called ``pytorch-forecasting-dev`` from a previous attempt you will first need to remove this.
+   .. code-block:: bash
 
-4. Activate the environment: :code:`conda activate pytorch-forecasting-dev`
+       python3 -m venv .venv
+       source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-5. Build an editable version of pytorch-forecasting.
-In order to install only the dev dependencies, :code:`pip install -e ".[dev]"`
-If you also want to install soft dependencies, install them individually, after the above,
-or instead use: :code:`pip install -e ".[all_extras,dev]"` to install all of them.
+   Alternatively, environment managers like ``pixi`` or ``conda`` can also be used.
+
+   .. note::
+       If using ``conda`` via commercial distributions such as Anaconda, be aware of applicable terms and licensing conditions.
+
+2. Navigate to your local pytorch-forecasting folder: :code:`cd pytorch-forecasting`
+
+3. Build an editable version of pytorch-forecasting.
+
+   Using ``uv``:
+
+   .. code-block:: bash
+
+       uv pip install -e ".[dev]"
+
+   Or using standard ``pip``:
+
+   .. code-block:: bash
+
+       pip install -e ".[dev]"
+
+   To install all soft dependencies as well, use: :code:`pip install -e ".[all_extras,dev]"` (or :code:`uv pip install -e ".[all_extras,dev]"`).
 
 Contribution Guidelines and Recommendations
 -------------------------------------------
