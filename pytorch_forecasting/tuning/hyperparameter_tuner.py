@@ -1,11 +1,15 @@
 """Hyperparameter tuning for v2 forecasters"""
 
+import copy
 import inspect
+import typing
 
+import lightning.pytorch as pl
 from lightning.pytorch.core.datamodule import LightningDataModule
 import torch.nn as nn
 
 from pytorch_forecasting.data import TimeSeries
+from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
 class HyperparameterTuner:
@@ -74,18 +78,7 @@ class HyperparameterTuner:
         self.fixed_hparams = fixed_hparams
         self._validate_fixed_hparams()
 
-        # 1. Validate datamodule_cls if provided
-        if datamodule_cls is not None:
-            if not (
-                isinstance(datamodule_cls, type)
-                and issubclass(datamodule_cls, LightningDataModule)
-            ):
-                raise TypeError(
-                    f"datamodule_cls must be a subclass of LightningDataModule, "
-                    f"got {datamodule_cls}."
-                )
-
-        # 2. Handle data input
+        # Handle data input
         if isinstance(data, TimeSeries):
             if datamodule_cls is None:
                 raise ValueError(
@@ -131,38 +124,91 @@ class HyperparameterTuner:
     def _discover_hyperparameters(self, trial, custom_ranges=None):
         """Build a sampled config dict for one Optuna trial.
 
-        Reads the model's ``__init__`` signature, skips base-class and
-        user-fixed params, then picks values using ``custom_ranges`` when
-        given or simple heuristics based on the default value's type.
+        Reads the model's ``__init__`` signature, discovers architecture
+        hyperparameters, optimizers, and schedulers, while respecting
+        user-fixed parameters and ``custom_ranges``.
 
         Parameters
         ----------
         trial : optuna.Trial
             Current trial whose ``suggest_*`` methods are called.
         custom_ranges : dict, optional
-            Per-param overrides, e.g. ``{"dropout": (0.1, 0.5)}`` or
-            ``{"hidden_size": [32, 64, 128]}``.
+            Per-param overrides, e.g. ``{"hidden_size": [32, 64]}`` or
+            ``{"lr": (1e-4, 1e-2)}``.
 
         Returns
         -------
         dict
             Sampled hyperparameters for this trial.
         """
-        import typing
-
-        from pytorch_forecasting.models.base._base_model_v2 import BaseModel
-
-        base_params = set(inspect.signature(BaseModel.__init__).parameters.keys())
         sig = inspect.signature(self.model_cls.__init__)
-
         sampled_cfg = {}
         custom_ranges = custom_ranges or {}
 
         for param_name, param_obj in sig.parameters.items():
-            if param_name in base_params or param_name == "self":
+            if param_name in ["self", "loss", "logging_metrics"]:
                 continue
 
             if param_name in self.fixed_hparams:
+                continue
+
+            if param_name == "optimizer":
+                optimizers = custom_ranges.get(
+                    "optimizer", list(BaseModel._OPTIMIZER_REGISTRY.keys())
+                )
+                sampled_cfg["optimizer"] = trial.suggest_categorical(
+                    "optimizer", optimizers
+                )
+                continue
+            if param_name == "lr_scheduler":
+                schedulers = custom_ranges.get(
+                    "lr_scheduler", [None] + list(BaseModel._SCHEDULER_REGISTRY.keys())
+                )
+                sampled_cfg["lr_scheduler"] = trial.suggest_categorical(
+                    "lr_scheduler", schedulers
+                )
+                continue
+
+            if param_name == "optimizer_params":
+                lr_range = custom_ranges.get(
+                    "lr", custom_ranges.get("optimizer_params")
+                )
+                if lr_range is not None:
+                    if isinstance(lr_range, list):
+                        lr = trial.suggest_categorical("lr", lr_range)
+                    else:
+                        low, high = lr_range
+                        lr = trial.suggest_float("lr", low, high, log=True)
+                else:
+                    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+                sampled_cfg["optimizer_params"] = {"lr": lr}
+                continue
+
+            if param_name == "lr_scheduler_params":
+                chosen_sched = self.fixed_hparams.get(
+                    "lr_scheduler", sampled_cfg.get("lr_scheduler")
+                )
+                if chosen_sched == "reduce_lr_on_plateau":
+                    sampled_cfg["lr_scheduler_params"] = {
+                        "patience": trial.suggest_int("sched_patience", 2, 10),
+                        "factor": trial.suggest_float("sched_factor", 0.1, 0.5),
+                    }
+                elif chosen_sched == "step_lr":
+                    sampled_cfg["lr_scheduler_params"] = {
+                        "step_size": trial.suggest_int("sched_step_size", 5, 30),
+                        "gamma": trial.suggest_float("sched_gamma", 0.1, 0.5),
+                    }
+                elif chosen_sched == "cosine_annealing":
+                    sampled_cfg["lr_scheduler_params"] = {
+                        "T_max": trial.suggest_int("sched_T_max", 5, 50),
+                    }
+                elif chosen_sched == "cosine_annealing_warm_restarts":
+                    sampled_cfg["lr_scheduler_params"] = {
+                        "T_0": trial.suggest_int("sched_T_0", 5, 20),
+                        "T_mult": trial.suggest_int("sched_T_mult", 1, 3),
+                    }
+                else:
+                    sampled_cfg["lr_scheduler_params"] = {}
                 continue
 
             if param_name in custom_ranges:
@@ -185,7 +231,6 @@ class HyperparameterTuner:
                 continue
 
             default = param_obj.default
-
             if (
                 default is inspect.Parameter.empty
                 or default is None
@@ -197,7 +242,6 @@ class HyperparameterTuner:
                 sampled_cfg[param_name] = trial.suggest_categorical(
                     param_name, [True, False]
                 )
-
             elif isinstance(default, int):
                 if default <= 8:
                     low = max(1, default - 2)
@@ -209,7 +253,6 @@ class HyperparameterTuner:
                     sampled_cfg[param_name] = trial.suggest_int(
                         param_name, low, high, log=True
                     )
-
             elif isinstance(default, float):
                 if default <= 1.0:
                     low = max(0.0, default / 2)
@@ -221,7 +264,6 @@ class HyperparameterTuner:
                     sampled_cfg[param_name] = trial.suggest_float(
                         param_name, low, high, log=True
                     )
-
             elif typing.get_origin(param_obj.annotation) is typing.Literal:
                 choices = list(typing.get_args(param_obj.annotation))
                 sampled_cfg[param_name] = trial.suggest_categorical(param_name, choices)
@@ -265,17 +307,12 @@ class HyperparameterTuner:
         optuna = _safe_import("optuna")
 
         def _objective(trial):
-            import copy
-
-            import lightning.pytorch as pl
-
             sampled_cfg = self._discover_hyperparameters(trial, custom_ranges)
-
             model_cfg = {**sampled_cfg, **self.fixed_hparams}
 
             if "loss" not in model_cfg:
                 model_cfg["loss"] = nn.MSELoss()
-            elif hasattr(model_cfg["loss"], "__deepcopy__"):
+            else:
                 model_cfg["loss"] = copy.deepcopy(model_cfg["loss"])
 
             model = self.model_cls(**model_cfg, metadata=self._metadata)
@@ -290,13 +327,15 @@ class HyperparameterTuner:
             trainer.fit(model, datamodule=self.datamodule)
 
             metrics = trainer.callback_metrics
-            for key in ("val_loss", "train_loss_epoch", "train_loss"):
-                if key in metrics:
-                    return metrics[key].item()
-            raise RuntimeError(
-                "No loss metric found in trainer.callback_metrics. "
-                f"Available keys: {list(metrics.keys())}"
-            )
+            if "val_loss" not in metrics:
+                raise RuntimeError(
+                    "No 'val_loss' found in trainer.callback_metrics. "
+                    "The tuner requires a validation set to avoid optimizing "
+                    "on training loss (which leads to overfitting). "
+                    "Ensure your DataModule provides a val_dataloader. "
+                    f"Available metric keys: {list(metrics.keys())}"
+                )
+            return metrics["val_loss"].item()
 
         if study is None:
             study = optuna.create_study(direction=direction)

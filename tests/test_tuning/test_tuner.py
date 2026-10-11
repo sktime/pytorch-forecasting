@@ -77,13 +77,6 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="'datamodule_cls' must be specified"):
             HyperparameterTuner(model_cls=TFT, data=dummy_ts)
 
-    def test_invalid_datamodule_cls_type_raises(self, dummy_ts):
-        """Passing a non-subclass of LightningDataModule raises TypeError."""
-        with pytest.raises(
-            TypeError, match="must be a subclass of LightningDataModule"
-        ):
-            HyperparameterTuner(model_cls=TFT, data=dummy_ts, datamodule_cls=str)
-
     def test_mismatched_datamodule_instance_raises(self, tslib_datamodule):
         """
         Passing a prebuilt DataModule that contradicts
@@ -121,14 +114,58 @@ class TestHyperparameterDiscovery:
         assert isinstance(cfg["individual"], bool)
         assert "metadata" not in cfg
 
-    def test_excludes_fixed_and_base_params(self, encoder_decoder_datamodule, trial):
+    def test_excludes_fixed_and_non_tunable_params(
+        self, encoder_decoder_datamodule, trial
+    ):
+        """User-fixed parameters, loss, and logging metrics must not be sampled."""
         tuner = HyperparameterTuner(
             model_cls=TFT, data=encoder_decoder_datamodule, hidden_size=128
         )
         cfg = tuner._discover_hyperparameters(trial)
         assert "hidden_size" not in cfg
-        for base_p in ("loss", "optimizer", "optimizer_params", "lr_scheduler"):
-            assert base_p not in cfg
+        for non_tunable in ("loss", "logging_metrics"):
+            assert non_tunable not in cfg
+
+    def test_discovers_optimizer_and_scheduler_params(
+        self, encoder_decoder_datamodule, trial
+    ):
+        """
+        Optimizer and scheduler hyperparameters
+        are actively sampled from registries.
+        """
+        from pytorch_forecasting.models.base._base_model_v2 import BaseModel
+
+        tuner = HyperparameterTuner(model_cls=TFT, data=encoder_decoder_datamodule)
+        cfg = tuner._discover_hyperparameters(trial)
+
+        assert cfg["optimizer"] in BaseModel._OPTIMIZER_REGISTRY
+        assert "lr" in cfg["optimizer_params"]
+        assert isinstance(cfg["optimizer_params"]["lr"], float)
+        assert cfg["lr_scheduler"] in [None] + list(
+            BaseModel._SCHEDULER_REGISTRY.keys()
+        )
+        assert isinstance(cfg["lr_scheduler_params"], dict)
+
+    def test_respects_fixed_scheduler_and_discovers_params(
+        self, encoder_decoder_datamodule, trial
+    ):
+        """
+        When lr_scheduler is fixed by the user,
+        its corresponding params are still tuned.
+        """
+        tuner = HyperparameterTuner(
+            model_cls=TFT, data=encoder_decoder_datamodule, lr_scheduler="step_lr"
+        )
+        cfg = tuner._discover_hyperparameters(trial)
+        assert "lr_scheduler" not in cfg
+        assert "step_size" in cfg["lr_scheduler_params"]
+        assert "gamma" in cfg["lr_scheduler_params"]
+
+    def test_custom_range_lr_override(self, encoder_decoder_datamodule, trial):
+        """Custom range for lr is respected."""
+        tuner = HyperparameterTuner(model_cls=TFT, data=encoder_decoder_datamodule)
+        cfg = tuner._discover_hyperparameters(trial, custom_ranges={"lr": (0.01, 0.02)})
+        assert 0.01 <= cfg["optimizer_params"]["lr"] <= 0.02
 
     def test_custom_range_overrides(self, encoder_decoder_datamodule, trial):
         tuner = HyperparameterTuner(model_cls=TFT, data=encoder_decoder_datamodule)
