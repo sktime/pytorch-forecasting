@@ -726,3 +726,33 @@ def test_group_normalizer_uses_groups():
         mean1 = target1["target"].mean().abs()
         assert mean0 < 1.0, "Group 0 target should be normalized near 0"
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
+
+
+def test_encoder_normalizer_normalizes_y():
+    """`y` must be normalized by the encoder-fitted `EncoderNormalizer`."""
+    n = 200
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], n),
+            "time": np.tile(pd.date_range("2020-01-01", periods=n), 2),
+            "target": np.tile(np.arange(n, dtype=float) * 10.0 + 100.0, 2),
+        }
+    )
+    ts = TimeSeries(data=df, time="time", target="target", group=["group"])
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=ts,
+        max_encoder_length=12,
+        max_prediction_length=6,
+        batch_size=1,
+        target_normalizer=EncoderNormalizer(),
+    )
+    dm.setup("fit")
+
+    x, y = dm.train_dataset[0]
+    target_past = x["target_past"].squeeze(-1)
+
+    assert y.abs().max() < 10.0, "y is still on the raw target scale"
+
+    # series is linear, so y carries on from the encoder by one constant step
+    step = target_past[-1] - target_past[-2]
+    assert torch.allclose(y[0], target_past[-1] + step, atol=1e-4)
