@@ -4,7 +4,70 @@ from pytorch_forecasting.base._base_pkg import Base_pkg
 
 
 class TFT_pkg_v2(Base_pkg):
-    """TFT package container."""
+    """TFT package container.
+
+    Examples
+    --------
+    >>> # Package-level usage for TFT (Temporal Fusion Transformer)
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> from pytorch_forecasting.data import TimeSeries
+    >>> from pytorch_forecasting.data.data_module import (
+    ...     EncoderDecoderTimeSeriesDataModule,
+    ... )
+    >>> from pytorch_forecasting.models.temporal_fusion_transformer import (
+    ...     TFT_pkg_v2,
+    ... )
+    >>> from pytorch_forecasting.metrics import SMAPE
+    >>>
+    >>> # Create minimal synthetic time series data
+    >>> rng = np.random.default_rng(42)
+    >>> rows = []
+    >>> for group in range(2):
+    ...     for t in range(20):
+    ...         rows.append({
+    ...             "group": f"series_{group}",
+    ...             "time_idx": int(t),
+    ...             "target": float(rng.normal() + t * 0.1),
+    ...             "static_cov": int(group),
+    ...         })
+    >>> df = pd.DataFrame(rows)
+    >>>
+    >>> # Create TimeSeries object
+    >>> ts = TimeSeries(
+    ...     data=df,
+    ...     time="time_idx",
+    ...     target="target",
+    ...     group=["group"],
+    ...     num=["static_cov"],
+    ...     known=["time_idx"],
+    ...     static=["static_cov"],
+    ... )
+    >>>
+    >>> # Create data module
+    >>> dm = EncoderDecoderTimeSeriesDataModule(
+    ...     time_series_dataset=ts,
+    ...     max_encoder_length=4,
+    ...     max_prediction_length=2,
+    ...     batch_size=4,
+    ... )
+    >>> dm.setup("fit")
+    >>>
+    >>> # Create model using package interface
+    >>> pkg = TFT_pkg_v2(
+    ...     model_cfg={
+    ...         "hidden_size": 8,
+    ...         "attention_head_size": 2,
+    ...         "loss": SMAPE(),
+    ...     },
+    ...     trainer_cfg={"max_epochs": 1, "accelerator": "cpu"},
+    ...     datamodule_cfg={"max_encoder_length": 4, "max_prediction_length": 2},
+    ... )
+    >>> # Training requires Lightning - skip in doctest
+    >>> # pkg.fit(dm)  # doctest: +SKIP
+    >>> # Predictions also skipped for doctest safety
+    >>> # preds = pkg.predict(dm)  # doctest: +SKIP
+    """
 
     _tags = {
         "info:name": "TFT",
