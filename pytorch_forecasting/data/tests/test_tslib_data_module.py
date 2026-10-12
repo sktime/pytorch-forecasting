@@ -269,6 +269,82 @@ def test_tslib_dataset(tslib_data_module):
     assert sample_y.dtype == torch.float32
 
 
+def test_time_idx_reflects_real_timestamps():
+    """Regression test: history/future_time_idx must propagate the dataset's
+    real, per-series time values rather than synthetic positional indices
+    (torch.arange), which breaks for non-zero-start or irregular time axes.
+    See: https://github.com/sktime/pytorch-forecasting/issues/2263"""
+    df = pd.DataFrame(
+        {
+            "time_idx": [10, 20, 35, 50, 80, 120],
+            "group_id": ["A"] * 6,
+            "value": [1.0, 1.2, 1.4, 1.3, 1.5, 1.7],
+        }
+    )
+
+    ts = TimeSeries(
+        data=df,
+        time="time_idx",
+        target="value",
+        group=["group_id"],
+        num=["value"],
+        known=["time_idx"],
+    )
+
+    dm = TslibDataModule(
+        time_series_dataset=ts,
+        context_length=3,
+        prediction_length=2,
+        batch_size=1,
+        train_val_test_split=(1.0, 0.0, 0.0),
+    )
+    dm.setup(stage="fit")
+    train_dataset = dm.train_dataset
+
+    all_time_idx = df["time_idx"].tolist()
+    for i in range(len(train_dataset)):
+        x, _ = train_dataset[i]
+        history = x["history_time_idx"].tolist()
+        future = x["future_time_idx"].tolist()
+
+        # values must come from the dataset's own time axis, not torch.arange(...)
+        assert all(v in all_time_idx for v in history + future)
+        # history and future must be contiguous, in-order windows of the real axis
+        combined = history + future
+        assert combined == sorted(combined)
+        start = all_time_idx.index(history[0])
+        assert all_time_idx[start : start + len(combined)] == combined
+
+
+def test_time_idx_supports_datetime_time_column():
+    """history/future_time_idx conversion must also handle a datetime64 time
+    axis (torch.as_tensor rejects datetime64 directly)."""
+    df = pd.DataFrame(
+        {
+            "time": pd.date_range("2020-01-01", periods=6, freq="D"),
+            "group_id": ["A"] * 6,
+            "value": [1.0, 1.2, 1.4, 1.3, 1.5, 1.7],
+        }
+    )
+
+    ts = TimeSeries(
+        data=df, time="time", target="value", group=["group_id"], num=["value"]
+    )
+
+    dm = TslibDataModule(
+        time_series_dataset=ts,
+        context_length=3,
+        prediction_length=2,
+        batch_size=1,
+        train_val_test_split=(1.0, 0.0, 0.0),
+    )
+    dm.setup(stage="fit")
+
+    x, _ = dm.train_dataset[0]
+    assert x["history_time_idx"].dtype == torch.int64
+    assert x["future_time_idx"].dtype == torch.int64
+
+
 def test_collate_fn(tslib_data_module):
     """Test the collate function in the TslibDataModule to ensure it correctly
     collates the data into batches and properly handles stacking of batches."""
