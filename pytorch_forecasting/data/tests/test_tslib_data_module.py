@@ -195,6 +195,32 @@ def test_predict_dataloader(tslib_data_module):
     assert predict_data_loader.num_workers == tslib_data_module.num_workers
 
 
+def test_predict_index_uses_original_time_and_group(tslib_data_module):
+    """Prediction indices use the first future time and original group id."""
+    tslib_data_module.setup(stage="predict")
+    dataset = tslib_data_module.predict_dataset
+    batch = [dataset[i] for i in range(3)]
+    x_batch, _ = tslib_data_module.collate_fn(batch)
+
+    index = dataset.x_to_index(x_batch)
+
+    expected_times = []
+    expected_groups = []
+    for window_idx in x_batch["__window_idx"].tolist():
+        series_idx, start_idx, context_length, _ = dataset.windows[window_idx]
+        expected_times.append(
+            dataset.dataset[series_idx]["t"][start_idx + context_length]
+        )
+        expected_groups.append(dataset.dataset._group_ids[series_idx])
+
+    assert index["time_idx"].tolist() == expected_times
+    assert index["series_id"].tolist() == expected_groups
+    assert (
+        index["time_idx"].dtype
+        == tslib_data_module.time_series_dataset.data["time_idx"].dtype
+    )
+
+
 def test_tslib_dataset(tslib_data_module):
     """Test the _TslibDataset to ensure it is correctly initialized
     and ensure correct outputs from __getitem__."""
@@ -527,6 +553,6 @@ def test_multivariate_target():
 
     x, y = dm.train_dataset[0]
 
-    assert (
-        y.shape[-1] == 2
-    ), "Target should have two dimensions for n_features for multivariate target."
+    assert isinstance(y, list)
+    assert len(y) == 2
+    assert all(target.shape == (dm.prediction_length,) for target in y)

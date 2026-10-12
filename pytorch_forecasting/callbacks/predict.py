@@ -4,9 +4,36 @@ from warnings import warn
 from lightning import Trainer
 from lightning.pytorch import LightningModule
 from lightning.pytorch.callbacks import BasePredictionWriter
+import pandas as pd
 import torch
 
 from pytorch_forecasting.utils import detach, move_to_device
+
+_PRIVATE_WINDOW_KEY = "__window_idx"
+
+
+def _concat_batch_values(values: list[Any]) -> Any:
+    """Concatenate values collected from prediction batches."""
+    first = values[0]
+    if isinstance(first, torch.Tensor):
+        return torch.cat(values)
+    if isinstance(first, pd.DataFrame):
+        return pd.concat(values, ignore_index=True)
+    if isinstance(first, dict):
+        return {
+            key: _concat_batch_values([value[key] for value in values]) for key in first
+        }
+    if isinstance(first, list):
+        return [
+            _concat_batch_values([value[idx] for value in values])
+            for idx in range(len(first))
+        ]
+    if isinstance(first, tuple):
+        return tuple(
+            _concat_batch_values([value[idx] for value in values])
+            for idx in range(len(first))
+        )
+    raise TypeError(f"Unsupported prediction info type: {type(first).__name__}")
 
 
 class PredictCallback(BasePredictionWriter):
@@ -70,21 +97,34 @@ class PredictCallback(BasePredictionWriter):
 
         self.predictions.append(move_to_device(detach(processed_output), "cpu"))
 
-        # Only pay the detach+copy cost if x or decoder_lengths are actually requested
-        needs_x = any(k in ("x", "decoder_lengths") for k in self.return_info)
+        needs_x = any(k in ("x", "index", "decoder_lengths") for k in self.return_info)
         x_cpu = move_to_device(detach(x), "cpu") if needs_x else None
 
         for key in self.return_info:
             if key == "x":
-                self.info[key].append(x_cpu)
+                public_x = {k: v for k, v in x_cpu.items() if k != _PRIVATE_WINDOW_KEY}
+                self.info[key].append(public_x)
             elif key == "y":
-                y_cpu = move_to_device(detach(y[0]), "cpu")
-                self.info[key].append(y_cpu)
+                self.info[key].append(move_to_device(detach(y), "cpu"))
             elif key == "index":
-                index_cpu = move_to_device(detach(y[1]), "cpu")
-                self.info[key].append(index_cpu)
+                dataset = getattr(trainer.predict_dataloaders, "dataset", None)
+                if dataset is None or not hasattr(dataset, "x_to_index"):
+                    raise TypeError(
+                        "return_info=['index'] requires the prediction dataset to "
+                        "implement x_to_index(x)."
+                    )
+                self.info[key].append(dataset.x_to_index(x_cpu))
             elif key == "decoder_lengths":
-                self.info[key].append(x_cpu["decoder_lengths"])
+                if "decoder_lengths" in x_cpu:
+                    lengths = x_cpu["decoder_lengths"]
+                elif "future_length" in x_cpu:
+                    lengths = x_cpu["future_length"]
+                else:
+                    raise KeyError(
+                        "Prediction batch does not provide 'decoder_lengths' or "
+                        "'future_length'."
+                    )
+                self.info[key].append(lengths)
             else:
                 warn(f"Unknown return_info key: {key}")
 
@@ -101,13 +141,7 @@ class PredictCallback(BasePredictionWriter):
         final_result = collated_preds
 
         for key, data_list in self.info.items():
-            if isinstance(data_list[0], dict):
-                collated_info = {
-                    k: torch.cat([d[k] for d in data_list]) for k in data_list[0].keys()
-                }
-            else:
-                collated_info = torch.cat(data_list)
-            final_result[key] = collated_info
+            final_result[key] = _concat_batch_values(data_list)
 
         self._result = final_result
         self._reset_data(result=False)

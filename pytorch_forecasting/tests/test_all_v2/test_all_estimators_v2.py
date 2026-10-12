@@ -100,7 +100,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         assert isinstance(pred_tensor, torch.Tensor)
         assert pred_tensor.ndim == 2, f"Prediction must be 3D, got {pred_tensor.ndim}D"
 
-        return_info_keys = ["index", "x"]
+        return_info_keys = ["index", "x", "y", "decoder_lengths"]
         info_out = pkg.predict(
             predict_data, mode="prediction", return_info=return_info_keys
         )
@@ -108,8 +108,15 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         for key in return_info_keys:
             assert key in info_out, f"Requested key '{key}' missing from output"
 
-        assert info_out["index"] is not None
+        n_predictions = info_out["prediction"].shape[0]
+        assert len(info_out["index"]) == n_predictions
         assert isinstance(info_out["x"], dict)
+        assert "__window_idx" not in info_out["x"]
+        assert info_out["decoder_lengths"].shape[0] == n_predictions
+        if isinstance(info_out["y"], list):
+            assert all(target.shape[0] == n_predictions for target in info_out["y"])
+        else:
+            assert info_out["y"].shape[0] == n_predictions
 
         shutil.rmtree(tmp_path, ignore_errors=True)
 
