@@ -97,10 +97,11 @@ Training models
           weights_only=False,
       )
 
-  The same applies to ``trainer.validate`` and ``trainer.test``. ``load_from_checkpoint``
-  of v1 PyTorch Forecasting models already loads with ``weights_only=False``. Only load
-  checkpoints from trusted sources this way, as unpickling can execute arbitrary code.
-  With ``lightning`` below 2.6, the argument does not exist and is not needed.
+  The same applies to ``trainer.validate`` and ``trainer.test``. On ``lightning`` 2.6
+  and later, ``load_from_checkpoint`` of v1 PyTorch Forecasting models already loads
+  with ``weights_only=False``. Only load checkpoints from trusted sources this way,
+  as unpickling can execute arbitrary code. The keyword is available from ``lightning``
+  2.6; versions 2.4 and 2.5 already load full checkpoints without it.
 
 
 Interpreting models

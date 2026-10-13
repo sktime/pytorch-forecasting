@@ -338,7 +338,13 @@ def test_trainer_ckpt_path_weights_only(dataloaders_with_covariates, tmp_path):
     ckpt_path = tmp_path / "model.ckpt"
     trainer.save_checkpoint(ckpt_path)
 
-    trainer = pl.Trainer(max_epochs=2, **trainer_kwargs)
+    epochs_run = []
+
+    class CountEpochs(pl.Callback):
+        def on_train_epoch_start(self, trainer, pl_module):
+            epochs_run.append(trainer.current_epoch)
+
+    trainer = pl.Trainer(max_epochs=2, callbacks=[CountEpochs()], **trainer_kwargs)
     trainer.fit(
         make_model(),
         train_dataloaders=train_dataloader,
@@ -346,6 +352,7 @@ def test_trainer_ckpt_path_weights_only(dataloaders_with_covariates, tmp_path):
         weights_only=False,
     )
     assert trainer.current_epoch == 2
+    assert epochs_run == [1]
     trainer.validate(
         make_model(),
         dataloaders=val_dataloader,
