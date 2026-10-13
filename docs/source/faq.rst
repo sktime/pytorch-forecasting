@@ -78,6 +78,30 @@ Training models
   the learning rate finder. To tune hyperparameters, the `optuna package <https://optuna.org/>`_
   is a great place to start with.
 
+* **Why does resuming training from a checkpoint with ckpt_path fail with an UnpicklingError?**
+
+  A v1 PyTorch Forecasting checkpoint contains more than tensors: the fitted encoders and
+  normalizers of the dataset as well as the loss and metrics are pickled into it.
+  From ``lightning`` 2.6, the ``Trainer`` methods that take a ``ckpt_path`` pass their
+  ``weights_only`` argument on to ``torch.load``, which defaults to ``weights_only=True``
+  from ``torch`` 2.6 and then rejects these objects. For checkpoints that you trust, pass
+  ``weights_only=False``:
+
+  .. code-block:: python
+
+      trainer.fit(
+          model,
+          train_dataloaders=train_dataloader,
+          val_dataloaders=val_dataloader,
+          ckpt_path="path/to/checkpoint.ckpt",
+          weights_only=False,
+      )
+
+  The same applies to ``trainer.validate`` and ``trainer.test``. ``load_from_checkpoint``
+  of v1 PyTorch Forecasting models already loads with ``weights_only=False``. Only load
+  checkpoints from trusted sources this way, as unpickling can execute arbitrary code.
+  With ``lightning`` below 2.6, the argument does not exist and is not needed.
+
 
 Interpreting models
 -------------------
