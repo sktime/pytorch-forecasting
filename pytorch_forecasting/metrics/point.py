@@ -295,8 +295,8 @@ class MASE(MultiHorizonMetric):
                 zero_correction_indices,
             ] = 0.0
 
-        # calculate mean over differences
-        scaling = diffs.sum(1) / total_lengths + eps
+        # Mean over the successive pairs. There are n - 1 of them, not n.
+        scaling = diffs.sum(1) / (total_lengths - 1) + eps
 
         return scaling
 
