@@ -417,6 +417,13 @@ class MultiLoss(LightningMetric):
         # No syncing required here. syncing will be done in metrics
         pass
 
+    def set_dtype(self, dst_type: str | torch.dtype) -> "MultiLoss":
+        """Transfer the composite and each underlying metric to a dtype."""
+        super().set_dtype(dst_type)
+        for metric in self.metrics:
+            metric.set_dtype(dst_type)
+        return self
+
     def reset(self) -> None:
         for metric in self.metrics:
             metric.reset()

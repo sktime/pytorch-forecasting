@@ -16,6 +16,7 @@ from pytorch_forecasting.metrics import (
     BetaDistributionLoss,
     ImplicitQuantileNetworkDistributionLoss,
     LogNormalDistributionLoss,
+    MultiLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
@@ -615,3 +616,47 @@ def test_composite_metric_immutability():
     assert base is not rscaled
     assert base._weights == original_weights
     assert rscaled._weights == [w * 3.0 for w in original_weights]
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("populated", [False, True])
+@pytest.mark.parametrize("initial_dtype", [torch.float32, torch.float64])
+def test_multiloss_set_dtype(dtype, populated, initial_dtype):
+    metrics = [MAE().set_dtype(initial_dtype), MAE().set_dtype(initial_dtype)]
+    combined = MultiLoss(metrics, weights=[0.25, 2.0])
+    prediction = torch.tensor([[2.0, 4.0]], dtype=initial_dtype)
+    target = torch.tensor([[1.0, 1.0]], dtype=initial_dtype)
+    if populated:
+        combined.update([prediction, prediction], ([target, target], None))
+        torch.testing.assert_close(
+            combined.compute(), torch.tensor(4.5, dtype=initial_dtype)
+        )
+
+    assert combined.set_dtype(dtype) is combined
+    assert combined.dtype == dtype
+    for metric in metrics:
+        assert metric.dtype == dtype
+        assert metric.losses.dtype == dtype
+        assert metric._defaults["losses"].dtype == dtype
+        assert metric.lengths.dtype == dtype
+    if populated:
+        torch.testing.assert_close(combined.compute(), torch.tensor(4.5, dtype=dtype))
+    combined.reset()
+    for metric in metrics:
+        assert metric.losses.dtype == dtype
+
+
+def test_multiloss_set_dtype_adapted_loss():
+    combined = MultiLoss([torch.nn.MSELoss(), MAE()])
+    assert combined.set_dtype("torch.DoubleTensor") is combined
+    assert all(metric.dtype == torch.float64 for metric in combined)
+    prediction = torch.tensor([[2.0, 4.0]], dtype=torch.float64, requires_grad=True)
+    target = torch.tensor([[1.0, 1.0]], dtype=torch.float64)
+    result = combined([prediction, prediction], ([target, target], None))
+    torch.testing.assert_close(result, torch.tensor(7.0, dtype=torch.float64))
+    result.backward()
+    torch.testing.assert_close(
+        prediction.grad, torch.tensor([[1.5, 3.5]], dtype=torch.float64)
+    )
+    combined.reset()
+    assert all(metric.losses.dtype == torch.float64 for metric in combined)
