@@ -187,6 +187,12 @@ class TorchMetricWrapper(Metric):
     def _wrap_compute(self, compute: Callable) -> Callable:
         return compute
 
+    def set_dtype(self, dst_type: str | torch.dtype) -> "TorchMetricWrapper":
+        """Transfer the wrapper and its underlying metric to a dtype."""
+        super().set_dtype(dst_type)
+        self.torchmetric.set_dtype(dst_type)
+        return self
+
     def reset(self) -> None:
         self.torchmetric.reset()
 
