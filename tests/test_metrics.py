@@ -618,16 +618,20 @@ def test_composite_metric_immutability():
     assert rscaled._weights == [w * 3.0 for w in original_weights]
 
 
+@pytest.mark.parametrize("metric_class", [MultiLoss, CompositeMetric])
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 @pytest.mark.parametrize("populated", [False, True])
 @pytest.mark.parametrize("initial_dtype", [torch.float32, torch.float64])
-def test_multiloss_set_dtype(dtype, populated, initial_dtype):
+def test_composed_metric_set_dtype(dtype, populated, initial_dtype, metric_class):
     metrics = [MAE().set_dtype(initial_dtype), MAE().set_dtype(initial_dtype)]
-    combined = MultiLoss(metrics, weights=[0.25, 2.0])
+    combined = metric_class(metrics, weights=[0.25, 2.0])
     prediction = torch.tensor([[2.0, 4.0]], dtype=initial_dtype)
     target = torch.tensor([[1.0, 1.0]], dtype=initial_dtype)
     if populated:
-        combined.update([prediction, prediction], ([target, target], None))
+        if metric_class is MultiLoss:
+            combined.update([prediction, prediction], ([target, target], None))
+        else:
+            combined.update(prediction, target)
         torch.testing.assert_close(
             combined.compute(), torch.tensor(4.5, dtype=initial_dtype)
         )
