@@ -6,6 +6,7 @@ import shutil
 
 import torch
 
+from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.tests.test_all_estimators import (
     EstimatorFixtureGenerator,
     EstimatorPackageConfig,
@@ -67,8 +68,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
         predictions = pkg_loaded.predict(test_data["predict"], mode="prediction")
 
-        assert predictions is not None
-        assert "prediction" in predictions
+        assert isinstance(predictions, TimeSeries)
         shutil.rmtree(tmp_path, ignore_errors=True)
 
     def test_predict_modes(self, object_pkg, trainer_kwargs, tmp_path):
@@ -86,19 +86,21 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
             raw_pred_tensor.ndim == 3
         ), f"Prediction must be 3D, got {raw_pred_tensor.ndim}D"
 
-        # mode="quantiles"
-        quantile_out = pkg.predict(predict_data, mode="quantiles")
-        quanitle_pred_tensor = quantile_out["prediction"]
-        assert isinstance(quanitle_pred_tensor, torch.Tensor)
-        assert (
-            quanitle_pred_tensor.ndim == 3
-        ), f"Prediction must be 3D, got {quanitle_pred_tensor.ndim}D"
+        n_windows, pred_len = raw_pred_tensor.shape[:2]
 
-        # mode="prediction"
-        pred_out = pkg.predict(predict_data, mode="prediction")
-        pred_tensor = pred_out["prediction"]
-        assert isinstance(pred_tensor, torch.Tensor)
-        assert pred_tensor.ndim == 2, f"Prediction must be 3D, got {pred_tensor.ndim}D"
+        for mode in ("quantiles", "prediction"):
+            out = pkg.predict(predict_data, mode=mode)
+            assert isinstance(out, TimeSeries), f"{mode}: got {type(out)}"
+            assert out.metadata.is_prediction
+            df = out.to_pandas()
+            assert len(df) == n_windows * pred_len, (
+                f"{mode}: expected {n_windows} windows * {pred_len} steps rows, "
+                f"got {len(df)}"
+            )
+            # within one window, time indices are consecutive
+            first_window = df.iloc[:pred_len]
+            assert first_window["_series"].nunique() == 1
+            assert (first_window["_time_idx"].diff().dropna() == 1).all()
 
         return_info_keys = ["index", "x"]
         info_out = pkg.predict(
@@ -119,10 +121,10 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         # check naming convention
         class_name = object_class.__name__
 
-        expected_names = {class_name + "_pkg_v2"}
+        expected_names = {class_name + "Forecaster"}
 
         if class_name.endswith("_v2"):
-            expected_names.add(class_name[:-3] + "_pkg_v2")
+            expected_names.add(class_name[:-3] + "Forecaster")
 
         msg = (
             f"Package class '{object_pkg.__name__}' does not follow the expected "
