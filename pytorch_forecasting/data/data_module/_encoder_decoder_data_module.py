@@ -291,7 +291,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         return new
 
     def _check_same_schema(self, data: TimeSeries):
-        """Raise if the schema of ``data`` differs from the one this was built with."""
+        """Check if the schema of ``data`` differs from the one this was built with."""
         if self.time_series_metadata is None:
             return
         expected = self.time_series_metadata
