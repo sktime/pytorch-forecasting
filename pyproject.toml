@@ -198,7 +198,7 @@ cache_dir = ".cache/mypy/"
 
 [tool.pytest.ini_options]
 addopts = [
-    "-rsxX",
+    "-rfEsxX",
     "-vv",
     "--cov=pytorch_forecasting",
     "--cov-report=html",
