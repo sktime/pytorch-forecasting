@@ -7,6 +7,7 @@
 # into the memory.
 #######################################################################################
 
+import copy
 from typing import Any
 from warnings import warn
 
@@ -274,15 +275,38 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         ------
         TypeError
             If ``data`` is not a :class:`TimeSeries`.
+        ValueError
+            If the schema of ``data`` differs from that of the data this
+            datamodule was built with. The normalizer and scalers are fitted
+            per column, so they only apply to data with the same schema.
         """
+        self._check_same_schema(data)
         new = super().with_data(data)
 
-        new._target_normalizer = self._target_normalizer
+        new._target_normalizer = copy.deepcopy(self._target_normalizer)
         new._target_normalizer_fitted = self._target_normalizer_fitted
-        new._scalers = self._scalers
+        new._scalers = copy.deepcopy(self._scalers)
         new._feature_scalers_fitted = self._feature_scalers_fitted
         new._build_cont_scalers()
         return new
+
+    def _check_same_schema(self, data: TimeSeries):
+        """Raise if the schema of ``data`` differs from the one this was built with."""
+        if self.time_series_metadata is None:
+            return
+        expected = self.time_series_metadata
+        actual = data.get_metadata()
+        mismatched = [key for key in expected if actual[key] != expected[key]]
+        if not mismatched:
+            return
+        details = "; ".join(
+            f"{key}: expected {expected[key]}, got {actual[key]}" for key in mismatched
+        )
+        raise ValueError(
+            "`with_data` requires the same schema as the data this datamodule was "
+            "built with, since the fitted normalizer and scalers apply per column. "
+            f"Mismatch in {details}."
+        )
 
     def _build_cont_scalers(self):
         """Pre-resolve continuous feature scalers to (position, adapter) pairs."""
