@@ -59,3 +59,4 @@ See the API documentation for further details on available models:
     models.tide.TiDEModel
     models.timexer.TimeXer
     models.xlstm.xLSTMTime
+    models.patch_tst.PatchTST

@@ -45,6 +45,8 @@ class DLinear_pkg_v2(Base_pkg):
             Parameters to create testing instances of the class
         """
 
+        import torch.nn as nn
+
         from pytorch_forecasting.metrics import SMAPE
 
         params = [
@@ -56,11 +58,13 @@ class DLinear_pkg_v2(Base_pkg):
             ),
             dict(
                 moving_avg=5,
+                loss=nn.MSELoss(),
                 individual=False,
                 logging_metrics=[SMAPE()],
             ),
             dict(
                 optimizer="adamw",
+                loss=nn.HuberLoss(),
                 lr_scheduler="cosine_annealing",
                 lr_scheduler_params={"T_max": 5},
             ),
