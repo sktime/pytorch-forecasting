@@ -647,15 +647,15 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             decoder_indices = slice(start_idx + enc_length, end_idx)
 
             target_past = data["target"][encoder_indices]
+            # Decoder target is normalized later with the same per-sequence fit.
+            decoder_target = data["target"][decoder_indices]
 
-            # apply encoder normalizer on target_past.
+            # EncoderNormalizer is fit on the encoder window only. The decoder
+            # target must use that same fit, otherwise y stays on the raw scale.
             normalizer = self.data_module._target_normalizer
             if normalizer is not None and normalizer.fit_per_sequence:
-                target_past = (
-                    self.data_module._target_normalizer.fit_transform_sequence(
-                        target_past
-                    )
-                )
+                target_past = normalizer.fit_transform_sequence(target_past)
+                decoder_target = normalizer.transform_sequence(decoder_target)
 
             target_original_past = data["target_original"][encoder_indices]
             valid_mask = ~torch.isnan(target_original_past)
@@ -795,7 +795,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                         (1, 0), dtype=torch.float32
                     )
 
-            y = data["target"][decoder_indices]
+            y = decoder_target
 
             if y.shape[-1] > 1:
                 y = [y[:, i] for i in range(y.shape[-1])]
