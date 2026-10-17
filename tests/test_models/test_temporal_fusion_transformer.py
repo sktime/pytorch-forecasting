@@ -308,6 +308,65 @@ def test_pickle(model):
     pickle.loads(pkl)  # noqa: S301
 
 
+@pytest.mark.skipif(
+    _check_soft_dependencies("lightning<2.6", severity="none"),
+    reason="Trainer methods accept weights_only only from lightning 2.6",
+)
+def test_trainer_ckpt_path_weights_only(dataloaders_with_covariates, tmp_path):
+    train_dataloader = dataloaders_with_covariates["train"]
+    val_dataloader = dataloaders_with_covariates["val"]
+
+    def make_model():
+        return TemporalFusionTransformer.from_dataset(
+            train_dataloader.dataset,
+            hidden_size=4,
+            attention_head_size=1,
+            hidden_continuous_size=2,
+        )
+
+    trainer_kwargs = dict(
+        accelerator="cpu",
+        limit_train_batches=2,
+        limit_val_batches=1,
+        limit_test_batches=1,
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+    )
+    trainer = pl.Trainer(max_epochs=1, **trainer_kwargs)
+    trainer.fit(make_model(), train_dataloaders=train_dataloader)
+    ckpt_path = tmp_path / "model.ckpt"
+    trainer.save_checkpoint(ckpt_path)
+
+    epochs_run = []
+
+    class CountEpochs(pl.Callback):
+        def on_train_epoch_start(self, trainer, pl_module):
+            epochs_run.append(trainer.current_epoch)
+
+    trainer = pl.Trainer(max_epochs=2, callbacks=[CountEpochs()], **trainer_kwargs)
+    trainer.fit(
+        make_model(),
+        train_dataloaders=train_dataloader,
+        ckpt_path=ckpt_path,
+        weights_only=False,
+    )
+    assert trainer.current_epoch == 2
+    assert epochs_run == [1]
+    trainer.validate(
+        make_model(),
+        dataloaders=val_dataloader,
+        ckpt_path=ckpt_path,
+        weights_only=False,
+    )
+    trainer.test(
+        make_model(),
+        dataloaders=val_dataloader,
+        ckpt_path=ckpt_path,
+        weights_only=False,
+    )
+
+
 @pytest.mark.parametrize(
     "kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")]
 )
