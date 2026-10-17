@@ -13,7 +13,6 @@ from pytorch_forecasting.layers import (
     PatchEmbedding,
     TransformerBlock,
 )
-from pytorch_forecasting.metrics import QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -206,7 +205,7 @@ class UniTS(BaseModel):
         else:
             out = raw.view(B, self.prediction_length, self.target_dim)
 
-        if "target_scale" in x and hasattr(self, "transform_output"):
+        if "target_scale" in x:
             out = self.transform_output(out, x["target_scale"])
 
         return {"prediction": out}

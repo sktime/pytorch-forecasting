@@ -284,29 +284,21 @@ class TIDE(BaseModel):
             (dense_dec.view(B, self.future_steps, self.d_model), proj_fut), dim=2
         )
         temp_dec_output = self.temporal_decoder(temp_dec_input, False)
-        if self.mul > 1:
-            if self.output_channels == 1:
-                temp_dec_output = temp_dec_output.view(B, self.future_steps, self.mul)
-                linear_regr = self.linear_target(y_past.view(B, -1))
-                linear_output = linear_regr.view(B, self.future_steps, self.mul)
-            else:
-                temp_dec_output = temp_dec_output.view(
-                    B, self.future_steps, self.output_channels, self.mul
-                )
-                linear_regr = self.linear_target(y_past.view(B, -1))
-                linear_output = linear_regr.view(
-                    B, self.future_steps, self.output_channels, self.mul
-                )
+        linear_regr = self.linear_target(y_past.view(B, -1))
+
+        if self.mul > 1 and self.output_channels > 1:
+            shape = (B, self.future_steps, self.output_channels, self.mul)
+        elif self.mul > 1:
+            shape = (B, self.future_steps, self.mul)
         else:
-            temp_dec_output = temp_dec_output.view(
-                B, self.future_steps, self.output_channels
-            )
-            linear_regr = self.linear_target(y_past.view(B, -1))
-            linear_output = linear_regr.view(B, self.future_steps, self.output_channels)
+            shape = (B, self.future_steps, self.output_channels)
+
+        temp_dec_output = temp_dec_output.view(*shape)
+        linear_output = linear_regr.view(*shape)
 
         output = temp_dec_output + linear_output
 
-        if "target_scale" in batch and hasattr(self, "transform_output"):
+        if "target_scale" in batch:
             output = self.transform_output(output, batch["target_scale"])
 
         return {"prediction": output}

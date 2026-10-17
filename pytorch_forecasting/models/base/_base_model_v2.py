@@ -88,6 +88,7 @@ class BaseModel(LightningModule):
             lr_scheduler_params if lr_scheduler_params is not None else {}
         )
         self.model_name = self.__class__.__name__
+        self.target_normalizer = None
 
         self._loss = coerce_to_pytorch_forecasting_metric(self.loss)
 
