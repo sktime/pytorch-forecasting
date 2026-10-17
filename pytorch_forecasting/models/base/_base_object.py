@@ -103,6 +103,40 @@ class _BasePtForecaster_Common(_BaseObject):
 
         return objs, names
 
+    @classmethod
+    def _get_compatible_loss_types(cls):
+        """Return metric_type strings compatible with this model's tags.
+
+        Uses ``info:pred_type`` and ``info:y_type`` to determine which
+        metric types (e.g. ``"point"``, ``"distribution"``) are valid
+        losses for integration tests.
+
+        Returns
+        -------
+        list of str
+            Compatible ``metric_type`` tag values.
+        """
+        pred_types = cls.get_class_tag("info:pred_type", [])
+        y_types = cls.get_class_tag("info:y_type", [])
+
+        metric_type_mappings = {
+            ("point", "numeric"): "point",
+            ("point", "category"): "point_classification",
+            ("quantile", "numeric"): "quantile",
+            ("quantile", "category"): "quantile_classification",
+            ("distr", "numeric"): "distribution",
+            ("distr", "category"): "distribution_classification",
+        }
+
+        compatible_metric_types = []
+        for pred_type in pred_types:
+            for y_type in y_types:
+                key = (pred_type, y_type)
+                if key in metric_type_mappings:
+                    compatible_metric_types.append(metric_type_mappings[key])
+
+        return compatible_metric_types
+
 
 class _BasePtForecaster(_BasePtForecaster_Common):
     """Base class for PyTorch Forecasting v1 forecasters."""
