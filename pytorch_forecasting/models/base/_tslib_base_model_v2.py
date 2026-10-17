@@ -55,9 +55,9 @@ class TslibBaseModel(BaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
+            metadata=metadata,
         )
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
-        self.metadata = metadata or {}
         self.model_name = self.__class__.__name__
 
         warn(
