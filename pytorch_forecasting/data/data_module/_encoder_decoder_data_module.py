@@ -10,6 +10,7 @@
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
+import warnings
 from warnings import warn
 
 from lightning.pytorch import LightningDataModule
@@ -802,6 +803,139 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             else:
                 y = y.squeeze(-1)
             return x, y
+
+    _ARTIFACT_SPECS = [
+        ("scaler", "_scalers", "scalers", "_feature_scalers_fitted"),
+        (
+            "target_normalizer",
+            "_target_normalizer",
+            "scalers",
+            "_target_normalizer_fitted",
+        ),
+        ("datamodule_metadata", "_metadata", "metadata", None),
+    ]
+
+    def save_artifacts(
+        self, artifact_dir: Path, include: list[str] = [], exclude: list[str] = []
+    ):
+        """Save data module artifacts.
+
+        Parameters
+        ----------
+        artifact_dir : Path
+            Path to save artifacts.
+        exclude : list[str], default=None
+            The list of artifacts that need to be excluded from saving.
+
+        Saves
+        -----
+        scalers, target_normalizers, and datamodule's metadata.
+
+        Returns
+        -------
+        dict
+            A dictionary containing artifacts with keys as the "type" of artifact
+            while the values are the paths where they are saved.
+
+        Raises
+        ------
+        UserWarning
+            If some artifact that is to be stored but the datamodule doesnt have them.
+            Eg if the scalers were to be stored but they were not initialized so they
+            are not present in data module's memory.
+        """
+        artifact_dir = Path(artifact_dir)
+        saved_artifacts: dict[str, Path] = {}
+
+        for key, attr, subdir, fitted_attr in self._ARTIFACT_SPECS:
+            if key in exclude:
+                continue
+
+            value = getattr(self, attr)
+            if not value:
+                warnings.warn(
+                    f"No {key} found in the datamodule to save. "
+                    f"If you expected {key} to be saved, ensure it is "
+                    "passed to the datamodule constructor."
+                )
+                continue
+
+            if fitted_attr is not None and not getattr(self, fitted_attr):
+                warnings.warn(
+                    f"{key} has not been fitted, so it is not saved -- there are "
+                    "no fitted parameters to persist. It will be rebuilt from "
+                    "`datamodule_cfg` on load. Call `setup(stage='fit')` before "
+                    "saving if you expected fitted values here."
+                )
+                continue
+
+            target_dir = artifact_dir / subdir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            path = target_dir / f"{key}.pkl"
+            with open(path, "wb") as f:
+                pickle.dump(value, f)
+            saved_artifacts[key] = path
+
+        return saved_artifacts
+
+    def load_artifacts(self, artifacts: dict[str, Any]):
+        """Save data module artifacts.
+
+        Parameters
+        ----------
+        artifacts : dict
+            Dictionary mapping artifact names to their file paths.
+            Expected keys (all optional):
+
+            - ``"scaler"``: Path to pickled scalers dict.
+            - ``"target_normalizer"``: Path to pickled target normalizer.
+            - ``"datamodule_metadata"``: Path to pickled metadata dict.
+
+            Any artifact that is loaded is marked as fitted, since
+            ``save_artifacts`` only persists fitted state.
+
+        exclude : list[str], default=None
+            The list of artifacts that need to be excluded from saving.
+
+        Loads
+        -----
+        scalers : dict
+            Feature scalers loaded from ``artifacts["scalers"]``.
+        target_normalizer : object
+            Target normalizer loaded from ``artifacts["target_normalizer"]``.
+        metadata : dict
+            Metadata loaded from ``artifacts["datamodule_metadata"]``.
+
+        Returns
+        -------
+        dict
+            A dictionary containing artifacts with keys as the "type" of artifact
+            while the values are the paths where they are saved.
+
+        Raises
+        ------
+        FileNotFoundError
+            If a path specified in ``artifacts`` does not exist.
+        UserWarning
+            If a key is present in ``artifacts`` but the file doesn't exist.
+        """
+        for key, attr, _, fitted_attr in self._ARTIFACT_SPECS:
+            path = artifacts.get(key)
+            if path is None:
+                continue
+
+            path = Path(path)
+            if not path.exists():
+                warnings.warn(f"{key} file not found at {path}. Skipping {key} load.")
+                continue
+
+            with open(path, "rb") as f:
+                setattr(self, attr, pickle.load(f))  # noqa: S301
+
+            if fitted_attr is not None:
+                setattr(self, fitted_attr, True)
+
+        self._build_cont_scalers()
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
