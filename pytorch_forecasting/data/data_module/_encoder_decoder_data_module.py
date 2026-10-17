@@ -107,16 +107,30 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
     num_workers : int, default=0
         Number of workers for DataLoader.
     splitter : BaseSplitter or None, default=None
-        Splitting strategy for partitioning series and/or windows into
-        train/val/test folds. If ``None``, defaults to
-        ``RandomSplitter((0.7, 0.15, 0.15))``. See
-        :py:mod:`pytorch_forecasting.data.split.splitters` for available
-        splitters such as ``TemporalSplitter``, ``GroupTimeSplitter``, etc.
-        Takes precedence over ``train_val_test_split`` when both are provided.
+        Splitting strategy for partitioning series and/or sliding windows into
+        train, validation, and test folds. Takes precedence over
+        ``train_val_test_split`` when both are provided. Available splitters:
+
+        * ``RandomSplitter``:
+          Randomly partitions at the series/group level. All timestamps/windows
+          for a given series remain in the same fold.
+        * ``TemporalSplitter``:
+          Splits chronologically at the sliding window level to prevent data
+          leakage. Supports percentage-based per-series cutoffs (default) or
+          fixed absolute timestamp cutoffs across all series.
+        * ``GroupTimeSplitter``:
+          Two-phase hybrid split. First randomly assigns groups (val and test
+          contain unseen groups), then temporally splits windows within the
+          train groups.
+        * ``StratifiedSplitter``:
+          Partitions series while preserving class/target label distributions
+          across folds.
+
+        If ``None``, defaults to ``RandomSplitter((0.7, 0.15, 0.15))``.
     train_val_test_split : tuple[float, ...] or None, default=None
         Convenience shorthand for ``RandomSplitter(train_val_test_split)``.
         Accepts a 3-tuple ``(train, val, test)`` or a 2-tuple ``(train, val)``
-        (test fraction is set to 0 in the latter case). Ignored when
+        (test fraction is set to 0.0 in the latter case). Ignored when
         ``splitter`` is explicitly provided.
     """
 
