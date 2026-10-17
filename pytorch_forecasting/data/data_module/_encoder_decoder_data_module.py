@@ -148,7 +148,6 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         self.add_encoder_length = add_encoder_length
         self.randomize_length = randomize_length
         self.target_normalizer = target_normalizer
-        self.categorical_encoders = categorical_encoders
         self.scalers = scalers
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -311,6 +310,10 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             }
         )
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
 
     @property
@@ -397,9 +400,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         """Split feature tensor into categorical and continuous subsets."""
         n_timesteps = features.shape[0]
         categorical = (
-            features[:, self.categorical_indices]
+            features[:, self.categorical_indices].long()
             if self.categorical_indices
-            else torch.zeros((n_timesteps, 0))
+            else torch.zeros((n_timesteps, 0), dtype=torch.long)
         )
         continuous = (
             features[:, self.continuous_indices]

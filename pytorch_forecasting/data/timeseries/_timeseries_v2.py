@@ -4,6 +4,7 @@ Timeseries dataset - v2 prototype.
 Beta version, experimental - use for testing but not in production.
 """
 
+from typing import Any
 from warnings import warn
 
 import numpy as np
@@ -11,7 +12,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from pytorch_forecasting.utils._coerce import _coerce_to_list
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
+from pytorch_forecasting.utils._coerce import _coerce_to_dict, _coerce_to_list
 
 #######################################################################################
 # Disclaimer: This dataset class is still work in progress and experimental, please
@@ -73,6 +75,32 @@ class TimeSeries(Dataset):
     static : list of str, optional, default = all variables not in known, unknown
         list of variables that do not change over time,
         list may also contain list of str, which are then grouped together.
+    categorical_encoders : dict[str, encoder] | False | None, default=None
+        Controls how categorical columns in ``cat`` are encoded to integers.
+
+        - ``None`` (default): every column in ``cat`` gets a fresh
+        ``NaNLabelEncoder(add_nan=True)`` that is fitted automatically.
+        - ``dict``: mapping of column names to encoder instances. Columns
+        in ``cat`` that are missing from the dict still receive a default
+        ``NaNLabelEncoder(add_nan=True)``.  Pre-fitted encoders (those
+        with a non-empty ``classes_`` attribute) are reused as-is;
+        unfitted encoders are fitted on the training data.
+        - ``False``: skip all encoding.  The data in ``cat`` columns must
+        already contain integer codes.  Cardinalities are inferred from
+        the data via ``nunique()``.
+
+        Supported encoder types include any object implementing a
+        scikit-learn-style ``fit`` / ``transform`` API that outputs
+        integer codes.  Tested options:
+
+        * ``pytorch_forecasting.data.encoders.NaNLabelEncoder``
+        * ``sklearn.preprocessing.LabelEncoder``
+          (note: expects 2D input — wrap the column in a DataFrame)
+
+        Pass pre-fitted encoders from training to ensure consistent
+        encoding at prediction time.  See
+        ``TimeSeries.get_categorical_encoders()`` for retrieving fitted
+        encoders.
     """
 
     def __init__(
@@ -88,6 +116,7 @@ class TimeSeries(Dataset):
         known: list[str | list[str]] | None = None,
         unknown: list[str | list[str]] | None = None,
         static: list[str | list[str]] | None = None,
+        categorical_encoders: dict[str, Any] | bool | None = None,
     ):
         self.data = data
         self.data_future = data_future
@@ -100,6 +129,7 @@ class TimeSeries(Dataset):
         self.known = known
         self.unknown = unknown
         self.static = static
+        self.categorical_encoders = categorical_encoders
 
         warn(
             "TimeSeries is part of an experimental rework of the "
@@ -124,9 +154,71 @@ class TimeSeries(Dataset):
         self._unknown = _coerce_to_list(unknown)
         self._static = _coerce_to_list(static)
 
+        self._prepare_categorical_encoders()
+        self._prepare_group_index()
+        self._prepare_metadata()
+
+        # overwrite __init__ params for upwards compatibility with AS PRs
+        # todo: should we avoid this and ensure classes are dataclass-like?
+        self.group = self._group
+        self.target = self._target
+        self.num = self._num
+        self.cat = self._cat
+        self.known = self._known
+        self.unknown = self._unknown
+        self.static = self._static
+
+    def _prepare_categorical_encoders(self):
+        """Resolve encoder objects for each categorical column, fit and apply.
+
+        Populates ``self._categorical_encoders`` and transforms the
+        categorical columns in ``self.data`` (and ``self.data_future``
+        when present) to integer codes in-place.
+        """
+        if self.categorical_encoders is False:
+            self._categorical_encoders = {}
+
+        elif self.categorical_encoders is None:
+            self._categorical_encoders = {
+                col: NaNLabelEncoder(add_nan=True) for col in self._cat
+            }
+
+        elif isinstance(self.categorical_encoders, dict):
+            # Check if the keys belong to cat
+            invalid_cols = set(self.categorical_encoders) - set(self._cat)
+            if invalid_cols:
+                invalid_sorted_cols = sorted(invalid_cols)
+                raise ValueError(
+                    f"categorical_encoders contains columns "
+                    f"not listed in `cat`: {invalid_sorted_cols}."
+                )
+            self._categorical_encoders = _coerce_to_dict(self.categorical_encoders)
+            for col in self._cat:
+                if col not in self._categorical_encoders:
+                    self._categorical_encoders[col] = NaNLabelEncoder(add_nan=True)
+
+        else:
+            raise TypeError(
+                f"categorical_encoders must be a dict, False, or None. "
+                f"Got: {type(self.categorical_encoders).__name__!r}."
+            )
+
+        # Fit and transform categorical columns to integer codes
+        for col, encoder in self._categorical_encoders.items():
+            if not hasattr(encoder, "classes_") or len(encoder.classes_) == 0:
+                encoder.fit(self.data[col])
+
+            self.data[col] = encoder.transform(self.data[col])
+
+            if self.data_future is not None and col in self.data_future.columns:
+                self.data_future[col] = encoder.transform(self.data_future[col])
+
+    def _prepare_group_index(self):
+        """Compute feature columns, group structure,
+        and group-to-index mapping."""
         self.feature_cols = [
             col
-            for col in data.columns
+            for col in self.data.columns
             if col not in [self.time] + self._group + [self.weight] + self._target
         ]
         if self._group:
@@ -142,18 +234,6 @@ class TimeSeries(Dataset):
             self._group_ids = ["_single_group"]
         # create mapping from group id to index for efficient lookup
         self._group_to_idx = {gid: i for i, gid in enumerate(self._group_ids)}
-
-        self._prepare_metadata()
-
-        # overwrite __init__ params for upwards compatibility with AS PRs
-        # todo: should we avoid this and ensure classes are dataclass-like?
-        self.group = self._group
-        self.target = self._target
-        self.num = self._num
-        self.cat = self._cat
-        self.known = self._known
-        self.unknown = self._unknown
-        self.static = self._static
 
     def _prepare_metadata(self):
         """Prepare metadata for the dataset.
@@ -187,6 +267,36 @@ class TimeSeries(Dataset):
             self.metadata["col_type"][col] = "C" if col in self._cat else "F"
 
             self.metadata["col_known"][col] = "K" if col in self._known else "U"
+
+        # Expose cardinalities for each categorical variable
+        if self._categorical_encoders:
+            self.metadata["categorical_cardinalities"] = {
+                col: len(self._categorical_encoders[col].classes_) for col in self._cat
+            }
+        else:
+            # No encoders (cat=[] or categorical_encoders=False)
+            # Infer cardinalities directly from the data
+            self.metadata["categorical_cardinalities"] = {
+                col: int(self.data[col].nunique()) for col in self._cat
+            }
+
+    def get_categorical_encoders(self) -> dict:
+        """Return fitted categorical encoders from the dataset.
+
+        Used when creating a new ``TimeSeries`` for prediction to ensure
+        the same category-to-integer mapping, preventing data leakage.
+
+        Example
+        -------
+        >>> fitted = dataset.get_categorical_encoders()
+        >>> ts_predict = TimeSeries(..., categorical_encoders=fitted)
+
+        Returns
+        -------
+        dict
+            Column names to fitted categorical encoders.
+        """
+        return self._categorical_encoders.copy()
 
     def __len__(self) -> int:
         """Return number of time series in the dataset."""
