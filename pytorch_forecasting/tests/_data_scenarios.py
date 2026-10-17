@@ -372,3 +372,80 @@ def dataloaders_fixed_window_without_covariates():
     )
 
     return dict(train=train_dataloader, val=val_dataloader, test=test_dataloader)
+
+
+def make_datamodule_test_timeseries(**kwargs):
+    """Create a lightweight synthetic ``TimeSeries`` for D2 datamodule tests.
+
+    Parameters
+    ----------
+    n_series : int, default=10
+        Number of independent time series (groups).
+    seq_length : int, default=100
+        Timesteps per series. Must exceed context + prediction lengths in test params.
+    seed : int, optional
+        Random seed for reproducibility.
+    include_static : bool, default=True
+        Whether to include a static continuous feature column.
+    include_static_categorical : bool, default=False
+        Whether to include a static categorical feature column.
+    """
+    n_series = kwargs.get("n_series", kwargs.get("num_groups", 10))
+    seq_length = kwargs.get("seq_length", kwargs.get("n_timesteps", 100))
+    seed = kwargs.get("seed", None)
+    include_static = kwargs.get("include_static", True)
+    include_static_categorical = kwargs.get("include_static_categorical", False)
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    rows = []
+    for series_id in range(n_series):
+        static_value = series_id * 2.5
+        static_cat_value = series_id % 2
+        for time_idx in range(seq_length):
+            target = (
+                10
+                + 0.1 * time_idx
+                + 5 * np.sin(time_idx / 10)
+                + series_id * 2
+                + np.random.normal(0, 1)
+            )
+            row = {
+                "series_id": series_id,
+                "time_idx": time_idx,
+                "target": target,
+                "cat_feat": np.random.choice([0, 1, 2]),
+                "cont_feat1": np.random.normal(series_id, 1) + time_idx * 0.01,
+                "cont_feat2": target * 0.5 + np.random.normal(0, 0.5),
+                "known_future": time_idx % 7,
+            }
+            if include_static:
+                row["static_feature"] = static_value
+            if include_static_categorical:
+                row["static_cat"] = static_cat_value
+            rows.append(row)
+
+    df = pd.DataFrame(rows)
+
+    static_cols = []
+    if include_static:
+        static_cols.append("static_feature")
+    if include_static_categorical:
+        static_cols.append("static_cat")
+
+    cat_cols = ["cat_feat"]
+    if include_static_categorical:
+        cat_cols.append("static_cat")
+
+    return TimeSeries(
+        data=df,
+        time="time_idx",
+        target="target",
+        group=["series_id"],
+        num=["cont_feat1", "cont_feat2", "known_future"],
+        cat=cat_cols,
+        static=static_cols or None,
+        known=["cont_feat1", "known_future"],
+        unknown=["cont_feat2", "cat_feat"],
+    )
