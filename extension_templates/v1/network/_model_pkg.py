@@ -35,52 +35,22 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 class ExampleNetwork_pkg(_BasePtForecaster):
     """Package container for ExampleNetwork."""
 
+    # todo: update all tag values to match your model
+    # every tag, its possible values and its default are documented in
+    # pytorch_forecasting/_registry/_tags.py
     _tags = {
-        # todo: update all tag values to match your model
-        #
-        # Human-readable model name — MUST match the model class name.
-        # Valid values: str
         "info:name": "ExampleNetwork",
-        # Approximate compute cost.
-        # Valid values: int (1 = lightweight e.g. MLP, 3 = medium, 5 = very heavy)
         "info:compute": 2,
-        # What type of predictions this model produces.
-        # Valid values: list of str, containing one or more of:
-        #   "point"     → deterministic point forecasts
-        #   "quantile"  → probabilistic quantile forecasts
-        #   "distr"     → full predictive distribution (e.g., DeepAR)
         "info:pred_type": ["point"],
-        # What type of target the model supports.
-        # Valid values: list of str, containing one or more of:
-        #   "numeric"   → continuous/numeric target variables
-        #   "category"  → categorical target variables
         "info:y_type": ["numeric"],
-        # GitHub usernames of the contributors.
-        # Valid values: list of str, containing GitHub handles.
         # todo: replace with your GitHub handle(s)
         "authors": ["your-github-handle"],
-        # Whether the model can use exogenous covariates (X).
-        # Valid values: bool
-        # True  = model uses exogenous variables in a non-trivial way
-        # False = model ignores exogenous inputs
         "capability:exogenous": True,
-        # Whether the model supports multiple target variables.
-        # Valid values: bool
-        # True  = multivariate forecasting supported
-        # False = univariate target only
         "capability:multivariate": True,
-        # Whether the model supports probabilistic prediction intervals.
-        # Valid values: bool
         "capability:pred_int": False,
-        # Whether the model can work with variable-length encoder history.
-        # Valid values: bool
         "capability:flexible_history_length": True,
-        # Whether the model can make predictions without long history.
-        # Valid values: bool
         "capability:cold_start": False,
-        # External python packages required to run this model.
-        # Delete or keep empty if no external packages are needed.
-        # Valid values: list of str
+        # delete or keep empty if no external packages are needed
         "python_dependencies": [],
     }
 
