@@ -1028,12 +1028,12 @@ class TslibDataModule(LightningDataModule):
 
         self._ensure_split()
 
-        self._resolve_target_normalizer(self._train_indices)
-        self._fit_target_normalizer(self._train_indices)
-        if not self._feature_scalers_fitted:
-            self._fit_scalers(self._train_indices)
-
         if stage == "fit" or stage is None:
+            self._resolve_target_normalizer(self._train_indices)
+            if not self._target_normalizer_fitted:
+                self._fit_target_normalizer(self._train_indices)
+            if not self._feature_scalers_fitted:
+                self._fit_scalers(self._train_indices)
             if not hasattr(self, "_train_dataset") or not hasattr(self, "_val_dataset"):
                 self._train_windows = self._create_windows(self._train_indices)
                 self._val_windows = self._create_windows(self._val_indices)

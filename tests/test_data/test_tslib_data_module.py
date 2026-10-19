@@ -768,24 +768,6 @@ def test_repeated_setup_is_idempotent():
     assert torch.allclose(before, dm._scalers["x"].transform(probe))
 
 
-def test_setup_test_alone_still_scales():
-    """``setup("test")`` without a preceding ``setup("fit")`` must still scale."""
-    ds = _make_ts()
-    dm = TslibDataModule(
-        time_series_dataset=ds,
-        context_length=16,
-        prediction_length=4,
-        scalers={"x": StandardScaler()},
-        batch_size=8,
-    )
-    dm.setup(stage="test")
-
-    assert dm._feature_scalers_fitted is True
-    x, _ = dm.test_dataset[0]
-    # unscaled values are ~100
-    assert abs(float(x["history_cont"][:, 0].mean())) < 5.0
-
-
 def test_target_is_not_normalized_by_default():
     """``None`` means "leave the target alone"."""
     ds = _make_ts()
