@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-from lightning.pytorch import Trainer
 from torch import nn
 
 from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
@@ -39,7 +38,7 @@ class TIDEForecaster(BaseForecaster):
     loss : nn.Module, optional
         Loss function module (e.g., ``MSELoss``, ``QuantileLoss``). Defaults to
         ``MAE()``.
-    trainer : lightning.pytorch.Trainer, optional
+    trainer_kwargs : dict, optional
         See :class:`~pytorch_forecasting.models.base.BaseForecaster`.
     datamodule : EncoderDecoderTimeSeriesDataModule, optional
         Configured, data-less datamodule. See
@@ -74,7 +73,7 @@ class TIDEForecaster(BaseForecaster):
         optim_config: dict | None = None,
         scheduler_config: dict | None = None,
         loss: nn.Module | None = None,
-        trainer: Trainer | None = None,
+        trainer_kwargs: dict | None = None,
         datamodule: Any = None,
         ckpt_path: str | Path | None = None,
     ):
@@ -90,11 +89,13 @@ class TIDEForecaster(BaseForecaster):
         self.optim_config = optim_config
         self.scheduler_config = scheduler_config
         self.loss = loss
-        self.trainer = trainer
+        self.trainer_kwargs = trainer_kwargs
         self.datamodule = datamodule
         self.ckpt_path = ckpt_path
         super().__init__(
-            trainer=self.trainer, datamodule=self.datamodule, ckpt_path=self.ckpt_path
+            trainer_kwargs=self.trainer_kwargs,
+            datamodule=self.datamodule,
+            ckpt_path=self.ckpt_path,
         )
 
     @classmethod

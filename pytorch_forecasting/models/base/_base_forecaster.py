@@ -16,17 +16,14 @@ from pytorch_forecasting.models.base._base_object import _BasePtObject_v2
 
 class BaseForecaster(_BasePtObject_v2):
     """
-    Base forecaster class acting as a high-level wrapper for the Lightning workflow.
-
-    Model parameters are flattened into the concrete subclass's ``__init__``; the
-    model is built inside ``fit`` from the datamodule's ``metadata``. The class
-    manages model, datamodule and trainer, and provides streamlined ``fit`` and
-    ``predict`` methods.
+    Base forecaster class acting as a high-level wrapper for the ptf workflow.
 
     Parameters
     ----------
-    trainer : lightning.Trainer, optional
-        Trainer used by ``fit`` when none is passed there. Defaults to ``Trainer()``.
+    trainer_kwargs : dict, optional
+        Keyword arguments for ``lightning.Trainer``. ``fit`` builds a new trainer
+        from them on every call, unless a trainer is passed to ``fit`` directly.
+        Defaults to ``Trainer()``.
     datamodule : LightningDataModule, optional
         A configured but data-less datamodule; ``fit`` attaches the data with
         ``with_data``. Defaults to ``get_datamodule_cls()()``, or to the
@@ -37,11 +34,11 @@ class BaseForecaster(_BasePtObject_v2):
 
     def __init__(
         self,
-        trainer: Trainer | None = None,
+        trainer_kwargs: dict | None = None,
         datamodule: Any = None,
         ckpt_path: str | Path | None = None,
     ):
-        self.trainer = trainer
+        self.trainer_kwargs = trainer_kwargs
         self.datamodule = datamodule
         self.ckpt_path = ckpt_path
         super().__init__()
@@ -176,12 +173,9 @@ class BaseForecaster(_BasePtObject_v2):
         return dm.with_data(data)
 
     def _resolve_trainer(self, trainer: Trainer | None) -> Trainer:
-        """``fit``'s trainer > ``__init__``'s trainer > default ``Trainer()``."""
         if trainer is not None:
             return trainer
-        if self.trainer is not None:
-            return self.trainer
-        return Trainer()
+        return Trainer(**(self.trainer_kwargs or {}))
 
     def _load_dataloader(self, data: TimeSeries) -> DataLoader:
         """Build the prediction dataloader, with the transforms fitted in ``fit``."""
@@ -197,6 +191,7 @@ class BaseForecaster(_BasePtObject_v2):
         y: torch.Tensor | list[torch.Tensor],
         windows: list | None,
         metadata: Any | None,
+        info: dict | None = None,
     ) -> TimeSeries:
         """Move the pred tensors to ``TimeSeries``.
 
@@ -216,6 +211,8 @@ class BaseForecaster(_BasePtObject_v2):
             name the target columns. Pass ``None`` when the last axis does not
             hold targets, e.g. in quantile mode, so columns fall back to
             ``y0, y1, ...``.
+        info : dict, optional
+            Extra per-window outputs, attached to the result as ``info``.
 
         Returns
         -------
@@ -251,6 +248,7 @@ class BaseForecaster(_BasePtObject_v2):
             {"y": y.reshape(n_windows * pred_len, -1), "t": torch.as_tensor(t)},
             metadata=metadata,
             groups=series,
+            info=info,
         )
 
     def _save_artifact(self, output_dir: Path):
@@ -285,7 +283,8 @@ class BaseForecaster(_BasePtObject_v2):
             The data to fit on. The datamodule splits it into training and
             validation data.
         trainer : lightning.Trainer, optional
-            Overrides the trainer given to ``__init__`` for this call only.
+            Used as-is for this call instead of building one from
+            ``trainer_kwargs``.
         save_ckpt : bool, default=True
             If True, save the best model checkpoint and the `datamodule_cfg`.
         ckpt_dir : Union[str, Path], default="checkpoints"
@@ -340,12 +339,10 @@ class BaseForecaster(_BasePtObject_v2):
         return_info: list[str] | None = None,
         output_dir: str | Path | None = None,
         **kwargs,
-    ) -> TimeSeries | dict[str, torch.Tensor] | None:
+    ) -> TimeSeries | dict[str, torch.Tensor]:
         """
         Generate predictions by wrapping the model's predict method.
 
-        This method prepares the data by resolving it into a DataLoader and then
-        delegates the prediction task to the underlying model's ``.predict()`` method.
 
         Parameters
         ----------
@@ -355,11 +352,11 @@ class BaseForecaster(_BasePtObject_v2):
         mode : str
             The prediction mode ("prediction", "quantiles", or "raw").
         return_info : list of str, optional
-            Extra keys to return next to the prediction, e.g. ``"x"``, ``"y"``,
-            ``"index"``. Forces the dict return form.
+            Extra model outputs to return with the prediction, e.g. ``"x"``,
+            ``"y"``, ``"index"``. Stored in the ``info`` dict of the returned
+            :class:`TimeSeries`, or as keys of the dict for ``mode="raw"``.
         output_dir : str or Path, optional
-            If given, the result is pickled to ``predictions.pkl`` there and
-            ``None`` is returned.
+            If given, the result is also pickled to ``predictions.pkl`` there.
         **kwargs :
             Passed on to the model's ``.predict()``, e.g. ``mode_kwargs`` and
             ``trainer_kwargs``.
@@ -367,14 +364,10 @@ class BaseForecaster(_BasePtObject_v2):
         Returns
         -------
         TimeSeries or dict of str to torch.Tensor or None
-            For ``mode="prediction"`` and ``"quantiles"`` without ``return_info``,
-            a :class:`TimeSeries` with ``metadata.is_prediction=True`` and one row
-            per forecast step. ``_series`` is the source series of the window and
-            ``_time_idx`` the position in that series; windows that overlap repeat
-            a ``_time_idx`` within a ``_series``. Point mode names the target
-            columns after the targets; quantile mode uses ``y0, y1, ...``, one
-            per quantile. For ``mode="raw"`` or when ``return_info`` is given,
-            the model's dict. ``None`` if ``output_dir`` is given.
+            For ``mode="prediction"`` and ``"quantiles"``, a :class:`TimeSeries`
+            with ``metadata.is_prediction=True``, one row per forecast step and
+            the ``return_info`` outputs in its ``info`` dict. For ``mode="raw"``,
+            the model's dict.
 
             Values are in the space of the fitted target normalizer; no inverse
             transform is applied yet.
@@ -388,11 +381,12 @@ class BaseForecaster(_BasePtObject_v2):
         predictions = self.model.predict(
             dataloader, mode=mode, return_info=return_info, **kwargs
         )
-        if mode != "raw" and not return_info:
+        if mode != "raw":
             predictions = self._to_timeseries(
                 predictions["prediction"],
                 windows=getattr(dataloader.dataset, "windows", None),
                 metadata=data.get_metadata() if mode == "prediction" else None,
+                info={k: v for k, v in predictions.items() if k != "prediction"},
             )
 
         if output_dir:
@@ -402,6 +396,5 @@ class BaseForecaster(_BasePtObject_v2):
             with open(output_file, "wb") as f:
                 pickle.dump(predictions, f)
             print(f"Predictions saved to {output_file}")
-            return None
 
         return predictions

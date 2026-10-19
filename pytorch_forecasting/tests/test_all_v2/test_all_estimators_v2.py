@@ -108,10 +108,10 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         )
 
         for key in return_info_keys:
-            assert key in info_out, f"Requested key '{key}' missing from output"
+            assert key in info_out.info, f"Requested key '{key}' missing from output"
 
-        assert info_out["index"] is not None
-        assert isinstance(info_out["x"], dict)
+        assert info_out.info["index"] is not None
+        assert isinstance(info_out.info["x"], dict)
 
         shutil.rmtree(tmp_path, ignore_errors=True)
 

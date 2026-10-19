@@ -448,6 +448,7 @@ class TimeSeries(Dataset):
         metadata: TimeSeriesMetadata | dict | None = None,
         group_starts: list[int] | None = None,
         groups: np.ndarray | list | None = None,
+        info: dict | None = None,
     ) -> "TimeSeries":
         """Construct a ``TimeSeries`` of predictions from model output tensors.
 
@@ -465,12 +466,15 @@ class TimeSeries(Dataset):
         groups : np.ndarray or list, optional
             per-row series labels. Takes precedence over ``group_starts``.
             With neither, all rows are one series.
+        info : dict, optional
+            extra outputs that belong to the predictions but are not row-wise,
+            e.g. the per-window model inputs. Stored as ``info`` on the result.
 
         Returns
         -------
         TimeSeries
-            with columns ``_series``, ``_time_idx`` and one per target, and
-            ``metadata.is_prediction`` set to ``True``.
+            with columns ``_series``, ``_time_idx`` and one per target,
+            ``metadata.is_prediction`` set to ``True`` and ``info`` attached.
 
         Raises
         ------
@@ -528,4 +532,5 @@ class TimeSeries(Dataset):
 
         obj = cls(df, time="_time_idx", target=target, group=["_series"])
         obj.metadata = replace(obj.metadata, is_prediction=True)
+        obj.info = info or {}
         return obj

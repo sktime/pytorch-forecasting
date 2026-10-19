@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Any
 
-from lightning.pytorch import Trainer
 from torch import nn
 from torch.optim import Optimizer
 
@@ -37,7 +36,7 @@ class TFTForecaster(BaseForecaster):
         Learning-rate scheduler name.
     lr_scheduler_params : dict, optional
         Keyword arguments for the scheduler.
-    trainer : lightning.pytorch.Trainer, optional
+    trainer_kwargs : dict, optional
         See :class:`~pytorch_forecasting.models.base.BaseForecaster`.
     datamodule : EncoderDecoderTimeSeriesDataModule, optional
         Configured, data-less datamodule. See
@@ -69,7 +68,7 @@ class TFTForecaster(BaseForecaster):
         optimizer_params: dict | None = None,
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
-        trainer: Trainer | None = None,
+        trainer_kwargs: dict | None = None,
         datamodule: Any = None,
         ckpt_path: str | Path | None = None,
     ):
@@ -84,11 +83,13 @@ class TFTForecaster(BaseForecaster):
         self.optimizer_params = optimizer_params
         self.lr_scheduler = lr_scheduler
         self.lr_scheduler_params = lr_scheduler_params
-        self.trainer = trainer
+        self.trainer_kwargs = trainer_kwargs
         self.datamodule = datamodule
         self.ckpt_path = ckpt_path
         super().__init__(
-            trainer=self.trainer, datamodule=self.datamodule, ckpt_path=self.ckpt_path
+            trainer_kwargs=self.trainer_kwargs,
+            datamodule=self.datamodule,
+            ckpt_path=self.ckpt_path,
         )
 
     @classmethod
