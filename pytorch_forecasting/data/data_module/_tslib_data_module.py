@@ -1028,10 +1028,6 @@ class TslibDataModule(LightningDataModule):
 
         self._ensure_split()
 
-        # Scalers are always fit on ``_train_indices``, which ``_ensure_split``
-        # keeps stable across stages. Fitting here rather than only under
-        # ``stage == "fit"`` means a standalone ``setup("test")`` still yields
-        # scaled data instead of silently passing the raw values through.
         self._resolve_target_normalizer(self._train_indices)
         self._fit_target_normalizer(self._train_indices)
         if not self._feature_scalers_fitted:
