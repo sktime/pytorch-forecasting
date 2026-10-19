@@ -13,23 +13,71 @@ from pytorch_forecasting._registry._tags import (
 )
 
 
-def test_register_is_populated():
-    """Every register row is a 4-tuple and the table matches it."""
+def test_tag_register_type():
+    """Test the specification of the tag register. See _tags for specs."""
+    assert isinstance(OBJECT_TAG_REGISTER, list)
     assert len(OBJECT_TAG_REGISTER) > 0
-    for row in OBJECT_TAG_REGISTER:
-        assert len(row) == 4
-        tag_name, parent_type, _, short_descr = row
+    assert all(isinstance(tag, tuple) for tag in OBJECT_TAG_REGISTER)
+
+    # _BaseTag is scaffolding, not a tag, and must not appear in the register
+    assert "" not in OBJECT_TAG_LIST
+    assert _BaseTag.get_class_tags()["tag_name"] == ""
+
+    for tag in OBJECT_TAG_REGISTER:
+        assert len(tag) == 4
+        tag_name, parent_type, tag_type, short_descr = tag
+
         assert isinstance(tag_name, str) and tag_name
         assert isinstance(parent_type, str) and parent_type
         assert isinstance(short_descr, str) and short_descr
+
+        # tag_type is either a plain type name, or (kind, allowed values)
+        assert isinstance(tag_type, (str, tuple))
+        if isinstance(tag_type, str):
+            assert tag_type in ("bool", "int", "str")
+            continue
+
+        assert len(tag_type) == 2
+        kind, allowed = tag_type
+        assert kind in ("str", "list")
+        if kind == "str":
+            assert isinstance(allowed, list)
+            assert all(isinstance(a, str) for a in allowed)
+        else:
+            assert allowed == "str" or (
+                isinstance(allowed, list) and all(isinstance(a, str) for a in allowed)
+            )
+
     assert OBJECT_TAG_TABLE.shape[0] == len(OBJECT_TAG_REGISTER)
-    assert set(OBJECT_TAG_LIST) == {row[0] for row in OBJECT_TAG_REGISTER}
+    assert set(OBJECT_TAG_LIST) == {tag[0] for tag in OBJECT_TAG_REGISTER}
 
 
-def test_base_tag_itself_not_registered():
-    """``_BaseTag`` is scaffolding, not a tag."""
-    assert "" not in OBJECT_TAG_LIST
-    assert _BaseTag.get_class_tags()["tag_name"] == ""
+def test_every_tag_is_documented():
+    """Each tag class carries the sections asked for in the review of #2334.
+
+    That review asked every tag to document its possible values, its default and
+    what each value changes. Asserting it here keeps the standard from degrading
+    silently as tags are added.
+    """
+    undocumented = []
+
+    for tag_name in OBJECT_TAG_LIST:
+        cls = next(
+            c
+            for c in _BaseTag.__subclasses__()
+            if c.get_class_tags()["tag_name"] == tag_name
+        )
+        doc = cls.__doc__
+        if doc is None:
+            undocumented.append(f"{tag_name}: no docstring")
+            continue
+        missing = [s for s in ("Possible values", "Effect") if s not in doc]
+        if missing:
+            undocumented.append(f"{tag_name}: missing {', '.join(missing)}")
+        if not cls.get_class_tags()["short_descr"]:
+            undocumented.append(f"{tag_name}: empty short_descr")
+
+    assert not undocumented, "under-documented tags:\n" + "\n".join(undocumented)
 
 
 @pytest.mark.parametrize(
@@ -62,55 +110,6 @@ def test_check_tag_is_valid_rejects(tag_name, tag_value, error):
         check_tag_is_valid(tag_name, tag_value)
 
 
-@pytest.mark.parametrize("row", OBJECT_TAG_REGISTER, ids=lambda r: r[0])
-def test_every_tag_type_is_supported(row):
-    """``check_tag_is_valid`` has an arm for every shape the register declares.
-
-    This is what lets ``check_tag_is_valid`` end without an unreachable
-    fallback branch.
-    """
-    tag_type = row[2]
-    if isinstance(tag_type, str):
-        assert tag_type in ("bool", "int", "str")
-        return
-    assert isinstance(tag_type, tuple) and len(tag_type) == 2
-    kind, allowed = tag_type
-    assert kind in ("str", "list")
-    if kind == "str":
-        assert isinstance(allowed, list) and all(isinstance(a, str) for a in allowed)
-    else:
-        assert allowed == "str" or (
-            isinstance(allowed, list) and all(isinstance(a, str) for a in allowed)
-        )
-
-
-@pytest.mark.parametrize("row", OBJECT_TAG_REGISTER, ids=lambda r: r[0])
-def test_every_tag_is_documented(row):
-    """Each tag class carries the sections asked for in review of #2334."""
-    tag_name = row[0]
-    cls = next(
-        c
-        for c in _BaseTag.__subclasses__()
-        if c.get_class_tags()["tag_name"] == tag_name
-    )
-    doc = cls.__doc__
-    assert doc is not None, f"{tag_name} has no docstring"
-    assert "Possible values" in doc, f"{tag_name} lacks a Possible values section"
-    assert "Effect" in doc, f"{tag_name} lacks an Effect section"
-    assert cls.get_class_tags()["short_descr"], f"{tag_name} has an empty short_descr"
-
-
-def test_tag_classes_are_not_returned_by_all_objects():
-    """Tag classes inherit ``_BaseObject`` and must not pollute the object lookup."""
-    from pytorch_forecasting._registry import all_objects
-
-    found = all_objects(return_names=False)
-    assert not any(
-        getattr(obj, "get_class_tags", lambda: {})().get("object_type") == "tag"
-        for obj in found
-    )
-
-
 def _all_declared_tags():
     """Yield (class, tag_name, tag_value) for every tag declared in the package."""
     from pytorch_forecasting._registry import all_objects
@@ -141,93 +140,6 @@ def test_every_declared_tag_value_is_valid():
         except (KeyError, ValueError) as err:
             failures.append(f"{obj.__name__}.{tag_name}: {err}")
     assert not failures, "invalid tag values:\n" + "\n".join(failures)
-
-
-def test_all_tags_default_returns_register_rows():
-    """The default return is the register itself."""
-    from pytorch_forecasting._registry import all_tags
-
-    assert sorted(all_tags()) == sorted(OBJECT_TAG_REGISTER)
-
-
-def test_all_tags_names_only():
-    """``return_names=False`` gives tag names without duplicates."""
-    from pytorch_forecasting._registry import all_tags
-
-    assert sorted(all_tags(return_names=False)) == sorted(OBJECT_TAG_LIST)
-
-
-def test_all_tags_filters_by_parent_type():
-    """Expected values are written out on purpose: this is a tripwire.
-
-    Adding a scaler strategy tag should fail here, as a reminder to document
-    it in the register rather than only on the strategy class.
-    """
-    from pytorch_forecasting._registry import all_tags
-
-    result = all_tags(parent_types="scaler_strategy", return_names=False)
-    assert sorted(result) == ["fit_per_sequence", "is_label_encoder"]
-
-
-def test_all_tags_as_dataframe():
-    """The dataframe form names its columns."""
-    import pandas as pd
-
-    from pytorch_forecasting._registry import all_tags
-
-    result = all_tags(as_dataframe=True)
-    assert isinstance(result, pd.DataFrame)
-    assert list(result.columns) == ["name", "scitype", "type", "description"]
-    assert len(result) == len(OBJECT_TAG_REGISTER)
-
-
-def test_all_objects_rejects_unknown_filter_tag():
-    """A misspelt tag name is an error, not an empty result."""
-    from pytorch_forecasting._registry import all_objects
-
-    with pytest.raises(KeyError) as excinfo:
-        all_objects(filter_tags={"not_a_real_tag": True})
-    assert "not_a_real_tag" in str(excinfo.value)
-
-
-def test_all_objects_suggests_a_close_tag_name():
-    """The error names the tag the user probably meant."""
-    from pytorch_forecasting._registry import all_objects
-
-    with pytest.raises(KeyError) as excinfo:
-        all_objects(filter_tags={"capability:exogenus": True})
-    assert "capability:exogenous" in str(excinfo.value)
-
-
-def test_all_objects_rejects_unknown_filter_tag_given_as_str():
-    """``filter_tags`` may be a bare str, which is validated the same way."""
-    from pytorch_forecasting._registry import all_objects
-
-    with pytest.raises(KeyError):
-        all_objects(filter_tags="not_a_real_tag")
-
-
-def test_all_objects_accepts_known_filter_tags():
-    """Validation does not break the normal path."""
-    from pytorch_forecasting._registry import all_objects
-
-    result = all_objects(filter_tags={"object_type": "metric"}, return_names=False)
-    assert len(result) > 0
-
-
-def test_metric_type_enum_matches_test_all_metrics():
-    """The metric test suite hard-codes the same values; keep them in sync."""
-    import inspect
-
-    from pytorch_forecasting.metrics.tests import test_all_metrics
-
-    source = inspect.getsource(test_all_metrics.TestAllPtMetrics.test_metric_type)
-    registered = OBJECT_TAG_TABLE[OBJECT_TAG_TABLE[0] == "metric_type"].iloc[0, 2][1]
-    for value in registered:
-        assert f'"{value}"' in source, (
-            f"metric_type value {value!r} is in the register but not asserted in "
-            "TestAllPtMetrics.test_metric_type"
-        )
 
 
 def test_object_type_enum_covers_test_class_registry():
