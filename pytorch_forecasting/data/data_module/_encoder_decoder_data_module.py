@@ -377,21 +377,24 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
     def _coerce_sample(
         self, sample: dict
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Convert raw sample arrays to float tensors and compute time mask."""
         target = sample["y"]
         features = sample["x"]
         times = sample["t"]
         cutoff_time = sample["cutoff_time"]
+        weights = sample.get("weights", None)
 
         target = target.float()
         features = features.float()
 
         if target.ndim == 1:
             target = target.unsqueeze(-1)
+        if weights is not None:
+            weights = weights.float()
 
         time_mask = torch.tensor(times <= cutoff_time, dtype=torch.bool)
-        return target, features, times, time_mask
+        return target, features, times, time_mask, weights
 
     def _split_features(self, features: torch.Tensor) -> dict[str, torch.Tensor]:
         """Split feature tensor into categorical and continuous subsets."""
@@ -464,7 +467,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         __getitem__.
         """
         sample = self.time_series_dataset[series_idx]
-        target, features, times, time_mask = self._coerce_sample(sample)
+        target, features, times, time_mask, weights = self._coerce_sample(sample)
         split = self._split_features(features)
         target, target_original = self._normalize_target(target, series_idx)
         continuous = self._normalize_features(split["continuous"], series_idx)
@@ -472,6 +475,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
         return {
             "features": {"categorical": split["categorical"], "continuous": continuous},
             "target": target,
+            "weights": weights,
             "target_original": target_original,
             "static": sample.get("st", None),
             "group": sample.get("group", torch.tensor([0])),
@@ -662,18 +666,11 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             abs_vals = target_original_past.abs().masked_fill(~valid_mask, 0.0)
             counts = valid_mask.sum(dim=0).clamp(min=1)
             target_scale_vec = abs_vals.sum(dim=0) / counts
-            target_scale_vec = torch.where(
+            target_scale = torch.where(
                 (target_scale_vec == 0) | torch.isnan(target_scale_vec),
                 torch.ones_like(target_scale_vec),
                 target_scale_vec,
             )
-
-            if self.data_module.n_targets > 1:
-                target_scale = [
-                    target_scale_vec[i] for i in range(self.data_module.n_targets)
-                ]
-            else:
-                target_scale = target_scale_vec.squeeze(0)
 
             encoder_mask = (
                 data["time_mask"][encoder_indices]
@@ -797,11 +794,14 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
 
-            if y.shape[-1] > 1:
-                y = [y[:, i] for i in range(y.shape[-1])]
+            weight = data.get("weight", None)
+            if weight is not None:
+                weight = weight[decoder_indices]
+                if weight.shape[-1] == 1 and y.shape[-1] > 1:
+                    weight = weight.expand(-1, y.shape[-1])
             else:
-                y = y.squeeze(-1)
-            return x, y
+                weight = torch.ones_like(y)
+            return x, y, weight
 
     def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
         """Generate sliding windows for training, validation, and testing.
@@ -1087,16 +1087,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
             "encoder_mask": torch.stack([x["encoder_mask"] for x, _ in batch]),
             "decoder_mask": torch.stack([x["decoder_mask"] for x, _ in batch]),
         }
-        if isinstance(batch[0][0]["target_scale"], list | tuple):
-            num_targets = len(batch[0][0]["target_scale"])
-            target_scale = [
-                torch.stack([x["target_scale"][i] for x, _ in batch])
-                for i in range(num_targets)
-            ]
-        else:
-            target_scale = torch.stack([x["target_scale"] for x, _ in batch])
-
-        x_batch["target_scale"] = target_scale
+        x_batch["target_scale"] = torch.stack([x["target_scale"] for x, _, _ in batch])
 
         if "static_categorical_features" in batch[0][0]:
             x_batch["static_categorical_features"] = torch.stack(
@@ -1106,13 +1097,7 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
                 [x["static_continuous_features"] for x, _ in batch]
             )
 
-        if isinstance(batch[0][1], list | tuple):
-            num_targets = len(batch[0][1])
-            y_batch = []
-            for i in range(num_targets):
-                target_tensors = [sample_y[i] for _, sample_y in batch]
-                stacked_target = torch.stack(target_tensors)
-                y_batch.append(stacked_target)
-        else:
-            y_batch = torch.stack([y for _, y in batch])
-        return x_batch, y_batch
+        y_batch = torch.stack([y for _, y, _ in batch])
+        weight_batch = torch.stack([w for _, _, w in batch])
+
+        return x_batch, (y_batch, weight_batch)
