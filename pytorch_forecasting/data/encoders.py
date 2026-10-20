@@ -1391,6 +1391,40 @@ class MultiNormalizer(TorchNormalizer):
         self.fitted_ = True
         return self
 
+    def fit_transform(
+        self,
+        y: pd.DataFrame | np.ndarray | torch.Tensor,
+        X: pd.DataFrame = None,
+        return_norm: bool = False,
+    ) -> (
+        list[tuple[np.ndarray | torch.Tensor, np.ndarray]]
+        | list[np.ndarray | torch.Tensor]
+    ):
+        """
+        Fit normalizers and scale input data.
+
+        Parameters
+        ----------
+        y: Union[pd.DataFrame, np.ndarray, torch.Tensor]
+            data to scale, one column per target as for :py:meth:`fit`
+        X: pd.DataFrame
+            dataframe with ``groups`` columns. Only necessary
+            if :py:class:`~GroupNormalizer` is among normalizers
+        return_norm: bool, optional
+            If to return . Defaults to False.
+
+        Returns
+        -------
+        Union[List[Tuple[Union[np.ndarray, torch.Tensor], np.ndarray]], List[Union[np.ndarray, torch.Tensor]]]
+                List of scaled data, if ``return_norm=True``, returns also scales as second element
+        """  # noqa: E501
+        self.fit(y, X)
+        # fit takes one column per target, transform one row per target
+        # (it transposes a DataFrame itself)
+        if not isinstance(y, pd.DataFrame):
+            y = y.T
+        return self.transform(y, X, return_norm=return_norm)
+
     def __getitem__(self, idx: int):
         """
         Return normalizer.
