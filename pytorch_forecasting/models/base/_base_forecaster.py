@@ -192,6 +192,7 @@ class BaseForecaster(_BasePtObject_v2):
         windows: list | None,
         metadata: Any | None,
         info: dict | None = None,
+        label_targets: bool = True,
     ) -> TimeSeries:
         """Move the pred tensors to ``TimeSeries``.
 
@@ -206,13 +207,14 @@ class BaseForecaster(_BasePtObject_v2):
             ``None`` or its length differs from ``n_windows``, each window is
             labelled as its own series with a horizon-local time index.
         metadata : TimeSeriesMetadata or dict, optional
-            Schema of the input data.
-            We read only ``metadata["cols"]["y"]`` is read, to
-            name the target columns. Pass ``None`` when the last axis does not
-            hold targets, e.g. in quantile mode, so columns fall back to
-            ``y0, y1, ...``.
+            Schema of the input data. Only ``metadata["cols"]["y"]`` is read,
+            to name the output columns and the actual-value columns.
         info : dict, optional
-            Extra per-window outputs, attached to the result as ``info``.
+            Extra per-window outputs. like ``y``, ``x`` etc.
+        label_targets : bool, default=True
+            Whether the last axis of ``y`` holds the targets, so the output
+            columns take their names. Pass ``False`` when it does not, e.g. in
+            quantile mode, so they fall back to ``y0, y1, ...``.
 
         Returns
         -------
@@ -228,6 +230,8 @@ class BaseForecaster(_BasePtObject_v2):
               ``y0, y1, ...``. With several targets and quantile outputs the
               columns are target-major, i.e. all quantiles of target 0, then
               all quantiles of target 1.
+            * one ``<target>_actual`` column per target if ``info`` holds
+              ``"y"``. These are not part of the schema, only of the frame.
 
             Values are in the space of the fitted target normalizer.
         """
@@ -244,12 +248,21 @@ class BaseForecaster(_BasePtObject_v2):
                 [np.arange(s + enc, s + enc + pred_len) for _, s, enc, _ in windows]
             )
 
-        return TimeSeries.from_tensors(
+        info = dict(info or {})
+        y_true = info.pop("y", None)
+        ts = TimeSeries.from_tensors(
             {"y": y.reshape(n_windows * pred_len, -1), "t": torch.as_tensor(t)},
-            metadata=metadata,
+            metadata=metadata if label_targets else None,
             groups=series,
             info=info,
         )
+        if y_true is not None and metadata is not None:
+            if isinstance(y_true, (list, tuple)):
+                y_true = torch.stack(list(y_true), dim=-1)
+            y_true = y_true.reshape(n_windows * pred_len, -1).numpy()
+            for i, col in enumerate(metadata["cols"]["y"]):
+                ts.data[f"{col}_actual"] = y_true[:, i]
+        return ts
 
     def _save_artifact(self, output_dir: Path):
         """Save all configuration artifacts."""
@@ -366,8 +379,9 @@ class BaseForecaster(_BasePtObject_v2):
         TimeSeries or dict of str to torch.Tensor or None
             For ``mode="prediction"`` and ``"quantiles"``, a :class:`TimeSeries`
             with ``metadata.is_prediction=True``, one row per forecast step and
-            the ``return_info`` outputs in its ``info`` dict. For ``mode="raw"``,
-            the model's dict.
+            the ``return_info`` outputs in its ``info`` dict, except ``"y"``,
+            which becomes one ``<target>_actual`` column per target in the
+            frame. For ``mode="raw"``, the model's dict.
 
             Values are in the space of the fitted target normalizer; no inverse
             transform is applied yet.
@@ -385,8 +399,9 @@ class BaseForecaster(_BasePtObject_v2):
             predictions = self._to_timeseries(
                 predictions["prediction"],
                 windows=getattr(dataloader.dataset, "windows", None),
-                metadata=data.get_metadata() if mode == "prediction" else None,
+                metadata=data.get_metadata(),
                 info={k: v for k, v in predictions.items() if k != "prediction"},
+                label_targets=mode == "prediction",
             )
 
         if output_dir:
