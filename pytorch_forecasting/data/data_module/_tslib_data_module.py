@@ -520,6 +520,10 @@ class TslibDataModule(LightningDataModule):
             "features": self.features,
         }
 
+        metadata["categorical_cardinalities"] = self.time_series_dataset.metadata.get(
+            "categorical_cardinalities", {}
+        )
+
         return metadata
 
     @property
@@ -582,10 +586,12 @@ class TslibDataModule(LightningDataModule):
         # scaling and normalization
         target_scale = {}
 
+        # Ensure categorical slices are purely
+        # long format integers for PyTorch Embeddings
         categorical_features = (
-            features[:, self.categorical_indices]
+            features[:, self.categorical_indices].long()
             if self.categorical_indices
-            else torch.zeros((features.shape[0], 0))
+            else torch.zeros((features.shape[0], 0), dtype=torch.long)
         )
 
         continuous_features = (

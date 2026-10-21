@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.preprocessing import LabelEncoder
 import torch
 
+from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -397,3 +399,139 @@ def test_group_index():
     group_indices = [int(ts[i]["group"][0]) for i in range(len(ts))]
 
     assert group_indices == list(range(len(ts)))
+
+
+def test_timeseries_categorical_encoding():
+    """Test categorical encoding in TimeSeries."""
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=4, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0],
+            "group": ["Grp1", "Grp1", "Grp2", "Grp2"],
+            "cat_feature": ["red", "blue", "red", "green"],
+        }
+    )
+
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=["cat_feature", "group"],
+    )
+
+    # red, blue, green + unknown class
+    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == 4
+
+    item = ts[0]
+    # Assert D1 emits purely tensors, no strings!
+    assert isinstance(item["x"], torch.Tensor)
+
+
+@pytest.mark.parametrize(
+    "encoder,expected_cardinality",
+    [
+        pytest.param(
+            NaNLabelEncoder(add_nan=True),
+            4,
+            id="NaNLabelEncoder-add_nan",
+        ),
+        pytest.param(
+            NaNLabelEncoder(add_nan=False),
+            3,
+            id="NaNLabelEncoder-no_nan",
+        ),
+        pytest.param(
+            LabelEncoder(),
+            3,
+            id="sklearn-LabelEncoder",
+        ),
+    ],
+)
+def test_custom_sklearn_encoders(encoder, expected_cardinality):
+    """Test that D1 correctly handles injected encoders via categorical_encoders.
+
+    Verifies that various encoders satisfying the fit/transform/classes_ contract
+    are properly fitted, applied, and produce correct cardinality metadata.
+    """
+    from sklearn.preprocessing import LabelEncoder
+
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=4, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0],
+            "group": ["Grp1", "Grp1", "Grp2", "Grp2"],
+            "cat_feature": ["red", "blue", "red", "green"],
+        }
+    )
+
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=["cat_feature", "group"],
+        categorical_encoders={"cat_feature": encoder},
+    )
+
+    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == (
+        expected_cardinality
+    )
+    item = ts[0]
+    assert isinstance(item["x"], torch.Tensor)
+
+
+def test_pre_encoded_data():
+    """Test categorical_encoders=False with pre-encoded integer data."""
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=6, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "group": [0, 0, 0, 1, 1, 1],
+            "cat_feature": [0, 1, 2, 0, 1, 2],
+        }
+    )
+
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=["cat_feature"],
+        num=[],
+        categorical_encoders=False,
+    )
+
+    # Cardinalities inferred from data via nunique()
+    assert ts.metadata["categorical_cardinalities"]["cat_feature"] == 3
+    # No encoders fitted
+    assert ts._categorical_encoders == {}
+    # Data should pass through untouched
+    item = ts[0]
+    assert isinstance(item["x"], torch.Tensor)
+
+
+def test_no_categorical_features():
+    """Test TimeSeries with no categorical columns and no encoders."""
+    data = pd.DataFrame(
+        {
+            "timestamp": pd.date_range(start="2023-01-01", periods=6, freq="D"),
+            "target": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "group": [1, 1, 1, 2, 2, 2],
+            "feature1": np.random.randn(6),
+        }
+    )
+
+    ts = TimeSeries(
+        data=data,
+        time="timestamp",
+        target="target",
+        group=["group"],
+        cat=[],
+        num=["feature1"],
+    )
+
+    assert ts.metadata["categorical_cardinalities"] == {}
+    assert ts._categorical_encoders == {}
+    item = ts[0]
+    assert isinstance(item["x"], torch.Tensor)
