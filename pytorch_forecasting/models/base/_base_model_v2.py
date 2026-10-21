@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from pytorch_forecasting.callbacks.predict import PredictCallback
 from pytorch_forecasting.metrics import (
     Metric,
+    MultiLoss,
     coerce_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.utils._classproperty import classproperty
@@ -168,23 +169,183 @@ class BaseModel(LightningModule):
 
         return predict_callback.result
 
+    def _coerce_y_for_loss(
+        self, y: torch.Tensor | list[torch.Tensor]
+    ) -> torch.Tensor | tuple[list[torch.Tensor], None]:
+        """Coerce datamodule targets into the layout the loss expects.
+
+        The v2 datamodules emit ``y`` as a single tensor for one target, or as a
+        ``list`` of tensors for multiple targets. ``MultiLoss`` instead indexes
+        its targets as ``y_actual[0][idx]`` and reads a shared sample weight
+        from ``y_actual[1]``, so the list has to be wrapped before it is passed
+        on. Sample weights are not yet carried by the v2 batch format, hence the
+        ``None``.
+
+        Parameters
+        ----------
+        y : torch.Tensor or list of torch.Tensor
+            Targets as produced by the datamodule collate function.
+
+        Returns
+        -------
+        torch.Tensor or tuple of (list of torch.Tensor, None)
+            ``(targets, None)`` when the loss is a ``MultiLoss``, otherwise the
+            single target tensor.
+
+        Raises
+        ------
+        ValueError
+            If the number of targets does not match the number of metrics in a
+            ``MultiLoss``, or if multiple targets are paired with a loss that
+            only handles one.
+        """
+        targets = list(y) if isinstance(y, (list, tuple)) else [y]
+        n_targets = len(targets)
+
+        if isinstance(self._loss, MultiLoss):
+            if len(self._loss) != n_targets:
+                raise ValueError(
+                    f"MultiLoss holds {len(self._loss)} metrics but the data "
+                    f"provides {n_targets} target(s) - these have to match."
+                )
+            # MultiLoss indexes y_actual[0][idx] and y_actual[1] (the weight)
+            return targets, None
+
+        if n_targets > 1:
+            raise ValueError(
+                f"The data provides {n_targets} targets, which requires the loss "
+                f"to be a MultiLoss, but found {type(self.loss).__name__}. "
+                f"Use MultiLoss([...]) with one metric per target."
+            )
+        return targets[0]
+
+    def _coerce_y_hat_for_loss(
+        self, y_hat: torch.Tensor | list[torch.Tensor]
+    ) -> torch.Tensor | list[torch.Tensor]:
+        """Coerce the network output into the layout the loss expects.
+
+        ``MultiLoss`` indexes its predictions as ``y_pred[idx]``, so a model may
+        return either one tensor per target or a single stacked tensor whose
+        last dimension enumerates the targets.
+
+        Parameters
+        ----------
+        y_hat : torch.Tensor or list of torch.Tensor
+            Raw ``"prediction"`` entry of the network output.
+
+        Returns
+        -------
+        torch.Tensor or list of torch.Tensor
+            A list with one prediction per metric when the loss is a
+            ``MultiLoss``, otherwise a single tensor.
+
+        Raises
+        ------
+        ValueError
+            If the number of predictions cannot be matched to the number of
+            metrics in the loss.
+        """
+        if not isinstance(self._loss, MultiLoss):
+            if isinstance(y_hat, (list, tuple)):
+                if len(y_hat) != 1:
+                    raise ValueError(
+                        f"The model returned {len(y_hat)} predictions, which "
+                        f"requires the loss to be a MultiLoss, but found "
+                        f"{type(self.loss).__name__}."
+                    )
+                return y_hat[0]
+            return y_hat
+
+        n_metrics = len(self._loss)
+        if isinstance(y_hat, (list, tuple)):
+            if len(y_hat) != n_metrics:
+                raise ValueError(
+                    f"MultiLoss holds {n_metrics} metrics but the model returned "
+                    f"{len(y_hat)} predictions - these have to match."
+                )
+            return list(y_hat)
+
+        if n_metrics == 1:
+            return [y_hat]
+        # only a [batch, horizon, n_targets] tensor can be split per target - for a
+        # 2D output the last dimension is the horizon, so splitting it would silently
+        # slice time steps instead of targets.
+        if y_hat.ndim < 3 or y_hat.size(-1) != n_metrics:
+            raise ValueError(
+                f"MultiLoss holds {n_metrics} metrics, so the model has to return "
+                f"one prediction per target, either as a list or as a tensor of "
+                f"shape (batch, horizon, {n_metrics}), but got shape "
+                f"{tuple(y_hat.shape)}."
+            )
+        return list(torch.split(y_hat, 1, dim=-1))
+
     def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
-        """Converts raw model output to point forecasts."""
-        # todo: add MultiLoss support
+        """Converts raw model output to point forecasts.
+
+        Parameters
+        ----------
+        out : dict[str, Any]
+            Network output dictionary with a ``"prediction"`` key.
+        **kwargs
+            Passed on to the loss metric's ``to_prediction``.
+
+        Returns
+        -------
+        torch.Tensor or list of torch.Tensor
+            A list with one point forecast per target when the loss is a
+            ``MultiLoss``, otherwise a single tensor.
+        """
+        y_hat = self._coerce_y_hat_for_loss(out["prediction"])
         try:
-            out = self._loss.to_prediction(out["prediction"], **kwargs)
+            return self._loss.to_prediction(y_hat, **kwargs)
         except TypeError:  # in case passed kwargs do not exist
-            out = self._loss.to_prediction(out["prediction"])
-        return out
+            return self._loss.to_prediction(y_hat)
 
     def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
-        """Converts raw model output to quantile forecasts."""
-        # todo: add MultiLoss support
+        """Converts raw model output to quantile forecasts.
+
+        Parameters
+        ----------
+        out : dict[str, Any]
+            Network output dictionary with a ``"prediction"`` key.
+        **kwargs
+            Passed on to the loss metric's ``to_quantiles``.
+
+        Returns
+        -------
+        torch.Tensor or list of torch.Tensor
+            A list with one quantile forecast per target when the loss is a
+            ``MultiLoss``, otherwise a single tensor.
+        """
+        y_hat = self._coerce_y_hat_for_loss(out["prediction"])
         try:
-            out = self._loss.to_quantiles(out["prediction"], **kwargs)
+            return self._loss.to_quantiles(y_hat, **kwargs)
         except TypeError:  # in case passed kwargs do not exist
-            out = self._loss.to_quantiles(out["prediction"])
-        return out
+            return self._loss.to_quantiles(y_hat)
+
+    def _step(
+        self, batch: tuple[dict[str, torch.Tensor], Any], batch_idx: int
+    ) -> dict[str, Any]:
+        """Run the forward pass and compute the loss, shared by all stages.
+
+        Parameters
+        ----------
+        batch : tuple
+            ``(x, y)`` as produced by the datamodule.
+        batch_idx : int
+            Index of the batch.
+
+        Returns
+        -------
+        dict[str, Any]
+            ``{"loss": ..., "y_hat": ..., "y": ...}`` where ``y_hat`` and ``y``
+            are already coerced to the layout the loss expects.
+        """
+        x, y = batch
+        y = self._coerce_y_for_loss(y)
+        y_hat = self._coerce_y_hat_for_loss(self(x)["prediction"])
+        loss = self._loss(y_hat, y)
+        return {"loss": loss, "y_hat": y_hat, "y": y}
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
@@ -204,15 +365,17 @@ class BaseModel(LightningModule):
         STEP_OUTPUT
             Dictionary containing the loss and other metrics.
         """
-        x, y = batch
-        y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
-        loss = self._loss(y_hat, y)
+        out = self._step(batch, batch_idx)
         self.log(
-            "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+            "train_loss",
+            out["loss"],
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
-        self.log_metrics(y_hat, y, prefix="train")
-        return {"loss": loss}
+        self.log_metrics(out["y_hat"], out["y"], prefix="train")
+        return {"loss": out["loss"]}
 
     def validation_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
@@ -232,15 +395,17 @@ class BaseModel(LightningModule):
         STEP_OUTPUT
             Dictionary containing the loss and other metrics.
         """
-        x, y = batch
-        y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
-        loss = self._loss(y_hat, y)
+        out = self._step(batch, batch_idx)
         self.log(
-            "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            "val_loss",
+            out["loss"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
-        self.log_metrics(y_hat, y, prefix="val")
-        return {"val_loss": loss}
+        self.log_metrics(out["y_hat"], out["y"], prefix="val")
+        return {"val_loss": out["loss"]}
 
     def test_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
@@ -260,15 +425,17 @@ class BaseModel(LightningModule):
         STEP_OUTPUT
             Dictionary containing the loss and other metrics.
         """
-        x, y = batch
-        y_hat_dict = self(x)
-        y_hat = y_hat_dict["prediction"]
-        loss = self._loss(y_hat, y)
+        out = self._step(batch, batch_idx)
         self.log(
-            "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
+            "test_loss",
+            out["loss"],
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+            logger=True,
         )
-        self.log_metrics(y_hat, y, prefix="test")
-        return {"test_loss": loss}
+        self.log_metrics(out["y_hat"], out["y"], prefix="test")
+        return {"test_loss": out["loss"]}
 
     def predict_step(
         self,
@@ -373,27 +540,46 @@ class BaseModel(LightningModule):
             raise ValueError(f"Scheduler {self.lr_scheduler} not supported.")
 
     def log_metrics(
-        self, y_hat: torch.Tensor, y: torch.Tensor, prefix: str = "val"
+        self,
+        y_hat: torch.Tensor | list[torch.Tensor],
+        y: torch.Tensor | tuple[list[torch.Tensor], None],
+        prefix: str = "val",
     ) -> None:
         """
         Log additional metrics during training, validation, or testing.
 
+        With a ``MultiLoss``, every logging metric is computed once per target
+        and logged under a ``target{idx}_`` prefix.
+
         Parameters
         ----------
-        y_hat : torch.Tensor
-            Predicted output tensor.
-        y : torch.Tensor
-            Target output tensor.
+        y_hat : torch.Tensor or list of torch.Tensor
+            Predicted output, coerced by :meth:`_coerce_y_hat_for_loss`.
+        y : torch.Tensor or tuple of (list of torch.Tensor, None)
+            Target output, coerced by :meth:`_coerce_y_for_loss`.
         prefix : str
             Prefix for the logged metrics (e.g., "train", "val", "test").
         """
+        if len(self.logging_metrics) == 0:
+            return
+
+        is_multi = isinstance(self._loss, MultiLoss)
+        if is_multi:
+            targets, _weight = y
+            preds = y_hat
+        else:
+            targets = [y]
+            preds = [y_hat]
+
         for metric in self.logging_metrics:
-            metric_value = metric(y_hat, y)
-            self.log(
-                f"{prefix}_{metric.__class__.__name__}",
-                metric_value,
-                on_step=False,
-                on_epoch=True,
-                prog_bar=True,
-                logger=True,
-            )
+            for idx, (pred, target) in enumerate(zip(preds, targets)):
+                metric_value = metric(pred, target)
+                tag = f"target{idx}_" if is_multi else ""
+                self.log(
+                    f"{tag}{prefix}_{metric.__class__.__name__}",
+                    metric_value,
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=True,
+                    logger=True,
+                )
