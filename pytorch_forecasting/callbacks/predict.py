@@ -78,8 +78,8 @@ class PredictCallback(BasePredictionWriter):
             if key == "x":
                 self.info[key].append(x_cpu)
             elif key == "y":
-                y_cpu = move_to_device(detach(y[0]), "cpu")
-                self.info[key].append(y_cpu)
+                y_val = y[0] if isinstance(y, tuple) else y
+                self.info[key].append(move_to_device(detach(y_val), "cpu"))
             elif key == "index":
                 index_cpu = move_to_device(detach(y[1]), "cpu")
                 self.info[key].append(index_cpu)

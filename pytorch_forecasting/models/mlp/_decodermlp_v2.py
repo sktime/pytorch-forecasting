@@ -53,9 +53,11 @@ class DecoderMLP_v2(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.mlp._decodermlp_pkg_v2 import DecoderMLP_pkg_v2
+        from pytorch_forecasting.models.mlp._decodermlp_forecaster_v2 import (
+            DecoderMLPForecaster,
+        )
 
-        return DecoderMLP_pkg_v2
+        return DecoderMLPForecaster
 
     def __init__(
         self,
