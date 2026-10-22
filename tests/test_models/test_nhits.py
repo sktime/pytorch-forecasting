@@ -216,3 +216,27 @@ def test_prediction_length(max_prediction_length: int):
         return_index=True,
         return_decoder_lengths=True,
     )
+
+
+def test_static_covariates_no_encoder_covariates():
+    from pytorch_forecasting.data.examples import generate_ar_data
+
+    data = generate_ar_data(seasonality=10.0, timesteps=400, n_series=10, seed=42)
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="value",
+        group_ids=["series"],
+        time_varying_unknown_reals=["value"],
+        max_encoder_length=60,
+        max_prediction_length=20,
+        add_target_scales=True,  # <-- introduces static real variables
+    )
+
+    dataloader = dataset.to_dataloader(train=True, batch_size=8)
+    model = NHiTS.from_dataset(dataset)
+
+    batch, _ = next(iter(dataloader))
+
+    # Should not crash with NameError
+    model(batch)
