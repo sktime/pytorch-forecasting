@@ -12,7 +12,10 @@ from pytorch_forecasting.tests.test_all_estimators import (
     EstimatorPackageConfig,
 )
 from pytorch_forecasting.tests.test_all_v2._test_integration import _integration
-from pytorch_forecasting.tests.test_all_v2.utils import _setup_pkg_and_data
+from pytorch_forecasting.tests.test_all_v2.utils import (
+    _make_minimal_vignette_data,
+    _setup_pkg_and_data,
+)
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
@@ -133,3 +136,30 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
         )
 
         assert object_pkg.__name__ in expected_names, msg
+
+    def test_minimal_vignette(self, object_pkg, tmp_path):
+        """Test running a minimal end-to-end vignette with all default parameters."""
+        data = _make_minimal_vignette_data()
+
+        fast_trainer_kwargs = {
+            "accelerator": "cpu",
+            "max_epochs": 1,
+            "limit_train_batches": 1,
+            "limit_val_batches": 1,
+            "logger": False,
+            "enable_progress_bar": False,
+            "enable_model_summary": False,
+            "num_sanity_val_steps": 0,
+            "enable_checkpointing": False,
+            "default_root_dir": str(tmp_path),
+        }
+
+        forecaster = object_pkg(trainer_kwargs=fast_trainer_kwargs)
+        forecaster.fit(data, save_ckpt=False)
+        predictions = forecaster.predict(data)
+
+        assert isinstance(predictions, TimeSeries)
+        assert predictions.metadata.is_prediction
+        assert len(predictions) > 0
+
+        shutil.rmtree(tmp_path, ignore_errors=True)
