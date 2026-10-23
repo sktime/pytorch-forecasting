@@ -39,8 +39,6 @@ __all__ = [
     "concat_sequences",
     "create_mask",
     "to_list",
-    "RecurrentNetwork",
-    "DecoderMLP",
     "detach",
     "masked_op",
     "move_to_device",
