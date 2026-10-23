@@ -3,6 +3,7 @@ name: PyPI Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   check_tag:
@@ -18,6 +19,10 @@ jobs:
 
       - shell: bash
         run: |
+          if [ "${{ github.event_name }}" != "release" ]; then
+            exit 0
+          fi
+
           TAG="${{ github.event.release.tag_name }}"
           GH_TAG_NAME="${TAG#v}"
           PY_VERSION=$(python - <<'PY'
@@ -98,6 +103,7 @@ jobs:
     name: Upload wheels to PyPI
     runs-on: ubuntu-latest
     needs: [pytest-nosoftdeps]
+    if: github.event_name == 'release'
 
     permissions:
       id-token: write
@@ -112,3 +118,24 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: wheelhouse/
+
+  upload_test_wheels:
+    name: Upload wheels to TestPyPI
+    runs-on: ubuntu-latest
+    needs: [pytest-nosoftdeps]
+    if: github.event_name == 'workflow_dispatch'
+
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: wheels
+          path: wheelhouse
+
+      - name: Publish package to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: wheelhouse/
+          repository-url: https://test.pypi.org/legacy/
