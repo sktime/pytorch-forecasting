@@ -1,3 +1,4 @@
+from lightning.pytorch import Trainer
 import numpy as np
 import pandas as pd
 import pytest
@@ -6,6 +7,7 @@ import torch.nn as nn
 
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.timeseries import TimeSeries
+from pytorch_forecasting.models.temporal_fusion_transformer import TFTForecaster
 from pytorch_forecasting.models.temporal_fusion_transformer._tft_v2 import TFT
 
 BATCH_SIZE_TEST = 2
@@ -395,3 +397,82 @@ def test_model_with_datamodule_integration(
         actual_batch_size,
         MAX_PREDICTION_LENGTH_TEST,
     )
+
+
+TRAINER_KWARGS_TEST = {
+    "accelerator": "cpu",
+    "logger": False,
+    "enable_progress_bar": False,
+}
+
+
+def _make_forecaster_data(df, offset=0.0, num=("enc_cont1", "dec_known_cont")):
+    """Wrap the sample frame, with the target shifted and only ``num`` features."""
+    df = df[["time_idx", "group_id", *num, "target"]].copy()
+    df["target"] += offset
+    return TimeSeries(
+        data=df,
+        time="time_idx",
+        target="target",
+        group=["group_id"],
+        num=list(num),
+        known=["dec_known_cont"],
+    )
+
+
+def _fit_forecaster(forecaster, data):
+    trainer = Trainer(
+        max_epochs=1,
+        limit_train_batches=1,
+        limit_val_batches=1,
+        enable_checkpointing=False,
+        **TRAINER_KWARGS_TEST,
+    )
+    forecaster.fit(data, trainer=trainer, save_ckpt=False)
+
+
+@pytest.fixture
+def forecaster_for_test():
+    """TFTForecaster with a data-less datamodule that normalises the target."""
+    datamodule = EncoderDecoderTimeSeriesDataModule(
+        batch_size=BATCH_SIZE_TEST,
+        max_encoder_length=MAX_ENCODER_LENGTH_TEST,
+        max_prediction_length=MAX_PREDICTION_LENGTH_TEST,
+        train_val_test_split=(0.5, 0.25, 0.25),
+        target_normalizer="auto",
+    )
+    return TFTForecaster(
+        hidden_size=HIDDEN_SIZE_TEST,
+        attention_head_size=ATTENTION_HEAD_SIZE_TEST,
+        datamodule=datamodule,
+    )
+
+
+def test_refit_refits_transforms(forecaster_for_test, sample_pandas_data_for_test):
+    """A second ``fit`` must scale its data with its own statistics."""
+    df = sample_pandas_data_for_test
+    _fit_forecaster(forecaster_for_test, _make_forecaster_data(df))
+    _fit_forecaster(forecaster_for_test, _make_forecaster_data(df, offset=1000.0))
+
+    x, _ = next(iter(forecaster_for_test.datamodule_.train_dataloader()))
+    scaled = float(x["target_past"].mean())
+
+    assert abs(scaled) < 5, (
+        f"target_past mean {scaled:.1f}: expected near 0; in the hundreds means "
+        "the statistics of the first fit were reused"
+    )
+
+
+def test_refit_new_schema(forecaster_for_test, sample_pandas_data_for_test):
+    """A second ``fit`` on data with other columns must build a model for them."""
+    df = sample_pandas_data_for_test
+    narrow = _make_forecaster_data(df, num=("dec_known_cont",))
+    _fit_forecaster(forecaster_for_test, _make_forecaster_data(df))
+    _fit_forecaster(forecaster_for_test, narrow)
+
+    out = forecaster_for_test.predict(
+        narrow, mode="prediction", trainer_kwargs=TRAINER_KWARGS_TEST
+    )
+
+    assert out.metadata.is_prediction
+    assert len(out.to_pandas()) % MAX_PREDICTION_LENGTH_TEST == 0
